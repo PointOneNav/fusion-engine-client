@@ -27,3 +27,12 @@ cc_library(
         "//cpp/point_one/messages:utils",
     ],
 )
+
+# Support for building a shared library if desired.
+cc_binary(
+    name = "libfusion_engine_client.so",
+    linkshared = True,
+    deps = [
+        ":cpp",
+    ],
+)
