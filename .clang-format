@@ -1,0 +1,97 @@
+---
+Language:        Cpp
+# BasedOnStyle:  Google
+AccessModifierOffset: -1
+AlignAfterOpenBracket: Align
+AlignConsecutiveAssignments: false
+AlignConsecutiveDeclarations: false
+AlignEscapedNewlinesLeft: true
+AlignOperands:   true
+AlignTrailingComments: false # Point One
+AllowAllParametersOfDeclarationOnNextLine: true
+AllowShortBlocksOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: All
+AllowShortIfStatementsOnASingleLine: true
+AllowShortLoopsOnASingleLine: true
+AlwaysBreakAfterDefinitionReturnType: None
+AlwaysBreakAfterReturnType: None
+AlwaysBreakBeforeMultilineStrings: true
+AlwaysBreakTemplateDeclarations: true
+BinPackArguments: true
+BinPackParameters: true
+BraceWrapping:
+  AfterClass:      false
+  AfterControlStatement: false
+  AfterEnum:       false
+  AfterFunction:   false
+  AfterNamespace:  false
+  AfterObjCDeclaration: false
+  AfterStruct:     false
+  AfterUnion:      false
+  BeforeCatch:     true # Point One
+  BeforeElse:      true # Point One
+  IndentBraces:    false
+BreakBeforeBinaryOperators: None
+BreakBeforeBraces: Custom # Point One
+BreakBeforeTernaryOperators: true
+BreakConstructorInitializersBeforeComma: false
+ColumnLimit:     80
+CommentPragmas:  '^ IWYU pragma:'
+CompactNamespaces: false # Point One
+ConstructorInitializerAllOnOneLineOrOnePerLine: true
+ConstructorInitializerIndentWidth: 4
+ContinuationIndentWidth: 4
+Cpp11BracedListStyle: true
+DerivePointerAlignment: false # Point One
+DisableFormat:   false
+ExperimentalAutoDetectBinPacking: false
+FixNamespaceComments: true # Point One
+ForEachMacros:   [ foreach, Q_FOREACH, BOOST_FOREACH ]
+IncludeBlocks: Preserve # Point One
+IncludeCategories:
+  - Regex:           '^<.*\.h>'
+    Priority:        1
+  - Regex:           '^<.*'
+    Priority:        2
+  - Regex:           '.*'
+    Priority:        3
+IndentCaseLabels: true
+IndentPPDirectives: AfterHash
+IndentWidth:     2
+IndentWrappedFunctionNames: false
+KeepEmptyLinesAtTheStartOfBlocks: false
+MacroBlockBegin: ''
+MacroBlockEnd:   ''
+MaxEmptyLinesToKeep: 1
+NamespaceIndentation: None
+ObjCBlockIndentWidth: 2
+ObjCSpaceAfterProperty: false
+ObjCSpaceBeforeProtocolList: false
+PenaltyBreakBeforeFirstCallParameter: 1
+PenaltyBreakComment: 300
+PenaltyBreakFirstLessLess: 120
+PenaltyBreakString: 1000
+PenaltyExcessCharacter: 1000000
+PenaltyReturnTypeOnItsOwnLine: 200
+PointerAlignment: Left
+ReflowComments:  false # Point One
+SortIncludes:    true
+SpaceAfterCStyleCast: false
+SpaceBeforeAssignmentOperators: true
+# clang-format >=8 only
+#SpaceBeforeCpp11BracedList: false # Point One
+SpaceBeforeParens: ControlStatements
+# clang-format >=8 only
+#SpaceBeforeRangeBasedForLoopColon: true # Point One
+SpaceInEmptyParentheses: false
+SpacesBeforeTrailingComments: 1 # Point One
+SpacesInAngles:  false
+SpacesInContainerLiterals: false # Point One
+SpacesInCStyleCastParentheses: false
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
+Standard:        Cpp11 # Point One
+TabWidth:        8
+UseTab:          Never
+...
