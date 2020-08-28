@@ -39,5 +39,6 @@ cc_library(
     ],
     deps = [
         ":common",
+        "//cpp/point_one/common:portability",
     ],
 )

@@ -7,6 +7,7 @@
 #include <string>
 
 #include "defs.h"
+#include "../common/portability.h"
 
 namespace point_one {
 namespace messages {
@@ -18,7 +19,7 @@ namespace messages {
  *
  * @return The name of the message.
  */
-std::string GetMessageTypeName(MessageType type);
+P1_EXPORT std::string GetMessageTypeName(MessageType type);
 
 /**
  * @brief Get the GNSS constellation name for the specified type enumeration.
@@ -27,7 +28,7 @@ std::string GetMessageTypeName(MessageType type);
  *
  * @return The name of the specified constellation.
  */
-std::string GetSatelliteTypeName(SatelliteType type);
+P1_EXPORT std::string GetSatelliteTypeName(SatelliteType type);
 
 } // namespace point_one
 } // namespace messages
