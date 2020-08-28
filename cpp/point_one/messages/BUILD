@@ -1,6 +1,6 @@
 package(default_visibility = ["//visibility:public"])
 
-# All message definitions.
+# All message definitions (headers only).
 cc_library(
     name = "messages",
     deps = [
@@ -8,7 +8,7 @@ cc_library(
     ],
 )
 
-# The main set of messages providing navigation solution support.
+# Core solution support.
 cc_library(
     name = "core",
     hdrs = [
@@ -16,11 +16,11 @@ cc_library(
         "solution.h",
     ],
     deps = [
-         ":common",
+        ":common",
     ],
 )
 
-# Common definitions and support functions.
+# Common type definitions.
 cc_library(
     name = "common",
     hdrs = [
