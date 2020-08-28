@@ -24,5 +24,6 @@ cc_library(
     includes = ["."],
     deps = [
         "//cpp/point_one/messages:core",
+        "//cpp/point_one/messages:utils",
     ],
 )
