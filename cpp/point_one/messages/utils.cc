@@ -2,7 +2,7 @@
  * @brief Utility functions.
  ******************************************************************************/
 
-#include "utils.h"
+#include "point_one/messages/utils.h"
 
 namespace point_one {
 namespace messages {

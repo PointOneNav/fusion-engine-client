@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "defs.h"
+#include "point_one/messages/defs.h"
 
 namespace point_one {
 namespace messages {

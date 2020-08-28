@@ -4,5 +4,5 @@
 
 #pragma once
 
-#include "defs.h"
-#include "solution.h"
+#include "point_one/messages/defs.h"
+#include "point_one/messages/solution.h"

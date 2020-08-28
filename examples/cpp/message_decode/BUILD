@@ -6,6 +6,6 @@ cc_binary(
         "message_decode.cc",
     ],
     deps = [
-        "@p1_fusion_engine_client//cpp",
+        "@fusion_engine_client",
     ],
 )

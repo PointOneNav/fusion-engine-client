@@ -6,8 +6,8 @@
 
 #include <string>
 
-#include "defs.h"
-#include "../common/portability.h"
+#include "point_one/common/portability.h"
+#include "point_one/messages/defs.h"
 
 namespace point_one {
 namespace messages {
