@@ -1,6 +1,9 @@
 # Bazel output directories.
 bazel-*
 
+# Default cmake build directory.
+build/
+
 # CLion project settings.
 .clwb/
 
