@@ -8,6 +8,7 @@
 #include <fstream>
 
 #include <point_one/messages/core.h>
+#include <point_one/messages/crc.h>
 
 using namespace point_one::messages;
 
@@ -44,6 +45,18 @@ bool DecodeMessage(std::ifstream& stream, size_t available_bytes) {
   stream.read(buffer, header.payload_size_bytes);
   if (!stream) {
     printf("Unexpected error reading payload.\n");
+    return false;
+  }
+
+  // Verify the message checksum.
+  if (!IsValid(header)) {
+    printf(
+        "CRC failure. [type=%s (%u), size=%zu bytes (payload size=%u bytes], "
+        "crc=0x%08x]\n",
+        GetMessageTypeName(header.message_type).c_str(),
+        static_cast<unsigned>(header.message_type),
+        sizeof(MessageHeader) + header.payload_size_bytes,
+        header.payload_size_bytes, CalculateCRC(header));
     return false;
   }
 

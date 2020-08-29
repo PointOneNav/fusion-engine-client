@@ -21,7 +21,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 # Add the source directory to the include path.
 include_directories(${PROJECT_SOURCE_DIR}/src)
 
+# All messages and supporting code.
+add_library(fusion_engine_client
+            src/point_one/messages/crc.cc)
+
 # Install targets.
+install(TARGETS fusion_engine_client)
+
 install(DIRECTORY src/point_one DESTINATION include
         FILES_MATCHING PATTERN "*.h")
 

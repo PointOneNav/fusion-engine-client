@@ -23,6 +23,7 @@ cc_library(
     name = "core",
     deps = [
         ":core_headers",
+        ":crc",
     ],
 )
 
@@ -48,4 +49,22 @@ cc_library(
         "src/point_one/messages/solution.h",
     ],
     includes = ["src"],
+)
+
+################################################################################
+# Support Functionality
+################################################################################
+
+# CRC support.
+cc_library(
+    name = "crc",
+    srcs = [
+        "src/point_one/messages/crc.cc",
+    ],
+    hdrs = [
+        "src/point_one/messages/crc.h",
+    ],
+    deps = [
+        ":core_headers",
+    ],
 )
