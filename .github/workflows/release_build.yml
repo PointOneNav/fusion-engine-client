@@ -1,0 +1,76 @@
+# Build library and examples, and generate releases.
+name: FusionEngine Client Build
+
+on:
+  push:
+    # Build on a push to any branch.
+    branches:
+      - '*'
+    # Build on a push of any tag named v* (v1.0, etc.) and generate a release.
+    tags:
+      - 'v*'
+
+jobs:
+  # Build the library and example applications.
+  build:
+    name: Build Applications
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        tool: [bazel, cmake]
+    steps:
+    - uses: actions/checkout@v2
+
+    # Bazel build
+    - name: Setup Bazel 3.3.0
+      if: matrix.tool == 'bazel'
+      uses: abhinavsingh/setup-bazel@v3
+      with:
+        version: 3.3.0
+
+    - name: Build Library
+      if: matrix.tool == 'bazel'
+      run: |
+        bazel build -c opt //:*
+
+    - name: Build Examples
+      if: matrix.tool == 'bazel'
+      run: |
+        cd examples &&
+        bazel build -c opt //:*
+
+    # CMake build
+    - name: Setup CMake 3.16.x
+      if: matrix.tool == 'cmake'
+      uses: jwlawson/actions-setup-cmake@v1.3
+      with:
+        cmake-version: '3.16.x'
+
+    - name: Build Library And Examples
+      if: matrix.tool == 'cmake'
+      run: |
+        mkdir build &&
+        cd build &&
+        cmake -DCMAKE_INSTALL_PREFIX=install ..
+        make
+        make install
+
+  # Create a release only on a tag (not on a branch push).
+  release:
+    name: Create Release
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [build]
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+    steps:
+    - name: Create release
+      id: create_release
+      uses: actions/create-release@latest
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        draft: false
+        prerelease: false
