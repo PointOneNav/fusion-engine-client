@@ -43,12 +43,12 @@ cc_library(
 cc_library(
     name = "core_headers",
     hdrs = [
-        "cpp/point_one/common/portability.h",
-        "cpp/point_one/messages/core.h",
-        "cpp/point_one/messages/defs.h",
-        "cpp/point_one/messages/solution.h",
+        "src/point_one/common/portability.h",
+        "src/point_one/messages/core.h",
+        "src/point_one/messages/defs.h",
+        "src/point_one/messages/solution.h",
     ],
-    includes = ["cpp"],
+    includes = ["src"],
 )
 
 ################################################################################
@@ -59,10 +59,10 @@ cc_library(
 cc_library(
     name = "utils",
     srcs = [
-        "cpp/point_one/messages/utils.cc",
+        "src/point_one/messages/utils.cc",
     ],
     hdrs = [
-        "cpp/point_one/messages/utils.h",
+        "src/point_one/messages/utils.h",
     ],
     deps = [
         ":core_headers",
