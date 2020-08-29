@@ -1,12 +1,9 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_binary(
-    name = "message_decode",
+    name = "generate_data",
     srcs = [
-        "message_decode.cc",
-    ],
-    data = [
-        "example_data.p1bin",
+        "generate_data.cc",
     ],
     deps = [
         "@fusion_engine_client",

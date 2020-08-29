@@ -4,6 +4,7 @@ package(default_visibility = ["//visibility:public"])
 filegroup(
   name = "examples",
   srcs = [
+    "//generate_data",
     "//message_decode",
   ]
 )
