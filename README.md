@@ -8,12 +8,12 @@ This library provides message definitions and support functionality for interact
 time, as well as processing recorded output data.
 
 * [Installation](#installation)
-  * [Bazel](#bazel)
-    * [Compiling](#compiling)
-    * [Running Examples](#running-examples)
   * [CMake](#cmake)
     * [Compiling](#compiling-1)
     * [Running Examples](#running-examples-1)
+  * [Bazel](#bazel)
+    * [Compiling](#compiling)
+    * [Running Examples](#running-examples)
 * [Usage](#usage)
 
 ### Example Applications
@@ -23,6 +23,31 @@ The `examples/` directory contains example applications demonstrating how to use
 - `generate_data` - Generate a binary file containing a fixed set of messages.
 
 ## Installation
+
+### CMake
+
+#### Compiling
+
+Use the following steps to compile and install this library using CMake:
+
+```
+mkdir build
+cd build
+cmake ..
+make
+make install
+```
+
+This will generate `libfusion_engine_client.so`, and install the library and header files on your system. By default,
+this will also build the [example applications](#examples).
+
+#### Running Examples
+
+By default, the compiled example applications will be located in `build/examples/` and can be run from there:
+
+```
+./build/examples/message_decode/message_decode
+```
 
 ### Bazel
 
@@ -88,31 +113,6 @@ You can also use the `bazel run` command to build and run an application in one 
 
 ```
 bazel run -c opt //message_decode -- message_decode/example_data.p1bin
-```
-
-### CMake
-
-#### Compiling
-
-Use the following steps to compile and install this library using CMake:
-
-```
-mkdir build
-cd build
-cmake ..
-make
-make install
-```
-
-This will generate `libfusion_engine_client.so`, and install the library and header files on your system. By default,
-this will also build the [example applications](#examples).
-
-#### Running Examples
-
-By default, the compiled example applications will be located in `build/examples/` and can be run from there:
-
-```
-./build/examples/message_decode/message_decode
 ```
 
 ## Usage
