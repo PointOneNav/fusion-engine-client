@@ -26,7 +26,8 @@ add_library(fusion_engine_client
             src/point_one/messages/crc.cc)
 
 # Install targets.
-install(TARGETS fusion_engine_client)
+install(TARGETS fusion_engine_client
+        LIBRARY DESTINATION lib)
 
 install(DIRECTORY src/point_one DESTINATION include
         FILES_MATCHING PATTERN "*.h")
