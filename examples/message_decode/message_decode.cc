@@ -8,7 +8,6 @@
 #include <fstream>
 
 #include <point_one/messages/core.h>
-#include <point_one/messages/utils.h>
 
 using namespace point_one::messages;
 

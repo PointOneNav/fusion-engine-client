@@ -23,7 +23,6 @@ cc_library(
     name = "core",
     deps = [
         ":core_headers",
-        ":utils",
     ],
 )
 
@@ -49,22 +48,4 @@ cc_library(
         "src/point_one/messages/solution.h",
     ],
     includes = ["src"],
-)
-
-################################################################################
-# Support Functionality
-################################################################################
-
-# Utility functions.
-cc_library(
-    name = "utils",
-    srcs = [
-        "src/point_one/messages/utils.cc",
-    ],
-    hdrs = [
-        "src/point_one/messages/utils.h",
-    ],
-    deps = [
-        ":core_headers",
-    ],
 )
