@@ -19,8 +19,7 @@ const uint32_t* GetCRCTable() {
       for (size_t j = 0; j < 8; j++) {
         if (c & 1) {
           c = polynomial ^ (c >> 1);
-        }
-        else {
+        } else {
           c >>= 1;
         }
       }

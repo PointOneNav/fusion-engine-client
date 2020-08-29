@@ -33,7 +33,7 @@ BraceWrapping:
   BeforeElse:      true # Point One
   IndentBraces:    false
 BreakBeforeBinaryOperators: None
-BreakBeforeBraces: Custom # Point One
+BreakBeforeBraces: Attach # Point One
 BreakBeforeTernaryOperators: true
 BreakConstructorInitializersBeforeComma: false
 ColumnLimit:     80

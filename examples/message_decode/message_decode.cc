@@ -75,8 +75,7 @@ bool DecodeMessage(std::ifstream& stream, size_t available_bytes) {
            contents.ypr_rad[0] * (180.0 / M_PI),
            contents.ypr_rad[1] * (180.0 / M_PI),
            contents.ypr_rad[2] * (180.0 / M_PI));
-  }
-  else if (header.message_type == MessageType::GNSS_INFO) {
+  } else if (header.message_type == MessageType::GNSS_INFO) {
     GNSSInfoMessage& contents = *reinterpret_cast<GNSSInfoMessage*>(buffer);
     buffer += sizeof(contents);
 
@@ -95,8 +94,7 @@ bool DecodeMessage(std::ifstream& stream, size_t available_bytes) {
              sv.azimuth_deg);
       printf("    In solution: %s\n", sv.used_in_solution ? "yes" : "no");
     }
-  }
-  else {
+  } else {
     printf("Ignoring message type %s. [%u bytes]\n",
            GetMessageTypeName(header.message_type).c_str(),
            header.payload_size_bytes);
