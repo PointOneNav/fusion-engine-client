@@ -35,7 +35,7 @@ mkdir build
 cd build
 cmake ..
 make
-make install
+sudo make install
 ```
 
 This will generate `libfusion_engine_client.so`, and install the library and header files on your system. By default,
