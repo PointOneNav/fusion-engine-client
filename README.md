@@ -119,7 +119,7 @@ bazel run -c opt //message_decode -- message_decode/example_data.p1bin
 
 ## Usage
 
-All FusionEngine messages are contain a `MessageHeader`, followed by the payload of the specific message. To decode an
+All FusionEngine messages contain a `MessageHeader` followed by the payload of the specific message. To decode an
 incoming message you must:
 
 1. Deserialize the header.
