@@ -6,6 +6,7 @@
 
 #include <cmath> // For NAN
 #include <cstdint>
+#include <ostream>
 #include <string>
 
 namespace point_one {
@@ -165,6 +166,10 @@ inline std::string to_string(SatelliteType type) {
   }
 }
 
+inline std::ostream& operator<<(std::ostream& stream, SatelliteType type) {
+  return (stream << to_string(type));
+}
+
 /**
  * @brief Get a human-friendly string name for the specified @ref MessageType.
  *
@@ -186,6 +191,10 @@ inline std::string to_string(MessageType type) {
     default:
       return "Unrecognized Message (" + std::to_string((int)type) + ")";
   }
+}
+
+inline std::ostream& operator<<(std::ostream& stream, MessageType type) {
+  return (stream << to_string(type));
 }
 
 /**
@@ -224,6 +233,10 @@ inline std::string to_string(SolutionType type) {
     default:
       return "Unrecognized Solution Type (" + std::to_string((int)type) + ")";
   }
+}
+
+inline std::ostream& operator<<(std::ostream& stream, SolutionType type) {
+  return (stream << to_string(type));
 }
 
 } // namespace messages
