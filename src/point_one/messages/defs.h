@@ -6,7 +6,7 @@
 
 #include <cmath> // For NAN
 #include <cstdint>
-#include <cstring>
+#include <string>
 
 namespace point_one {
 namespace messages {
@@ -128,7 +128,7 @@ struct MessageHeader {
  *
  * @return The corresponding string name.
  */
-inline std::string GetSatelliteTypeName(SatelliteType type) {
+inline std::string to_string(SatelliteType type) {
   switch (type) {
     case SatelliteType::UNKNOWN:
       return "Unknown";
@@ -172,7 +172,7 @@ inline std::string GetSatelliteTypeName(SatelliteType type) {
  *
  * @return The corresponding string name.
  */
-inline std::string GetMessageTypeName(MessageType type) {
+inline std::string to_string(MessageType type) {
   switch (type) {
     case MessageType::INVALID:
       return "Invalid";
@@ -195,7 +195,7 @@ inline std::string GetMessageTypeName(MessageType type) {
  *
  * @return The corresponding string name.
  */
-inline std::string GetSolutionTypeName(SolutionType type) {
+inline std::string to_string(SolutionType type) {
   switch (type) {
     case SolutionType::Invalid:
       return "Invalid";

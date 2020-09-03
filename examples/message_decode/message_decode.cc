@@ -53,7 +53,7 @@ bool DecodeMessage(std::ifstream& stream, size_t available_bytes) {
     printf(
         "CRC failure. [type=%s (%u), size=%zu bytes (payload size=%u bytes], "
         "crc=0x%08x]\n",
-        GetMessageTypeName(header.message_type).c_str(),
+        to_string(header.message_type).c_str(),
         static_cast<unsigned>(header.message_type),
         sizeof(MessageHeader) + header.payload_size_bytes,
         header.payload_size_bytes, CalculateCRC(header));
@@ -89,15 +89,14 @@ bool DecodeMessage(std::ifstream& stream, size_t available_bytes) {
       SatelliteInfo& sv = *reinterpret_cast<SatelliteInfo*>(buffer);
       buffer += sizeof(sv);
 
-      printf("  %s PRN %u:\n", GetSatelliteTypeName(sv.system).c_str(), sv.prn);
+      printf("  %s PRN %u:\n", to_string(sv.system).c_str(), sv.prn);
       printf("    Elevation/azimuth: (%.1f, %.1f) deg\n", sv.elevation_deg,
              sv.azimuth_deg);
       printf("    In solution: %s\n", sv.used_in_solution ? "yes" : "no");
     }
   } else {
     printf("Ignoring message type %s. [%u bytes]\n",
-           GetMessageTypeName(header.message_type).c_str(),
-           header.payload_size_bytes);
+           to_string(header.message_type).c_str(), header.payload_size_bytes);
   }
 
   return true;
