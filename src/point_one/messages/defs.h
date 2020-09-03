@@ -188,5 +188,5 @@ inline std::string GetSatelliteTypeName(SatelliteType type) {
   }
 }
 
-} // namespace point_one
 } // namespace messages
+} // namespace point_one
