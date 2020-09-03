@@ -120,7 +120,13 @@ struct MessageHeader {
 
 #pragma pack(pop)
 
-/******************************************************************************/
+/**
+ * @brief Get a human-friendly string name for the specified @ref MessageType.
+ *
+ * @param type The desired message type.
+ *
+ * @return The corresponding string name.
+ */
 inline std::string GetMessageTypeName(MessageType type) {
   switch (type) {
     case MessageType::INVALID:
@@ -137,7 +143,14 @@ inline std::string GetMessageTypeName(MessageType type) {
   }
 }
 
-/******************************************************************************/
+/**
+ * @brief Get a human-friendly string name for the specified @ref SatelliteType
+ *        (GNSS constellation).
+ *
+ * @param type The desired satellite type.
+ *
+ * @return The corresponding string name.
+ */
 inline std::string GetSatelliteTypeName(SatelliteType type) {
   switch (type) {
     case SatelliteType::UNKNOWN:
