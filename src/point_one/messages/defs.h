@@ -121,29 +121,6 @@ struct MessageHeader {
 #pragma pack(pop)
 
 /**
- * @brief Get a human-friendly string name for the specified @ref MessageType.
- *
- * @param type The desired message type.
- *
- * @return The corresponding string name.
- */
-inline std::string GetMessageTypeName(MessageType type) {
-  switch (type) {
-    case MessageType::INVALID:
-      return "Invalid";
-
-    case MessageType::POSE:
-      return "Pose";
-
-    case MessageType::GNSS_INFO:
-      return "GNSS Info";
-
-    default:
-      return "Unrecognized Message (" + std::to_string((int)type) + ")";
-  }
-}
-
-/**
  * @brief Get a human-friendly string name for the specified @ref SatelliteType
  *        (GNSS constellation).
  *
@@ -185,6 +162,67 @@ inline std::string GetSatelliteTypeName(SatelliteType type) {
 
     default:
       return "Invalid System (" + std::to_string((int)type) + ")";
+  }
+}
+
+/**
+ * @brief Get a human-friendly string name for the specified @ref MessageType.
+ *
+ * @param type The desired message type.
+ *
+ * @return The corresponding string name.
+ */
+inline std::string GetMessageTypeName(MessageType type) {
+  switch (type) {
+    case MessageType::INVALID:
+      return "Invalid";
+
+    case MessageType::POSE:
+      return "Pose";
+
+    case MessageType::GNSS_INFO:
+      return "GNSS Info";
+
+    default:
+      return "Unrecognized Message (" + std::to_string((int)type) + ")";
+  }
+}
+
+/**
+ * @brief Get a human-friendly string name for the specified @ref SolutionType.
+ *
+ * @param type The desired message type.
+ *
+ * @return The corresponding string name.
+ */
+inline std::string GetSolutionTypeName(SolutionType type) {
+  switch (type) {
+    case SolutionType::Invalid:
+      return "Invalid";
+
+    case SolutionType::AutonomousGPS:
+      return "Stand Alone GNSS";
+
+    case SolutionType::DGPS:
+      return "Differential GNSS";
+
+    case SolutionType::RTKFixed:
+      return "Fixed RTK GNSS";
+
+    case SolutionType::RTKFloat:
+      return "Real-valued Ambiguity RTK GNSS";
+
+    case SolutionType::Integrate:
+      return "Dead Reckoning";
+
+    case SolutionType::Visual:
+      return "Visual Navigation";
+
+    case SolutionType::PPP:
+      return "PPP GNSS";
+
+    default:
+      return "Unrecognized Solution Type (" + std::to_string((int)type) + ")";
   }
 }
 
