@@ -6,9 +6,11 @@
 
 #include <cmath> // For NAN
 #include <cstdint>
-#include <cstring>
+#include <ostream>
+#include <string>
 
 namespace point_one {
+namespace fusion_engine {
 namespace messages {
 
 // Enforce byte alignment and packing of all data structures and values.
@@ -120,25 +122,15 @@ struct MessageHeader {
 
 #pragma pack(pop)
 
-/******************************************************************************/
-inline std::string GetMessageTypeName(MessageType type) {
-  switch (type) {
-    case MessageType::INVALID:
-      return "Invalid";
-
-    case MessageType::POSE:
-      return "Pose";
-
-    case MessageType::GNSS_INFO:
-      return "GNSS Info";
-
-    default:
-      return "Unrecognized Message (" + std::to_string((int)type) + ")";
-  }
-}
-
-/******************************************************************************/
-inline std::string GetSatelliteTypeName(SatelliteType type) {
+/**
+ * @brief Get a human-friendly string name for the specified @ref SatelliteType
+ *        (GNSS constellation).
+ *
+ * @param type The desired satellite type.
+ *
+ * @return The corresponding string name.
+ */
+inline std::string to_string(SatelliteType type) {
   switch (type) {
     case SatelliteType::UNKNOWN:
       return "Unknown";
@@ -175,5 +167,79 @@ inline std::string GetSatelliteTypeName(SatelliteType type) {
   }
 }
 
-} // namespace point_one
+inline std::ostream& operator<<(std::ostream& stream, SatelliteType type) {
+  return (stream << to_string(type));
+}
+
+/**
+ * @brief Get a human-friendly string name for the specified @ref MessageType.
+ *
+ * @param type The desired message type.
+ *
+ * @return The corresponding string name.
+ */
+inline std::string to_string(MessageType type) {
+  switch (type) {
+    case MessageType::INVALID:
+      return "Invalid";
+
+    case MessageType::POSE:
+      return "Pose";
+
+    case MessageType::GNSS_INFO:
+      return "GNSS Info";
+
+    default:
+      return "Unrecognized Message (" + std::to_string((int)type) + ")";
+  }
+}
+
+inline std::ostream& operator<<(std::ostream& stream, MessageType type) {
+  return (stream << to_string(type));
+}
+
+/**
+ * @brief Get a human-friendly string name for the specified @ref SolutionType.
+ *
+ * @param type The desired message type.
+ *
+ * @return The corresponding string name.
+ */
+inline std::string to_string(SolutionType type) {
+  switch (type) {
+    case SolutionType::Invalid:
+      return "Invalid";
+
+    case SolutionType::AutonomousGPS:
+      return "Stand Alone GNSS";
+
+    case SolutionType::DGPS:
+      return "Differential GNSS";
+
+    case SolutionType::RTKFixed:
+      return "Fixed RTK GNSS";
+
+    case SolutionType::RTKFloat:
+      return "Real-valued Ambiguity RTK GNSS";
+
+    case SolutionType::Integrate:
+      return "Dead Reckoning";
+
+    case SolutionType::Visual:
+      return "Visual Navigation";
+
+    case SolutionType::PPP:
+      return "PPP GNSS";
+
+    default:
+      return "Unrecognized Solution Type (" + std::to_string((int)type) + ")";
+  }
+}
+
+inline std::ostream& operator<<(std::ostream& stream, SolutionType type) {
+  return (stream << to_string(type));
+}
+
 } // namespace messages
+} // namespace fusion_engine
+} // namespace point_one

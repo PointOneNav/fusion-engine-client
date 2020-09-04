@@ -7,10 +7,11 @@
 #include <cstdint>
 #include <string>
 
-#include "point_one/common/portability.h"
-#include "point_one/messages/defs.h"
+#include "point_one/fusion_engine/common/portability.h"
+#include "point_one/fusion_engine/messages/defs.h"
 
 namespace point_one {
+namespace fusion_engine {
 namespace messages {
 
 /**
@@ -60,5 +61,6 @@ inline bool IsValid(const void* buffer) {
   return static_cast<const MessageHeader*>(buffer)->crc == CalculateCRC(buffer);
 }
 
-} // namespace point_one
 } // namespace messages
+} // namespace fusion_engine
+} // namespace point_one

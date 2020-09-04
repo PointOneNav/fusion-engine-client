@@ -4,9 +4,10 @@
 
 #pragma once
 
-#include "point_one/messages/defs.h"
+#include "point_one/fusion_engine/messages/defs.h"
 
 namespace point_one {
+namespace fusion_engine {
 namespace messages {
 
 // Enforce byte alignment and packing of all data structures and values.
@@ -38,14 +39,16 @@ struct PoseMessage {
   double lla_deg[3] = {NAN, NAN, NAN};
 
   /**
-   * The platform attitude (in radians), if known, described as Euler-321 angles
+   * The platform attitude (in degrees), if known, described as Euler-321 angles
    * (yaw, pitch, roll), or `NAN` if attitude has not been initialized.
    *
    * @note
-   * Yaw is measured from east in a counter-clockwise direction. For example,
-   * north is +90 degrees.
+   * The platform body axes are defined as +x forward, +y left, and +z up. A
+   * positive yaw is a left turn, positive pitch points the nose of the vehicle
+   * down, and positive roll is a roll toward the right. Yaw is measured from
+   * east in a counter-clockwise direction. For example, north is +90 degrees.
    */
-  double ypr_rad[3] = {NAN, NAN, NAN};
+  double ypr_deg[3] = {NAN, NAN, NAN};
 
   /**
    * The platform body velocity (in meters/second), resolved in the local level
@@ -136,5 +139,6 @@ struct SatelliteInfo {
 
 #pragma pack(pop)
 
-} // namespace point_one
 } // namespace messages
+} // namespace fusion_engine
+} // namespace point_one

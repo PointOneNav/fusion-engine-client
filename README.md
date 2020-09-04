@@ -129,9 +129,9 @@ incoming message you must:
 For example:
 
 ```c++
-#include <point_one/messages/core.h>
+#include <point_one/fusion_engine/messages/core.h>
 
-using namespace point_one::messages;
+using namespace point_one::fusion_engine::messages;
 
 void DeserializeMessage(const uint8_t* buffer) {
   const MessageHeader& header = *reinterpret_cast<const MessageHeader*>(buffer);

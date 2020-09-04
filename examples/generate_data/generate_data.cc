@@ -2,13 +2,12 @@
 * @brief Message encode example.
 ******************************************************************************/
 
-#include <cmath>
 #include <cstdio>
 #include <fstream>
 
-#include <point_one/messages/core.h>
+#include <point_one/fusion_engine/messages/core.h>
 
-using namespace point_one::messages;
+using namespace point_one::fusion_engine::messages;
 
 int main(int argc, const char* argv[]) {
   if (argc != 2) {
@@ -48,9 +47,9 @@ Generate a binary file containing a fixed set of messages.
   pose_message.lla_deg[1] = -122.402754;
   pose_message.lla_deg[2] = 40.8;
 
-  pose_message.ypr_rad[0] = 190.0 * (M_PI / 180.0);
-  pose_message.ypr_rad[1] = 2.1 * (M_PI / 180.0);
-  pose_message.ypr_rad[2] = 0.1 * (M_PI / 180.0);
+  pose_message.ypr_deg[0] = 190.0;
+  pose_message.ypr_deg[1] = 2.1;
+  pose_message.ypr_deg[2] = 0.1;
 
   pose_message.velocity_enu_mps[0] = -2.3;
   pose_message.velocity_enu_mps[1] = -1.5;
@@ -139,9 +138,9 @@ Generate a binary file containing a fixed set of messages.
   pose_message.lla_deg[1] = -122.405823;
   pose_message.lla_deg[2] = 82.0;
 
-  pose_message.ypr_rad[0] = 37.0 * (M_PI / 180.0);
-  pose_message.ypr_rad[1] = 0.0 * (M_PI / 180.0);
-  pose_message.ypr_rad[2] = 0.0 * (M_PI / 180.0);
+  pose_message.ypr_deg[0] = 37.0;
+  pose_message.ypr_deg[1] = 0.0;
+  pose_message.ypr_deg[2] = 0.0;
 
   pose_message.velocity_enu_mps[0] = 0.0;
   pose_message.velocity_enu_mps[1] = 0.0;

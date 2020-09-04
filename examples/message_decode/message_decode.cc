@@ -2,15 +2,14 @@
 * @brief Message decode example.
 ******************************************************************************/
 
-#include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <fstream>
 
-#include <point_one/messages/core.h>
-#include <point_one/messages/crc.h>
+#include <point_one/fusion_engine/messages/core.h>
+#include <point_one/fusion_engine/messages/crc.h>
 
-using namespace point_one::messages;
+using namespace point_one::fusion_engine::messages;
 
 /******************************************************************************/
 bool DecodeMessage(std::ifstream& stream, size_t available_bytes) {
@@ -53,7 +52,7 @@ bool DecodeMessage(std::ifstream& stream, size_t available_bytes) {
     printf(
         "CRC failure. [type=%s (%u), size=%zu bytes (payload size=%u bytes], "
         "crc=0x%08x]\n",
-        GetMessageTypeName(header.message_type).c_str(),
+        to_string(header.message_type).c_str(),
         static_cast<unsigned>(header.message_type),
         sizeof(MessageHeader) + header.payload_size_bytes,
         header.payload_size_bytes, CalculateCRC(header));
@@ -72,9 +71,7 @@ bool DecodeMessage(std::ifstream& stream, size_t available_bytes) {
     printf("  Position (LLA): %.6f, %.6f, %.3f (deg, deg, m)\n",
            contents.lla_deg[0], contents.lla_deg[1], contents.lla_deg[2]);
     printf("  Attitude (YPR): %.2f, %.2f, %.2f (deg, deg, deg)\n",
-           contents.ypr_rad[0] * (180.0 / M_PI),
-           contents.ypr_rad[1] * (180.0 / M_PI),
-           contents.ypr_rad[2] * (180.0 / M_PI));
+           contents.ypr_deg[0], contents.ypr_deg[1], contents.ypr_deg[2]);
   } else if (header.message_type == MessageType::GNSS_INFO) {
     GNSSInfoMessage& contents = *reinterpret_cast<GNSSInfoMessage*>(buffer);
     buffer += sizeof(contents);
@@ -89,15 +86,14 @@ bool DecodeMessage(std::ifstream& stream, size_t available_bytes) {
       SatelliteInfo& sv = *reinterpret_cast<SatelliteInfo*>(buffer);
       buffer += sizeof(sv);
 
-      printf("  %s PRN %u:\n", GetSatelliteTypeName(sv.system).c_str(), sv.prn);
+      printf("  %s PRN %u:\n", to_string(sv.system).c_str(), sv.prn);
       printf("    Elevation/azimuth: (%.1f, %.1f) deg\n", sv.elevation_deg,
              sv.azimuth_deg);
       printf("    In solution: %s\n", sv.used_in_solution ? "yes" : "no");
     }
   } else {
     printf("Ignoring message type %s. [%u bytes]\n",
-           GetMessageTypeName(header.message_type).c_str(),
-           header.payload_size_bytes);
+           to_string(header.message_type).c_str(), header.payload_size_bytes);
   }
 
   return true;
