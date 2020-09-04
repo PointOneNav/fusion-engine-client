@@ -10,6 +10,7 @@
 #include <string>
 
 namespace point_one {
+namespace fusion_engine {
 namespace messages {
 
 // Enforce byte alignment and packing of all data structures and values.
@@ -240,4 +241,5 @@ inline std::ostream& operator<<(std::ostream& stream, SolutionType type) {
 }
 
 } // namespace messages
+} // namespace fusion_engine
 } // namespace point_one

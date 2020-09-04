@@ -7,10 +7,10 @@
 #include <cstdio>
 #include <fstream>
 
-#include <point_one/messages/core.h>
-#include <point_one/messages/crc.h>
+#include <point_one/fusion_engine/messages/core.h>
+#include <point_one/fusion_engine/messages/crc.h>
 
-using namespace point_one::messages;
+using namespace point_one::fusion_engine::messages;
 
 /******************************************************************************/
 bool DecodeMessage(std::ifstream& stream, size_t available_bytes) {

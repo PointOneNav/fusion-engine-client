@@ -4,9 +4,10 @@
 
 #pragma once
 
-#include "point_one/messages/defs.h"
+#include "point_one/fusion_engine/messages/defs.h"
 
 namespace point_one {
+namespace fusion_engine {
 namespace messages {
 
 // Enforce byte alignment and packing of all data structures and values.
@@ -136,5 +137,6 @@ struct SatelliteInfo {
 
 #pragma pack(pop)
 
-} // namespace point_one
 } // namespace messages
+} // namespace fusion_engine
+} // namespace point_one

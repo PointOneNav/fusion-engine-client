@@ -43,10 +43,10 @@ cc_library(
 cc_library(
     name = "core_headers",
     hdrs = [
-        "src/point_one/common/portability.h",
-        "src/point_one/messages/core.h",
-        "src/point_one/messages/defs.h",
-        "src/point_one/messages/solution.h",
+        "src/point_one/fusion_engine/common/portability.h",
+        "src/point_one/fusion_engine/messages/core.h",
+        "src/point_one/fusion_engine/messages/defs.h",
+        "src/point_one/fusion_engine/messages/solution.h",
     ],
     includes = ["src"],
 )
@@ -59,10 +59,10 @@ cc_library(
 cc_library(
     name = "crc",
     srcs = [
-        "src/point_one/messages/crc.cc",
+        "src/point_one/fusion_engine/messages/crc.cc",
     ],
     hdrs = [
-        "src/point_one/messages/crc.h",
+        "src/point_one/fusion_engine/messages/crc.h",
     ],
     deps = [
         ":core_headers",

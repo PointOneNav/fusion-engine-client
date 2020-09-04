@@ -2,7 +2,7 @@
  * @brief Utility functions.
  ******************************************************************************/
 
-#include "point_one/messages/crc.h"
+#include "point_one/fusion_engine/messages/crc.h"
 
 namespace {
 /******************************************************************************/
@@ -46,6 +46,7 @@ uint32_t CalculateCRC(const void* buffer, size_t length,
 } // namespace
 
 namespace point_one {
+namespace fusion_engine {
 namespace messages {
 
 /******************************************************************************/
@@ -57,5 +58,6 @@ uint32_t CalculateCRC(const MessageHeader& header) {
                         size_bytes);
 }
 
-} // namespace point_one
 } // namespace messages
+} // namespace fusion_engine
+} // namespace point_one

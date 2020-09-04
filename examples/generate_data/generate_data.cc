@@ -6,9 +6,9 @@
 #include <cstdio>
 #include <fstream>
 
-#include <point_one/messages/core.h>
+#include <point_one/fusion_engine/messages/core.h>
 
-using namespace point_one::messages;
+using namespace point_one::fusion_engine::messages;
 
 int main(int argc, const char* argv[]) {
   if (argc != 2) {
