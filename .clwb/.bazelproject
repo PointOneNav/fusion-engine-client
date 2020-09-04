@@ -13,6 +13,7 @@ derive_targets_from_directories: true
 
 targets:
   # If source code isn't resolving, add additional targets that compile it here
+  -//examples/...:all
 
 additional_languages:
   # Uncomment any additional languages you want supported
