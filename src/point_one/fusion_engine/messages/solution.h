@@ -43,8 +43,10 @@ struct PoseMessage {
    * (yaw, pitch, roll), or `NAN` if attitude has not been initialized.
    *
    * @note
-   * Yaw is measured from east in a counter-clockwise direction. For example,
-   * north is +90 degrees.
+   * The platform body axes are defined as +x forward, +y left, and +z up. A
+   * positive yaw is a left turn, positive pitch points the nose of the vehicle
+   * down, and positive roll is a roll toward the right. Yaw is measured from
+   * east in a counter-clockwise direction. For example, north is +90 degrees.
    */
   double ypr_deg[3] = {NAN, NAN, NAN};
 
