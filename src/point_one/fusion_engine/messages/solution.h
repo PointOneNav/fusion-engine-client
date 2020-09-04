@@ -39,14 +39,14 @@ struct PoseMessage {
   double lla_deg[3] = {NAN, NAN, NAN};
 
   /**
-   * The platform attitude (in radians), if known, described as Euler-321 angles
+   * The platform attitude (in degrees), if known, described as Euler-321 angles
    * (yaw, pitch, roll), or `NAN` if attitude has not been initialized.
    *
    * @note
    * Yaw is measured from east in a counter-clockwise direction. For example,
    * north is +90 degrees.
    */
-  double ypr_rad[3] = {NAN, NAN, NAN};
+  double ypr_deg[3] = {NAN, NAN, NAN};
 
   /**
    * The platform body velocity (in meters/second), resolved in the local level

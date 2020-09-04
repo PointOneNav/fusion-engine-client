@@ -2,7 +2,6 @@
 * @brief Message decode example.
 ******************************************************************************/
 
-#include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <fstream>
@@ -72,9 +71,7 @@ bool DecodeMessage(std::ifstream& stream, size_t available_bytes) {
     printf("  Position (LLA): %.6f, %.6f, %.3f (deg, deg, m)\n",
            contents.lla_deg[0], contents.lla_deg[1], contents.lla_deg[2]);
     printf("  Attitude (YPR): %.2f, %.2f, %.2f (deg, deg, deg)\n",
-           contents.ypr_rad[0] * (180.0 / M_PI),
-           contents.ypr_rad[1] * (180.0 / M_PI),
-           contents.ypr_rad[2] * (180.0 / M_PI));
+           contents.ypr_deg[0], contents.ypr_deg[1], contents.ypr_deg[2]);
   } else if (header.message_type == MessageType::GNSS_INFO) {
     GNSSInfoMessage& contents = *reinterpret_cast<GNSSInfoMessage*>(buffer);
     buffer += sizeof(contents);
