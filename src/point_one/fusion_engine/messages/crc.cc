@@ -8,7 +8,7 @@ namespace {
 /******************************************************************************/
 const uint32_t* GetCRCTable() {
   // Note: This is the CRC-32 polynomial.
-  static constexpr uint32_t polynomial = 0x04C11DB7;
+  static constexpr uint32_t polynomial = 0xEDB88320;
 
   static bool is_initialized = false;
   static uint32_t crc_table[256];
