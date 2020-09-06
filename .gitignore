@@ -1,11 +1,15 @@
+# Generated files.
+*.pyc
+
 # Bazel output directories.
 bazel-*
 
 # Default cmake build directory.
 build/
 
-# CLion project settings.
+# CLion/Pycharm project settings.
 .clwb/
+.idea/
 
 # P1 binary files.
 *.p1bin

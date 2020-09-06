@@ -103,7 +103,7 @@ struct MessageHeader {
   /**
    * The 32-bit CRC of all bytes from and including the @ref protocol_version
    * field to the last byte in the message. This uses the standard CRC-32
-   * generator polynomial (0x04C11DB7).
+   * generator polynomial in reversed order (0xEDB88320).
    */
   uint32_t crc = 0;
 
