@@ -7,7 +7,7 @@
 # Point One FusionEngine Client
 
 This library provides message definitions and support functionality for interacting with Point One FusionEngine in real
-time, as well as processing recorded output data.
+time, as well as processing recorded output data. Both C++ and Python are supported.
 
 * [Installation](#installation)
   * [CMake](#cmake)
@@ -17,6 +17,19 @@ time, as well as processing recorded output data.
     * [Compiling](#compiling)
     * [Running Examples](#running-examples)
 * [Usage](#usage)
+
+### Directory Structure
+
+- `<root>` - Top-level Bazel and CMake build files (C++)
+  - `examples/` - C++ example applications
+  - `python/` - Python source files
+    - `examples/` - Python example applications
+    - `fusion_engine_client` - Top Python package directory
+      - `messages` - Python message definitions
+  - `src/` - C++ source files
+    - `point_one/`
+      - `fusion_engine/`
+        - `messages/` - C++ message definitions
 
 ### Example Applications
 
