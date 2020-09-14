@@ -44,6 +44,14 @@ jobs:
         cd examples &&
         bazel build -c opt //:*
 
+    - name: Install Files
+      if: matrix.tool == 'bazel'
+      run: |
+        mkdir install &&
+        cp examples/bazel-bin/message_decode/message_decode ./install/ &&
+        cp examples/bazel-bin/generate_data/generate_data ./install/ &&
+        cp examples/message_decode/example_data.p1bin ./install/
+
     # CMake build
     - name: Setup CMake 3.16.x
       if: matrix.tool == 'cmake'
@@ -61,6 +69,26 @@ jobs:
         cmake -DCMAKE_INSTALL_PREFIX=install ..
         make
         make install
+
+    - name: Install Files
+      if: matrix.tool == 'cmake'
+      run: |
+        mkdir install &&
+        cp build/examples/message_decode/message_decode ./install/ &&
+        cp build/examples/generate_data/generate_data ./install/ &&
+        cp examples/message_decode/example_data.p1bin ./install/
+
+    # Run unit tests.
+    - name: Test Message Decoding
+      run: |
+        cd install &&
+        ./message_decode example_data.p1bin
+
+    - name: Test Message Encoding
+      run: |
+        cd install &&
+        ./generate_data new_data.p1bin &&
+        ./message_decode new_data.p1bin
 
   # Create a release only on a tag (not on a branch push).
   release:
