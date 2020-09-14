@@ -62,13 +62,13 @@ Generate a binary file containing a fixed set of messages.
   pose_message->velocity_enu_mps[1] = -1.5;
   pose_message->velocity_enu_mps[2] = 0.3;
 
-  pose_message->position_std_dev_ecef_m[0] = 0.1;
-  pose_message->position_std_dev_ecef_m[1] = 0.1;
-  pose_message->position_std_dev_ecef_m[2] = 0.1;
+  pose_message->position_std_dev_ecef_m[0] = 0.1f;
+  pose_message->position_std_dev_ecef_m[1] = 0.1f;
+  pose_message->position_std_dev_ecef_m[2] = 0.1f;
 
-  pose_message->aggregate_protection_level_m = 0.4;
-  pose_message->horizontal_protection_level_m = 0.2;
-  pose_message->vertical_protection_level_m = 0.3;
+  pose_message->aggregate_protection_level_m = 0.4f;
+  pose_message->horizontal_protection_level_m = 0.2f;
+  pose_message->vertical_protection_level_m = 0.3f;
 
   header->crc = CalculateCRC(buffer);
   stream.write(reinterpret_cast<char*>(buffer),
@@ -98,10 +98,10 @@ Generate a binary file containing a fixed set of messages.
 
   gnss_info_message->reference_station_id = 4321;
 
-  gnss_info_message->gdop = 1.6;
-  gnss_info_message->pdop = 1.3;
-  gnss_info_message->hdop = 1.2;
-  gnss_info_message->vdop = 1.5;
+  gnss_info_message->gdop = 1.6f;
+  gnss_info_message->pdop = 1.3f;
+  gnss_info_message->hdop = 1.2f;
+  gnss_info_message->vdop = 1.5f;
 
   gnss_info_message->num_satellites = 2;
 
@@ -111,16 +111,16 @@ Generate a binary file containing a fixed set of messages.
   satellite_info->system = SatelliteType::GPS;
   satellite_info->prn = 4;
   satellite_info->used_in_solution = 1;
-  satellite_info->azimuth_deg = 34.5;
-  satellite_info->elevation_deg = 56.2;
+  satellite_info->azimuth_deg = 34.5f;
+  satellite_info->elevation_deg = 56.2f;
 
   ++satellite_info;
   *satellite_info = SatelliteInfo();
   satellite_info->system = SatelliteType::GALILEO;
   satellite_info->prn = 9;
   satellite_info->used_in_solution = 0;
-  satellite_info->azimuth_deg = 79.4;
-  satellite_info->elevation_deg = 16.1;
+  satellite_info->azimuth_deg = 79.4f;
+  satellite_info->elevation_deg = 16.1f;
 
   header->crc = CalculateCRC(buffer);
   stream.write(reinterpret_cast<char*>(buffer),
@@ -156,13 +156,13 @@ Generate a binary file containing a fixed set of messages.
   pose_message->velocity_enu_mps[1] = 0.0;
   pose_message->velocity_enu_mps[2] = 1.2;
 
-  pose_message->position_std_dev_ecef_m[0] = 0.05;
-  pose_message->position_std_dev_ecef_m[1] = 0.05;
-  pose_message->position_std_dev_ecef_m[2] = 0.05;
+  pose_message->position_std_dev_ecef_m[0] = 0.05f;
+  pose_message->position_std_dev_ecef_m[1] = 0.05f;
+  pose_message->position_std_dev_ecef_m[2] = 0.05f;
 
-  pose_message->aggregate_protection_level_m = 0.3;
-  pose_message->horizontal_protection_level_m = 0.08;
-  pose_message->vertical_protection_level_m = 0.2;
+  pose_message->aggregate_protection_level_m = 0.3f;
+  pose_message->horizontal_protection_level_m = 0.08f;
+  pose_message->vertical_protection_level_m = 0.2f;
 
   header->crc = CalculateCRC(buffer);
   stream.write(reinterpret_cast<char*>(buffer),
