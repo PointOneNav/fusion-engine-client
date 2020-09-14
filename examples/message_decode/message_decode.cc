@@ -124,7 +124,7 @@ Decode platform pose messages from a binary file containing FusionEngine data.
 
   // Determine the file size.
   stream.seekg(0, stream.end);
-  ssize_t file_size_bytes = stream.tellg();
+  std::streampos file_size_bytes = stream.tellg();
   stream.seekg(0, stream.beg);
 
   // Decode all messages in the file.
