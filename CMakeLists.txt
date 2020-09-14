@@ -10,9 +10,14 @@ option(BUILD_SHARED_LIBS "Build shared libraries instead of static libraries."
 option(BUILD_EXAMPLES "Build example applications." ON)
 
 # Set compilation flags.
-set(CMAKE_CXX_FLAGS "-Wall -Werror")
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
+
+if (MSVC)
+    add_compile_options(/W4 /WX)
+else()
+    add_compile_options(-Wall -Werror)
+endif()
 
 ################################################################################
 # Library Definitions
