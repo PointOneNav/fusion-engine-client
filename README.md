@@ -18,6 +18,15 @@ time, as well as processing recorded output data. Both C++ and Python are suppor
     * [Running Examples](#running-examples)
 * [Usage](#usage)
 
+### Requirements
+
+#### C++ Support
+- C++11 or later
+- CMake 3.x or Bazel 3.x
+
+#### Python Support
+- Python 3.4 or later
+
 ### Directory Structure
 
 - `<root>` - Top-level Bazel and CMake build files (C++)
