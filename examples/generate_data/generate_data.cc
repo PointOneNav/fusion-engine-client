@@ -29,7 +29,7 @@ Generate a binary file containing a fixed set of messages.
   //////////////////////////////////////////////////////////////////////////////
 
   MessageHeader header;
-  header.crc = 0x40C57DE6;
+  header.crc = 0x2af3ea46;
   header.message_type = MessageType::POSE;
   header.payload_size_bytes = sizeof(PoseMessage);
 
@@ -69,7 +69,7 @@ Generate a binary file containing a fixed set of messages.
   // Write a GNSS info message associated with the pose message.
   //////////////////////////////////////////////////////////////////////////////
 
-  header.crc = 0x57E7B51C;
+  header.crc = 0x4dd9b14d;
   header.message_type = MessageType::GNSS_INFO;
   header.payload_size_bytes =
       sizeof(GNSSInfoMessage) + 2 * sizeof(SatelliteInfo);
@@ -121,7 +121,7 @@ Generate a binary file containing a fixed set of messages.
   // Write another pose message 0.2 seconds later.
   //////////////////////////////////////////////////////////////////////////////
 
-  header.crc = 0x57B559C3;
+  header.crc = 0x3d45e991;
   header.message_type = MessageType::POSE;
   header.payload_size_bytes = sizeof(PoseMessage);
 

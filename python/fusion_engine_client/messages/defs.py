@@ -106,7 +106,7 @@ class MessageHeader:
     _SYNC0 = 0x2E # '.'
     _SYNC1 = 0x31 # '1'
 
-    _FORMAT = '<BBIBHII'
+    _FORMAT = '<BB2xIBxHII'
     _SIZE: int = struct.calcsize(_FORMAT)
 
     def __init__(self, message_type: MessageType = MessageType.INVALID):
@@ -135,7 +135,7 @@ class MessageHeader:
 
     def validate_crc(self, buffer: bytes, offset: int = 0):
         message_size_bytes = MessageHeader._SIZE + self.payload_size_bytes
-        crc = crc32(buffer[(offset + 6):(offset + message_size_bytes)])
+        crc = crc32(buffer[(offset + 8):(offset + message_size_bytes)])
         if crc != self.crc:
             raise ValueError('CRC mismatch. [expected=0x%08x, computed=0x%08x]' % (self.crc, crc))
 

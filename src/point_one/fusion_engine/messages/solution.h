@@ -10,8 +10,9 @@ namespace point_one {
 namespace fusion_engine {
 namespace messages {
 
-// Enforce byte alignment and packing of all data structures and values.
-#pragma pack(push, 1)
+// Enforce 4-byte alignment and packing of all data structures and values so
+// that floating point values are aligned on platforms that require it.
+#pragma pack(push, 4)
 
 /**
  * @brief Platform pose solution (position, velocity, attitude). \[@ref
@@ -32,6 +33,8 @@ struct PoseMessage {
 
   /** The type of this position solution. */
   SolutionType solution_type;
+
+  uint8_t reserved[3] = {0};
 
   /**
    * The WGS-84 geodetic latitude, longitude, and altitude (in degrees/meters).
@@ -108,6 +111,8 @@ struct GNSSInfoMessage {
 
   /** The number of known satellites. */
   uint16_t num_satellites = 0;
+
+  uint8_t reserved[2] = {0};
 };
 
 /**
@@ -129,6 +134,8 @@ struct SatelliteInfo {
    * if not.
    */
   uint8_t used_in_solution = 0;
+
+  uint8_t reserved = 0;
 
   /** The azimuth of the satellite (in degrees). */
   double azimuth_deg = NAN;

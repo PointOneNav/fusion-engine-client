@@ -13,8 +13,9 @@ namespace point_one {
 namespace fusion_engine {
 namespace messages {
 
-// Enforce byte alignment and packing of all data structures and values.
-#pragma pack(push, 1)
+// Enforce 4-byte alignment and packing of all data structures and values so
+// that floating point values are aligned on platforms that require it.
+#pragma pack(push, 4)
 
 /**
  * @brief System/constellation type definitions.
@@ -100,15 +101,20 @@ struct MessageHeader {
   /** Message sync bytes: always set to ASCII `.1` (0x2E, 0x31). */
   uint8_t sync[2] = {SYNC0, SYNC1};
 
+  uint8_t reserved[2] = {0};
+
   /**
    * The 32-bit CRC of all bytes from and including the @ref protocol_version
-   * field to the last byte in the message. This uses the standard CRC-32
-   * generator polynomial in reversed order (0xEDB88320).
+   * field to the last byte in the message, including the message payload. This
+   * uses the standard CRC-32 generator polynomial in reversed order
+   * (0xEDB88320).
    */
   uint32_t crc = 0;
 
   /** The version of the P1 binary protocol being used. */
   uint8_t protocol_version = 2;
+
+  uint8_t reserved_1 = 0;
 
   /** Type identifier for the serialized message to follow. */
   MessageType message_type = MessageType::INVALID;
