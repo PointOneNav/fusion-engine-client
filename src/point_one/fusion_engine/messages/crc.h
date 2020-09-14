@@ -33,7 +33,14 @@ P1_EXPORT uint32_t CalculateCRC(const void* buffer);
  *         the current contents.
  */
 inline bool IsValid(const void* buffer) {
-  return static_cast<const MessageHeader*>(buffer)->crc == CalculateCRC(buffer);
+  // Sanity check the message payload length before calculating the CRC.
+  const MessageHeader& header = *static_cast<const MessageHeader*>(buffer);
+  if (sizeof(MessageHeader) + header.payload_size_bytes >
+      MessageHeader::MAX_MESSAGE_SIZE_BYTES) {
+    return false;
+  } else {
+    return header.crc == CalculateCRC(buffer);
+  }
 }
 
 } // namespace messages

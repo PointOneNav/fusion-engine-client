@@ -109,6 +109,8 @@ class MessageHeader:
     _FORMAT = '<BB2xIBxHII'
     _SIZE: int = struct.calcsize(_FORMAT)
 
+    _MAX_EXPECTED_SIZE_BYTES = (1 << 24)
+
     def __init__(self, message_type: MessageType = MessageType.INVALID):
         self.crc: int = 0
         self.protocol_version: int = 2
@@ -134,6 +136,11 @@ class MessageHeader:
         return self.crc
 
     def validate_crc(self, buffer: bytes, offset: int = 0):
+        # Sanity check the message payload length before calculating the CRC.
+        if self.payload_size_bytes > MessageHeader._MAX_EXPECTED_SIZE_BYTES:
+            raise ValueError('Payload length failed sanity check. [%d bytes > %d bytes]' %
+                             (self.payload_size_bytes, MessageHeader._MAX_EXPECTED_SIZE_BYTES))
+
         message_size_bytes = MessageHeader._SIZE + self.payload_size_bytes
         crc = crc32(buffer[(offset + 8):(offset + message_size_bytes)])
         if crc != self.crc:

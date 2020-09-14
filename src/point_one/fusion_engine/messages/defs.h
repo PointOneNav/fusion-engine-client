@@ -98,6 +98,11 @@ struct MessageHeader {
 
   static constexpr uint32_t INVALID_SOURCE_ID = 0xFFFFFFFF;
 
+  /**
+   * The maximum expected message size (in bytes), used for sanity checking.
+   */
+  static const size_t MAX_MESSAGE_SIZE_BYTES = (1 << 24);
+
   /** Message sync bytes: always set to ASCII `.1` (0x2E, 0x31). */
   uint8_t sync[2] = {SYNC0, SYNC1};
 
