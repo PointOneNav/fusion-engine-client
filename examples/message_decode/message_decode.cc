@@ -71,7 +71,8 @@ bool DecodeMessage(std::ifstream& stream, size_t available_bytes) {
     double p1_time_sec =
         contents.p1_time.seconds + (contents.p1_time.fraction_ns * 1e-9);
 
-    printf("Received pose message @ P1 time %.3f seconds:\n", p1_time_sec);
+    printf("Received pose message @ P1 time %.3f seconds. [sequence=%u]\n",
+           p1_time_sec, header.sequence_number);
     printf("  Position (LLA): %.6f, %.6f, %.3f (deg, deg, m)\n",
            contents.lla_deg[0], contents.lla_deg[1], contents.lla_deg[2]);
     printf("  Attitude (YPR): %.2f, %.2f, %.2f (deg, deg, deg)\n",
@@ -83,8 +84,9 @@ bool DecodeMessage(std::ifstream& stream, size_t available_bytes) {
     double p1_time_sec =
         contents.p1_time.seconds + (contents.p1_time.fraction_ns * 1e-9);
 
-    printf("Received GNSS info message @ P1 time %.3f seconds. [%u svs]\n",
-           p1_time_sec, contents.num_satellites);
+    printf("Received GNSS info message @ P1 time %.3f seconds. [sequence=%u, "
+           "%u svs]\n",
+           p1_time_sec, header.sequence_number, contents.num_satellites);
 
     for (unsigned i = 0; i < contents.num_satellites; ++i) {
       SatelliteInfo& sv = *reinterpret_cast<SatelliteInfo*>(buffer);

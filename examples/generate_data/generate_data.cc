@@ -36,6 +36,7 @@ Generate a binary file containing a fixed set of messages.
 
   MessageHeader* header = reinterpret_cast<MessageHeader*>(buffer);
   *header = MessageHeader();
+  header->sequence_number = 0;
   header->message_type = MessageType::POSE;
   header->payload_size_bytes = sizeof(PoseMessage);
 
@@ -77,9 +78,7 @@ Generate a binary file containing a fixed set of messages.
   // Write a GNSS info message associated with the pose message.
   //////////////////////////////////////////////////////////////////////////////
 
-  header = reinterpret_cast<MessageHeader*>(buffer);
-  *header = MessageHeader();
-
+  ++header->sequence_number;
   header->message_type = MessageType::GNSS_INFO;
   header->payload_size_bytes =
       sizeof(GNSSInfoMessage) + 2 * sizeof(SatelliteInfo);
@@ -131,8 +130,7 @@ Generate a binary file containing a fixed set of messages.
   // Write another pose message 0.2 seconds later.
   //////////////////////////////////////////////////////////////////////////////
 
-  header = reinterpret_cast<MessageHeader*>(buffer);
-  *header = MessageHeader();
+  ++header->sequence_number;
   header->message_type = MessageType::POSE;
   header->payload_size_bytes = sizeof(PoseMessage);
 

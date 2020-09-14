@@ -106,7 +106,7 @@ class MessageHeader:
     _SYNC0 = 0x2E # '.'
     _SYNC1 = 0x31 # '1'
 
-    _FORMAT = '<BB2xIBxHII'
+    _FORMAT = '<BB2xIBBHII'
     _SIZE: int = struct.calcsize(_FORMAT)
 
     _MAX_EXPECTED_SIZE_BYTES = (1 << 24)
@@ -114,6 +114,7 @@ class MessageHeader:
     def __init__(self, message_type: MessageType = MessageType.INVALID):
         self.crc: int = 0
         self.protocol_version: int = 2
+        self.sequence_number: int = 0
         self.message_type: MessageType = message_type
         self.payload_size_bytes: int = 0
         self.source_identifier: int = MessageHeader.INVALID_SOURCE_ID
@@ -169,7 +170,7 @@ class MessageHeader:
         if payload is not None:
             self.calculate_crc(payload)
 
-        args = (self.crc, self.protocol_version, int(self.message_type), self.payload_size_bytes,
+        args = (self.crc, self.protocol_version, self.sequence_number, int(self.message_type), self.payload_size_bytes,
                 self.source_identifier)
         if buffer is None:
             buffer = struct.pack(MessageHeader._FORMAT, *args)
@@ -200,7 +201,7 @@ class MessageHeader:
         @return The size of the serialized header (in bytes).
         """
         (sync0, sync1,
-         self.crc, self.protocol_version,
+         self.crc, self.protocol_version, self.sequence_number,
          message_type_int, self.payload_size_bytes, self.source_identifier) = \
             struct.unpack_from(MessageHeader._FORMAT, buffer=buffer, offset=offset)
 

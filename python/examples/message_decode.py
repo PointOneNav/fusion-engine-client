@@ -38,7 +38,7 @@ if __name__ == "__main__":
             contents = PoseMessage()
             contents.unpack(buffer=data, offset=offset)
 
-            print('Pose message @ P1 time %s' % str(contents.p1_time))
+            print('Pose message @ P1 time %s [sequence=%d]' % (str(contents.p1_time), header.sequence_number))
             print('  GPS time: %s' % str(contents.gps_time.as_gps()))
             print('  LLA: %.6f, %.6f, %.3f (deg, deg, m)' % tuple(contents.lla_deg))
             print('  YPR: %.2f, %.2f, %.2f (deg, deg, deg)' % tuple(contents.ypr_deg))
@@ -46,7 +46,7 @@ if __name__ == "__main__":
             contents = GNSSInfoMessage()
             contents.unpack(buffer=data, offset=offset)
 
-            print('GNSS info message @ P1 time %s' % str(contents.p1_time))
+            print('GNSS info message @ P1 time %s [sequence=%d]' % (str(contents.p1_time), header.sequence_number))
             print('  GPS time: %s' % str(contents.gps_time.as_gps()))
             print('  GDOP: %.1f' % contents.gdop)
             print('  %d SVs:' % len(contents.svs))
