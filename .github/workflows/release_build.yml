@@ -18,6 +18,7 @@ jobs:
     strategy:
       matrix:
         tool: [bazel, cmake]
+        compiler: [g++, clang++]
     steps:
     - uses: actions/checkout@v2
 
@@ -30,11 +31,15 @@ jobs:
 
     - name: Build Library
       if: matrix.tool == 'bazel'
+      env:
+        CC: /usr/bin/${{ matrix.compiler }}
       run: |
         bazel build -c opt //:*
 
     - name: Build Examples
       if: matrix.tool == 'bazel'
+      env:
+        CC: /usr/bin/${{ matrix.compiler }}
       run: |
         cd examples &&
         bazel build -c opt //:*
@@ -48,6 +53,8 @@ jobs:
 
     - name: Build Library And Examples
       if: matrix.tool == 'cmake'
+      env:
+        CXX: /usr/bin/${{ matrix.compiler }}
       run: |
         mkdir build &&
         cd build &&

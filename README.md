@@ -23,6 +23,7 @@ time, as well as processing recorded output data. Both C++ and Python are suppor
 #### C++ Support
 - C++11 or later
 - CMake 3.x or Bazel 3.x
+- GCC or Clang
 
 #### Python Support
 - Python 3.4 or later
