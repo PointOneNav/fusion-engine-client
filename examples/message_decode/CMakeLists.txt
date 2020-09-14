@@ -1,2 +1,2 @@
 add_executable(message_decode message_decode.cc)
-target_link_libraries(message_decode LINK_PUBLIC fusion_engine_client)
+target_link_libraries(message_decode PUBLIC fusion_engine_client)

@@ -1,7 +1,7 @@
 # Copyright (C) Point One Navigation - All Rights Reserved
 project(p1_fusion_engine_client)
 
-cmake_minimum_required(VERSION 3.0.2)
+cmake_minimum_required(VERSION 3.3.2)
 
 # Option definitions.
 option(BUILD_SHARED_LIBS "Build shared libraries instead of static libraries."

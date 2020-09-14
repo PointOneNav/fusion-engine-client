@@ -1,2 +1,2 @@
 add_executable(generate_data generate_data.cc)
-target_link_libraries(generate_data LINK_PUBLIC fusion_engine_client)
+target_link_libraries(generate_data PUBLIC fusion_engine_client)
