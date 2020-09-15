@@ -26,9 +26,8 @@ Generate a binary file containing a fixed set of messages.
   }
 
   // Enforce a 4-byte aligned address.
-  uint8_t storage[4096];
-  size_t alignment_offset = reinterpret_cast<size_t>(storage) % 4;
-  char* buffer = reinterpret_cast<char*>(storage + alignment_offset);
+  alignas(4) uint8_t storage[4096];
+  char* buffer = reinterpret_cast<char*>(storage);
 
   //////////////////////////////////////////////////////////////////////////////
   // Write a pose message.

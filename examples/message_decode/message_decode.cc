@@ -14,11 +14,8 @@ using namespace point_one::fusion_engine::messages;
 /******************************************************************************/
 bool DecodeMessage(std::ifstream& stream, size_t available_bytes) {
   // Enforce a 4-byte aligned address.
-  uint8_t storage[4096];
-  size_t alignment_offset = reinterpret_cast<size_t>(storage) % 4;
-  char* const buffer_start =
-      reinterpret_cast<char*>(storage + alignment_offset);
-  char* buffer = buffer_start;
+  alignas(4) uint8_t storage[4096];
+  char* buffer = reinterpret_cast<char*>(storage);
 
   // Read the message header.
   if (available_bytes < sizeof(MessageHeader)) {
@@ -52,14 +49,14 @@ bool DecodeMessage(std::ifstream& stream, size_t available_bytes) {
   }
 
   // Verify the message checksum.
-  if (!IsValid(buffer_start)) {
+  if (!IsValid(storage)) {
     printf(
         "CRC failure. [type=%s (%u), size=%zu bytes (payload size=%u bytes], "
         "expected_crc=0x%08x, calculated_crc=0x%08x]\n",
         to_string(header.message_type).c_str(),
         static_cast<unsigned>(header.message_type),
         sizeof(MessageHeader) + header.payload_size_bytes,
-        header.payload_size_bytes, header.crc, CalculateCRC(buffer_start));
+        header.payload_size_bytes, header.crc, CalculateCRC(storage));
     return false;
   }
 
