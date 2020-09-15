@@ -51,13 +51,13 @@ bool DecodeMessage(std::ifstream& stream, size_t available_bytes) {
   }
 
   // Verify the message checksum.
+  size_t message_size = sizeof(MessageHeader) + header.payload_size_bytes;
   if (!IsValid(storage)) {
     printf(
         "CRC failure. [type=%s (%u), size=%zu bytes (payload size=%u bytes], "
         "sequence=%u, expected_crc=0x%08x, calculated_crc=0x%08x]\n",
         to_string(header.message_type).c_str(),
-        static_cast<unsigned>(header.message_type),
-        sizeof(MessageHeader) + header.payload_size_bytes,
+        static_cast<unsigned>(header.message_type), message_size,
         header.payload_size_bytes, header.sequence_number, header.crc,
         CalculateCRC(storage));
     return false;
@@ -70,8 +70,7 @@ bool DecodeMessage(std::ifstream& stream, size_t available_bytes) {
         "(payload size=%u bytes], crc=0x%08x, expected_sequence=%u, "
         "received_sequence=%u]\n",
         to_string(header.message_type).c_str(),
-        static_cast<unsigned>(header.message_type),
-        sizeof(MessageHeader) + header.payload_size_bytes,
+        static_cast<unsigned>(header.message_type), message_size,
         header.payload_size_bytes, header.crc, expected_sequence_number,
         header.sequence_number);
   }
@@ -86,8 +85,9 @@ bool DecodeMessage(std::ifstream& stream, size_t available_bytes) {
     double p1_time_sec =
         contents.p1_time.seconds + (contents.p1_time.fraction_ns * 1e-9);
 
-    printf("Received pose message @ P1 time %.3f seconds. [sequence=%u]\n",
-           p1_time_sec, header.sequence_number);
+    printf("Received pose message @ P1 time %.3f seconds. [sequence=%u, "
+           "size=%zu B]\n",
+           p1_time_sec, header.sequence_number, message_size);
     printf("  Position (LLA): %.6f, %.6f, %.3f (deg, deg, m)\n",
            contents.lla_deg[0], contents.lla_deg[1], contents.lla_deg[2]);
     printf("  Attitude (YPR): %.2f, %.2f, %.2f (deg, deg, deg)\n",
@@ -117,9 +117,11 @@ bool DecodeMessage(std::ifstream& stream, size_t available_bytes) {
     double p1_time_sec =
         contents.p1_time.seconds + (contents.p1_time.fraction_ns * 1e-9);
 
-    printf("Received GNSS info message @ P1 time %.3f seconds. [sequence=%u, "
-           "%u svs]\n",
-           p1_time_sec, header.sequence_number, contents.num_satellites);
+    printf(
+        "Received GNSS info message @ P1 time %.3f seconds. [sequence=%u, "
+        "size=%zu B, %u svs]\n",
+        p1_time_sec, header.sequence_number, message_size,
+        contents.num_satellites);
 
     for (unsigned i = 0; i < contents.num_satellites; ++i) {
       SatelliteInfo& sv = *reinterpret_cast<SatelliteInfo*>(buffer);
