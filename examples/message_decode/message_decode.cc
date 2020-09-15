@@ -13,6 +13,8 @@ using namespace point_one::fusion_engine::messages;
 
 /******************************************************************************/
 bool DecodeMessage(std::ifstream& stream, size_t available_bytes) {
+  static uint8_t expected_sequence_number = 0;
+
   // Enforce a 4-byte aligned address.
   alignas(4) uint8_t storage[4096];
   char* buffer = reinterpret_cast<char*>(storage);
@@ -52,13 +54,29 @@ bool DecodeMessage(std::ifstream& stream, size_t available_bytes) {
   if (!IsValid(storage)) {
     printf(
         "CRC failure. [type=%s (%u), size=%zu bytes (payload size=%u bytes], "
-        "expected_crc=0x%08x, calculated_crc=0x%08x]\n",
+        "sequence=%u, expected_crc=0x%08x, calculated_crc=0x%08x]\n",
         to_string(header.message_type).c_str(),
         static_cast<unsigned>(header.message_type),
         sizeof(MessageHeader) + header.payload_size_bytes,
-        header.payload_size_bytes, header.crc, CalculateCRC(storage));
+        header.payload_size_bytes, header.sequence_number, header.crc,
+        CalculateCRC(storage));
     return false;
   }
+
+  // Check that the sequence number increments as expected.
+  if (header.sequence_number != expected_sequence_number) {
+    printf(
+        "Warning: unexpected sequence number. [type=%s (%u), size=%zu bytes "
+        "(payload size=%u bytes], crc=0x%08x, expected_sequence=%u, "
+        "received_sequence=%u]\n",
+        to_string(header.message_type).c_str(),
+        static_cast<unsigned>(header.message_type),
+        sizeof(MessageHeader) + header.payload_size_bytes,
+        header.payload_size_bytes, header.crc, expected_sequence_number,
+        header.sequence_number);
+  }
+
+  expected_sequence_number = header.sequence_number + 1;
 
   // Interpret the payload.
   if (header.message_type == MessageType::POSE) {

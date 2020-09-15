@@ -14,6 +14,7 @@ if __name__ == "__main__":
 
     f = open(options.file, 'rb')
 
+    expected_sequence_number = 0
     while True:
         # Read the next message header.
         data = f.read(MessageHeader.calcsize())
@@ -32,6 +33,13 @@ if __name__ == "__main__":
             break
         else:
             header.validate_crc(data)
+
+        # Check that the sequence number increments as expected.
+        if header.sequence_number != expected_sequence_number:
+            print('Warning: unexpected sequence number. [expected=%d, received=%d]' %
+                  (expected_sequence_number, header.sequence_number))
+
+        expected_sequence_number = header.sequence_number + 1
 
         # Deserialize and print the message contents.
         if header.message_type == PoseMessage.MESSAGE_TYPE:
