@@ -11,7 +11,8 @@ time, as well as processing recorded output data. Both C++ and Python are suppor
 
 * [Installation](#installation)
   * [CMake](#cmake)
-    * [Compiling](#compiling-1)
+    * [Compiling (Linux)](#compiling-linux)
+    * [Compiling (Windows)](#compiling-windows)
     * [Running Examples](#running-examples-1)
   * [Bazel](#bazel)
     * [Compiling](#compiling)
@@ -23,7 +24,7 @@ time, as well as processing recorded output data. Both C++ and Python are suppor
 #### C++ Support
 - C++11 or later
 - CMake 3.x or Bazel 3.x
-- GCC, Clang, or MSVC (preliminary support)
+- GCC, Clang, or Microsoft Visual Studio
 
 #### Python Support
 - Python 3.4 or later
@@ -51,7 +52,7 @@ The `examples/` directory contains example applications demonstrating how to use
 
 ### CMake
 
-#### Compiling
+#### Compiling (Linux)
 
 Use the following steps to compile and install this library using CMake:
 
@@ -65,6 +66,20 @@ sudo make install
 
 This will generate `libfusion_engine_client.so`, and install the library and header files on your system. By default,
 this will also build the [example applications](#examples).
+
+#### Compiling (Windows)
+
+Use the following steps to compile and install this library using CMake and MSBuild:
+
+```
+mkdir output
+cd output
+cmake ..
+MSBuild p1_fusion_engine_client.sln
+```
+
+> Note: For Windows, we name the build directory `output`. Windows is not case-sensitive, and `build` conflicts with the
+> Bazel `BUILD` file.
 
 #### Running Examples
 

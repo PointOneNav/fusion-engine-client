@@ -67,6 +67,9 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         compiler: [g++, clang++]
+        include:
+          - os: windows-latest
+            compiler: msvc
     defaults:
       run:
         shell: bash
@@ -79,42 +82,68 @@ jobs:
       with:
         cmake-version: '3.16.x'
 
-    - name: Set Compiler
+    - name: Install msbuild (Windows)
+      if: matrix.os == 'windows-latest'
+      uses: microsoft/setup-msbuild@v1.0.1
+
+    - name: Setup Environment (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        echo ::set-env name=EXT::.exe
+
+    - name: Setup Environment (Linux)
       if: matrix.os == 'ubuntu-latest'
       run: |
         echo ::set-env name=CXX::/usr/bin/${{ matrix.compiler }}
+        echo ::set-env name=EXT::
 
     - name: Setup Build
       run: |
-        mkdir build
-        cd build
+        mkdir cmake_build
+        cd cmake_build
         cmake -DCMAKE_INSTALL_PREFIX=install ..
 
     - name: Build Library And Examples (Linux)
       if: matrix.os == 'ubuntu-latest'
       run: |
-        cd build
+        cd cmake_build
         make
         make install
 
-    - name: Install Test Files
+    - name: Install Test Files (Linux)
+      if: matrix.os == 'ubuntu-latest'
       run: |
         mkdir test
-        cp build/examples/message_decode/message_decode ./test/
-        cp build/examples/generate_data/generate_data ./test/
+        cp cmake_build/examples/message_decode/message_decode ./test/
+        cp cmake_build/examples/generate_data/generate_data ./test/
+        cp examples/message_decode/example_data.p1bin ./test/
+
+    - name: Build Library And Examples (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        cd cmake_build
+        MSBuild.exe p1_fusion_engine_client.sln
+
+    - name: Install Test Files (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        mkdir test
+        cp cmake_build/Debug/fusion_engine_client.dll ./test/
+        cp cmake_build/examples/message_decode/Debug/message_decode.exe ./test/
+        cp cmake_build/examples/generate_data/Debug/generate_data.exe ./test/
         cp examples/message_decode/example_data.p1bin ./test/
 
     # Run unit tests.
     - name: Test Message Decoding
       run: |
         cd test
-        ./message_decode example_data.p1bin
+        ./message_decode${EXT} example_data.p1bin
 
     - name: Test Message Encoding
       run: |
         cd test
-        ./generate_data new_data.p1bin
-        ./message_decode new_data.p1bin
+        ./generate_data${EXT} new_data.p1bin
+        ./message_decode${EXT} new_data.p1bin
 
   # Create a release only on a tag (not on a branch push).
   release:
