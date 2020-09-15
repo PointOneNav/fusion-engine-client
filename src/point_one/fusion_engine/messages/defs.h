@@ -13,8 +13,9 @@ namespace point_one {
 namespace fusion_engine {
 namespace messages {
 
-// Enforce byte alignment and packing of all data structures and values.
-#pragma pack(push, 1)
+// Enforce 4-byte alignment and packing of all data structures and values so
+// that floating point values are aligned on platforms that require it.
+#pragma pack(push, 4)
 
 /**
  * @brief System/constellation type definitions.
@@ -97,18 +98,29 @@ struct MessageHeader {
 
   static constexpr uint32_t INVALID_SOURCE_ID = 0xFFFFFFFF;
 
+  /**
+   * The maximum expected message size (in bytes), used for sanity checking.
+   */
+  static const size_t MAX_MESSAGE_SIZE_BYTES = (1 << 24);
+
   /** Message sync bytes: always set to ASCII `.1` (0x2E, 0x31). */
   uint8_t sync[2] = {SYNC0, SYNC1};
 
+  uint8_t reserved[2] = {0};
+
   /**
    * The 32-bit CRC of all bytes from and including the @ref protocol_version
-   * field to the last byte in the message. This uses the standard CRC-32
-   * generator polynomial in reversed order (0xEDB88320).
+   * field to the last byte in the message, including the message payload. This
+   * uses the standard CRC-32 generator polynomial in reversed order
+   * (0xEDB88320).
    */
   uint32_t crc = 0;
 
   /** The version of the P1 binary protocol being used. */
   uint8_t protocol_version = 2;
+
+  /** The sequence number of this message. */
+  uint8_t sequence_number = 0;
 
   /** Type identifier for the serialized message to follow. */
   MessageType message_type = MessageType::INVALID;

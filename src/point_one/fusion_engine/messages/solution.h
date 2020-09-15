@@ -10,8 +10,9 @@ namespace point_one {
 namespace fusion_engine {
 namespace messages {
 
-// Enforce byte alignment and packing of all data structures and values.
-#pragma pack(push, 1)
+// Enforce 4-byte alignment and packing of all data structures and values so
+// that floating point values are aligned on platforms that require it.
+#pragma pack(push, 4)
 
 /**
  * @brief Platform pose solution (position, velocity, attitude). \[@ref
@@ -32,6 +33,8 @@ struct PoseMessage {
 
   /** The type of this position solution. */
   SolutionType solution_type;
+
+  uint8_t reserved[3] = {0};
 
   /**
    * The WGS-84 geodetic latitude, longitude, and altitude (in degrees/meters).
@@ -60,14 +63,14 @@ struct PoseMessage {
    * The X/Y/Z position standard deviation (in meters), resolved in the ECEF
    * frame.
    */
-  double position_std_dev_ecef_m[3] = {NAN, NAN, NAN};
+  float position_std_dev_ecef_m[3] = {NAN, NAN, NAN};
 
   /** The estimated aggregate 3D protection level (in meters). */
-  double aggregate_protection_level_m = NAN;
+  float aggregate_protection_level_m = NAN;
   /** The estimated 2D horizontal protection level (in meters). */
-  double horizontal_protection_level_m = NAN;
+  float horizontal_protection_level_m = NAN;
   /** The estimated vertical protection level (in meters). */
-  double vertical_protection_level_m = NAN;
+  float vertical_protection_level_m = NAN;
 };
 
 /**
@@ -98,16 +101,18 @@ struct GNSSInfoMessage {
   uint32_t reference_station_id = INVALID_REFERENCE_STATION;
 
   /** The geometric dilution of precision (GDOP). */
-  double gdop = NAN;
+  float gdop = NAN;
   /** The position dilution of precision (PDOP). */
-  double pdop = NAN;
+  float pdop = NAN;
   /** The horizontal dilution of precision (HDOP). */
-  double hdop = NAN;
+  float hdop = NAN;
   /** The vertical dilution of precision (VDOP). */
-  double vdop = NAN;
+  float vdop = NAN;
 
   /** The number of known satellites. */
   uint16_t num_satellites = 0;
+
+  uint8_t reserved[2] = {0};
 };
 
 /**
@@ -130,11 +135,13 @@ struct SatelliteInfo {
    */
   uint8_t used_in_solution = 0;
 
+  uint8_t reserved = 0;
+
   /** The azimuth of the satellite (in degrees). */
-  double azimuth_deg = NAN;
+  float azimuth_deg = NAN;
 
   /** The elevation of the satellite (in degrees). */
-  double elevation_deg = NAN;
+  float elevation_deg = NAN;
 };
 
 #pragma pack(pop)

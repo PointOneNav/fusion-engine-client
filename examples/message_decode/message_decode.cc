@@ -13,7 +13,10 @@ using namespace point_one::fusion_engine::messages;
 
 /******************************************************************************/
 bool DecodeMessage(std::ifstream& stream, size_t available_bytes) {
-  uint8_t storage[4096];
+  static uint8_t expected_sequence_number = 0;
+
+  // Enforce a 4-byte aligned address.
+  alignas(4) uint8_t storage[4096];
   char* buffer = reinterpret_cast<char*>(storage);
 
   // Read the message header.
@@ -48,16 +51,32 @@ bool DecodeMessage(std::ifstream& stream, size_t available_bytes) {
   }
 
   // Verify the message checksum.
-  if (!IsValid(header)) {
+  if (!IsValid(storage)) {
     printf(
         "CRC failure. [type=%s (%u), size=%zu bytes (payload size=%u bytes], "
-        "crc=0x%08x]\n",
+        "sequence=%u, expected_crc=0x%08x, calculated_crc=0x%08x]\n",
         to_string(header.message_type).c_str(),
         static_cast<unsigned>(header.message_type),
         sizeof(MessageHeader) + header.payload_size_bytes,
-        header.payload_size_bytes, CalculateCRC(header));
+        header.payload_size_bytes, header.sequence_number, header.crc,
+        CalculateCRC(storage));
     return false;
   }
+
+  // Check that the sequence number increments as expected.
+  if (header.sequence_number != expected_sequence_number) {
+    printf(
+        "Warning: unexpected sequence number. [type=%s (%u), size=%zu bytes "
+        "(payload size=%u bytes], crc=0x%08x, expected_sequence=%u, "
+        "received_sequence=%u]\n",
+        to_string(header.message_type).c_str(),
+        static_cast<unsigned>(header.message_type),
+        sizeof(MessageHeader) + header.payload_size_bytes,
+        header.payload_size_bytes, header.crc, expected_sequence_number,
+        header.sequence_number);
+  }
+
+  expected_sequence_number = header.sequence_number + 1;
 
   // Interpret the payload.
   if (header.message_type == MessageType::POSE) {
@@ -67,7 +86,8 @@ bool DecodeMessage(std::ifstream& stream, size_t available_bytes) {
     double p1_time_sec =
         contents.p1_time.seconds + (contents.p1_time.fraction_ns * 1e-9);
 
-    printf("Received pose message @ P1 time %.3f seconds:\n", p1_time_sec);
+    printf("Received pose message @ P1 time %.3f seconds. [sequence=%u]\n",
+           p1_time_sec, header.sequence_number);
     printf("  Position (LLA): %.6f, %.6f, %.3f (deg, deg, m)\n",
            contents.lla_deg[0], contents.lla_deg[1], contents.lla_deg[2]);
     printf("  Attitude (YPR): %.2f, %.2f, %.2f (deg, deg, deg)\n",
@@ -79,8 +99,9 @@ bool DecodeMessage(std::ifstream& stream, size_t available_bytes) {
     double p1_time_sec =
         contents.p1_time.seconds + (contents.p1_time.fraction_ns * 1e-9);
 
-    printf("Received GNSS info message @ P1 time %.3f seconds. [%u svs]\n",
-           p1_time_sec, contents.num_satellites);
+    printf("Received GNSS info message @ P1 time %.3f seconds. [sequence=%u, "
+           "%u svs]\n",
+           p1_time_sec, header.sequence_number, contents.num_satellites);
 
     for (unsigned i = 0; i < contents.num_satellites; ++i) {
       SatelliteInfo& sv = *reinterpret_cast<SatelliteInfo*>(buffer);
@@ -118,12 +139,14 @@ Decode platform pose messages from a binary file containing FusionEngine data.
 
   // Determine the file size.
   stream.seekg(0, stream.end);
-  ssize_t file_size_bytes = stream.tellg();
+  std::streampos file_size_bytes = stream.tellg();
   stream.seekg(0, stream.beg);
 
   // Decode all messages in the file.
+  int return_code = 0;
   while (stream.tellg() != file_size_bytes) {
     if (!DecodeMessage(stream, file_size_bytes - stream.tellg())) {
+      return_code = 1;
       break;
     }
   }
@@ -131,5 +154,5 @@ Decode platform pose messages from a binary file containing FusionEngine data.
   // Close the file.
   stream.close();
 
-  return 0;
+  return return_code;
 }

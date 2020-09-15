@@ -50,8 +50,9 @@ namespace fusion_engine {
 namespace messages {
 
 /******************************************************************************/
-uint32_t CalculateCRC(const MessageHeader& header) {
+uint32_t CalculateCRC(const void* buffer) {
   static constexpr size_t offset = offsetof(MessageHeader, protocol_version);
+  const MessageHeader& header = *static_cast<const MessageHeader*>(buffer);
   size_t size_bytes =
       (sizeof(MessageHeader) - offset) + header.payload_size_bytes;
   return ::CalculateCRC(reinterpret_cast<const uint8_t*>(&header) + offset,

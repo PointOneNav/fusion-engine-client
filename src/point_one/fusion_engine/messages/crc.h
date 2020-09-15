@@ -15,39 +15,14 @@ namespace fusion_engine {
 namespace messages {
 
 /**
- * @brief Calculate the CRC for the specified message.
- *
- * @pre
- * The supplied `header` must be followed in memory by a valid payload.
- *
- * @param header The message header.
- *
- * @return The calculated CRC value.
- */
-P1_EXPORT uint32_t CalculateCRC(const MessageHeader& header);
-
-/**
- * @brief Calculate the CRC for the message contained in the buffer.
+ * @brief Calculate the CRC for the message (header + payload) contained in the
+ *        buffer.
  *
  * @param buffer A byte buffer containing a @ref MessageHeader and payload.
  *
  * @return The calculated CRC value.
  */
-inline uint32_t CalculateCRC(const void* buffer) {
-  return CalculateCRC(*static_cast<const MessageHeader*>(buffer));
-}
-
-/**
- * @brief Check if the specified message has a valid CRC.
- *
- * @param header The message header.
- *
- * @return `true` if the CRC value in the header matches the CRC computed from
- *         the current contents.
- */
-inline bool IsValid(const MessageHeader& header) {
-  return header.crc == CalculateCRC(header);
-}
+P1_EXPORT uint32_t CalculateCRC(const void* buffer);
 
 /**
  * @brief Check if the message contained in the buffer has a valid CRC.
@@ -58,7 +33,14 @@ inline bool IsValid(const MessageHeader& header) {
  *         the current contents.
  */
 inline bool IsValid(const void* buffer) {
-  return static_cast<const MessageHeader*>(buffer)->crc == CalculateCRC(buffer);
+  // Sanity check the message payload length before calculating the CRC.
+  const MessageHeader& header = *static_cast<const MessageHeader*>(buffer);
+  if (sizeof(MessageHeader) + header.payload_size_bytes >
+      MessageHeader::MAX_MESSAGE_SIZE_BYTES) {
+    return false;
+  } else {
+    return header.crc == CalculateCRC(buffer);
+  }
 }
 
 } // namespace messages

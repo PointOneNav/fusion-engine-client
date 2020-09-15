@@ -14,6 +14,7 @@ if __name__ == "__main__":
 
     f = open(options.file, 'rb')
 
+    expected_sequence_number = 0
     while True:
         # Read the next message header.
         data = f.read(MessageHeader.calcsize())
@@ -33,12 +34,19 @@ if __name__ == "__main__":
         else:
             header.validate_crc(data)
 
+        # Check that the sequence number increments as expected.
+        if header.sequence_number != expected_sequence_number:
+            print('Warning: unexpected sequence number. [expected=%d, received=%d]' %
+                  (expected_sequence_number, header.sequence_number))
+
+        expected_sequence_number = header.sequence_number + 1
+
         # Deserialize and print the message contents.
         if header.message_type == PoseMessage.MESSAGE_TYPE:
             contents = PoseMessage()
             contents.unpack(buffer=data, offset=offset)
 
-            print('Pose message @ P1 time %s' % str(contents.p1_time))
+            print('Pose message @ P1 time %s [sequence=%d]' % (str(contents.p1_time), header.sequence_number))
             print('  GPS time: %s' % str(contents.gps_time.as_gps()))
             print('  LLA: %.6f, %.6f, %.3f (deg, deg, m)' % tuple(contents.lla_deg))
             print('  YPR: %.2f, %.2f, %.2f (deg, deg, deg)' % tuple(contents.ypr_deg))
@@ -46,7 +54,7 @@ if __name__ == "__main__":
             contents = GNSSInfoMessage()
             contents.unpack(buffer=data, offset=offset)
 
-            print('GNSS info message @ P1 time %s' % str(contents.p1_time))
+            print('GNSS info message @ P1 time %s [sequence=%d]' % (str(contents.p1_time), header.sequence_number))
             print('  GPS time: %s' % str(contents.gps_time.as_gps()))
             print('  GDOP: %.1f' % contents.gdop)
             print('  %d SVs:' % len(contents.svs))
