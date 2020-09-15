@@ -11,90 +11,116 @@ on:
       - 'v*'
 
 jobs:
-  # Build the library and example applications.
-  build:
-    name: Build Applications
+  # Build the library and example applications (Bazel).
+  build_bazel:
+    name: Bazel Build
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        tool: [bazel, cmake]
         compiler: [g++, clang++]
     steps:
     - uses: actions/checkout@v2
 
-    # Bazel build
-    - name: Setup Bazel 3.3.0
-      if: matrix.tool == 'bazel'
+    # Compile.
+    - name: Install Bazel 3.3.0
       uses: abhinavsingh/setup-bazel@v3
       with:
         version: 3.3.0
 
     - name: Build Library
-      if: matrix.tool == 'bazel'
       env:
         CC: /usr/bin/${{ matrix.compiler }}
       run: |
         bazel build -c opt //:*
 
     - name: Build Examples
-      if: matrix.tool == 'bazel'
       env:
         CC: /usr/bin/${{ matrix.compiler }}
       run: |
         cd examples &&
         bazel build -c opt //:*
 
-    - name: Install Files
-      if: matrix.tool == 'bazel'
+    - name: Install Test Files
       run: |
-        mkdir install &&
-        cp examples/bazel-bin/message_decode/message_decode ./install/ &&
-        cp examples/bazel-bin/generate_data/generate_data ./install/ &&
-        cp examples/message_decode/example_data.p1bin ./install/
-
-    # CMake build
-    - name: Setup CMake 3.16.x
-      if: matrix.tool == 'cmake'
-      uses: jwlawson/actions-setup-cmake@v1.3
-      with:
-        cmake-version: '3.16.x'
-
-    - name: Build Library And Examples
-      if: matrix.tool == 'cmake'
-      env:
-        CXX: /usr/bin/${{ matrix.compiler }}
-      run: |
-        mkdir build &&
-        cd build &&
-        cmake -DCMAKE_INSTALL_PREFIX=install ..
-        make
-        make install
-
-    - name: Install Files
-      if: matrix.tool == 'cmake'
-      run: |
-        mkdir install &&
-        cp build/examples/message_decode/message_decode ./install/ &&
-        cp build/examples/generate_data/generate_data ./install/ &&
-        cp examples/message_decode/example_data.p1bin ./install/
+        mkdir test
+        cp examples/bazel-bin/message_decode/message_decode ./test/
+        cp examples/bazel-bin/generate_data/generate_data ./test/
+        cp examples/message_decode/example_data.p1bin ./test/
 
     # Run unit tests.
     - name: Test Message Decoding
       run: |
-        cd install &&
+        cd test
         ./message_decode example_data.p1bin
 
     - name: Test Message Encoding
       run: |
-        cd install &&
+        cd test
         ./generate_data new_data.p1bin &&
+        ./message_decode new_data.p1bin
+
+  # Build the library and example applications (CMake).
+  build_cmake:
+    name: CMake Build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        compiler: [g++, clang++]
+    defaults:
+      run:
+        shell: bash
+    steps:
+    - uses: actions/checkout@v2
+
+    # Compile.
+    - name: Install CMake 3.16.x
+      uses: jwlawson/actions-setup-cmake@v1.3
+      with:
+        cmake-version: '3.16.x'
+
+    - name: Set Compiler
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        echo ::set-env name=CXX::/usr/bin/${{ matrix.compiler }}
+
+    - name: Setup Build
+      run: |
+        mkdir build
+        cd build
+        cmake -DCMAKE_INSTALL_PREFIX=install ..
+
+    - name: Build Library And Examples (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        cd build
+        make
+        make install
+
+    - name: Install Test Files
+      run: |
+        mkdir test
+        cp build/examples/message_decode/message_decode ./test/
+        cp build/examples/generate_data/generate_data ./test/
+        cp examples/message_decode/example_data.p1bin ./test/
+
+    # Run unit tests.
+    - name: Test Message Decoding
+      run: |
+        cd test
+        ./message_decode example_data.p1bin
+
+    - name: Test Message Encoding
+      run: |
+        cd test
+        ./generate_data new_data.p1bin
         ./message_decode new_data.p1bin
 
   # Create a release only on a tag (not on a branch push).
   release:
     name: Create Release
     if: startsWith(github.ref, 'refs/tags/')
-    needs: [build]
+    needs: [build_bazel, build_cmake]
     runs-on: ubuntu-latest
     outputs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
