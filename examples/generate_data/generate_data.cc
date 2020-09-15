@@ -27,19 +27,21 @@ Generate a binary file containing a fixed set of messages.
 
   // Enforce a 4-byte aligned address.
   alignas(4) uint8_t storage[4096];
-  char* buffer = reinterpret_cast<char*>(storage);
 
   //////////////////////////////////////////////////////////////////////////////
   // Write a pose message.
   //////////////////////////////////////////////////////////////////////////////
 
+  uint8_t* buffer = storage;
   MessageHeader* header = reinterpret_cast<MessageHeader*>(buffer);
+  buffer += sizeof(MessageHeader);
   *header = MessageHeader();
+
   header->sequence_number = 0;
   header->message_type = MessageType::POSE;
   header->payload_size_bytes = sizeof(PoseMessage);
 
-  PoseMessage* pose_message = reinterpret_cast<PoseMessage*>(header + 1);
+  PoseMessage* pose_message = reinterpret_cast<PoseMessage*>(buffer);
   *pose_message = PoseMessage();
 
   pose_message->p1_time.seconds = 123;
@@ -69,21 +71,27 @@ Generate a binary file containing a fixed set of messages.
   pose_message->horizontal_protection_level_m = 0.2f;
   pose_message->vertical_protection_level_m = 0.3f;
 
-  header->crc = CalculateCRC(buffer);
-  stream.write(reinterpret_cast<char*>(buffer),
+  header->crc = CalculateCRC(storage);
+  stream.write(reinterpret_cast<char*>(storage),
                sizeof(MessageHeader) + header->payload_size_bytes);
 
   //////////////////////////////////////////////////////////////////////////////
   // Write a GNSS info message associated with the pose message.
   //////////////////////////////////////////////////////////////////////////////
 
+  buffer = storage;
+  header = reinterpret_cast<MessageHeader*>(buffer);
+  buffer += sizeof(MessageHeader);
+
+  // Note: Updating contents of existing header to maintain sequence number.
   ++header->sequence_number;
   header->message_type = MessageType::GNSS_INFO;
   header->payload_size_bytes =
       sizeof(GNSSInfoMessage) + 2 * sizeof(SatelliteInfo);
 
   GNSSInfoMessage* gnss_info_message =
-      reinterpret_cast<GNSSInfoMessage*>(header + 1);
+      reinterpret_cast<GNSSInfoMessage*>(buffer);
+  buffer += sizeof(GNSSInfoMessage);
   *gnss_info_message = GNSSInfoMessage();
 
   gnss_info_message->p1_time.seconds = 123;
@@ -104,8 +112,8 @@ Generate a binary file containing a fixed set of messages.
 
   gnss_info_message->num_satellites = 2;
 
-  SatelliteInfo* satellite_info =
-      reinterpret_cast<SatelliteInfo*>(gnss_info_message + 1);
+  SatelliteInfo* satellite_info = reinterpret_cast<SatelliteInfo*>(buffer);
+  buffer += sizeof(SatelliteInfo);
   *satellite_info = SatelliteInfo();
   satellite_info->system = SatelliteType::GPS;
   satellite_info->prn = 4;
@@ -113,7 +121,7 @@ Generate a binary file containing a fixed set of messages.
   satellite_info->azimuth_deg = 34.5f;
   satellite_info->elevation_deg = 56.2f;
 
-  ++satellite_info;
+  satellite_info = reinterpret_cast<SatelliteInfo*>(buffer);
   *satellite_info = SatelliteInfo();
   satellite_info->system = SatelliteType::GALILEO;
   satellite_info->prn = 9;
@@ -121,19 +129,24 @@ Generate a binary file containing a fixed set of messages.
   satellite_info->azimuth_deg = 79.4f;
   satellite_info->elevation_deg = 16.1f;
 
-  header->crc = CalculateCRC(buffer);
-  stream.write(reinterpret_cast<char*>(buffer),
+  header->crc = CalculateCRC(storage);
+  stream.write(reinterpret_cast<char*>(storage),
                sizeof(MessageHeader) + header->payload_size_bytes);
 
   //////////////////////////////////////////////////////////////////////////////
   // Write another pose message 0.2 seconds later.
   //////////////////////////////////////////////////////////////////////////////
 
+  buffer = storage;
+  header = reinterpret_cast<MessageHeader*>(buffer);
+  buffer += sizeof(MessageHeader);
+
+  // Note: Updating contents of existing header to maintain sequence number.
   ++header->sequence_number;
   header->message_type = MessageType::POSE;
   header->payload_size_bytes = sizeof(PoseMessage);
 
-  pose_message = reinterpret_cast<PoseMessage*>(header + 1);
+  pose_message = reinterpret_cast<PoseMessage*>(buffer);
   *pose_message = PoseMessage();
 
   pose_message->p1_time.seconds = 123;
@@ -163,8 +176,8 @@ Generate a binary file containing a fixed set of messages.
   pose_message->horizontal_protection_level_m = 0.08f;
   pose_message->vertical_protection_level_m = 0.2f;
 
-  header->crc = CalculateCRC(buffer);
-  stream.write(reinterpret_cast<char*>(buffer),
+  header->crc = CalculateCRC(storage);
+  stream.write(reinterpret_cast<char*>(storage),
                sizeof(MessageHeader) + header->payload_size_bytes);
 
   stream.close();
