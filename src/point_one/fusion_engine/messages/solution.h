@@ -65,6 +65,17 @@ struct PoseMessage {
    */
   float position_std_dev_ecef_m[3] = {NAN, NAN, NAN};
 
+  /**
+   * The attitude standard deviation (in degrees): yaw, pitch, roll.
+   */
+  float ypr_std_dev_deg[3] = {NAN, NAN, NAN};
+
+  /**
+   * The velocity standard deviation (in meters/second), resolved in the local
+   * level frame.
+   */
+  float velocity_std_dev_enu_mps[3] = {NAN, NAN, NAN};
+
   /** The estimated aggregate 3D protection level (in meters). */
   float aggregate_protection_level_m = NAN;
   /** The estimated 2D horizontal protection level (in meters). */

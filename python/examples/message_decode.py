@@ -48,8 +48,16 @@ if __name__ == "__main__":
 
             print('Pose message @ P1 time %s [sequence=%d]' % (str(contents.p1_time), header.sequence_number))
             print('  GPS time: %s' % str(contents.gps_time.as_gps()))
-            print('  LLA: %.6f, %.6f, %.3f (deg, deg, m)' % tuple(contents.lla_deg))
-            print('  YPR: %.2f, %.2f, %.2f (deg, deg, deg)' % tuple(contents.ypr_deg))
+            print('  Position (LLA): %.6f, %.6f, %.3f (deg, deg, m)' % tuple(contents.lla_deg))
+            print('  Attitude (YPR): %.2f, %.2f, %.2f (deg, deg, deg)' % tuple(contents.ypr_deg))
+            print('  Velocity (ENU): %.2f, %.2f, %.2f (m/s, m/s, m/s)' % tuple(contents.velocity_enu_mps))
+            print('  Position std (ECEF): %.2f, %.2f, %.2f (m, m, m)' % tuple(contents.position_std_dev_ecef_m))
+            print('  Attitude std (YPR): %.2f, %.2f, %.2f (deg, deg, deg)' % tuple(contents.ypr_std_dev_deg))
+            print('  Velocity std (ENU): %.2f, %.2f, %.2f (m/s, m/s, m/s)' % tuple(contents.velocity_std_dev_enu_mps))
+            print('  Protection levels:')
+            print('    Aggregate: %.2f m' % contents.aggregate_protection_level_m)
+            print('    Horizontal: %.2f m' % contents.horizontal_protection_level_m)
+            print('    Vertical: %.2f m' % contents.vertical_protection_level_m)
         elif header.message_type == GNSSInfoMessage.MESSAGE_TYPE:
             contents = GNSSInfoMessage()
             contents.unpack(buffer=data, offset=offset)

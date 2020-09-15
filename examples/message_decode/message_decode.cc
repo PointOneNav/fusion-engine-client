@@ -92,6 +92,24 @@ bool DecodeMessage(std::ifstream& stream, size_t available_bytes) {
            contents.lla_deg[0], contents.lla_deg[1], contents.lla_deg[2]);
     printf("  Attitude (YPR): %.2f, %.2f, %.2f (deg, deg, deg)\n",
            contents.ypr_deg[0], contents.ypr_deg[1], contents.ypr_deg[2]);
+    printf("  Velocity (ENU): %.2f, %.2f, %.2f (m/s, m/s, m/s)\n",
+           contents.velocity_enu_mps[0], contents.velocity_enu_mps[1],
+           contents.velocity_enu_mps[2]);
+    printf("  Position Std Dev (ECEF): %.2f, %.2f, %.2f (m, m, m)\n",
+           contents.position_std_dev_ecef_m[0],
+           contents.position_std_dev_ecef_m[1],
+           contents.position_std_dev_ecef_m[2]);
+    printf("  Attitude Std Dev (YPR): %.2f, %.2f, %.2f (deg, deg, deg)\n",
+           contents.ypr_std_dev_deg[0], contents.ypr_std_dev_deg[1],
+           contents.ypr_std_dev_deg[2]);
+    printf("  Velocity Std Dev (ENU): %.2f, %.2f, %.2f (m/s, m/s, m/s)\n",
+           contents.velocity_std_dev_enu_mps[0],
+           contents.velocity_std_dev_enu_mps[1],
+           contents.velocity_std_dev_enu_mps[2]);
+    printf("  Protection Levels:\n");
+    printf("    Aggregate: %.2f m\n", contents.aggregate_protection_level_m);
+    printf("    Horizontal: %.2f m\n", contents.horizontal_protection_level_m);
+    printf("    Vertical: %.2f m\n", contents.vertical_protection_level_m);
   } else if (header.message_type == MessageType::GNSS_INFO) {
     GNSSInfoMessage& contents = *reinterpret_cast<GNSSInfoMessage*>(buffer);
     buffer += sizeof(contents);
