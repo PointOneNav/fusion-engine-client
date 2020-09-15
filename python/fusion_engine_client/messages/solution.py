@@ -12,7 +12,7 @@ class PoseMessage:
     """
     MESSAGE_TYPE = MessageType.POSE
 
-    _FORMAT = '<B3x ddd ddd ddd ddd ddd ddd ddd'
+    _FORMAT = '<B3x ddd ddd ddd fff fff fff fff'
     _SIZE: int = struct.calcsize(_FORMAT)
 
     def __init__(self):
@@ -92,7 +92,7 @@ class SatelliteInfo:
     """!
     @brief Information about an individual satellite.
     """
-    _FORMAT = '<BB?xdd'
+    _FORMAT = '<BB?xff'
     _SIZE: int = struct.calcsize(_FORMAT)
 
     def __init__(self):
@@ -133,7 +133,7 @@ class GNSSInfoMessage:
 
     INVALID_REFERENCE_STATION = 0xFFFFFFFF
 
-    _FORMAT = '<IddddH2x'
+    _FORMAT = '<IffffH2x'
     _SIZE: int = struct.calcsize(_FORMAT)
 
     def __init__(self):
