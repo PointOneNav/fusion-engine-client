@@ -22,7 +22,7 @@ class PoseMessage:
         self.solution_type = SolutionType.Invalid
 
         self.lla_deg = np.full((3,), np.nan)
-        self.position_std_ecef_m = np.full((3,), np.nan)
+        self.position_std_enu_m = np.full((3,), np.nan)
 
         self.ypr_deg = np.full((3,), np.nan)
         self.ypr_std_deg = np.full((3,), np.nan)
@@ -46,7 +46,7 @@ class PoseMessage:
         struct.pack_into(PoseMessage._FORMAT, buffer, offset,
                          int(self.solution_type),
                          self.lla_deg[0], self.lla_deg[1], self.lla_deg[2],
-                         self.position_std_ecef_m[0], self.position_std_ecef_m[1], self.position_std_ecef_m[2],
+                         self.position_std_enu_m[0], self.position_std_enu_m[1], self.position_std_enu_m[2],
                          self.ypr_deg[0], self.ypr_deg[1], self.ypr_deg[2],
                          self.ypr_std_deg[0], self.ypr_std_deg[1], self.ypr_std_deg[2],
                          self.velocity_enu_mps[0], self.velocity_enu_mps[1], self.velocity_enu_mps[2],
@@ -68,7 +68,7 @@ class PoseMessage:
 
         (solution_type_int,
          self.lla_deg[0], self.lla_deg[1], self.lla_deg[2],
-         self.position_std_ecef_m[0], self.position_std_ecef_m[1], self.position_std_ecef_m[2],
+         self.position_std_enu_m[0], self.position_std_enu_m[1], self.position_std_enu_m[2],
          self.ypr_deg[0], self.ypr_deg[1], self.ypr_deg[2],
          self.ypr_std_deg[0], self.ypr_std_deg[1], self.ypr_std_deg[2],
          self.velocity_enu_mps[0], self.velocity_enu_mps[1], self.velocity_enu_mps[2],

@@ -42,11 +42,10 @@ struct PoseMessage {
   double lla_deg[3] = {NAN, NAN, NAN};
 
   /**
-   * The X/Y/Z position standard deviation (in meters), resolved in the ECEF
-   * frame.
-   *
+   * The position standard deviation (in meters), resolved in the local level
+   * frame: east, north, up.
    */
-  float position_std_ecef_m[3] = {NAN, NAN, NAN};
+  float position_std_enu_m[3] = {NAN, NAN, NAN};
 
   /**
    * The platform attitude (in degrees), if known, described as intrinsic

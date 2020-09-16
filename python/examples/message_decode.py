@@ -52,7 +52,7 @@ if __name__ == "__main__":
             print('  Position (LLA): %.6f, %.6f, %.3f (deg, deg, m)' % tuple(contents.lla_deg))
             print('  Attitude (YPR): %.2f, %.2f, %.2f (deg, deg, deg)' % tuple(contents.ypr_deg))
             print('  Velocity (ENU): %.2f, %.2f, %.2f (m/s, m/s, m/s)' % tuple(contents.velocity_enu_mps))
-            print('  Position std (ECEF): %.2f, %.2f, %.2f (m, m, m)' % tuple(contents.position_std_ecef_m))
+            print('  Position std (ENU): %.2f, %.2f, %.2f (m, m, m)' % tuple(contents.position_std_enu_m))
             print('  Attitude std (YPR): %.2f, %.2f, %.2f (deg, deg, deg)' % tuple(contents.ypr_std_deg))
             print('  Velocity std (ENU): %.2f, %.2f, %.2f (m/s, m/s, m/s)' % tuple(contents.velocity_std_enu_mps))
             print('  Protection levels:')
