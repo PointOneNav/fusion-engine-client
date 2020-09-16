@@ -42,6 +42,13 @@ struct PoseMessage {
   double lla_deg[3] = {NAN, NAN, NAN};
 
   /**
+   * The X/Y/Z position standard deviation (in meters), resolved in the ECEF
+   * frame.
+   *
+   */
+  float position_std_ecef_m[3] = {NAN, NAN, NAN};
+
+  /**
    * The platform attitude (in degrees), if known, described as intrinsic
    * Euler-321 angles (yaw, pitch, roll), or `NAN` if attitude has not been
    * initialized.
@@ -55,27 +62,21 @@ struct PoseMessage {
   double ypr_deg[3] = {NAN, NAN, NAN};
 
   /**
+   * The attitude standard deviation (in degrees): yaw, pitch, roll.
+   */
+  float ypr_std_deg[3] = {NAN, NAN, NAN};
+
+  /**
    * The platform body velocity (in meters/second), resolved in the local level
    * frame: east, north, up.
    */
   double velocity_enu_mps[3] = {NAN, NAN, NAN};
 
   /**
-   * The X/Y/Z position standard deviation (in meters), resolved in the ECEF
-   * frame.
-   */
-  float position_std_dev_ecef_m[3] = {NAN, NAN, NAN};
-
-  /**
-   * The attitude standard deviation (in degrees): yaw, pitch, roll.
-   */
-  float ypr_std_dev_deg[3] = {NAN, NAN, NAN};
-
-  /**
    * The velocity standard deviation (in meters/second), resolved in the local
    * level frame.
    */
-  float velocity_std_dev_enu_mps[3] = {NAN, NAN, NAN};
+  float velocity_std_enu_mps[3] = {NAN, NAN, NAN};
 
   /** The estimated aggregate 3D protection level (in meters). */
   float aggregate_protection_level_m = NAN;

@@ -12,7 +12,7 @@ class PoseMessage:
     """
     MESSAGE_TYPE = MessageType.POSE
 
-    _FORMAT = '<B3x ddd ddd ddd fff fff fff fff'
+    _FORMAT = '<B3x ddd fff ddd fff ddd fff fff'
     _SIZE: int = struct.calcsize(_FORMAT)
 
     def __init__(self):
@@ -22,12 +22,13 @@ class PoseMessage:
         self.solution_type = SolutionType.Invalid
 
         self.lla_deg = np.full((3,), np.nan)
-        self.ypr_deg = np.full((3,), np.nan)
-        self.velocity_enu_mps = np.full((3,), np.nan)
+        self.position_std_ecef_m = np.full((3,), np.nan)
 
-        self.position_std_dev_ecef_m = np.full((3,), np.nan)
-        self.ypr_std_dev_deg = np.full((3,), np.nan)
-        self.velocity_std_dev_enu_mps = np.full((3,), np.nan)
+        self.ypr_deg = np.full((3,), np.nan)
+        self.ypr_std_deg = np.full((3,), np.nan)
+
+        self.velocity_enu_mps = np.full((3,), np.nan)
+        self.velocity_std_enu_mps = np.full((3,), np.nan)
 
         self.aggregate_protection_level_m = np.nan
         self.horizontal_protection_level_m = np.nan
@@ -45,13 +46,11 @@ class PoseMessage:
         struct.pack_into(PoseMessage._FORMAT, buffer, offset,
                          int(self.solution_type),
                          self.lla_deg[0], self.lla_deg[1], self.lla_deg[2],
+                         self.position_std_ecef_m[0], self.position_std_ecef_m[1], self.position_std_ecef_m[2],
                          self.ypr_deg[0], self.ypr_deg[1], self.ypr_deg[2],
+                         self.ypr_std_deg[0], self.ypr_std_deg[1], self.ypr_std_deg[2],
                          self.velocity_enu_mps[0], self.velocity_enu_mps[1], self.velocity_enu_mps[2],
-                         self.position_std_dev_ecef_m[0], self.position_std_dev_ecef_m[1],
-                         self.position_std_dev_ecef_m[2],
-                         self.ypr_std_dev_deg[0], self.ypr_std_dev_deg[1], self.ypr_std_dev_deg[2],
-                         self.velocity_std_dev_enu_mps[0], self.velocity_std_dev_enu_mps[1],
-                         self.velocity_std_dev_enu_mps[2],
+                         self.velocity_std_enu_mps[0], self.velocity_std_enu_mps[1], self.velocity_std_enu_mps[2],
                          self.aggregate_protection_level_m,
                          self.horizontal_protection_level_m,
                          self.vertical_protection_level_m)
@@ -69,11 +68,11 @@ class PoseMessage:
 
         (solution_type_int,
          self.lla_deg[0], self.lla_deg[1], self.lla_deg[2],
+         self.position_std_ecef_m[0], self.position_std_ecef_m[1], self.position_std_ecef_m[2],
          self.ypr_deg[0], self.ypr_deg[1], self.ypr_deg[2],
+         self.ypr_std_deg[0], self.ypr_std_deg[1], self.ypr_std_deg[2],
          self.velocity_enu_mps[0], self.velocity_enu_mps[1], self.velocity_enu_mps[2],
-         self.position_std_dev_ecef_m[0], self.position_std_dev_ecef_m[1], self.position_std_dev_ecef_m[2],
-         self.ypr_std_dev_deg[0], self.ypr_std_dev_deg[1], self.ypr_std_dev_deg[2],
-         self.velocity_std_dev_enu_mps[0], self.velocity_std_dev_enu_mps[1], self.velocity_std_dev_enu_mps[2],
+         self.velocity_std_enu_mps[0], self.velocity_std_enu_mps[1], self.velocity_std_enu_mps[2],
          self.aggregate_protection_level_m,
          self.horizontal_protection_level_m,
          self.vertical_protection_level_m) = \

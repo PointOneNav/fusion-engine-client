@@ -63,17 +63,17 @@ Generate a binary file containing a fixed set of messages.
   pose_message->velocity_enu_mps[1] = -1.5;
   pose_message->velocity_enu_mps[2] = 0.3;
 
-  pose_message->position_std_dev_ecef_m[0] = 0.1f;
-  pose_message->position_std_dev_ecef_m[1] = 0.1f;
-  pose_message->position_std_dev_ecef_m[2] = 0.1f;
+  pose_message->position_std_ecef_m[0] = 0.1f;
+  pose_message->position_std_ecef_m[1] = 0.1f;
+  pose_message->position_std_ecef_m[2] = 0.1f;
 
-  pose_message->ypr_std_dev_deg[0] = 0.2f;
-  pose_message->ypr_std_dev_deg[1] = 0.2f;
-  pose_message->ypr_std_dev_deg[2] = 0.2f;
+  pose_message->ypr_std_deg[0] = 0.2f;
+  pose_message->ypr_std_deg[1] = 0.2f;
+  pose_message->ypr_std_deg[2] = 0.2f;
 
-  pose_message->velocity_std_dev_enu_mps[0] = 0.3f;
-  pose_message->velocity_std_dev_enu_mps[1] = 0.3f;
-  pose_message->velocity_std_dev_enu_mps[2] = 0.3f;
+  pose_message->velocity_std_enu_mps[0] = 0.3f;
+  pose_message->velocity_std_enu_mps[1] = 0.3f;
+  pose_message->velocity_std_enu_mps[2] = 0.3f;
 
   pose_message->aggregate_protection_level_m = 0.4f;
   pose_message->horizontal_protection_level_m = 0.2f;
@@ -176,17 +176,17 @@ Generate a binary file containing a fixed set of messages.
   pose_message->velocity_enu_mps[1] = 0.0;
   pose_message->velocity_enu_mps[2] = 1.2;
 
-  pose_message->position_std_dev_ecef_m[0] = 0.05f;
-  pose_message->position_std_dev_ecef_m[1] = 0.05f;
-  pose_message->position_std_dev_ecef_m[2] = 0.05f;
+  pose_message->position_std_ecef_m[0] = 0.05f;
+  pose_message->position_std_ecef_m[1] = 0.05f;
+  pose_message->position_std_ecef_m[2] = 0.05f;
 
-  pose_message->ypr_std_dev_deg[0] = 0.1f;
-  pose_message->ypr_std_dev_deg[1] = 0.1f;
-  pose_message->ypr_std_dev_deg[2] = 0.1f;
+  pose_message->ypr_std_deg[0] = 0.1f;
+  pose_message->ypr_std_deg[1] = 0.1f;
+  pose_message->ypr_std_deg[2] = 0.1f;
 
-  pose_message->velocity_std_dev_enu_mps[0] = 0.15f;
-  pose_message->velocity_std_dev_enu_mps[1] = 0.15f;
-  pose_message->velocity_std_dev_enu_mps[2] = 0.15f;
+  pose_message->velocity_std_enu_mps[0] = 0.15f;
+  pose_message->velocity_std_enu_mps[1] = 0.15f;
+  pose_message->velocity_std_enu_mps[2] = 0.15f;
 
   pose_message->aggregate_protection_level_m = 0.3f;
   pose_message->horizontal_protection_level_m = 0.08f;
