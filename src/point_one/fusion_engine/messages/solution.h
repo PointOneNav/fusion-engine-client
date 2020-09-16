@@ -67,7 +67,8 @@ struct PoseMessage {
   float ypr_std_deg[3] = {NAN, NAN, NAN};
 
   /**
-   * The platform velocity (in meters/second), resolved in the body frame.
+   * The platform velocity (in meters/second), resolved in the body frame. Set
+   * to `NAN` if attitude is not available for the body frame transformation.
    */
   double velocity_body_mps[3] = {NAN, NAN, NAN};
 
