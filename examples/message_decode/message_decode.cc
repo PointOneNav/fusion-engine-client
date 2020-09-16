@@ -34,7 +34,7 @@ bool DecodeMessage(std::ifstream& stream, size_t available_bytes) {
 
   available_bytes -= sizeof(MessageHeader);
 
-  MessageHeader& header = *reinterpret_cast<MessageHeader*>(buffer);
+  auto& header = *reinterpret_cast<MessageHeader*>(buffer);
   buffer += sizeof(MessageHeader);
 
   // Read the message payload.
@@ -136,7 +136,7 @@ bool DecodeMessage(std::ifstream& stream, size_t available_bytes) {
         contents.num_satellites);
 
     for (unsigned i = 0; i < contents.num_satellites; ++i) {
-      SatelliteInfo& sv = *reinterpret_cast<SatelliteInfo*>(buffer);
+      auto& sv = *reinterpret_cast<SatelliteInfo*>(buffer);
       buffer += sizeof(sv);
 
       printf("  %s PRN %u:\n", to_string(sv.system).c_str(), sv.prn);

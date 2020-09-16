@@ -33,7 +33,7 @@ Generate a binary file containing a fixed set of messages.
   //////////////////////////////////////////////////////////////////////////////
 
   uint8_t* buffer = storage;
-  MessageHeader* header = reinterpret_cast<MessageHeader*>(buffer);
+  auto header = reinterpret_cast<MessageHeader*>(buffer);
   buffer += sizeof(MessageHeader);
   *header = MessageHeader();
 
@@ -41,7 +41,7 @@ Generate a binary file containing a fixed set of messages.
   header->message_type = MessageType::POSE;
   header->payload_size_bytes = sizeof(PoseMessage);
 
-  PoseMessage* pose_message = reinterpret_cast<PoseMessage*>(buffer);
+  auto pose_message = reinterpret_cast<PoseMessage*>(buffer);
   *pose_message = PoseMessage();
 
   pose_message->p1_time.seconds = 123;
@@ -96,8 +96,7 @@ Generate a binary file containing a fixed set of messages.
   header->message_type = MessageType::GNSS_INFO;
   header->payload_size_bytes = sizeof(GNSSInfoMessage);
 
-  GNSSInfoMessage* gnss_info_message =
-      reinterpret_cast<GNSSInfoMessage*>(buffer);
+  auto gnss_info_message = reinterpret_cast<GNSSInfoMessage*>(buffer);
   *gnss_info_message = GNSSInfoMessage();
 
   gnss_info_message->p1_time.seconds = 123;
@@ -136,8 +135,7 @@ Generate a binary file containing a fixed set of messages.
   header->payload_size_bytes =
       sizeof(GNSSSatelliteMessage) + 2 * sizeof(SatelliteInfo);
 
-  GNSSSatelliteMessage* gnss_satellite_message =
-      reinterpret_cast<GNSSSatelliteMessage*>(buffer);
+  auto gnss_satellite_message = reinterpret_cast<GNSSSatelliteMessage*>(buffer);
   buffer += sizeof(GNSSSatelliteMessage);
   *gnss_satellite_message = GNSSSatelliteMessage();
 
@@ -149,7 +147,7 @@ Generate a binary file containing a fixed set of messages.
 
   gnss_satellite_message->num_satellites = 2;
 
-  SatelliteInfo* satellite_info = reinterpret_cast<SatelliteInfo*>(buffer);
+  auto satellite_info = reinterpret_cast<SatelliteInfo*>(buffer);
   buffer += sizeof(SatelliteInfo);
   *satellite_info = SatelliteInfo();
   satellite_info->system = SatelliteType::GPS;
