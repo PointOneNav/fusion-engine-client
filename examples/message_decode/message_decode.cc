@@ -13,7 +13,7 @@ using namespace point_one::fusion_engine::messages;
 
 /******************************************************************************/
 bool DecodeMessage(std::ifstream& stream, size_t available_bytes) {
-  static uint8_t expected_sequence_number = 0;
+  static uint32_t expected_sequence_number = 0;
 
   // Enforce a 4-byte aligned address.
   alignas(4) uint8_t storage[4096];

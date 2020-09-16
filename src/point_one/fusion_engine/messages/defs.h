@@ -119,11 +119,13 @@ struct MessageHeader {
   /** The version of the P1 binary protocol being used. */
   uint8_t protocol_version = 2;
 
-  /** The sequence number of this message. */
-  uint8_t sequence_number = 0;
+  uint8_t reserved_1 = 0;
 
   /** Type identifier for the serialized message to follow. */
   MessageType message_type = MessageType::INVALID;
+
+  /** The sequence number of this message. */
+  uint32_t sequence_number = 0;
 
   /** The size of the serialized message (bytes). */
   uint32_t payload_size_bytes = 0;
