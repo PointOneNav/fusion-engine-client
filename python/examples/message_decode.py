@@ -59,6 +59,12 @@ def decode_message(header, data, offset):
             print('    %s PRN %d:' % (sv.system.name, sv.prn))
             print('      Used in solution: %s' % ('yes' if sv.used_in_solution() else 'no'))
             print('      Az/el: %.1f, %.1f deg' % (sv.azimuth_deg, sv.elevation_deg))
+    else:
+        try:
+            name = MessageType(header.message_type).name
+        except ValueError:
+            name = 'Unknown [type %d]' % header.message_type
+        print('Decoded %s message [sequence=%d, size=%d B]' % (name, header.sequence_number, len(data)))
 
     return True
 
@@ -79,8 +85,12 @@ if __name__ == "__main__":
             break
 
         # Deserialize the header.
-        header = MessageHeader()
-        offset = header.unpack(buffer=data)
+        try:
+            header = MessageHeader()
+            offset = header.unpack(buffer=data)
+        except Exception as e:
+            print('Decode error: %s' % str(e))
+            break
 
         # Read the message payload and append it to the header.
         data += f.read(header.payload_size_bytes)

@@ -26,8 +26,12 @@ if __name__ == "__main__":
         data = sock.recv(1024)
 
         # Deserialize the header.
-        header = MessageHeader()
-        offset = header.unpack(buffer=data)
+        try:
+            header = MessageHeader()
+            offset = header.unpack(buffer=data)
+        except Exception as e:
+            print('Decode error: %s' % str(e))
+            continue
 
         if not decode_message(header, data, offset):
             continue
