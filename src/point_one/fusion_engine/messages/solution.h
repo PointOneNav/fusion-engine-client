@@ -49,14 +49,15 @@ struct PoseMessage {
 
   /**
    * The platform attitude (in degrees), if known, described as intrinsic
-   * Euler-321 angles (yaw, pitch, roll), or `NAN` if attitude has not been
-   * initialized.
+   * Euler-321 angles (yaw, pitch, roll) with respect to the local level frame.
+   * Set to `NAN` if attitude is not available.
    *
    * @note
    * The platform body axes are defined as +x forward, +y left, and +z up. A
    * positive yaw is a left turn, positive pitch points the nose of the vehicle
    * down, and positive roll is a roll toward the right. Yaw is measured from
-   * east in a counter-clockwise direction. For example, north is +90 degrees.
+   * east in a counter-clockwise direction. For example, north is +90 degrees
+   * (i.e., `heading = 90.0 - ypr_deg[0]`).
    */
   double ypr_deg[3] = {NAN, NAN, NAN};
 

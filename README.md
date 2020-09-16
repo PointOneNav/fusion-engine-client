@@ -9,6 +9,9 @@
 This library provides message definitions and support functionality for interacting with Point One FusionEngine in real
 time, as well as processing recorded output data. Both C++ and Python are supported.
 
+* [Requirements](#requirements)
+* [Directory Structure](#directory-structure)
+  * [Example Applications](#example-applications)
 * [Installation](#installation)
   * [CMake](#cmake)
     * [Compiling (Linux)](#compiling-linux)
@@ -18,6 +21,7 @@ time, as well as processing recorded output data. Both C++ and Python are suppor
     * [Compiling](#compiling)
     * [Running Examples](#running-examples)
 * [Usage](#usage)
+  * [Body Coordinate Frame Definition](#body-coordinate-frame-definition)
 
 ### Requirements
 
@@ -42,7 +46,7 @@ time, as well as processing recorded output data. Both C++ and Python are suppor
       - `fusion_engine/`
         - `messages/` - C++ message definitions
 
-### Example Applications
+#### Example Applications
 
 The `examples/` directory contains example applications demonstrating how to use this library. They are:
 - `message_decode` - Print the contents of messages contained in a binary file.
@@ -182,3 +186,11 @@ void DeserializeMessage(const uint8_t* buffer) {
 ```
 
 See the `message_decode` example for more details.
+
+### Body Coordinate Frame Definition
+
+<img src="vehicle_frame_side.svg" alt="Vehicle Frame Side View" width="48%" /> <img src="vehicle_frame_back.svg" alt="Vehicle Frame Back View" width="35%" />
+
+The platform body axes are defined as +x forward, +y left, and +z up. A positive yaw is a left turn, positive pitch
+points the nose of the vehicle down, and positive roll is a roll toward the right. Yaw is measured from east in a
+counter-clockwise direction. For example, north is +90 degrees (i.e., `heading = 90.0 - yaw`).
