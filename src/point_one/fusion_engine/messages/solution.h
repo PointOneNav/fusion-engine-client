@@ -42,15 +42,15 @@ struct PoseMessage {
   double lla_deg[3] = {NAN, NAN, NAN};
 
   /**
-   * The position standard deviation (in meters), resolved in the local level
-   * frame: east, north, up.
+   * The position standard deviation (in meters), resolved with respect to the
+   * local ENU tangent plane: east, north, up.
    */
   float position_std_enu_m[3] = {NAN, NAN, NAN};
 
   /**
    * The platform attitude (in degrees), if known, described as intrinsic
-   * Euler-321 angles (yaw, pitch, roll) with respect to the local level frame.
-   * Set to `NAN` if attitude is not available.
+   * Euler-321 angles (yaw, pitch, roll) with respect to the local ENU tangent
+   * plane. Set to `NAN` if attitude is not available.
    *
    * @note
    * The platform body axes are defined as +x forward, +y left, and +z up. A
