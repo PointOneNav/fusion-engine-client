@@ -71,6 +71,9 @@ enum class MessageType : uint16_t {
   POSE = 10000, ///< @ref PoseMessage
   GNSS_INFO = 10001, ///< @ref GNSSInfoMessage
   GNSS_SATELLITE = 10002, ///< @ref GNSSSatelliteMessage
+
+  // Sensor measurement messages.
+  IMU_MEASUREMENT = 11000, ///< @ref IMUMeasurement
 };
 
 /** @} */
@@ -219,6 +222,9 @@ inline std::string to_string(MessageType type) {
 
     case MessageType::GNSS_INFO:
       return "GNSS Info";
+
+    case MessageType::IMU_MEASUREMENT:
+      return "IMU Measurement";
 
     default:
       return "Unrecognized Message (" + std::to_string((int)type) + ")";

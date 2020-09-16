@@ -36,6 +36,7 @@ cc_library(
     name = "messages",
     deps = [
         ":core_headers",
+        ":measurement_headers",
     ],
 )
 
@@ -49,6 +50,17 @@ cc_library(
         "src/point_one/fusion_engine/messages/solution.h",
     ],
     includes = ["src"],
+)
+
+# Raw measurement message definitions.
+cc_library(
+    name = "measurement_headers",
+    hdrs = [
+        "src/point_one/fusion_engine/messages/measurements.h",
+    ],
+    deps = [
+        ":core_headers",
+    ],
 )
 
 ################################################################################
