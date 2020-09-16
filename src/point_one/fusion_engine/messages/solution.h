@@ -42,8 +42,9 @@ struct PoseMessage {
   double lla_deg[3] = {NAN, NAN, NAN};
 
   /**
-   * The platform attitude (in degrees), if known, described as Euler-321 angles
-   * (yaw, pitch, roll), or `NAN` if attitude has not been initialized.
+   * The platform attitude (in degrees), if known, described as intrinsic
+   * Euler-321 angles (yaw, pitch, roll), or `NAN` if attitude has not been
+   * initialized.
    *
    * @note
    * The platform body axes are defined as +x forward, +y left, and +z up. A
