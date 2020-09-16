@@ -42,28 +42,40 @@ struct PoseMessage {
   double lla_deg[3] = {NAN, NAN, NAN};
 
   /**
-   * The platform attitude (in degrees), if known, described as Euler-321 angles
-   * (yaw, pitch, roll), or `NAN` if attitude has not been initialized.
+   * The position standard deviation (in meters), resolved with respect to the
+   * local ENU tangent plane: east, north, up.
+   */
+  float position_std_enu_m[3] = {NAN, NAN, NAN};
+
+  /**
+   * The platform attitude (in degrees), if known, described as intrinsic
+   * Euler-321 angles (yaw, pitch, roll) with respect to the local ENU tangent
+   * plane. Set to `NAN` if attitude is not available.
    *
    * @note
    * The platform body axes are defined as +x forward, +y left, and +z up. A
    * positive yaw is a left turn, positive pitch points the nose of the vehicle
    * down, and positive roll is a roll toward the right. Yaw is measured from
-   * east in a counter-clockwise direction. For example, north is +90 degrees.
+   * east in a counter-clockwise direction. For example, north is +90 degrees
+   * (i.e., `heading = 90.0 - ypr_deg[0]`).
    */
   double ypr_deg[3] = {NAN, NAN, NAN};
 
   /**
-   * The platform body velocity (in meters/second), resolved in the local level
-   * frame: east, north, up.
+   * The attitude standard deviation (in degrees): yaw, pitch, roll.
    */
-  double velocity_enu_mps[3] = {NAN, NAN, NAN};
+  float ypr_std_deg[3] = {NAN, NAN, NAN};
 
   /**
-   * The X/Y/Z position standard deviation (in meters), resolved in the ECEF
+   * The platform velocity (in meters/second), resolved in the body frame.
+   */
+  double velocity_body_mps[3] = {NAN, NAN, NAN};
+
+  /**
+   * The velocity standard deviation (in meters/second), resolved in the body
    * frame.
    */
-  float position_std_dev_ecef_m[3] = {NAN, NAN, NAN};
+  float velocity_std_body_mps[3] = {NAN, NAN, NAN};
 
   /** The estimated aggregate 3D protection level (in meters). */
   float aggregate_protection_level_m = NAN;
