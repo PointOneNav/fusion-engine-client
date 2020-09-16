@@ -132,7 +132,7 @@ class GNSSInfoMessage:
 
     INVALID_REFERENCE_STATION = 0xFFFFFFFF
 
-    _FORMAT = '<IffffH2x'
+    _FORMAT = '<IffffH2xf'
     _SIZE: int = struct.calcsize(_FORMAT)
 
     def __init__(self):
@@ -147,6 +147,8 @@ class GNSSInfoMessage:
         self.pdop = np.nan
         self.hdop = np.nan
         self.vdop = np.nan
+
+        self.gps_time_std_sec = np.nan
 
         self.svs: List[SatelliteInfo] = []
 
@@ -164,7 +166,8 @@ class GNSSInfoMessage:
         struct.pack_into(GNSSInfoMessage._FORMAT, buffer, offset,
                          self.reference_station_id,
                          self.gdop, self.pdop, self.hdop, self.vdop,
-                         len(self.svs))
+                         len(self.svs),
+                         self.gps_time_std_sec)
         offset += GNSSInfoMessage._SIZE
 
         for sv in self.svs:
@@ -185,7 +188,8 @@ class GNSSInfoMessage:
 
         (self.reference_station_id,
          self.gdop, self.pdop, self.hdop, self.vdop,
-         num_svs) = \
+         num_svs,
+         self.gps_time_std_sec) = \
             struct.unpack_from(GNSSInfoMessage._FORMAT, buffer=buffer, offset=offset)
         offset += GNSSInfoMessage._SIZE
 

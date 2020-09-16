@@ -125,6 +125,9 @@ struct GNSSInfoMessage {
   uint16_t num_satellites = 0;
 
   uint8_t reserved[2] = {0};
+
+  /** GPS time alignment standard deviation (in seconds). */
+  float gps_time_std_sec = NAN;
 };
 
 /**

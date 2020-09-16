@@ -120,6 +120,8 @@ Generate a binary file containing a fixed set of messages.
 
   gnss_info_message->num_satellites = 2;
 
+  gnss_info_message->gps_time_std_sec = 1e-10f;
+
   SatelliteInfo* satellite_info = reinterpret_cast<SatelliteInfo*>(buffer);
   buffer += sizeof(SatelliteInfo);
   *satellite_info = SatelliteInfo();
