@@ -151,6 +151,14 @@ struct GNSSSatelliteMessage {
  * available ephemeris data.
  */
 struct SatelliteInfo {
+  /**
+   * @defgroup satellite_usage Bit definitions for the satellite usage bitmask
+   *           (@ref SatelliteInfo::usage).
+   * @{
+   */
+  static constexpr uint8_t SATELLITE_USED = 0x01;
+  /** @} */
+
   /** The GNSS system to which this satellite belongs. */
   SatelliteType system = SatelliteType::UNKNOWN;
 
@@ -158,10 +166,10 @@ struct SatelliteInfo {
   uint8_t prn = 0;
 
   /**
-   * Set to 1 if the satellite was used in the latest navigation solution, 0
-   * if not.
+   * A bitmask specifying how this satellite was used in the position solution.
+   * Set to 0 if the satellite was not used. See @ref satellite_usage.
    */
-  uint8_t used_in_solution = 0;
+  uint8_t usage = 0;
 
   uint8_t reserved = 0;
 

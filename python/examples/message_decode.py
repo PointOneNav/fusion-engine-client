@@ -76,5 +76,5 @@ if __name__ == "__main__":
             print('  %d SVs:' % len(contents.svs))
             for sv in contents.svs:
                 print('    %s PRN %d:' % (sv.system.name, sv.prn))
-                print('      Used in solution: %s' % ('yes' if sv.used_in_solution else 'no'))
+                print('      Used in solution: %s' % ('yes' if sv.used_in_solution() else 'no'))
                 print('      Az/el: %.1f, %.1f deg' % (sv.azimuth_deg, sv.elevation_deg))

@@ -142,7 +142,7 @@ bool DecodeMessage(std::ifstream& stream, size_t available_bytes) {
       printf("  %s PRN %u:\n", to_string(sv.system).c_str(), sv.prn);
       printf("    Elevation/azimuth: (%.1f, %.1f) deg\n", sv.elevation_deg,
              sv.azimuth_deg);
-      printf("    In solution: %s\n", sv.used_in_solution ? "yes" : "no");
+      printf("    In solution: %s\n", sv.usage > 0 ? "yes" : "no");
     }
   } else {
     printf("Ignoring message type %s. [%u bytes]\n",

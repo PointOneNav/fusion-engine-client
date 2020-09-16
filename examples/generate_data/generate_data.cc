@@ -154,7 +154,7 @@ Generate a binary file containing a fixed set of messages.
   *satellite_info = SatelliteInfo();
   satellite_info->system = SatelliteType::GPS;
   satellite_info->prn = 4;
-  satellite_info->used_in_solution = 1;
+  satellite_info->usage = SatelliteInfo::SATELLITE_USED;
   satellite_info->azimuth_deg = 34.5f;
   satellite_info->elevation_deg = 56.2f;
 
@@ -162,7 +162,7 @@ Generate a binary file containing a fixed set of messages.
   *satellite_info = SatelliteInfo();
   satellite_info->system = SatelliteType::GALILEO;
   satellite_info->prn = 9;
-  satellite_info->used_in_solution = 0;
+  satellite_info->usage = SatelliteInfo::SATELLITE_USED;
   satellite_info->azimuth_deg = 79.4f;
   satellite_info->elevation_deg = 16.1f;
 

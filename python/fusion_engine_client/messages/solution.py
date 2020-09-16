@@ -162,18 +162,20 @@ class SatelliteInfo:
     """!
     @brief Information about an individual satellite.
     """
-    _FORMAT = '<BB?xff'
+    SATELLITE_USED = 0x01
+
+    _FORMAT = '<BBBxff'
     _SIZE: int = struct.calcsize(_FORMAT)
 
     def __init__(self):
         self.system = SatelliteType.UNKNOWN
         self.prn = 0
-        self.used_in_solution = False
+        self.usage = 0
         self.azimuth_deg = np.nan
         self.elevation_deg = np.nan
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
-        args = (int(self.system), self.prn, self.used_in_solution, self.azimuth_deg, self.elevation_deg)
+        args = (int(self.system), self.prn, self.usage, self.azimuth_deg, self.elevation_deg)
         if buffer is None:
             buffer = struct.pack(SatelliteInfo._FORMAT, *args)
         else:
@@ -185,10 +187,13 @@ class SatelliteInfo:
             return self.calcsize()
 
     def unpack(self, buffer: bytes, offset: int = 0) -> int:
-        (system_int, self.prn, self.used_in_solution, self.azimuth_deg, self.elevation_deg) = \
+        (system_int, self.prn, self.usage, self.azimuth_deg, self.elevation_deg) = \
             struct.unpack_from(SatelliteInfo._FORMAT, buffer=buffer, offset=offset)
         self.system = SatelliteType(system_int)
         return self.calcsize()
+
+    def used_in_solution(self):
+        return self.usage & SatelliteInfo.SATELLITE_USED
 
     @classmethod
     def calcsize(cls) -> int:
