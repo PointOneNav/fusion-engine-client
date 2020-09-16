@@ -59,9 +59,9 @@ Generate a binary file containing a fixed set of messages.
   pose_message->ypr_deg[1] = 2.1;
   pose_message->ypr_deg[2] = 0.1;
 
-  pose_message->velocity_enu_mps[0] = -2.3;
-  pose_message->velocity_enu_mps[1] = -1.5;
-  pose_message->velocity_enu_mps[2] = 0.3;
+  pose_message->velocity_body_mps[0] = -2.3;
+  pose_message->velocity_body_mps[1] = -0.01;
+  pose_message->velocity_body_mps[2] = 0.3;
 
   pose_message->position_std_enu_m[0] = 0.1f;
   pose_message->position_std_enu_m[1] = 0.1f;
@@ -71,9 +71,9 @@ Generate a binary file containing a fixed set of messages.
   pose_message->ypr_std_deg[1] = 0.2f;
   pose_message->ypr_std_deg[2] = 0.2f;
 
-  pose_message->velocity_std_enu_mps[0] = 0.3f;
-  pose_message->velocity_std_enu_mps[1] = 0.3f;
-  pose_message->velocity_std_enu_mps[2] = 0.3f;
+  pose_message->velocity_std_body_mps[0] = 0.3f;
+  pose_message->velocity_std_body_mps[1] = 0.3f;
+  pose_message->velocity_std_body_mps[2] = 0.3f;
 
   pose_message->aggregate_protection_level_m = 0.4f;
   pose_message->horizontal_protection_level_m = 0.2f;
@@ -172,9 +172,9 @@ Generate a binary file containing a fixed set of messages.
   pose_message->ypr_deg[1] = 0.0;
   pose_message->ypr_deg[2] = 0.0;
 
-  pose_message->velocity_enu_mps[0] = 0.0;
-  pose_message->velocity_enu_mps[1] = 0.0;
-  pose_message->velocity_enu_mps[2] = 1.2;
+  pose_message->velocity_body_mps[0] = 1.2;
+  pose_message->velocity_body_mps[1] = 0.03;
+  pose_message->velocity_body_mps[2] = 0.1;
 
   pose_message->position_std_enu_m[0] = 0.05f;
   pose_message->position_std_enu_m[1] = 0.05f;
@@ -184,9 +184,9 @@ Generate a binary file containing a fixed set of messages.
   pose_message->ypr_std_deg[1] = 0.1f;
   pose_message->ypr_std_deg[2] = 0.1f;
 
-  pose_message->velocity_std_enu_mps[0] = 0.15f;
-  pose_message->velocity_std_enu_mps[1] = 0.15f;
-  pose_message->velocity_std_enu_mps[2] = 0.15f;
+  pose_message->velocity_std_body_mps[0] = 0.15f;
+  pose_message->velocity_std_body_mps[1] = 0.15f;
+  pose_message->velocity_std_body_mps[2] = 0.15f;
 
   pose_message->aggregate_protection_level_m = 0.3f;
   pose_message->horizontal_protection_level_m = 0.08f;

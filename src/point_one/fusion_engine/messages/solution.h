@@ -67,16 +67,15 @@ struct PoseMessage {
   float ypr_std_deg[3] = {NAN, NAN, NAN};
 
   /**
-   * The platform body velocity (in meters/second), resolved in the local level
-   * frame: east, north, up.
+   * The platform velocity (in meters/second), resolved in the body frame.
    */
-  double velocity_enu_mps[3] = {NAN, NAN, NAN};
+  double velocity_body_mps[3] = {NAN, NAN, NAN};
 
   /**
-   * The velocity standard deviation (in meters/second), resolved in the local
-   * level frame.
+   * The velocity standard deviation (in meters/second), resolved in the body
+   * frame.
    */
-  float velocity_std_enu_mps[3] = {NAN, NAN, NAN};
+  float velocity_std_body_mps[3] = {NAN, NAN, NAN};
 
   /** The estimated aggregate 3D protection level (in meters). */
   float aggregate_protection_level_m = NAN;

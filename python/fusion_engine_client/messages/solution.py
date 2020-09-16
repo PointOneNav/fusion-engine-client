@@ -27,8 +27,8 @@ class PoseMessage:
         self.ypr_deg = np.full((3,), np.nan)
         self.ypr_std_deg = np.full((3,), np.nan)
 
-        self.velocity_enu_mps = np.full((3,), np.nan)
-        self.velocity_std_enu_mps = np.full((3,), np.nan)
+        self.velocity_body_mps = np.full((3,), np.nan)
+        self.velocity_std_body_mps = np.full((3,), np.nan)
 
         self.aggregate_protection_level_m = np.nan
         self.horizontal_protection_level_m = np.nan
@@ -49,8 +49,8 @@ class PoseMessage:
                          self.position_std_enu_m[0], self.position_std_enu_m[1], self.position_std_enu_m[2],
                          self.ypr_deg[0], self.ypr_deg[1], self.ypr_deg[2],
                          self.ypr_std_deg[0], self.ypr_std_deg[1], self.ypr_std_deg[2],
-                         self.velocity_enu_mps[0], self.velocity_enu_mps[1], self.velocity_enu_mps[2],
-                         self.velocity_std_enu_mps[0], self.velocity_std_enu_mps[1], self.velocity_std_enu_mps[2],
+                         self.velocity_body_mps[0], self.velocity_body_mps[1], self.velocity_body_mps[2],
+                         self.velocity_std_body_mps[0], self.velocity_std_body_mps[1], self.velocity_std_body_mps[2],
                          self.aggregate_protection_level_m,
                          self.horizontal_protection_level_m,
                          self.vertical_protection_level_m)
@@ -71,8 +71,8 @@ class PoseMessage:
          self.position_std_enu_m[0], self.position_std_enu_m[1], self.position_std_enu_m[2],
          self.ypr_deg[0], self.ypr_deg[1], self.ypr_deg[2],
          self.ypr_std_deg[0], self.ypr_std_deg[1], self.ypr_std_deg[2],
-         self.velocity_enu_mps[0], self.velocity_enu_mps[1], self.velocity_enu_mps[2],
-         self.velocity_std_enu_mps[0], self.velocity_std_enu_mps[1], self.velocity_std_enu_mps[2],
+         self.velocity_body_mps[0], self.velocity_body_mps[1], self.velocity_body_mps[2],
+         self.velocity_std_body_mps[0], self.velocity_std_body_mps[1], self.velocity_std_body_mps[2],
          self.aggregate_protection_level_m,
          self.horizontal_protection_level_m,
          self.vertical_protection_level_m) = \
