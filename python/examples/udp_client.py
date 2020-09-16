@@ -45,9 +45,16 @@ if __name__ == "__main__":
             contents = GNSSInfoMessage()
             contents.unpack(buffer=data, offset=offset)
 
-            print('GNSS info message @ P1 time %s' % str(contents.p1_time))
+            print('GNSS info message @ P1 time %s [sequence=%d, size=%d B]' %
+                  (str(contents.p1_time), header.sequence_number, len(data)))
             print('  GPS time: %s' % str(contents.gps_time.as_gps()))
             print('  GDOP: %.1f' % contents.gdop)
+        elif header.message_type == GNSSSatelliteMessage.MESSAGE_TYPE:
+            contents = GNSSSatelliteMessage()
+            contents.unpack(buffer=data, offset=offset)
+
+            print('GNSS satellite message @ P1 time %s [sequence=%d, size=%d B]' %
+                  (str(contents.p1_time), header.sequence_number, len(data)))
             print('  %d SVs:' % len(contents.svs))
             for sv in contents.svs:
                 print('    %s PRN %d:' % (sv.system.name, sv.prn))

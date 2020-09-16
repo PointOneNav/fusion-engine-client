@@ -94,12 +94,10 @@ Generate a binary file containing a fixed set of messages.
   // Note: Updating contents of existing header to maintain sequence number.
   ++header->sequence_number;
   header->message_type = MessageType::GNSS_INFO;
-  header->payload_size_bytes =
-      sizeof(GNSSInfoMessage) + 2 * sizeof(SatelliteInfo);
+  header->payload_size_bytes = sizeof(GNSSInfoMessage);
 
   GNSSInfoMessage* gnss_info_message =
       reinterpret_cast<GNSSInfoMessage*>(buffer);
-  buffer += sizeof(GNSSInfoMessage);
   *gnss_info_message = GNSSInfoMessage();
 
   gnss_info_message->p1_time.seconds = 123;
@@ -118,9 +116,38 @@ Generate a binary file containing a fixed set of messages.
   gnss_info_message->hdop = 1.2f;
   gnss_info_message->vdop = 1.5f;
 
-  gnss_info_message->num_satellites = 2;
-
   gnss_info_message->gps_time_std_sec = 1e-10f;
+
+  header->crc = CalculateCRC(storage);
+  stream.write(reinterpret_cast<char*>(storage),
+               sizeof(MessageHeader) + header->payload_size_bytes);
+
+  //////////////////////////////////////////////////////////////////////////////
+  // Write a GNSS satellite message associated with the pose message.
+  //////////////////////////////////////////////////////////////////////////////
+
+  buffer = storage;
+  header = reinterpret_cast<MessageHeader*>(buffer);
+  buffer += sizeof(MessageHeader);
+
+  // Note: Updating contents of existing header to maintain sequence number.
+  ++header->sequence_number;
+  header->message_type = MessageType::GNSS_SATELLITE;
+  header->payload_size_bytes =
+      sizeof(GNSSSatelliteMessage) + 2 * sizeof(SatelliteInfo);
+
+  GNSSSatelliteMessage* gnss_satellite_message =
+      reinterpret_cast<GNSSSatelliteMessage*>(buffer);
+  buffer += sizeof(GNSSSatelliteMessage);
+  *gnss_satellite_message = GNSSSatelliteMessage();
+
+  gnss_satellite_message->p1_time.seconds = 123;
+  gnss_satellite_message->p1_time.fraction_ns = 456000000;
+
+  gnss_satellite_message->gps_time.seconds = 1282677727;
+  gnss_satellite_message->gps_time.fraction_ns = 200000000;
+
+  gnss_satellite_message->num_satellites = 2;
 
   SatelliteInfo* satellite_info = reinterpret_cast<SatelliteInfo*>(buffer);
   buffer += sizeof(SatelliteInfo);

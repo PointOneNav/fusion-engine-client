@@ -87,6 +87,77 @@ class PoseMessage:
         return 2 * Timestamp.calcsize() + PoseMessage._SIZE
 
 
+class GNSSInfoMessage:
+    """!
+    @brief Information about the GNSS data used in the @ref PoseMessage with the corresponding timestamp.
+    """
+    MESSAGE_TYPE = MessageType.GNSS_INFO
+
+    INVALID_REFERENCE_STATION = 0xFFFFFFFF
+
+    _FORMAT = '<Ifffff'
+    _SIZE: int = struct.calcsize(_FORMAT)
+
+    def __init__(self):
+        self.p1_time = Timestamp()
+        self.gps_time = Timestamp()
+
+        self.last_differential_time = Timestamp()
+
+        self.reference_station_id = GNSSInfoMessage.INVALID_REFERENCE_STATION
+
+        self.gdop = np.nan
+        self.pdop = np.nan
+        self.hdop = np.nan
+        self.vdop = np.nan
+
+        self.gps_time_std_sec = np.nan
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        if buffer is None:
+            buffer = bytes(self.calcsize())
+
+        initial_offset = offset
+
+        offset += self.p1_time.pack(buffer, offset, return_buffer=False)
+        offset += self.gps_time.pack(buffer, offset, return_buffer=False)
+
+        offset += self.last_differential_time.pack(buffer, offset, return_buffer=False)
+
+        struct.pack_into(GNSSInfoMessage._FORMAT, buffer, offset,
+                         self.reference_station_id,
+                         self.gdop, self.pdop, self.hdop, self.vdop,
+                         self.gps_time_std_sec)
+        offset += GNSSInfoMessage._SIZE
+
+        for sv in self.svs:
+            offset += sv.pack(buffer, offset, return_buffer=False)
+
+        if return_buffer:
+            return buffer
+        else:
+            return offset - initial_offset
+
+    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+        initial_offset = offset
+
+        offset += self.p1_time.unpack(buffer, offset)
+        offset += self.gps_time.unpack(buffer, offset)
+
+        offset += self.last_differential_time.unpack(buffer, offset)
+
+        (self.reference_station_id,
+         self.gdop, self.pdop, self.hdop, self.vdop,
+         self.gps_time_std_sec) = \
+            struct.unpack_from(GNSSInfoMessage._FORMAT, buffer=buffer, offset=offset)
+        offset += GNSSInfoMessage._SIZE
+
+        return offset - initial_offset
+
+    def calcsize(self) -> int:
+        return 3 * Timestamp.calcsize() + GNSSInfoMessage._SIZE
+
+
 class SatelliteInfo:
     """!
     @brief Information about an individual satellite.
@@ -124,31 +195,18 @@ class SatelliteInfo:
         return SatelliteInfo._SIZE
 
 
-class GNSSInfoMessage:
+class GNSSSatelliteMessage:
     """!
     @brief Information about the GNSS data used in the @ref PoseMessage with the corresponding timestamp.
     """
-    MESSAGE_TYPE = MessageType.GNSS_INFO
+    MESSAGE_TYPE = MessageType.GNSS_SATELLITE
 
-    INVALID_REFERENCE_STATION = 0xFFFFFFFF
-
-    _FORMAT = '<IffffH2xf'
+    _FORMAT = '<H2x'
     _SIZE: int = struct.calcsize(_FORMAT)
 
     def __init__(self):
         self.p1_time = Timestamp()
         self.gps_time = Timestamp()
-
-        self.last_differential_time = Timestamp()
-
-        self.reference_station_id = GNSSInfoMessage.INVALID_REFERENCE_STATION
-
-        self.gdop = np.nan
-        self.pdop = np.nan
-        self.hdop = np.nan
-        self.vdop = np.nan
-
-        self.gps_time_std_sec = np.nan
 
         self.svs: List[SatelliteInfo] = []
 
@@ -161,14 +219,8 @@ class GNSSInfoMessage:
         offset += self.p1_time.pack(buffer, offset, return_buffer=False)
         offset += self.gps_time.pack(buffer, offset, return_buffer=False)
 
-        offset += self.last_differential_time.pack(buffer, offset, return_buffer=False)
-
-        struct.pack_into(GNSSInfoMessage._FORMAT, buffer, offset,
-                         self.reference_station_id,
-                         self.gdop, self.pdop, self.hdop, self.vdop,
-                         len(self.svs),
-                         self.gps_time_std_sec)
-        offset += GNSSInfoMessage._SIZE
+        struct.pack_into(GNSSSatelliteMessage._FORMAT, buffer, offset, len(self.svs))
+        offset += GNSSSatelliteMessage._SIZE
 
         for sv in self.svs:
             offset += sv.pack(buffer, offset, return_buffer=False)
@@ -184,14 +236,8 @@ class GNSSInfoMessage:
         offset += self.p1_time.unpack(buffer, offset)
         offset += self.gps_time.unpack(buffer, offset)
 
-        offset += self.last_differential_time.unpack(buffer, offset)
-
-        (self.reference_station_id,
-         self.gdop, self.pdop, self.hdop, self.vdop,
-         num_svs,
-         self.gps_time_std_sec) = \
-            struct.unpack_from(GNSSInfoMessage._FORMAT, buffer=buffer, offset=offset)
-        offset += GNSSInfoMessage._SIZE
+        (num_svs,) = struct.unpack_from(GNSSSatelliteMessage._FORMAT, buffer=buffer, offset=offset)
+        offset += GNSSSatelliteMessage._SIZE
 
         self.svs = []
         for i in range(num_svs):
@@ -202,4 +248,4 @@ class GNSSInfoMessage:
         return offset - initial_offset
 
     def calcsize(self) -> int:
-        return 3 * Timestamp.calcsize() + GNSSInfoMessage._SIZE + len(self.svs) * SatelliteInfo.calcsize()
+        return 2 * Timestamp.calcsize() + GNSSSatelliteMessage._SIZE + len(self.svs) * SatelliteInfo.calcsize()

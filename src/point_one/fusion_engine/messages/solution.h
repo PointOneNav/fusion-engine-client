@@ -88,14 +88,6 @@ struct PoseMessage {
 /**
  * @brief Information about the GNSS data used in the @ref PoseMessage with the
  *        corresponding timestamp. \[@ref MessageType::GNSS_INFO\]
- *
- * This message is followed by `N` @ref SatelliteInfo objects, where `N` is
- * equal to @ref num_satellites. For example, a message with two satellites
- * would be serialized as:
- *
- * ```
- * {MessageHeader, GNSSInfoMessage, SatelliteInfo, SatelliteInfo}
- * ```
  */
 struct GNSSInfoMessage {
   static constexpr uint32_t INVALID_REFERENCE_STATION = 0xFFFFFFFF;
@@ -121,13 +113,34 @@ struct GNSSInfoMessage {
   /** The vertical dilution of precision (VDOP). */
   float vdop = NAN;
 
+  /** GPS time alignment standard deviation (in seconds). */
+  float gps_time_std_sec = NAN;
+};
+
+/**
+ * @brief Information about the individual satellites used in the @ref
+ *        PoseMessage and @ref GNSSInfoMessage with the corresponding timestamp.
+ *        \[@ref MessageType::GNSS_SATELLITE\]
+ *
+ * This message is followed by `N` @ref SatelliteInfo objects, where `N` is
+ * equal to @ref num_satellites. For example, a message with two satellites
+ * would be serialized as:
+ *
+ * ```
+ * {MessageHeader, GNSSSatelliteMessage, SatelliteInfo, SatelliteInfo, ...}
+ * ```
+ */
+struct GNSSSatelliteMessage {
+  /** The time of the message, in P1 time (beginning at power-on). */
+  Timestamp p1_time;
+
+  /** The GPS time of the message, if available, referenced to 1980/1/6. */
+  Timestamp gps_time;
+
   /** The number of known satellites. */
   uint16_t num_satellites = 0;
 
   uint8_t reserved[2] = {0};
-
-  /** GPS time alignment standard deviation (in seconds). */
-  float gps_time_std_sec = NAN;
 };
 
 /**

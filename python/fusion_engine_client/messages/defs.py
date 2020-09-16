@@ -43,6 +43,7 @@ class MessageType(IntEnum):
   # INS solution messages.
   POSE = 10000
   GNSS_INFO = 10001
+  GNSS_SATELLITE = 10002
 
 
 class Timestamp:

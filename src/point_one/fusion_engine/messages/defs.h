@@ -64,6 +64,7 @@ enum class MessageType : uint16_t {
   // INS solution messages.
   POSE = 10000,
   GNSS_INFO = 10001,
+  GNSS_SATELLITE = 10002,
 };
 
 /**
