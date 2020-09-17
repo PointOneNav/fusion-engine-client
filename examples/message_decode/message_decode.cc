@@ -34,7 +34,7 @@ bool DecodeMessage(std::ifstream& stream, size_t available_bytes) {
 
   available_bytes -= sizeof(MessageHeader);
 
-  MessageHeader& header = *reinterpret_cast<MessageHeader*>(buffer);
+  auto& header = *reinterpret_cast<MessageHeader*>(buffer);
   buffer += sizeof(MessageHeader);
 
   // Read the message payload.
@@ -79,7 +79,7 @@ bool DecodeMessage(std::ifstream& stream, size_t available_bytes) {
 
   // Interpret the payload.
   if (header.message_type == MessageType::POSE) {
-    PoseMessage& contents = *reinterpret_cast<PoseMessage*>(buffer);
+    auto& contents = *reinterpret_cast<PoseMessage*>(buffer);
     buffer += sizeof(contents);
 
     double p1_time_sec =
@@ -109,7 +109,7 @@ bool DecodeMessage(std::ifstream& stream, size_t available_bytes) {
     printf("    Horizontal: %.2f m\n", contents.horizontal_protection_level_m);
     printf("    Vertical: %.2f m\n", contents.vertical_protection_level_m);
   } else if (header.message_type == MessageType::GNSS_INFO) {
-    GNSSInfoMessage& contents = *reinterpret_cast<GNSSInfoMessage*>(buffer);
+    auto& contents = *reinterpret_cast<GNSSInfoMessage*>(buffer);
     buffer += sizeof(contents);
 
     double p1_time_sec =
@@ -117,18 +117,32 @@ bool DecodeMessage(std::ifstream& stream, size_t available_bytes) {
 
     printf(
         "Received GNSS info message @ P1 time %.3f seconds. [sequence=%u, "
+        "size=%zu B]\n",
+        p1_time_sec, header.sequence_number, message_size);
+    printf("  Reference station: %u\n", contents.reference_station_id);
+    printf("  GDOP: %f\n", contents.gdop);
+    printf("  GPS time std dev: %e sec\n", contents.gps_time_std_sec);
+  } else if (header.message_type == MessageType::GNSS_SATELLITE) {
+    auto& contents = *reinterpret_cast<GNSSSatelliteMessage*>(buffer);
+    buffer += sizeof(contents);
+
+    double p1_time_sec =
+        contents.p1_time.seconds + (contents.p1_time.fraction_ns * 1e-9);
+
+    printf(
+        "Received GNSS satellite message @ P1 time %.3f seconds. [sequence=%u, "
         "size=%zu B, %u svs]\n",
         p1_time_sec, header.sequence_number, message_size,
         contents.num_satellites);
 
     for (unsigned i = 0; i < contents.num_satellites; ++i) {
-      SatelliteInfo& sv = *reinterpret_cast<SatelliteInfo*>(buffer);
+      auto& sv = *reinterpret_cast<SatelliteInfo*>(buffer);
       buffer += sizeof(sv);
 
       printf("  %s PRN %u:\n", to_string(sv.system).c_str(), sv.prn);
       printf("    Elevation/azimuth: (%.1f, %.1f) deg\n", sv.elevation_deg,
              sv.azimuth_deg);
-      printf("    In solution: %s\n", sv.used_in_solution ? "yes" : "no");
+      printf("    In solution: %s\n", sv.usage > 0 ? "yes" : "no");
     }
   } else {
     printf("Ignoring message type %s. [%u bytes]\n",

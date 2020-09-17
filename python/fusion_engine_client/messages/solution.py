@@ -87,43 +87,6 @@ class PoseMessage:
         return 2 * Timestamp.calcsize() + PoseMessage._SIZE
 
 
-class SatelliteInfo:
-    """!
-    @brief Information about an individual satellite.
-    """
-    _FORMAT = '<BB?xff'
-    _SIZE: int = struct.calcsize(_FORMAT)
-
-    def __init__(self):
-        self.system = SatelliteType.UNKNOWN
-        self.prn = 0
-        self.used_in_solution = False
-        self.azimuth_deg = np.nan
-        self.elevation_deg = np.nan
-
-    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
-        args = (int(self.system), self.prn, self.used_in_solution, self.azimuth_deg, self.elevation_deg)
-        if buffer is None:
-            buffer = struct.pack(SatelliteInfo._FORMAT, *args)
-        else:
-            struct.pack_into(SatelliteInfo._FORMAT, buffer=buffer, offset=offset, *args)
-
-        if return_buffer:
-            return buffer
-        else:
-            return self.calcsize()
-
-    def unpack(self, buffer: bytes, offset: int = 0) -> int:
-        (system_int, self.prn, self.used_in_solution, self.azimuth_deg, self.elevation_deg) = \
-            struct.unpack_from(SatelliteInfo._FORMAT, buffer=buffer, offset=offset)
-        self.system = SatelliteType(system_int)
-        return self.calcsize()
-
-    @classmethod
-    def calcsize(cls) -> int:
-        return SatelliteInfo._SIZE
-
-
 class GNSSInfoMessage:
     """!
     @brief Information about the GNSS data used in the @ref PoseMessage with the corresponding timestamp.
@@ -132,7 +95,7 @@ class GNSSInfoMessage:
 
     INVALID_REFERENCE_STATION = 0xFFFFFFFF
 
-    _FORMAT = '<IffffH2x'
+    _FORMAT = '<Ifffff'
     _SIZE: int = struct.calcsize(_FORMAT)
 
     def __init__(self):
@@ -148,7 +111,7 @@ class GNSSInfoMessage:
         self.hdop = np.nan
         self.vdop = np.nan
 
-        self.svs: List[SatelliteInfo] = []
+        self.gps_time_std_sec = np.nan
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
@@ -164,7 +127,7 @@ class GNSSInfoMessage:
         struct.pack_into(GNSSInfoMessage._FORMAT, buffer, offset,
                          self.reference_station_id,
                          self.gdop, self.pdop, self.hdop, self.vdop,
-                         len(self.svs))
+                         self.gps_time_std_sec)
         offset += GNSSInfoMessage._SIZE
 
         for sv in self.svs:
@@ -185,9 +148,101 @@ class GNSSInfoMessage:
 
         (self.reference_station_id,
          self.gdop, self.pdop, self.hdop, self.vdop,
-         num_svs) = \
+         self.gps_time_std_sec) = \
             struct.unpack_from(GNSSInfoMessage._FORMAT, buffer=buffer, offset=offset)
         offset += GNSSInfoMessage._SIZE
+
+        return offset - initial_offset
+
+    def calcsize(self) -> int:
+        return 3 * Timestamp.calcsize() + GNSSInfoMessage._SIZE
+
+
+class SatelliteInfo:
+    """!
+    @brief Information about an individual satellite.
+    """
+    SATELLITE_USED = 0x01
+
+    _FORMAT = '<BBBxff'
+    _SIZE: int = struct.calcsize(_FORMAT)
+
+    def __init__(self):
+        self.system = SatelliteType.UNKNOWN
+        self.prn = 0
+        self.usage = 0
+        self.azimuth_deg = np.nan
+        self.elevation_deg = np.nan
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        args = (int(self.system), self.prn, self.usage, self.azimuth_deg, self.elevation_deg)
+        if buffer is None:
+            buffer = struct.pack(SatelliteInfo._FORMAT, *args)
+        else:
+            struct.pack_into(SatelliteInfo._FORMAT, buffer=buffer, offset=offset, *args)
+
+        if return_buffer:
+            return buffer
+        else:
+            return self.calcsize()
+
+    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+        (system_int, self.prn, self.usage, self.azimuth_deg, self.elevation_deg) = \
+            struct.unpack_from(SatelliteInfo._FORMAT, buffer=buffer, offset=offset)
+        self.system = SatelliteType(system_int)
+        return self.calcsize()
+
+    def used_in_solution(self):
+        return self.usage & SatelliteInfo.SATELLITE_USED
+
+    @classmethod
+    def calcsize(cls) -> int:
+        return SatelliteInfo._SIZE
+
+
+class GNSSSatelliteMessage:
+    """!
+    @brief Information about the GNSS data used in the @ref PoseMessage with the corresponding timestamp.
+    """
+    MESSAGE_TYPE = MessageType.GNSS_SATELLITE
+
+    _FORMAT = '<H2x'
+    _SIZE: int = struct.calcsize(_FORMAT)
+
+    def __init__(self):
+        self.p1_time = Timestamp()
+        self.gps_time = Timestamp()
+
+        self.svs: List[SatelliteInfo] = []
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        if buffer is None:
+            buffer = bytes(self.calcsize())
+
+        initial_offset = offset
+
+        offset += self.p1_time.pack(buffer, offset, return_buffer=False)
+        offset += self.gps_time.pack(buffer, offset, return_buffer=False)
+
+        struct.pack_into(GNSSSatelliteMessage._FORMAT, buffer, offset, len(self.svs))
+        offset += GNSSSatelliteMessage._SIZE
+
+        for sv in self.svs:
+            offset += sv.pack(buffer, offset, return_buffer=False)
+
+        if return_buffer:
+            return buffer
+        else:
+            return offset - initial_offset
+
+    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+        initial_offset = offset
+
+        offset += self.p1_time.unpack(buffer, offset)
+        offset += self.gps_time.unpack(buffer, offset)
+
+        (num_svs,) = struct.unpack_from(GNSSSatelliteMessage._FORMAT, buffer=buffer, offset=offset)
+        offset += GNSSSatelliteMessage._SIZE
 
         self.svs = []
         for i in range(num_svs):
@@ -198,4 +253,4 @@ class GNSSInfoMessage:
         return offset - initial_offset
 
     def calcsize(self) -> int:
-        return 3 * Timestamp.calcsize() + GNSSInfoMessage._SIZE + len(self.svs) * SatelliteInfo.calcsize()
+        return 2 * Timestamp.calcsize() + GNSSSatelliteMessage._SIZE + len(self.svs) * SatelliteInfo.calcsize()

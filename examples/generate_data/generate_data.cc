@@ -33,7 +33,7 @@ Generate a binary file containing a fixed set of messages.
   //////////////////////////////////////////////////////////////////////////////
 
   uint8_t* buffer = storage;
-  MessageHeader* header = reinterpret_cast<MessageHeader*>(buffer);
+  auto header = reinterpret_cast<MessageHeader*>(buffer);
   buffer += sizeof(MessageHeader);
   *header = MessageHeader();
 
@@ -41,7 +41,7 @@ Generate a binary file containing a fixed set of messages.
   header->message_type = MessageType::POSE;
   header->payload_size_bytes = sizeof(PoseMessage);
 
-  PoseMessage* pose_message = reinterpret_cast<PoseMessage*>(buffer);
+  auto pose_message = reinterpret_cast<PoseMessage*>(buffer);
   *pose_message = PoseMessage();
 
   pose_message->p1_time.seconds = 123;
@@ -94,12 +94,9 @@ Generate a binary file containing a fixed set of messages.
   // Note: Updating contents of existing header to maintain sequence number.
   ++header->sequence_number;
   header->message_type = MessageType::GNSS_INFO;
-  header->payload_size_bytes =
-      sizeof(GNSSInfoMessage) + 2 * sizeof(SatelliteInfo);
+  header->payload_size_bytes = sizeof(GNSSInfoMessage);
 
-  GNSSInfoMessage* gnss_info_message =
-      reinterpret_cast<GNSSInfoMessage*>(buffer);
-  buffer += sizeof(GNSSInfoMessage);
+  auto gnss_info_message = reinterpret_cast<GNSSInfoMessage*>(buffer);
   *gnss_info_message = GNSSInfoMessage();
 
   gnss_info_message->p1_time.seconds = 123;
@@ -118,14 +115,44 @@ Generate a binary file containing a fixed set of messages.
   gnss_info_message->hdop = 1.2f;
   gnss_info_message->vdop = 1.5f;
 
-  gnss_info_message->num_satellites = 2;
+  gnss_info_message->gps_time_std_sec = 1e-10f;
 
-  SatelliteInfo* satellite_info = reinterpret_cast<SatelliteInfo*>(buffer);
+  header->crc = CalculateCRC(storage);
+  stream.write(reinterpret_cast<char*>(storage),
+               sizeof(MessageHeader) + header->payload_size_bytes);
+
+  //////////////////////////////////////////////////////////////////////////////
+  // Write a GNSS satellite message associated with the pose message.
+  //////////////////////////////////////////////////////////////////////////////
+
+  buffer = storage;
+  header = reinterpret_cast<MessageHeader*>(buffer);
+  buffer += sizeof(MessageHeader);
+
+  // Note: Updating contents of existing header to maintain sequence number.
+  ++header->sequence_number;
+  header->message_type = MessageType::GNSS_SATELLITE;
+  header->payload_size_bytes =
+      sizeof(GNSSSatelliteMessage) + 2 * sizeof(SatelliteInfo);
+
+  auto gnss_satellite_message = reinterpret_cast<GNSSSatelliteMessage*>(buffer);
+  buffer += sizeof(GNSSSatelliteMessage);
+  *gnss_satellite_message = GNSSSatelliteMessage();
+
+  gnss_satellite_message->p1_time.seconds = 123;
+  gnss_satellite_message->p1_time.fraction_ns = 456000000;
+
+  gnss_satellite_message->gps_time.seconds = 1282677727;
+  gnss_satellite_message->gps_time.fraction_ns = 200000000;
+
+  gnss_satellite_message->num_satellites = 2;
+
+  auto satellite_info = reinterpret_cast<SatelliteInfo*>(buffer);
   buffer += sizeof(SatelliteInfo);
   *satellite_info = SatelliteInfo();
   satellite_info->system = SatelliteType::GPS;
   satellite_info->prn = 4;
-  satellite_info->used_in_solution = 1;
+  satellite_info->usage = SatelliteInfo::SATELLITE_USED;
   satellite_info->azimuth_deg = 34.5f;
   satellite_info->elevation_deg = 56.2f;
 
@@ -133,7 +160,7 @@ Generate a binary file containing a fixed set of messages.
   *satellite_info = SatelliteInfo();
   satellite_info->system = SatelliteType::GALILEO;
   satellite_info->prn = 9;
-  satellite_info->used_in_solution = 0;
+  satellite_info->usage = SatelliteInfo::SATELLITE_USED;
   satellite_info->azimuth_deg = 79.4f;
   satellite_info->elevation_deg = 16.1f;
 

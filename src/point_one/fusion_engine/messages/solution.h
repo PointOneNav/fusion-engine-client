@@ -67,7 +67,8 @@ struct PoseMessage {
   float ypr_std_deg[3] = {NAN, NAN, NAN};
 
   /**
-   * The platform velocity (in meters/second), resolved in the body frame.
+   * The platform velocity (in meters/second), resolved in the body frame. Set
+   * to `NAN` if attitude is not available for the body frame transformation.
    */
   double velocity_body_mps[3] = {NAN, NAN, NAN};
 
@@ -88,14 +89,6 @@ struct PoseMessage {
 /**
  * @brief Information about the GNSS data used in the @ref PoseMessage with the
  *        corresponding timestamp. \[@ref MessageType::GNSS_INFO\]
- *
- * This message is followed by `N` @ref SatelliteInfo objects, where `N` is
- * equal to @ref num_satellites. For example, a message with two satellites
- * would be serialized as:
- *
- * ```
- * {MessageHeader, GNSSInfoMessage, SatelliteInfo, SatelliteInfo}
- * ```
  */
 struct GNSSInfoMessage {
   static constexpr uint32_t INVALID_REFERENCE_STATION = 0xFFFFFFFF;
@@ -121,6 +114,30 @@ struct GNSSInfoMessage {
   /** The vertical dilution of precision (VDOP). */
   float vdop = NAN;
 
+  /** GPS time alignment standard deviation (in seconds). */
+  float gps_time_std_sec = NAN;
+};
+
+/**
+ * @brief Information about the individual satellites used in the @ref
+ *        PoseMessage and @ref GNSSInfoMessage with the corresponding timestamp.
+ *        \[@ref MessageType::GNSS_SATELLITE\]
+ *
+ * This message is followed by `N` @ref SatelliteInfo objects, where `N` is
+ * equal to @ref num_satellites. For example, a message with two satellites
+ * would be serialized as:
+ *
+ * ```
+ * {MessageHeader, GNSSSatelliteMessage, SatelliteInfo, SatelliteInfo, ...}
+ * ```
+ */
+struct GNSSSatelliteMessage {
+  /** The time of the message, in P1 time (beginning at power-on). */
+  Timestamp p1_time;
+
+  /** The GPS time of the message, if available, referenced to 1980/1/6. */
+  Timestamp gps_time;
+
   /** The number of known satellites. */
   uint16_t num_satellites = 0;
 
@@ -135,6 +152,14 @@ struct GNSSInfoMessage {
  * available ephemeris data.
  */
 struct SatelliteInfo {
+  /**
+   * @defgroup satellite_usage Bit definitions for the satellite usage bitmask
+   *           (@ref SatelliteInfo::usage).
+   * @{
+   */
+  static constexpr uint8_t SATELLITE_USED = 0x01;
+  /** @} */
+
   /** The GNSS system to which this satellite belongs. */
   SatelliteType system = SatelliteType::UNKNOWN;
 
@@ -142,10 +167,10 @@ struct SatelliteInfo {
   uint8_t prn = 0;
 
   /**
-   * Set to 1 if the satellite was used in the latest navigation solution, 0
-   * if not.
+   * A bitmask specifying how this satellite was used in the position solution.
+   * Set to 0 if the satellite was not used. See @ref satellite_usage.
    */
-  uint8_t used_in_solution = 0;
+  uint8_t usage = 0;
 
   uint8_t reserved = 0;
 

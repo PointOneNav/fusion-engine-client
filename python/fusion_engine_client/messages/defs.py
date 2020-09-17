@@ -43,6 +43,7 @@ class MessageType(IntEnum):
   # INS solution messages.
   POSE = 10000
   GNSS_INFO = 10001
+  GNSS_SATELLITE = 10002
 
 
 class Timestamp:
@@ -212,7 +213,11 @@ class MessageHeader:
         if validate_crc:
             self.validate_crc(buffer, offset)
 
-        self.message_type = MessageType(message_type_int)
+        try:
+            self.message_type = MessageType(message_type_int)
+        except ValueError:
+            print('Warning: unrecognized message type %d.' % message_type_int)
+            self.message_type = message_type_int
 
         return MessageHeader._SIZE
 
