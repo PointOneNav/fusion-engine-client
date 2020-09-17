@@ -160,7 +160,7 @@ jobs:
     - name: Install Doxygen
       run: |
         sudo apt install -y flex bison
-        git clone --depth 1 --branch Release_1_8_20 https://github.com/doxygen/doxygen.git
+        git clone --depth 1 --branch Release_1_8_18 https://github.com/doxygen/doxygen.git
         mkdir doxygen/build
         cd doxygen/build
         cmake ..
