@@ -16,6 +16,11 @@ namespace fusion_engine {
 namespace messages {
 
 /**
+ * @defgroup crc_support CRC Calculation/Message Validation Support
+ * @{
+ */
+
+/**
  * @brief Calculate the CRC for the message (header + payload) contained in the
  *        buffer.
  *
@@ -43,6 +48,8 @@ inline bool IsValid(const void* buffer) {
     return header.crc == CalculateCRC(buffer);
   }
 }
+
+/** @} */
 
 } // namespace messages
 } // namespace fusion_engine
