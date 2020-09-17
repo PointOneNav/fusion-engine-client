@@ -13,3 +13,6 @@ build/
 
 # P1 binary files.
 *.p1bin
+
+# Doxygen output.
+docs/html/
