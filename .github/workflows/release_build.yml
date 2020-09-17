@@ -149,22 +149,38 @@ jobs:
   build_doxygen:
     name: Doxygen Build
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        doxygen: [1_8_18]
     steps:
     - uses: actions/checkout@v2
+
+    - name: Setup Doxygen Cache
+      uses: actions/cache@v2
+      id: cache-doxygen
+      with:
+        path: |
+          doxygen
+        key: ${{ matrix.doxygen }}-${{ hashFiles('doxygen/src/**/*') }}
 
     - name: Install CMake 3.16.x
       uses: jwlawson/actions-setup-cmake@v1.3
       with:
         cmake-version: '3.16.x'
 
-    - name: Install Doxygen
+    - name: Build Doxygen
+      if: steps.cache-doxygen.outputs.cache-hit != 'true'
       run: |
         sudo apt install -y flex bison
-        git clone --depth 1 --branch Release_1_8_18 https://github.com/doxygen/doxygen.git
+        git clone --depth 1 --branch Release_${{ matrix.doxygen }} https://github.com/doxygen/doxygen.git
         mkdir doxygen/build
         cd doxygen/build
         cmake ..
         make -j4
+
+    - name: Install Doxygen
+      run: |
+        cd doxygen/build
         sudo make install
 
     - name: Build Documentation
