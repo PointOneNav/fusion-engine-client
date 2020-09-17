@@ -189,7 +189,7 @@ See the `message_decode` example for more details.
 
 ### Body Coordinate Frame Definition
 
-<img src="vehicle_frame_side.svg" alt="Vehicle Frame Side View" width="48%" /> <img src="vehicle_frame_back.svg" alt="Vehicle Frame Back View" width="35%" />
+<img src="docs/images/vehicle_frame_side.svg" alt="Vehicle Frame Side View" width="48%" /> <img src="docs/images/vehicle_frame_back.svg" alt="Vehicle Frame Back View" width="35%" />
 
 The platform body axes are defined as +x forward, +y left, and +z up. A positive yaw is a left turn, positive pitch
 points the nose of the vehicle down, and positive roll is a roll toward the right. Yaw is measured from east in a
