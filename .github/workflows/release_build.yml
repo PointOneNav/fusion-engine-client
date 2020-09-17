@@ -145,16 +145,49 @@ jobs:
         ./generate_data${EXT} new_data.p1bin
         ./message_decode${EXT} new_data.p1bin
 
+  # Build the documentation.
+  build_doxygen:
+    name: Doxygen Build
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install CMake 3.16.x
+      uses: jwlawson/actions-setup-cmake@v1.3
+      with:
+        cmake-version: '3.16.x'
+
+    - name: Install Doxygen
+      run: |
+        sudo apt install -y flex bison
+        git clone --depth 1 --branch Release_1_8_20 https://github.com/doxygen/doxygen.git
+        mkdir doxygen/build
+        cd doxygen/build
+        cmake ..
+        make -j4
+        sudo make install
+
+    - name: Build Documentation
+      run: |
+        doxygen
+        tar czf fusion-engine-client-docs.tar.gz docs/html --transform 's|^docs/html|fusion-engine-client/docs/html|'
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v1
+      with:
+        name: fusion-engine-client-docs.tar.gz
+        path: fusion-engine-client-docs.tar.gz
+
   # Create a release only on a tag (not on a branch push).
   release:
     name: Create Release
     if: startsWith(github.ref, 'refs/tags/')
-    needs: [build_bazel, build_cmake]
+    needs: [build_bazel, build_cmake, build_doxygen]
     runs-on: ubuntu-latest
     outputs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
     steps:
-    - name: Create release
+    - name: Create Release
       id: create_release
       uses: actions/create-release@latest
       env:
@@ -164,3 +197,15 @@ jobs:
         release_name: Release ${{ github.ref }}
         draft: false
         prerelease: false
+
+    - name: Upload Documentation
+      if: steps.create_release.conclusion == 'success'
+      id: upload-release-asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: fusion-engine-client-docs.tar.gz
+        asset_name: fusion-engine-client-docs.tar.gz
+        asset_content_type: application/tar+gzip
