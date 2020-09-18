@@ -206,6 +206,14 @@ jobs:
     - uses: actions/checkout@v2
       with:
         fetch-depth: 0
+    - name: Extract Tag Name
+      id: get_version
+      run: echo ::set-env name=GIT_TAG::${GITHUB_REF#refs/tags/}
+
+    - name: Get Documentation Artifact
+      uses: actions/download-artifact@v2
+      with:
+        name: fusion-engine-client-docs.tar.gz
 
     - name: Create Release
       id: create_release
@@ -217,11 +225,6 @@ jobs:
         release_name: Release ${{ github.ref }}
         draft: false
         prerelease: false
-
-    - name: Get Documentation Artifact
-      uses: actions/download-artifact@v2
-      with:
-        name: fusion-engine-client-docs.tar.gz
 
     - name: Upload Documentation To Release
       if: steps.create_release.conclusion == 'success'
@@ -243,10 +246,10 @@ jobs:
         git config --global user.email "ci@pointonenav.com"
         if git ls-remote --exit-code origin docs; then
           git checkout -b docs origin/docs
-          git merge --no-ff origin/master -m "Updating to release ${{ github.ref }}."
+          git merge --no-ff ${{ github.sha }} -m "Updating to release ${GIT_TAG}."
         else
           git checkout -b docs
         fi
         git add -f docs/html
-        git commit -m "Updated documentation for release ${{ github.ref }}."
+        git commit -m "Updated documentation for release ${GIT_TAG}."
         git push origin docs
