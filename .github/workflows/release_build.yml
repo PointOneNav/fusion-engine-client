@@ -241,7 +241,6 @@ jobs:
     - name: Upload Documentation To Webpage
       if: steps.create_release.conclusion == 'success'
       run: |
-        tar xzf fusion-engine-client-docs.tar.gz
         git config --global user.name "CI Bot"
         git config --global user.email "ci@pointonenav.com"
         if git ls-remote --exit-code origin docs; then
@@ -250,6 +249,8 @@ jobs:
         else
           git checkout -b docs
         fi
+        git rm -rf docs/html
+        tar xvzf fusion-engine-client-docs.tar.gz --strip-components=1 --overwrite
         git add -f docs/html
         git commit -m "Updated documentation for release ${GIT_TAG}."
         git push origin docs
