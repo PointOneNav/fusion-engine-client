@@ -203,6 +203,10 @@ jobs:
     outputs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
     steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+
     - name: Create Release
       id: create_release
       uses: actions/create-release@latest
@@ -230,3 +234,19 @@ jobs:
         asset_path: fusion-engine-client-docs.tar.gz
         asset_name: fusion-engine-client-docs.tar.gz
         asset_content_type: application/tar+gzip
+
+    - name: Upload Documentation To Webpage
+      if: steps.create_release.conclusion == 'success'
+      run: |
+        tar xzf fusion-engine-client-docs.tar.gz
+        git config --global user.name "CI Bot"
+        git config --global user.email "ci@pointonenav.com"
+        if git ls-remote --exit-code origin docs; then
+          git checkout -b docs origin/docs
+          git merge --no-ff origin/master -m "Updating to release ${{ github.ref }}."
+        else
+          git checkout -b docs
+        fi
+        git add -f docs/html
+        git commit -m "Updated documentation for release ${{ github.ref }}."
+        git push origin docs
