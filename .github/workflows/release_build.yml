@@ -161,7 +161,7 @@ jobs:
       with:
         path: |
           doxygen
-        key: ${{ matrix.doxygen }}-${{ hashFiles('doxygen/src/**/*') }}
+        key: doxygen-source-${{ matrix.doxygen }}
 
     - name: Install CMake 3.16.x
       uses: jwlawson/actions-setup-cmake@v1.3
