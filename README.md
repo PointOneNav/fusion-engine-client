@@ -9,6 +9,8 @@
 This library provides message definitions and support functionality for interacting with Point One FusionEngine in real
 time, as well as processing recorded output data. Both C++ and Python are supported.
 
+See https://pointonenav.github.io/fusion-engine-client for the latest API documentation.
+
 * [Requirements](#requirements)
 * [Directory Structure](#directory-structure)
   * [Example Applications](#example-applications)
