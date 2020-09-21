@@ -96,10 +96,12 @@ struct GPSFixMessage {
   /**
    * @name Vehicle Orientation
    *
-   * @note
-   * Specified as intrinsic Euler-231 angles (pitch, roll, dip). Note that the
-   * ROS Euler angle order differs from the one used for @ref
-   * PoseMessage::ypr_deg.
+   * @warning
+   * The pitch/roll/dip field definition listed in the
+   * [ROS GPSFix message definition](http://docs.ros.org/api/gps_common/html/msg/GPSFix.html)
+   * uses non-standard terminology, and the order of the Euler angles is not
+   * explicitly defined. We do not currently support this field. See @ref
+   * PoseMessage::ypr_deg instead.
    *
    * @{
    */
