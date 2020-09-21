@@ -63,6 +63,7 @@ enum class SolutionType : uint8_t {
 
 /**
  * @brief Identifiers for the defined output message types.
+ * @ingroup messages
  */
 enum class MessageType : uint16_t {
   INVALID = 0, ///< Invalid message type
@@ -286,7 +287,6 @@ inline std::string to_string(SolutionType type) {
 inline std::ostream& operator<<(std::ostream& stream, SolutionType type) {
   return (stream << to_string(type));
 }
-
 
 /**
  * @defgroup messages Message Definitions
