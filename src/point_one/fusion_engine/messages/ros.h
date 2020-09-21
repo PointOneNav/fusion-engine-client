@@ -196,6 +196,59 @@ struct GPSFixMessage {
   uint8_t reserved[3] = {0};
 };
 
+/**
+ * @brief [ROS Imu](http://docs.ros.org/api/sensor_msgs/html/msg/Imu.html)
+ *        message (MessageType::ROS_IMU).
+ * @ingroup ros_messages
+ *
+ * If any of the data elements are not available (e.g., IMU doesn't produce an
+ * orientation estimate), they will be set to 0 and their associated covariance
+ * matrices will be set to -1.
+ *
+ * @note
+ * The data contained in this message has been corrected for accelerometer and
+ * gyro biases and scale factors, and has been rotated into the vehicle body
+ * frame from the original IMU orientation using the FusionEngine sensor
+ * calibration data.
+ */
+struct IMUMessage {
+  /** The time of the message, in P1 time (beginning at power-on). */
+  Timestamp p1_time;
+
+  /**
+   * The platform orientation, represented as a quaternion with the scalar
+   * component last (x, y, z, w).
+   */
+  double orientation[4] = {0.0, 0.0, 0.0, 0.0};
+
+  /**
+   * Orientation covariance matrix. Set to -1 if not available.
+   */
+  double orientation_covariance[9] = {-1};
+
+  /**
+   * Vehicle x/y/z rate of rotation (in radians/second), resolved in the body
+   * frame.
+   */
+  double angular_velocity_rps[3] = {0.0, 0.0, 0.0};
+
+  /**
+   * Vehicle rate of rotation covariance matrix. Set to -1 if not available.
+   */
+  double angular_velocity_covariance[9] = {-1};
+
+  /**
+   * Vehicle x/y/z linear acceleration (in meters/second^2), resolved in the
+   * body frame.
+   */
+  double acceleration_mps2[3] = {0.0, 0.0, 0.0};
+
+  /**
+   * Vehicle x/y/z acceleration covariance matrix. Set to -1 if not available.
+   */
+  double acceleration_covariance[9] = {-1};
+};
+
 #pragma pack(pop)
 
 } // namespace ros

@@ -79,6 +79,7 @@ enum class MessageType : uint16_t {
 
   // ROS messages.
   ROS_GPS_FIX = 12010, ///< @ref ros::GPSFixMessage
+  ROS_IMU = 12011, ///< @ref ros::IMUMessage
 };
 
 /** @} */
