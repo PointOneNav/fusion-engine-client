@@ -89,6 +89,45 @@ struct PoseMessage {
 };
 
 /**
+ * @brief Auxiliary platform pose information (@ref MessageType::POSE_AUX).
+ * @ingroup messages
+ */
+struct PoseAuxMessage {
+  /** The time of the message, in P1 time (beginning at power-on). */
+  Timestamp p1_time;
+
+  /**
+   * The position standard deviation (in meters), resolved in the body frame.
+   * Set to `NAN` if attitude is not available for the body frame
+   * transformation.
+   */
+  float position_std_body_m[3] = {NAN, NAN, NAN};
+
+  /**
+   * The 3x3 position covariance matrix (in m^2), resolved in the local ENU
+   * frame. Values are stored in row-major order.
+   */
+  double position_cov_enu_m2[9] = {NAN};
+
+  /**
+   * The platform orientation, represented as a quaternion with the scalar
+   * component last (x, y, z, w).
+   */
+  double attitude_quaternion[4] = {NAN, NAN, NAN, NAN};
+
+  /**
+   * The platform velocity (in meters/second), resolved in the local ENU frame.
+   */
+  double velocity_enu_mps[3] = {NAN, NAN, NAN};
+
+  /**
+   * The velocity standard deviation (in meters/second), resolved in the local
+   * ENU frame.
+   */
+  float velocity_std_enu_mps[3] = {NAN, NAN, NAN};
+};
+
+/**
  * @brief Information about the GNSS data used in the @ref PoseMessage with the
  *        corresponding timestamp (@ref MessageType::GNSS_INFO).
  * @ingroup messages

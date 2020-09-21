@@ -71,6 +71,7 @@ enum class MessageType : uint16_t {
   POSE = 10000, ///< @ref PoseMessage
   GNSS_INFO = 10001, ///< @ref GNSSInfoMessage
   GNSS_SATELLITE = 10002, ///< @ref GNSSSatelliteMessage
+  POSE_AUX = 10003, ///< @ref PoseAuxMessage
 
   // Sensor measurement messages.
   IMU_MEASUREMENT = 11000, ///< @ref IMUMeasurement
