@@ -147,7 +147,7 @@ jobs:
 
   # Build the documentation.
   build_doxygen:
-    name: Doxygen Build
+    name: Documentation Build
     runs-on: ubuntu-latest
     strategy:
       matrix:
