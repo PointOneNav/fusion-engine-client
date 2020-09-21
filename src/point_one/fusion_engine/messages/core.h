@@ -6,4 +6,5 @@
 #pragma once
 
 #include "point_one/fusion_engine/messages/defs.h"
+#include "point_one/fusion_engine/messages/measurements.h"
 #include "point_one/fusion_engine/messages/solution.h"
