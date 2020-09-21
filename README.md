@@ -22,6 +22,7 @@ See https://pointonenav.github.io/fusion-engine-client for the latest API docume
   * [Bazel](#bazel)
     * [Compiling](#compiling)
     * [Running Examples](#running-examples)
+  * [Compiling Documentation](#compiling-documentation)
 * [Usage](#usage)
   * [Body Coordinate Frame Definition](#body-coordinate-frame-definition)
 
@@ -34,6 +35,10 @@ See https://pointonenav.github.io/fusion-engine-client for the latest API docume
 
 #### Python Support
 - Python 3.4 or later
+
+#### Documentation Build Support (Optional)
+- [Doxygen](https://www.doxygen.nl/) version 1.8.18
+  - Versions 1.8.19 and 1.8.20 have a known issue with `enum` documentation and do not currently work
 
 ### Directory Structure
 
@@ -160,6 +165,13 @@ You can also use the `bazel run` command to build and run an application in one 
 ```
 bazel run -c opt //message_decode -- message_decode/example_data.p1bin
 ```
+
+### Compiling Documentation
+
+The documentation for the latest release is generated automatically and hosted at
+https://pointonenav.github.io/fusion-engine-client. If you would like to build documentation locally, simply run
+`doxygen` from the repository root directory. The generated output will be located in `docs/html/`. To view it, open
+`docs/html/index.html` in a web browser.
 
 ## Usage
 
