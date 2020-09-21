@@ -12,6 +12,11 @@ payload corresponding with the @ref point_one::fusion_engine::messages::MessageT
 
 See @ref messages for a complete list of available messages.
 
+\subsection ros_message_support ROS Message Support
+
+For convenience, this library includes some messages that can be directly translated into ROS counterparts where ROS
+integration is required. See @ref ros_messages.
+
 \section body_frame Body Coordinate Frame Definition
 
 <div>
