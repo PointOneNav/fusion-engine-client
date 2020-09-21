@@ -31,6 +31,39 @@ namespace ros {
  */
 
 /**
+ * @brief [ROS Pose](http://docs.ros.org/api/geometry_msgs/html/msg/Pose.html)
+ *        message (MessageType::ROS_POSE).
+ * @ingroup ros_messages
+ */
+struct PoseMessage {
+  /** The time of the message, in P1 time (beginning at power-on). */
+  Timestamp p1_time;
+
+  /**
+   * The relative change in ENU position since the time of the first @ref
+   * PoseMessage, resolved in the local ENU frame at the time of the first @ref
+   * PoseMessage.
+   *
+   * @warning
+   * The [ROS Pose message API documentation](
+   * http://docs.ros.org/api/geometry_msgs/html/msg/Pose.html)
+   * does not currently define the origin or reference frame of its position
+   * field. Using the Novatel SPAN driver as a reference
+   * (http://docs.ros.org/api/novatel_span_driver/html/publisher_8py_source.html),
+   * we have chosen to report a relative ENU position. Absolute world position
+   * is available in the @ref GPSFixMessage and @ref messages::PoseMessage
+   * classes.
+   */
+  double position_rel_m[3] = {NAN, NAN, NAN};
+
+  /**
+   * The platform orientation, represented as a quaternion with the scalar
+   * component last (x, y, z, w).
+   */
+  double orientation[4] = {NAN, NAN, NAN, NAN};
+};
+
+/**
  * @brief [ROS GPSFix](http://docs.ros.org/api/gps_common/html/msg/GPSFix.html)
  *        message (MessageType::ROS_GPS_FIX).
  * @ingroup ros_messages
@@ -101,7 +134,7 @@ struct GPSFixMessage {
    * [ROS GPSFix message definition](http://docs.ros.org/api/gps_common/html/msg/GPSFix.html)
    * uses non-standard terminology, and the order of the Euler angles is not
    * explicitly defined. We do not currently support this field. See @ref
-   * PoseMessage::ypr_deg instead.
+   * PoseMessage::orientation or @ref messages::PoseMessage::ypr_deg instead.
    *
    * @{
    */
