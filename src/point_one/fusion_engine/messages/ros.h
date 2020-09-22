@@ -31,9 +31,10 @@ namespace ros {
  */
 
 /**
- * @brief [ROS Pose](http://docs.ros.org/api/geometry_msgs/html/msg/Pose.html)
- *        message (MessageType::ROS_POSE).
+ * @brief ROS `Pose` message (MessageType::ROS_POSE).
  * @ingroup ros_messages
+ *
+ * See http://docs.ros.org/api/geometry_msgs/html/msg/Pose.html.
  */
 struct PoseMessage {
   /** The time of the message, in P1 time (beginning at power-on). */
@@ -64,9 +65,10 @@ struct PoseMessage {
 };
 
 /**
- * @brief [ROS GPSFix](http://docs.ros.org/api/gps_common/html/msg/GPSFix.html)
- *        message (MessageType::ROS_GPS_FIX).
+ * @brief ROS `GPSFix` message (MessageType::ROS_GPS_FIX).
  * @ingroup ros_messages
+ *
+ * See http://docs.ros.org/api/gps_common/html/msg/GPSFix.html.
  */
 struct GPSFixMessage {
   /**
@@ -232,13 +234,14 @@ struct GPSFixMessage {
 };
 
 /**
- * @brief [ROS Imu](http://docs.ros.org/api/sensor_msgs/html/msg/Imu.html)
- *        message (MessageType::ROS_IMU).
+ * @brief ROS `Imu` message (MessageType::ROS_IMU).
  * @ingroup ros_messages
  *
  * If any of the data elements are not available (e.g., IMU doesn't produce an
  * orientation estimate), they will be set to 0 and their associated covariance
  * matrices will be set to -1.
+ *
+ * See http://docs.ros.org/api/sensor_msgs/html/msg/Imu.html.
  *
  * @note
  * The data contained in this message has been corrected for accelerometer and
