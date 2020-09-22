@@ -4,6 +4,8 @@ import math
 import struct
 from zlib import crc32
 
+import numpy as np
+
 
 class SatelliteType(IntEnum):
     UNKNOWN = 1
@@ -229,3 +231,21 @@ class MessageHeader:
         @return The size of the header (in bytes).
         """
         return MessageHeader._SIZE
+
+    @classmethod
+    def unpack_values(cls, format, buffer, offset=0, *args):
+        values = struct.unpack_from(format, buffer=buffer, offset=offset)
+
+        args = list(args)
+        value_idx = 0
+        for arg_idx in range(len(args)):
+            arg = args[arg_idx]
+            if isinstance(arg, np.ndarray):
+                for i in range(arg.size):
+                    arg.flat[i] = values[value_idx]
+                    value_idx += 1
+            else:
+                args[arg_idx] = values[value_idx]
+                value_idx += 1
+
+        return tuple(args)
