@@ -48,6 +48,9 @@ class MessageType(IntEnum):
     GNSS_SATELLITE = 10002
     POSE_AUX = 10003
 
+    # Sensor measurement messages.
+    IMU_MEASUREMENT = 11000
+
 
 class Timestamp:
     _INVALID = 0xFFFFFFFF
