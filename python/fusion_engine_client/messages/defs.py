@@ -19,31 +19,31 @@ class SatelliteType(IntEnum):
 
 
 class SolutionType(IntEnum):
-  # Invalid no position available.
-  Invalid = 0
-  # Autonomous GPS fix no correction data used.
-  AutonomousGPS = 1
-  # DGPS using a local base station or WAAS.
-  DGPS = 2
-  # RTK fixed integers (one or more fixed).
-  RTKFixed = 4
-  # RTK float integers.
-  RTKFloat = 5
-  # Integrated position using dead reckoning.
-  Integrate = 6
-  # Using vision measurements.
-  Visual = 9
-  # Using PPP.
-  PPP = 10
+    # Invalid no position available.
+    Invalid = 0
+    # Autonomous GPS fix no correction data used.
+    AutonomousGPS = 1
+    # DGPS using a local base station or WAAS.
+    DGPS = 2
+    # RTK fixed integers (one or more fixed).
+    RTKFixed = 4
+    # RTK float integers.
+    RTKFloat = 5
+    # Integrated position using dead reckoning.
+    Integrate = 6
+    # Using vision measurements.
+    Visual = 9
+    # Using PPP.
+    PPP = 10
 
 
 class MessageType(IntEnum):
-  INVALID = 0
+    INVALID = 0
 
-  # INS solution messages.
-  POSE = 10000
-  GNSS_INFO = 10001
-  GNSS_SATELLITE = 10002
+    # INS solution messages.
+    POSE = 10000
+    GNSS_INFO = 10001
+    GNSS_SATELLITE = 10002
 
 
 class Timestamp:
