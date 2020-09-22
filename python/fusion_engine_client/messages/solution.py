@@ -77,6 +77,7 @@ class PoseMessage:
          self.horizontal_protection_level_m,
          self.vertical_protection_level_m) = \
             struct.unpack_from(PoseMessage._FORMAT, buffer=buffer, offset=offset)
+        offset += PoseMessage._SIZE
 
         self.solution_type = SolutionType(solution_type_int)
 
