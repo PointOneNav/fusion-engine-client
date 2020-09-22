@@ -88,6 +88,67 @@ class PoseMessage:
         return 2 * Timestamp.calcsize() + PoseMessage._SIZE
 
 
+class PoseAuxMessage:
+    """!
+    @brief Auxiliary platform pose information.
+    """
+    MESSAGE_TYPE = MessageType.POSE_AUX
+
+    _FORMAT = '<3f 9d 4d 3d 3f'
+    _SIZE: int = struct.calcsize(_FORMAT)
+
+    def __init__(self):
+        self.p1_time = Timestamp()
+
+        self.position_std_body_m = np.full((3,), np.nan)
+        self.position_cov_enu_m2 = np.full((3, 3), np.nan)
+
+        self.attitude_quaternion = np.full((4,), np.nan)
+
+        self.velocity_enu_mps = np.full((3,), np.nan)
+        self.velocity_std_enu_mps = np.full((3,), np.nan)
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        if buffer is None:
+            buffer = bytes(self.calcsize())
+
+        initial_offset = offset
+
+        offset += self.p1_time.pack(buffer, offset, return_buffer=False)
+
+        struct.pack_into(PoseAuxMessage._FORMAT, buffer, offset,
+                         *self.position_std_body_m,
+                         *self.position_cov_enu_m2.flat,
+                         *self.attitude_quaternion,
+                         *self.velocity_enu_mps,
+                         *self.velocity_std_enu_mps)
+        offset += PoseAuxMessage._SIZE
+
+        if return_buffer:
+            return buffer
+        else:
+            return offset - initial_offset
+
+    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+        initial_offset = offset
+
+        offset += self.p1_time.unpack(buffer, offset)
+
+        MessageHeader.unpack_values(PoseAuxMessage._FORMAT, buffer, offset,
+                                    self.position_std_body_m,
+                                    self.position_cov_enu_m2,
+                                    self.attitude_quaternion,
+                                    self.velocity_enu_mps,
+                                    self.velocity_std_enu_mps)
+        offset += PoseAuxMessage._SIZE
+
+        return offset - initial_offset
+
+    @classmethod
+    def calcsize(cls) -> int:
+        return Timestamp.calcsize() + PoseAuxMessage._SIZE
+
+
 class GNSSInfoMessage:
     """!
     @brief Information about the GNSS data used in the @ref PoseMessage with the corresponding timestamp.

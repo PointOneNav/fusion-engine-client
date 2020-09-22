@@ -46,6 +46,7 @@ class MessageType(IntEnum):
     POSE = 10000
     GNSS_INFO = 10001
     GNSS_SATELLITE = 10002
+    POSE_AUX = 10003
 
 
 class Timestamp:
