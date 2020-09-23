@@ -281,3 +281,5 @@ jobs:
         aws s3 sync --delete --acl public-read docs/html s3://fusion-engine-client-docs/${GIT_TAG}
         aws s3 cp --delete --acl public-read docs/include_header.js s3://fusion-engine-client-docs/
         aws s3 cp --delete --acl public-read docs/versions.html s3://fusion-engine-client-docs/
+        aws s3 cp --delete --acl public-read docs/index.html s3://fusion-engine-client-docs/
+        aws s3 cp --delete --acl public-read docs/error.html s3://fusion-engine-client-docs/
