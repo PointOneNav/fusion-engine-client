@@ -8,7 +8,7 @@ if __name__ == "__main__":
     entry_template = """\
         <tr>
           <td>%(version)s%(current)s</td>
-          <td><a href="/%(version)s/index.html">Documentation</a></td>
+          <td><a href="/fusion-engine/%(version)s/index.html">Documentation</a></td>
           <td><a href="https://github.com/PointOneNav/fusion-engine-client/releases/tag/%(version)s">Release Notes</a></td>
         </tr>
 """
