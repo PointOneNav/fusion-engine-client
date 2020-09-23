@@ -279,7 +279,7 @@ jobs:
         python3 docs/update_versions.py ${GIT_TAG}
         tar xvzf fusion-engine-client-docs.tar.gz --strip-components=1
         aws s3 sync --delete --acl public-read docs/html s3://fusion-engine-client-docs/${GIT_TAG}
-        aws s3 cp --delete --acl public-read docs/include_header.js s3://fusion-engine-client-docs/
-        aws s3 cp --delete --acl public-read docs/versions.html s3://fusion-engine-client-docs/
-        aws s3 cp --delete --acl public-read docs/index.html s3://fusion-engine-client-docs/
-        aws s3 cp --delete --acl public-read docs/error.html s3://fusion-engine-client-docs/
+        aws s3 cp --acl public-read docs/include_header.js s3://fusion-engine-client-docs/
+        aws s3 cp --acl public-read docs/versions.html s3://fusion-engine-client-docs/
+        aws s3 cp --acl public-read docs/index.html s3://fusion-engine-client-docs/
+        aws s3 cp --acl public-read docs/error.html s3://fusion-engine-client-docs/
