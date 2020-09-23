@@ -154,6 +154,9 @@ jobs:
         doxygen: [1_8_18]
     steps:
     - uses: actions/checkout@v2
+      with:
+        # Note: Checking out with full tag history for version query below.
+        fetch-depth: 0
 
     - name: Setup Doxygen Cache
       uses: actions/cache@v2
@@ -193,7 +196,7 @@ jobs:
 
     - name: Build Documentation
       run: |
-        python3 docs/update_version.py ${GIT_TAG}
+        python3 docs/update_versions.py ${GIT_TAG}
         doxygen Doxyfile.version
         tar czf fusion-engine-client-docs.tar.gz docs/html --transform 's|^docs/html|fusion-engine-client/docs/html|'
 
@@ -212,15 +215,6 @@ jobs:
     outputs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
     steps:
-    - uses: actions/checkout@v2
-      with:
-        # Note: Checking out with full tag history for S3 upload below.
-        fetch-depth: 0
-
-    - name: Extract Tag Name
-      id: get_version
-      run: echo ::set-env name=GIT_TAG::${GITHUB_REF#refs/tags/}
-
     - name: Get Documentation Artifact
       uses: actions/download-artifact@v2
       with:
@@ -248,6 +242,23 @@ jobs:
         asset_name: fusion-engine-client-docs.tar.gz
         asset_content_type: application/tar+gzip
 
+  # Upload release (v*) or master documentation to S3.
+  upload_doxygen:
+    name: Upload Documentation
+    if: startsWith(github.ref, 'refs/tags/') || endsWith(github.ref, '/master')
+    needs: [build_doxygen]
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        # Note: Checking out with full tag history for version query below.
+        fetch-depth: 0
+
+    - name: Get Documentation Artifact
+      uses: actions/download-artifact@v2
+      with:
+        name: fusion-engine-client-docs.tar.gz
+
     - name: Configure AWS Credentials
       uses: aws-actions/configure-aws-credentials@v1
       with:
@@ -255,7 +266,11 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: us-east-1
 
+    - name: Extract Tag Name
+      run: echo ::set-env name=GIT_TAG::${GITHUB_REF##*/}
+
     - name: Upload Documentation To Web (S3)
       run: |
+        python3 docs/update_version.py ${GIT_TAG}
         tar xvzf fusion-engine-client-docs.tar.gz --strip-components=1
         aws s3 sync --delete --acl public-read docs/html s3://fusion-engine-client-docs/${GIT_TAG}
