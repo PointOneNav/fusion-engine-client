@@ -183,9 +183,18 @@ jobs:
         cd doxygen/build
         sudo make install
 
+    - name: Extract Tag Name
+      if: startsWith(github.ref, 'refs/tags/') || endsWith(github.ref, '/master')
+      run: echo ::set-env name=GIT_TAG::${GITHUB_REF##*/}
+
+    - name: Extract Commit Hash
+      if: !startsWith(github.ref, 'refs/tags/')
+      run: echo ::set-env name=GIT_TAG::${GITHUB_SHA}
+
     - name: Build Documentation
       run: |
-        doxygen
+        python3 docs/update_version.py ${GIT_TAG}
+        doxygen Doxyfile.version
         tar czf fusion-engine-client-docs.tar.gz docs/html --transform 's|^docs/html|fusion-engine-client/docs/html|'
 
     - name: Upload Artifact
