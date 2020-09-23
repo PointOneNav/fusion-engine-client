@@ -2,6 +2,7 @@ directories:
   # Add the directories you want added as source here
   # By default, we've added your entire workspace ('.')
   .
+  -build/
   -examples/bazel-bin
   -examples/bazel-examples
   -examples/bazel-out

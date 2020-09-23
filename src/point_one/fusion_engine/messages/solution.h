@@ -1,5 +1,6 @@
 /**************************************************************************/ /**
  * @brief Platform position/attitude solution messages.
+ * @file
  ******************************************************************************/
 
 #pragma once
@@ -15,13 +16,14 @@ namespace messages {
 #pragma pack(push, 4)
 
 /**
- * @brief Platform pose solution (position, velocity, attitude). \[@ref
- *        MessageType::POSE\]
+ * @brief Platform pose solution: position, velocity, attitude (@ref
+ *        MessageType::POSE).
+ * @ingroup messages
  *
  * @note
  * All data is timestamped using the Point One Time, which is a monotonic
  * timestamp referenced to the start of the device. Corresponding messages (@ref
- * GNSSInfoMessage, @ref IMUCorrectionsMessage, etc.) may be associated using
+ * GNSSInfoMessage, @ref GNSSSatelliteMessage, etc.) may be associated using
  * their @ref p1_time values.
  */
 struct PoseMessage {
@@ -88,7 +90,8 @@ struct PoseMessage {
 
 /**
  * @brief Information about the GNSS data used in the @ref PoseMessage with the
- *        corresponding timestamp. \[@ref MessageType::GNSS_INFO\]
+ *        corresponding timestamp (@ref MessageType::GNSS_INFO).
+ * @ingroup messages
  */
 struct GNSSInfoMessage {
   static constexpr uint32_t INVALID_REFERENCE_STATION = 0xFFFFFFFF;
@@ -120,8 +123,9 @@ struct GNSSInfoMessage {
 
 /**
  * @brief Information about the individual satellites used in the @ref
- *        PoseMessage and @ref GNSSInfoMessage with the corresponding timestamp.
- *        \[@ref MessageType::GNSS_SATELLITE\]
+ *        PoseMessage and @ref GNSSInfoMessage with the corresponding timestamp
+ *        (@ref MessageType::GNSS_SATELLITE).
+ * @ingroup messages
  *
  * This message is followed by `N` @ref SatelliteInfo objects, where `N` is
  * equal to @ref num_satellites. For example, a message with two satellites
@@ -145,11 +149,12 @@ struct GNSSSatelliteMessage {
 };
 
 /**
- * @brief Information about an individual satellite.
+ * @brief Information about an individual satellite (see @ref
+ *        GNSSSatelliteMessage).
  *
- * For satellites where @ref used_in_solution is 0, the satellite may either be
- * currently tracked by the receiver, or may just be expected according to
- * available ephemeris data.
+ * For satellites where @ref usage is 0, the satellite may either be currently
+ * tracked by the receiver but not used for navigation, or may just be expected
+ * according to available ephemeris data.
  */
 struct SatelliteInfo {
   /**

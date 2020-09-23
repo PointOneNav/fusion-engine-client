@@ -1,0 +1,31 @@
+<!-- HTML footer for doxygen 1.8.18-->
+<!-- start footer part -->
+<!--BEGIN GENERATE_TREEVIEW-->
+<div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
+  <ul>
+    $navpath
+    <li class="footer">$generatedby
+    <a href="http://www.doxygen.org/index.html">
+    <img class="footer" src="$relpath^doxygen.png" alt="doxygen"/></a> $doxygenversion </li>
+  </ul>
+</div>
+<!--END GENERATE_TREEVIEW-->
+<!--BEGIN !GENERATE_TREEVIEW-->
+<hr class="footer"/><address class="footer"><small>
+$generatedby &#160;<a href="http://www.doxygen.org/index.html">
+<img class="footer" src="$relpath^doxygen.png" alt="doxygen"/>
+</a> $doxygenversion
+</small></address>
+<!--END !GENERATE_TREEVIEW-->
+
+</div> <!-- id=doxy -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+
+<!-- Load the shared header source when hosted on S3. If that fails, fall back
+     to a local copy as would be included in a distribution tar file. -->
+<script type="text/javascript" src="../include_header.js"></script>
+<script>window.addNavBar || document.write('<script src="include_header.js">\x3C/script>')</script>
+<script>addNavBar("$projectnumber");</script>
+</body>
+</html>

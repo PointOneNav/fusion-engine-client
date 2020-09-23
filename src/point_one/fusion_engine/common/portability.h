@@ -1,5 +1,6 @@
 /**************************************************************************/ /**
- * @brief Portability definitions.
+ * @brief Library portability helper definitions.
+ * @file
  ******************************************************************************/
 
 #pragma once

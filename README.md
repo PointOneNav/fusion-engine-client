@@ -9,6 +9,8 @@
 This library provides message definitions and support functionality for interacting with Point One FusionEngine in real
 time, as well as processing recorded output data. Both C++ and Python are supported.
 
+See http://docs.pointonenav.com/fusion-engine/ for the latest API documentation.
+
 * [Requirements](#requirements)
 * [Directory Structure](#directory-structure)
   * [Example Applications](#example-applications)
@@ -20,6 +22,7 @@ time, as well as processing recorded output data. Both C++ and Python are suppor
   * [Bazel](#bazel)
     * [Compiling](#compiling)
     * [Running Examples](#running-examples)
+  * [Compiling Documentation](#compiling-documentation)
 * [Usage](#usage)
   * [Body Coordinate Frame Definition](#body-coordinate-frame-definition)
 
@@ -32,6 +35,10 @@ time, as well as processing recorded output data. Both C++ and Python are suppor
 
 #### Python Support
 - Python 3.4 or later
+
+#### Documentation Build Support (Optional)
+- [Doxygen](https://www.doxygen.nl/) version 1.8.18
+  - Versions 1.8.19 and 1.8.20 have a known issue with `enum` documentation and do not currently work
 
 ### Directory Structure
 
@@ -159,6 +166,13 @@ You can also use the `bazel run` command to build and run an application in one 
 bazel run -c opt //message_decode -- message_decode/example_data.p1bin
 ```
 
+### Compiling Documentation
+
+The documentation for the latest release is generated automatically and hosted at
+http://docs.pointonenav.com/fusion-engine/. If you would like to build documentation locally, simply run `doxygen` from
+the repository root directory. The generated output will be located in `docs/html/`. To view it, open
+`docs/html/index.html` in a web browser.
+
 ## Usage
 
 All FusionEngine messages contain a `MessageHeader` followed by the payload of the specific message. To decode an
@@ -189,7 +203,7 @@ See the `message_decode` example for more details.
 
 ### Body Coordinate Frame Definition
 
-<img src="vehicle_frame_side.svg" alt="Vehicle Frame Side View" width="48%" /> <img src="vehicle_frame_back.svg" alt="Vehicle Frame Back View" width="35%" />
+<img src="docs/images/vehicle_frame_side.svg" alt="Vehicle Frame Side View" width="48%" /> <img src="docs/images/vehicle_frame_back.svg" alt="Vehicle Frame Back View" width="35%" />
 
 The platform body axes are defined as +x forward, +y left, and +z up. A positive yaw is a left turn, positive pitch
 points the nose of the vehicle down, and positive roll is a roll toward the right. Yaw is measured from east in a

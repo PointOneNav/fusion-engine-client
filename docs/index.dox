@@ -1,0 +1,36 @@
+/** \mainpage FusionEngine Client Documentation
+
+This library provides message definitions and support functionality for interacting with Point One FusionEngine in real
+time, as well as processing recorded output data. Both C++ and Python are supported.
+
+See https://github.com/PointOneNav/fusion-engine-client for requirements and installation/build instructions.
+
+\section message_format Message Format
+
+All messages begin with a @ref point_one::fusion_engine::messages::MessageHeader "MessageHeader", followed by a message
+payload corresponding with the @ref point_one::fusion_engine::messages::MessageType "MessageType" in the header.
+
+See @ref messages for a complete list of available messages.
+
+\section body_frame Body Coordinate Frame Definition
+
+<div>
+  <div style="text-align: center; width: 48%; float: left;">
+    <img src="vehicle_frame_side.svg" />
+    <div class="caption">Vehicle frame: side view"</div>
+  </div>
+  <div style="text-align: center; width: 35%; overflow: hidden;">
+    <img src="vehicle_frame_back.svg" />
+    <div class="caption">Vehicle frame: back view"</div>
+  </div>
+</div>
+
+The platform body axes are defined as +x forward, +y left, and +z up.
+
+A positive yaw is a left turn, positive pitch points the nose of the vehicle down, and positive roll is a roll toward
+the right.
+
+Yaw is measured from east in a counter-clockwise direction. For example, north is +90 degrees (i.e.,
+`heading = 90.0 - yaw`).
+
+*/

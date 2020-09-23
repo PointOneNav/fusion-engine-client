@@ -1,5 +1,6 @@
 /**************************************************************************/ /**
  * @brief Point One FusionEngine output message common definitions.
+ * @file
  ******************************************************************************/
 
 #pragma once
@@ -16,6 +17,11 @@ namespace messages {
 // Enforce 4-byte alignment and packing of all data structures and values so
 // that floating point values are aligned on platforms that require it.
 #pragma pack(push, 4)
+
+/**
+ * @defgroup enum_definitions Common Enumeration Definitions
+ * @{
+ */
 
 /**
  * @brief System/constellation type definitions.
@@ -59,13 +65,15 @@ enum class SolutionType : uint8_t {
  * @brief Identifiers for the defined output message types.
  */
 enum class MessageType : uint16_t {
-  INVALID = 0,
+  INVALID = 0, ///< Invalid message type
 
   // INS solution messages.
-  POSE = 10000,
-  GNSS_INFO = 10001,
-  GNSS_SATELLITE = 10002,
+  POSE = 10000, ///< @ref PoseMessage
+  GNSS_INFO = 10001, ///< @ref GNSSInfoMessage
+  GNSS_SATELLITE = 10002, ///< @ref GNSSSatelliteMessage
 };
+
+/** @} */
 
 /**
  * @brief Generic timestamp representation.
@@ -78,7 +86,7 @@ struct Timestamp {
   static constexpr uint32_t INVALID = 0xFFFFFFFF;
 
   /**
-   * The number of full seconds since the epoch. Set to @ref P1_INVALID_TIME if
+   * The number of full seconds since the epoch. Set to @ref INVALID if
    * the timestamp is invalid or unknown.
    */
   uint32_t seconds = INVALID;
@@ -114,6 +122,8 @@ struct MessageHeader {
    * field to the last byte in the message, including the message payload. This
    * uses the standard CRC-32 generator polynomial in reversed order
    * (0xEDB88320).
+   *
+   * See also @ref crc_support.
    */
   uint32_t crc = 0;
 
@@ -140,6 +150,7 @@ struct MessageHeader {
 /**
  * @brief Get a human-friendly string name for the specified @ref SatelliteType
  *        (GNSS constellation).
+ * @ingroup enum_definitions
  *
  * @param type The desired satellite type.
  *
@@ -182,12 +193,17 @@ inline std::string to_string(SatelliteType type) {
   }
 }
 
+/**
+ * @brief @ref SatelliteType stream operator.
+ * @ingroup enum_definitions
+ */
 inline std::ostream& operator<<(std::ostream& stream, SatelliteType type) {
   return (stream << to_string(type));
 }
 
 /**
  * @brief Get a human-friendly string name for the specified @ref MessageType.
+ * @ingroup enum_definitions
  *
  * @param type The desired message type.
  *
@@ -209,12 +225,17 @@ inline std::string to_string(MessageType type) {
   }
 }
 
+/**
+ * @brief @ref MessageType stream operator.
+ * @ingroup enum_definitions
+ */
 inline std::ostream& operator<<(std::ostream& stream, MessageType type) {
   return (stream << to_string(type));
 }
 
 /**
  * @brief Get a human-friendly string name for the specified @ref SolutionType.
+ * @ingroup enum_definitions
  *
  * @param type The desired message type.
  *
@@ -251,9 +272,21 @@ inline std::string to_string(SolutionType type) {
   }
 }
 
+/**
+ * @brief @ref SolutionType stream operator.
+ * @ingroup enum_definitions
+ */
 inline std::ostream& operator<<(std::ostream& stream, SolutionType type) {
   return (stream << to_string(type));
 }
+
+
+/**
+ * @defgroup messages Message Definitions
+ * @brief Type definitions for all defined messages.
+ *
+ * See also @ref MessageType.
+ */
 
 } // namespace messages
 } // namespace fusion_engine
