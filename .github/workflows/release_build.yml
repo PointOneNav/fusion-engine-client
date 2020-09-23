@@ -283,4 +283,5 @@ jobs:
         aws s3 cp --acl public-read docs/versions.html s3://fusion-engine-client-docs/
         aws s3 cp --acl public-read docs/index.html s3://fusion-engine-client-docs/
         aws s3 cp --acl public-read docs/error.html s3://fusion-engine-client-docs/
-        aws s3 cp --acl public-read docs/favicon.ico s3://fusion-engine-client-docs/
+        aws s3 cp --acl public-read docs/favicon.ico s3://fusion-engine-client-docs
+        aws s3 cp --acl public-read docs/point_one_logo.png s3://fusion-engine-client-docs/
