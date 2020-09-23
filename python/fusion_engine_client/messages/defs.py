@@ -51,6 +51,11 @@ class MessageType(IntEnum):
     # Sensor measurement messages.
     IMU_MEASUREMENT = 11000
 
+    # ROS messages.
+    ROS_POSE = 12000
+    ROS_GPS_FIX = 12010
+    ROS_IMU = 12011
+
 
 class Timestamp:
     _INVALID = 0xFFFFFFFF

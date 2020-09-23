@@ -36,6 +36,7 @@ cc_library(
     name = "messages",
     deps = [
         ":core_headers",
+        ":ros_support",
     ],
 )
 
@@ -50,6 +51,17 @@ cc_library(
         "src/point_one/fusion_engine/messages/solution.h",
     ],
     includes = ["src"],
+)
+
+# ROS translation message definitions.
+cc_library(
+    name = "ros_support",
+    hdrs = [
+        "src/point_one/fusion_engine/messages/ros.h",
+    ],
+    deps = [
+        ":core_headers",
+    ],
 )
 
 ################################################################################

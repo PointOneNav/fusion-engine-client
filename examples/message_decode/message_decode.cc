@@ -190,7 +190,8 @@ Decode platform pose messages from a binary file containing FusionEngine data.
   // Decode all messages in the file.
   int return_code = 0;
   while (stream.tellg() != file_size_bytes) {
-    if (!DecodeMessage(stream, file_size_bytes - stream.tellg())) {
+    if (!DecodeMessage(stream,
+                       static_cast<size_t>(file_size_bytes - stream.tellg()))) {
       return_code = 1;
       break;
     }
