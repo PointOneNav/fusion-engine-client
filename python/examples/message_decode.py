@@ -53,7 +53,7 @@ def decode_message(header, data, offset):
                else 'none'))
         print('  Last differential time: %s' % str(contents.last_differential_time))
         print('  GDOP: %.1f  PDOP: %.1f' % (contents.gdop, contents.pdop))
-        print('  VDOP: %.1f  HDOP: %.1f' % (contents.hdop, contents.vdop))
+        print('  HDOP: %.1f  VDOP: %.1f' % (contents.hdop, contents.vdop))
     elif header.message_type == GNSSSatelliteMessage.MESSAGE_TYPE:
         contents = GNSSSatelliteMessage()
         contents.unpack(buffer=data, offset=offset)
