@@ -4,6 +4,9 @@ import os
 import subprocess
 import sys
 
+def version_to_value(version):
+    return list(map(int, version.lstrip('v').split('.')))
+
 if __name__ == "__main__":
     entry_template = """\
         <tr>
@@ -13,10 +16,21 @@ if __name__ == "__main__":
         </tr>
 """
 
+    entry_template_no_docs = """\
+        <tr>
+          <td>%(version)s%(current)s</td>
+          <td></td>
+          <td><a href="https://github.com/PointOneNav/fusion-engine-client/releases/tag/%(version)s">Release Notes</a></td>
+        </tr>
+"""
+
     # List available versions.
+
     versions = subprocess.check_output(['git', 'tag']).decode('utf-8').strip().split()
-    versions.sort(key=lambda s: list(map(int, s.lstrip('v').split('.'))), reverse=True)
+    versions.sort(key=version_to_value, reverse=True)
     latest_version = versions[0]
+
+    FIRST_RELEASE_WITH_DOCS = [1, 4, 0]
 
     # Find the docs/ directory.
     docs_dir = os.path.dirname(os.path.abspath(__file__))
@@ -43,8 +57,14 @@ if __name__ == "__main__":
 
         table_contents = ""
         for version in versions:
-            table_contents += entry_template % {'version': version,
-                                                'current': ' (Current)' if version == latest_version else ''}
+            value = version_to_value(version)
+            if value >= FIRST_RELEASE_WITH_DOCS:
+                template = entry_template
+            else:
+                template = entry_template_no_docs
+
+            table_contents += template % {'version': version,
+                                          'current': ' (Current)' if version == latest_version else ''}
 
         with open('%s/versions.html' % docs_dir, 'w') as f:
             f.write(file_contents % {'content': table_contents})
