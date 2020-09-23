@@ -4,7 +4,7 @@ function addNavBar(version) {
   var topElem = document.getElementById("p1_nav");
 
   var content =
-      '<nav>' +
+      '<nav style="background-color: #f03737;">' +
       '  <div class="nav-wrapper">' +
       '    <a href="https://github.com/PointOneNav/fusion-engine-client" class="brand-logo left" id="brand_link">' +
       '      Point One FusionEngine Client' +
