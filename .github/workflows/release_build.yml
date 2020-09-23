@@ -208,42 +208,6 @@ jobs:
         name: fusion-engine-client-docs.tar.gz
         path: fusion-engine-client-docs.tar.gz
 
-  # Create a release only on a tag (not on a branch push).
-  release:
-    name: Create Release
-    if: startsWith(github.ref, 'refs/tags/')
-    needs: [build_bazel, build_cmake, build_doxygen]
-    runs-on: ubuntu-latest
-    outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
-    steps:
-    - name: Get Documentation Artifact
-      uses: actions/download-artifact@v2
-      with:
-        name: fusion-engine-client-docs.tar.gz
-
-    - name: Create Release
-      id: create_release
-      uses: actions/create-release@latest
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ github.ref }}
-        release_name: Release ${{ github.ref }}
-        draft: false
-        prerelease: false
-
-    - name: Upload Documentation To Release
-      if: steps.create_release.conclusion == 'success'
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: fusion-engine-client-docs.tar.gz
-        asset_name: fusion-engine-client-docs.tar.gz
-        asset_content_type: application/tar+gzip
-
   # Upload release (v*) or master documentation to S3.
   upload_doxygen:
     name: Upload Documentation
@@ -285,3 +249,39 @@ jobs:
         aws s3 cp --acl public-read docs/error.html s3://docs.pointonenav.com/fusion-engine/
         aws s3 cp --acl public-read docs/favicon.ico s3://docs.pointonenav.com/fusion-engine/
         aws s3 cp --acl public-read docs/point_one_logo.png s3://docs.pointonenav.com/fusion-engine/
+
+  # Create a release only on a tag (not on a branch push).
+  release:
+    name: Create Release
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [build_bazel, build_cmake, build_doxygen, upload_doxygen]
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+    steps:
+    - name: Get Documentation Artifact
+      uses: actions/download-artifact@v2
+      with:
+        name: fusion-engine-client-docs.tar.gz
+
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@latest
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        draft: false
+        prerelease: false
+
+    - name: Upload Documentation To Release
+      if: steps.create_release.conclusion == 'success'
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: fusion-engine-client-docs.tar.gz
+        asset_name: fusion-engine-client-docs.tar.gz
+        asset_content_type: application/tar+gzip
