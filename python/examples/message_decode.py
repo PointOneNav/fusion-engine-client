@@ -47,7 +47,13 @@ def decode_message(header, data, offset):
         print('GNSS info message @ P1 time %s [sequence=%d, size=%d B]' %
               (str(contents.p1_time), header.sequence_number, len(data)))
         print('  GPS time: %s' % str(contents.gps_time.as_gps()))
-        print('  GDOP: %.1f' % contents.gdop)
+        print('  Reference station: %s' %
+              (str(contents.reference_station_id)
+               if contents.reference_station_id != GNSSInfoMessage.INVALID_REFERENCE_STATION
+               else 'none'))
+        print('  Last differential time: %s' % str(contents.last_differential_time))
+        print('  GDOP: %.1f  PDOP: %.1f' % (contents.gdop, contents.pdop))
+        print('  HDOP: %.1f  VDOP: %.1f' % (contents.hdop, contents.vdop))
     elif header.message_type == GNSSSatelliteMessage.MESSAGE_TYPE:
         contents = GNSSSatelliteMessage()
         contents.unpack(buffer=data, offset=offset)

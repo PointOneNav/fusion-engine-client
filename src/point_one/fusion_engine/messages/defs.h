@@ -63,6 +63,7 @@ enum class SolutionType : uint8_t {
 
 /**
  * @brief Identifiers for the defined output message types.
+ * @ingroup messages
  */
 enum class MessageType : uint16_t {
   INVALID = 0, ///< Invalid message type
@@ -71,6 +72,10 @@ enum class MessageType : uint16_t {
   POSE = 10000, ///< @ref PoseMessage
   GNSS_INFO = 10001, ///< @ref GNSSInfoMessage
   GNSS_SATELLITE = 10002, ///< @ref GNSSSatelliteMessage
+  POSE_AUX = 10003, ///< @ref PoseAuxMessage
+
+  // Sensor measurement messages.
+  IMU_MEASUREMENT = 11000, ///< @ref IMUMeasurement
 };
 
 /** @} */
@@ -220,6 +225,9 @@ inline std::string to_string(MessageType type) {
     case MessageType::GNSS_INFO:
       return "GNSS Info";
 
+    case MessageType::IMU_MEASUREMENT:
+      return "IMU Measurement";
+
     default:
       return "Unrecognized Message (" + std::to_string((int)type) + ")";
   }
@@ -279,7 +287,6 @@ inline std::string to_string(SolutionType type) {
 inline std::ostream& operator<<(std::ostream& stream, SolutionType type) {
   return (stream << to_string(type));
 }
-
 
 /**
  * @defgroup messages Message Definitions

@@ -46,6 +46,7 @@ cc_library(
         "src/point_one/fusion_engine/common/portability.h",
         "src/point_one/fusion_engine/messages/core.h",
         "src/point_one/fusion_engine/messages/defs.h",
+        "src/point_one/fusion_engine/messages/measurements.h",
         "src/point_one/fusion_engine/messages/solution.h",
     ],
     includes = ["src"],
