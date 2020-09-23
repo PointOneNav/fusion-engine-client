@@ -9,7 +9,7 @@
 This library provides message definitions and support functionality for interacting with Point One FusionEngine in real
 time, as well as processing recorded output data. Both C++ and Python are supported.
 
-See https://pointonenav.github.io/fusion-engine-client for the latest API documentation.
+See http://fusion-engine-client-docs.s3-website-us-east-1.amazonaws.com/ for the latest API documentation.
 
 * [Requirements](#requirements)
 * [Directory Structure](#directory-structure)
@@ -169,9 +169,9 @@ bazel run -c opt //message_decode -- message_decode/example_data.p1bin
 ### Compiling Documentation
 
 The documentation for the latest release is generated automatically and hosted at
-https://pointonenav.github.io/fusion-engine-client. If you would like to build documentation locally, simply run
-`doxygen` from the repository root directory. The generated output will be located in `docs/html/`. To view it, open
-`docs/html/index.html` in a web browser.
+http://fusion-engine-client-docs.s3-website-us-east-1.amazonaws.com/. If you would like to build documentation locally,
+simply run `doxygen` from the repository root directory. The generated output will be located in `docs/html/`. To view
+it, open `docs/html/index.html` in a web browser.
 
 ## Usage
 

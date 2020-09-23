@@ -205,12 +205,8 @@ jobs:
     steps:
     - uses: actions/checkout@v2
       with:
+        # Note: Checking out with full tag history for S3 upload below.
         fetch-depth: 0
-        ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
-
-    - uses: webfactory/ssh-agent@v0.4.0
-      with:
-        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
     - name: Extract Tag Name
       id: get_version
@@ -234,7 +230,6 @@ jobs:
 
     - name: Upload Documentation To Release
       if: steps.create_release.conclusion == 'success'
-      id: upload-release-asset
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -244,23 +239,14 @@ jobs:
         asset_name: fusion-engine-client-docs.tar.gz
         asset_content_type: application/tar+gzip
 
-    - name: Upload Documentation To Webpage
-      if: steps.create_release.conclusion == 'success'
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+
+    - name: Upload Documentation To Web (S3)
       run: |
-        git config --global user.name "CI Bot"
-        git config --global user.email "ci@pointonenav.com"
-        if git ls-remote --exit-code origin docs; then
-          git checkout -b docs origin/docs
-          git merge --no-ff ${{ github.sha }} -m "Updating to release ${GIT_TAG}."
-          git rm -rf docs/html
-        else
-          git checkout -b docs
-        fi
-        tar xvzf fusion-engine-client-docs.tar.gz --strip-components=1 --overwrite
-        git add -f docs/html
-        if git diff --cached --quiet; then
-          echo "Documentation unchanged - nothing to commit."
-        else
-          git commit -m "Updated documentation for release ${GIT_TAG}."
-        fi
-        git push origin docs
+        tar xvzf fusion-engine-client-docs.tar.gz --strip-components=1
+        aws s3 sync --delete --acl public-read docs/html s3://fusion-engine-client-docs/${GIT_TAG}
