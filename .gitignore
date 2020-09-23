@@ -16,3 +16,7 @@ build/
 
 # Doxygen output.
 docs/html/
+
+Doxyfile.version
+docs/include_header.js
+docs/versions.html

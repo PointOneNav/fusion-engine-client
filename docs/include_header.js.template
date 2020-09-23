@@ -1,0 +1,48 @@
+var stableVersion = "%(latest_version)s";
+
+function addNavBar(version) {
+  var topElem = document.getElementById("p1_nav");
+
+  var content =
+      '<nav>' +
+      '  <div class="nav-wrapper">' +
+      '    <a href="https://github.com/PointOneNav/fusion-engine-client" class="brand-logo left" id="brand_link">' +
+      '      Point One FusionEngine Client' +
+      '    </a>' +
+      '    <ul id="nav-mobile" class="right hide-on-med-and-down">' +
+      '      <li id="stable_link"><a href="' + stableVersion + '/index.html">Stable (' + stableVersion + ')</a></li>' +
+      '      <li id="latest_link"><a href="master/index.html">Latest (master)</a></li>' +
+      '      <li id="versions_link"><a href="versions.html">Versions</a></li>' +
+      '    </ul>' +
+      '  </div>' +
+      '</nav>';
+
+  topElem.innerHTML = content;
+
+  if (version === undefined && currentVersion !== undefined) {
+    version = currentVersion;
+  }
+
+  if (version === "versions") {
+    var linkElem = document.getElementById("versions_link");
+    linkElem.className += "active";
+  }
+  else if (version === "latest" || version === "master") {
+    var linkElem = document.getElementById("latest_link");
+    linkElem.className += "active";
+
+    var brandElem = document.getElementById("brand_link");
+    brandElem.innerHTML += " (Latest)";
+  }
+  else {
+    if (version === stableVersion) {
+      var linkElem = document.getElementById("stable_link");
+      linkElem.className += "active";
+    }
+
+    if (version !== undefined) {
+      var brandElem = document.getElementById("brand_link");
+      brandElem.innerHTML += " (" + version + ")";
+    }
+  }
+}
