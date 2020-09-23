@@ -188,14 +188,15 @@ jobs:
 
     - name: Extract Tag Name
       if: startsWith(github.ref, 'refs/tags/') || endsWith(github.ref, '/master')
-      run: echo ::set-env name=GIT_TAG::${GITHUB_REF##*/}
+      run: echo "::set-env name=GIT_TAG::${GITHUB_REF##*/}"
 
     - name: Extract Commit Hash
-      if: !startsWith(github.ref, 'refs/tags/')
-      run: echo ::set-env name=GIT_TAG::${GITHUB_SHA}
+      if: "!(startsWith(github.ref, 'refs/tags/') || endsWith(github.ref, '/master'))"
+      run: echo "::set-env name=GIT_TAG::${GITHUB_SHA}"
 
     - name: Build Documentation
       run: |
+        echo "Setting documentation version to: ${GIT_TAG}"
         python3 docs/update_versions.py ${GIT_TAG}
         doxygen Doxyfile.version
         tar czf fusion-engine-client-docs.tar.gz docs/html --transform 's|^docs/html|fusion-engine-client/docs/html|'
@@ -267,10 +268,13 @@ jobs:
         aws-region: us-east-1
 
     - name: Extract Tag Name
-      run: echo ::set-env name=GIT_TAG::${GITHUB_REF##*/}
+      run: |
+        echo "::set-env name=GIT_TAG::${GITHUB_REF##*/}"
+        echo "Setting tag to: ${GIT_TAG}"
 
     - name: Upload Documentation To Web (S3)
       run: |
-        python3 docs/update_version.py ${GIT_TAG}
+        echo "Setting documentation version to: ${GIT_TAG}"
+        python3 docs/update_versions.py ${GIT_TAG}
         tar xvzf fusion-engine-client-docs.tar.gz --strip-components=1
         aws s3 sync --delete --acl public-read docs/html s3://fusion-engine-client-docs/${GIT_TAG}
