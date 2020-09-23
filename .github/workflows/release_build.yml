@@ -199,6 +199,7 @@ jobs:
         echo "Setting documentation version to: ${GIT_TAG}"
         python3 docs/update_versions.py ${GIT_TAG}
         doxygen Doxyfile.version
+        cp docs/include_header.js docs/html/
         tar czf fusion-engine-client-docs.tar.gz docs/html --transform 's|^docs/html|fusion-engine-client/docs/html|'
 
     - name: Upload Artifact
