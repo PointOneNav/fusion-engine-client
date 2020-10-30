@@ -29,6 +29,7 @@ def decode_message(header, data, offset):
 
         print('Pose message @ P1 time %s [sequence=%d, size=%d B]' %
               (str(contents.p1_time), header.sequence_number, len(data)))
+        print('  Solution type: %s' % contents.solution_type.name)
         print('  GPS time: %s' % str(contents.gps_time.as_gps()))
         print('  Position (LLA): %.6f, %.6f, %.3f (deg, deg, m)' % tuple(contents.lla_deg))
         print('  Attitude (YPR): %.2f, %.2f, %.2f (deg, deg, deg)' % tuple(contents.ypr_deg))
