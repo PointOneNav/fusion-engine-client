@@ -230,8 +230,23 @@ inline std::string to_string(MessageType type) {
     case MessageType::GNSS_INFO:
       return "GNSS Info";
 
+    case MessageType::GNSS_SATELLITE:
+      return "GNSS Satellite";
+
+    case MessageType::POSE_AUX:
+      return "Pose Auxiliary";
+
     case MessageType::IMU_MEASUREMENT:
       return "IMU Measurement";
+
+    case MessageType::ROS_POSE:
+      return "ROS Pose";
+
+    case MessageType::ROS_GPS_FIX:
+      return "ROS GPSFix";
+
+    case MessageType::ROS_IMU:
+      return "ROS IMU";
 
     default:
       return "Unrecognized Message (" + std::to_string((int)type) + ")";
