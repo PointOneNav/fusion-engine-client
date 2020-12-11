@@ -122,6 +122,9 @@ class Timestamp:
     def __bool__(self):
         return not math.isnan(self.seconds)
 
+    def __float__(self):
+        return self.seconds
+
     def __str__(self):
         return '%.3f seconds' % self.seconds
 
