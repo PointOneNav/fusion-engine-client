@@ -122,6 +122,24 @@ class Timestamp:
     def calcsize(cls) -> int:
         return Timestamp._SIZE
 
+    def __eq__(self, other):
+        return self.seconds == other.seconds
+
+    def __ne__(self, other):
+        return self.seconds != other.seconds
+
+    def __lt__(self, other):
+        return self.seconds < other.seconds
+
+    def __le__(self, other):
+        return self.seconds <= other.seconds
+
+    def __gt__(self, other):
+        return self.seconds > other.seconds
+
+    def __ge__(self, other):
+        return self.seconds >= other.seconds
+
     def __bool__(self):
         return not math.isnan(self.seconds)
 
