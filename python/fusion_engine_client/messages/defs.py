@@ -1,10 +1,13 @@
 from datetime import datetime, timedelta, timezone
 from enum import IntEnum
+import logging
 import math
 import struct
 from zlib import crc32
 
 import numpy as np
+
+_logger = logging.getLogger('point_one.fusion_engine.messages.defs')
 
 
 class SatelliteType(IntEnum):
@@ -247,7 +250,7 @@ class MessageHeader:
         try:
             self.message_type = MessageType(message_type_int)
         except ValueError:
-            print('Warning: unrecognized message type %d.' % message_type_int)
+            _logger.warning('Warning: unrecognized message type %d.' % message_type_int)
             self.message_type = message_type_int
 
         return MessageHeader._SIZE
