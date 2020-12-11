@@ -55,6 +55,12 @@ class IMUMeasurement:
 
         return offset - initial_offset
 
+    def __repr__(self):
+        return '%s @ %s' % (self.MESSAGE_TYPE.name, self.p1_time)
+
+    def __str__(self):
+        return 'IMU measurement @ P1 time %s' % str(self.p1_time)
+
     @classmethod
     def calcsize(cls) -> int:
         return Timestamp.calcsize() + IMUMeasurement._SIZE
