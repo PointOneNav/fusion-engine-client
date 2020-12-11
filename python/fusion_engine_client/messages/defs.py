@@ -56,6 +56,20 @@ class MessageType(IntEnum):
     ROS_GPS_FIX = 12010
     ROS_IMU = 12011
 
+    @classmethod
+    def get_type_string(cls, type):
+        try:
+            if isinstance(type, str):
+                # Convert a string name to a message type (e.g., 'POSE' -> MessageType.POSE).
+                type = MessageType[type.upper()]
+            else:
+                # Convert an int to a MessageType. If `type` is already a MessageType, it'll pass through.
+                type = MessageType(type)
+
+            return '%s (%d)' % (type.name, type.value)
+        except (KeyError, ValueError):
+            return 'UNKNOWN (%s)' % str(type)
+
 
 class Timestamp:
     _INVALID = 0xFFFFFFFF
@@ -130,6 +144,9 @@ class MessageHeader:
         self.message_type: MessageType = message_type
         self.payload_size_bytes: int = 0
         self.source_identifier: int = MessageHeader.INVALID_SOURCE_ID
+
+    def get_type_string(self):
+        return MessageType.get_type_string(self.message_type)
 
     def calculate_crc(self, payload: bytes):
         """!
