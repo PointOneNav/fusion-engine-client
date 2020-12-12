@@ -67,6 +67,7 @@ class FileReader(object):
         """
         self.file = None
         self.data: Dict[MessageType, MessageData] = {}
+        self.t0 = None
 
         if path is not None:
             self.open(path)
@@ -151,7 +152,7 @@ class FileReader(object):
 
         total_bytes_read = 0
         bytes_used = 0
-        start_time_sec = 0.0 if absolute_time else None
+        start_time_sec = 0.0 if absolute_time else self.t0
         while True:
             # Read the next message header.
             start_offset = self.file.tell()
@@ -203,8 +204,8 @@ class FileReader(object):
 
             total_bytes_read += message_size_bytes
 
-            # If this isn't one of the requested messages, skip it.
-            if not message_needed:
+            # If this isn't one of the requested messages, skip it. If we don't know t0 yet, continue to unpack.
+            if not message_needed and self.t0 is not None:
                 continue
 
             # Now decode the payload.
@@ -226,9 +227,17 @@ class FileReader(object):
                     if time_range[0] is not None or time_range[1] is not None:
                         continue
                 else:
-                    if start_time_sec is None:
-                        self.logger.debug('Received first message. [time=%s]' % str(p1_time))
-                        start_time_sec = float(p1_time)
+                    if self.t0 is None:
+                        self.logger.debug('Received first message. [type=%s, time=%s]' %
+                                          (header.get_type_string(), str(p1_time)))
+                        self.t0 = p1_time
+
+                        if start_time_sec is None:
+                            start_time_sec = float(p1_time)
+
+                        # Now skip this message if we don't need it.
+                        if not message_needed:
+                            continue
 
                     time_offset_sec = float(p1_time) - start_time_sec
                     if time_range[0] is not None and time_offset_sec < float(time_range[0]):
