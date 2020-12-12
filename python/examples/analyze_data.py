@@ -21,7 +21,7 @@ if __name__ == "__main__":
 
     # Read pose data from the file.
     reader = FileReader(options.file)
-    result = reader.read(message_types=[PoseMessage])
+    result = reader.read(message_types=[PoseMessage], show_progress=True)
 
     # Print out the messages that were read.
     pose_data = result[PoseMessage.MESSAGE_TYPE]

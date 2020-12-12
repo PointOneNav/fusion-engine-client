@@ -1,5 +1,6 @@
 from typing import Dict, Tuple, Union
 
+from datetime import datetime
 import io
 import logging
 
@@ -66,6 +67,7 @@ class FileReader(object):
         @param path The path to a FusionEngine binary file to open.
         """
         self.file = None
+        self.file_size = 0
         self.data: Dict[MessageType, MessageData] = {}
         self.t0 = None
 
@@ -85,6 +87,10 @@ class FileReader(object):
         else:
             self.file = open(path, 'rb')
 
+        self.file.seek(0, io.SEEK_END)
+        self.file_size = self.file.tell()
+        self.file.seek(0, 0)
+
     def close(self):
         """!
         @brief Close the file.
@@ -93,7 +99,8 @@ class FileReader(object):
             self.file = None
 
     def read(self, message_types, time_range: Tuple[Union[float, Timestamp], Union[float, Timestamp]] = None,
-             absolute_time: bool = False, return_numpy: bool = False, keep_messages: bool = False) \
+             absolute_time: bool = False, return_numpy: bool = False, keep_messages: bool = False,
+             show_progress: bool = False) \
             -> Dict[MessageType, MessageData]:
         """!
         @brief Read data for one or more desired message types.
@@ -109,6 +116,7 @@ class FileReader(object):
         @param return_numpy If `True`, convert the results to numpy arrays for analysis.
         @param keep_messages If `return_numpy == True` and `keep_messages == False`, the raw data in the `messages`
                field will be cleared for each @ref MessageData object for which numpy conversion is supported.
+        @param show_progress If `True`, print the read progress every 10 MB (useful for large files).
 
         @return A dictionary, keyed by @ref fusion_engine_client.messages.defs.MessageType "MessageType", containing
                @ref MessageData objects with the data read for each of the requested message types.
@@ -152,7 +160,10 @@ class FileReader(object):
 
         total_bytes_read = 0
         bytes_used = 0
-        start_time_sec = 0.0 if absolute_time else self.t0
+        reference_time_sec = 0.0 if absolute_time else self.t0
+
+        last_print_bytes = 0
+        start_time = datetime.now()
         while True:
             # Read the next message header.
             start_offset = self.file.tell()
@@ -204,6 +215,14 @@ class FileReader(object):
 
             total_bytes_read += message_size_bytes
 
+            if total_bytes_read - last_print_bytes > 10e6:
+                elapsed_sec = (datetime.now() - start_time).total_seconds()
+                self.logger.log(logging.INFO if show_progress else logging.DEBUG,
+                                'Processed %d/%d bytes (%.1f%%). [elapsed=%.1f sec, rate=%.1f MB/s]' %
+                                (total_bytes_read, self.file_size, 100.0 * float(total_bytes_read) / self.file_size,
+                                 elapsed_sec, total_bytes_read / elapsed_sec / 1e6))
+                last_print_bytes = total_bytes_read
+
             # If this isn't one of the requested messages, skip it. If we don't know t0 yet, continue to unpack.
             if not message_needed and self.t0 is not None:
                 continue
@@ -232,14 +251,14 @@ class FileReader(object):
                                           (header.get_type_string(), str(p1_time)))
                         self.t0 = p1_time
 
-                        if start_time_sec is None:
-                            start_time_sec = float(p1_time)
+                        if reference_time_sec is None:
+                            reference_time_sec = float(p1_time)
 
                         # Now skip this message if we don't need it.
                         if not message_needed:
                             continue
 
-                    time_offset_sec = float(p1_time) - start_time_sec
+                    time_offset_sec = float(p1_time) - reference_time_sec
                     if time_range[0] is not None and time_offset_sec < float(time_range[0]):
                         self.logger.debug('Message before requested time range. Discarding. [time=%s]' % str(p1_time))
                         continue
@@ -258,7 +277,10 @@ class FileReader(object):
                 self.logger.warning('Error decoding %s payload @ %d: %s' %
                                     (header.get_type_string(), start_offset, repr(e)))
 
-        self.logger.debug('Read %d bytes, used %d bytes.' % (total_bytes_read, bytes_used))
+        end_time = datetime.now()
+        self.logger.log(logging.INFO if show_progress else logging.DEBUG,
+                        'Read %d bytes, used %d bytes. [elapsed=%.1f sec]' %
+                        (total_bytes_read, bytes_used, (end_time - start_time).total_seconds()))
 
         if return_numpy:
             FileReader.to_numpy(result, keep_messages=keep_messages)
