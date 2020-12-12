@@ -59,6 +59,8 @@ class MessageType(IntEnum):
     ROS_GPS_FIX = 12010
     ROS_IMU = 12011
 
+    RESERVED = 20000
+
     @classmethod
     def get_type_string(cls, type):
         try:
@@ -268,7 +270,8 @@ class MessageHeader:
         try:
             self.message_type = MessageType(message_type_int)
         except ValueError:
-            _logger.warning('Warning: unrecognized message type %d.' % message_type_int)
+            _logger.log(logging.WARNING if message_type_int < int(MessageType.RESERVED) else logging.DEBUG,
+                        'Unrecognized message type %d.' % message_type_int)
             self.message_type = message_type_int
 
         return MessageHeader._SIZE

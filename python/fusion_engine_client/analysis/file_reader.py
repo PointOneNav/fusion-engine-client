@@ -232,8 +232,9 @@ class FileReader(object):
                 # Get the message class for this type and unpack the payload.
                 cls = message_type_to_class.get(header.message_type, None)
                 if cls is None:
-                    self.logger.warning('Unrecognized message type %s @ %d. Skipping.' %
-                                        (header.get_type_string(), start_offset))
+                    self.logger.log(
+                        logging.WARNING if int(header.message_type) < int(MessageType.RESERVED) else logging.DEBUG,
+                        'Unrecognized message type %s @ %d. Skipping.' % (header.get_type_string(), start_offset))
                     continue
 
                 contents = cls()
