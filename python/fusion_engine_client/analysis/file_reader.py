@@ -10,10 +10,10 @@ from ..messages.core import *
 
 
 class MessageData(object):
-    def __init__(self, message_type, time_range):
+    def __init__(self, message_type, params):
         self.message_type = message_type
         self.message_class = message_type_to_class[self.message_type]
-        self.time_range = time_range
+        self.params = params
         self.messages = []
 
     def to_numpy(self):
@@ -99,8 +99,8 @@ class FileReader(object):
             self.file = None
 
     def read(self, message_types, time_range: Tuple[Union[float, Timestamp], Union[float, Timestamp]] = None,
-             absolute_time: bool = False, return_numpy: bool = False, keep_messages: bool = False,
-             show_progress: bool = False) \
+             absolute_time: bool = False, max_messages: int = None,
+             return_numpy: bool = False, keep_messages: bool = False, show_progress: bool = False) \
             -> Dict[MessageType, MessageData]:
         """!
         @brief Read data for one or more desired message types.
@@ -113,6 +113,8 @@ class FileReader(object):
                Both the start and end values may be set to `None` to read all data.
         @param absolute_time If `True`, interpret the timestamps in `time_range` as absolute P1 times. Otherwise, treat
                them as relative to the first message in the file.
+        @param max_messages If set, read up to the specified maximum number of messages. Applies across all message
+               types.
         @param return_numpy If `True`, convert the results to numpy arrays for analysis.
         @param keep_messages If `return_numpy == True` and `keep_messages == False`, the raw data in the `messages`
                field will be cleared for each @ref MessageData object for which numpy conversion is supported.
@@ -127,18 +129,26 @@ class FileReader(object):
         if time_range is None:
             time_range = (None, None)
 
+        if max_messages is None:
+            max_messages = -1
+
+        params = {
+            'time_range': time_range,
+            'max_messages': max_messages
+        }
+
         # Allow the user to pass in a list of message classes for convenience and convert them to message types
         # automatically.
         message_types = [(t if isinstance(t, MessageType) else t.MESSAGE_TYPE) for t in message_types]
 
-        # If any of the requested types were already read from the file for the requested time range, skip them.
+        # If any of the requested types were already read from the file for the requested parameters, skip them.
         needed_message_types = [t for t in message_types
-                                if (t not in self.data or self.data[t].time_range != time_range)]
+                                if (t not in self.data or self.data[t].params != params)]
         needed_message_types = set(needed_message_types)
 
         # Make cache entries for the messages to be read.
         for type in needed_message_types:
-            self.data[type] = MessageData(message_type=type, time_range=time_range)
+            self.data[type] = MessageData(message_type=type, params=params)
 
         # Create a dict with references to the requested types only to be returned below.
         result = {t: self.data[t] for t in message_types}
@@ -152,8 +162,8 @@ class FileReader(object):
 
         # Seek to the start of the file, then read all messages.
         num_total = len(message_types)
-        self.logger.debug('Reading data for %d message types. [cached=%d, start=%s, end=%s]' %
-                          (num_total, num_total - num_needed, str(time_range[0]), str(time_range[1])))
+        self.logger.debug('Reading data for %d message types. [cached=%d, start=%s, end=%s, max=%d]' %
+                          (num_total, num_total - num_needed, str(time_range[0]), str(time_range[1]), max_messages))
 
         HEADER_SIZE = MessageHeader.calcsize()
         self.file.seek(0, 0)
@@ -161,6 +171,7 @@ class FileReader(object):
         total_bytes_read = 0
         bytes_used = 0
         reference_time_sec = 0.0 if absolute_time else self.t0
+        message_count = 0
 
         last_print_bytes = 0
         start_time = datetime.now()
@@ -271,6 +282,10 @@ class FileReader(object):
                 # Store the message.
                 self.data[header.message_type].messages.append(contents)
                 bytes_used += message_size_bytes
+                message_count += 1
+                if max_messages >= 0 and message_count == max_messages:
+                    self.logger.debug('Max messages reached. Done reading. [# messages=%d]' % message_count)
+                    break
             except Exception as e:
                 # Since the CRC passed we know we read the correct number of bytes, so if the decode fails because of
                 # a format version mismatch or something, we can simply skip this message. No need to stop reading the
