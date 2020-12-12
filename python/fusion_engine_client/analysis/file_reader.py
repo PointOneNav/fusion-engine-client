@@ -3,13 +3,57 @@ from typing import Dict, Tuple, Union
 import io
 import logging
 
+import numpy as np
+
 from ..messages.core import *
 
 
 class MessageData(object):
-    def __init__(self, time_range):
+    def __init__(self, message_type, time_range):
+        self.message_type = message_type
+        self.message_class = message_type_to_class[self.message_type]
         self.time_range = time_range
         self.messages = []
+
+    def to_numpy(self):
+        """!
+        @brief Convert the raw FusionEngine message data into numpy arrays that can be used for data analysis.
+
+        On return, this function will add additional member variables to the class containing numpy arrays as returned
+        by the `to_numpy()` function in the individual message data class (if supported).
+
+        For example, if called on a @ref fusion_engine_client.messages.solution.PoseMessage "PoseMessage", this function
+        will generate new members including `lla_deg`, a 3xN numpy array with the WGS-84 latitude, longitude, and
+        altitude data for all available time epochs that can be used as follows:
+
+        ```{.py}
+        pose_data.to_numpy()
+        mean_lla_deg = np.mean(pose_data.lla_deg, axis=1)
+        ```
+        """
+        if hasattr(self.message_class, 'to_numpy'):
+            have_numpy_data = 'p1_time' in self.__dict__
+            if have_numpy_data:
+                # If we don't have message data we can't do any conversion so the currently cached numpy data is as good
+                # as it's gonna get. If it doesn't exist, so be it.
+                if len(self.messages) == 0:
+                    do_conversion = False
+                else:
+                    do_conversion = (len(self.messages) != len(self.p1_time) or
+                                     float(self.messages[0].p1_time) != self.p1_time[0] or
+                                     float(self.messages[-1].p1_time) != self.p1_time[-1])
+            else:
+                if len(self.messages) == 0:
+                    raise ValueError('Raw %s data not available. Cannot convert to numpy.' %
+                                     MessageType.get_type_string(self.message_type))
+                else:
+                    do_conversion = True
+
+            if do_conversion:
+                self.__dict__.update(self.message_class.to_numpy(self.messages))
+        else:
+            raise ValueError('Message type %s does not support numpy conversion.' %
+                             MessageType.get_type_string(self.message_type))
 
 
 class FileReader(object):
@@ -48,7 +92,8 @@ class FileReader(object):
             self.file = None
 
     def read(self, message_types, time_range: Tuple[Union[float, Timestamp], Union[float, Timestamp]] = None,
-             absolute_time: bool = False) -> Dict[MessageType, MessageData]:
+             absolute_time: bool = False, return_numpy: bool = False, keep_messages: bool = False) \
+            -> Dict[MessageType, MessageData]:
         """!
         @brief Read data for one or more desired message types.
 
@@ -60,6 +105,9 @@ class FileReader(object):
                Both the start and end values may be set to `None` to read all data.
         @param absolute_time If `True`, interpret the timestamps in `time_range` as absolute P1 times. Otherwise, treat
                them as relative to the first message in the file.
+        @param return_numpy If `True`, convert the results to numpy arrays for analysis.
+        @param keep_messages If `return_numpy == True` and `keep_messages == False`, the raw data in the `messages`
+               field will be cleared for each @ref MessageData object for which numpy conversion is supported.
 
         @return A dictionary, keyed by @ref fusion_engine_client.messages.defs.MessageType "MessageType", containing
                @ref MessageData objects with the data read for each of the requested message types.
@@ -81,7 +129,7 @@ class FileReader(object):
 
         # Make cache entries for the messages to be read.
         for type in needed_message_types:
-            self.data[type] = MessageData(time_range)
+            self.data[type] = MessageData(message_type=type, time_range=time_range)
 
         # Create a dict with references to the requested types only to be returned below.
         result = {t: self.data[t] for t in message_types}
@@ -203,5 +251,30 @@ class FileReader(object):
 
         self.logger.debug('Read %d bytes, used %d bytes.' % (total_bytes_read, bytes_used))
 
+        if return_numpy:
+            FileReader.to_numpy(result, keep_messages=keep_messages)
+
         # Done.
         return result
+
+    @classmethod
+    def to_numpy(cls, data: dict, keep_messages: bool = True):
+        """!
+        @brief Convert all (supported) messages in a data dictionary to numpy for analysis.
+
+        See @ref MessageData.to_numpy().
+
+        @param data A data dictionary as returned by @ref read().
+        @param keep_messages If `False`, the raw data in the `messages` field will be cleared for each @ref MessageData
+               object for which numpy conversion is supported.
+        """
+        for entry in data.values():
+            try:
+                entry.to_numpy()
+                if not keep_messages:
+                    entry.messages = []
+            except ValueError:
+                pass
+
+
+

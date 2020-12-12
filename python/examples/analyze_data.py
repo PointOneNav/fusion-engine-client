@@ -27,3 +27,8 @@ if __name__ == "__main__":
     pose_data = result[PoseMessage.MESSAGE_TYPE]
     for message in pose_data.messages:
         logger.info(str(message))
+
+    # Convert the data to numpy arrays for analysis, then compute and print the average LLA value.
+    pose_data.to_numpy()
+    mean_lla_deg = np.mean(pose_data.lla_deg, axis=1)
+    logger.info('Average position: %.6f, %.6f, %.3f' % tuple(mean_lla_deg))

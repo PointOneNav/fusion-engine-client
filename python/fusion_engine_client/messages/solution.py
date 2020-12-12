@@ -106,6 +106,24 @@ class PoseMessage:
     def calcsize(cls) -> int:
         return 2 * Timestamp.calcsize() + PoseMessage._SIZE
 
+    @classmethod
+    def to_numpy(cls, messages):
+        result = {
+            'p1_time': np.array([float(m.p1_time) for m in messages]),
+            'gps_time': np.array([float(m.gps_time) for m in messages]),
+            'solution_type': np.array([int(m.solution_type) for m in messages], dtype=int),
+            'lla_deg': np.array([m.lla_deg for m in messages]).T,
+            'ypr_deg': np.array([m.ypr_deg for m in messages]).T,
+            'velocity_body_mps': np.array([m.velocity_body_mps for m in messages]).T,
+            'position_std_enu_m': np.array([m.position_std_enu_m for m in messages]).T,
+            'ypr_std_deg': np.array([m.ypr_std_deg for m in messages]).T,
+            'velocity_std_body_mps': np.array([m.velocity_std_body_mps for m in messages]).T,
+            'aggregate_protection_level_m': np.array([m.aggregate_protection_level_m for m in messages]),
+            'horizontal_protection_level_m': np.array([m.horizontal_protection_level_m for m in messages]),
+            'vertical_protection_level_m': np.array([m.vertical_protection_level_m for m in messages]),
+        }
+        return result
+
 
 class PoseAuxMessage:
     """!
@@ -172,6 +190,19 @@ class PoseAuxMessage:
     @classmethod
     def calcsize(cls) -> int:
         return Timestamp.calcsize() + PoseAuxMessage._SIZE
+
+    @classmethod
+    def to_numpy(cls, messages):
+        result = {
+            'p1_time': np.array([float(m.p1_time) for m in messages]),
+            'position_std_body_m': np.array([m.position_std_body_m for m in messages]).T,
+            # Note: This is Nx3x3, not 3x3xN
+            'position_cov_enu_m2': np.array([m.position_cov_enu_m2 for m in messages]),
+            'attitude_quaternion': np.array([m.attitude_quaternion for m in messages]).T,
+            'velocity_enu_mps': np.array([m.velocity_enu_mps for m in messages]).T,
+            'velocity_std_enu_mps': np.array([m.velocity_std_enu_mps for m in messages]).T,
+        }
+        return result
 
 
 class GNSSInfoMessage:
