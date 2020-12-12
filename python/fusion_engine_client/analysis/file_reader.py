@@ -98,8 +98,9 @@ class FileReader(object):
         if self.file is not None:
             self.file = None
 
-    def read(self, message_types, time_range: Tuple[Union[float, Timestamp], Union[float, Timestamp]] = None,
-             absolute_time: bool = False, max_messages: int = None,
+    def read(self, message_types: Union[list, tuple] = None,
+             time_range: Tuple[Union[float, Timestamp], Union[float, Timestamp]] = None, absolute_time: bool = False,
+             max_messages: int = None,
              return_numpy: bool = False, keep_messages: bool = False, show_progress: bool = False) \
             -> Dict[MessageType, MessageData]:
         """!
@@ -108,7 +109,7 @@ class FileReader(object):
         The read data will be cached internally. Subsequent reads for the same data type will return the cached data.
 
         @param message_types A list of one or more @ref fusion_engine_client.messages.defs.MessageType "MessageTypes" to
-               be returned.
+               be returned. If `None` or an empty list, read all available messages.
         @param time_range An optional length-2 tuple specifying desired start and end bounds on the data timestamps.
                Both the start and end values may be set to `None` to read all data.
         @param absolute_time If `True`, interpret the timestamps in `time_range` as absolute P1 times. Otherwise, treat
@@ -123,7 +124,9 @@ class FileReader(object):
         @return A dictionary, keyed by @ref fusion_engine_client.messages.defs.MessageType "MessageType", containing
                @ref MessageData objects with the data read for each of the requested message types.
         """
-        if not isinstance(message_types, (list, tuple)):
+        if message_types is None:
+            message_types = []
+        elif not isinstance(message_types, (list, tuple)):
             message_types = (message_types,)
 
         if time_range is None:
@@ -140,6 +143,10 @@ class FileReader(object):
         # Allow the user to pass in a list of message classes for convenience and convert them to message types
         # automatically.
         message_types = [(t if isinstance(t, MessageType) else t.MESSAGE_TYPE) for t in message_types]
+
+        # If the message type list is empty, read all messages.
+        if len(message_types) == 0:
+            message_types = list(message_type_to_class.keys())
 
         # If any of the requested types were already read from the file for the requested parameters, skip them.
         needed_message_types = [t for t in message_types
