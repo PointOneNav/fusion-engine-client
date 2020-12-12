@@ -236,8 +236,9 @@ class FileReader(object):
             if total_bytes_read - last_print_bytes > 10e6:
                 elapsed_sec = (datetime.now() - start_time).total_seconds()
                 self.logger.log(logging.INFO if show_progress else logging.DEBUG,
-                                'Processed %d/%d bytes (%.1f%%). [elapsed=%.1f sec, rate=%.1f MB/s]' %
-                                (total_bytes_read, self.file_size, 100.0 * float(total_bytes_read) / self.file_size,
+                                '%sProcessed %d/%d bytes (%.1f%%). [elapsed=%.1f sec, rate=%.1f MB/s]' %
+                                ('' if show_progress else '  ',
+                                 total_bytes_read, self.file_size, 100.0 * float(total_bytes_read) / self.file_size,
                                  elapsed_sec, total_bytes_read / elapsed_sec / 1e6))
                 last_print_bytes = total_bytes_read
 
@@ -250,9 +251,11 @@ class FileReader(object):
                 # Get the message class for this type and unpack the payload.
                 cls = message_type_to_class.get(header.message_type, None)
                 if cls is None:
+                    is_reserved = int(header.message_type) >= int(MessageType.RESERVED)
                     self.logger.log(
-                        logging.WARNING if int(header.message_type) < int(MessageType.RESERVED) else logging.DEBUG,
-                        'Unrecognized message type %s @ %d. Skipping.' % (header.get_type_string(), start_offset))
+                        logging.DEBUG if is_reserved else logging.WARNING,
+                        '%sUnrecognized message type %s @ %d. Skipping.' %
+                        ('  ' if is_reserved else '', header.get_type_string(), start_offset))
                     continue
 
                 contents = cls()
@@ -279,11 +282,11 @@ class FileReader(object):
 
                     time_offset_sec = float(p1_time) - reference_time_sec
                     if time_range[0] is not None and time_offset_sec < float(time_range[0]):
-                        self.logger.debug('Message before requested time range. Discarding. [time=%s]' % str(p1_time))
+                        self.logger.debug('  Message before requested time range. Discarding. [time=%s]' % str(p1_time))
                         continue
                     elif time_range[1] is not None and time_offset_sec > float(time_range[1]):
                         # Assuming data is in order so if we pass the end of the time range we're done.
-                        self.logger.debug('Message past requested time range. Done reading. [time=%s]' % str(p1_time))
+                        self.logger.debug('  Message past requested time range. Done reading. [time=%s]' % str(p1_time))
                         break
 
                 # Store the message.
@@ -291,7 +294,7 @@ class FileReader(object):
                 bytes_used += message_size_bytes
                 message_count += 1
                 if max_messages >= 0 and message_count == max_messages:
-                    self.logger.debug('Max messages reached. Done reading. [# messages=%d]' % message_count)
+                    self.logger.debug('  Max messages reached. Done reading. [# messages=%d]' % message_count)
                     break
             except Exception as e:
                 # Since the CRC passed we know we read the correct number of bytes, so if the decode fails because of
@@ -302,8 +305,9 @@ class FileReader(object):
 
         end_time = datetime.now()
         self.logger.log(logging.INFO if show_progress else logging.DEBUG,
-                        'Read %d bytes, used %d bytes. [elapsed=%.1f sec]' %
-                        (total_bytes_read, bytes_used, (end_time - start_time).total_seconds()))
+                        '%sRead %d bytes, used %d bytes. [elapsed=%.1f sec]' %
+                        ('' if show_progress else '  ',
+                         total_bytes_read, bytes_used, (end_time - start_time).total_seconds()))
 
         if return_numpy:
             FileReader.to_numpy(result, keep_messages=keep_messages)
