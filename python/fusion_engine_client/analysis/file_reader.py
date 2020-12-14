@@ -317,7 +317,7 @@ class FileReader(object):
             # Deserialize the header.
             try:
                 header = MessageHeader()
-                header.unpack(buffer=buffer)
+                header.unpack(buffer=buffer, warn_on_unrecognized=False)
                 message_size_bytes = HEADER_SIZE + header.payload_size_bytes
 
                 # Check if this is one of the message types we need. If not, continue to read the payload and then skip

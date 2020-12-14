@@ -242,7 +242,8 @@ class MessageHeader:
         else:
             return self.calcsize()
 
-    def unpack(self, buffer: bytes, offset: int = 0, validate_crc: bool = False) -> int:
+    def unpack(self, buffer: bytes, offset: int = 0, validate_crc: bool = False,
+               warn_on_unrecognized: bool = True) -> int:
         """!
         @brief Deserialize a message header and validate its sync bytes and CRC.
 
@@ -270,8 +271,9 @@ class MessageHeader:
         try:
             self.message_type = MessageType(message_type_int)
         except ValueError:
-            _logger.log(logging.WARNING if message_type_int < int(MessageType.RESERVED) else logging.DEBUG,
-                        'Unrecognized message type %d.' % message_type_int)
+            if warn_on_unrecognized:
+                _logger.log(logging.WARNING if message_type_int < int(MessageType.RESERVED) else logging.DEBUG,
+                            'Unrecognized message type %d.' % message_type_int)
             self.message_type = message_type_int
 
         return MessageHeader._SIZE
