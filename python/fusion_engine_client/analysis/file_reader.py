@@ -156,6 +156,9 @@ class FileReader(object):
             self.index = None
 
         # Read the first message (with P1 time) in the file to set self.t0.
+        #
+        # Note that we explicitly set a start time since, if the time range is not specified, read() will include
+        # messages that do not have P1 time. We want to make sure the 1 message is one with time.
         self.read(time_range=(0.0, None), max_messages=1, generate_index=False)
 
     def close(self):
@@ -164,6 +167,21 @@ class FileReader(object):
         """
         if self.file is not None:
             self.file = None
+
+    def generate_index(self):
+        """!
+        @brief Generate an index file for the current binary file if one does not already exist.
+        """
+        if self.index is None:
+            # We'll read pose data (doesn't actually matter which). Store the currently cached data and restore it when
+            # we're done. That way if the user already did a read (with generate_index == False), they don't have to
+            # re-read the data if they try to use it again.
+            prev_data = self.data.get(MessageType.POSE, None)
+
+            self.read(message_types=[MessageType.POSE], max_messages=1, generate_index=True)
+
+            if prev_data is not None:
+                self.data[MessageType.POSE] = prev_data
 
     def read(self, message_types: Union[list, tuple] = None,
              time_range: Tuple[Union[float, Timestamp], Union[float, Timestamp]] = None, absolute_time: bool = False,
