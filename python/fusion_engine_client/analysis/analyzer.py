@@ -1,3 +1,5 @@
+from typing import Tuple, Union
+
 from argparse import ArgumentParser
 import logging
 import os
@@ -24,9 +26,20 @@ from .file_reader import FileReader
 class Analyzer(object):
     logger = logging.getLogger('point_one.fusion_engine.analysis.analyzer')
 
-    def __init__(self, reader: FileReader, output_dir=None):
+    def __init__(self, reader: FileReader, output_dir=None,
+                 time_range: Tuple[Union[float, Timestamp], Union[float, Timestamp]] = None,
+                 absolute_time: bool = False,
+                 max_messages: int = None):
         self.reader = reader
         self.output_dir = output_dir
+
+        self.params = {
+            'time_range': time_range,
+            'absolute_time': absolute_time,
+            'max_messages': max_messages,
+            'show_progress': True,
+            'return_numpy': True
+        }
 
         self.t0 = self.reader.t0
 
@@ -42,7 +55,7 @@ class Analyzer(object):
             return
 
         # Read the pose data.
-        result = self.reader.read(message_types=[PoseMessage], return_numpy=True)
+        result = self.reader.read(message_types=[PoseMessage], **self.params)
         pose_data = result[PoseMessage.MESSAGE_TYPE]
 
         if len(pose_data.p1_time) == 0:
@@ -210,19 +223,57 @@ class Analyzer(object):
 
 if __name__ == "__main__":
     parser = ArgumentParser()
+    parser.add_argument('--absolute-time', '--abs', action='store_true',
+                        help="Interpret the timestamps in --time as absolute P1 times. Otherwise, treat them as "
+                             "relative to the first message in the file.")
     parser.add_argument('--no-index', action='store_true',
                         help="Do not automatically open the plots in a web browser.")
     parser.add_argument('-o', '--output', type=str, metavar='DIR', default='.',
                         help="The directory where output will be stored.")
+    parser.add_argument('-t', '--time', type=str, metavar='[START][:END]',
+                        help="The desired time range to be analyzed. Both start and end may be omitted to read from "
+                             "beginning or to the end of the file. By default, timestamps are treated as relative to "
+                             "the first message in the file. See --absolute-time.")
+    parser.add_argument('-v', '--verbose', action='count', default=0,
+                        help="Print verbose/trace debugging messages.")
+
     parser.add_argument('file', type=str, help="The path to a binary file to be read.")
     options = parser.parse_args()
 
-    logging.basicConfig(format='%(levelname)s - %(name)s:%(lineno)d - %(message)s')
-    logger = logging.getLogger('point_one.fusion_engine')
-    logger.setLevel(logging.DEBUG)
+    # Configure logging.
+    if options.verbose >= 1:
+        logging.basicConfig(format='%(levelname)s - %(name)s:%(lineno)d - %(message)s')
+        logger = logging.getLogger('point_one.fusion_engine')
+        logger.setLevel(logging.DEBUG)
+    else:
+        logging.basicConfig(format='%(message)s')
+
+    # Parse the time range.
+    if options.time is not None:
+        time_range = options.time.split(':')
+        if len(time_range) == 0:
+            time_range = [None, None]
+        elif len(time_range) == 1:
+            time_range.append(None)
+        elif len(time_range) == 2:
+            pass
+        else:
+            raise ValueError('Invalid time range specification.')
+
+        for i in range(2):
+            if time_range[i] is not None:
+                if time_range[i] == '':
+                    time_range[i] = None
+                else:
+                    time_range[i] = float(time_range[i])
+                    if time_range[i] < 0.0:
+                        time_range[i] = None
+    else:
+        time_range = None
 
     # Read pose data from the file.
     reader = FileReader(options.file)
-    analyzer = Analyzer(reader=reader, output_dir=options.output)
+    analyzer = Analyzer(reader=reader, output_dir=options.output,
+                        time_range=time_range, absolute_time=options.absolute_time)
     analyzer.plot_pose()
     analyzer.generate_index(auto_open=not options.no_index)
