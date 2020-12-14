@@ -453,10 +453,12 @@ class FileReader(object):
                                     (header.get_type_string(), message_offset_bytes, repr(e)))
 
         end_time = datetime.now()
+        elapsed_sec = (end_time - start_time).total_seconds()
         self.logger.log(logging.INFO if show_progress else logging.DEBUG,
-                        '%sRead %d bytes, used %d bytes. [elapsed=%.1f sec]' %
+                        '%sRead %d bytes, used %d bytes. [elapsed=%s sec]' %
                         ('' if show_progress else '  ',
-                         total_bytes_read, bytes_used, (end_time - start_time).total_seconds()))
+                         total_bytes_read, bytes_used,
+                         ('%.1f' if elapsed_sec > 1.0 else '%e') % elapsed_sec))
 
         if generate_index:
             index_path = FileIndex.get_path(self.file.name)
