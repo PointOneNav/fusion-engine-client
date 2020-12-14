@@ -213,6 +213,7 @@ class FileReader(object):
 
         params = {
             'time_range': time_range,
+            'absolute_time': absolute_time,
             'max_messages': max_messages
         }
 
