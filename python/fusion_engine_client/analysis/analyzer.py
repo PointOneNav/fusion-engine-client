@@ -26,11 +26,26 @@ from .file_reader import FileReader
 class Analyzer(object):
     logger = logging.getLogger('point_one.fusion_engine.analysis.analyzer')
 
-    def __init__(self, reader: FileReader, output_dir=None,
+    def __init__(self, file: Union[FileReader, str], output_dir=None,
                  time_range: Tuple[Union[float, Timestamp], Union[float, Timestamp]] = None,
                  absolute_time: bool = False,
                  max_messages: int = None):
-        self.reader = reader
+        """!
+        @brief Create an analyzer for the specified log.
+
+        @param file A @ref FileReader instance, or the path to a file to be loaded.
+        @param time_range An optional length-2 tuple specifying desired start and end bounds on the data timestamps.
+               Both the start and end values may be set to `None` to read all data.
+        @param absolute_time If `True`, interpret the timestamps in `time_range` as absolute P1 times. Otherwise, treat
+               them as relative to the first message in the file.
+        @param max_messages If set, read up to the specified maximum number of messages. Applies across all message
+               types.
+        """
+        if isinstance(file, str):
+            self.reader = FileReader(file)
+        else:
+            self.reader = file
+
         self.output_dir = output_dir
 
         self.params = {
@@ -51,6 +66,9 @@ class Analyzer(object):
                 os.makedirs(self.output_dir)
 
     def plot_pose(self):
+        """!
+        @brief Plot position/attitude solution data.
+        """
         if self.output_dir is None:
             return
 
@@ -156,6 +174,11 @@ class Analyzer(object):
         self._add_figure(name="pose", figure=figure, title="Vehicle Pose")
 
     def generate_index(self, auto_open=True):
+        """!
+        @brief Generate an `index.html` page with links to all generated figures.
+
+        @param auto_open If `True`, open the page automatically in a web browser.
+        """
         if len(self.plots) == 0:
             self.logger.warning('No plots generated. Skipping index generation.')
             return
@@ -330,8 +353,7 @@ if __name__ == "__main__":
         time_range = None
 
     # Read pose data from the file.
-    reader = FileReader(options.file)
-    analyzer = Analyzer(reader=reader, output_dir=options.output,
+    analyzer = Analyzer(file=options.file, output_dir=options.output,
                         time_range=time_range, absolute_time=options.absolute_time)
     analyzer.plot_pose()
     analyzer.generate_index(auto_open=not options.no_index)
