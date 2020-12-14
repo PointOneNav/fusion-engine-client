@@ -3,6 +3,7 @@ from typing import Dict, Tuple, Union
 from datetime import datetime
 import io
 import logging
+import os
 
 import numpy as np
 
@@ -57,6 +58,60 @@ class MessageData(object):
                              MessageType.get_type_string(self.message_type))
 
 
+class FileIndex(object):
+    RAW_DTYPE = np.dtype([('int', '<u4'), ('frac', '<u4'), ('type', '<u2'), ('offset', '<u8')])
+    DTYPE = np.dtype([('time', '<f8'), ('type', '<u2'), ('offset', '<u8')])
+
+    @classmethod
+    def load(cls, index_path):
+        raw_data = np.fromfile(index_path, dtype=cls.RAW_DTYPE)
+        return cls._from_raw(raw_data)
+
+    @classmethod
+    def save(cls, index_path, data: Union[np.ndarray, list]):
+        if isinstance(data, np.ndarray) and data.dtype == cls.RAW_DTYPE:
+            raw_data = data
+            data = cls._from_raw(raw_data)
+        else:
+            if isinstance(data, list):
+                data = np.array(data, dtype=cls.DTYPE)
+
+            if data.dtype == cls.DTYPE:
+                raw_data = cls._to_raw(data)
+            else:
+                raise ValueError('Unsupported array format.')
+
+        raw_data.tofile(index_path)
+        return data
+
+    @classmethod
+    def get_path(cls, data_path):
+        return os.path.splitext(data_path)[0] + '.p1i'
+
+    @classmethod
+    def _from_raw(cls, raw_data):
+        # Convert timestamp int/frac parts to seconds.
+        data = np.array([(np.nan if e[0] == Timestamp._INVALID else e[0] + e[1] * 1e-9, e[2], e[3])
+                         for e in raw_data],
+                        dtype=cls.DTYPE)
+        return data
+
+    @classmethod
+    def _to_raw(cls, data):
+        time_sec = data['time']
+        time_frac_sec, time_int_sec = np.modf(time_sec)
+        time_int = time_int_sec.astype(np.uint32)
+        time_frac = np.round((time_frac_sec * 1e9)).astype(np.uint32)
+
+        idx = np.isnan(time_sec)
+        time_int[idx] = Timestamp._INVALID
+        time_frac[idx] = Timestamp._INVALID
+
+        raw_data = [(i, f, e[1], e[2]) for i, f, e in zip(time_int, time_frac, data)]
+        raw_data = np.array(raw_data, dtype=cls.RAW_DTYPE)
+        return raw_data
+
+
 class FileReader(object):
     logger = logging.getLogger('point_one.fusion_engine.analysis.file_reader')
 
@@ -70,6 +125,8 @@ class FileReader(object):
         self.file_size = 0
         self.data: Dict[MessageType, MessageData] = {}
         self.t0 = None
+
+        self.index = None
 
         if path is not None:
             self.open(path)
@@ -91,8 +148,23 @@ class FileReader(object):
         self.file_size = self.file.tell()
         self.file.seek(0, 0)
 
-        # Read the first message (with P1 time) in the file to set self.t0.
-        self.read(time_range=(0.0, None), max_messages=1)
+        # Load the data index file if present.
+        index_path = FileIndex.get_path(self.file.name)
+        if os.path.exists(index_path):
+            self.logger.debug("Reading index file '%s'." % index_path)
+            self.index = FileIndex.load(index_path)
+
+            first_time_idx = np.argmin(np.isnan(self.index['time']))
+            first_time = self.index['time'][first_time_idx]
+            if np.isnan(first_time):
+                self.t0 = None
+            else:
+                self.t0 = first_time
+        else:
+            self.index = None
+
+            # Read the first message (with P1 time) in the file to set self.t0.
+            self.read(time_range=(0.0, None), max_messages=1, generate_index=False)
 
     def close(self):
         """!
@@ -104,12 +176,18 @@ class FileReader(object):
     def read(self, message_types: Union[list, tuple] = None,
              time_range: Tuple[Union[float, Timestamp], Union[float, Timestamp]] = None, absolute_time: bool = False,
              max_messages: int = None,
-             return_numpy: bool = False, keep_messages: bool = False, show_progress: bool = False) \
+             return_numpy: bool = False, keep_messages: bool = False,
+             generate_index: bool = True, show_progress: bool = False) \
             -> Dict[MessageType, MessageData]:
         """!
         @brief Read data for one or more desired message types.
 
         The read data will be cached internally. Subsequent reads for the same data type will return the cached data.
+
+        @note
+        This function uses a data index file to speed up reads when available. If `generate_index == True` and no index
+        file exists, one will be generated automatically. In order to do this, this function must read the entire data
+        file, even if it could normally return early when `max_messages` or the end of `time_range` are reached.
 
         @param message_types A list of one or more @ref fusion_engine_client.messages.defs.MessageType "MessageTypes" to
                be returned. If `None` or an empty list, read all available messages.
@@ -123,6 +201,9 @@ class FileReader(object):
         @param keep_messages If `return_numpy == True` and `keep_messages == False`, the raw data in the `messages`
                field will be cleared for each @ref MessageData object for which numpy conversion is supported.
         @param show_progress If `True`, print the read progress every 10 MB (useful for large files).
+        @param generate_index If `True` and an index file does not exist for this data file, read the entire data file
+               and create an index file on the first call to this function. The file will be stored in the same
+               directory as the input file.
 
         @return A dictionary, keyed by @ref fusion_engine_client.messages.defs.MessageType "MessageType", containing
                @ref MessageData objects with the data read for each of the requested message types.
@@ -170,24 +251,64 @@ class FileReader(object):
         elif self.file is None:
             raise IOError("File not open.")
 
-        # Seek to the start of the file, then read all messages.
         num_total = len(message_types)
         self.logger.debug('Reading data for %d message types. [cached=%d, start=%s, end=%s, max=%d]' %
                           (num_total, num_total - num_needed, str(time_range[0]), str(time_range[1]), max_messages))
 
+        # If there's an index file, use it to determine the offsets to all the messages we're interested in.
+        if self.index is not None:
+            idx = np.full_like(self.index['time'], False, dtype=bool)
+            for type in needed_message_types:
+                idx = np.logical_or(idx, self.index['type'] == type)
+
+            if time_range[0] is not None:
+                idx = np.logical_and(idx, self.index['time'] >= time_range[0])
+            if time_range[1] is not None:
+                idx = np.logical_and(idx, self.index['time'] <= time_range[1])
+
+            data_index = self.index[idx]
+            if max_messages >= 0:
+                data_index = data_index[:max_messages]
+
+            generate_index = False
+            data_offsets = data_index['offset']
+        # Otherwise, seek to the start of the file and read all messages.
+        else:
+            data_offsets = None
+            index_entries = []
+            self.file.seek(0, 0)
+
+            if generate_index:
+                self.logger.debug('Reading all contents to generate index file.')
+
+        # Read all messages meeting the criteria.
         HEADER_SIZE = MessageHeader.calcsize()
-        self.file.seek(0, 0)
 
         total_bytes_read = 0
         bytes_used = 0
-        reference_time_sec = 0.0 if absolute_time else self.t0
         message_count = 0
+
+        if absolute_time:
+            reference_time_sec = 0.0
+        elif self.t0 is not None:
+            reference_time_sec = float(self.t0)
+        else:
+            reference_time_sec = None
 
         last_print_bytes = 0
         start_time = datetime.now()
         while True:
-            # Read the next message header.
-            start_offset = self.file.tell()
+            # Read the next message header. If we have an index, seek directly to the message.
+            if data_offsets is not None:
+                # All messages read.
+                if message_count >= len(data_offsets):
+                    break
+
+                message_offset_bytes = data_offsets[message_count]
+                self.file.seek(message_offset_bytes, 0)
+            else:
+                message_offset_bytes = self.file.tell()
+
             buffer = self.file.read(HEADER_SIZE)
             if len(buffer) == 0:
                 break
@@ -201,17 +322,20 @@ class FileReader(object):
                 # Check if this is one of the message types we need. If not, continue to read the payload and then skip
                 # the message below.
                 try:
-                    message_needed = header.message_type.value in needed_message_types
+                    if data_offsets is not None:
+                        message_needed = True
+                    else:
+                        message_needed = header.message_type.value in needed_message_types
                 except AttributeError:
                     # If the message type was not recognized, header.message_type will be an int instead of MessageType
                     # enum. If it's not in MessageType, there's definitely no message class for it so skip it.
                     message_needed = False
 
                 self.logger.debug('  Deserializing %s message @ %d. [length=%d B]%s' %
-                                  (header.get_type_string(), start_offset, message_size_bytes,
+                                  (header.get_type_string(), message_offset_bytes, message_size_bytes,
                                    '' if message_needed else ' [skip]'))
             except Exception as e:
-                self.logger.error('Error decoding header @ %d: %s' % (start_offset, repr(e)))
+                self.logger.error('Error decoding header @ %d: %s' % (message_offset_bytes, repr(e)))
                 break
 
             # Read the message payload and append it to the header.
@@ -219,7 +343,7 @@ class FileReader(object):
                 buffer += self.file.read(header.payload_size_bytes)
             except Exception as e:
                 self.logger.error('Error reading %s payload @ %d: %s' %
-                                  (header.get_type_string(), start_offset, repr(e)))
+                                  (header.get_type_string(), message_offset_bytes, repr(e)))
                 break
 
             if len(buffer) != message_size_bytes:
@@ -231,10 +355,10 @@ class FileReader(object):
                 header.validate_crc(buffer)
             except ValueError as e:
                 self.logger.error('Error reading %s message @ %d: %s' %
-                                  (header.get_type_string(), start_offset, repr(e)))
+                                  (header.get_type_string(), message_offset_bytes, repr(e)))
                 break
 
-            total_bytes_read += message_size_bytes
+            total_bytes_read = self.file.tell()
 
             if total_bytes_read - last_print_bytes > 10e6:
                 elapsed_sec = (datetime.now() - start_time).total_seconds()
@@ -245,8 +369,9 @@ class FileReader(object):
                                  elapsed_sec, total_bytes_read / elapsed_sec / 1e6))
                 last_print_bytes = total_bytes_read
 
-            # If this isn't one of the requested messages, skip it. If we don't know t0 yet, continue to unpack.
-            if not message_needed and self.t0 is not None:
+            # If this isn't one of the requested messages, skip it. If we don't know t0 yet or we need the message's P1
+            # time to generate an index, continue to unpack.
+            if not message_needed and self.t0 is not None and not generate_index:
                 continue
 
             # Now decode the payload.
@@ -258,19 +383,22 @@ class FileReader(object):
                     self.logger.log(
                         logging.DEBUG if is_reserved else logging.WARNING,
                         '%sUnrecognized message type %s @ %d. Skipping.' %
-                        ('  ' if is_reserved else '', header.get_type_string(), start_offset))
+                        ('  ' if is_reserved else '', header.get_type_string(), message_offset_bytes))
                     continue
 
                 contents = cls()
                 contents.unpack(buffer=buffer, offset=HEADER_SIZE)
 
-                # If this message has P1 time, test it against the specified range. If not, if a time range was
-                # specified, skip this message since we can't be sure it's in the correct range.
+                # Extract P1 time from this message, if applicable. If we're building up an index file, add an entry for
+                # this message.
                 p1_time = contents.__dict__.get('p1_time', None)
-                if p1_time is None:
-                    if time_range[0] is not None or time_range[1] is not None:
-                        continue
-                else:
+
+                if generate_index:
+                    index_entries.append((float(p1_time) if p1_time is not None else np.nan, int(header.message_type),
+                                          message_offset_bytes))
+
+                # Store t0 if this is the first message with a timestamp.
+                if p1_time is not None:
                     if self.t0 is None:
                         self.logger.debug('Received first message. [type=%s, time=%s]' %
                                           (header.get_type_string(), str(p1_time)))
@@ -279,38 +407,61 @@ class FileReader(object):
                         if reference_time_sec is None:
                             reference_time_sec = float(p1_time)
 
-                        # Now skip this message if we don't need it.
-                        if not message_needed:
-                            continue
+                # Now skip this message if we don't need it.
+                if not message_needed:
+                    continue
 
+                # If this message has P1 time, test it against the specified range. If not, if a time range was
+                # specified, skip this message since we can't be sure it's in the correct range.
+                if p1_time is None:
+                    if time_range[0] is not None or time_range[1] is not None:
+                        continue
+                else:
                     time_offset_sec = float(p1_time) - reference_time_sec
                     if time_range[0] is not None and time_offset_sec < float(time_range[0]):
                         self.logger.debug('  Message before requested time range. Discarding. [time=%s]' % str(p1_time))
                         continue
                     elif time_range[1] is not None and time_offset_sec > float(time_range[1]):
                         # Assuming data is in order so if we pass the end of the time range we're done.
-                        self.logger.debug('  Message past requested time range. Done reading. [time=%s]' % str(p1_time))
-                        break
+                        if generate_index:
+                            self.logger.debug('  Message past requested time range. Discarding. [time=%s]' %
+                                              str(p1_time))
+                            continue
+                        else:
+                            self.logger.debug('  Message past requested time range. Done reading. [time=%s]' %
+                                              str(p1_time))
+                            break
 
                 # Store the message.
-                self.data[header.message_type].messages.append(contents)
-                bytes_used += message_size_bytes
                 message_count += 1
-                if max_messages >= 0 and message_count == max_messages:
-                    self.logger.debug('  Max messages reached. Done reading. [# messages=%d]' % message_count)
-                    break
+                if max_messages < 0 or message_count <= max_messages:
+                    self.data[header.message_type].messages.append(contents)
+                    bytes_used += message_size_bytes
+
+                if max_messages >= 0:
+                    if generate_index and message_count > max_messages:
+                        self.logger.debug('  Max messages reached. Discarding. [# messages=%d]' % message_count)
+                        continue
+                    elif not generate_index and message_count == max_messages:
+                        self.logger.debug('  Max messages reached. Done reading. [# messages=%d]' % message_count)
+                        break
             except Exception as e:
                 # Since the CRC passed we know we read the correct number of bytes, so if the decode fails because of
                 # a format version mismatch or something, we can simply skip this message. No need to stop reading the
                 # file.
                 self.logger.warning('Error decoding %s payload @ %d: %s' %
-                                    (header.get_type_string(), start_offset, repr(e)))
+                                    (header.get_type_string(), message_offset_bytes, repr(e)))
 
         end_time = datetime.now()
         self.logger.log(logging.INFO if show_progress else logging.DEBUG,
                         '%sRead %d bytes, used %d bytes. [elapsed=%.1f sec]' %
                         ('' if show_progress else '  ',
                          total_bytes_read, bytes_used, (end_time - start_time).total_seconds()))
+
+        if generate_index:
+            index_path = FileIndex.get_path(self.file.name)
+            self.logger.debug("Saving index file '%s' with %d entries." % (index_path, len(index_entries)))
+            self.index = FileIndex.save(index_path, index_entries)
 
         if return_numpy:
             FileReader.to_numpy(result, keep_messages=keep_messages)
