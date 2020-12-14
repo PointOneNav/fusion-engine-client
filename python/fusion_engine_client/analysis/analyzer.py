@@ -153,6 +153,8 @@ class Analyzer(object):
             self.logger.warning('No plots generated. Skipping index generation.')
             return
 
+        self._set_data_summary()
+
         index_template = '''\
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
@@ -162,8 +164,6 @@ class Analyzer(object):
 </head>
 <body>
   %(links)s
-  <br>
-  <br>
   %(summary)s
 </body>
 </html>
@@ -191,6 +191,57 @@ class Analyzer(object):
 
         if auto_open:
             self._open_browser(index_path)
+
+    def _set_data_summary(self):
+        # Generate an index file, which we need to calculate the log duration, in case it wasn't created earlier (i.e.,
+        # we didn't read anything to plot.
+        self.reader.generate_index()
+
+        idx = ~np.isnan(self.reader.index['time'])
+        time = self.reader.index['time'][idx]
+        duration_sec = time[-1] - time[0]
+
+        if self.summary != '':
+            self.summary += '\n\n'
+
+        message_table = """
+<table>
+  <tr>
+    <td>Message Type</td>
+    <td>Count</td>
+  </tr>
+"""
+        message_types, message_counts = np.unique(self.reader.index['type'], return_counts=True)
+        for t, c in zip(message_types, message_counts):
+            message_table += """
+  <tr>
+    <td>%s</td>
+    <td>%d</td>
+  </tr>
+""" % (MessageType.get_type_string(t), c)
+        message_table += """
+  <tr>
+    <td><hr></td>
+    <td><hr></td>
+  </tr>
+  <tr>
+    <td>Total</td>
+    <td>%d</td>
+  </tr>
+</table>
+""" % len(self.reader.index)
+        message_table = message_table.replace('\n', '')
+
+        args = {
+            'duration_sec': duration_sec,
+            'message_table': message_table,
+        }
+
+        self.summary += """
+Duration: %(duration_sec).1f seconds
+
+%(message_table)s
+""" % args
 
     def _add_figure(self, name, figure, title=None):
         if title is None:
