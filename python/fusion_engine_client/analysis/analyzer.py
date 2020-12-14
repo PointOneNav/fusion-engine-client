@@ -242,11 +242,11 @@ if __name__ == "__main__":
 
     # Configure logging.
     if options.verbose >= 1:
-        logging.basicConfig(format='%(levelname)s - %(name)s:%(lineno)d - %(message)s')
+        logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(name)s:%(lineno)d - %(message)s')
         logger = logging.getLogger('point_one.fusion_engine')
         logger.setLevel(logging.DEBUG)
     else:
-        logging.basicConfig(format='%(message)s')
+        logging.basicConfig(level=logging.INFO, format='%(message)s')
 
     # Parse the time range.
     if options.time is not None:
