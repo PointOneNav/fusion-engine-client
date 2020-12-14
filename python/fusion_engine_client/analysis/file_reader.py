@@ -408,18 +408,24 @@ class FileReader(object):
                         logging.DEBUG if is_reserved else logging.WARNING,
                         '%sUnrecognized message type %s @ %d. Skipping.' %
                         ('  ' if is_reserved else '', header.get_type_string(), message_offset_bytes))
-                    continue
+                    p1_time = None
+                    contents = None
+                else:
+                    contents = cls()
+                    contents.unpack(buffer=buffer, offset=HEADER_SIZE)
 
-                contents = cls()
-                contents.unpack(buffer=buffer, offset=HEADER_SIZE)
+                    # Extract P1 time from this message, if applicable.
+                    p1_time = contents.__dict__.get('p1_time', None)
 
-                # Extract P1 time from this message, if applicable. If we're building up an index file, add an entry for
-                # this message.
-                p1_time = contents.__dict__.get('p1_time', None)
-
+                # If we're building up an index file, add an entry for this message. If this is an unrecognized message
+                # type, we won't have P1 time so we'll just insert a nan.
                 if generate_index:
                     index_entries.append((float(p1_time) if p1_time is not None else np.nan, int(header.message_type),
                                           message_offset_bytes))
+
+                if contents is None:
+                    # Unrecognized type - skip.
+                    continue
 
                 # Store t0 if this is the first message with a timestamp.
                 if p1_time is not None:
