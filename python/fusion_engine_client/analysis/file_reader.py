@@ -59,13 +59,10 @@ class MessageData(object):
 
 
 class FileIndex(object):
-    # Note: To reduce the index file size and load time, we've made the following limitations:
+    # Note: To reduce the index file size, we've made the following limitations:
     # - Fractional timestamp is floored so time 123.4 becomes 123. The data read should not assume that an entry's
     #   timestamp is its exact time
-    # - Offset is stored as a uint32, assuming the max binary file size is 4 GB. A file with high rate IMU enabled and
-    #   recorded overnight was ~1.6 GB. It's reasonable to assume logs large than that will be segmented into multiple
-    #   files in the future (i.e., a single 4+ GB binary file is a lot to process).
-    RAW_DTYPE = np.dtype([('int', '<u4'), ('type', '<u2'), ('offset', '<u4')])
+    RAW_DTYPE = np.dtype([('int', '<u4'), ('type', '<u2'), ('offset', '<u8')])
 
     DTYPE = np.dtype([('time', '<f8'), ('type', '<u2'), ('offset', '<u8')])
 
@@ -304,12 +301,7 @@ class FileReader(object):
             self.file.seek(0, 0)
 
             if generate_index:
-                # Index files are currently limited to 4 GB.
-                if self.file_size >= 2**32:
-                    self.logger.warning('Binary file too large for index format.')
-                    generate_index = False
-                else:
-                    self.logger.debug('Reading all contents to generate index file.')
+                self.logger.debug('Reading all contents to generate index file.')
 
         # Read all messages meeting the criteria.
         HEADER_SIZE = MessageHeader.calcsize()
