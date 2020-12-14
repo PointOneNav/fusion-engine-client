@@ -73,6 +73,12 @@ class MessageType(IntEnum):
 
             return '%s (%d)' % (type.name, type.value)
         except (KeyError, ValueError):
+            try:
+                if int(type) >= MessageType.RESERVED:
+                    return 'RESERVED (%s)' % str(type)
+            except:
+                pass
+
             return 'UNKNOWN (%s)' % str(type)
 
 
