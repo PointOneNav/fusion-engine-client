@@ -91,6 +91,9 @@ class FileReader(object):
         self.file_size = self.file.tell()
         self.file.seek(0, 0)
 
+        # Read the first message (with P1 time) in the file to set self.t0.
+        self.read(time_range=(0.0, None), max_messages=1)
+
     def close(self):
         """!
         @brief Close the file.

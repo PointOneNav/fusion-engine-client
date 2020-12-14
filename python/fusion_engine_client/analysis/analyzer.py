@@ -28,6 +28,8 @@ class Analyzer(object):
         self.reader = reader
         self.output_dir = output_dir
 
+        self.t0 = self.reader.t0
+
         self.plots = {}
         self.summary = ''
 
@@ -47,7 +49,7 @@ class Analyzer(object):
             self.logger.info('No pose data available.')
             return
 
-        time = pose_data.p1_time - float(self.reader.t0)
+        time = pose_data.p1_time - float(self.t0)
         c_enu_ecef = get_enu_rotation_matrix(*pose_data.lla_deg[0:2, 0], deg=True)
 
         # Setup the figure.
