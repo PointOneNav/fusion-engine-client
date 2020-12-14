@@ -266,17 +266,30 @@ class FileReader(object):
         self.logger.debug('Reading data for %d message types. [cached=%d, start=%s, end=%s, max=%d]' %
                           (num_total, num_total - num_needed, str(time_range[0]), str(time_range[1]), max_messages))
 
+        # Set the reference time used to compare timestamps against the user-specified time range. If we don't know t0
+        # yet, it will be set later. If we already loaded an index file, t0 should have been set from that.
+        if absolute_time:
+            reference_time_sec = 0.0
+        elif self.t0 is not None:
+            reference_time_sec = float(self.t0)
+        else:
+            reference_time_sec = None
+
         # If there's an index file, use it to determine the offsets to all the messages we're interested in.
         if self.index is not None:
             idx = np.full_like(self.index['time'], False, dtype=bool)
             for type in needed_message_types:
                 idx = np.logical_or(idx, self.index['type'] == type)
 
-            if time_range[0] is not None:
-                # Note: The index stores only the integer part of the timestamp.
-                idx = np.logical_and(idx, self.index['time'] >= np.floor(time_range[0]))
-            if time_range[1] is not None:
-                idx = np.logical_and(idx, self.index['time'] <= time_range[1])
+            # If t0 has never been set, this is probably the "first message" read done in open() to set t0. Ignore the
+            # time range.
+            if self.t0 is not None:
+                limit_time = self.index['time'] - reference_time_sec
+                if time_range[0] is not None:
+                    # Note: The index stores only the integer part of the timestamp.
+                    idx = np.logical_and(idx, limit_time >= np.floor(time_range[0]))
+                if time_range[1] is not None:
+                    idx = np.logical_and(idx, limit_time <= time_range[1])
 
             data_index = self.index[idx]
             if max_messages >= 0:
