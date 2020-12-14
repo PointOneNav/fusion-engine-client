@@ -15,7 +15,7 @@ if __name__ == "__main__":
     parser.add_argument('file', type=str, help="The path to a binary file to be read.")
     options = parser.parse_args()
 
-    logging.basicConfig(format='%(levelname)s - %(name)s:%(lineno)d - %(message)s')
+    logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s:%(lineno)d - %(message)s')
     logger = logging.getLogger('point_one.fusion_engine')
     logger.setLevel(logging.DEBUG)
 
