@@ -59,7 +59,14 @@ class MessageData(object):
 
 
 class FileIndex(object):
-    RAW_DTYPE = np.dtype([('int', '<u4'), ('frac', '<u4'), ('type', '<u2'), ('offset', '<u8')])
+    # Note: To reduce the index file size and load time, we've made the following limitations:
+    # - Fractional timestamp is floored so time 123.4 becomes 123. The data read should not assume that an entry's
+    #   timestamp is its exact time
+    # - Offset is stored as a uint32, assuming the max binary file size is 4 GB. A file with high rate IMU enabled and
+    #   recorded overnight was ~1.6 GB. It's reasonable to assume logs large than that will be segmented into multiple
+    #   files in the future (i.e., a single 4+ GB binary file is a lot to process).
+    RAW_DTYPE = np.dtype([('int', '<u4'), ('type', '<u2'), ('offset', '<u4')])
+
     DTYPE = np.dtype([('time', '<f8'), ('type', '<u2'), ('offset', '<u8')])
 
     @classmethod
@@ -90,25 +97,17 @@ class FileIndex(object):
 
     @classmethod
     def _from_raw(cls, raw_data):
-        # Convert timestamp int/frac parts to seconds.
-        data = np.array([(np.nan if e[0] == Timestamp._INVALID else e[0] + e[1] * 1e-9, e[2], e[3])
-                         for e in raw_data],
-                        dtype=cls.DTYPE)
+        idx = raw_data['int'] == Timestamp._INVALID
+        data = raw_data.astype(dtype=cls.DTYPE)
+        data['time'][idx] = np.nan
         return data
 
     @classmethod
     def _to_raw(cls, data):
         time_sec = data['time']
-        time_frac_sec, time_int_sec = np.modf(time_sec)
-        time_int = time_int_sec.astype(np.uint32)
-        time_frac = np.round((time_frac_sec * 1e9)).astype(np.uint32)
-
         idx = np.isnan(time_sec)
-        time_int[idx] = Timestamp._INVALID
-        time_frac[idx] = Timestamp._INVALID
-
-        raw_data = [(i, f, e[1], e[2]) for i, f, e in zip(time_int, time_frac, data)]
-        raw_data = np.array(raw_data, dtype=cls.RAW_DTYPE)
+        raw_data = data.astype(dtype=cls.RAW_DTYPE)
+        raw_data['int'][idx] = Timestamp._INVALID
         return raw_data
 
 
@@ -153,18 +152,11 @@ class FileReader(object):
         if os.path.exists(index_path):
             self.logger.debug("Reading index file '%s'." % index_path)
             self.index = FileIndex.load(index_path)
-
-            first_time_idx = np.argmin(np.isnan(self.index['time']))
-            first_time = self.index['time'][first_time_idx]
-            if np.isnan(first_time):
-                self.t0 = None
-            else:
-                self.t0 = first_time
         else:
             self.index = None
 
-            # Read the first message (with P1 time) in the file to set self.t0.
-            self.read(time_range=(0.0, None), max_messages=1, generate_index=False)
+        # Read the first message (with P1 time) in the file to set self.t0.
+        self.read(time_range=(0.0, None), max_messages=1, generate_index=False)
 
     def close(self):
         """!
@@ -262,7 +254,8 @@ class FileReader(object):
                 idx = np.logical_or(idx, self.index['type'] == type)
 
             if time_range[0] is not None:
-                idx = np.logical_and(idx, self.index['time'] >= time_range[0])
+                # Note: The index stores only the integer part of the timestamp.
+                idx = np.logical_and(idx, self.index['time'] >= np.floor(time_range[0]))
             if time_range[1] is not None:
                 idx = np.logical_and(idx, self.index['time'] <= time_range[1])
 
@@ -279,7 +272,12 @@ class FileReader(object):
             self.file.seek(0, 0)
 
             if generate_index:
-                self.logger.debug('Reading all contents to generate index file.')
+                # Index files are currently limited to 4 GB.
+                if self.file_size >= 2**32:
+                    self.logger.warning('Binary file too large for index format.')
+                    generate_index = False
+                else:
+                    self.logger.debug('Reading all contents to generate index file.')
 
         # Read all messages meeting the criteria.
         HEADER_SIZE = MessageHeader.calcsize()
@@ -287,6 +285,7 @@ class FileReader(object):
         total_bytes_read = 0
         bytes_used = 0
         message_count = 0
+        index_count = 0
 
         if absolute_time:
             reference_time_sec = 0.0
@@ -301,11 +300,12 @@ class FileReader(object):
             # Read the next message header. If we have an index, seek directly to the message.
             if data_offsets is not None:
                 # All messages read.
-                if message_count >= len(data_offsets):
+                if index_count >= len(data_offsets):
                     break
 
-                message_offset_bytes = data_offsets[message_count]
+                message_offset_bytes = data_offsets[index_count]
                 self.file.seek(message_offset_bytes, 0)
+                index_count += 1
             else:
                 message_offset_bytes = self.file.tell()
 
