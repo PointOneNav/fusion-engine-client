@@ -63,7 +63,14 @@ class Analyzer(object):
             return
 
         time = pose_data.p1_time - float(self.t0)
-        c_enu_ecef = get_enu_rotation_matrix(*pose_data.lla_deg[0:2, 0], deg=True)
+
+        valid_idx = pose_data.solution_type != SolutionType.Invalid
+        if not np.any(valid_idx):
+            self.logger.info('No valid position solutions detected.')
+            return
+
+        first_idx = np.argmax(valid_idx)
+        c_enu_ecef = get_enu_rotation_matrix(*pose_data.lla_deg[0:2, first_idx], deg=True)
 
         # Setup the figure.
         figure = make_subplots(rows=2, cols=3, print_grid=False, shared_xaxes=True,
@@ -103,7 +110,7 @@ class Analyzer(object):
         # Plot position/displacement.
         position_ecef_m = np.array(geodetic2ecef(lat=pose_data.lla_deg[0, :], lon=pose_data.lla_deg[1, :],
                                                  alt=pose_data.lla_deg[0, :], deg=True))
-        displacement_ecef_m = position_ecef_m - position_ecef_m[:, 0].reshape(3, 1)
+        displacement_ecef_m = position_ecef_m - position_ecef_m[:, first_idx].reshape(3, 1)
         displacement_enu_m = c_enu_ecef.dot(displacement_ecef_m)
         figure.add_trace(go.Scattergl(x=time, y=displacement_enu_m[0, :], name='East', legendgroup='e',
                                       mode='lines', line={'color': 'red'}),
