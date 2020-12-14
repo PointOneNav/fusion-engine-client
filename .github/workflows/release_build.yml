@@ -78,24 +78,24 @@ jobs:
 
     # Compile.
     - name: Install CMake 3.16.x
-      uses: jwlawson/actions-setup-cmake@v1.3
+      uses: jwlawson/actions-setup-cmake@v1.4
       with:
         cmake-version: '3.16.x'
 
     - name: Install msbuild (Windows)
       if: matrix.os == 'windows-latest'
-      uses: microsoft/setup-msbuild@v1.0.1
+      uses: microsoft/setup-msbuild@v1.0.2
 
     - name: Setup Environment (Windows)
       if: matrix.os == 'windows-latest'
       run: |
-        echo ::set-env name=EXT::.exe
+        echo "EXT=.exe" >> $GITHUB_ENV
 
     - name: Setup Environment (Linux)
       if: matrix.os == 'ubuntu-latest'
       run: |
-        echo ::set-env name=CXX::/usr/bin/${{ matrix.compiler }}
-        echo ::set-env name=EXT::
+        echo "CXX=/usr/bin/${{ matrix.compiler }}" >> $GITHUB_ENV
+        echo "EXT=" >> $GITHUB_ENV
 
     - name: Setup Build
       run: |
@@ -167,7 +167,7 @@ jobs:
         key: doxygen-source-${{ matrix.doxygen }}
 
     - name: Install CMake 3.16.x
-      uses: jwlawson/actions-setup-cmake@v1.3
+      uses: jwlawson/actions-setup-cmake@v1.4
       with:
         cmake-version: '3.16.x'
 
@@ -188,11 +188,11 @@ jobs:
 
     - name: Extract Tag Name
       if: startsWith(github.ref, 'refs/tags/') || endsWith(github.ref, '/master')
-      run: echo "::set-env name=GIT_TAG::${GITHUB_REF##*/}"
+      run: echo "GIT_TAG=${GITHUB_REF##*/}" >> $GITHUB_ENV
 
     - name: Extract Commit Hash
       if: "!(startsWith(github.ref, 'refs/tags/') || endsWith(github.ref, '/master'))"
-      run: echo "::set-env name=GIT_TAG::${GITHUB_SHA}"
+      run: echo "GIT_TAG=${GITHUB_SHA}" >> $GITHUB_ENV
 
     - name: Build Documentation
       run: |
@@ -234,7 +234,7 @@ jobs:
 
     - name: Extract Tag Name
       run: |
-        echo "::set-env name=GIT_TAG::${GITHUB_REF##*/}"
+        echo "GIT_TAG=${GITHUB_REF##*/}" >> $GITHUB_ENV
         echo "Setting tag to: ${GIT_TAG}"
 
     - name: Upload Documentation To Web (S3)
