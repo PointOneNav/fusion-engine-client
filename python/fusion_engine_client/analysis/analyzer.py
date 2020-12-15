@@ -173,6 +173,53 @@ class Analyzer(object):
 
         self._add_figure(name="pose", figure=figure, title="Vehicle Pose")
 
+    def plot_imu(self):
+        """!
+        @brief Plot the IMU data.
+        """
+        if self.output_dir is None:
+            return
+
+        # Read the pose data.
+        result = self.reader.read(message_types=[IMUMeasurement], **self.params)
+        data = result[IMUMeasurement.MESSAGE_TYPE]
+
+        if len(data.p1_time) == 0:
+            self.logger.info('No IMU data available.')
+            return
+
+        time = data.p1_time - float(self.t0)
+
+        figure = make_subplots(rows=2, cols=1, print_grid=False, shared_xaxes=True,
+                               subplot_titles=['Acceleration', 'Gyro'])
+
+        figure['layout'].update(showlegend=True)
+        figure['layout']['xaxis'].update(title="Time (sec)")
+        figure['layout']['yaxis1'].update(title="Acceleration (m/s^2)")
+        figure['layout']['yaxis1'].update(title="Rotation Rate (rad/s)")
+
+        figure.add_trace(go.Scattergl(x=time, y=data.accel_mps2[0, :], name='X', legendgroup='x',
+                                      mode='lines', line={'color': 'red'}),
+                         1, 1)
+        figure.add_trace(go.Scattergl(x=time, y=data.accel_mps2[1, :], name='Y', legendgroup='y',
+                                      mode='lines', line={'color': 'green'}),
+                         1, 1)
+        figure.add_trace(go.Scattergl(x=time, y=data.accel_mps2[2, :], name='Z', legendgroup='z',
+                                      mode='lines', line={'color': 'blue'}),
+                         1, 1)
+
+        figure.add_trace(go.Scattergl(x=time, y=data.gyro_rps[0, :], name='X', legendgroup='x',
+                                      showlegend=False, mode='lines', line={'color': 'red'}),
+                         2, 1)
+        figure.add_trace(go.Scattergl(x=time, y=data.gyro_rps[1, :], name='Y', legendgroup='y',
+                                      showlegend=False, mode='lines', line={'color': 'green'}),
+                         2, 1)
+        figure.add_trace(go.Scattergl(x=time, y=data.gyro_rps[2, :], name='Z', legendgroup='z',
+                                      showlegend=False, mode='lines', line={'color': 'blue'}),
+                         2, 1)
+
+        self._add_figure(name="imu", figure=figure, title="IMU Measurements")
+
     def generate_index(self, auto_open=True):
         """!
         @brief Generate an `index.html` page with links to all generated figures.
