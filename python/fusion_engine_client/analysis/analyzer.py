@@ -109,20 +109,20 @@ class Analyzer(object):
                                       mode='lines', line={'color': 'red'}),
                          1, 1)
         figure.add_trace(go.Scattergl(x=time, y=pose_data.ypr_deg[1, :], name='Pitch', legendgroup='pitch',
-                                      mode='lines', line={'color': 'blue'}),
+                                      mode='lines', line={'color': 'green'}),
                          1, 1)
         figure.add_trace(go.Scattergl(x=time, y=pose_data.ypr_deg[2, :], name='Roll', legendgroup='roll',
-                                      mode='lines', line={'color': 'green'}),
+                                      mode='lines', line={'color': 'blue'}),
                          1, 1)
 
         figure.add_trace(go.Scattergl(x=time, y=pose_data.ypr_std_deg[0, :], name='Yaw', legendgroup='yaw',
                                       showlegend=False, mode='lines', line={'color': 'red'}),
                          2, 1)
         figure.add_trace(go.Scattergl(x=time, y=pose_data.ypr_std_deg[1, :], name='Pitch', legendgroup='pitch',
-                                      showlegend=False, mode='lines', line={'color': 'blue'}),
+                                      showlegend=False, mode='lines', line={'color': 'green'}),
                          2, 1)
         figure.add_trace(go.Scattergl(x=time, y=pose_data.ypr_std_deg[2, :], name='Roll', legendgroup='roll',
-                                      showlegend=False, mode='lines', line={'color': 'green'}),
+                                      showlegend=False, mode='lines', line={'color': 'blue'}),
                          2, 1)
 
         # Plot position/displacement.
@@ -134,20 +134,20 @@ class Analyzer(object):
                                       mode='lines', line={'color': 'red'}),
                          1, 2)
         figure.add_trace(go.Scattergl(x=time, y=displacement_enu_m[1, :], name='North', legendgroup='n',
-                                      mode='lines', line={'color': 'blue'}),
+                                      mode='lines', line={'color': 'green'}),
                          1, 2)
         figure.add_trace(go.Scattergl(x=time, y=displacement_enu_m[2, :], name='Up', legendgroup='u',
-                                      mode='lines', line={'color': 'green'}),
+                                      mode='lines', line={'color': 'blue'}),
                          1, 2)
 
         figure.add_trace(go.Scattergl(x=time, y=pose_data.position_std_enu_m[0, :], name='East', legendgroup='e',
                                       showlegend=False, mode='lines', line={'color': 'red'}),
                          2, 2)
         figure.add_trace(go.Scattergl(x=time, y=pose_data.position_std_enu_m[1, :], name='North', legendgroup='n',
-                                      showlegend=False, mode='lines', line={'color': 'blue'}),
+                                      showlegend=False, mode='lines', line={'color': 'green'}),
                          2, 2)
         figure.add_trace(go.Scattergl(x=time, y=pose_data.position_std_enu_m[2, :], name='Up', legendgroup='u',
-                                      showlegend=False, mode='lines', line={'color': 'green'}),
+                                      showlegend=False, mode='lines', line={'color': 'blue'}),
                          2, 2)
 
         # Plot velocity.
@@ -155,20 +155,20 @@ class Analyzer(object):
                                       mode='lines', line={'color': 'red'}),
                          1, 3)
         figure.add_trace(go.Scattergl(x=time, y=pose_data.velocity_body_mps[1, :], name='Y', legendgroup='y',
-                                      mode='lines', line={'color': 'blue'}),
+                                      mode='lines', line={'color': 'green'}),
                          1, 3)
         figure.add_trace(go.Scattergl(x=time, y=pose_data.velocity_body_mps[2, :], name='Z', legendgroup='z',
-                                      mode='lines', line={'color': 'green'}),
+                                      mode='lines', line={'color': 'blue'}),
                          1, 3)
 
         figure.add_trace(go.Scattergl(x=time, y=pose_data.velocity_body_mps[0, :], name='X', legendgroup='x',
                                       showlegend=False, mode='lines', line={'color': 'red'}),
                          2, 3)
         figure.add_trace(go.Scattergl(x=time, y=pose_data.velocity_body_mps[1, :], name='Y', legendgroup='y',
-                                      showlegend=False, mode='lines', line={'color': 'blue'}),
+                                      showlegend=False, mode='lines', line={'color': 'green'}),
                          2, 3)
         figure.add_trace(go.Scattergl(x=time, y=pose_data.velocity_body_mps[2, :], name='Z', legendgroup='z',
-                                      showlegend=False, mode='lines', line={'color': 'green'}),
+                                      showlegend=False, mode='lines', line={'color': 'blue'}),
                          2, 3)
 
         self._add_figure(name="pose", figure=figure, title="Vehicle Pose")
