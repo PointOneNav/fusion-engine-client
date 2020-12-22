@@ -83,9 +83,46 @@ class PoseMessage:
 
         return offset - initial_offset
 
+    def __repr__(self):
+        return '%s @ %s' % (self.MESSAGE_TYPE.name, self.p1_time)
+
+    def __str__(self):
+        string = 'Pose message @ P1 time %s\n' % str(self.p1_time)
+        string += '  Solution type: %s\n' % self.solution_type.name
+        string += '  GPS time: %s\n' % str(self.gps_time.as_gps())
+        string += '  Position (LLA): %.6f, %.6f, %.3f (deg, deg, m)\n' % tuple(self.lla_deg)
+        string += '  Attitude (YPR): %.2f, %.2f, %.2f (deg, deg, deg)\n' % tuple(self.ypr_deg)
+        string += '  Velocity (Body): %.2f, %.2f, %.2f (m/s, m/s, m/s)\n' % tuple(self.velocity_body_mps)
+        string += '  Position std (ENU): %.2f, %.2f, %.2f (m, m, m)\n' % tuple(self.position_std_enu_m)
+        string += '  Attitude std (YPR): %.2f, %.2f, %.2f (deg, deg, deg)\n' % tuple(self.ypr_std_deg)
+        string += '  Velocity std (Body): %.2f, %.2f, %.2f (m/s, m/s, m/s)\n' % tuple(self.velocity_std_body_mps)
+        string += '  Protection levels:\n'
+        string += '    Aggregate: %.2f m\n' % self.aggregate_protection_level_m
+        string += '    Horizontal: %.2f m\n' % self.horizontal_protection_level_m
+        string += '    Vertical: %.2f m' % self.vertical_protection_level_m
+        return string
+
     @classmethod
     def calcsize(cls) -> int:
         return 2 * Timestamp.calcsize() + PoseMessage._SIZE
+
+    @classmethod
+    def to_numpy(cls, messages):
+        result = {
+            'p1_time': np.array([float(m.p1_time) for m in messages]),
+            'gps_time': np.array([float(m.gps_time) for m in messages]),
+            'solution_type': np.array([int(m.solution_type) for m in messages], dtype=int),
+            'lla_deg': np.array([m.lla_deg for m in messages]).T,
+            'ypr_deg': np.array([m.ypr_deg for m in messages]).T,
+            'velocity_body_mps': np.array([m.velocity_body_mps for m in messages]).T,
+            'position_std_enu_m': np.array([m.position_std_enu_m for m in messages]).T,
+            'ypr_std_deg': np.array([m.ypr_std_deg for m in messages]).T,
+            'velocity_std_body_mps': np.array([m.velocity_std_body_mps for m in messages]).T,
+            'aggregate_protection_level_m': np.array([m.aggregate_protection_level_m for m in messages]),
+            'horizontal_protection_level_m': np.array([m.horizontal_protection_level_m for m in messages]),
+            'vertical_protection_level_m': np.array([m.vertical_protection_level_m for m in messages]),
+        }
+        return result
 
 
 class PoseAuxMessage:
@@ -144,9 +181,28 @@ class PoseAuxMessage:
 
         return offset - initial_offset
 
+    def __repr__(self):
+        return '%s @ %s' % (self.MESSAGE_TYPE.name, self.p1_time)
+
+    def __str__(self):
+        return 'Pose aux message @ P1 time %s' % str(self.p1_time)
+
     @classmethod
     def calcsize(cls) -> int:
         return Timestamp.calcsize() + PoseAuxMessage._SIZE
+
+    @classmethod
+    def to_numpy(cls, messages):
+        result = {
+            'p1_time': np.array([float(m.p1_time) for m in messages]),
+            'position_std_body_m': np.array([m.position_std_body_m for m in messages]).T,
+            # Note: This is Nx3x3, not 3x3xN
+            'position_cov_enu_m2': np.array([m.position_cov_enu_m2 for m in messages]),
+            'attitude_quaternion': np.array([m.attitude_quaternion for m in messages]).T,
+            'velocity_enu_mps': np.array([m.velocity_enu_mps for m in messages]).T,
+            'velocity_std_enu_mps': np.array([m.velocity_std_enu_mps for m in messages]).T,
+        }
+        return result
 
 
 class GNSSInfoMessage:
@@ -216,6 +272,21 @@ class GNSSInfoMessage:
 
         return offset - initial_offset
 
+    def __repr__(self):
+        return '%s @ %s' % (self.MESSAGE_TYPE.name, self.p1_time)
+
+    def __str__(self):
+        string = 'GNSS info message @ P1 time %s\n' % str(self.p1_time)
+        string += '  GPS time: %s\n' % str(self.gps_time.as_gps())
+        string += ('  Reference station: %s\n' %
+                   (str(self.reference_station_id)
+                    if self.reference_station_id != GNSSInfoMessage.INVALID_REFERENCE_STATION
+                    else 'none'))
+        string += '  Last differential time: %s\n' % str(self.last_differential_time)
+        string += '  GDOP: %.1f  PDOP: %.1f\n' % (self.gdop, self.pdop)
+        string += '  HDOP: %.1f  VDOP: %.1f' % (self.hdop, self.vdop)
+        return string
+
     def calcsize(self) -> int:
         return 3 * Timestamp.calcsize() + GNSSInfoMessage._SIZE
 
@@ -256,6 +327,7 @@ class SatelliteInfo:
 
     def used_in_solution(self):
         return self.usage & SatelliteInfo.SATELLITE_USED
+        return string
 
     @classmethod
     def calcsize(cls) -> int:
@@ -313,6 +385,19 @@ class GNSSSatelliteMessage:
             self.svs.append(sv)
 
         return offset - initial_offset
+
+    def __repr__(self):
+        return '%s @ %s [%d SVs]' % (self.MESSAGE_TYPE.name, self.p1_time, len(self.svs))
+
+    def __str__(self):
+        string = 'GNSS satellite message @ P1 time %s\n' % str(self.p1_time)
+        string += '  %d SVs:' % len(self.svs)
+        for sv in self.svs:
+            string += '\n'
+            string += '    %s PRN %d:\n' % (sv.system.name, sv.prn)
+            string += '      Used in solution: %s\n' % ('yes' if sv.used_in_solution() else 'no')
+            string += '      Az/el: %.1f, %.1f deg' % (sv.azimuth_deg, sv.elevation_deg)
+        return string
 
     def calcsize(self) -> int:
         return 2 * Timestamp.calcsize() + GNSSSatelliteMessage._SIZE + len(self.svs) * SatelliteInfo.calcsize()

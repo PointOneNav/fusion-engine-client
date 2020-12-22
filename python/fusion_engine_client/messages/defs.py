@@ -1,10 +1,13 @@
 from datetime import datetime, timedelta, timezone
 from enum import IntEnum
+import logging
 import math
 import struct
 from zlib import crc32
 
 import numpy as np
+
+_logger = logging.getLogger('point_one.fusion_engine.messages.defs')
 
 
 class SatelliteType(IntEnum):
@@ -56,6 +59,28 @@ class MessageType(IntEnum):
     ROS_GPS_FIX = 12010
     ROS_IMU = 12011
 
+    RESERVED = 20000
+
+    @classmethod
+    def get_type_string(cls, type):
+        try:
+            if isinstance(type, str):
+                # Convert a string name to a message type (e.g., 'POSE' -> MessageType.POSE).
+                type = MessageType[type.upper()]
+            else:
+                # Convert an int to a MessageType. If `type` is already a MessageType, it'll pass through.
+                type = MessageType(type)
+
+            return '%s (%d)' % (type.name, type.value)
+        except (KeyError, ValueError):
+            try:
+                if int(type) >= MessageType.RESERVED:
+                    return 'RESERVED (%s)' % str(type)
+            except:
+                pass
+
+            return 'UNKNOWN (%s)' % str(type)
+
 
 class Timestamp:
     _INVALID = 0xFFFFFFFF
@@ -105,8 +130,29 @@ class Timestamp:
     def calcsize(cls) -> int:
         return Timestamp._SIZE
 
+    def __eq__(self, other):
+        return self.seconds == other.seconds
+
+    def __ne__(self, other):
+        return self.seconds != other.seconds
+
+    def __lt__(self, other):
+        return self.seconds < other.seconds
+
+    def __le__(self, other):
+        return self.seconds <= other.seconds
+
+    def __gt__(self, other):
+        return self.seconds > other.seconds
+
+    def __ge__(self, other):
+        return self.seconds >= other.seconds
+
     def __bool__(self):
         return not math.isnan(self.seconds)
+
+    def __float__(self):
+        return self.seconds
 
     def __str__(self):
         return '%.3f seconds' % self.seconds
@@ -130,6 +176,9 @@ class MessageHeader:
         self.message_type: MessageType = message_type
         self.payload_size_bytes: int = 0
         self.source_identifier: int = MessageHeader.INVALID_SOURCE_ID
+
+    def get_type_string(self):
+        return MessageType.get_type_string(self.message_type)
 
     def calculate_crc(self, payload: bytes):
         """!
@@ -199,7 +248,8 @@ class MessageHeader:
         else:
             return self.calcsize()
 
-    def unpack(self, buffer: bytes, offset: int = 0, validate_crc: bool = False) -> int:
+    def unpack(self, buffer: bytes, offset: int = 0, validate_crc: bool = False,
+               warn_on_unrecognized: bool = True) -> int:
         """!
         @brief Deserialize a message header and validate its sync bytes and CRC.
 
@@ -227,7 +277,9 @@ class MessageHeader:
         try:
             self.message_type = MessageType(message_type_int)
         except ValueError:
-            print('Warning: unrecognized message type %d.' % message_type_int)
+            if warn_on_unrecognized:
+                _logger.log(logging.WARNING if message_type_int < int(MessageType.RESERVED) else logging.DEBUG,
+                            'Unrecognized message type %d.' % message_type_int)
             self.message_type = message_type_int
 
         return MessageHeader._SIZE

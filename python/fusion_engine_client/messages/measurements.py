@@ -55,6 +55,23 @@ class IMUMeasurement:
 
         return offset - initial_offset
 
+    def __repr__(self):
+        return '%s @ %s' % (self.MESSAGE_TYPE.name, self.p1_time)
+
+    def __str__(self):
+        return 'IMU measurement @ P1 time %s' % str(self.p1_time)
+
+    @classmethod
+    def to_numpy(cls, messages):
+        result = {
+            'p1_time': np.array([float(m.p1_time) for m in messages]),
+            'accel_mps2': np.array([m.accel_mps2 for m in messages]).T,
+            'accel_std_mps2': np.array([m.accel_std_mps2 for m in messages]).T,
+            'gyro_rps': np.array([m.gyro_rps for m in messages]).T,
+            'gyro_std_rps': np.array([m.gyro_std_rps for m in messages]).T,
+        }
+        return result
+
     @classmethod
     def calcsize(cls) -> int:
         return Timestamp.calcsize() + IMUMeasurement._SIZE
