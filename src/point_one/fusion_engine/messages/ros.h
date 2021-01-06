@@ -76,9 +76,9 @@ struct GPSFixMessage {
    * @{
    */
   static const uint8_t COVARIANCE_TYPE_UNKNOWN = 0;
-  static const uint8_t COVARIANCE_TYPE_APPROXIMATED = 0;
-  static const uint8_t COVARIANCE_TYPE_DIAGONAL_KNOWN = 0;
-  static const uint8_t COVARIANCE_TYPE_KNOWN = 0;
+  static const uint8_t COVARIANCE_TYPE_APPROXIMATED = 1;
+  static const uint8_t COVARIANCE_TYPE_DIAGONAL_KNOWN = 2;
+  static const uint8_t COVARIANCE_TYPE_KNOWN = 3;
   /** @} */
 
   /** The time of the message, in P1 time (beginning at power-on). */
