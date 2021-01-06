@@ -257,7 +257,7 @@ struct IMUMessage {
    * The platform body orientation with respect to the local ENU frame,
    * represented as a quaternion with the scalar component last (x, y, z, w).
    */
-  double orientation[4] = {0.0, 0.0, 0.0, 0.0};
+  double orientation[4] = {NAN, NAN, NAN, NAN};
 
   /**
    * Orientation covariance matrix. Set to -1 if not available.
