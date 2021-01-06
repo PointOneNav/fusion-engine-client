@@ -268,7 +268,7 @@ struct IMUMessage {
    * Vehicle x/y/z rate of rotation (in radians/second), resolved in the body
    * frame.
    */
-  double angular_velocity_rps[3] = {0.0, 0.0, 0.0};
+  double angular_velocity_rps[3] = {NAN, NAN, NAN};
 
   /**
    * Vehicle rate of rotation covariance matrix. Set to -1 if not available.
@@ -279,7 +279,7 @@ struct IMUMessage {
    * Vehicle x/y/z linear acceleration (in meters/second^2), resolved in the
    * body frame.
    */
-  double acceleration_mps2[3] = {0.0, 0.0, 0.0};
+  double acceleration_mps2[3] = {NAN, NAN, NAN};
 
   /**
    * Vehicle x/y/z acceleration covariance matrix. Set to -1 if not available.
