@@ -110,8 +110,8 @@ struct PoseAuxMessage {
   double position_cov_enu_m2[9] = {NAN};
 
   /**
-   * The platform orientation, represented as a quaternion with the scalar
-   * component last (x, y, z, w).
+   * The platform body orientation with respect to the local ENU frame,
+   * represented as a quaternion with the scalar component last (x, y, z, w).
    */
   double attitude_quaternion[4] = {NAN, NAN, NAN, NAN};
 

@@ -58,8 +58,8 @@ struct PoseMessage {
   double position_rel_m[3] = {NAN, NAN, NAN};
 
   /**
-   * The platform orientation, represented as a quaternion with the scalar
-   * component last (x, y, z, w).
+   * The platform body orientation with respect to the local ENU frame,
+   * represented as a quaternion with the scalar component last (x, y, z, w).
    */
   double orientation[4] = {NAN, NAN, NAN, NAN};
 };
@@ -254,8 +254,8 @@ struct IMUMessage {
   Timestamp p1_time;
 
   /**
-   * The platform orientation, represented as a quaternion with the scalar
-   * component last (x, y, z, w).
+   * The platform body orientation with respect to the local ENU frame,
+   * represented as a quaternion with the scalar component last (x, y, z, w).
    */
   double orientation[4] = {0.0, 0.0, 0.0, 0.0};
 
