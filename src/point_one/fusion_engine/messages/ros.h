@@ -58,8 +58,8 @@ struct PoseMessage {
   double position_rel_m[3] = {NAN, NAN, NAN};
 
   /**
-   * The platform orientation, represented as a quaternion with the scalar
-   * component last (x, y, z, w).
+   * The platform body orientation with respect to the local ENU frame,
+   * represented as a quaternion with the scalar component last (x, y, z, w).
    */
   double orientation[4] = {NAN, NAN, NAN, NAN};
 };
@@ -76,9 +76,9 @@ struct GPSFixMessage {
    * @{
    */
   static const uint8_t COVARIANCE_TYPE_UNKNOWN = 0;
-  static const uint8_t COVARIANCE_TYPE_APPROXIMATED = 0;
-  static const uint8_t COVARIANCE_TYPE_DIAGONAL_KNOWN = 0;
-  static const uint8_t COVARIANCE_TYPE_KNOWN = 0;
+  static const uint8_t COVARIANCE_TYPE_APPROXIMATED = 1;
+  static const uint8_t COVARIANCE_TYPE_DIAGONAL_KNOWN = 2;
+  static const uint8_t COVARIANCE_TYPE_KNOWN = 3;
   /** @} */
 
   /** The time of the message, in P1 time (beginning at power-on). */
@@ -254,10 +254,10 @@ struct IMUMessage {
   Timestamp p1_time;
 
   /**
-   * The platform orientation, represented as a quaternion with the scalar
-   * component last (x, y, z, w).
+   * The platform body orientation with respect to the local ENU frame,
+   * represented as a quaternion with the scalar component last (x, y, z, w).
    */
-  double orientation[4] = {0.0, 0.0, 0.0, 0.0};
+  double orientation[4] = {NAN, NAN, NAN, NAN};
 
   /**
    * Orientation covariance matrix. Set to -1 if not available.
@@ -268,7 +268,7 @@ struct IMUMessage {
    * Vehicle x/y/z rate of rotation (in radians/second), resolved in the body
    * frame.
    */
-  double angular_velocity_rps[3] = {0.0, 0.0, 0.0};
+  double angular_velocity_rps[3] = {NAN, NAN, NAN};
 
   /**
    * Vehicle rate of rotation covariance matrix. Set to -1 if not available.
@@ -279,7 +279,7 @@ struct IMUMessage {
    * Vehicle x/y/z linear acceleration (in meters/second^2), resolved in the
    * body frame.
    */
-  double acceleration_mps2[3] = {0.0, 0.0, 0.0};
+  double acceleration_mps2[3] = {NAN, NAN, NAN};
 
   /**
    * Vehicle x/y/z acceleration covariance matrix. Set to -1 if not available.
