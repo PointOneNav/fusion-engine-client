@@ -9,6 +9,7 @@ import os
 import numpy as np
 
 from ..messages import *
+from ..messages import internal
 
 
 class MessageData(object):
