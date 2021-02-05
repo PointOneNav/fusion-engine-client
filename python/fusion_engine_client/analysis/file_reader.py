@@ -7,7 +7,7 @@ import os
 
 import numpy as np
 
-from ..messages.core import *
+from ..messages import *
 
 
 class MessageData(object):
