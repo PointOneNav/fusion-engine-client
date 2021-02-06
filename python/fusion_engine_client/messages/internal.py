@@ -3,6 +3,7 @@ from enum import IntEnum
 from typing import List
 
 from aenum import extend_enum
+import numpy as np
 
 from . import message_type_to_class
 from .defs import *
@@ -137,6 +138,15 @@ class ProfileSystemStatusMessage:
     @classmethod
     def calcsize(cls) -> int:
         return Timestamp.calcsize() + ProfileSystemStatusMessage._SIZE
+
+    @classmethod
+    def to_numpy(cls, messages):
+        result = {
+            'p1_time': np.array([float(m.p1_time) for m in messages]),
+            'posix_time': np.array([m.posix_time_ns * 1e-9 for m in messages]),
+            'used_memory_bytes': np.array([m.used_memory_bytes for m in messages]),
+        }
+        return result
 
 
 class ProfilePipelineDefinitionEntry:
@@ -356,6 +366,29 @@ class ProfilePipelineMessage:
 
     def calcsize(self) -> int:
         return ProfilePipelineMessage._SIZE + len(self.entries) * ProfilePipelineEntry.calcsize()
+
+    @classmethod
+    def to_numpy(cls, messages):
+        points = {}
+        for m in messages:
+            for p in m.entries:
+                if p.hash not in points:
+                    points[p.hash] = [(m.posix_time_ns * 1e-9, p.delay_sec)]
+                else:
+                    points[p.hash].append((m.posix_time_ns * 1e-9, p.delay_sec))
+        points = {h: np.array(d).T for h, d in points.items()}
+
+        result = {
+            'posix_time': np.array([m.posix_time_ns * 1e-9 for m in messages]),
+            'p1_time': np.array([float(m.p1_time) for m in messages]),
+            'points': points
+        }
+        return result
+
+    @classmethod
+    def remap_by_name(cls, numpy_data, definition_message: ProfilePipelineDefinitionMessage):
+        hash_to_name = definition_message.to_dict()
+        numpy_data.points = {hash_to_name[hash]: data for hash, data in numpy_data.points.items()}
 
 
 # Extend the message class with internal types.
