@@ -3,6 +3,7 @@
 from typing import Tuple, Union
 
 from argparse import ArgumentParser
+import copy
 import logging
 import os
 import sys
@@ -21,6 +22,7 @@ if __name__ == "__main__" and (__package__ is None or __package__ == ''):
     __package__ = "fusion_engine_client.analysis"
 
 from ..messages.core import *
+from ..messages.internal import *
 from .attitude import get_enu_rotation_matrix
 from .file_reader import FileReader
 
@@ -225,6 +227,72 @@ class Analyzer(object):
                          2, 1)
 
         self._add_figure(name="imu", figure=figure, title="IMU Measurements")
+
+    def plot_system_status_profiling(self):
+        """!
+        @brief Plot system status profiling data.
+        """
+        if self.output_dir is None:
+            return
+
+        # Read the data.
+        result = self.reader.read(message_types=[ProfileSystemStatusMessage], **self.params)
+        data = result[ProfileSystemStatusMessage.MESSAGE_TYPE]
+
+        if len(data.p1_time) == 0:
+            self.logger.info('No system profiling data available.')
+            return
+
+        time = data.p1_time - float(self.t0)
+
+        figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=True,
+                               subplot_titles=['Memory Usage'])
+
+        figure['layout'].update(showlegend=True)
+        figure['layout']['xaxis'].update(title="Time (sec)")
+        figure['layout']['yaxis1'].update(title="Memory (B)")
+
+        figure.add_trace(go.Scattergl(x=time, y=data.used_memory_bytes, name='Used Memory',
+                                      mode='lines', line={'color': 'red'}),
+                         1, 1)
+
+        self._add_figure(name="profile_system_status", figure=figure, title="Profiling: System Status")
+
+    def plot_measurement_pipeline_profiling(self):
+        """!
+        @brief Plot measurement pipeline profiling data.
+        """
+        if self.output_dir is None:
+            return
+
+        # Read the pipeline data.
+        result = self.reader.read(message_types=[ProfilePipelineMessage], **self.params)
+        data = result[ProfilePipelineMessage.MESSAGE_TYPE]
+
+        if len(data.p1_time) == 0:
+            self.logger.info('No measurement profiling data available.')
+            return
+
+        # Read the last pipeline definition message to map hashes to names, then remap the pipeline data.
+        params = copy.deepcopy(self.params)
+        params['max_messages'] = -1
+        result = self.reader.read(message_types=[ProfilePipelineDefinitionMessage], **params)
+        definition = result[ProfilePipelineDefinitionMessage.MESSAGE_TYPE].messages[0]
+        ProfilePipelineMessage.remap_by_name(data, definition)
+
+        figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=True,
+                               subplot_titles=['Pipeline Delay'])
+
+        figure['layout'].update(showlegend=True)
+        figure['layout']['xaxis'].update(title="Time (sec)")
+        figure['layout']['yaxis1'].update(title="Delay (sec)")
+
+        for name, point_data in data.points.items():
+            time_sec = point_data[0, :] - self.t0
+            delay_sec = point_data[1, :]
+            figure.add_trace(go.Scattergl(x=time_sec, y=delay_sec, name=name, mode='markers'), 1, 1)
+
+        self._add_figure(name="profile_pipeline", figure=figure, title="Profiling: Measurement Pipeline")
 
     def generate_index(self, auto_open=True):
         """!
@@ -456,6 +524,8 @@ if __name__ == "__main__":
                         prefix=options.prefix + '.' if options.prefix is not None else '',
                         time_range=time_range, absolute_time=options.absolute_time)
     analyzer.plot_pose()
+    analyzer.plot_system_status_profiling()
+    analyzer.plot_measurement_pipeline_profiling()
     analyzer.generate_index(auto_open=not options.no_index)
 
     _logger.info("Output stored in '%s'." % os.path.abspath(output_dir))
