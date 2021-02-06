@@ -1,5 +1,6 @@
 from typing import Dict, Tuple, Union
 
+from collections import deque
 from datetime import datetime
 import io
 import logging
@@ -208,7 +209,7 @@ class FileReader(object):
         @param absolute_time If `True`, interpret the timestamps in `time_range` as absolute P1 times. Otherwise, treat
                them as relative to the first message in the file.
         @param max_messages If set, read up to the specified maximum number of messages. Applies across all message
-               types.
+               types. If negative, read the last N messages.
         @param return_numpy If `True`, convert the results to numpy arrays for analysis.
         @param keep_messages If `return_numpy == True` and `keep_messages == False`, the raw data in the `messages`
                field will be cleared for each @ref MessageData object for which numpy conversion is supported.
@@ -229,7 +230,7 @@ class FileReader(object):
             time_range = (None, None)
 
         if max_messages is None:
-            max_messages = -1
+            max_messages = 0
 
         params = {
             'time_range': time_range,
@@ -294,8 +295,11 @@ class FileReader(object):
                     idx = np.logical_and(idx, limit_time <= time_range[1])
 
             data_index = self.index[idx]
-            if max_messages >= 0:
+            if max_messages > 0:
                 data_index = data_index[:max_messages]
+            elif max_messages < 0:
+                # If max is negative, take the last N entries.
+                data_index = data_index[max_messages:]
 
             generate_index = False
             data_offsets = data_index['offset']
@@ -322,6 +326,12 @@ class FileReader(object):
             reference_time_sec = float(self.t0)
         else:
             reference_time_sec = None
+
+        if max_messages < 0:
+            # Used for max_messages < 0 only.
+            newest_messages = deque(maxlen=abs(max_messages))
+        else:
+            newest_messages = None
 
         last_print_bytes = 0
         start_time = datetime.now()
@@ -468,12 +478,19 @@ class FileReader(object):
                             break
 
                 # Store the message.
+                #
+                # If we haven't reached the max message count yet, or it is 0 (disabled), store the message by type. If
+                # max_messages is negative, the user requested the N latest messages. Add them to an N-length circular
+                # buffer and pick off the newest ones when we're done with the file.
                 message_count += 1
-                if max_messages < 0 or message_count <= max_messages:
+                if max_messages < 0:
+                    newest_messages.append((header, contents))
+                    bytes_used += message_size_bytes
+                elif max_messages == 0 or message_count <= abs(max_messages):
                     self.data[header.message_type].messages.append(contents)
                     bytes_used += message_size_bytes
 
-                if max_messages >= 0:
+                if max_messages > 0:
                     if generate_index and message_count > max_messages:
                         self.logger.debug('  Max messages reached. Discarding. [# messages=%d]' % message_count)
                         continue
@@ -487,6 +504,12 @@ class FileReader(object):
                 self.logger.warning('Error decoding %s payload @ %d: %s' %
                                     (header.get_type_string(), message_offset_bytes, repr(e)))
 
+        # If the user only wanted the N newest messages, take them from the circular buffer now.
+        if max_messages < 0:
+            for entry in newest_messages:
+                self.data[entry[0].message_type].messages.append(entry[1])
+
+        # Print a summary.
         end_time = datetime.now()
         elapsed_sec = (end_time - start_time).total_seconds()
         self.logger.log(logging.INFO if show_progress else logging.DEBUG,
@@ -495,11 +518,13 @@ class FileReader(object):
                          total_bytes_read, bytes_used,
                          ('%.1f' if elapsed_sec > 1.0 else '%e') % elapsed_sec))
 
+        # Save the index file for faster reading in the future.
         if generate_index:
             index_path = FileIndex.get_path(self.file.name)
             self.logger.debug("Saving index file '%s' with %d entries." % (index_path, len(index_entries)))
             self.index = FileIndex.save(index_path, index_entries)
 
+        # Convert the resulting message data to numpy (if supported).
         if return_numpy:
             FileReader.to_numpy(result, keep_messages=keep_messages)
 
