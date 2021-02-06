@@ -245,16 +245,30 @@ class Analyzer(object):
 
         time = data.p1_time - float(self.t0)
 
-        figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=True,
-                               subplot_titles=['Memory Usage'])
+        figure = make_subplots(rows=3, cols=1, print_grid=False, shared_xaxes=True,
+                               subplot_titles=['CPU Usage', 'Memory Usage', 'Queue Depth'])
 
         figure['layout'].update(showlegend=True)
         figure['layout']['xaxis'].update(title="Time (sec)")
-        figure['layout']['yaxis1'].update(title="Memory (B)")
+        figure['layout']['yaxis1'].update(title="CPU (%)")
+        figure['layout']['yaxis2'].update(title="Memory (MB)")
+        figure['layout']['yaxis3'].update(title="# Entries")
 
-        figure.add_trace(go.Scattergl(x=time, y=data.used_memory_bytes, name='Used Memory',
+        figure.add_trace(go.Scattergl(x=time, y=data.cpu_usage, name='CPU Usage',
                                       mode='lines', line={'color': 'red'}),
                          1, 1)
+
+        figure.add_trace(go.Scattergl(x=time, y=data.used_memory_bytes / (1024 * 1024), name='Used Memory',
+                                      mode='lines', line={'color': 'blue'}),
+                         2, 1)
+
+        figure.add_trace(go.Scattergl(x=time, y=data.propagator_depth, name='Propagator',
+                                      mode='lines', line={'color': 'red'}),
+                         3, 1)
+
+        figure.add_trace(go.Scattergl(x=time, y=data.dq_depth, name='Delay Queue',
+                                      mode='lines', line={'color': 'green'}),
+                         3, 1)
 
         self._add_figure(name="profile_system_status", figure=figure, title="Profiling: System Status")
 

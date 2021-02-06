@@ -86,13 +86,23 @@ class ProfileSystemStatusMessage:
     """
     MESSAGE_TYPE = MessageType.PROFILE_SYSTEM_STATUS
 
-    _FORMAT = '<qQ'
+    _FORMAT = '<qfB3xQQQIIf'
     _SIZE: int = struct.calcsize(_FORMAT)
 
     def __init__(self):
         self.p1_time = Timestamp()
         self.posix_time_ns = 0
+
+        self.cpu_usage = np.nan
+        self.num_cpu_cores = 0
+
+        self.total_memory_bytes = 0
+        self.total_used_memory_bytes = 0
         self.used_memory_bytes = 0
+
+        self.propagator_depth = 0
+        self.dq_depth = 0
+        self.dq_depth_sec = np.nan
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
@@ -103,7 +113,10 @@ class ProfileSystemStatusMessage:
         offset += self.p1_time.pack(buffer, offset, return_buffer=False)
 
         struct.pack_into(ProfileSystemStatusMessage._FORMAT, buffer, offset,
-                         self.posix_time_ns, self.used_memory_bytes)
+                         self.posix_time_ns,
+                         self.cpu_usage, self.num_cpu_cores,
+                         self.total_memory_bytes, self.total_used_memory_bytes, self.used_memory_bytes,
+                         self.propagator_depth, self.dq_depth, self.dq_depth_sec)
         offset += ProfileSystemStatusMessage._SIZE
 
         if return_buffer:
@@ -116,7 +129,10 @@ class ProfileSystemStatusMessage:
 
         offset += self.p1_time.unpack(buffer, offset)
 
-        (self.posix_time_ns, self.used_memory_bytes) = \
+        (self.posix_time_ns,
+         self.cpu_usage, self.num_cpu_cores,
+         self.total_memory_bytes, self.total_used_memory_bytes, self.used_memory_bytes,
+         self.propagator_depth, self.dq_depth, self.dq_depth_sec) = \
             struct.unpack_from(ProfileSystemStatusMessage._FORMAT, buffer=buffer, offset=offset)
         offset += ProfileSystemStatusMessage._SIZE
 
@@ -132,7 +148,11 @@ class ProfileSystemStatusMessage:
                   (datetime.utcfromtimestamp(self.posix_time_ns).replace(tzinfo=timezone.utc),
                    self.posix_time_ns * 1e-9)
         string += '  P1 time: %s\n' % str(self.p1_time)
-        string += '  Used memory: %d B' % self.used_memory_bytes
+        string += '  CPU: %.1f%%\n' % self.cpu_usage
+        string += '  Total memory: %d B/%d B' % (self.total_used_memory_bytes, self.total_memory_bytes)
+        string += '  Used memory: %d B/%d B' % (self.used_memory_bytes, self.total_memory_bytes)
+        string += '  Propagator depth: %d\n' % self.propagator_depth
+        string += '  Delay queue depth: %d (%.2f sec)' % (self.dq_depth, self.dq_depth_sec)
         return string
 
     @classmethod
@@ -144,7 +164,14 @@ class ProfileSystemStatusMessage:
         result = {
             'p1_time': np.array([float(m.p1_time) for m in messages]),
             'posix_time': np.array([m.posix_time_ns * 1e-9 for m in messages]),
+            'cpu_usage': np.array([m.cpu_usage for m in messages]),
+            'num_cpu_cores': np.array([m.num_cpu_cores for m in messages]),
+            'total_memory_bytes': np.array([m.total_memory_bytes for m in messages]),
+            'total_used_memory_bytes': np.array([m.total_used_memory_bytes for m in messages]),
             'used_memory_bytes': np.array([m.used_memory_bytes for m in messages]),
+            'propagator_depth': np.array([m.propagator_depth for m in messages]),
+            'dq_depth': np.array([m.dq_depth for m in messages]),
+            'dq_depth_sec': np.array([m.dq_depth_sec for m in messages]),
         }
         return result
 
