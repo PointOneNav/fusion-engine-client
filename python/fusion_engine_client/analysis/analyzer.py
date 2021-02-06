@@ -180,7 +180,7 @@ class Analyzer(object):
         if self.output_dir is None:
             return
 
-        # Read the pose data.
+        # Read the data.
         result = self.reader.read(message_types=[IMUMeasurement], **self.params)
         data = result[IMUMeasurement.MESSAGE_TYPE]
 
