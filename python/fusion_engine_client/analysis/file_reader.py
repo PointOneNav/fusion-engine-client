@@ -156,7 +156,12 @@ class FileReader(object):
         #
         # Note that we explicitly set a start time since, if the time range is not specified, read() will include
         # messages that do not have P1 time. We want to make sure the 1 message is one with time.
-        self.read(time_range=(0.0, None), max_messages=1, generate_index=False)
+        if self.index is None:
+            self.t0 = None
+            self.read(time_range=(0.0, None), max_messages=1, generate_index=False)
+        else:
+            idx = np.argmax(~np.isnan(self.index['time']))
+            self.t0 = self.index['time'][idx]
 
     def close(self):
         """!
