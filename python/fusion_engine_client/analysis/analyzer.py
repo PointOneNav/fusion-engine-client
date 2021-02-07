@@ -65,6 +65,7 @@ class Analyzer(object):
         }
 
         self.t0 = self.reader.t0
+        self.posix_t0 = None
 
         self.plots = {}
         self.summary = ''
@@ -243,13 +244,13 @@ class Analyzer(object):
             self.logger.info('No system profiling data available.')
             return
 
-        time = data.p1_time - float(self.t0)
+        time = data.posix_time - self.reader.get_posix_t0()
 
         figure = make_subplots(rows=3, cols=1, print_grid=False, shared_xaxes=True,
                                subplot_titles=['CPU Usage', 'Memory Usage', 'Queue Depth'])
 
         figure['layout'].update(showlegend=True)
-        figure['layout']['xaxis'].update(title="Time (sec)")
+        figure['layout']['xaxis'].update(title="POSIX Time (sec)")
         figure['layout']['yaxis1'].update(title="CPU (%)")
         figure['layout']['yaxis2'].update(title="Memory (MB)")
         figure['layout']['yaxis3'].update(title="# Entries")
@@ -298,11 +299,11 @@ class Analyzer(object):
                                subplot_titles=['Pipeline Delay'])
 
         figure['layout'].update(showlegend=True)
-        figure['layout']['xaxis'].update(title="Time (sec)")
+        figure['layout']['xaxis'].update(title="POSIX Time (sec)")
         figure['layout']['yaxis1'].update(title="Delay (sec)")
 
         for name, point_data in data.points.items():
-            time_sec = point_data[0, :] - self.t0
+            time_sec = point_data[0, :] - self.reader.get_posix_t0()
             delay_sec = point_data[1, :]
             figure.add_trace(go.Scattergl(x=time_sec, y=delay_sec, name=name, mode='markers'), 1, 1)
 
