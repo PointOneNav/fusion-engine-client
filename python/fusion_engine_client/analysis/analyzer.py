@@ -27,7 +27,7 @@ _logger = logging.getLogger('point_one.fusion_engine.analysis.analyzer')
 class Analyzer(object):
     logger = _logger
 
-    def __init__(self, file: Union[FileReader, str], output_dir=None,
+    def __init__(self, file: Union[FileReader, str], output_dir: str = None, prefix: str = '',
                  time_range: Tuple[Union[float, Timestamp], Union[float, Timestamp]] = None,
                  absolute_time: bool = False,
                  max_messages: int = None):
@@ -35,6 +35,8 @@ class Analyzer(object):
         @brief Create an analyzer for the specified log.
 
         @param file A @ref FileReader instance, or the path to a file to be loaded.
+        @param output_dir The directory where output will be stored.
+        @param prefix An optional prefix to be appended to the generated filenames.
         @param time_range An optional length-2 tuple specifying desired start and end bounds on the data timestamps.
                Both the start and end values may be set to `None` to read all data.
         @param absolute_time If `True`, interpret the timestamps in `time_range` as absolute P1 times. Otherwise, treat
@@ -48,6 +50,7 @@ class Analyzer(object):
             self.reader = file
 
         self.output_dir = output_dir
+        self.prefix = prefix
 
         self.params = {
             'time_range': time_range,
@@ -262,7 +265,7 @@ class Analyzer(object):
             'summary': '<pre>' + self.summary.replace('\n', '<br>') + '</pre>'
         }
 
-        index_path = os.path.join(self.output_dir, 'index.html')
+        index_path = os.path.join(self.output_dir, self.prefix + 'index.html')
         with open(index_path, 'w') as f:
             self.logger.info('Creating %s...' % index_path)
             f.write(index_html)
@@ -330,7 +333,7 @@ Duration: %(duration_sec).1f seconds
         elif name == 'index':
             raise ValueError('Plot name cannot be index.')
 
-        path = os.path.join(self.output_dir, name + '.html')
+        path = os.path.join(self.output_dir, self.prefix + name + '.html')
         self.logger.info('Creating %s...' % path)
 
         plotly.offline.plot(
@@ -396,6 +399,8 @@ if __name__ == "__main__":
     parser.add_argument('-o', '--output', type=str, metavar='DIR',
                         help="The directory where output will be stored. Defaults to the current directory, or to "
                              "'<log_dir>/plot_fusion_engine/' if reading from a log.")
+    parser.add_argument('-p', '--prefix', metavar='PREFIX',
+                        help="If specified, prepend each filename with PREFIX.")
     parser.add_argument('-t', '--time', type=str, metavar='[START][:END]',
                         help="The desired time range to be analyzed. Both start and end may be omitted to read from "
                              "beginning or to the end of the file. By default, timestamps are treated as relative to "
@@ -443,6 +448,7 @@ if __name__ == "__main__":
 
     # Read pose data from the file.
     analyzer = Analyzer(file=input_path, output_dir=output_dir,
+                        prefix=options.prefix + '.' if options.prefix is not None else '',
                         time_range=time_range, absolute_time=options.absolute_time)
     analyzer.plot_pose()
     analyzer.generate_index(auto_open=not options.no_index)
