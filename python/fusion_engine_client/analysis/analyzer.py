@@ -357,7 +357,7 @@ if __name__ == "__main__":
                              "relative to the first message in the file.")
     parser.add_argument('--no-index', action='store_true',
                         help="Do not automatically open the plots in a web browser.")
-    parser.add_argument('-o', '--output', type=str, metavar='DIR', default='.',
+    parser.add_argument('-o', '--output', type=str, metavar='DIR',
                         help="The directory where output will be stored.")
     parser.add_argument('-t', '--time', type=str, metavar='[START][:END]',
                         help="The desired time range to be analyzed. Both start and end may be omitted to read from "
@@ -401,11 +401,19 @@ if __name__ == "__main__":
         time_range = None
 
     # Check if the input file exists.
-    if not os.path.exists(options.file):
-        _logger.error("File '%s' not found." % options.file)
+    input_path = options.file
+    if not os.path.exists(input_path):
+        _logger.error("File '%s' not found." % input_path)
         sys.exit(1)
+
+    output_dir = options.output
+    if output_dir is None:
+        output_dir = '.'
+
     # Read pose data from the file.
-    analyzer = Analyzer(file=options.file, output_dir=options.output,
+    analyzer = Analyzer(file=input_path, output_dir=output_dir,
                         time_range=time_range, absolute_time=options.absolute_time)
     analyzer.plot_pose()
     analyzer.generate_index(auto_open=not options.no_index)
+
+    _logger.info("Output stored in '%s'." % os.path.abspath(output_dir))
