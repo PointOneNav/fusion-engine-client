@@ -358,7 +358,8 @@ if __name__ == "__main__":
     parser.add_argument('--no-index', action='store_true',
                         help="Do not automatically open the plots in a web browser.")
     parser.add_argument('-o', '--output', type=str, metavar='DIR',
-                        help="The directory where output will be stored.")
+                        help="The directory where output will be stored. Defaults to the current directory, or to "
+                             "'<log_dir>/plot_fusion_engine/' if reading from a log.")
     parser.add_argument('-t', '--time', type=str, metavar='[START][:END]',
                         help="The desired time range to be analyzed. Both start and end may be omitted to read from "
                              "beginning or to the end of the file. By default, timestamps are treated as relative to "
@@ -366,7 +367,8 @@ if __name__ == "__main__":
     parser.add_argument('-v', '--verbose', action='count', default=0,
                         help="Print verbose/trace debugging messages.")
 
-    parser.add_argument('file', type=str, help="The path to a binary file to be read.")
+    parser.add_argument('file', type=str,
+                        help="The path to a binary file to be read, or to an Atlas log containing FusionEngine output.")
     options = parser.parse_args()
 
     # Configure logging.
@@ -402,11 +404,35 @@ if __name__ == "__main__":
 
     # Check if the input file exists.
     input_path = options.file
-    if not os.path.exists(input_path):
+    output_dir = options.output
+    if os.path.isfile(input_path):
+        # Do nothing - use the specified file.
+        pass
+    # If the input path is a directory, see if it's an Atlas log.
+    elif os.path.isdir(input_path):
+        # A valid Atlas logs will contain a manifest file (note: the filename spelling below is intentional).
+        log_dir = input_path
+        if not os.path.exists(os.path.join(log_dir, 'maniphest.json')):
+            _logger.error('Specified directory is not a valid Atlas log.')
+            sys.exit(1)
+        else:
+            log_id = os.path.basename(log_dir)
+
+            # Check for a FusionEngine output file.
+            fe_service_dir = os.path.join(log_dir, 'filter', 'output', 'fe_service')
+            input_path = os.path.join(fe_service_dir, 'output.p1bin')
+
+            if os.path.exists(input_path):
+                _logger.info('Loading %s from log %s.' % (os.path.basename(input_path), log_id))
+                if output_dir is None:
+                    output_dir = os.path.join(log_dir, 'plot_fusion_engine')
+            else:
+                _logger.error("No .p1bin file found for log '%s' (%s)." % (log_id, log_dir))
+                sys.exit(1)
+    else:
         _logger.error("File '%s' not found." % input_path)
         sys.exit(1)
 
-    output_dir = options.output
     if output_dir is None:
         output_dir = '.'
 
