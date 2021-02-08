@@ -400,7 +400,7 @@ class ProfilePipelineMessage:
         return string
 
     def calcsize(self) -> int:
-        return ProfilePipelineMessage._SIZE + len(self.entries) * ProfilePipelineEntry.calcsize()
+        return ProfilePipelineMessage._SIZE + Timestamp.calcsize() + len(self.entries) * ProfilePipelineEntry.calcsize()
 
     @classmethod
     def to_numpy(cls, messages):
