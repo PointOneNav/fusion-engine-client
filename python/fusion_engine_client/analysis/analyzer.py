@@ -350,6 +350,42 @@ Duration: %(duration_sec).1f seconds
             self.logger.error("Unable to open web browser.")
 
 
+def find_input(input_path, output_dir):
+    # Check if the input file exists.
+    if os.path.isfile(input_path):
+        # Do nothing - use the specified file.
+        pass
+    # If the input path is a directory, see if it's an Atlas log.
+    elif os.path.isdir(input_path):
+        # A valid Atlas logs will contain a manifest file (note: the filename spelling below is intentional).
+        log_dir = input_path
+        if not os.path.exists(os.path.join(log_dir, 'maniphest.json')):
+            _logger.error('Specified directory is not a valid Atlas log.')
+            sys.exit(1)
+        else:
+            log_id = os.path.basename(log_dir)
+
+            # Check for a FusionEngine output file.
+            fe_service_dir = os.path.join(log_dir, 'filter', 'output', 'fe_service')
+            input_path = os.path.join(fe_service_dir, 'output.p1bin')
+
+            if os.path.exists(input_path):
+                _logger.info('Loading %s from log %s.' % (os.path.basename(input_path), log_id))
+                if output_dir is None:
+                    output_dir = os.path.join(log_dir, 'plot_fusion_engine')
+            else:
+                _logger.error("No .p1bin file found for log '%s' (%s)." % (log_id, log_dir))
+                sys.exit(1)
+    else:
+        _logger.error("File '%s' not found." % input_path)
+        sys.exit(1)
+
+    if output_dir is None:
+        output_dir = '.'
+
+    return input_path, output_dir
+
+
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument('--absolute-time', '--abs', action='store_true',
@@ -402,39 +438,8 @@ if __name__ == "__main__":
     else:
         time_range = None
 
-    # Check if the input file exists.
-    input_path = options.file
-    output_dir = options.output
-    if os.path.isfile(input_path):
-        # Do nothing - use the specified file.
-        pass
-    # If the input path is a directory, see if it's an Atlas log.
-    elif os.path.isdir(input_path):
-        # A valid Atlas logs will contain a manifest file (note: the filename spelling below is intentional).
-        log_dir = input_path
-        if not os.path.exists(os.path.join(log_dir, 'maniphest.json')):
-            _logger.error('Specified directory is not a valid Atlas log.')
-            sys.exit(1)
-        else:
-            log_id = os.path.basename(log_dir)
-
-            # Check for a FusionEngine output file.
-            fe_service_dir = os.path.join(log_dir, 'filter', 'output', 'fe_service')
-            input_path = os.path.join(fe_service_dir, 'output.p1bin')
-
-            if os.path.exists(input_path):
-                _logger.info('Loading %s from log %s.' % (os.path.basename(input_path), log_id))
-                if output_dir is None:
-                    output_dir = os.path.join(log_dir, 'plot_fusion_engine')
-            else:
-                _logger.error("No .p1bin file found for log '%s' (%s)." % (log_id, log_dir))
-                sys.exit(1)
-    else:
-        _logger.error("File '%s' not found." % input_path)
-        sys.exit(1)
-
-    if output_dir is None:
-        output_dir = '.'
+    # Locate the input file and set the output directory.
+    input_path, output_dir = find_input(options.file, options.output)
 
     # Read pose data from the file.
     analyzer = Analyzer(file=input_path, output_dir=output_dir,
