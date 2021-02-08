@@ -23,6 +23,7 @@ if __name__ == "__main__" and (__package__ is None or __package__ == ''):
 
 from ..messages.core import *
 from ..messages.internal import *
+from..utils.log import MANIFEST_FILE_NAME, find_log
 from .attitude import get_enu_rotation_matrix
 from .file_reader import FileReader
 
@@ -446,19 +447,43 @@ def find_input(input_path, output_dir):
     if os.path.isfile(input_path):
         # Do nothing - use the specified file.
         pass
-    # If the input path is a directory, see if it's an Atlas log.
-    elif os.path.isdir(input_path):
-        # A valid Atlas logs will contain a manifest file (note: the filename spelling below is intentional).
-        log_dir = input_path
-        if not os.path.exists(os.path.join(log_dir, 'maniphest.json')):
-            _logger.error('Specified directory is not a valid Atlas log.')
-            sys.exit(1)
-        else:
+    # Check if the specified path is a log directory, or pattern matches to a log.
+    else:
+        # A valid Atlas logs will contain a manifest file.
+        dir_exists = os.path.isdir(input_path)
+        log_dir = None
+        log_id = None
+        if dir_exists and os.path.exists(os.path.join(input_path, MANIFEST_FILE_NAME)):
+            log_dir = input_path
             log_id = os.path.basename(log_dir)
+        # Check if this is a pattern matching to a log (i.e., a partial log ID or a search pattern (foo*/partial_id*)).
+        else:
+            _logger.info("File '%s' not found. Searching for a matching log." % input_path)
+            matches = find_log(input_path)
+            if len(matches) > 1:
+                # find_log() will print an error.
+                sys.exit(1)
+            elif len(matches) == 1:
+                log_dir = matches[0][0]
+                log_id = matches[0][1]
 
+        # If the input path wasn't a file wasn't a log directory, and didn't pattern match to a log directory, there's
+        # nothing to be found.
+        if log_id is None:
+            if dir_exists:
+                _logger.error("Directory '%s' is not a valid Atlas log." % input_path)
+            else:
+                _logger.error("File/log '%s' not found." % input_path)
+            sys.exit(1)
+        # If we found a log directory, see if it contains an output file.
+        else:
             # Check for a FusionEngine output file.
+            #
+            # If log playback output exists, use that over the original data recorded with the log.
             fe_service_dir = os.path.join(log_dir, 'filter', 'output', 'fe_service')
-            input_path = os.path.join(fe_service_dir, 'output.p1bin')
+            input_path = os.path.join(fe_service_dir, 'output.playback.p1bin')
+            if not os.path.exists(input_path):
+                input_path = os.path.join(fe_service_dir, 'output.p1bin')
 
             if os.path.exists(input_path):
                 _logger.info('Loading %s from log %s.' % (os.path.basename(input_path), log_id))
@@ -467,9 +492,6 @@ def find_input(input_path, output_dir):
             else:
                 _logger.error("No .p1bin file found for log '%s' (%s)." % (log_id, log_dir))
                 sys.exit(1)
-    else:
-        _logger.error("File '%s' not found." % input_path)
-        sys.exit(1)
 
     if output_dir is None:
         output_dir = '.'
