@@ -22,9 +22,10 @@ from ..messages.core import *
 from .attitude import get_enu_rotation_matrix
 from .file_reader import FileReader
 
+_logger = logging.getLogger('point_one.fusion_engine.analysis.analyzer')
 
 class Analyzer(object):
-    logger = logging.getLogger('point_one.fusion_engine.analysis.analyzer')
+    logger = _logger
 
     def __init__(self, file: Union[FileReader, str], output_dir=None,
                  time_range: Tuple[Union[float, Timestamp], Union[float, Timestamp]] = None,
@@ -399,6 +400,10 @@ if __name__ == "__main__":
     else:
         time_range = None
 
+    # Check if the input file exists.
+    if not os.path.exists(options.file):
+        _logger.error("File '%s' not found." % options.file)
+        sys.exit(1)
     # Read pose data from the file.
     analyzer = Analyzer(file=options.file, output_dir=options.output,
                         time_range=time_range, absolute_time=options.absolute_time)
