@@ -29,6 +29,7 @@ from .file_reader import FileReader
 
 _logger = logging.getLogger('point_one.fusion_engine.analysis.analyzer')
 
+
 class Analyzer(object):
     logger = _logger
 
@@ -270,6 +271,10 @@ class Analyzer(object):
 
         figure.add_trace(go.Scattergl(x=time, y=data.dq_depth, name='Delay Queue',
                                       mode='lines', line={'color': 'green'}),
+                         3, 1)
+
+        figure.add_trace(go.Scattergl(x=time, y=data.log_queue_depth, name='Log Queue',
+                                      mode='lines', line={'color': 'blue'}),
                          3, 1)
 
         self._add_figure(name="profile_system_status", figure=figure, title="Profiling: System Status")

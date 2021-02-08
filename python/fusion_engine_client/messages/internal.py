@@ -86,7 +86,7 @@ class ProfileSystemStatusMessage:
     """
     MESSAGE_TYPE = MessageType.PROFILE_SYSTEM_STATUS
 
-    _FORMAT = '<qfB3xQQQIIf'
+    _FORMAT = '<qfB3xQQQHHH2xf'
     _SIZE: int = struct.calcsize(_FORMAT)
 
     def __init__(self):
@@ -100,6 +100,7 @@ class ProfileSystemStatusMessage:
         self.total_used_memory_bytes = 0
         self.used_memory_bytes = 0
 
+        self.log_queue_depth = 0
         self.propagator_depth = 0
         self.dq_depth = 0
         self.dq_depth_sec = np.nan
@@ -116,7 +117,7 @@ class ProfileSystemStatusMessage:
                          self.posix_time_ns,
                          self.cpu_usage, self.num_cpu_cores,
                          self.total_memory_bytes, self.total_used_memory_bytes, self.used_memory_bytes,
-                         self.propagator_depth, self.dq_depth, self.dq_depth_sec)
+                         self.log_queue_depth, self.propagator_depth, self.dq_depth, self.dq_depth_sec)
         offset += ProfileSystemStatusMessage._SIZE
 
         if return_buffer:
@@ -132,7 +133,7 @@ class ProfileSystemStatusMessage:
         (self.posix_time_ns,
          self.cpu_usage, self.num_cpu_cores,
          self.total_memory_bytes, self.total_used_memory_bytes, self.used_memory_bytes,
-         self.propagator_depth, self.dq_depth, self.dq_depth_sec) = \
+         self.log_queue_depth, self.propagator_depth, self.dq_depth, self.dq_depth_sec) = \
             struct.unpack_from(ProfileSystemStatusMessage._FORMAT, buffer=buffer, offset=offset)
         offset += ProfileSystemStatusMessage._SIZE
 
@@ -151,6 +152,7 @@ class ProfileSystemStatusMessage:
         string += '  CPU: %.1f%%\n' % self.cpu_usage
         string += '  Total memory: %d B/%d B' % (self.total_used_memory_bytes, self.total_memory_bytes)
         string += '  Used memory: %d B/%d B' % (self.used_memory_bytes, self.total_memory_bytes)
+        string += '  Log queue depth: %d\n' % self.log_queue_depth
         string += '  Propagator depth: %d\n' % self.propagator_depth
         string += '  Delay queue depth: %d (%.2f sec)' % (self.dq_depth, self.dq_depth_sec)
         return string
@@ -169,6 +171,7 @@ class ProfileSystemStatusMessage:
             'total_memory_bytes': np.array([m.total_memory_bytes for m in messages]),
             'total_used_memory_bytes': np.array([m.total_used_memory_bytes for m in messages]),
             'used_memory_bytes': np.array([m.used_memory_bytes for m in messages]),
+            'log_queue_depth': np.array([m.log_queue_depth for m in messages]),
             'propagator_depth': np.array([m.propagator_depth for m in messages]),
             'dq_depth': np.array([m.dq_depth for m in messages]),
             'dq_depth_sec': np.array([m.dq_depth_sec for m in messages]),
