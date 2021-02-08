@@ -532,10 +532,7 @@ class FileReader(object):
     def get_posix_t0(self):
         if self.posix_t0 is None:
             # Determine the POSIX t0 based on the first profiling message to appear in the log.
-            result = self.read(message_types=[internal.ProfileSystemStatusMessage,
-                                              internal.ProfilePipelineDefinitionMessage,
-                                              internal.ProfilePipelineMessage],
-                               max_messages=1)
+            result = self.read(message_types=internal.PROFILING_TYPES, max_messages=1)
             if len(result) > 0:
                 self.posix_t0 = list(result.values())[0].messages[0].posix_time_ns * 1e-9
         return self.posix_t0

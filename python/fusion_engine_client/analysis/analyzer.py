@@ -294,12 +294,12 @@ class Analyzer(object):
             self.logger.info('No measurement profiling data available.')
             return
 
-        # Read the last pipeline definition message to map hashes to names, then remap the pipeline data.
+        # Read the last pipeline definition message to map IDs to names, then remap the data.
         params = copy.deepcopy(self.params)
         params['max_messages'] = -1
-        result = self.reader.read(message_types=[ProfilePipelineDefinitionMessage], **params)
-        if len(result[ProfilePipelineDefinitionMessage.MESSAGE_TYPE].messages) != 0:
-            definition = result[ProfilePipelineDefinitionMessage.MESSAGE_TYPE].messages[0]
+        result = self.reader.read(message_types=[ProfilePipelineMessage.DEFINITION_TYPE], **params)
+        if len(result[ProfilePipelineMessage.DEFINITION_TYPE].messages) != 0:
+            definition = result[ProfilePipelineMessage.DEFINITION_TYPE].messages[0]
             ProfilePipelineMessage.remap_by_name(data, definition)
 
         figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=True,

@@ -32,6 +32,12 @@ class InternalMessageType(IntEnum):
 for entry in InternalMessageType:
     extend_enum(MessageType, entry.name, entry.value)
 
+PROFILING_TYPES = [
+    MessageType.PROFILE_SYSTEM_STATUS,
+    MessageType.PROFILE_PIPELINE_DEFINITION,
+    MessageType.PROFILE_PIPELINE,
+]
+
 
 class MessageRequest:
     """!
@@ -179,21 +185,21 @@ class ProfileSystemStatusMessage:
         return result
 
 
-class ProfilePipelineDefinitionEntry:
+class ProfileDefinitionEntry:
     """!
-    @brief Pipeline profiling point definition.
+    @brief Individual profiling point definition.
     """
     _FORMAT = '<I3xB'
     _SIZE: int = struct.calcsize(_FORMAT)
 
     def __init__(self):
-        self.hash = 0
+        self.id = 0
         self.name = ''
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
-        format = ProfilePipelineDefinitionEntry._FORMAT + '%ds' % len(self.name)
+        format = ProfileDefinitionEntry._FORMAT + '%ds' % len(self.name)
 
-        args = (self.hash, len(self.name), self.name)
+        args = (self.id, len(self.name), self.name)
         if buffer is None:
             buffer = struct.pack(format, *args)
         else:
@@ -207,9 +213,9 @@ class ProfilePipelineDefinitionEntry:
     def unpack(self, buffer: bytes, offset: int = 0) -> int:
         initial_offset = offset
 
-        (self.hash, string_length) = \
-            struct.unpack_from(ProfilePipelineDefinitionEntry._FORMAT, buffer=buffer, offset=offset)
-        offset += ProfilePipelineDefinitionEntry._SIZE
+        (self.id, string_length) = \
+            struct.unpack_from(ProfileDefinitionEntry._FORMAT, buffer=buffer, offset=offset)
+        offset += ProfileDefinitionEntry._SIZE
 
         (self.name,) = \
             struct.unpack_from('%ds' % string_length, buffer=buffer, offset=offset)
@@ -219,21 +225,19 @@ class ProfilePipelineDefinitionEntry:
         return offset - initial_offset
 
     def calcsize(self) -> int:
-        return ProfilePipelineDefinitionEntry._SIZE + len(self.name)
+        return ProfileDefinitionEntry._SIZE + len(self.name)
 
 
-class ProfilePipelineDefinitionMessage:
+class ProfileDefinitionMessage:
     """!
-    @brief Measurement pipeline profiling point definitions
+    @brief Profiling point definitions.
     """
-    MESSAGE_TYPE = MessageType.PROFILE_PIPELINE_DEFINITION
-
     _FORMAT = '<q2xH'
     _SIZE: int = struct.calcsize(_FORMAT)
 
     def __init__(self):
         self.posix_time_ns = 0
-        self.entries: List[ProfilePipelineDefinitionEntry] = []
+        self.entries: List[ProfileDefinitionEntry] = []
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
@@ -241,9 +245,9 @@ class ProfilePipelineDefinitionMessage:
 
         initial_offset = offset
 
-        struct.pack_into(ProfilePipelineDefinitionMessage._FORMAT, buffer, offset,
+        struct.pack_into(ProfileDefinitionMessage._FORMAT, buffer, offset,
                          self.posix_time_ns, len(self.entries))
-        offset += ProfilePipelineDefinitionMessage._SIZE
+        offset += ProfileDefinitionMessage._SIZE
 
         for entry in self.entries:
             offset += entry.pack(buffer, offset, return_buffer=False)
@@ -257,37 +261,37 @@ class ProfilePipelineDefinitionMessage:
         initial_offset = offset
 
         (self.posix_time_ns, num_entries) = \
-            struct.unpack_from(ProfilePipelineDefinitionMessage._FORMAT, buffer=buffer, offset=offset)
-        offset += ProfilePipelineDefinitionMessage._SIZE
+            struct.unpack_from(ProfileDefinitionMessage._FORMAT, buffer=buffer, offset=offset)
+        offset += ProfileDefinitionMessage._SIZE
 
         self.entries = []
         for i in range(num_entries):
-            entry = ProfilePipelineDefinitionEntry()
+            entry = ProfileDefinitionEntry()
             offset += entry.unpack(buffer, offset)
             self.entries.append(entry)
 
         return offset - initial_offset
 
     def to_dict(self):
-        return {e.hash: e.name for e in self.entries}
+        return {e.id: e.name for e in self.entries}
 
     def __repr__(self):
-        return '%s @ POSIX time %s (%.6f sec)' % \
-               (self.MESSAGE_TYPE.name, datetime.utcfromtimestamp(self.posix_time_ns).replace(tzinfo=timezone.utc),
+        return 'Profile definition @ POSIX time %s (%.6f sec)' % \
+               (datetime.utcfromtimestamp(self.posix_time_ns).replace(tzinfo=timezone.utc),
                 self.posix_time_ns * 1e-9)
 
     def __str__(self):
-        string = 'Pipeline definition @ POSIX time %s (%.6f sec)\n' % \
+        string = 'Profile definition @ POSIX time %s (%.6f sec)\n' % \
                   (datetime.utcfromtimestamp(self.posix_time_ns).replace(tzinfo=timezone.utc),
                    self.posix_time_ns * 1e-9)
         string += '  %d entries:' % len(self.entries)
         for entry in self.entries:
             string += '\n'
-            string += '    %d: %s' % (entry.hash, entry.name)
+            string += '    %d: %s' % (entry.id, entry.name)
         return string
 
     def calcsize(self) -> int:
-        return ProfilePipelineDefinitionMessage._SIZE + len(self.entries) * ProfilePipelineDefinitionEntry.calcsize()
+        return ProfileDefinitionMessage._SIZE + len(self.entries) * ProfileDefinitionEntry.calcsize()
 
 
 class ProfilePipelineEntry:
@@ -298,11 +302,11 @@ class ProfilePipelineEntry:
     _SIZE: int = struct.calcsize(_FORMAT)
 
     def __init__(self):
-        self.hash = 0
+        self.id = 0
         self.delay_sec = np.nan
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
-        args = (self.hash, self.delay_sec)
+        args = (self.id, self.delay_sec)
         if buffer is None:
             buffer = struct.pack(ProfilePipelineEntry._FORMAT, *args)
         else:
@@ -316,7 +320,7 @@ class ProfilePipelineEntry:
     def unpack(self, buffer: bytes, offset: int = 0) -> int:
         initial_offset = offset
 
-        (self.hash, self.delay_sec) = \
+        (self.id, self.delay_sec) = \
             struct.unpack_from(ProfilePipelineEntry._FORMAT, buffer=buffer, offset=offset)
         offset += ProfilePipelineEntry._SIZE
 
@@ -332,6 +336,7 @@ class ProfilePipelineMessage:
     @brief Measurement pipeline profiling update.
     """
     MESSAGE_TYPE = MessageType.PROFILE_PIPELINE
+    DEFINITION_TYPE = MessageType.PROFILE_PIPELINE_DEFINITION
 
     _FORMAT = '<q2xH'
     _SIZE: int = struct.calcsize(_FORMAT)
@@ -391,7 +396,7 @@ class ProfilePipelineMessage:
         string += '  %d entries:' % len(self.entries)
         for entry in self.entries:
             string += '\n'
-            string += '    %d: %f sec' % (entry.hash, entry.delay_sec)
+            string += '    %d: %f sec' % (entry.id, entry.delay_sec)
         return string
 
     def calcsize(self) -> int:
@@ -402,10 +407,10 @@ class ProfilePipelineMessage:
         points = {}
         for m in messages:
             for p in m.entries:
-                if p.hash not in points:
-                    points[p.hash] = [(m.posix_time_ns * 1e-9, p.delay_sec)]
+                if p.id not in points:
+                    points[p.id] = [(m.posix_time_ns * 1e-9, p.delay_sec)]
                 else:
-                    points[p.hash].append((m.posix_time_ns * 1e-9, p.delay_sec))
+                    points[p.id].append((m.posix_time_ns * 1e-9, p.delay_sec))
         points = {h: np.array(d).T for h, d in points.items()}
 
         result = {
@@ -416,15 +421,15 @@ class ProfilePipelineMessage:
         return result
 
     @classmethod
-    def remap_by_name(cls, numpy_data, definition_message: ProfilePipelineDefinitionMessage):
-        hash_to_name = definition_message.to_dict()
-        numpy_data.points = {hash_to_name[hash]: data for hash, data in numpy_data.points.items()}
+    def remap_by_name(cls, numpy_data, definition_message: ProfileDefinitionMessage):
+        id_to_name = definition_message.to_dict()
+        numpy_data.points = {id_to_name[id]: data for id, data in numpy_data.points.items()}
 
 
 # Extend the message class with internal types.
 message_type_to_class.update({
     MessageRequest.MESSAGE_TYPE: MessageRequest,
     ProfileSystemStatusMessage.MESSAGE_TYPE: ProfileSystemStatusMessage,
-    ProfilePipelineDefinitionMessage.MESSAGE_TYPE: ProfilePipelineDefinitionMessage,
+    ProfilePipelineMessage.DEFINITION_TYPE: ProfileDefinitionMessage,
     ProfilePipelineMessage.MESSAGE_TYPE: ProfilePipelineMessage
 })
