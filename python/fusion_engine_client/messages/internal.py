@@ -26,6 +26,8 @@ class InternalMessageType(IntEnum):
     PROFILE_SYSTEM_STATUS = 20032
     PROFILE_PIPELINE_DEFINITION = 20036
     PROFILE_PIPELINE = 20040
+    PROFILE_EXECUTION_DEFINITION = 20044
+    PROFILE_EXECUTION = 20048
 
 
 # Extend the message type enum with internal types.
@@ -36,6 +38,8 @@ PROFILING_TYPES = [
     MessageType.PROFILE_SYSTEM_STATUS,
     MessageType.PROFILE_PIPELINE_DEFINITION,
     MessageType.PROFILE_PIPELINE,
+    MessageType.PROFILE_EXECUTION_DEFINITION,
+    MessageType.PROFILE_EXECUTION,
 ]
 
 
@@ -424,6 +428,147 @@ class ProfilePipelineMessage:
     def remap_by_name(cls, numpy_data, definition_message: ProfileDefinitionMessage):
         id_to_name = definition_message.to_dict()
         numpy_data.points = {id_to_name[id]: data for id, data in numpy_data.points.items()}
+        return id_to_name
+
+
+class ProfileExecutionEntry:
+    """!
+    @brief Execution profiling point.
+    """
+    _FORMAT = '<Iq'
+    _SIZE: int = struct.calcsize(_FORMAT)
+
+    START = 0
+    STOP = 1
+
+    def __init__(self):
+        self.id = 0
+        self.action = None
+        self.posix_time_ns = 0
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        posix_time_ns = -self.posix_time_ns if self.action == ProfileExecutionEntry.STOP else self.posix_time_ns
+
+        args = (self.id, posix_time_ns)
+        if buffer is None:
+            buffer = struct.pack(ProfileExecutionEntry._FORMAT, *args)
+        else:
+            struct.pack_into(ProfileExecutionEntry._FORMAT, buffer=buffer, offset=offset, *args)
+
+        if return_buffer:
+            return buffer
+        else:
+            return self.calcsize()
+
+    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+        initial_offset = offset
+
+        (self.id, posix_time_ns) = \
+            struct.unpack_from(ProfileExecutionEntry._FORMAT, buffer=buffer, offset=offset)
+        offset += ProfileExecutionEntry._SIZE
+
+        if posix_time_ns < 0:
+            self.action = ProfileExecutionEntry.STOP
+            self.posix_time_ns = -posix_time_ns
+        else:
+            self.action = ProfileExecutionEntry.START
+            self.posix_time_ns = posix_time_ns
+
+        return offset - initial_offset
+
+    @classmethod
+    def calcsize(cls) -> int:
+        return ProfileExecutionEntry._SIZE
+
+
+class ProfileExecutionMessage:
+    """!
+    @brief Code execution profiling update.
+    """
+    MESSAGE_TYPE = MessageType.PROFILE_EXECUTION
+    DEFINITION_TYPE = MessageType.PROFILE_EXECUTION_DEFINITION
+
+    _FORMAT = '<q2xH'
+    _SIZE: int = struct.calcsize(_FORMAT)
+
+    def __init__(self):
+        self.posix_time_ns = 0
+        self.entries: List[ProfileExecutionEntry] = []
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        if buffer is None:
+            buffer = bytes(self.calcsize())
+
+        initial_offset = offset
+
+        struct.pack_into(ProfileExecutionMessage._FORMAT, buffer, offset,
+                         self.posix_time_ns, len(self.entries))
+        offset += ProfileExecutionMessage._SIZE
+
+        for entry in self.entries:
+            offset += entry.pack(buffer, offset, return_buffer=False)
+
+        if return_buffer:
+            return buffer
+        else:
+            return offset - initial_offset
+
+    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+        initial_offset = offset
+
+        (self.posix_time_ns, num_entries) = \
+            struct.unpack_from(ProfileExecutionMessage._FORMAT, buffer=buffer, offset=offset)
+        offset += ProfileExecutionMessage._SIZE
+
+        self.entries = []
+        for i in range(num_entries):
+            entry = ProfileExecutionEntry()
+            offset += entry.unpack(buffer, offset)
+            self.entries.append(entry)
+
+        return offset - initial_offset
+
+    def __repr__(self):
+        return '%s @ POSIX time %s (%.6f sec)' % \
+               (self.MESSAGE_TYPE.name, datetime.utcfromtimestamp(self.posix_time_ns).replace(tzinfo=timezone.utc),
+                self.posix_time_ns * 1e-9)
+
+    def __str__(self):
+        string = 'Execution profiling update @ POSIX time %s (%.6f sec)\n' % \
+                  (datetime.utcfromtimestamp(self.posix_time_ns).replace(tzinfo=timezone.utc),
+                   self.posix_time_ns * 1e-9)
+        string += '  %d entries:' % len(self.entries)
+        for entry in self.entries:
+            string += '\n'
+            string += '    %d: %s @ %f sec' % (entry.id,
+                                               'start' if entry.action == ProfileExecutionEntry.START else 'stop',
+                                               entry.posix_time_ns * 1e-9)
+        return string
+
+    def calcsize(self) -> int:
+        return ProfileExecutionMessage._SIZE + len(self.entries) * ProfileExecutionEntry.calcsize()
+
+    @classmethod
+    def to_numpy(cls, messages):
+        points = {}
+        for m in messages:
+            for p in m.entries:
+                if p.id not in points:
+                    points[p.id] = [(p.posix_time_ns, p.action)]
+                else:
+                    points[p.id].append((p.posix_time_ns, p.action))
+        points = {h: np.array(d, dtype=int).T for h, d in points.items()}
+
+        result = {
+            'points': points
+        }
+        return result
+
+    @classmethod
+    def remap_by_name(cls, numpy_data, definition_message: ProfileDefinitionMessage):
+        id_to_name = definition_message.to_dict()
+        numpy_data.points = {id_to_name[id]: data for id, data in numpy_data.points.items()}
+        return id_to_name
 
 
 # Extend the message class with internal types.
@@ -431,5 +576,7 @@ message_type_to_class.update({
     MessageRequest.MESSAGE_TYPE: MessageRequest,
     ProfileSystemStatusMessage.MESSAGE_TYPE: ProfileSystemStatusMessage,
     ProfilePipelineMessage.DEFINITION_TYPE: ProfileDefinitionMessage,
-    ProfilePipelineMessage.MESSAGE_TYPE: ProfilePipelineMessage
+    ProfilePipelineMessage.MESSAGE_TYPE: ProfilePipelineMessage,
+    ProfileExecutionMessage.DEFINITION_TYPE: ProfileDefinitionMessage,
+    ProfileExecutionMessage.MESSAGE_TYPE: ProfileExecutionMessage
 })

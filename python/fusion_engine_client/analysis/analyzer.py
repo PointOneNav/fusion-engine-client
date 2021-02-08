@@ -294,13 +294,15 @@ class Analyzer(object):
             self.logger.info('No measurement profiling data available.')
             return
 
-        # Read the last pipeline definition message to map IDs to names, then remap the data.
+        # Read the last pipeline definition message to map IDs to names.
         params = copy.deepcopy(self.params)
         params['max_messages'] = -1
         result = self.reader.read(message_types=[ProfilePipelineMessage.DEFINITION_TYPE], **params)
         if len(result[ProfilePipelineMessage.DEFINITION_TYPE].messages) != 0:
             definition = result[ProfilePipelineMessage.DEFINITION_TYPE].messages[0]
-            ProfilePipelineMessage.remap_by_name(data, definition)
+            id_to_name = definition.to_dict()
+        else:
+            id_to_name = {}
 
         figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=True,
                                subplot_titles=['Pipeline Delay'])
@@ -309,12 +311,74 @@ class Analyzer(object):
         figure['layout']['xaxis'].update(title="POSIX Time (sec)")
         figure['layout']['yaxis1'].update(title="Delay (sec)")
 
-        for name, point_data in data.points.items():
+        for id, point_data in data.points.items():
+            name = id_to_name.get(id, 'unknown_%s' % str(id))
             time_sec = point_data[0, :] - self.reader.get_posix_t0()
             delay_sec = point_data[1, :]
-            figure.add_trace(go.Scattergl(x=time_sec, y=delay_sec, name=str(name), mode='markers'), 1, 1)
+            figure.add_trace(go.Scattergl(x=time_sec, y=delay_sec, name=name, mode='markers'), 1, 1)
 
         self._add_figure(name="profile_pipeline", figure=figure, title="Profiling: Measurement Pipeline")
+
+    def plot_execution_profiling(self):
+        """!
+        @brief Plot code execution profiling data.
+        """
+        if self.output_dir is None:
+            return
+
+        # Read the pipeline data.
+        result = self.reader.read(message_types=[ProfileExecutionMessage], **self.params)
+        data = result[ProfileExecutionMessage.MESSAGE_TYPE]
+
+        if len(data.points) == 0:
+            self.logger.info('No execution profiling data available.')
+            return
+
+        # Read the last pipeline definition message to map IDs to names.
+        params = copy.deepcopy(self.params)
+        params['max_messages'] = -1
+        result = self.reader.read(message_types=[ProfileExecutionMessage.DEFINITION_TYPE], **params)
+        if len(result[ProfileExecutionMessage.DEFINITION_TYPE].messages) != 0:
+            definition = result[ProfileExecutionMessage.DEFINITION_TYPE].messages[0]
+            id_to_name = definition.to_dict()
+        else:
+            id_to_name = {}
+
+        figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=True,
+                               subplot_titles=['Code Execution'])
+
+        figure['layout'].update(showlegend=True)
+        figure['layout']['xaxis'].update(title="POSIX Time (sec)")
+        figure['layout']['yaxis1'].update(title="Event")
+
+        if len(id_to_name) != 0:
+            figure.update_yaxes(
+                ticktext=['%s (%d)' % (name, id) for id, name in id_to_name.items()],
+                tickvals=list(id_to_name.keys()))
+
+        for i, (id, point_data) in enumerate(data.points.items()):
+            name = id_to_name.get(id, 'unknown_%s' % str(id))
+            time_sec = (point_data[0, :] - self.reader.get_posix_t0_ns()) * 1e-9
+            action = point_data[1, :].astype(int)
+            color = plotly.colors.DEFAULT_PLOTLY_COLORS[i % len(plotly.colors.DEFAULT_PLOTLY_COLORS)]
+
+            idx = action == ProfileExecutionEntry.START
+            if np.any(idx):
+                figure.add_trace(go.Scattergl(x=time_sec[idx], y=[id] * np.sum(idx),
+                                              name=name + ' (start)', legendgroup=id,
+                                              mode='markers',
+                                              marker={'color': color, 'size': 12, 'symbol': 'triangle-right'}),
+                                 1, 1)
+
+            idx = action == ProfileExecutionEntry.STOP
+            if np.any(idx):
+                figure.add_trace(go.Scattergl(x=time_sec[idx], y=[id] * np.sum(idx),
+                                              name=name + ' (stop)', legendgroup=id,
+                                              mode='markers',
+                                              marker={'color': color, 'size': 12, 'symbol': 'triangle-left-open'}),
+                                 1, 1)
+
+        self._add_figure(name="profile_execution", figure=figure, title="Profiling: Code Execution")
 
     def generate_index(self, auto_open=True):
         """!
@@ -574,6 +638,7 @@ if __name__ == "__main__":
     analyzer.plot_pose()
     analyzer.plot_system_status_profiling()
     analyzer.plot_measurement_pipeline_profiling()
+    analyzer.plot_execution_profiling()
     analyzer.generate_index(auto_open=not options.no_index)
 
     _logger.info("Output stored in '%s'." % os.path.abspath(output_dir))
