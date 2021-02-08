@@ -443,7 +443,7 @@ Duration: %(duration_sec).1f seconds
             self.logger.error("Unable to open web browser.")
 
 
-def find_input(input_path, output_dir):
+def find_input(input_path, output_dir, load_original=False):
     # Check if the input file exists.
     if os.path.isfile(input_path):
         # Do nothing - use the specified file.
@@ -479,12 +479,14 @@ def find_input(input_path, output_dir):
         # If we found a log directory, see if it contains an output file.
         else:
             # Check for a FusionEngine output file.
-            #
-            # If log playback output exists, use that over the original data recorded with the log.
             fe_service_dir = os.path.join(log_dir, 'filter', 'output', 'fe_service')
-            input_path = os.path.join(fe_service_dir, 'output.playback.p1bin')
-            if not os.path.exists(input_path):
+            if load_original:
                 input_path = os.path.join(fe_service_dir, 'output.p1bin')
+            else:
+                # If log playback output exists, use that over the original data recorded with the log.
+                input_path = os.path.join(fe_service_dir, 'output.playback.p1bin')
+                if not os.path.exists(input_path):
+                    input_path = os.path.join(fe_service_dir, 'output.p1bin')
 
             if os.path.exists(input_path):
                 _logger.info('Loading %s from log %s.' % (os.path.basename(input_path), log_id))
@@ -507,6 +509,9 @@ if __name__ == "__main__":
                              "relative to the first message in the file.")
     parser.add_argument('--no-index', action='store_true',
                         help="Do not automatically open the plots in a web browser.")
+    parser.add_argument('--original', action='store_true',
+                        help='When loading from a log, load the recorded FusionEngine output file instead of playback '
+                             'results.')
     parser.add_argument('-o', '--output', type=str, metavar='DIR',
                         help="The directory where output will be stored. Defaults to the current directory, or to "
                              "'<log_dir>/plot_fusion_engine/' if reading from a log.")
@@ -555,7 +560,7 @@ if __name__ == "__main__":
         time_range = None
 
     # Locate the input file and set the output directory.
-    input_path, output_dir = find_input(options.file, options.output)
+    input_path, output_dir = find_input(options.file, options.output, load_original=options.original)
 
     # Read pose data from the file.
     analyzer = Analyzer(file=input_path, output_dir=output_dir,
