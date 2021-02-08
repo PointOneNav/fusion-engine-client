@@ -242,7 +242,7 @@ class Analyzer(object):
         result = self.reader.read(message_types=[ProfileSystemStatusMessage], **self.params)
         data = result[ProfileSystemStatusMessage.MESSAGE_TYPE]
 
-        if len(data.p1_time) == 0:
+        if len(data.posix_time) == 0:
             self.logger.info('No system profiling data available.')
             return
 
@@ -290,7 +290,7 @@ class Analyzer(object):
         result = self.reader.read(message_types=[ProfilePipelineMessage], **self.params)
         data = result[ProfilePipelineMessage.MESSAGE_TYPE]
 
-        if len(data.p1_time) == 0:
+        if len(data.posix_time) == 0:
             self.logger.info('No measurement profiling data available.')
             return
 
