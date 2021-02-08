@@ -293,8 +293,9 @@ class Analyzer(object):
         params = copy.deepcopy(self.params)
         params['max_messages'] = -1
         result = self.reader.read(message_types=[ProfilePipelineDefinitionMessage], **params)
-        definition = result[ProfilePipelineDefinitionMessage.MESSAGE_TYPE].messages[0]
-        ProfilePipelineMessage.remap_by_name(data, definition)
+        if len(result[ProfilePipelineDefinitionMessage.MESSAGE_TYPE].messages) != 0:
+            definition = result[ProfilePipelineDefinitionMessage.MESSAGE_TYPE].messages[0]
+            ProfilePipelineMessage.remap_by_name(data, definition)
 
         figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=True,
                                subplot_titles=['Pipeline Delay'])
@@ -306,7 +307,7 @@ class Analyzer(object):
         for name, point_data in data.points.items():
             time_sec = point_data[0, :] - self.reader.get_posix_t0()
             delay_sec = point_data[1, :]
-            figure.add_trace(go.Scattergl(x=time_sec, y=delay_sec, name=name, mode='markers'), 1, 1)
+            figure.add_trace(go.Scattergl(x=time_sec, y=delay_sec, name=str(name), mode='markers'), 1, 1)
 
         self._add_figure(name="profile_pipeline", figure=figure, title="Profiling: Measurement Pipeline")
 
