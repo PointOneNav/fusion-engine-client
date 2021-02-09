@@ -22,11 +22,12 @@ from ..messages.core import *
 from .attitude import get_enu_rotation_matrix
 from .file_reader import FileReader
 
+_logger = logging.getLogger('point_one.fusion_engine.analysis.analyzer')
 
 class Analyzer(object):
-    logger = logging.getLogger('point_one.fusion_engine.analysis.analyzer')
+    logger = _logger
 
-    def __init__(self, file: Union[FileReader, str], output_dir=None,
+    def __init__(self, file: Union[FileReader, str], output_dir: str = None, prefix: str = '',
                  time_range: Tuple[Union[float, Timestamp], Union[float, Timestamp]] = None,
                  absolute_time: bool = False,
                  max_messages: int = None):
@@ -34,6 +35,8 @@ class Analyzer(object):
         @brief Create an analyzer for the specified log.
 
         @param file A @ref FileReader instance, or the path to a file to be loaded.
+        @param output_dir The directory where output will be stored.
+        @param prefix An optional prefix to be appended to the generated filenames.
         @param time_range An optional length-2 tuple specifying desired start and end bounds on the data timestamps.
                Both the start and end values may be set to `None` to read all data.
         @param absolute_time If `True`, interpret the timestamps in `time_range` as absolute P1 times. Otherwise, treat
@@ -47,6 +50,7 @@ class Analyzer(object):
             self.reader = file
 
         self.output_dir = output_dir
+        self.prefix = prefix
 
         self.params = {
             'time_range': time_range,
@@ -180,7 +184,7 @@ class Analyzer(object):
         if self.output_dir is None:
             return
 
-        # Read the pose data.
+        # Read the data.
         result = self.reader.read(message_types=[IMUMeasurement], **self.params)
         data = result[IMUMeasurement.MESSAGE_TYPE]
 
@@ -261,7 +265,7 @@ class Analyzer(object):
             'summary': '<pre>' + self.summary.replace('\n', '<br>') + '</pre>'
         }
 
-        index_path = os.path.join(self.output_dir, 'index.html')
+        index_path = os.path.join(self.output_dir, self.prefix + 'index.html')
         with open(index_path, 'w') as f:
             self.logger.info('Creating %s...' % index_path)
             f.write(index_html)
@@ -329,7 +333,7 @@ Duration: %(duration_sec).1f seconds
         elif name == 'index':
             raise ValueError('Plot name cannot be index.')
 
-        path = os.path.join(self.output_dir, name + '.html')
+        path = os.path.join(self.output_dir, self.prefix + name + '.html')
         self.logger.info('Creating %s...' % path)
 
         plotly.offline.plot(
@@ -349,6 +353,42 @@ Duration: %(duration_sec).1f seconds
             self.logger.error("Unable to open web browser.")
 
 
+def find_input(input_path, output_dir):
+    # Check if the input file exists.
+    if os.path.isfile(input_path):
+        # Do nothing - use the specified file.
+        pass
+    # If the input path is a directory, see if it's an Atlas log.
+    elif os.path.isdir(input_path):
+        # A valid Atlas logs will contain a manifest file (note: the filename spelling below is intentional).
+        log_dir = input_path
+        if not os.path.exists(os.path.join(log_dir, 'maniphest.json')):
+            _logger.error('Specified directory is not a valid Atlas log.')
+            sys.exit(1)
+        else:
+            log_id = os.path.basename(log_dir)
+
+            # Check for a FusionEngine output file.
+            fe_service_dir = os.path.join(log_dir, 'filter', 'output', 'fe_service')
+            input_path = os.path.join(fe_service_dir, 'output.p1bin')
+
+            if os.path.exists(input_path):
+                _logger.info('Loading %s from log %s.' % (os.path.basename(input_path), log_id))
+                if output_dir is None:
+                    output_dir = os.path.join(log_dir, 'plot_fusion_engine')
+            else:
+                _logger.error("No .p1bin file found for log '%s' (%s)." % (log_id, log_dir))
+                sys.exit(1)
+    else:
+        _logger.error("File '%s' not found." % input_path)
+        sys.exit(1)
+
+    if output_dir is None:
+        output_dir = '.'
+
+    return input_path, output_dir
+
+
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument('--absolute-time', '--abs', action='store_true',
@@ -356,8 +396,11 @@ if __name__ == "__main__":
                              "relative to the first message in the file.")
     parser.add_argument('--no-index', action='store_true',
                         help="Do not automatically open the plots in a web browser.")
-    parser.add_argument('-o', '--output', type=str, metavar='DIR', default='.',
-                        help="The directory where output will be stored.")
+    parser.add_argument('-o', '--output', type=str, metavar='DIR',
+                        help="The directory where output will be stored. Defaults to the current directory, or to "
+                             "'<log_dir>/plot_fusion_engine/' if reading from a log.")
+    parser.add_argument('-p', '--prefix', metavar='PREFIX',
+                        help="If specified, prepend each filename with PREFIX.")
     parser.add_argument('-t', '--time', type=str, metavar='[START][:END]',
                         help="The desired time range to be analyzed. Both start and end may be omitted to read from "
                              "beginning or to the end of the file. By default, timestamps are treated as relative to "
@@ -365,7 +408,8 @@ if __name__ == "__main__":
     parser.add_argument('-v', '--verbose', action='count', default=0,
                         help="Print verbose/trace debugging messages.")
 
-    parser.add_argument('file', type=str, help="The path to a binary file to be read.")
+    parser.add_argument('file', type=str,
+                        help="The path to a binary file to be read, or to an Atlas log containing FusionEngine output.")
     options = parser.parse_args()
 
     # Configure logging.
@@ -399,8 +443,14 @@ if __name__ == "__main__":
     else:
         time_range = None
 
+    # Locate the input file and set the output directory.
+    input_path, output_dir = find_input(options.file, options.output)
+
     # Read pose data from the file.
-    analyzer = Analyzer(file=options.file, output_dir=options.output,
+    analyzer = Analyzer(file=input_path, output_dir=output_dir,
+                        prefix=options.prefix + '.' if options.prefix is not None else '',
                         time_range=time_range, absolute_time=options.absolute_time)
     analyzer.plot_pose()
     analyzer.generate_index(auto_open=not options.no_index)
+
+    _logger.info("Output stored in '%s'." % os.path.abspath(output_dir))

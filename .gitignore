@@ -1,5 +1,6 @@
 # Generated files.
 *.pyc
+*.html
 
 # Bazel output directories.
 bazel-*
