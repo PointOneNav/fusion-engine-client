@@ -35,8 +35,8 @@ class MessageData(object):
         ```
         """
         if hasattr(self.message_class, 'to_numpy'):
-            have_numpy_data = 'p1_time' in self.__dict__
-            if have_numpy_data:
+            have_cached_numpy_data = 'p1_time' in self.__dict__
+            if have_cached_numpy_data:
                 # If we don't have message data we can't do any conversion so the currently cached numpy data is as good
                 # as it's gonna get. If it doesn't exist, so be it.
                 if len(self.messages) == 0:
@@ -46,11 +46,7 @@ class MessageData(object):
                                      float(self.messages[0].p1_time) != self.p1_time[0] or
                                      float(self.messages[-1].p1_time) != self.p1_time[-1])
             else:
-                if len(self.messages) == 0:
-                    raise ValueError('Raw %s data not available. Cannot convert to numpy.' %
-                                     MessageType.get_type_string(self.message_type))
-                else:
-                    do_conversion = True
+                do_conversion = True
 
             if do_conversion:
                 self.__dict__.update(self.message_class.to_numpy(self.messages))
