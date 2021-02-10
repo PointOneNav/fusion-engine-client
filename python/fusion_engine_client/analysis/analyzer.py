@@ -282,7 +282,10 @@ class Analyzer(object):
 
         idx = ~np.isnan(self.reader.index['time'])
         time = self.reader.index['time'][idx]
-        duration_sec = time[-1] - time[0]
+        if len(time) >= 2:
+            duration_sec = time[-1] - time[0]
+        else:
+            duration_sec = np.nan
 
         if self.summary != '':
             self.summary += '\n\n'
