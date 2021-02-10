@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from typing import Tuple, Union
 
 from argparse import ArgumentParser
@@ -14,7 +16,7 @@ from pymap3d import geodetic2ecef
 # If running as a script, add fusion-engine-client/ to the Python import path and correct __package__ to enable relative
 # imports.
 if __name__ == "__main__" and (__package__ is None or __package__ == ''):
-    root_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
+    root_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '../..'))
     sys.path.append(root_dir)
     __package__ = "fusion_engine_client.analysis"
 
@@ -280,7 +282,10 @@ class Analyzer(object):
 
         idx = ~np.isnan(self.reader.index['time'])
         time = self.reader.index['time'][idx]
-        duration_sec = time[-1] - time[0]
+        if len(time) >= 2:
+            duration_sec = time[-1] - time[0]
+        else:
+            duration_sec = np.nan
 
         if self.summary != '':
             self.summary += '\n\n'
