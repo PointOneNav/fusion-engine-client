@@ -3,6 +3,7 @@
 from typing import Tuple, Union
 
 from argparse import ArgumentParser
+import copy
 import logging
 import os
 import sys
@@ -21,10 +22,13 @@ if __name__ == "__main__" and (__package__ is None or __package__ == ''):
     __package__ = "fusion_engine_client.analysis"
 
 from ..messages.core import *
+from ..messages.internal import *
+from..utils.log import MANIFEST_FILE_NAME, find_log
 from .attitude import get_enu_rotation_matrix
 from .file_reader import FileReader
 
 _logger = logging.getLogger('point_one.fusion_engine.analysis.analyzer')
+
 
 class Analyzer(object):
     logger = _logger
@@ -63,6 +67,7 @@ class Analyzer(object):
         }
 
         self.t0 = self.reader.t0
+        self.posix_t0 = None
 
         self.plots = {}
         self.summary = ''
@@ -103,6 +108,8 @@ class Analyzer(object):
 
         figure['layout'].update(showlegend=True)
         figure['layout']['xaxis'].update(title="Time (sec)")
+        for i in range(6):
+            figure['layout']['xaxis%d' % (i + 1)].update(showticklabels=True)
         figure['layout']['yaxis1'].update(title="Degrees")
         figure['layout']['yaxis2'].update(title="Meters")
         figure['layout']['yaxis3'].update(title="Meters/Second")
@@ -201,6 +208,8 @@ class Analyzer(object):
 
         figure['layout'].update(showlegend=True)
         figure['layout']['xaxis'].update(title="Time (sec)")
+        figure['layout']['xaxis1'].update(showticklabels=True)
+        figure['layout']['xaxis2'].update(showticklabels=True)
         figure['layout']['yaxis1'].update(title="Acceleration (m/s^2)")
         figure['layout']['yaxis1'].update(title="Rotation Rate (rad/s)")
 
@@ -225,6 +234,162 @@ class Analyzer(object):
                          2, 1)
 
         self._add_figure(name="imu", figure=figure, title="IMU Measurements")
+
+    def plot_system_status_profiling(self):
+        """!
+        @brief Plot system status profiling data.
+        """
+        if self.output_dir is None:
+            return
+
+        # Read the data.
+        result = self.reader.read(message_types=[ProfileSystemStatusMessage], **self.params)
+        data = result[ProfileSystemStatusMessage.MESSAGE_TYPE]
+
+        if len(data.posix_time) == 0:
+            self.logger.info('No system profiling data available.')
+            return
+
+        time = data.posix_time - self.reader.get_posix_t0()
+
+        figure = make_subplots(rows=3, cols=1, print_grid=False, shared_xaxes=True,
+                               subplot_titles=['CPU Usage', 'Memory Usage', 'Queue Depth'])
+
+        figure['layout'].update(showlegend=True)
+        figure['layout']['xaxis'].update(title="POSIX Time (sec)")
+        for i in range(3):
+            figure['layout']['xaxis%d' % (i + 1)].update(showticklabels=True)
+        figure['layout']['yaxis1'].update(title="CPU (%)", range=[0, 100])
+        figure['layout']['yaxis2'].update(title="Memory (MB)")
+        figure['layout']['yaxis3'].update(title="# Entries")
+
+        figure.add_trace(go.Scattergl(x=time, y=data.total_cpu_usage, name='Total CPU Usage',
+                                      mode='lines', line={'color': 'black', 'width': 4}),
+                         1, 1)
+        for i in range(data.cpu_usage_per_core.shape[0]):
+            color = plotly.colors.DEFAULT_PLOTLY_COLORS[i % len(plotly.colors.DEFAULT_PLOTLY_COLORS)]
+            figure.add_trace(go.Scattergl(x=time, y=data.cpu_usage_per_core[i, :], name='CPU %d Usage' % i,
+                                          mode='lines', line={'color': color, 'dash': 'dash'}),
+                             1, 1)
+
+        figure.add_trace(go.Scattergl(x=time, y=data.used_memory_bytes / (1024 * 1024), name='Used Memory',
+                                      mode='lines', line={'color': 'blue'}),
+                         2, 1)
+
+        figure.add_trace(go.Scattergl(x=time, y=data.propagator_depth, name='Propagator',
+                                      mode='lines', line={'color': 'red'}),
+                         3, 1)
+
+        figure.add_trace(go.Scattergl(x=time, y=data.dq_depth, name='Delay Queue',
+                                      mode='lines', line={'color': 'green'}),
+                         3, 1)
+
+        figure.add_trace(go.Scattergl(x=time, y=data.log_queue_depth, name='Log Queue',
+                                      mode='lines', line={'color': 'blue'}),
+                         3, 1)
+
+        self._add_figure(name="profile_system_status", figure=figure, title="Profiling: System Status")
+
+    def plot_measurement_pipeline_profiling(self):
+        """!
+        @brief Plot measurement pipeline profiling data.
+        """
+        if self.output_dir is None:
+            return
+
+        # Read the pipeline data.
+        result = self.reader.read(message_types=[ProfilePipelineMessage], **self.params)
+        data = result[ProfilePipelineMessage.MESSAGE_TYPE]
+
+        if len(data.posix_time) == 0:
+            self.logger.info('No measurement profiling data available.')
+            return
+
+        # Read the last pipeline definition message to map IDs to names.
+        params = copy.deepcopy(self.params)
+        params['max_messages'] = -1
+        result = self.reader.read(message_types=[ProfilePipelineMessage.DEFINITION_TYPE], **params)
+        if len(result[ProfilePipelineMessage.DEFINITION_TYPE].messages) != 0:
+            definition = result[ProfilePipelineMessage.DEFINITION_TYPE].messages[0]
+            id_to_name = definition.to_dict()
+        else:
+            id_to_name = {}
+
+        figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=True,
+                               subplot_titles=['Pipeline Delay'])
+
+        figure['layout'].update(showlegend=True)
+        figure['layout']['xaxis'].update(title="POSIX Time (sec)")
+        figure['layout']['yaxis1'].update(title="Delay (sec)")
+
+        for id, point_data in data.points.items():
+            name = id_to_name.get(id, 'unknown_%s' % str(id))
+            time_sec = point_data[0, :] - self.reader.get_posix_t0()
+            delay_sec = point_data[1, :]
+            figure.add_trace(go.Scattergl(x=time_sec, y=delay_sec, name=name, mode='markers'), 1, 1)
+
+        self._add_figure(name="profile_pipeline", figure=figure, title="Profiling: Measurement Pipeline")
+
+    def plot_execution_profiling(self):
+        """!
+        @brief Plot code execution profiling data.
+        """
+        if self.output_dir is None:
+            return
+
+        # Read the pipeline data.
+        result = self.reader.read(message_types=[ProfileExecutionMessage], **self.params)
+        data = result[ProfileExecutionMessage.MESSAGE_TYPE]
+
+        if len(data.points) == 0:
+            self.logger.info('No execution profiling data available.')
+            return
+
+        # Read the last pipeline definition message to map IDs to names.
+        params = copy.deepcopy(self.params)
+        params['max_messages'] = -1
+        result = self.reader.read(message_types=[ProfileExecutionMessage.DEFINITION_TYPE], **params)
+        if len(result[ProfileExecutionMessage.DEFINITION_TYPE].messages) != 0:
+            definition = result[ProfileExecutionMessage.DEFINITION_TYPE].messages[0]
+            id_to_name = definition.to_dict()
+        else:
+            id_to_name = {}
+
+        figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=True,
+                               subplot_titles=['Code Execution'])
+
+        figure['layout'].update(showlegend=True)
+        figure['layout']['xaxis'].update(title="POSIX Time (sec)")
+        figure['layout']['yaxis1'].update(title="Event")
+
+        if len(id_to_name) != 0:
+            figure.update_yaxes(
+                ticktext=['%s (%d)' % (name, id) for id, name in id_to_name.items()],
+                tickvals=list(id_to_name.keys()))
+
+        for i, (id, point_data) in enumerate(data.points.items()):
+            name = id_to_name.get(id, 'unknown_%s' % str(id))
+            time_sec = (point_data[0, :] - self.reader.get_posix_t0_ns()) * 1e-9
+            action = point_data[1, :].astype(int)
+            color = plotly.colors.DEFAULT_PLOTLY_COLORS[i % len(plotly.colors.DEFAULT_PLOTLY_COLORS)]
+
+            idx = action == ProfileExecutionEntry.START
+            if np.any(idx):
+                figure.add_trace(go.Scattergl(x=time_sec[idx], y=[id] * np.sum(idx),
+                                              name=name + ' (start)', legendgroup=id,
+                                              mode='markers',
+                                              marker={'color': color, 'size': 12, 'symbol': 'triangle-right'}),
+                                 1, 1)
+
+            idx = action == ProfileExecutionEntry.STOP
+            if np.any(idx):
+                figure.add_trace(go.Scattergl(x=time_sec[idx], y=[id] * np.sum(idx),
+                                              name=name + ' (stop)', legendgroup=id,
+                                              mode='markers',
+                                              marker={'color': color, 'size': 12, 'symbol': 'triangle-left-open'}),
+                                 1, 1)
+
+        self._add_figure(name="profile_execution", figure=figure, title="Profiling: Code Execution")
 
     def generate_index(self, auto_open=True):
         """!
@@ -358,24 +523,50 @@ Duration: %(duration_sec).1f seconds
             self.logger.error("Unable to open web browser.")
 
 
-def find_input(input_path, output_dir):
+def find_input(input_path, output_dir, load_original=False):
     # Check if the input file exists.
     if os.path.isfile(input_path):
         # Do nothing - use the specified file.
         pass
-    # If the input path is a directory, see if it's an Atlas log.
-    elif os.path.isdir(input_path):
-        # A valid Atlas logs will contain a manifest file (note: the filename spelling below is intentional).
-        log_dir = input_path
-        if not os.path.exists(os.path.join(log_dir, 'maniphest.json')):
-            _logger.error('Specified directory is not a valid Atlas log.')
-            sys.exit(1)
-        else:
+    # Check if the specified path is a log directory, or pattern matches to a log.
+    else:
+        # A valid Atlas logs will contain a manifest file.
+        dir_exists = os.path.isdir(input_path)
+        log_dir = None
+        log_id = None
+        if dir_exists and os.path.exists(os.path.join(input_path, MANIFEST_FILE_NAME)):
+            log_dir = input_path
             log_id = os.path.basename(log_dir)
+        # Check if this is a pattern matching to a log (i.e., a partial log ID or a search pattern (foo*/partial_id*)).
+        else:
+            _logger.info("File '%s' not found. Searching for a matching log." % input_path)
+            matches = find_log(input_path)
+            if len(matches) > 1:
+                # find_log() will print an error.
+                sys.exit(1)
+            elif len(matches) == 1:
+                log_dir = matches[0][0]
+                log_id = matches[0][1]
 
+        # If the input path wasn't a file, wasn't a log directory, and didn't pattern match to a log directory, there's
+        # nothing to be found.
+        if log_id is None:
+            if dir_exists:
+                _logger.error("Directory '%s' is not a valid Atlas log." % input_path)
+            else:
+                _logger.error("File/log '%s' not found." % input_path)
+            sys.exit(1)
+        # If we found a log directory, see if it contains an output file.
+        else:
             # Check for a FusionEngine output file.
             fe_service_dir = os.path.join(log_dir, 'filter', 'output', 'fe_service')
-            input_path = os.path.join(fe_service_dir, 'output.p1bin')
+            if load_original:
+                input_path = os.path.join(fe_service_dir, 'output.p1bin')
+            else:
+                # If log playback output exists, use that over the original data recorded with the log.
+                input_path = os.path.join(fe_service_dir, 'output.playback.p1bin')
+                if not os.path.exists(input_path):
+                    input_path = os.path.join(fe_service_dir, 'output.p1bin')
 
             if os.path.exists(input_path):
                 _logger.info('Loading %s from log %s.' % (os.path.basename(input_path), log_id))
@@ -384,9 +575,6 @@ def find_input(input_path, output_dir):
             else:
                 _logger.error("No .p1bin file found for log '%s' (%s)." % (log_id, log_dir))
                 sys.exit(1)
-    else:
-        _logger.error("File '%s' not found." % input_path)
-        sys.exit(1)
 
     if output_dir is None:
         output_dir = '.'
@@ -401,6 +589,9 @@ if __name__ == "__main__":
                              "relative to the first message in the file.")
     parser.add_argument('--no-index', action='store_true',
                         help="Do not automatically open the plots in a web browser.")
+    parser.add_argument('--original', action='store_true',
+                        help='When loading from a log, load the recorded FusionEngine output file instead of playback '
+                             'results.')
     parser.add_argument('-o', '--output', type=str, metavar='DIR',
                         help="The directory where output will be stored. Defaults to the current directory, or to "
                              "'<log_dir>/plot_fusion_engine/' if reading from a log.")
@@ -449,13 +640,16 @@ if __name__ == "__main__":
         time_range = None
 
     # Locate the input file and set the output directory.
-    input_path, output_dir = find_input(options.file, options.output)
+    input_path, output_dir = find_input(options.file, options.output, load_original=options.original)
 
     # Read pose data from the file.
     analyzer = Analyzer(file=input_path, output_dir=output_dir,
                         prefix=options.prefix + '.' if options.prefix is not None else '',
                         time_range=time_range, absolute_time=options.absolute_time)
     analyzer.plot_pose()
+    analyzer.plot_system_status_profiling()
+    analyzer.plot_measurement_pipeline_profiling()
+    analyzer.plot_execution_profiling()
     analyzer.generate_index(auto_open=not options.no_index)
 
     _logger.info("Output stored in '%s'." % os.path.abspath(output_dir))

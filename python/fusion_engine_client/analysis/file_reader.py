@@ -9,6 +9,7 @@ import os
 import numpy as np
 
 from ..messages import *
+from ..messages import internal
 
 
 class MessageData(object):
@@ -118,6 +119,8 @@ class FileReader(object):
         self.file_size = 0
         self.data: Dict[MessageType, MessageData] = {}
         self.t0 = None
+        self.posix_t0 = None
+        self.posix_t0_ns = None
 
         self.index = None
 
@@ -526,6 +529,20 @@ class FileReader(object):
 
         # Done.
         return result
+
+    def get_posix_t0(self):
+        if self.posix_t0 is None:
+            # Determine the POSIX t0 based on the first profiling message to appear in the log.
+            result = self.read(message_types=internal.PROFILING_TYPES, max_messages=1)
+            if len(result) > 0:
+                self.posix_t0_ns = list(result.values())[0].messages[0].posix_time_ns
+                self.posix_t0 = self.posix_t0_ns * 1e-9
+        return self.posix_t0
+
+    def get_posix_t0_ns(self):
+        if self.posix_t0_ns is None:
+            self.get_posix_t0()
+        return self.posix_t0_ns
 
     @classmethod
     def to_numpy(cls, data: dict, keep_messages: bool = True):
