@@ -258,7 +258,7 @@ class Analyzer(object):
         figure['layout']['yaxis3'].update(title="# Entries")
 
         figure.add_trace(go.Scattergl(x=time, y=data.total_cpu_usage, name='Total CPU Usage',
-                                      mode='lines', line={'color': 'red'}),
+                                      mode='lines', line={'color': 'black', 'width': 4}),
                          1, 1)
         for i in range(data.cpu_usage_per_core.shape[0]):
             color = plotly.colors.DEFAULT_PLOTLY_COLORS[i % len(plotly.colors.DEFAULT_PLOTLY_COLORS)]
