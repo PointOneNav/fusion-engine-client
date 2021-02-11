@@ -96,15 +96,20 @@ class ProfileSystemStatusMessage:
     """
     MESSAGE_TYPE = MessageType.PROFILE_SYSTEM_STATUS
 
-    _FORMAT = '<qfB3xQQQHHH2xf'
+    _MAX_CPU_CORES = 16
+    _INVALID_CPU_USAGE = 0xFF
+    _CPU_USAGE_SCALE = 2.0
+
+    _FORMAT = '<qB2xB%dBQQQHHH2xf' % _MAX_CPU_CORES
     _SIZE: int = struct.calcsize(_FORMAT)
 
     def __init__(self):
         self.p1_time = Timestamp()
         self.posix_time_ns = 0
 
-        self.cpu_usage = np.nan
         self.num_cpu_cores = 0
+        self.total_cpu_usage = np.nan
+        self.cpu_usage_per_core = []
 
         self.total_memory_bytes = 0
         self.total_used_memory_bytes = 0
@@ -123,11 +128,22 @@ class ProfileSystemStatusMessage:
 
         offset += self.p1_time.pack(buffer, offset, return_buffer=False)
 
-        struct.pack_into(ProfileSystemStatusMessage._FORMAT, buffer, offset,
-                         self.posix_time_ns,
-                         self.cpu_usage, self.num_cpu_cores,
-                         self.total_memory_bytes, self.total_used_memory_bytes, self.used_memory_bytes,
-                         self.log_queue_depth, self.propagator_depth, self.dq_depth, self.dq_depth_sec)
+        args = [self.posix_time_ns, self.num_cpu_cores]
+
+        def percent_to_int(value):
+            if np.isnan(value):
+                return ProfileSystemStatusMessage._INVALID_CPU_USAGE
+            else:
+                return int(value * ProfileSystemStatusMessage._CPU_USAGE_SCALE)
+
+        args.append(percent_to_int(self.total_cpu_usage))
+        args.extend([percent_to_int(v) for v in self.cpu_usage_per_core[:ProfileSystemStatusMessage._MAX_CPU_CORES]])
+        args.extend([ProfileSystemStatusMessage._INVALID_CPU_USAGE] *
+                    (len(self.cpu_usage_per_core) - ProfileSystemStatusMessage._MAX_CPU_CORES))
+
+        args.extend([self.total_memory_bytes, self.total_used_memory_bytes, self.used_memory_bytes,
+                     self.log_queue_depth, self.propagator_depth, self.dq_depth, self.dq_depth_sec])
+        struct.pack_into(ProfileSystemStatusMessage._FORMAT, buffer, offset, *args)
         offset += ProfileSystemStatusMessage._SIZE
 
         if return_buffer:
@@ -140,12 +156,24 @@ class ProfileSystemStatusMessage:
 
         offset += self.p1_time.unpack(buffer, offset)
 
-        (self.posix_time_ns,
-         self.cpu_usage, self.num_cpu_cores,
-         self.total_memory_bytes, self.total_used_memory_bytes, self.used_memory_bytes,
-         self.log_queue_depth, self.propagator_depth, self.dq_depth, self.dq_depth_sec) = \
-            struct.unpack_from(ProfileSystemStatusMessage._FORMAT, buffer=buffer, offset=offset)
+        values = struct.unpack_from(ProfileSystemStatusMessage._FORMAT, buffer=buffer, offset=offset)
         offset += ProfileSystemStatusMessage._SIZE
+
+        (self.posix_time_ns, self.num_cpu_cores) = values[:2]
+
+        def int_to_percent(value):
+            if value == ProfileSystemStatusMessage._INVALID_CPU_USAGE:
+                return np.nan
+            else:
+                return value / ProfileSystemStatusMessage._CPU_USAGE_SCALE
+
+        self.total_cpu_usage = int_to_percent(values[2])
+        self.cpu_usage_per_core = [int_to_percent(v) for v in values[3:3 + ProfileSystemStatusMessage._MAX_CPU_CORES]]
+        self.cpu_usage_per_core = self.cpu_usage_per_core[:self.num_cpu_cores]
+
+        (self.total_memory_bytes, self.total_used_memory_bytes, self.used_memory_bytes,
+         self.log_queue_depth, self.propagator_depth, self.dq_depth, self.dq_depth_sec) = \
+            values[3 + ProfileSystemStatusMessage._MAX_CPU_CORES:]
 
         return offset - initial_offset
 
@@ -159,7 +187,7 @@ class ProfileSystemStatusMessage:
                   (datetime.utcfromtimestamp(self.posix_time_ns).replace(tzinfo=timezone.utc),
                    self.posix_time_ns * 1e-9)
         string += '  P1 time: %s\n' % str(self.p1_time)
-        string += '  CPU: %.1f%%\n' % self.cpu_usage
+        string += '  CPU: %.1f%%\n' % self.total_cpu_usage
         string += '  Total memory: %d B/%d B' % (self.total_used_memory_bytes, self.total_memory_bytes)
         string += '  Used memory: %d B/%d B' % (self.used_memory_bytes, self.total_memory_bytes)
         string += '  Log queue depth: %d\n' % self.log_queue_depth
@@ -176,8 +204,9 @@ class ProfileSystemStatusMessage:
         result = {
             'p1_time': np.array([float(m.p1_time) for m in messages]),
             'posix_time': np.array([m.posix_time_ns * 1e-9 for m in messages]),
-            'cpu_usage': np.array([m.cpu_usage for m in messages]),
             'num_cpu_cores': np.array([m.num_cpu_cores for m in messages]),
+            'total_cpu_usage': np.array([m.total_cpu_usage for m in messages]),
+            'cpu_usage_per_core': np.array([m.cpu_usage_per_core for m in messages]).T,
             'total_memory_bytes': np.array([m.total_memory_bytes for m in messages]),
             'total_used_memory_bytes': np.array([m.total_used_memory_bytes for m in messages]),
             'used_memory_bytes': np.array([m.used_memory_bytes for m in messages]),

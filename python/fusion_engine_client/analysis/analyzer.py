@@ -257,9 +257,14 @@ class Analyzer(object):
         figure['layout']['yaxis2'].update(title="Memory (MB)")
         figure['layout']['yaxis3'].update(title="# Entries")
 
-        figure.add_trace(go.Scattergl(x=time, y=data.cpu_usage, name='CPU Usage',
+        figure.add_trace(go.Scattergl(x=time, y=data.total_cpu_usage, name='Total CPU Usage',
                                       mode='lines', line={'color': 'red'}),
                          1, 1)
+        for i in range(data.cpu_usage_per_core.shape[0]):
+            color = plotly.colors.DEFAULT_PLOTLY_COLORS[i % len(plotly.colors.DEFAULT_PLOTLY_COLORS)]
+            figure.add_trace(go.Scattergl(x=time, y=data.cpu_usage_per_core[i, :], name='CPU %d Usage' % i,
+                                          mode='lines', line={'color': color, 'dash': 'dash'}),
+                             1, 1)
 
         figure.add_trace(go.Scattergl(x=time, y=data.used_memory_bytes / (1024 * 1024), name='Used Memory',
                                       mode='lines', line={'color': 'blue'}),
