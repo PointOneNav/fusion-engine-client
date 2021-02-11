@@ -537,7 +537,7 @@ def find_input(input_path, output_dir, load_original=False):
                 log_dir = matches[0][0]
                 log_id = matches[0][1]
 
-        # If the input path wasn't a file wasn't a log directory, and didn't pattern match to a log directory, there's
+        # If the input path wasn't a file, wasn't a log directory, and didn't pattern match to a log directory, there's
         # nothing to be found.
         if log_id is None:
             if dir_exists:
