@@ -259,7 +259,7 @@ class Analyzer(object):
         figure['layout']['xaxis'].update(title="POSIX Time (sec)")
         for i in range(3):
             figure['layout']['xaxis%d' % (i + 1)].update(showticklabels=True)
-        figure['layout']['yaxis1'].update(title="CPU (%)")
+        figure['layout']['yaxis1'].update(title="CPU (%)", range=[0, 100])
         figure['layout']['yaxis2'].update(title="Memory (MB)")
         figure['layout']['yaxis3'].update(title="# Entries")
 
