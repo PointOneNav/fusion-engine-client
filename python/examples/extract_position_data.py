@@ -10,6 +10,7 @@ sys.path.append(root_dir)
 
 from fusion_engine_client.analysis.file_reader import FileReader
 from fusion_engine_client.messages.core import *
+from fusion_engine_client.utils.log import find_log
 
 KML_TEMPLATE = """\
 <kml xmlns="http://www.opengis.net/kml/2.2">
@@ -40,16 +41,26 @@ if __name__ == "__main__":
     parser = ArgumentParser(description="""\
 Extract position data to both CSV and KML files.  
 """)
-    parser.add_argument('file', type=str, help="The path to a binary file to be read.")
+    parser.add_argument('file', type=str,
+                        help="The path to a binary file to be read, or to an Atlas log containing FusionEngine output.")
     options = parser.parse_args()
-
-    input_path = options.file
-    output_dir = os.path.dirname(input_path)
 
     # Configure logging.
     logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s:%(lineno)d - %(message)s')
     logger = logging.getLogger('point_one.fusion_engine')
     logger.setLevel(logging.INFO)
+
+    # Locate the input file and set the output directory.
+    try:
+        input_path, output_dir, log_id = find_log(options.file, return_output_dir=True, return_log_id=True)
+
+        if log_id is None:
+            logger.info('Loading %s.' % os.path.basename(input_path))
+        else:
+            logger.info('Loading %s from log %s.' % (os.path.basename(input_path), log_id))
+    except FileNotFoundError as e:
+        logger.error(str(e))
+        os.exit(1)
 
     # Read pose data from the file.
     reader = FileReader(input_path)
@@ -70,3 +81,5 @@ Extract position data to both CSV and KML files.
                 {'coordinates': '\n'.join(['%.8f,%.8f' % (message.lla_deg[1], message.lla_deg[0])
                                            for message in pose_data.messages
                                            if message.solution_type != SolutionType.Invalid])})
+
+    logger.info("Output stored in '%s'." % os.path.abspath(output_dir))
