@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from argparse import ArgumentParser
 import os
 import sys
@@ -51,7 +53,9 @@ decode_message.expected_sequence_number = 0
 
 
 if __name__ == "__main__":
-    parser = ArgumentParser()
+    parser = ArgumentParser(description="""\
+Manually decode and print the contents of messages contained in a *.p1bin file. 
+""")
     parser.add_argument('file', type=str, help="The path to a binary file to be read.")
     options = parser.parse_args()
 

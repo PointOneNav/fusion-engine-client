@@ -22,6 +22,7 @@ See http://docs.pointonenav.com/fusion-engine/ for the latest API documentation.
   * [Bazel](#bazel)
     * [Compiling](#compiling)
     * [Running Examples](#running-examples)
+  * [Python](#python)
   * [Compiling Documentation](#compiling-documentation)
 * [Usage](#usage)
   * [Body Coordinate Frame Definition](#body-coordinate-frame-definition)
@@ -45,6 +46,7 @@ See http://docs.pointonenav.com/fusion-engine/ for the latest API documentation.
 - `<root>` - Top-level Bazel and CMake build files (C++)
   - `examples/` - C++ example applications
   - `python/` - Python source files
+    - `bin/` - Application files
     - `examples/` - Python example applications
     - `fusion_engine_client` - Top Python package directory
       - `messages` - Python message definitions
@@ -165,6 +167,22 @@ You can also use the `bazel run` command to build and run an application in one 
 ```
 bazel run -c opt //message_decode -- message_decode/example_data.p1bin
 ```
+
+### Python
+
+The `python/` directory contains source code for reading and analyzing FusionEngine output. To use the Python library:
+
+1. Install Python 3.4 and Pip
+2. Navigate to the `python/` directory and install the requirements:
+   ```
+   pip install -r requirements.txt
+   ```
+3. Run any of the applications in `python/bin/` or the example code in `python/examples/`. For example, to plot results
+   from a `*.p1bin` file or recorded in an Atlas log:
+   ```
+   cd python/fusion_engine_client/
+   python3 bin/p1_display.py /path/to/log/directory
+   ```
 
 ### Compiling Documentation
 
