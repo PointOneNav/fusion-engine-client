@@ -23,6 +23,7 @@ if __name__ == "__main__" and (__package__ is None or __package__ == ''):
 from ..messages.core import *
 from .attitude import get_enu_rotation_matrix
 from .file_reader import FileReader
+from ..utils.log import find_log
 
 _logger = logging.getLogger('point_one.fusion_engine.analysis.analyzer')
 
@@ -359,42 +360,6 @@ Duration: %(duration_sec).1f seconds
             self.logger.error("Unable to open web browser.")
 
 
-def find_input(input_path, output_dir):
-    # Check if the input file exists.
-    if os.path.isfile(input_path):
-        # Do nothing - use the specified file.
-        pass
-    # If the input path is a directory, see if it's an Atlas log.
-    elif os.path.isdir(input_path):
-        # A valid Atlas logs will contain a manifest file (note: the filename spelling below is intentional).
-        log_dir = input_path
-        if not os.path.exists(os.path.join(log_dir, 'maniphest.json')):
-            _logger.error('Specified directory is not a valid Atlas log.')
-            sys.exit(1)
-        else:
-            log_id = os.path.basename(log_dir)
-
-            # Check for a FusionEngine output file.
-            fe_service_dir = os.path.join(log_dir, 'filter', 'output', 'fe_service')
-            input_path = os.path.join(fe_service_dir, 'output.p1bin')
-
-            if os.path.exists(input_path):
-                _logger.info('Loading %s from log %s.' % (os.path.basename(input_path), log_id))
-                if output_dir is None:
-                    output_dir = os.path.join(log_dir, 'plot_fusion_engine')
-            else:
-                _logger.error("No .p1bin file found for log '%s' (%s)." % (log_id, log_dir))
-                sys.exit(1)
-    else:
-        _logger.error("File '%s' not found." % input_path)
-        sys.exit(1)
-
-    if output_dir is None:
-        output_dir = '.'
-
-    return input_path, output_dir
-
-
 def main():
     parser = ArgumentParser(description="""\
 Load and display information stored in a FusionEngine binary file.
@@ -452,7 +417,22 @@ Load and display information stored in a FusionEngine binary file.
         time_range = None
 
     # Locate the input file and set the output directory.
-    input_path, output_dir = find_input(options.file, options.output)
+    try:
+        input_path, output_dir, log_id = find_log(options.file, return_output_dir=True, return_log_id=True)
+
+        if log_id is None:
+            _logger.info('Loading %s.' % os.path.basename(input_path))
+        else:
+            _logger.info('Loading %s from log %s.' % (os.path.basename(input_path), log_id))
+
+        if options.output is None:
+            if log_id is not None:
+                output_dir = os.path.join(output_dir, 'plot_fusion_engine')
+        else:
+            output_dir = options.output
+    except FileNotFoundError as e:
+        _logger.error(str(e))
+        os.exit(1)
 
     # Read pose data from the file.
     analyzer = Analyzer(file=input_path, output_dir=output_dir,
