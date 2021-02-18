@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from argparse import ArgumentParser
 import os
 import socket
@@ -12,7 +14,9 @@ from examples.message_decode import decode_message
 
 
 if __name__ == "__main__":
-    parser = ArgumentParser()
+    parser = ArgumentParser(description="""\
+Connect to an Atlas device over UDP and print out the incoming message contents.
+""")
     parser.add_argument('-p', '--port', type=int, default=12345,
                         help="The UDP port to which messages are being sent.")
     options = parser.parse_args()

@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from argparse import ArgumentParser
 import logging
 import os
@@ -11,7 +13,9 @@ from fusion_engine_client.messages.core import *
 
 
 if __name__ == "__main__":
-    parser = ArgumentParser()
+    parser = ArgumentParser(description="""\
+Compute the average LLA position for the data contained in a *.p1bin file. 
+""")
     parser.add_argument('file', type=str, help="The path to a binary file to be read.")
     options = parser.parse_args()
 

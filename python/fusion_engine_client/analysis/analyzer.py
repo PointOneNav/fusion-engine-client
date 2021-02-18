@@ -26,6 +26,7 @@ from ..messages.internal import *
 from..utils.log import MANIFEST_FILE_NAME, find_log
 from .attitude import get_enu_rotation_matrix
 from .file_reader import FileReader
+from ..utils.log import find_p1bin
 
 _logger = logging.getLogger('point_one.fusion_engine.analysis.analyzer')
 
@@ -523,67 +524,10 @@ Duration: %(duration_sec).1f seconds
             self.logger.error("Unable to open web browser.")
 
 
-def find_input(input_path, output_dir, load_original=False):
-    # Check if the input file exists.
-    if os.path.isfile(input_path):
-        # Do nothing - use the specified file.
-        pass
-    # Check if the specified path is a log directory, or pattern matches to a log.
-    else:
-        # A valid Atlas logs will contain a manifest file.
-        dir_exists = os.path.isdir(input_path)
-        log_dir = None
-        log_id = None
-        if dir_exists and os.path.exists(os.path.join(input_path, MANIFEST_FILE_NAME)):
-            log_dir = input_path
-            log_id = os.path.basename(log_dir)
-        # Check if this is a pattern matching to a log (i.e., a partial log ID or a search pattern (foo*/partial_id*)).
-        else:
-            _logger.info("File '%s' not found. Searching for a matching log." % input_path)
-            matches = find_log(input_path)
-            if len(matches) > 1:
-                # find_log() will print an error.
-                sys.exit(1)
-            elif len(matches) == 1:
-                log_dir = matches[0][0]
-                log_id = matches[0][1]
-
-        # If the input path wasn't a file, wasn't a log directory, and didn't pattern match to a log directory, there's
-        # nothing to be found.
-        if log_id is None:
-            if dir_exists:
-                _logger.error("Directory '%s' is not a valid Atlas log." % input_path)
-            else:
-                _logger.error("File/log '%s' not found." % input_path)
-            sys.exit(1)
-        # If we found a log directory, see if it contains an output file.
-        else:
-            # Check for a FusionEngine output file.
-            fe_service_dir = os.path.join(log_dir, 'filter', 'output', 'fe_service')
-            if load_original:
-                input_path = os.path.join(fe_service_dir, 'output.p1bin')
-            else:
-                # If log playback output exists, use that over the original data recorded with the log.
-                input_path = os.path.join(fe_service_dir, 'output.playback.p1bin')
-                if not os.path.exists(input_path):
-                    input_path = os.path.join(fe_service_dir, 'output.p1bin')
-
-            if os.path.exists(input_path):
-                _logger.info('Loading %s from log %s.' % (os.path.basename(input_path), log_id))
-                if output_dir is None:
-                    output_dir = os.path.join(log_dir, 'plot_fusion_engine')
-            else:
-                _logger.error("No .p1bin file found for log '%s' (%s)." % (log_id, log_dir))
-                sys.exit(1)
-
-    if output_dir is None:
-        output_dir = '.'
-
-    return input_path, output_dir
-
-
-if __name__ == "__main__":
-    parser = ArgumentParser()
+def main():
+    parser = ArgumentParser(description="""\
+Load and display information stored in a FusionEngine binary file.
+""")
     parser.add_argument('--absolute-time', '--abs', action='store_true',
                         help="Interpret the timestamps in --time as absolute P1 times. Otherwise, treat them as "
                              "relative to the first message in the file.")
@@ -640,7 +584,23 @@ if __name__ == "__main__":
         time_range = None
 
     # Locate the input file and set the output directory.
-    input_path, output_dir = find_input(options.file, options.output, load_original=options.original)
+    try:
+        input_path, output_dir, log_id = find_p1bin(options.file, load_original=options.original,
+                                                    return_output_dir=True, return_log_id=True)
+
+        if log_id is None:
+            _logger.info('Loading %s.' % os.path.basename(input_path))
+        else:
+            _logger.info('Loading %s from log %s.' % (os.path.basename(input_path), log_id))
+
+        if options.output is None:
+            if log_id is not None:
+                output_dir = os.path.join(output_dir, 'plot_fusion_engine')
+        else:
+            output_dir = options.output
+    except FileNotFoundError as e:
+        _logger.error(str(e))
+        os.exit(1)
 
     # Read pose data from the file.
     analyzer = Analyzer(file=input_path, output_dir=output_dir,
@@ -653,3 +613,7 @@ if __name__ == "__main__":
     analyzer.generate_index(auto_open=not options.no_index)
 
     _logger.info("Output stored in '%s'." % os.path.abspath(output_dir))
+
+
+if __name__ == "__main__":
+    main()
