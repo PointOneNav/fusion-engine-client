@@ -26,6 +26,7 @@ from .file_reader import FileReader
 
 _logger = logging.getLogger('point_one.fusion_engine.analysis.analyzer')
 
+
 class Analyzer(object):
     logger = _logger
 
@@ -394,8 +395,10 @@ def find_input(input_path, output_dir):
     return input_path, output_dir
 
 
-if __name__ == "__main__":
-    parser = ArgumentParser()
+def main():
+    parser = ArgumentParser(description="""\
+Load and display information stored in a FusionEngine binary file.
+""")
     parser.add_argument('--absolute-time', '--abs', action='store_true',
                         help="Interpret the timestamps in --time as absolute P1 times. Otherwise, treat them as "
                              "relative to the first message in the file.")
@@ -459,3 +462,7 @@ if __name__ == "__main__":
     analyzer.generate_index(auto_open=not options.no_index)
 
     _logger.info("Output stored in '%s'." % os.path.abspath(output_dir))
+
+
+if __name__ == "__main__":
+    main()

@@ -37,7 +37,9 @@ KML_TEMPLATE = """\
 
 if __name__ == "__main__":
     # Parse arguments.
-    parser = ArgumentParser()
+    parser = ArgumentParser(description="""\
+Extract position data to both CSV and KML files.  
+""")
     parser.add_argument('file', type=str, help="The path to a binary file to be read.")
     options = parser.parse_args()
 
