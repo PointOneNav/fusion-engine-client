@@ -1,7 +1,7 @@
 import os
 
 
-def find_log(input_path, return_output_dir=False, return_log_id=False):
+def find_p1bin(input_path, return_output_dir=False, return_log_id=False):
     """!
     @brief Locate a FusionEngine `*.p1bin` file.
 

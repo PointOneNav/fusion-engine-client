@@ -10,7 +10,7 @@ sys.path.append(root_dir)
 
 from fusion_engine_client.analysis.file_reader import FileReader
 from fusion_engine_client.messages.core import *
-from fusion_engine_client.utils.log import find_log
+from fusion_engine_client.utils.log import find_p1bin
 
 KML_TEMPLATE = """\
 <kml xmlns="http://www.opengis.net/kml/2.2">
@@ -52,7 +52,7 @@ Extract position data to both CSV and KML files.
 
     # Locate the input file and set the output directory.
     try:
-        input_path, output_dir, log_id = find_log(options.file, return_output_dir=True, return_log_id=True)
+        input_path, output_dir, log_id = find_p1bin(options.file, return_output_dir=True, return_log_id=True)
 
         if log_id is None:
             logger.info('Loading %s.' % os.path.basename(input_path))
