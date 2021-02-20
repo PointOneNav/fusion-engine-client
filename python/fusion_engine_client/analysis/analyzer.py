@@ -188,6 +188,11 @@ class Analyzer(object):
         if self.output_dir is None:
             return
 
+        mapbox_token = self.get_mapbox_token(mapbox_token)
+        if mapbox_token is None:
+            self.logger.info('Mapbox token not specified. Skipping map display.')
+            return
+
         # Read the pose data.
         result = self.reader.read(message_types=[PoseMessage], **self.params)
         pose_data = result[PoseMessage.MESSAGE_TYPE]
@@ -429,6 +434,21 @@ Duration: %(duration_sec).1f seconds
         except:
             self.logger.error("Unable to open web browser.")
 
+    @classmethod
+    def get_mapbox_token(cls, token=None)
+        if token is not None:
+            return token
+
+        token = os.environ.get('MAPBOX_ACCESS_TOKEN', None)
+        if token is not None:
+            return token
+
+        token = os.environ.get('MapboxAccessToken', None)
+        if token is not None:
+            return token
+
+        return None
+
 
 def main():
     parser = ArgumentParser(description="""\
@@ -440,7 +460,9 @@ Load and display information stored in a FusionEngine binary file.
     parser.add_argument('--imu', action='store_true',
                         help="Plot IMU data (slow).")
     parser.add_argument('--mapbox-token', metavar='TOKEN',
-                        help="A Mabox token to use when generating a map.")
+                        help="A Mabox token to use when generating a map. If unspecified, the token will be read from "
+                             "the MAPBOX_ACCESS_TOKEN or MapboxAccessToken environment variables if set. If no token "
+                             "is available, a map will not be displayed.")
     parser.add_argument('--no-index', action='store_true',
                         help="Do not automatically open the plots in a web browser.")
     parser.add_argument('-o', '--output', type=str, metavar='DIR',
@@ -512,11 +534,13 @@ Load and display information stored in a FusionEngine binary file.
     analyzer = Analyzer(file=input_path, output_dir=output_dir,
                         prefix=options.prefix + '.' if options.prefix is not None else '',
                         time_range=time_range, absolute_time=options.absolute_time)
+
     analyzer.plot_pose()
-    if options.mapbox_token is not None:
-        analyzer.plot_map(mapbox_token=options.mapbox_token)
+    analyzer.plot_map(mapbox_token=options.mapbox_token)
+
     if options.imu:
         analyzer.plot_imu()
+
     analyzer.generate_index(auto_open=not options.no_index)
 
     _logger.info("Output stored in '%s'." % os.path.abspath(output_dir))
