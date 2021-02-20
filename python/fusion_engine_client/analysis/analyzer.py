@@ -479,8 +479,15 @@ Load and display information stored in a FusionEngine binary file.
     parser.add_argument('-v', '--verbose', action='count', default=0,
                         help="Print verbose/trace debugging messages.")
 
-    parser.add_argument('file', type=str,
-                        help="The path to a binary file to be read, or to an Atlas log containing FusionEngine output.")
+    parser.add_argument('--log-base-dir', metavar='DIR', default='/logs',
+                        help="The base directory containing FusionEngine logs to be searched if a log pattern is"
+                             "specified.")
+    parser.add_argument('log',
+                        help="The log to be read. May be one of:\n"
+                             "- The path to a .p1log file\n"
+                             "- The path to a FusionEngine log directory\n"
+                             "- A pattern matching a FusionEngine log directory under the specified base directory "
+                             "(see find_fusion_engine_log() and --log-base-dir)")
     options = parser.parse_args()
 
     # Configure logging.
@@ -516,7 +523,8 @@ Load and display information stored in a FusionEngine binary file.
 
     # Locate the input file and set the output directory.
     try:
-        input_path, output_dir, log_id = find_p1log_file(options.file, return_output_dir=True, return_log_id=True)
+        input_path, output_dir, log_id = find_p1log_file(options.log, return_output_dir=True, return_log_id=True,
+                                                         log_base_dir=options.log_base_dir)
 
         if log_id is None:
             _logger.info('Loading %s.' % os.path.basename(input_path))
