@@ -159,13 +159,13 @@ bazel build -c opt //message_decode
 The generated applications will be located in `bazel-bin/`. For example:
 
 ```
-bazel-bin/message_decode/message_decode message_decode/example_data.p1bin
+bazel-bin/message_decode/message_decode message_decode/example_data.p1log
 ```
 
 You can also use the `bazel run` command to build and run an application in one step:
 
 ```
-bazel run -c opt //message_decode -- message_decode/example_data.p1bin
+bazel run -c opt //message_decode -- message_decode/example_data.p1log
 ```
 
 ### Python
@@ -178,7 +178,7 @@ The `python/` directory contains source code for reading and analyzing FusionEng
    pip install -r requirements.txt
    ```
 3. Run any of the applications in `python/bin/` or the example code in `python/examples/`. For example, to plot results
-   from a `*.p1bin` file or recorded in an Atlas log:
+   from a `*.p1log` file or recorded in an Atlas log:
    ```
    cd python/fusion_engine_client/
    python3 bin/p1_display.py /path/to/log/directory

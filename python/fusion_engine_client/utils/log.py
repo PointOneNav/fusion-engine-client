@@ -1,14 +1,14 @@
 import os
 
 
-def find_p1bin(input_path, return_output_dir=False, return_log_id=False):
+def find_p1log_file(input_path, return_output_dir=False, return_log_id=False):
     """!
-    @brief Locate a FusionEngine `*.p1bin` file.
+    @brief Locate a FusionEngine `*.p1log` file.
 
     If `input_path` is a file, the returned output directory will be the parent directory of that file. If it is an
     Atlas log, the returned output directory will be the log directory.
 
-    @param input_path The path to a `.p1bin` file, or to an Atlas log directory containing FusionEngine output.
+    @param input_path The path to a `.p1log` file, or to an Atlas log directory containing FusionEngine output.
     @param return_output_dir If `True`, return the output directory associated with the located input file.
     @param return_log_id If `True`, return the ID of the log if the requested path is an Atlas log.
 
@@ -21,7 +21,7 @@ def find_p1bin(input_path, return_output_dir=False, return_log_id=False):
         output_dir = os.path.dirname(input_path)
         log_id = None
     # If the input path is a directory, see if it's an Atlas log. If so, set the output directory to the log directory
-    # (not the subdirectory containing the p1bin file).
+    # (not the subdirectory containing the p1log file).
     elif os.path.isdir(input_path):
         # A valid Atlas logs will contain a manifest file (note: the filename spelling below is intentional).
         log_dir = input_path
@@ -31,7 +31,7 @@ def find_p1bin(input_path, return_output_dir=False, return_log_id=False):
             log_id = os.path.basename(log_dir)
 
             # Check for a FusionEngine output file.
-            candidate_files = [os.path.join(log_dir, 'output', 'fusion_engine.p1bin'),
+            candidate_files = [os.path.join(log_dir, 'fusion_engine.p1log'),
                                # Legacy path, maintained for backwards compatibility.
                                os.path.join(log_dir, 'filter', 'output', 'fe_service', 'output.p1bin')]
             input_path = None
@@ -42,7 +42,7 @@ def find_p1bin(input_path, return_output_dir=False, return_log_id=False):
                     break
 
             if input_path is None:
-                raise FileNotFoundError("No .p1bin file found for log '%s' (%s)." % (log_id, log_dir))
+                raise FileNotFoundError("No .p1log file found for log '%s' (%s)." % (log_id, log_dir))
     else:
         raise FileNotFoundError("File '%s' not found." % input_path)
 

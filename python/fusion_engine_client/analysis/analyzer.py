@@ -23,7 +23,7 @@ if __name__ == "__main__" and (__package__ is None or __package__ == ''):
 from ..messages.core import *
 from .attitude import get_enu_rotation_matrix
 from .file_reader import FileReader
-from ..utils.log import find_p1bin
+from ..utils.log import find_p1log_file
 
 _logger = logging.getLogger('point_one.fusion_engine.analysis.analyzer')
 
@@ -516,7 +516,7 @@ Load and display information stored in a FusionEngine binary file.
 
     # Locate the input file and set the output directory.
     try:
-        input_path, output_dir, log_id = find_p1bin(options.file, return_output_dir=True, return_log_id=True)
+        input_path, output_dir, log_id = find_p1log_file(options.file, return_output_dir=True, return_log_id=True)
 
         if log_id is None:
             _logger.info('Loading %s.' % os.path.basename(input_path))
