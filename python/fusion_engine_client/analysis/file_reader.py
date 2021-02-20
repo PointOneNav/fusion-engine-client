@@ -158,7 +158,7 @@ class FileReader(object):
             self.read(time_range=(0.0, None), max_messages=1, generate_index=False)
         else:
             idx = np.argmax(~np.isnan(self.index['time']))
-            self.t0 = self.index['time'][idx]
+            self.t0 = Timestamp(self.index['time'][idx])
 
     def close(self):
         """!
