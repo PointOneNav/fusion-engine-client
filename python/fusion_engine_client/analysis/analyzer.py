@@ -222,7 +222,7 @@ class Analyzer(object):
 
             if np.any(idx):
                 text = ["Time: %.3f sec (%.3f sec)<br>Std (ENU): (%.2f, %.2f, %.2f) m" %
-                        (t, t + self.t0, std[0], std[1], std[2])
+                        (t, t + float(self.t0), std[0], std[1], std[2])
                         for t, std in zip(time[idx], std_enu_m[:, idx].T)]
                 map_data.append(go.Scattermapbox(lat=lla_deg[0, idx], lon=lla_deg[1, idx], name=name, text=text,
                                                  **style))
