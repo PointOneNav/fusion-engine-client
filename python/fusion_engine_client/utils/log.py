@@ -112,18 +112,25 @@ def find_p1bin(input_path, load_original=False, return_output_dir=False, return_
         # If we found a log directory, see if it contains an output file.
         else:
             # Check for a FusionEngine output file.
-            fe_service_dir = os.path.join(log_dir, 'filter', 'output', 'fe_service')
-            if load_original:
-                input_path = os.path.join(fe_service_dir, 'output.p1bin')
-            else:
-                # If log playback output exists, use that over the original data recorded with the log.
-                input_path = os.path.join(fe_service_dir, 'output.playback.p1bin')
-                if not os.path.exists(input_path):
-                    input_path = os.path.join(fe_service_dir, 'output.p1bin')
+            #
+            # If a playback file exists, load that first over the original file unless the user specifically says to
+            # load the originally recorded file. In that case, the playback file paths will be set to None and ignored
+            # in the loop below.
+            candidate_files = [os.path.join(log_dir, 'output', 'fusion_engine.playback.p1bin')
+                               if not load_original else None,
+                               os.path.join(log_dir, 'output', 'fusion_engine.p1bin'),
+                               # Legacy path, maintained for backwards compatibility.
+                               os.path.join(log_dir, 'filter', 'output', 'fe_service', 'output.playback.p1bin')
+                               if not load_original else None,
+                               os.path.join(log_dir, 'filter', 'output', 'fe_service', 'output.p1bin')]
+            input_path = None
+            for path in candidate_files:
+                if path is not None and os.path.exists(path):
+                    input_path = path
+                    output_dir = log_dir
+                    break
 
-            if os.path.exists(input_path):
-                output_dir = log_dir
-            else:
+            if input_path is None:
                 raise FileNotFoundError("No .p1bin file found for log '%s' (%s)." % (log_id, log_dir))
 
     result = [input_path]
