@@ -437,6 +437,8 @@ Load and display information stored in a FusionEngine binary file.
     parser.add_argument('--absolute-time', '--abs', action='store_true',
                         help="Interpret the timestamps in --time as absolute P1 times. Otherwise, treat them as "
                              "relative to the first message in the file.")
+    parser.add_argument('--imu', action='store_true',
+                        help="Plot IMU data (slow).")
     parser.add_argument('--mapbox-token', metavar='TOKEN',
                         help="A Mabox token to use when generating a map.")
     parser.add_argument('--no-index', action='store_true',
@@ -513,6 +515,8 @@ Load and display information stored in a FusionEngine binary file.
     analyzer.plot_pose()
     if options.mapbox_token is not None:
         analyzer.plot_map(mapbox_token=options.mapbox_token)
+    if options.imu:
+        analyzer.plot_imu()
     analyzer.generate_index(auto_open=not options.no_index)
 
     _logger.info("Output stored in '%s'." % os.path.abspath(output_dir))
