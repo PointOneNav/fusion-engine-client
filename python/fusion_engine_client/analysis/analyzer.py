@@ -181,6 +181,76 @@ class Analyzer(object):
 
         self._add_figure(name="pose", figure=figure, title="Vehicle Pose")
 
+    def plot_map(self, mapbox_token):
+        """!
+        @brief Plot a map of the position data.
+        """
+        if self.output_dir is None:
+            return
+
+        # Read the pose data.
+        result = self.reader.read(message_types=[PoseMessage], **self.params)
+        pose_data = result[PoseMessage.MESSAGE_TYPE]
+
+        if len(pose_data.p1_time) == 0:
+            self.logger.info('No pose data available.')
+            return
+
+        # Remove invalid solutions.
+        valid_idx = pose_data.solution_type != SolutionType.Invalid
+        if not np.any(valid_idx):
+            self.logger.info('No valid position solutions detected.')
+            return
+
+        time = pose_data.p1_time[valid_idx] - float(self.t0)
+        solution_type = pose_data.solution_type[valid_idx]
+        lla_deg = pose_data.lla_deg[:, valid_idx]
+        std_enu_m = pose_data.position_std_enu_m[:, valid_idx]
+
+        # Add data to the map.
+        map_data = []
+
+        def _plot_data(name, idx, marker_style=None):
+            style = {'mode': 'markers', 'marker': {'size': 8}, 'showlegend': True}
+            if marker_style is not None:
+                style['marker'].update(marker_style)
+
+            if np.any(idx):
+                text = ["Time: %.3f sec (%.3f sec)<br>Std (ENU): (%.2f, %.2f, %.2f) m" %
+                        (t, t + self.t0, std[0], std[1], std[2])
+                        for t, std in zip(time[idx], std_enu_m[:, idx].T)]
+                map_data.append(go.Scattermapbox(lat=lla_deg[0, idx], lon=lla_deg[1, idx], name=name, text=text,
+                                                 **style))
+            else:
+                # If there's no data, draw a dummy trace so it shows up in the legend anyway.
+                map_data.append(go.Scattermapbox(lat=[np.nan], lon=[np.nan], name=name, **style))
+
+        _plot_data('RTK Fixed', solution_type == SolutionType.RTKFixed, {'color': 'red'})
+        _plot_data('Non-Fixed', solution_type != SolutionType.RTKFixed, {'color': 'red', 'size': 5})
+
+        # Create the map.
+        layout = go.Layout(
+            autosize=True,
+            hovermode='closest',
+            title='Vehicle Trajectory',
+            mapbox=dict(
+                accesstoken=mapbox_token,
+                bearing=0,
+                center=dict(
+                    lat=lla_deg[0, 0],
+                    lon=lla_deg[1, 0],
+                ),
+                pitch=0,
+                zoom=18,
+                style='satellite-streets'
+            )
+        )
+
+        figure = go.Figure(data=map_data, layout=layout)
+        figure['layout'].update(showlegend=True)
+
+        self._add_figure(name="map", figure=figure, title="Vehicle Trajectory (Map)")
+
     def plot_imu(self):
         """!
         @brief Plot the IMU data.
@@ -367,6 +437,8 @@ Load and display information stored in a FusionEngine binary file.
     parser.add_argument('--absolute-time', '--abs', action='store_true',
                         help="Interpret the timestamps in --time as absolute P1 times. Otherwise, treat them as "
                              "relative to the first message in the file.")
+    parser.add_argument('--mapbox-token', metavar='TOKEN',
+                        help="A Mabox token to use when generating a map.")
     parser.add_argument('--no-index', action='store_true',
                         help="Do not automatically open the plots in a web browser.")
     parser.add_argument('-o', '--output', type=str, metavar='DIR',
@@ -432,13 +504,15 @@ Load and display information stored in a FusionEngine binary file.
             output_dir = options.output
     except FileNotFoundError as e:
         _logger.error(str(e))
-        os.exit(1)
+        sys.exit(1)
 
     # Read pose data from the file.
     analyzer = Analyzer(file=input_path, output_dir=output_dir,
                         prefix=options.prefix + '.' if options.prefix is not None else '',
                         time_range=time_range, absolute_time=options.absolute_time)
     analyzer.plot_pose()
+    if options.mapbox_token is not None:
+        analyzer.plot_map(mapbox_token=options.mapbox_token)
     analyzer.generate_index(auto_open=not options.no_index)
 
     _logger.info("Output stored in '%s'." % os.path.abspath(output_dir))
