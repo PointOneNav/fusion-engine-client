@@ -257,6 +257,8 @@ class FileReader(object):
         num_needed = len(needed_message_types)
         if num_needed == 0:
             # Nothing to read. Return cached data.
+            self.logger.debug('Requested data already cached. [# types=%d, start=%s, end=%s]' %
+                              (len(message_types),  str(time_range[0]), str(time_range[1])))
             return result
         elif self.file is None:
             raise IOError("File not open.")

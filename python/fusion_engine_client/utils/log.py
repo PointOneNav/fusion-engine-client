@@ -31,12 +31,17 @@ def find_p1bin(input_path, return_output_dir=False, return_log_id=False):
             log_id = os.path.basename(log_dir)
 
             # Check for a FusionEngine output file.
-            fe_service_dir = os.path.join(log_dir, 'filter', 'output', 'fe_service')
-            input_path = os.path.join(fe_service_dir, 'output.p1bin')
+            candidate_files = [os.path.join(log_dir, 'output', 'fusion_engine.p1bin'),
+                               # Legacy path, maintained for backwards compatibility.
+                               os.path.join(log_dir, 'filter', 'output', 'fe_service', 'output.p1bin')]
+            input_path = None
+            for path in candidate_files:
+                if os.path.exists(path):
+                    input_path = path
+                    output_dir = log_dir
+                    break
 
-            if os.path.exists(input_path):
-                output_dir = log_dir
-            else:
+            if input_path is None:
                 raise FileNotFoundError("No .p1bin file found for log '%s' (%s)." % (log_id, log_dir))
     else:
         raise FileNotFoundError("File '%s' not found." % input_path)
