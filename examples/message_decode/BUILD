@@ -6,7 +6,7 @@ cc_binary(
         "message_decode.cc",
     ],
     data = [
-        "example_data.p1bin",
+        "example_data.p1log",
     ],
     deps = [
         "@fusion_engine_client",

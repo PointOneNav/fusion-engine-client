@@ -45,19 +45,19 @@ jobs:
         mkdir test
         cp examples/bazel-bin/message_decode/message_decode ./test/
         cp examples/bazel-bin/generate_data/generate_data ./test/
-        cp examples/message_decode/example_data.p1bin ./test/
+        cp examples/message_decode/example_data.p1log ./test/
 
     # Run unit tests.
     - name: Test Message Decoding
       run: |
         cd test
-        ./message_decode example_data.p1bin
+        ./message_decode example_data.p1log
 
     - name: Test Message Encoding
       run: |
         cd test
-        ./generate_data new_data.p1bin &&
-        ./message_decode new_data.p1bin
+        ./generate_data new_data.p1log &&
+        ./message_decode new_data.p1log
 
   # Build the library and example applications (CMake).
   build_cmake:
@@ -116,7 +116,7 @@ jobs:
         mkdir test
         cp cmake_build/examples/message_decode/message_decode ./test/
         cp cmake_build/examples/generate_data/generate_data ./test/
-        cp examples/message_decode/example_data.p1bin ./test/
+        cp examples/message_decode/example_data.p1log ./test/
 
     - name: Build Library And Examples (Windows)
       if: matrix.os == 'windows-latest'
@@ -131,19 +131,19 @@ jobs:
         cp cmake_build/Debug/fusion_engine_client.dll ./test/
         cp cmake_build/examples/message_decode/Debug/message_decode.exe ./test/
         cp cmake_build/examples/generate_data/Debug/generate_data.exe ./test/
-        cp examples/message_decode/example_data.p1bin ./test/
+        cp examples/message_decode/example_data.p1log ./test/
 
     # Run unit tests.
     - name: Test Message Decoding
       run: |
         cd test
-        ./message_decode${EXT} example_data.p1bin
+        ./message_decode${EXT} example_data.p1log
 
     - name: Test Message Encoding
       run: |
         cd test
-        ./generate_data${EXT} new_data.p1bin
-        ./message_decode${EXT} new_data.p1bin
+        ./generate_data${EXT} new_data.p1log
+        ./message_decode${EXT} new_data.p1log
 
   # Build the documentation.
   build_doxygen:
