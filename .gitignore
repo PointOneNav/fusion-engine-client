@@ -14,6 +14,7 @@ build/
 
 # P1 binary files.
 *.p1bin
+*.p1log
 *.p1i
 
 # Doxygen output.
