@@ -310,3 +310,29 @@ class MessageHeader:
                 value_idx += 1
 
         return tuple(args)
+
+
+class MessagePayload:
+    """!
+    @brief Message payload API.
+    """
+    def __init__(self):
+        pass
+
+    def get_type(self) -> MessageType:
+        raise NotImplementedError('get_type() not implemented.')
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        raise NotImplementedError('pack() not implemented.')
+
+    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+        raise NotImplementedError('unpack() not implemented.')
+
+    def __repr__(self):
+        try:
+            return '%s message' % MessageType.get_type_string(self.get_type())
+        except NotImplementedError:
+            return 'Unknown message payload.'
+
+    def __str__(self):
+        return repr(self)

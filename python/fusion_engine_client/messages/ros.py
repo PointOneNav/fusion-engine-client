@@ -12,7 +12,7 @@ class CovarianceType(IntEnum):
     COVARIANCE_TYPE_KNOWN = 3
 
 
-class PoseMessage:
+class PoseMessage(MessagePayload):
     """!
     @brief ROS `Pose` message (@ref MessageType::ROS_POSE)
 
@@ -32,6 +32,9 @@ class PoseMessage:
         # The platform orientation, represented as a quaternion with the scalar
         # component last (x, y, z, w)
         self.orientation = np.full((4,), np.nan)
+
+    def get_type(self) -> MessageType:
+        return PoseMessage.MESSAGE_TYPE
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
@@ -84,7 +87,7 @@ class PoseMessage:
         return result
 
 
-class GPSFixMessage:
+class GPSFixMessage(MessagePayload):
     """!
     @brief ROS `GPSFix` message (MessageType::ROS_GPS_FIX).
     """
@@ -147,6 +150,9 @@ class GPSFixMessage:
         self.position_covariance_type = CovarianceType.COVARIANCE_TYPE_UNKNOWN
 
         self.reserved = np.full((3,), 0, np.uint8)
+
+    def get_type(self) -> MessageType:
+        return GPSFixMessage.MESSAGE_TYPE
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
@@ -248,7 +254,7 @@ class GPSFixMessage:
         return Timestamp.calcsize() + GPSFixMessage._SIZE
 
 
-class IMUMessage:
+class IMUMessage(MessagePayload):
     """!
     @brief ROS `Imu` message (@ref MessageType::ROS_IMU)
     """
@@ -274,6 +280,9 @@ class IMUMessage:
         self.acceleration_mps2 = np.full((3,), 0.0)
         # Vehicle x/y/z acceleration covariance matrix. Set to -1 if not available
         self.acceleration_covariance = np.full((9,), -1)
+
+    def get_type(self) -> MessageType:
+        return IMUMessage.MESSAGE_TYPE
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
