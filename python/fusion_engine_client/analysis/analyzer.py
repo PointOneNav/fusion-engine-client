@@ -698,6 +698,10 @@ Load and display information stored in a FusionEngine binary file.
         else:
             _logger.info('Loading %s from log %s.' % (os.path.basename(input_path), log_id))
 
+        if input_path.endswith('.playback.p1log') or input_path.endswith('.playback.p1bin'):
+            _logger.warning('Using .p1log file from log playback. If you want the originally recorded data, set '
+                            '--original.')
+
         if options.output is None:
             if log_id is not None:
                 output_dir = os.path.join(output_dir, 'plot_fusion_engine')
