@@ -1,5 +1,4 @@
 import struct
-from typing import List
 
 import numpy as np
 
@@ -13,14 +12,13 @@ class CovarianceType(IntEnum):
     COVARIANCE_TYPE_KNOWN = 3
 
 
-'''
-The relative change in ENU position since the time of the first @ref
-PoseMessage, resolved in the local ENU frame at the time of the first @ref
-PoseMessage
-'''
 class PoseMessage:
-    # ROS `Pose` message (MessageType::ROS_POSE)
+    """!
+    @brief ROS `Pose` message (@ref MessageType::ROS_POSE)
 
+    The relative change in ENU position since the time of the first @ref PoseMessage, resolved in the local ENU frame at
+    the time of the first @ref PoseMessage.
+    """
     MESSAGE_TYPE = MessageType.ROS_POSE
 
     _FORMAT = '< 3d 4d'
@@ -68,11 +66,8 @@ class PoseMessage:
 
     def __str__(self):
         string = 'ROS Pose message @ P1 time %s\n' % str(self.p1_time)
-        string += '  Position : %.6f, %.6f, %.6f \n' % tuple(
-            self.position_rel_m)
-        string += '  Orientation: %.12f, %.12f, %.12f, %.12f \n' % tuple(
-            self.orientation)
-        # string += '  Orientation: %f, %f, %f, %f \n' % tuple(self.orientation)
+        string += '  Position : %.6f, %.6f, %.6f \n' % tuple(self.position_rel_m)
+        string += '  Orientation: %.12f, %.12f, %.12f, %.12f \n' % tuple(self.orientation)
         return string
 
     @classmethod
@@ -255,7 +250,7 @@ class GPSFixMessage:
 
 class IMUMessage:
     """!
-    @brief ROS `Imu` message (MessageType::ROS_IMU)
+    @brief ROS `Imu` message (@ref MessageType::ROS_IMU)
     """
     MESSAGE_TYPE = MessageType.ROS_IMU
 
