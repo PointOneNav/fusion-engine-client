@@ -27,7 +27,7 @@ def decode_message(header, data, offset):
 
     # Deserialize and print the message contents.
     #
-    # Note: This could also be done more generally using the fusion_engine_client.core.message_type_to_class dictionary.
+    # Note: This could also be done more generally using the fusion_engine_client.message_type_to_class dictionary.
     # We do it explicitly here for sake of example.
     if header.message_type == PoseMessage.MESSAGE_TYPE:
         contents = PoseMessage()
