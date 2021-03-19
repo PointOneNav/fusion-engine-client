@@ -298,6 +298,11 @@ class IMUMessage:
                          self.acceleration_covariance[6], self.acceleration_covariance[7], self.acceleration_covariance[8],
                          )
 
+        if return_buffer:
+            return buffer
+        else:
+            return offset - initial_offset
+
     def unpack(self, buffer: bytes, offset: int = 0) -> int:
         initial_offset = offset
 
