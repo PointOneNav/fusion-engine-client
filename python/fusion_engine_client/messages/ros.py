@@ -6,18 +6,19 @@ import numpy as np
 from .defs import *
 
 
-class ROS_CovarianceType(IntEnum):
+class CovarianceType(IntEnum):
     COVARIANCE_TYPE_UNKNOWN = 0
     COVARIANCE_TYPE_APPROXIMATED = 1
     COVARIANCE_TYPE_DIAGONAL_KNOWN = 2
     COVARIANCE_TYPE_KNOWN = 3
+
 
 '''
 The relative change in ENU position since the time of the first @ref
 PoseMessage, resolved in the local ENU frame at the time of the first @ref
 PoseMessage
 '''
-class ROS_PoseMessage:
+class PoseMessage:
     # ROS `Pose` message (MessageType::ROS_POSE)
 
     MESSAGE_TYPE = MessageType.ROS_POSE
@@ -42,7 +43,7 @@ class ROS_PoseMessage:
 
         offset += self.p1_time.pack(buffer, offset, return_buffer=False)
 
-        struct.pack_into(ROS_PoseMessage._FORMAT, buffer, offset,
+        struct.pack_into(PoseMessage._FORMAT, buffer, offset,
                          self.position_rel_m[0], self.position_rel_m[1], self.position_rel_m[2],
                          self.orientation[0], self.orientation[1], self.orientation[2], self.orientation[3])
 
@@ -57,9 +58,9 @@ class ROS_PoseMessage:
         offset += self.p1_time.unpack(buffer, offset)
         (self.position_rel_m[0], self.position_rel_m[1], self.position_rel_m[2],
          self.orientation[0], self.orientation[1], self.orientation[2], self.orientation[3]) = \
-            struct.unpack_from(ROS_PoseMessage._FORMAT,
+            struct.unpack_from(PoseMessage._FORMAT,
                                buffer=buffer, offset=offset)
-        offset += ROS_PoseMessage._SIZE
+        offset += PoseMessage._SIZE
         return offset - initial_offset
 
     def __repr__(self):
@@ -76,7 +77,7 @@ class ROS_PoseMessage:
 
     @classmethod
     def calcsize(cls) -> int:
-        return Timestamp.calcsize() + ROS_PoseMessage._SIZE
+        return Timestamp.calcsize() + PoseMessage._SIZE
 
     @classmethod
     def to_numpy(cls, messages):
@@ -88,7 +89,7 @@ class ROS_PoseMessage:
         return result
 
 
-class ROS_GPSFixMessage:
+class GPSFixMessage:
     """!
     @brief ROS `GPSFix` message (MessageType::ROS_GPS_FIX).
     """
@@ -148,7 +149,7 @@ class ROS_GPSFixMessage:
         """
         self.position_covariance_m2 = np.full((9,), np.nan)
         # The method in which @ref position_covariance_m2 was populated
-        self.position_covariance_type = ROS_CovarianceType.COVARIANCE_TYPE_UNKNOWN
+        self.position_covariance_type = CovarianceType.COVARIANCE_TYPE_UNKNOWN
 
         self.reserved = np.full((3,), 0, np.uint8)
 
@@ -160,7 +161,7 @@ class ROS_GPSFixMessage:
 
         offset += self.p1_time.pack(buffer, offset, return_buffer=False)
 
-        struct.pack_into(ROS_GPSFixMessage._FORMAT, buffer, offset,
+        struct.pack_into(GPSFixMessage._FORMAT, buffer, offset,
                          self.latitude_deg,
                          self.longitude_deg,
                          self.altitude_m,
@@ -231,9 +232,9 @@ class ROS_GPSFixMessage:
          self.position_covariance_m2[6], self.position_covariance_m2[7], self.position_covariance_m2[8],
          self.position_covariance_type,
          self.reserved[0], self.reserved[1], self.reserved[2]) = \
-            struct.unpack_from(ROS_GPSFixMessage._FORMAT,
+            struct.unpack_from(GPSFixMessage._FORMAT,
                                buffer=buffer, offset=offset)
-        offset += ROS_GPSFixMessage._SIZE
+        offset += GPSFixMessage._SIZE
         return offset - initial_offset
 
     def __repr__(self):
@@ -249,10 +250,10 @@ class ROS_GPSFixMessage:
 
     @classmethod
     def calcsize(cls) -> int:
-        return Timestamp.calcsize() + ROS_GPSFixMessage._SIZE
+        return Timestamp.calcsize() + GPSFixMessage._SIZE
 
 
-class ROS_IMUMessage:
+class IMUMessage:
     """!
     @brief ROS `Imu` message (MessageType::ROS_IMU)
     """
@@ -287,7 +288,7 @@ class ROS_IMUMessage:
 
         offset += self.p1_time.pack(buffer, offset, return_buffer=False)
 
-        struct.pack_into(ROS_IMUMessage._FORMAT, buffer, offset,
+        struct.pack_into(IMUMessage._FORMAT, buffer, offset,
                          self.orientation[0], self.orientation[1], self.orientation[2], self.orientation[3],
                          self.orientation_covariance[0], self.orientation_covariance[1], self.orientation_covariance[2],
                          self.orientation_covariance[3], self.orientation_covariance[4], self.orientation_covariance[5],
@@ -319,9 +320,9 @@ class ROS_IMUMessage:
                          self.acceleration_covariance[3], self.acceleration_covariance[4], self.acceleration_covariance[5],
                          self.acceleration_covariance[6], self.acceleration_covariance[7], self.acceleration_covariance[8],
                          ) = \
-            struct.unpack_from(ROS_IMUMessage._FORMAT,
+            struct.unpack_from(IMUMessage._FORMAT,
                                buffer=buffer, offset=offset)
-        offset += ROS_IMUMessage._SIZE
+        offset += IMUMessage._SIZE
         return offset - initial_offset
 
     def __repr__(self):
@@ -339,4 +340,4 @@ class ROS_IMUMessage:
 
     @classmethod
     def calcsize(cls) -> int:
-        return Timestamp.calcsize() + ROS_IMUMessage._SIZE
+        return Timestamp.calcsize() + IMUMessage._SIZE

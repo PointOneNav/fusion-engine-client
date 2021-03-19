@@ -8,6 +8,7 @@ root_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(root_dir)
 
 from fusion_engine_client.messages.core import *
+from fusion_engine_client.messages import ros
 
 
 def decode_message(header, data, offset):
@@ -29,11 +30,7 @@ def decode_message(header, data, offset):
     # Note: This could also be done more generally using the fusion_engine_client.core.message_type_to_class dictionary.
     # We do it explicitly here for sake of example.
     if header.message_type == PoseMessage.MESSAGE_TYPE:
-        if len(data) == 88:
-            contents = ROS_PoseMessage()
-        else:
-            contents = PoseMessage()
-
+        contents = PoseMessage()
         contents.unpack(buffer=data, offset=offset)
     elif header.message_type == GNSSInfoMessage.MESSAGE_TYPE:
         contents = GNSSInfoMessage()
@@ -41,11 +38,14 @@ def decode_message(header, data, offset):
     elif header.message_type == GNSSSatelliteMessage.MESSAGE_TYPE:
         contents = GNSSSatelliteMessage()
         contents.unpack(buffer=data, offset=offset)
-    elif header.message_type == ROS_GPSFixMessage.MESSAGE_TYPE:
-        contents = ROS_GPSFixMessage()
+    elif header.message_type == ros.PoseMessage.MESSAGE_TYPE:
+        contents = ros.PoseMessage()
         contents.unpack(buffer=data, offset=offset)
-    elif header.message_type == ROS_IMUMessage.MESSAGE_TYPE:
-        contents = ROS_IMUMessage()
+    elif header.message_type == ros.GPSFixMessage.MESSAGE_TYPE:
+        contents = ros.GPSFixMessage()
+        contents.unpack(buffer=data, offset=offset)
+    elif header.message_type == ros.IMUMessage.MESSAGE_TYPE:
+        contents = ros.IMUMessage()
         contents.unpack(buffer=data, offset=offset)
     else:
         print('Decoded %s message [sequence=%d, size=%d B]' %
