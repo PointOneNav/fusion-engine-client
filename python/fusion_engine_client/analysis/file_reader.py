@@ -61,7 +61,21 @@ class MessageData(object):
                         for key, value in self.__dict__.items():
                             if (key not in ('message_type', 'message_class', 'params', 'messages') and
                                 isinstance(value, np.ndarray)):
-                                self.__dict__[key] = value[keep_idx]
+                                if len(value.shape) == 1:
+                                    self.__dict__[key] = value[keep_idx]
+                                elif len(value.shape) == 2:
+                                    if value.shape[0] == len(is_nan):
+                                        # Assuming first dimension is time.
+                                        self.__dict__[key] = value[keep_idx, :]
+                                    elif value.shape[1] == len(is_nan):
+                                        # Assuming second dimension is time.
+                                        self.__dict__[key] = value[:, keep_idx]
+                                    else:
+                                        # Unrecognized data shape.
+                                        pass
+                                else:
+                                    # Unrecognized data shape.
+                                    pass
         else:
             raise ValueError('Message type %s does not support numpy conversion.' %
                              MessageType.get_type_string(self.message_type))
