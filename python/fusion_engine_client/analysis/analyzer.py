@@ -23,7 +23,6 @@ if __name__ == "__main__" and (__package__ is None or __package__ == ''):
 
 from ..messages.core import *
 from ..messages.internal import *
-from..utils.log import MANIFEST_FILE_NAME, find_log
 from .attitude import get_enu_rotation_matrix
 from .file_reader import FileReader
 from ..utils.log import find_p1log_file
