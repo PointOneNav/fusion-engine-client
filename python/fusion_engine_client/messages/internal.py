@@ -185,12 +185,13 @@ class ProfileSystemStatusMessage(MessagePayload):
 
     def __repr__(self):
         return '%s @ POSIX time %s (%.6f sec)' % \
-               (self.MESSAGE_TYPE.name, datetime.utcfromtimestamp(self.posix_time_ns).replace(tzinfo=timezone.utc),
+               (self.MESSAGE_TYPE.name,
+                datetime.utcfromtimestamp(self.posix_time_ns * 1e-9).replace(tzinfo=timezone.utc),
                 self.posix_time_ns * 1e-9)
 
     def __str__(self):
         string = 'System status @ POSIX time %s (%.6f sec)\n' % \
-                  (datetime.utcfromtimestamp(self.posix_time_ns).replace(tzinfo=timezone.utc),
+                  (datetime.utcfromtimestamp(self.posix_time_ns * 1e-9).replace(tzinfo=timezone.utc),
                    self.posix_time_ns * 1e-9)
         string += '  P1 time: %s\n' % str(self.p1_time)
         string += '  CPU: %.1f%%\n' % self.total_cpu_usage
@@ -319,12 +320,12 @@ class ProfileDefinitionMessage(MessagePayload):
 
     def __repr__(self):
         return 'Profile definition @ POSIX time %s (%.6f sec)' % \
-               (datetime.utcfromtimestamp(self.posix_time_ns).replace(tzinfo=timezone.utc),
+               (datetime.utcfromtimestamp(self.posix_time_ns * 1e-9).replace(tzinfo=timezone.utc),
                 self.posix_time_ns * 1e-9)
 
     def __str__(self):
         string = 'Profile definition @ POSIX time %s (%.6f sec)\n' % \
-                  (datetime.utcfromtimestamp(self.posix_time_ns).replace(tzinfo=timezone.utc),
+                  (datetime.utcfromtimestamp(self.posix_time_ns * 1e-9).replace(tzinfo=timezone.utc),
                    self.posix_time_ns * 1e-9)
         string += '  %d entries:' % len(self.entries)
         for entry in self.entries:
@@ -430,12 +431,13 @@ class ProfilePipelineMessage(MessagePayload):
 
     def __repr__(self):
         return '%s @ POSIX time %s (%.6f sec)' % \
-               (self.MESSAGE_TYPE.name, datetime.utcfromtimestamp(self.posix_time_ns).replace(tzinfo=timezone.utc),
+               (self.MESSAGE_TYPE.name,
+                datetime.utcfromtimestamp(self.posix_time_ns * 1e-9).replace(tzinfo=timezone.utc),
                 self.posix_time_ns * 1e-9)
 
     def __str__(self):
         string = 'Pipeline profiling update @ POSIX time %s (%.6f sec)\n' % \
-                  (datetime.utcfromtimestamp(self.posix_time_ns).replace(tzinfo=timezone.utc),
+                  (datetime.utcfromtimestamp(self.posix_time_ns * 1e-9).replace(tzinfo=timezone.utc),
                    self.posix_time_ns * 1e-9)
         string += '  P1 time: %s\n' % self.p1_time
         string += '  %d entries:' % len(self.entries)
@@ -574,12 +576,13 @@ class ProfileExecutionMessage(MessagePayload):
 
     def __repr__(self):
         return '%s @ POSIX time %s (%.6f sec)' % \
-               (self.MESSAGE_TYPE.name, datetime.utcfromtimestamp(self.posix_time_ns).replace(tzinfo=timezone.utc),
+               (self.MESSAGE_TYPE.name,
+                datetime.utcfromtimestamp(self.posix_time_ns * 1e-9).replace(tzinfo=timezone.utc),
                 self.posix_time_ns * 1e-9)
 
     def __str__(self):
         string = 'Execution profiling update @ POSIX time %s (%.6f sec)\n' % \
-                  (datetime.utcfromtimestamp(self.posix_time_ns).replace(tzinfo=timezone.utc),
+                  (datetime.utcfromtimestamp(self.posix_time_ns * 1e-9).replace(tzinfo=timezone.utc),
                    self.posix_time_ns * 1e-9)
         string += '  %d entries:' % len(self.entries)
         for entry in self.entries:
