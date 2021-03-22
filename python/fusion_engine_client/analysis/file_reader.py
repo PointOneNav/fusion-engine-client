@@ -14,7 +14,7 @@ from ..messages import *
 class MessageData(object):
     def __init__(self, message_type, params):
         self.message_type = message_type
-        self.message_class = message_type_to_class[self.message_type]
+        self.message_class = message_type_to_class.get(self.message_type, None)
         self.params = params
         self.messages = []
 
@@ -309,8 +309,16 @@ class FileReader(object):
         needed_message_types = set(needed_message_types)
 
         # Make cache entries for the messages to be read.
+        message_class = {}
         for type in needed_message_types:
             self.data[type] = MessageData(message_type=type, params=params)
+
+            message_class[type] = message_type_to_class.get(type, None)
+            if message_class[type] is None:
+                self.logger.warning('Decode not supported for message type %s. Omitting from output.' %
+                                    MessageType.get_type_string(type))
+
+        needed_message_types = [t for t in needed_message_types if message_class[t] is not None]
 
         # Create a dict with references to the requested types only to be returned below.
         result = {t: self.data[t] for t in message_types}
@@ -475,13 +483,12 @@ class FileReader(object):
             # Now decode the payload.
             try:
                 # Get the message class for this type and unpack the payload.
-                cls = message_type_to_class.get(header.message_type, None)
+                cls = message_class.get(header.message_type, None)
                 if cls is None:
                     is_reserved = int(header.message_type) >= int(MessageType.RESERVED)
-                    self.logger.log(
-                        logging.DEBUG if is_reserved else logging.WARNING,
-                        '%sUnrecognized message type %s @ %d. Skipping.' %
-                        ('  ' if is_reserved else '', header.get_type_string(), message_offset_bytes))
+                    self.logger.log(logging.DEBUG,
+                                    '%sSkipping unsupported message type %s @ %d.' %
+                                    ('  ' if is_reserved else '', header.get_type_string(), message_offset_bytes))
                     p1_time = None
                     contents = None
                 else:
