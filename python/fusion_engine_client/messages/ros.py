@@ -105,6 +105,7 @@ class GPSFixMessage(MessagePayload):
         self.longitude_deg = np.nan
         # The WGS-84 altitude above the ellipsoid (in meters)
         self.altitude_m = np.nan
+
         # Velocity
         # The vehicle direction from north (in degrees)
         self.track_deg = np.nan
@@ -112,18 +113,22 @@ class GPSFixMessage(MessagePayload):
         self.speed_mps = np.nan
         # The vehicle vertical speed (in meters/second)
         self.climb_mps = np.nan
+
         # Vehicle Orientation (not supported)
         self.pitch_deg = np.nan
         self.roll_deg = np.nan
         self.dip_deg = np.nan
+
         # The GPS time of the message (in seconds), referenced to 1980/1/6
         self.gps_time = np.nan
+
         # Dilution Of Precision
         self.gdop = np.nan  # Geometric (position + time) DOP
         self.pdop = np.nan  # Positional (3D) DOP
         self.hdop = np.nan  # Horizontal DOP
         self.vdop = np.nan  # Vertical DOP
         self.tdop = np.nan  # Time DOP
+
         # Measurement Uncertainty (95% Confidence)
         # Spherical position uncertainty (in meters) [epe]
         self.err_3d_m = np.nan
@@ -140,6 +145,7 @@ class GPSFixMessage(MessagePayload):
         self.err_pitch_deg = np.nan  # Pitch uncertainty (in degrees)
         self.err_roll_deg = np.nan  # Roll uncertainty (in degrees)
         self.err_dip_deg = np.nan   # Dip uncertainty (in degrees)
+
         # Position Covariance
         """
             The 3x3 position covariance matrix (in m^2), resolved in the local ENU
