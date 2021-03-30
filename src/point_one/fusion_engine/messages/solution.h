@@ -39,7 +39,39 @@ struct PoseMessage {
   uint8_t reserved[3] = {0};
 
   /**
-   * The WGS-84 geodetic latitude, longitude, and altitude (in degrees/meters).
+   * The geodetic latitude, longitude, and altitude (in degrees/meters),
+   * expressed using the WGS-84 reference ellipsoid.
+   *
+   * @section p1_fe_pose_datum Datum/Epoch Considerations
+   * When comparing two positions, it is very important to make sure they are
+   * compared using the same geodetic datum, defined at the same time (epoch).
+   * Failing to do so can cause very large unexpected differences since the
+   * ground moves in various directions over time due to motion of tectonic
+   * plates.
+   *
+   * For example, the coordinates for a point on the ground in San Francisco
+   * expressed in the ITRF14 datum may differ by multiple meters from the
+   * coordinates for the same point expressed the NAD83 datum. Similarly, the
+   * coordinates for that location expressed in the ITRF14 2017.0 epoch
+   * (January 1, 2017) may differ by 12 cm or more when expressed using the
+   * ITRF14 2021.0 epoch (January 1, 2021).
+   *
+   * The datum and epoch to which the position reported in this message is
+   * aligned depends on the current @ref solution_type.
+   * - @ref SolutionType::AutonomousGPS / @ref SolutionType::DGPS /
+   *   @ref SolutionType::PPP - Standalone solutions (i.e., no differential
+   *   corrections) are aligned to the WGS-84 datum as broadcast live by GPS
+   *   (aligns closely with the ITRF08/14 datums).
+   * - @ref SolutionType::RTKFloat / @ref SolutionType::RTKFixed - When
+   *   differential corrections are applied, the reference datum and epoch are
+   *   defined by the corrections provider. Point One's Polaris Corrections
+   *   Service produces corrections using the ITRF14 datum. See
+   *   https://pointonenav.com/polaris for more details.
+   * - @ref SolutionType::Integrate - When the INS is dead reckoning in the
+   *   absence of GNSS, vision, or other measurements anchored in absolute world
+   *   coordinates, the position solution is defined in the same datum/epoch
+   *   specified by the previous solution type (e.g., WGS-84 if previously
+   *   standalone GNSS, i.e., @ref SolutionType::AutonomousGPS).
    */
   double lla_deg[3] = {NAN, NAN, NAN};
 

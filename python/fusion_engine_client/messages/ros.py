@@ -98,12 +98,12 @@ class GPSFixMessage(MessagePayload):
 
     def __init__(self):
         self.p1_time = Timestamp()
-        # WGS-84 Geodetic Position
-        # WGS-84 geodetic latitude (in degrees)
+        # Geodetic Position (expressed using the WGS-84 ellipsoid)
+        # Geodetic latitude (in degrees)
         self.latitude_deg = np.nan
-        # The WGS-84 geodetic longitude (in degrees)
+        # Geodetic longitude (in degrees)
         self.longitude_deg = np.nan
-        # The WGS-84 altitude above the ellipsoid (in meters)
+        # Altitude above the ellipsoid (in meters)
         self.altitude_m = np.nan
 
         # Velocity
