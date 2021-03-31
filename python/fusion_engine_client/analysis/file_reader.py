@@ -14,11 +14,11 @@ from ..messages import *
 class MessageData(object):
     def __init__(self, message_type, params):
         self.message_type = message_type
-        self.message_class = message_type_to_class[self.message_type]
+        self.message_class = message_type_to_class.get(self.message_type, None)
         self.params = params
         self.messages = []
 
-    def to_numpy(self):
+    def to_numpy(self, remove_nan_times: bool = True):
         """!
         @brief Convert the raw FusionEngine message data into numpy arrays that can be used for data analysis.
 
@@ -33,6 +33,9 @@ class MessageData(object):
         pose_data.to_numpy()
         mean_lla_deg = np.mean(pose_data.lla_deg, axis=1)
         ```
+
+        @param remove_nan_times If `True`, remove entries whose P1 timestamps are `NaN` (if P1 time is available for
+               this message type).
         """
         if hasattr(self.message_class, 'to_numpy'):
             have_cached_numpy_data = 'p1_time' in self.__dict__
@@ -50,6 +53,29 @@ class MessageData(object):
 
             if do_conversion:
                 self.__dict__.update(self.message_class.to_numpy(self.messages))
+
+                if remove_nan_times and 'p1_time' in self.__dict__:
+                    is_nan = np.isnan(self.p1_time)
+                    if np.any(is_nan):
+                        keep_idx = ~is_nan
+                        for key, value in self.__dict__.items():
+                            if (key not in ('message_type', 'message_class', 'params', 'messages') and
+                                isinstance(value, np.ndarray)):
+                                if len(value.shape) == 1:
+                                    self.__dict__[key] = value[keep_idx]
+                                elif len(value.shape) == 2:
+                                    if value.shape[0] == len(is_nan):
+                                        # Assuming first dimension is time.
+                                        self.__dict__[key] = value[keep_idx, :]
+                                    elif value.shape[1] == len(is_nan):
+                                        # Assuming second dimension is time.
+                                        self.__dict__[key] = value[:, keep_idx]
+                                    else:
+                                        # Unrecognized data shape.
+                                        pass
+                                else:
+                                    # Unrecognized data shape.
+                                    pass
         else:
             raise ValueError('Message type %s does not support numpy conversion.' %
                              MessageType.get_type_string(self.message_type))
@@ -218,7 +244,7 @@ class FileReader(object):
     def read(self, message_types: Union[list, tuple] = None,
              time_range: Tuple[Union[float, Timestamp], Union[float, Timestamp]] = None, absolute_time: bool = False,
              max_messages: int = None,
-             return_numpy: bool = False, keep_messages: bool = False,
+             return_numpy: bool = False, keep_messages: bool = False, remove_nan_times: bool = True,
              generate_index: bool = True, show_progress: bool = False) \
             -> Dict[MessageType, MessageData]:
         """!
@@ -242,6 +268,8 @@ class FileReader(object):
         @param return_numpy If `True`, convert the results to numpy arrays for analysis.
         @param keep_messages If `return_numpy == True` and `keep_messages == False`, the raw data in the `messages`
                field will be cleared for each @ref MessageData object for which numpy conversion is supported.
+        @param remove_nan_times If `True`, remove messages whose P1 timestamps are `NaN` when converting to numpy.
+               Ignored if `return_numpy == False`.
         @param show_progress If `True`, print the read progress every 10 MB (useful for large files).
         @param generate_index If `True` and an index file does not exist for this data file, read the entire data file
                and create an index file on the first call to this function. The file will be stored in the same
@@ -281,8 +309,16 @@ class FileReader(object):
         needed_message_types = set(needed_message_types)
 
         # Make cache entries for the messages to be read.
+        message_class = {}
         for type in needed_message_types:
             self.data[type] = MessageData(message_type=type, params=params)
+
+            message_class[type] = message_type_to_class.get(type, None)
+            if message_class[type] is None:
+                self.logger.warning('Decode not supported for message type %s. Omitting from output.' %
+                                    MessageType.get_type_string(type))
+
+        needed_message_types = [t for t in needed_message_types if message_class[t] is not None]
 
         # Create a dict with references to the requested types only to be returned below.
         result = {t: self.data[t] for t in message_types}
@@ -447,13 +483,12 @@ class FileReader(object):
             # Now decode the payload.
             try:
                 # Get the message class for this type and unpack the payload.
-                cls = message_type_to_class.get(header.message_type, None)
+                cls = message_class.get(header.message_type, None)
                 if cls is None:
                     is_reserved = int(header.message_type) >= int(MessageType.RESERVED)
-                    self.logger.log(
-                        logging.DEBUG if is_reserved else logging.WARNING,
-                        '%sUnrecognized message type %s @ %d. Skipping.' %
-                        ('  ' if is_reserved else '', header.get_type_string(), message_offset_bytes))
+                    self.logger.log(logging.DEBUG,
+                                    '%sSkipping unsupported message type %s @ %d.' %
+                                    ('  ' if is_reserved else '', header.get_type_string(), message_offset_bytes))
                     p1_time = None
                     contents = None
                 else:
@@ -557,13 +592,13 @@ class FileReader(object):
 
         # Convert the resulting message data to numpy (if supported).
         if return_numpy:
-            FileReader.to_numpy(result, keep_messages=keep_messages)
+            FileReader.to_numpy(result, keep_messages=keep_messages, remove_nan_times=remove_nan_times)
 
         # Done.
         return result
 
     @classmethod
-    def to_numpy(cls, data: dict, keep_messages: bool = True):
+    def to_numpy(cls, data: dict, keep_messages: bool = True, remove_nan_times: bool = True):
         """!
         @brief Convert all (supported) messages in a data dictionary to numpy for analysis.
 
@@ -572,10 +607,12 @@ class FileReader(object):
         @param data A data dictionary as returned by @ref read().
         @param keep_messages If `False`, the raw data in the `messages` field will be cleared for each @ref MessageData
                object for which numpy conversion is supported.
+        @param remove_nan_times If `True`, remove entries whose P1 timestamps are `NaN` (if P1 time is available for
+               this message type).
         """
         for entry in data.values():
             try:
-                entry.to_numpy()
+                entry.to_numpy(remove_nan_times=remove_nan_times)
                 if not keep_messages:
                     entry.messages = []
             except ValueError:
