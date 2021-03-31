@@ -8,6 +8,7 @@ root_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(root_dir)
 
 from fusion_engine_client.messages.core import *
+from fusion_engine_client.messages import ros
 
 
 def decode_message(header, data, offset):
@@ -26,7 +27,7 @@ def decode_message(header, data, offset):
 
     # Deserialize and print the message contents.
     #
-    # Note: This could also be done more generally using the fusion_engine_client.core.message_type_to_class dictionary.
+    # Note: This could also be done more generally using the fusion_engine_client.message_type_to_class dictionary.
     # We do it explicitly here for sake of example.
     if header.message_type == PoseMessage.MESSAGE_TYPE:
         contents = PoseMessage()
@@ -36,6 +37,15 @@ def decode_message(header, data, offset):
         contents.unpack(buffer=data, offset=offset)
     elif header.message_type == GNSSSatelliteMessage.MESSAGE_TYPE:
         contents = GNSSSatelliteMessage()
+        contents.unpack(buffer=data, offset=offset)
+    elif header.message_type == ros.PoseMessage.MESSAGE_TYPE:
+        contents = ros.PoseMessage()
+        contents.unpack(buffer=data, offset=offset)
+    elif header.message_type == ros.GPSFixMessage.MESSAGE_TYPE:
+        contents = ros.GPSFixMessage()
+        contents.unpack(buffer=data, offset=offset)
+    elif header.message_type == ros.IMUMessage.MESSAGE_TYPE:
+        contents = ros.IMUMessage()
         contents.unpack(buffer=data, offset=offset)
     else:
         print('Decoded %s message [sequence=%d, size=%d B]' %

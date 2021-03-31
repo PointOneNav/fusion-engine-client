@@ -6,7 +6,7 @@ import numpy as np
 from .defs import *
 
 
-class PoseMessage:
+class PoseMessage(MessagePayload):
     """!
     @brief Platform pose solution (position, velocity, attitude).
     """
@@ -33,6 +33,9 @@ class PoseMessage:
         self.aggregate_protection_level_m = np.nan
         self.horizontal_protection_level_m = np.nan
         self.vertical_protection_level_m = np.nan
+
+    def get_type(self) -> MessageType:
+        return PoseMessage.MESSAGE_TYPE
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
@@ -125,7 +128,7 @@ class PoseMessage:
         return result
 
 
-class PoseAuxMessage:
+class PoseAuxMessage(MessagePayload):
     """!
     @brief Auxiliary platform pose information.
     """
@@ -144,6 +147,9 @@ class PoseAuxMessage:
 
         self.velocity_enu_mps = np.full((3,), np.nan)
         self.velocity_std_enu_mps = np.full((3,), np.nan)
+
+    def get_type(self) -> MessageType:
+        return PoseAuxMessage.MESSAGE_TYPE
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
@@ -205,7 +211,7 @@ class PoseAuxMessage:
         return result
 
 
-class GNSSInfoMessage:
+class GNSSInfoMessage(MessagePayload):
     """!
     @brief Information about the GNSS data used in the @ref PoseMessage with the corresponding timestamp.
     """
@@ -230,6 +236,9 @@ class GNSSInfoMessage:
         self.vdop = np.nan
 
         self.gps_time_std_sec = np.nan
+
+    def get_type(self) -> MessageType:
+        return GNSSInfoMessage.MESSAGE_TYPE
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
@@ -334,7 +343,7 @@ class SatelliteInfo:
         return SatelliteInfo._SIZE
 
 
-class GNSSSatelliteMessage:
+class GNSSSatelliteMessage(MessagePayload):
     """!
     @brief Information about the GNSS data used in the @ref PoseMessage with the corresponding timestamp.
     """
@@ -348,6 +357,9 @@ class GNSSSatelliteMessage:
         self.gps_time = Timestamp()
 
         self.svs: List[SatelliteInfo] = []
+
+    def get_type(self) -> MessageType:
+        return GNSSSatelliteMessage.MESSAGE_TYPE
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:

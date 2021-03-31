@@ -93,7 +93,7 @@ class Analyzer(object):
 
         time = pose_data.p1_time - float(self.t0)
 
-        valid_idx = pose_data.solution_type != SolutionType.Invalid
+        valid_idx = np.logical_and(~np.isnan(pose_data.p1_time), pose_data.solution_type != SolutionType.Invalid)
         if not np.any(valid_idx):
             self.logger.info('No valid position solutions detected.')
             return
@@ -207,7 +207,7 @@ class Analyzer(object):
             return
 
         # Remove invalid solutions.
-        valid_idx = pose_data.solution_type != SolutionType.Invalid
+        valid_idx = np.logical_and(~np.isnan(pose_data.p1_time), pose_data.solution_type != SolutionType.Invalid)
         if not np.any(valid_idx):
             self.logger.info('No valid position solutions detected.')
             return

@@ -64,6 +64,14 @@
 	column-count: 3;
 }
 
+#doxy ul:not(.browser-default) {
+    padding-left: 20px;
+}
+
+#doxy ul:not(.browser-default)>li {
+    list-style-type: disc;
+}
+
 #doxy p.startli, #doxy p.startdd {
 	margin-top: 2px;
 }
