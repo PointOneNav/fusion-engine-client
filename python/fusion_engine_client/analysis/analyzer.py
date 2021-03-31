@@ -318,7 +318,7 @@ class Analyzer(object):
             return
 
         # Read the data.
-        result = self.reader.read(message_types=[ProfileSystemStatusMessage], **self.params)
+        result = self.reader.read(message_types=[ProfileSystemStatusMessage], remove_nan_times=False, **self.params)
         data = result[ProfileSystemStatusMessage.MESSAGE_TYPE]
 
         if len(data.posix_time) == 0:
@@ -383,7 +383,8 @@ class Analyzer(object):
         # Read the last pipeline definition message to map IDs to names.
         params = copy.deepcopy(self.params)
         params['max_messages'] = -1
-        result = self.reader.read(message_types=[ProfilePipelineMessage.DEFINITION_TYPE], **params)
+        result = self.reader.read(message_types=[ProfilePipelineMessage.DEFINITION_TYPE], remove_nan_times=False,
+                                  **params)
         if len(result[ProfilePipelineMessage.DEFINITION_TYPE].messages) != 0:
             definition = result[ProfilePipelineMessage.DEFINITION_TYPE].messages[0]
             id_to_name = definition.to_dict()
@@ -413,7 +414,7 @@ class Analyzer(object):
             return
 
         # Read the pipeline data.
-        result = self.reader.read(message_types=[ProfileExecutionMessage], **self.params)
+        result = self.reader.read(message_types=[ProfileExecutionMessage], remove_nan_times=False, **self.params)
         data = result[ProfileExecutionMessage.MESSAGE_TYPE]
 
         if len(data.points) == 0:
@@ -423,7 +424,8 @@ class Analyzer(object):
         # Read the last pipeline definition message to map IDs to names.
         params = copy.deepcopy(self.params)
         params['max_messages'] = -1
-        result = self.reader.read(message_types=[ProfileExecutionMessage.DEFINITION_TYPE], **params)
+        result = self.reader.read(message_types=[ProfileExecutionMessage.DEFINITION_TYPE], remove_nan_times=False,
+                                  **params)
         if len(result[ProfileExecutionMessage.DEFINITION_TYPE].messages) != 0:
             definition = result[ProfileExecutionMessage.DEFINITION_TYPE].messages[0]
             id_to_name = definition.to_dict()
