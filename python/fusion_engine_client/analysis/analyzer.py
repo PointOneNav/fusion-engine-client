@@ -230,7 +230,7 @@ class Analyzer(object):
                 # If there's no data, draw a dummy trace so it shows up in the legend anyway.
                 map_data.append(go.Scattermapbox(lat=[np.nan], lon=[np.nan], name=name, **style))
 
-        _plot_data('RTK Fixed', solution_type == SolutionType.RTKFixed, {'color': 'red'})
+        _plot_data('RTK Fixed', solution_type == SolutionType.RTKFixed, {'color': 'orange'})
         _plot_data('Non-Fixed', solution_type != SolutionType.RTKFixed, {'color': 'red', 'size': 5})
 
         # Create the map.
