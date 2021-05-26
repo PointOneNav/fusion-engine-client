@@ -49,6 +49,20 @@ local pf_source_id = ProtoField.new("Source ID", "fusionengine.header.source_id"
 -- Generic message payload byte array.
 local pf_payload = ProtoField.new("Payload", "fusionengine.payload", ftypes.BYTES)
 
+-- PoseMessage
+local pf_pose = ProtoField.new("PoseMessage", "fusionengine.pose", ftypes.NONE)
+local pf_pose_p1_time = ProtoField.new("P1 Time", "fusionengine.pose.p1_time", ftypes.STRING)
+local pf_pose_p1_time_sec = ProtoField.new("Seconds", "fusionengine.pose.p1_time.sec", ftypes.UINT32)
+local pf_pose_p1_time_frac = ProtoField.new("Nanoseconds", "fusionengine.pose.p1_time.frac", ftypes.UINT32)
+local pf_pose_gps_time = ProtoField.new("GPS Time", "fusionengine.pose.gps_time", ftypes.STRING)
+local pf_pose_gps_time_sec = ProtoField.new("Seconds", "fusionengine.pose.gps_time.sec", ftypes.UINT32)
+local pf_pose_gps_time_frac = ProtoField.new("Nanoseconds", "fusionengine.pose.gps_time.frac", ftypes.UINT32)
+local pf_pose_solution_type = ProtoField.new("Solution Type", "fusionengine.pose.solution_type", ftypes.UINT8)
+local pf_pose_lla = ProtoField.new("LLA (deg)", "fusionengine.pose.lla", ftypes.STRING)
+local pf_pose_lla_lat = ProtoField.new("Latitude (deg)", "fusionengine.pose.lla.lat", ftypes.DOUBLE)
+local pf_pose_lla_lon = ProtoField.new("Longitude (deg)", "fusionengine.pose.lla.lon", ftypes.DOUBLE)
+local pf_pose_lla_alt = ProtoField.new("Altitude (deg)", "fusionengine.pose.lla.alt", ftypes.DOUBLE)
+
 -- Add all field definitions to the protocol.
 fe_proto.fields = {
    -- MessageHeader
@@ -62,11 +76,33 @@ fe_proto.fields = {
    pf_payload_size,
    pf_source_id,
    pf_payload,
+
+   -- PoseMessage
+   pf_pose,
+   pf_pose_p1_time,
+   pf_pose_p1_time_sec,
+   pf_pose_p1_time_frac,
+   pf_pose_gps_time,
+   pf_pose_gps_time_sec,
+   pf_pose_gps_time_frac,
+   pf_pose_solution_type,
+   pf_pose_lla,
+   pf_pose_lla_lat,
+   pf_pose_lla_lon,
+   pf_pose_lla_alt,
 }
 
 -- Define extractable fields to be used in dissect functions.
 local message_type_field = Field.new("fusionengine.header.message_type")
 local payload_size_field = Field.new("fusionengine.header.payload_size")
+
+local pose_p1_time_sec_field = Field.new("fusionengine.pose.p1_time.sec")
+local pose_p1_time_frac_field = Field.new("fusionengine.pose.p1_time.frac")
+local pose_gps_time_sec_field = Field.new("fusionengine.pose.gps_time.sec")
+local pose_gps_time_frac_field = Field.new("fusionengine.pose.gps_time.frac")
+local pose_lla_lat_field = Field.new("fusionengine.pose.lla.lat")
+local pose_lla_lon_field = Field.new("fusionengine.pose.lla.lon")
+local pose_lla_alt_field = Field.new("fusionengine.pose.lla.alt")
 
 --------------------------------------------------------------------------------
 -- @brief Helper function for extracting the value of a specified field.
@@ -137,6 +173,60 @@ dissectHeader = function(tvbuf, pktinfo, tree, offset, message_index)
 end
 
 --------------------------------------------------------------------------------
+-- @brief Dissect a PoseMessage.
+--
+-- @return `true` if the message decoded successfully.
+--------------------------------------------------------------------------------
+dissectPoseMessage = function(tvbuf, pktinfo, tree, offset, payload_size, message_index)
+   -- P1 time
+   local p1_time = tree:add(pf_pose_p1_time, tvbuf:range(offset, 8))
+   p1_time:add_le(pf_pose_p1_time_sec, tvbuf:range(offset, 4))
+   offset = offset + 4
+   p1_time:add_le(pf_pose_p1_time_frac, tvbuf:range(offset, 4))
+   offset = offset + 4
+
+   local p1_time_sec = getValue(pose_p1_time_sec_field, message_index)
+   local p1_time_frac = getValue(pose_p1_time_frac_field, message_index)
+   p1_time_sec = p1_time_sec + p1_time_frac * 1e-9
+   p1_time:set_text(string.format("%s: %.9f", "P1 Time", p1_time_sec))
+
+   -- GPS time
+   local gps_time = tree:add(pf_pose_gps_time, tvbuf:range(offset, 8))
+   gps_time:add_le(pf_pose_gps_time_sec, tvbuf:range(offset, 4))
+   offset = offset + 4
+   gps_time:add_le(pf_pose_gps_time_frac, tvbuf:range(offset, 4))
+   offset = offset + 4
+
+   local gps_time_sec = getValue(pose_gps_time_sec_field, message_index)
+   local gps_time_frac = getValue(pose_gps_time_frac_field, message_index)
+   gps_time_sec = gps_time_sec + gps_time_frac * 1e-9
+   gps_time:set_text(string.format("%s: %.9f", "GPS Time", gps_time_sec))
+
+   -- Solution type
+   tree:add_le(pf_pose_solution_type, tvbuf:range(offset, 1))
+   offset = offset + 1
+
+   -- Reserved
+   offset = offset + 3
+
+   -- LLA
+   local lla = tree:add(pf_pose_lla, tvbuf:range(offset, 24))
+   lla:add_le(pf_pose_lla_lat, tvbuf:range(offset, 8))
+   offset = offset + 8
+   lla:add_le(pf_pose_lla_lon, tvbuf:range(offset, 8))
+   offset = offset + 8
+   lla:add_le(pf_pose_lla_alt, tvbuf:range(offset, 8))
+   offset = offset + 8
+
+   local lat = getValue(pose_lla_lat_field, message_index)
+   local lon = getValue(pose_lla_lon_field, message_index)
+   local alt = getValue(pose_lla_alt_field, message_index)
+   lla:set_text(string.format("%s: %.6f, %.6f, %.3f", "LLA (deg)", lat, lon, alt))
+
+   return true
+end
+
+--------------------------------------------------------------------------------
 -- @brief Check for a complete message.
 --
 -- @return The message size (in bytes), or -N where N is the number of bytes
@@ -191,16 +281,19 @@ dissectMessage = function(tvbuf, pktinfo, root, offset, message_index)
    -- Dissect the header.
    payload_offset, message_name = dissectHeader(tvbuf, pktinfo, tree, offset, message_index)
 
+   local success = true
    if message_name == "PoseMessage" then
-      -- dissectPoseMessage(tvbuf, pktinfo, tree, payload_offset, message_index)
-      -- TODO
-      tree:add(pf_payload, tvbuf:range(payload_offset, payload_size))
+      success = dissectPoseMessage(tvbuf, pktinfo, tree, payload_offset, message_index)
    else
       -- Unhandled message - display the payload as a byte array.
       tree:add(pf_payload, tvbuf:range(payload_offset, payload_size))
    end
 
-   return offset + message_size, message_name
+   if success then
+      return offset + message_size, message_name
+   else
+      return 0, message_name
+   end
 end
 
 --------------------------------------------------------------------------------
