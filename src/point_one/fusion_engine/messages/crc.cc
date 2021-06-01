@@ -3,9 +3,12 @@
  * @file
  ******************************************************************************/
 
+#include <cstddef> // For offsetof()
+
 #include "point_one/fusion_engine/messages/crc.h"
 
 namespace {
+
 /******************************************************************************/
 const uint32_t* GetCRCTable() {
   // Note: This is the CRC-32 polynomial.
