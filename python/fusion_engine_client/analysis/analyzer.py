@@ -231,7 +231,7 @@ class Analyzer(object):
                 map_data.append(go.Scattermapbox(lat=[np.nan], lon=[np.nan], name=name, **style))
 
         _plot_data('RTK Fixed', solution_type == SolutionType.RTKFixed, {'color': 'orange'})
-        _plot_data('Non-Fixed', solution_type != SolutionType.RTKFixed, {'color': 'red', 'size': 5})
+        _plot_data('Non-Fixed', solution_type != SolutionType.RTKFixed, {'color': 'red'})
 
         # Create the map.
         layout = go.Layout(
