@@ -285,6 +285,9 @@ class FileReader(object):
 
         if time_range is None:
             time_range = (None, None)
+            time_range_specified = False
+        else:
+            time_range_specified = (time_range[0] is not None or time_range[1] is not None)
 
         if max_messages is None:
             max_messages = 0
@@ -508,8 +511,8 @@ class FileReader(object):
                     # Unrecognized type - skip.
                     continue
 
-                # Store t0 if this is the first message with a timestamp.
-                if p1_time is not None:
+                # Store t0 if this is the first message with a (valid) timestamp.
+                if p1_time is not None and p1_time:
                     if self.t0 is None:
                         self.logger.debug('Received first message. [type=%s, time=%s]' %
                                           (header.get_type_string(), str(p1_time)))
@@ -525,9 +528,12 @@ class FileReader(object):
                 # If this message has P1 time, test it against the specified range. If not, if a time range was
                 # specified, skip this message since we can't be sure it's in the correct range.
                 if p1_time is None:
-                    if time_range[0] is not None or time_range[1] is not None:
+                    if time_range_specified:
                         continue
-                else:
+                elif time_range_specified:
+                    if reference_time_sec is None:
+                        continue
+
                     time_offset_sec = float(p1_time) - reference_time_sec
                     if time_range[0] is not None and time_offset_sec < float(time_range[0]):
                         self.logger.debug('  Message before requested time range. Discarding. [time=%s]' % str(p1_time))
