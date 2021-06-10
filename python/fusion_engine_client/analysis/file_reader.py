@@ -508,8 +508,8 @@ class FileReader(object):
                     # Unrecognized type - skip.
                     continue
 
-                # Store t0 if this is the first message with a timestamp.
-                if p1_time is not None:
+                # Store t0 if this is the first message with a (valid) timestamp.
+                if p1_time is not None and p1_time:
                     if self.t0 is None:
                         self.logger.debug('Received first message. [type=%s, time=%s]' %
                                           (header.get_type_string(), str(p1_time)))
