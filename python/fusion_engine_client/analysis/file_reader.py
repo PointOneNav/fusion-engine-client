@@ -493,8 +493,9 @@ class FileReader(object):
                 if cls is None:
                     is_reserved = int(header.message_type) >= int(MessageType.RESERVED)
                     self.logger.log(logging.DEBUG,
-                                    '%sSkipping unsupported message type %s @ %d.' %
-                                    ('  ' if is_reserved else '', header.get_type_string(), message_offset_bytes))
+                                    '  Skipping message type %s @ %d. [needed=%s, reserved=%s]' %
+                                    (header.get_type_string(), message_offset_bytes, repr(message_needed),
+                                     repr(is_reserved)))
                     p1_time = None
                     contents = None
                 else:
