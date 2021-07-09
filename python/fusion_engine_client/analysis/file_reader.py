@@ -526,11 +526,9 @@ class FileReader(object):
 
                 # If this message has P1 time, test it against the specified range. If not, if a time range was
                 # specified, skip this message since we can't be sure it's in the correct range.
-                if p1_time is None:
-                    if time_range_specified:
-                        continue
-                elif time_range_specified:
-                    if p1_reference_time_sec is None:
+                if time_range_specified:
+                    if p1_time is None or not p1_time:
+                        self.logger.debug('  Message does not contain time and time range specified. Discarding.')
                         continue
 
                     time_offset_sec = float(p1_time) - p1_reference_time_sec
