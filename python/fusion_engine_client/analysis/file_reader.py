@@ -248,7 +248,8 @@ class FileReader(object):
              time_range: Tuple[Union[float, Timestamp], Union[float, Timestamp]] = None, absolute_time: bool = False,
              max_messages: int = None,
              return_numpy: bool = False, keep_messages: bool = False, remove_nan_times: bool = True,
-             generate_index: bool = True, show_progress: bool = False) \
+             generate_index: bool = True, show_progress: bool = False,
+             ignore_index: bool = False, ignore_index_max_messages: bool = False) \
             -> Dict[MessageType, MessageData]:
         """!
         @brief Read data for one or more desired message types.
@@ -277,6 +278,9 @@ class FileReader(object):
         @param generate_index If `True` and an index file does not exist for this data file, read the entire data file
                and create an index file on the first call to this function. The file will be stored in the same
                directory as the input file.
+        @param ignore_index If `True`, ignore the data index if loaded.
+        @param ignore_index_max_messages If `True`, do not apply the `max_messages` limit when listing messages to be
+               loaded from the data index file. `max_messages` _will_ still be applied after the data is decoded.
 
         @return A dictionary, keyed by @ref fusion_engine_client.messages.defs.MessageType "MessageType", containing
                @ref MessageData objects with the data read for each of the requested message types.
@@ -345,22 +349,22 @@ class FileReader(object):
         # Set the reference time used to compare timestamps against the user-specified time range. If we don't know t0
         # yet, it will be set later. If we already loaded an index file, t0 should have been set from that.
         if absolute_time:
-            reference_time_sec = 0.0
+            p1_reference_time_sec = 0.0
         elif self.t0 is not None:
-            reference_time_sec = float(self.t0)
+            p1_reference_time_sec = float(self.t0)
         else:
-            reference_time_sec = None
+            p1_reference_time_sec = None
 
         # If there's an index file, use it to determine the offsets to all the messages we're interested in.
-        if self.index is not None:
+        if self.index is not None and not ignore_index:
             idx = np.full_like(self.index['time'], False, dtype=bool)
             for type in needed_message_types:
                 idx = np.logical_or(idx, self.index['type'] == type)
 
             # If t0 has never been set, this is probably the "first message" read done in open() to set t0. Ignore the
             # time range.
-            if self.t0 is not None:
-                limit_time = self.index['time'] - reference_time_sec
+            if time_range_specified and self.t0 is not None:
+                limit_time = self.index['time'] - p1_reference_time_sec
                 if time_range[0] is not None:
                     # Note: The index stores only the integer part of the timestamp.
                     idx = np.logical_and(idx, limit_time >= np.floor(time_range[0]))
@@ -368,11 +372,13 @@ class FileReader(object):
                     idx = np.logical_and(idx, limit_time <= time_range[1])
 
             data_index = self.index[idx]
-            if max_messages > 0:
-                data_index = data_index[:max_messages]
-            elif max_messages < 0:
-                # If max is negative, take the last N entries.
-                data_index = data_index[max_messages:]
+
+            if not ignore_index_max_messages:
+                if max_messages > 0:
+                    data_index = data_index[:max_messages]
+                elif max_messages < 0:
+                    # If max is negative, take the last N entries.
+                    data_index = data_index[max_messages:]
 
             generate_index = False
             data_offsets = data_index['offset']
@@ -392,13 +398,6 @@ class FileReader(object):
         bytes_used = 0
         message_count = 0
         index_count = 0
-
-        if absolute_time:
-            reference_time_sec = 0.0
-        elif self.t0 is not None:
-            reference_time_sec = float(self.t0)
-        else:
-            reference_time_sec = None
 
         if max_messages < 0:
             # Used for max_messages < 0 only.
@@ -522,8 +521,8 @@ class FileReader(object):
                                           (header.get_type_string(), str(p1_time)))
                         self.t0 = p1_time
 
-                        if reference_time_sec is None:
-                            reference_time_sec = float(p1_time)
+                        if p1_reference_time_sec is None:
+                            p1_reference_time_sec = float(p1_time)
 
                 # Now skip this message if we don't need it.
                 if not message_needed:
@@ -531,14 +530,12 @@ class FileReader(object):
 
                 # If this message has P1 time, test it against the specified range. If not, if a time range was
                 # specified, skip this message since we can't be sure it's in the correct range.
-                if p1_time is None:
-                    if time_range_specified:
-                        continue
-                elif time_range_specified:
-                    if reference_time_sec is None:
+                if time_range_specified:
+                    if p1_time is None or not p1_time:
+                        self.logger.debug('  Message does not contain time and time range specified. Discarding.')
                         continue
 
-                    time_offset_sec = float(p1_time) - reference_time_sec
+                    time_offset_sec = float(p1_time) - p1_reference_time_sec
                     if time_range[0] is not None and time_offset_sec < float(time_range[0]):
                         self.logger.debug('  Message before requested time range. Discarding. [time=%s]' % str(p1_time))
                         continue
