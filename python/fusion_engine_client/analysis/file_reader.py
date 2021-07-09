@@ -222,6 +222,13 @@ class FileReader(object):
             idx = np.argmax(~np.isnan(self.index['time']))
             self.t0 = Timestamp(self.index['time'][idx])
 
+        # Similarly, we also set the POSIX t0 based on the first POSIX-stamped message message to appear in the log, if
+        # any (profiling data, etc.). Unlike P1 time, since the index file does not contain POSIX timestamps, we have to
+        # do a read() even if an index exists. read() will use the index to at least speed up the read operation.
+        self.posix_t0 = None
+        self.posix_t0_ns = None
+        self.read(message_types=internal.PROFILING_TYPES, max_messages=1, ignore_index_max_messages=True)
+
     def close(self):
         """!
         @brief Close the file.
@@ -330,6 +337,8 @@ class FileReader(object):
 
         needed_message_types = [t for t in needed_message_types if message_class[t] is not None]
 
+        posix_time_messages_requested = any([t in internal.PROFILING_TYPES for t in needed_message_types])
+
         # Create a dict with references to the requested types only to be returned below.
         result = {t: self.data[t] for t in message_types}
 
@@ -355,21 +364,41 @@ class FileReader(object):
         else:
             p1_reference_time_sec = None
 
+        # For profiling data, which is timestamped in POSIX time, we only support relative time ranges (since absolute
+        # time is specified as P1 time, not POSIX).
+        if absolute_time:
+            posix_reference_time_sec = math.nan
+        elif self.posix_t0 is not None:
+            posix_reference_time_sec = self.posix_t0
+        else:
+            posix_reference_time_sec = None
+
         # If there's an index file, use it to determine the offsets to all the messages we're interested in.
         if self.index is not None and not ignore_index:
-            idx = np.full_like(self.index['time'], False, dtype=bool)
+            type_idx = np.full_like(self.index['time'], False, dtype=bool)
             for type in needed_message_types:
-                idx = np.logical_or(idx, self.index['type'] == type)
+                type_idx = np.logical_or(type_idx, self.index['type'] == type)
 
             # If t0 has never been set, this is probably the "first message" read done in open() to set t0. Ignore the
             # time range.
             if time_range_specified and self.t0 is not None:
+                time_idx = np.full_like(self.index['time'], False, dtype=bool)
                 limit_time = self.index['time'] - p1_reference_time_sec
                 if time_range[0] is not None:
                     # Note: The index stores only the integer part of the timestamp.
-                    idx = np.logical_and(idx, limit_time >= np.floor(time_range[0]))
+                    time_idx = np.logical_and(time_idx, limit_time >= np.floor(time_range[0]))
                 if time_range[1] is not None:
-                    idx = np.logical_and(idx, limit_time <= time_range[1])
+                    time_idx = np.logical_and(time_idx, limit_time <= time_range[1])
+
+                # Messages with POSIX time may have NAN timestamps in the index file since they can occur in a log
+                # before P1 time is established. We'll allow any NAN times to pass this check, and we will decode and
+                # filter them later based on their POSIX timestamps.
+                if posix_time_messages_requested:
+                    time_idx = np.logical_or(time_idx, np.isnan(self.index['time']))
+
+                idx = np.logical_and(type_idx, time_idx)
+            else:
+                idx = type_idx
 
             data_index = self.index[idx]
 
@@ -482,7 +511,10 @@ class FileReader(object):
 
             # If this isn't one of the requested messages, skip it. If we don't know t0 yet or we need the message's P1
             # time to generate an index, continue to unpack.
-            if not message_needed and self.t0 is not None and not generate_index:
+            if (not message_needed and
+                self.t0 is not None and
+                (not posix_time_messages_requested or self.posix_t0 is not None) and
+                not generate_index):
                 continue
 
             # Now decode the payload.
@@ -501,8 +533,13 @@ class FileReader(object):
                     contents = cls()
                     contents.unpack(buffer=buffer, offset=HEADER_SIZE)
 
-                    # Extract P1 time from this message, if applicable.
+                    # Extract P1 and POSIX times from this message, if applicable.
                     p1_time = contents.__dict__.get('p1_time', None)
+                    posix_time_ns = contents.__dict__.get('posix_time_ns', None)
+                    if posix_time_ns is not None:
+                        posix_time_sec = posix_time_ns * 1e-9
+                    else:
+                        posix_time_sec = None
 
                 # If we're building up an index file, add an entry for this message. If this is an unrecognized message
                 # type, we won't have P1 time so we'll just insert a nan.
@@ -524,30 +561,59 @@ class FileReader(object):
                         if p1_reference_time_sec is None:
                             p1_reference_time_sec = float(p1_time)
 
+                if posix_time_ns is not None:
+                    if self.posix_t0 is None:
+                        self.logger.debug('Received first POSIX-timestamped message. [type=%s, time=%.3f]' %
+                                          (header.get_type_string(), posix_time_sec))
+                        self.posix_t0 = posix_time_sec
+                        self.posix_t0_ns = posix_time_ns
+
+                        if posix_reference_time_sec is None:
+                            posix_reference_time_sec = posix_time_sec
+
                 # Now skip this message if we don't need it.
                 if not message_needed:
                     continue
 
-                # If this message has P1 time, test it against the specified range. If not, if a time range was
-                # specified, skip this message since we can't be sure it's in the correct range.
+                # If this message has P1 time or POSIX time and the user specified a time range, exclude it if it falls
+                # outside the range. If it does not have time and a time range was specified, skip the message since we
+                # can't be sure it's in the correct range.
+                #
+                # Note that POSIX time does not support absolute time ranges.
                 if time_range_specified:
-                    if p1_time is None or not p1_time:
+                    # Select the appropriate timestamp and reference t0 value.
+                    time_type = None
+                    if (p1_time is None or not p1_time) and posix_time_sec is None:
                         self.logger.debug('  Message does not contain time and time range specified. Discarding.')
                         continue
+                    elif p1_time is not None:
+                        message_time_sec = p1_time
+                        selected_ref_time_sec = p1_reference_time_sec
+                        time_type = 'P1'
+                    elif not absolute_time:
+                        message_time_sec = posix_time_sec
+                        selected_ref_time_sec = posix_reference_time_sec
+                        time_type = 'POSIX'
+                    else:
+                        self.logger.debug('  Message does not contain P1 time and absolute time range specified. '
+                                          'Discarding.')
+                        continue
 
-                    time_offset_sec = float(p1_time) - p1_reference_time_sec
+                    # Now filter the message based on the selected time type.
+                    time_offset_sec = float(message_time_sec) - selected_ref_time_sec
                     if time_range[0] is not None and time_offset_sec < float(time_range[0]):
-                        self.logger.debug('  Message before requested time range. Discarding. [time=%s]' % str(p1_time))
+                        self.logger.debug('  Message before requested time range. Discarding. [time=%s (%s)]' %
+                                          (str(message_time_sec), time_type))
                         continue
                     elif time_range[1] is not None and time_offset_sec > float(time_range[1]):
                         # Assuming data is in order so if we pass the end of the time range we're done.
                         if generate_index:
-                            self.logger.debug('  Message past requested time range. Discarding. [time=%s]' %
-                                              str(p1_time))
+                            self.logger.debug('  Message past requested time range. Discarding. [time=%s (%s)]' %
+                                              (str(message_time_sec), time_type))
                             continue
                         else:
-                            self.logger.debug('  Message past requested time range. Done reading. [time=%s]' %
-                                              str(p1_time))
+                            self.logger.debug('  Message past requested time range. Done reading. [time=%s (%s)]' %
+                                              (str(message_time_sec), time_type))
                             break
 
                 # Store the message.
@@ -605,17 +671,9 @@ class FileReader(object):
         return result
 
     def get_posix_t0(self):
-        if self.posix_t0 is None:
-            # Determine the POSIX t0 based on the first profiling message to appear in the log.
-            result = self.read(message_types=internal.PROFILING_TYPES, max_messages=1)
-            if len(result) > 0:
-                self.posix_t0_ns = list(result.values())[0].messages[0].posix_time_ns
-                self.posix_t0 = self.posix_t0_ns * 1e-9
         return self.posix_t0
 
     def get_posix_t0_ns(self):
-        if self.posix_t0_ns is None:
-            self.get_posix_t0()
         return self.posix_t0_ns
 
     @classmethod
