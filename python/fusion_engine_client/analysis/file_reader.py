@@ -245,7 +245,8 @@ class FileReader(object):
              time_range: Tuple[Union[float, Timestamp], Union[float, Timestamp]] = None, absolute_time: bool = False,
              max_messages: int = None,
              return_numpy: bool = False, keep_messages: bool = False, remove_nan_times: bool = True,
-             generate_index: bool = True, show_progress: bool = False) \
+             generate_index: bool = True, show_progress: bool = False,
+             ignore_index: bool = False, ignore_index_max_messages: bool = False) \
             -> Dict[MessageType, MessageData]:
         """!
         @brief Read data for one or more desired message types.
@@ -274,6 +275,9 @@ class FileReader(object):
         @param generate_index If `True` and an index file does not exist for this data file, read the entire data file
                and create an index file on the first call to this function. The file will be stored in the same
                directory as the input file.
+        @param ignore_index If `True`, ignore the data index if loaded.
+        @param ignore_index_max_messages If `True`, do not apply the `max_messages` limit when listing messages to be
+               loaded from the data index file. `max_messages` _will_ still be applied after the data is decoded.
 
         @return A dictionary, keyed by @ref fusion_engine_client.messages.defs.MessageType "MessageType", containing
                @ref MessageData objects with the data read for each of the requested message types.
@@ -349,7 +353,7 @@ class FileReader(object):
             reference_time_sec = None
 
         # If there's an index file, use it to determine the offsets to all the messages we're interested in.
-        if self.index is not None:
+        if self.index is not None and not ignore_index:
             idx = np.full_like(self.index['time'], False, dtype=bool)
             for type in needed_message_types:
                 idx = np.logical_or(idx, self.index['type'] == type)
@@ -365,11 +369,13 @@ class FileReader(object):
                     idx = np.logical_and(idx, limit_time <= time_range[1])
 
             data_index = self.index[idx]
-            if max_messages > 0:
-                data_index = data_index[:max_messages]
-            elif max_messages < 0:
-                # If max is negative, take the last N entries.
-                data_index = data_index[max_messages:]
+
+            if not ignore_index_max_messages:
+                if max_messages > 0:
+                    data_index = data_index[:max_messages]
+                elif max_messages < 0:
+                    # If max is negative, take the last N entries.
+                    data_index = data_index[max_messages:]
 
             generate_index = False
             data_offsets = data_index['offset']
