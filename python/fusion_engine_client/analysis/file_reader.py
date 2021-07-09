@@ -396,13 +396,6 @@ class FileReader(object):
         message_count = 0
         index_count = 0
 
-        if absolute_time:
-            reference_time_sec = 0.0
-        elif self.t0 is not None:
-            reference_time_sec = float(self.t0)
-        else:
-            reference_time_sec = None
-
         if max_messages < 0:
             # Used for max_messages < 0 only.
             newest_messages = deque(maxlen=abs(max_messages))
