@@ -90,8 +90,8 @@ class Timestamp:
 
     _GPS_EPOCH = datetime(1980, 1, 6, tzinfo=timezone.utc)
 
-    def __init__(self, time_sec = math.nan):
-        self.seconds = time_sec
+    def __init__(self, time_sec=math.nan):
+        self.seconds = float(time_sec)
 
     def as_gps(self) -> datetime:
         if math.isnan(self.seconds):
