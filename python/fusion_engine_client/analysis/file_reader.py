@@ -346,11 +346,11 @@ class FileReader(object):
         # Set the reference time used to compare timestamps against the user-specified time range. If we don't know t0
         # yet, it will be set later. If we already loaded an index file, t0 should have been set from that.
         if absolute_time:
-            reference_time_sec = 0.0
+            p1_reference_time_sec = 0.0
         elif self.t0 is not None:
-            reference_time_sec = float(self.t0)
+            p1_reference_time_sec = float(self.t0)
         else:
-            reference_time_sec = None
+            p1_reference_time_sec = None
 
         # If there's an index file, use it to determine the offsets to all the messages we're interested in.
         if self.index is not None and not ignore_index:
@@ -361,7 +361,7 @@ class FileReader(object):
             # If t0 has never been set, this is probably the "first message" read done in open() to set t0. Ignore the
             # time range.
             if self.t0 is not None:
-                limit_time = self.index['time'] - reference_time_sec
+                limit_time = self.index['time'] - p1_reference_time_sec
                 if time_range[0] is not None:
                     # Note: The index stores only the integer part of the timestamp.
                     idx = np.logical_and(idx, limit_time >= np.floor(time_range[0]))
@@ -517,8 +517,8 @@ class FileReader(object):
                                           (header.get_type_string(), str(p1_time)))
                         self.t0 = p1_time
 
-                        if reference_time_sec is None:
-                            reference_time_sec = float(p1_time)
+                        if p1_reference_time_sec is None:
+                            p1_reference_time_sec = float(p1_time)
 
                 # Now skip this message if we don't need it.
                 if not message_needed:
@@ -530,10 +530,10 @@ class FileReader(object):
                     if time_range_specified:
                         continue
                 elif time_range_specified:
-                    if reference_time_sec is None:
+                    if p1_reference_time_sec is None:
                         continue
 
-                    time_offset_sec = float(p1_time) - reference_time_sec
+                    time_offset_sec = float(p1_time) - p1_reference_time_sec
                     if time_range[0] is not None and time_offset_sec < float(time_range[0]):
                         self.logger.debug('  Message before requested time range. Discarding. [time=%s]' % str(p1_time))
                         continue
