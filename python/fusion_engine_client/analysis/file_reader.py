@@ -367,7 +367,9 @@ class FileReader(object):
         # For profiling data, which is timestamped in POSIX time, we only support relative time ranges (since absolute
         # time is specified as P1 time, not POSIX).
         if absolute_time:
-            posix_reference_time_sec = math.nan
+            # Explicitly _not_ defining posix_reference_time_sec. That way, if we attempt to use it below we'll hit
+            # an exception.
+            pass
         elif self.posix_t0 is not None:
             posix_reference_time_sec = self.posix_t0
         else:
@@ -568,7 +570,7 @@ class FileReader(object):
                         self.posix_t0 = posix_time_sec
                         self.posix_t0_ns = posix_time_ns
 
-                        if posix_reference_time_sec is None:
+                        if not absolute_time and posix_reference_time_sec is None:
                             posix_reference_time_sec = posix_time_sec
 
                 # Now skip this message if we don't need it.
