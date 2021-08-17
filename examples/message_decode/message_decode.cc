@@ -57,7 +57,7 @@ bool DecodeMessage(std::ifstream& stream, size_t available_bytes) {
     printf(
         "CRC failure. [type=%s (%u), size=%zu bytes (payload size=%u bytes], "
         "sequence=%u, expected_crc=0x%08x, calculated_crc=0x%08x]\n",
-        to_string(header.message_type).c_str(),
+        to_string(header.message_type),
         static_cast<unsigned>(header.message_type), message_size,
         header.payload_size_bytes, header.sequence_number, header.crc,
         CalculateCRC(storage));
@@ -70,7 +70,7 @@ bool DecodeMessage(std::ifstream& stream, size_t available_bytes) {
         "Warning: unexpected sequence number. [type=%s (%u), size=%zu bytes "
         "(payload size=%u bytes], crc=0x%08x, expected_sequence=%u, "
         "received_sequence=%u]\n",
-        to_string(header.message_type).c_str(),
+        to_string(header.message_type),
         static_cast<unsigned>(header.message_type), message_size,
         header.payload_size_bytes, header.crc, expected_sequence_number,
         header.sequence_number);
@@ -152,14 +152,14 @@ bool DecodeMessage(std::ifstream& stream, size_t available_bytes) {
       auto& sv = *reinterpret_cast<SatelliteInfo*>(buffer);
       buffer += sizeof(sv);
 
-      printf("  %s PRN %u:\n", to_string(sv.system).c_str(), sv.prn);
+      printf("  %s PRN %u:\n", to_string(sv.system), sv.prn);
       printf("    Elevation/azimuth: (%.1f, %.1f) deg\n", sv.elevation_deg,
              sv.azimuth_deg);
       printf("    In solution: %s\n", sv.usage > 0 ? "yes" : "no");
     }
   } else {
     printf("Ignoring message type %s. [%u bytes]\n",
-           to_string(header.message_type).c_str(), header.payload_size_bytes);
+           to_string(header.message_type), header.payload_size_bytes);
   }
 
   return true;

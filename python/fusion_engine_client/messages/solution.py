@@ -57,6 +57,7 @@ class PoseMessage(MessagePayload):
                          self.aggregate_protection_level_m,
                          self.horizontal_protection_level_m,
                          self.vertical_protection_level_m)
+        offset += PoseMessage._SIZE
 
         if return_buffer:
             return buffer
