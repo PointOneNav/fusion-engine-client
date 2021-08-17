@@ -36,7 +36,8 @@ enum class SatelliteType : uint8_t {
   QZSS = 6,
   MIXED = 7,
   SBAS = 8,
-  IRNSS = 9
+  IRNSS = 9,
+  MAX_VALUE = IRNSS,
 };
 
 /**
@@ -59,6 +60,7 @@ enum class SolutionType : uint8_t {
   Visual = 9,
   /** Using PPP. */
   PPP = 10,
+  MAX_VALUE = PPP,
 };
 
 /**
@@ -81,6 +83,8 @@ enum class MessageType : uint16_t {
   ROS_POSE = 12000, ///< @ref ros::PoseMessage
   ROS_GPS_FIX = 12010, ///< @ref ros::GPSFixMessage
   ROS_IMU = 12011, ///< @ref ros::IMUMessage
+
+  MAX_VALUE = ROS_IMU,
 };
 
 /** @} */
@@ -166,7 +170,7 @@ struct MessageHeader {
  *
  * @return The corresponding string name.
  */
-inline std::string to_string(SatelliteType type) {
+inline const char* to_string(SatelliteType type) {
   switch (type) {
     case SatelliteType::UNKNOWN:
       return "Unknown";
@@ -199,7 +203,7 @@ inline std::string to_string(SatelliteType type) {
       return "IRNSS";
 
     default:
-      return "Invalid System (" + std::to_string((int)type) + ")";
+      return "Invalid System";
   }
 }
 
@@ -208,7 +212,11 @@ inline std::string to_string(SatelliteType type) {
  * @ingroup enum_definitions
  */
 inline std::ostream& operator<<(std::ostream& stream, SatelliteType type) {
-  return (stream << to_string(type));
+  stream << to_string(type);
+  if (type > SatelliteType::MAX_VALUE) {
+    stream << " (" << (int)type << ")";
+  }
+  return stream;
 }
 
 /**
@@ -219,7 +227,7 @@ inline std::ostream& operator<<(std::ostream& stream, SatelliteType type) {
  *
  * @return The corresponding string name.
  */
-inline std::string to_string(MessageType type) {
+inline const char* to_string(MessageType type) {
   switch (type) {
     case MessageType::INVALID:
       return "Invalid";
@@ -249,7 +257,7 @@ inline std::string to_string(MessageType type) {
       return "ROS IMU";
 
     default:
-      return "Unrecognized Message (" + std::to_string((int)type) + ")";
+      return "Unrecognized Message";
   }
 }
 
@@ -258,7 +266,11 @@ inline std::string to_string(MessageType type) {
  * @ingroup enum_definitions
  */
 inline std::ostream& operator<<(std::ostream& stream, MessageType type) {
-  return (stream << to_string(type));
+  stream << to_string(type);
+  if (type > MessageType::MAX_VALUE) {
+    stream << " (" << (int)type << ")";
+  }
+  return stream;
 }
 
 /**
@@ -269,7 +281,7 @@ inline std::ostream& operator<<(std::ostream& stream, MessageType type) {
  *
  * @return The corresponding string name.
  */
-inline std::string to_string(SolutionType type) {
+inline const char* to_string(SolutionType type) {
   switch (type) {
     case SolutionType::Invalid:
       return "Invalid";
@@ -296,7 +308,7 @@ inline std::string to_string(SolutionType type) {
       return "PPP GNSS";
 
     default:
-      return "Unrecognized Solution Type (" + std::to_string((int)type) + ")";
+      return "Unrecognized Solution Type";
   }
 }
 
@@ -305,7 +317,11 @@ inline std::string to_string(SolutionType type) {
  * @ingroup enum_definitions
  */
 inline std::ostream& operator<<(std::ostream& stream, SolutionType type) {
-  return (stream << to_string(type));
+  stream << to_string(type);
+  if (type > SolutionType::MAX_VALUE) {
+    stream << " (" << (int)type << ")";
+  }
+  return stream;
 }
 
 /**
