@@ -36,7 +36,25 @@ struct PoseMessage_1_0 {
   /** The type of this position solution. */
   SolutionType solution_type;
 
-  uint8_t reserved[3] = {0};
+  uint8_t reserved = 0;
+
+  /**
+   * The geoid undulation at at the current location (i.e., the difference
+   * between the WGS-84 ellipsoid and the geoid).
+   *
+   * Height above the ellipsoid can be converted to a corresponding height above
+   * the geoid (orthometric height, or height above mean sea level) as follows:
+   *
+   * @f[
+   * h_{orthometric} = h_{ellipsoid} - undulation
+   * @f]
+   *
+   * Stored in units of 0.01 meters: `value_m = integer_value * 0.01`. Set to
+   * `-32768` if invalid.
+   *
+   * Added in @ref PoseMessage version 1.1.
+   */
+  int16_t undulation = -INT16_MIN;
 
   /**
    * The geodetic latitude, longitude, and altitude (in degrees/meters),
@@ -119,6 +137,20 @@ struct PoseMessage_1_0 {
   /** The estimated vertical protection level (in meters). */
   float vertical_protection_level_m = NAN;
 };
+
+/**
+ * @brief Platform pose solution: position, velocity, attitude (@ref
+ *        MessageType::POSE), version 1.1.
+ *
+ * Extends @ref PoseMessage_1_0, adding geoid undulation.
+ */
+typedef PoseMessage_1_0 PoseMessage_1_1;
+
+/** @brief Alias for the latest platform pose message, version 1.x. */
+typedef PoseMessage_1_1 PoseMessage_1;
+
+/** @brief Alias for the latest platform pose message. */
+typedef PoseMessage_1 PoseMessage;
 
 /**
  * @brief Auxiliary platform pose information (@ref MessageType::POSE_AUX),
