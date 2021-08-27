@@ -16,7 +16,8 @@ namespace messages {
 #pragma pack(push, 4)
 
 /**
- * @brief IMU sensor measurement data (@ref MessageType::IMU_MEASUREMENT).
+ * @brief IMU sensor measurement data (@ref MessageType::IMU_MEASUREMENT),
+ *        version 1.0.
  * @ingroup messages
  *
  * @note
@@ -24,7 +25,7 @@ namespace messages {
  * gyro biases and scale factors, and has been rotated into the vehicle body
  * frame from the original IMU orientation.
  */
-struct IMUMeasurement {
+struct IMUMeasurement_1_0 {
   /** The time of the message, in P1 time (beginning at power-on). */
   Timestamp p1_time;
 
@@ -52,6 +53,12 @@ struct IMUMeasurement {
    */
   double gyro_std_rps[3] = {NAN, NAN, NAN};
 };
+
+/** @brief Alias for the latest IMU measurement message, version 1.x. */
+typedef IMUMeasurement_1_0 IMUMeasurement_1;
+
+/** @brief Alias for the latest IMU measurement message. */
+typedef IMUMeasurement_1 IMUMeasurement;
 
 #pragma pack(pop)
 
