@@ -144,7 +144,10 @@ struct MessageHeader {
   /** The version of the P1 binary protocol being used. */
   uint8_t protocol_version = 2;
 
-  uint8_t reserved_1 = 0;
+  /**
+   * The version of the message type specified by @ref message_type to follow.
+   */
+  uint8_t message_version = 0;
 
   /** Type identifier for the serialized message to follow. */
   MessageType message_type = MessageType::INVALID;

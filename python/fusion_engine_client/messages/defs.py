@@ -164,7 +164,7 @@ class MessageHeader:
     _SYNC0 = 0x2E # '.'
     _SYNC1 = 0x31 # '1'
 
-    _FORMAT = '<BB2xIBxHIII'
+    _FORMAT = '<BB2xIBBHIII'
     _SIZE: int = struct.calcsize(_FORMAT)
 
     _MAX_EXPECTED_SIZE_BYTES = (1 << 24)
@@ -173,6 +173,7 @@ class MessageHeader:
         self.crc: int = 0
         self.protocol_version: int = 2
         self.sequence_number: int = 0
+        self.message_version: int = 0
         self.message_type: MessageType = message_type
         self.payload_size_bytes: int = 0
         self.source_identifier: int = MessageHeader.INVALID_SOURCE_ID
@@ -231,8 +232,8 @@ class MessageHeader:
         if payload is not None:
             self.calculate_crc(payload)
 
-        args = (self.crc, self.protocol_version, int(self.message_type), self.sequence_number, self.payload_size_bytes,
-                self.source_identifier)
+        args = (self.crc, self.protocol_version, self.message_version, int(self.message_type), self.sequence_number,
+                self.payload_size_bytes, self.source_identifier)
         if buffer is None:
             buffer = struct.pack(MessageHeader._FORMAT, *args)
             if payload is not None:
@@ -264,7 +265,8 @@ class MessageHeader:
         """
         (sync0, sync1,
          self.crc, self.protocol_version,
-         message_type_int, self.sequence_number, self.payload_size_bytes, self.source_identifier) = \
+         self.message_version, message_type_int,
+         self.sequence_number, self.payload_size_bytes, self.source_identifier) = \
             struct.unpack_from(MessageHeader._FORMAT, buffer=buffer, offset=offset)
 
         if sync0 != MessageHeader._SYNC0 or sync1 != MessageHeader._SYNC1:
