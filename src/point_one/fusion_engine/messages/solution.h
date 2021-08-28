@@ -43,18 +43,19 @@ struct PoseMessage_1_0 {
    * between the WGS-84 ellipsoid and the geoid).
    *
    * Height above the ellipsoid can be converted to a corresponding height above
-   * the geoid (orthometric height, or height above mean sea level) as follows:
+   * the geoid (orthometric height or height above mean sea level (MSL)) as
+   * follows:
    *
    * @f[
    * h_{orthometric} = h_{ellipsoid} - undulation
    * @f]
    *
-   * Stored in units of 0.01 meters: `value_m = integer_value * 0.01`. Set to
-   * `-32768` if invalid.
+   * Stored in units of 0.01 meters: `undulation_m = undulation_cm * 0.01`. Set
+   * to `-32768` if invalid.
    *
    * Added in @ref PoseMessage version 1.1.
    */
-  int16_t undulation = -INT16_MIN;
+  int16_t undulation_cm = -INT16_MIN;
 
   /**
    * The geodetic latitude, longitude, and altitude (in degrees/meters),

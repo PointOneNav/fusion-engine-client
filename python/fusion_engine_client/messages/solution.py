@@ -50,13 +50,13 @@ class PoseMessage(MessagePayload):
         offset += self.gps_time.pack(buffer, offset, return_buffer=False)
 
         if np.isnan(self.undulation_m):
-            undulation_int = 0
+            undulation_cm = 0
         else:
-            undulation_int = int(np.round(self.undulation_m * 1e2))
+            undulation_cm = int(np.round(self.undulation_m * 1e2))
 
         struct.pack_into(PoseMessage._FORMAT, buffer, offset,
                          int(self.solution_type),
-                         undulation_int,
+                         undulation_cm,
                          self.lla_deg[0], self.lla_deg[1], self.lla_deg[2],
                          self.position_std_enu_m[0], self.position_std_enu_m[1], self.position_std_enu_m[2],
                          self.ypr_deg[0], self.ypr_deg[1], self.ypr_deg[2],
@@ -80,7 +80,7 @@ class PoseMessage(MessagePayload):
         offset += self.gps_time.unpack(buffer, offset)
 
         (solution_type_int,
-         undulation_int,
+         undulation_cm,
          self.lla_deg[0], self.lla_deg[1], self.lla_deg[2],
          self.position_std_enu_m[0], self.position_std_enu_m[1], self.position_std_enu_m[2],
          self.ypr_deg[0], self.ypr_deg[1], self.ypr_deg[2],
@@ -93,10 +93,10 @@ class PoseMessage(MessagePayload):
             struct.unpack_from(PoseMessage._FORMAT, buffer=buffer, offset=offset)
         offset += PoseMessage._SIZE
 
-        if undulation_int == -32768:
+        if undulation_cm == -32768:
             self.undulation_m = np.nan
         else:
-            self.undulation_m = undulation_int * 1e-2
+            self.undulation_m = undulation_cm * 1e-2
 
         self.solution_type = SolutionType(solution_type_int)
 
