@@ -17,7 +17,7 @@ namespace messages {
 
 /**
  * @brief Platform pose solution: position, velocity, attitude (@ref
- *        MessageType::POSE), version 1.0.
+ *        MessageType::POSE), version 1.1.
  * @ingroup messages
  *
  * @note
@@ -26,7 +26,7 @@ namespace messages {
  * GNSSInfoMessage, @ref GNSSSatelliteMessage, etc.) may be associated using
  * their @ref p1_time values.
  */
-struct PoseMessage_1_0 {
+struct PoseMessage {
   /** The time of the message, in P1 time (beginning at power-on). */
   Timestamp p1_time;
 
@@ -140,25 +140,11 @@ struct PoseMessage_1_0 {
 };
 
 /**
- * @brief Platform pose solution: position, velocity, attitude (@ref
- *        MessageType::POSE), version 1.1.
- *
- * Extends @ref PoseMessage_1_0, adding geoid undulation.
- */
-typedef PoseMessage_1_0 PoseMessage_1_1;
-
-/** @brief Alias for the latest platform pose message, version 1.x. */
-typedef PoseMessage_1_1 PoseMessage_1;
-
-/** @brief Alias for the latest platform pose message. */
-typedef PoseMessage_1 PoseMessage;
-
-/**
  * @brief Auxiliary platform pose information (@ref MessageType::POSE_AUX),
  *        version 1.0.
  * @ingroup messages
  */
-struct PoseAuxMessage_1_0 {
+struct PoseAuxMessage {
   /** The time of the message, in P1 time (beginning at power-on). */
   Timestamp p1_time;
 
@@ -193,18 +179,12 @@ struct PoseAuxMessage_1_0 {
   float velocity_std_enu_mps[3] = {NAN, NAN, NAN};
 };
 
-/** @brief Alias for the latest auxiliary pose message, version 1.x. */
-typedef PoseAuxMessage_1_0 PoseAuxMessage_1;
-
-/** @brief Alias for the latest auxiliary pose message. */
-typedef PoseAuxMessage_1 PoseAuxMessage;
-
 /**
  * @brief Information about the GNSS data used in the @ref PoseMessage with the
  *        corresponding timestamp (@ref MessageType::GNSS_INFO).
  * @ingroup messages
  */
-struct GNSSInfoMessage_1_0 {
+struct GNSSInfoMessage {
   static constexpr uint32_t INVALID_REFERENCE_STATION = 0xFFFFFFFF;
 
   /** The time of the message, in P1 time (beginning at power-on). */
@@ -232,19 +212,13 @@ struct GNSSInfoMessage_1_0 {
   float gps_time_std_sec = NAN;
 };
 
-/** @brief Alias for the latest GNSS info message, version 1.x. */
-typedef GNSSInfoMessage_1_0 GNSSInfoMessage_1;
-
-/** @brief Alias for the latest GNSS info message. */
-typedef GNSSInfoMessage_1 GNSSInfoMessage;
-
 /**
  * @brief Information about the individual satellites used in the @ref
  *        PoseMessage and @ref GNSSInfoMessage with the corresponding timestamp
  *        (@ref MessageType::GNSS_SATELLITE), version 1.0.
  * @ingroup messages
  *
- * This message is followed by `N` @ref SatelliteInfo_1_0 objects, where `N` is
+ * This message is followed by `N` @ref SatelliteInfo objects, where `N` is
  * equal to @ref num_satellites. For example, a message with two satellites
  * would be serialized as:
  *
@@ -252,7 +226,7 @@ typedef GNSSInfoMessage_1 GNSSInfoMessage;
  * {MessageHeader, GNSSSatelliteMessage, SatelliteInfo, SatelliteInfo, ...}
  * ```
  */
-struct GNSSSatelliteMessage_1_0 {
+struct GNSSSatelliteMessage {
   /** The time of the message, in P1 time (beginning at power-on). */
   Timestamp p1_time;
 
@@ -265,12 +239,6 @@ struct GNSSSatelliteMessage_1_0 {
   uint8_t reserved[2] = {0};
 };
 
-/** @brief Alias for the latest GNSS satellite message, version 1.x. */
-typedef GNSSSatelliteMessage_1_0 GNSSSatelliteMessage_1;
-
-/** @brief Alias for the latest GNSS satellite message. */
-typedef GNSSSatelliteMessage_1 GNSSSatelliteMessage;
-
 /**
  * @brief Information about an individual satellite (see @ref
  *        GNSSSatelliteMessage).
@@ -279,7 +247,7 @@ typedef GNSSSatelliteMessage_1 GNSSSatelliteMessage;
  * tracked by the receiver but not used for navigation, or may just be expected
  * according to available ephemeris data.
  */
-struct SatelliteInfo_1_0 {
+struct SatelliteInfo {
   /**
    * @defgroup satellite_usage Bit definitions for the satellite usage bitmask
    *           (@ref SatelliteInfo::usage).
@@ -308,12 +276,6 @@ struct SatelliteInfo_1_0 {
   /** The elevation of the satellite (in degrees). */
   float elevation_deg = NAN;
 };
-
-/** @brief Alias for the latest satellite info entry, version 1.x. */
-typedef SatelliteInfo_1_0 SatelliteInfo_1;
-
-/** @brief Alias for the latest satellite info entry. */
-typedef SatelliteInfo_1 SatelliteInfo;
 
 #pragma pack(pop)
 
