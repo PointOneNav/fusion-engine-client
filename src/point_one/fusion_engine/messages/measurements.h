@@ -16,7 +16,8 @@ namespace messages {
 #pragma pack(push, 4)
 
 /**
- * @brief IMU sensor measurement data (@ref MessageType::IMU_MEASUREMENT).
+ * @brief IMU sensor measurement data (@ref MessageType::IMU_MEASUREMENT),
+ *        version 1.0.
  * @ingroup messages
  *
  * @note

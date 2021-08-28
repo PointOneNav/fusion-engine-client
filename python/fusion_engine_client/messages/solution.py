@@ -12,7 +12,7 @@ class PoseMessage(MessagePayload):
     """
     MESSAGE_TYPE = MessageType.POSE
 
-    _FORMAT = '<B3x ddd fff ddd fff ddd fff fff'
+    _FORMAT = '<Bx h ddd fff ddd fff ddd fff fff'
     _SIZE: int = struct.calcsize(_FORMAT)
 
     def __init__(self):
@@ -20,6 +20,9 @@ class PoseMessage(MessagePayload):
         self.gps_time = Timestamp()
 
         self.solution_type = SolutionType.Invalid
+
+        # Added in version 1.1.
+        self.undulation_m = np.nan
 
         self.lla_deg = np.full((3,), np.nan)
         self.position_std_enu_m = np.full((3,), np.nan)
@@ -46,8 +49,14 @@ class PoseMessage(MessagePayload):
         offset += self.p1_time.pack(buffer, offset, return_buffer=False)
         offset += self.gps_time.pack(buffer, offset, return_buffer=False)
 
+        if np.isnan(self.undulation_m):
+            undulation_cm = 0
+        else:
+            undulation_cm = int(np.round(self.undulation_m * 1e2))
+
         struct.pack_into(PoseMessage._FORMAT, buffer, offset,
                          int(self.solution_type),
+                         undulation_cm,
                          self.lla_deg[0], self.lla_deg[1], self.lla_deg[2],
                          self.position_std_enu_m[0], self.position_std_enu_m[1], self.position_std_enu_m[2],
                          self.ypr_deg[0], self.ypr_deg[1], self.ypr_deg[2],
@@ -71,6 +80,7 @@ class PoseMessage(MessagePayload):
         offset += self.gps_time.unpack(buffer, offset)
 
         (solution_type_int,
+         undulation_cm,
          self.lla_deg[0], self.lla_deg[1], self.lla_deg[2],
          self.position_std_enu_m[0], self.position_std_enu_m[1], self.position_std_enu_m[2],
          self.ypr_deg[0], self.ypr_deg[1], self.ypr_deg[2],
@@ -82,6 +92,11 @@ class PoseMessage(MessagePayload):
          self.vertical_protection_level_m) = \
             struct.unpack_from(PoseMessage._FORMAT, buffer=buffer, offset=offset)
         offset += PoseMessage._SIZE
+
+        if undulation_cm == -32768:
+            self.undulation_m = np.nan
+        else:
+            self.undulation_m = undulation_cm * 1e-2
 
         self.solution_type = SolutionType(solution_type_int)
 
@@ -100,6 +115,7 @@ class PoseMessage(MessagePayload):
         string += '  Position std (ENU): %.2f, %.2f, %.2f (m, m, m)\n' % tuple(self.position_std_enu_m)
         string += '  Attitude std (YPR): %.2f, %.2f, %.2f (deg, deg, deg)\n' % tuple(self.ypr_std_deg)
         string += '  Velocity std (Body): %.2f, %.2f, %.2f (m/s, m/s, m/s)\n' % tuple(self.velocity_std_body_mps)
+        string += '  Geoid undulation: %.2f m\n' % self.undulation_m
         string += '  Protection levels:\n'
         string += '    Aggregate: %.2f m\n' % self.aggregate_protection_level_m
         string += '    Horizontal: %.2f m\n' % self.horizontal_protection_level_m
@@ -116,6 +132,7 @@ class PoseMessage(MessagePayload):
             'p1_time': np.array([float(m.p1_time) for m in messages]),
             'gps_time': np.array([float(m.gps_time) for m in messages]),
             'solution_type': np.array([int(m.solution_type) for m in messages], dtype=int),
+            'undulation': np.array([m.undulation_m for m in messages]),
             'lla_deg': np.array([m.lla_deg for m in messages]).T,
             'ypr_deg': np.array([m.ypr_deg for m in messages]).T,
             'velocity_body_mps': np.array([m.velocity_body_mps for m in messages]).T,
