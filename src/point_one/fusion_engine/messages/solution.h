@@ -55,7 +55,7 @@ struct PoseMessage {
    *
    * Added in @ref PoseMessage version 1.1.
    */
-  int16_t undulation_cm = -INT16_MIN;
+  int16_t undulation_cm = INT16_MIN;
 
   /**
    * The geodetic latitude, longitude, and altitude (in degrees/meters),
