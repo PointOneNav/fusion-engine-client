@@ -17,7 +17,7 @@ namespace messages {
 
 /**
  * @brief Platform pose solution: position, velocity, attitude (@ref
- *        MessageType::POSE).
+ *        MessageType::POSE), version 1.1.
  * @ingroup messages
  *
  * @note
@@ -36,7 +36,26 @@ struct PoseMessage {
   /** The type of this position solution. */
   SolutionType solution_type;
 
-  uint8_t reserved[3] = {0};
+  uint8_t reserved = 0;
+
+  /**
+   * The geoid undulation at at the current location (i.e., the difference
+   * between the WGS-84 ellipsoid and the geoid).
+   *
+   * Height above the ellipsoid can be converted to a corresponding height above
+   * the geoid (orthometric height or height above mean sea level (MSL)) as
+   * follows:
+   *
+   * @f[
+   * h_{orthometric} = h_{ellipsoid} - undulation
+   * @f]
+   *
+   * Stored in units of 0.01 meters: `undulation_m = undulation_cm * 0.01`. Set
+   * to `-32768` if invalid.
+   *
+   * Added in @ref PoseMessage version 1.1.
+   */
+  int16_t undulation_cm = INT16_MIN;
 
   /**
    * The geodetic latitude, longitude, and altitude (in degrees/meters),
@@ -121,7 +140,8 @@ struct PoseMessage {
 };
 
 /**
- * @brief Auxiliary platform pose information (@ref MessageType::POSE_AUX).
+ * @brief Auxiliary platform pose information (@ref MessageType::POSE_AUX),
+ *        version 1.0.
  * @ingroup messages
  */
 struct PoseAuxMessage {
@@ -195,7 +215,7 @@ struct GNSSInfoMessage {
 /**
  * @brief Information about the individual satellites used in the @ref
  *        PoseMessage and @ref GNSSInfoMessage with the corresponding timestamp
- *        (@ref MessageType::GNSS_SATELLITE).
+ *        (@ref MessageType::GNSS_SATELLITE), version 1.0.
  * @ingroup messages
  *
  * This message is followed by `N` @ref SatelliteInfo objects, where `N` is
