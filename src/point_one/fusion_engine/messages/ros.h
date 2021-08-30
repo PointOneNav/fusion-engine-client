@@ -5,6 +5,8 @@
 
 #pragma once
 
+#include "point_one/fusion_engine/messages/defs.h"
+
 namespace point_one {
 namespace fusion_engine {
 namespace messages {
