@@ -27,6 +27,8 @@ namespace messages {
  * their @ref p1_time values.
  */
 struct PoseMessage {
+  static constexpr int16_t INVALID_UNDULATION = INT16_MIN;
+
   /** The time of the message, in P1 time (beginning at power-on). */
   Timestamp p1_time;
 
@@ -55,7 +57,7 @@ struct PoseMessage {
    *
    * Added in @ref PoseMessage version 1.1.
    */
-  int16_t undulation_cm = INT16_MIN;
+  int16_t undulation_cm = INVALID_UNDULATION;
 
   /**
    * The geodetic latitude, longitude, and altitude (in degrees/meters),

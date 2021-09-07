@@ -12,6 +12,8 @@ class PoseMessage(MessagePayload):
     """
     MESSAGE_TYPE = MessageType.POSE
 
+    INVALID_UNDULATION = -32768
+
     _FORMAT = '<Bx h ddd fff ddd fff ddd fff fff'
     _SIZE: int = struct.calcsize(_FORMAT)
 
@@ -50,7 +52,7 @@ class PoseMessage(MessagePayload):
         offset += self.gps_time.pack(buffer, offset, return_buffer=False)
 
         if np.isnan(self.undulation_m):
-            undulation_cm = 0
+            undulation_cm = PoseMessage.INVALID_UNDULATION
         else:
             undulation_cm = int(np.round(self.undulation_m * 1e2))
 
@@ -93,7 +95,7 @@ class PoseMessage(MessagePayload):
             struct.unpack_from(PoseMessage._FORMAT, buffer=buffer, offset=offset)
         offset += PoseMessage._SIZE
 
-        if undulation_cm == -32768:
+        if undulation_cm == PoseMessage.INVALID_UNDULATION:
             self.undulation_m = np.nan
         else:
             self.undulation_m = undulation_cm * 1e-2
