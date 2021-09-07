@@ -74,7 +74,7 @@ Extract position data to both CSV and KML files.
     reader = FileReader(input_path)
     result = reader.read(message_types=[PoseMessage], show_progress=True)
 
-    # Generate a CVS file.
+    # Generate a CSV file.
     pose_data = result[PoseMessage.MESSAGE_TYPE]
     with open(os.path.join(output_dir, 'position.csv'), 'w') as f:
         f.write('GPS Time (sec), Solution Type, Lat (deg), Lon (deg), Ellipsoid Alt (m)\n')
