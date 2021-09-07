@@ -217,7 +217,7 @@ struct GNSSInfoMessage {
 /**
  * @brief Information about the individual satellites used in the @ref
  *        PoseMessage and @ref GNSSInfoMessage with the corresponding timestamp
- *        (@ref MessageType::GNSS_SATELLITE), version 1.0.
+ *        (@ref MessageType::GNSS_SATELLITE), version 1.1.
  * @ingroup messages
  *
  * This message is followed by `N` @ref SatelliteInfo objects, where `N` is
@@ -258,6 +258,8 @@ struct SatelliteInfo {
   static constexpr uint8_t SATELLITE_USED = 0x01;
   /** @} */
 
+  static constexpr int16_t INVALID_CN0 = 0;
+
   /** The GNSS system to which this satellite belongs. */
   SatelliteType system = SatelliteType::UNKNOWN;
 
@@ -270,7 +272,22 @@ struct SatelliteInfo {
    */
   uint8_t usage = 0;
 
-  uint8_t reserved = 0;
+  /**
+   * The carrier-to-noise density ratio (C/N0) for the L1 signal on the
+   * satellite.
+   *
+   * Stored in units of 0.25 dB-Hz: `cn0_dbhz = cn0 * 0.25`. Set to 0 if
+   * invalid. The range of this field is 0.25-63.75 dB-Hz. Values outside of
+   * this range will be clipped to the min/max values.
+   *
+   * @note
+   * If the satellite is not tracking L1 (or the L1-equivalent for other
+   * constellations, e.g., G1 for GLONASS) but another frequency is being used,
+   * that signal's C/N0 value will be reported.
+   *
+   * Added in @ref GNSSSatelliteMessage version 1.1.
+   */
+  uint8_t cn0 = INVALID_CN0;
 
   /** The azimuth of the satellite (in degrees). */
   float azimuth_deg = NAN;
