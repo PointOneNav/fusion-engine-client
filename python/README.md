@@ -16,7 +16,7 @@ for the latest API documentation.
         `analyze_data.py`)
     - `examples/` - Python example applications
       - [analyze_data.py](examples/analyze_data.py) - Generate HTML plots of vehicle trajectory, INS filter state, etc.
-        - _This script is used by the `bin/p1_display.py` application_
+        - This class is used by the `bin/p1_display.py` application
       - [extract_imu_data.py](examples/extract_imu_data.py) - Generate a CSV file containing recorded IMU measurements
       - [extract_position_data.py](examples/extract_position_data.py) - Generate CSV and KML files detailing the vehicle
         position over time
