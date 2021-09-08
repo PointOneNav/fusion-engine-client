@@ -12,6 +12,8 @@ class PoseMessage(MessagePayload):
     """
     MESSAGE_TYPE = MessageType.POSE
 
+    INVALID_UNDULATION = -32768
+
     _FORMAT = '<Bx h ddd fff ddd fff ddd fff fff'
     _SIZE: int = struct.calcsize(_FORMAT)
 
@@ -50,7 +52,7 @@ class PoseMessage(MessagePayload):
         offset += self.gps_time.pack(buffer, offset, return_buffer=False)
 
         if np.isnan(self.undulation_m):
-            undulation_cm = 0
+            undulation_cm = PoseMessage.INVALID_UNDULATION
         else:
             undulation_cm = int(np.round(self.undulation_m * 1e2))
 
@@ -93,7 +95,7 @@ class PoseMessage(MessagePayload):
             struct.unpack_from(PoseMessage._FORMAT, buffer=buffer, offset=offset)
         offset += PoseMessage._SIZE
 
-        if undulation_cm == -32768:
+        if undulation_cm == PoseMessage.INVALID_UNDULATION:
             self.undulation_m = np.nan
         else:
             self.undulation_m = undulation_cm * 1e-2
@@ -324,7 +326,9 @@ class SatelliteInfo:
     """
     SATELLITE_USED = 0x01
 
-    _FORMAT = '<BBBxff'
+    INVALID_CN0 = 0
+
+    _FORMAT = '<BBBBff'
     _SIZE: int = struct.calcsize(_FORMAT)
 
     def __init__(self):
@@ -333,9 +337,20 @@ class SatelliteInfo:
         self.usage = 0
         self.azimuth_deg = np.nan
         self.elevation_deg = np.nan
+        ## The C/N0 of the L1 signal present on this satellite (in dB-Hz).
+        self.cn0_dbhz = np.nan
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
-        args = (int(self.system), self.prn, self.usage, self.azimuth_deg, self.elevation_deg)
+        if np.isnan(self.cn0_dbhz):
+            cn0_int = SatelliteInfo.INVALID_CN0
+        else:
+            cn0_int = round(self.cn0_dbhz / 0.25)
+            if cn0_int > 255:
+                cn0_int = 255
+            elif cn0_int < 1:
+                cn0_int = 1
+
+        args = (int(self.system), self.prn, self.usage, cn0_int, self.azimuth_deg, self.elevation_deg)
         if buffer is None:
             buffer = struct.pack(SatelliteInfo._FORMAT, *args)
         else:
@@ -347,9 +362,16 @@ class SatelliteInfo:
             return self.calcsize()
 
     def unpack(self, buffer: bytes, offset: int = 0) -> int:
-        (system_int, self.prn, self.usage, self.azimuth_deg, self.elevation_deg) = \
+        (system_int, self.prn, self.usage, cn0_int, self.azimuth_deg, self.elevation_deg) = \
             struct.unpack_from(SatelliteInfo._FORMAT, buffer=buffer, offset=offset)
+
         self.system = SatelliteType(system_int)
+
+        if cn0_int == SatelliteInfo.INVALID_CN0:
+            self.cn0_dbhz = np.nan
+        else:
+            self.cn0_dbhz = cn0_int * 0.25
+
         return self.calcsize()
 
     def used_in_solution(self):
@@ -426,7 +448,11 @@ class GNSSSatelliteMessage(MessagePayload):
             string += '\n'
             string += '    %s PRN %d:\n' % (sv.system.name, sv.prn)
             string += '      Used in solution: %s\n' % ('yes' if sv.used_in_solution() else 'no')
-            string += '      Az/el: %.1f, %.1f deg' % (sv.azimuth_deg, sv.elevation_deg)
+            string += '      Az/el: %.1f, %.1f deg\n' % (sv.azimuth_deg, sv.elevation_deg)
+            if np.isnan(sv.cn0_dbhz):
+                string += '      C/N0: invalid'
+            else:
+                string += '      C/N0: %.1f dB-Hz' % sv.cn0_dbhz
         return string
 
     def calcsize(self) -> int:
