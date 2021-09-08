@@ -20,6 +20,7 @@ for the latest API documentation.
       - [extract_imu_data.py](examples/extract_imu_data.py) - Generate a CSV file containing recorded IMU measurements
       - [extract_position_data.py](examples/extract_position_data.py) - Generate CSV and KML files detailing the vehicle
         position over time
+        - This script also includes an example of time-aligning multiple message types
       - [extract_satellite_info.py](examples/extract_satellite_info.py) - Generate a CSV file containing satellite 
         azimuth/elevation and C/N0 information over time
       - [message_decode.py](examples/message_decode.py) - Read a `.p1log` binary file and decode the contents
