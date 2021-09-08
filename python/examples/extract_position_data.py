@@ -73,10 +73,12 @@ Extract position data to both CSV and KML files.
     # Read pose data from the file.
     reader = FileReader(input_path)
     result = reader.read(message_types=[PoseMessage], show_progress=True)
+    pose_data = result[PoseMessage.MESSAGE_TYPE]
 
     # Generate a CSV file.
-    pose_data = result[PoseMessage.MESSAGE_TYPE]
-    with open(os.path.join(output_dir, 'position.csv'), 'w') as f:
+    path = os.path.join(output_dir, 'position.csv')
+    logger.info("Generating '%s'." % path)
+    with open(path, 'w') as f:
         f.write('GPS Time (sec), Solution Type, Lat (deg), Lon (deg), Ellipsoid Alt (m)\n')
         for message in pose_data.messages:
             if message.solution_type != SolutionType.Invalid and message.gps_time:
@@ -84,10 +86,12 @@ Extract position data to both CSV and KML files.
                         (float(message.gps_time), message.solution_type.value, *message.lla_deg))
 
     # Generate a KML file.
-    with open(os.path.join(output_dir, 'position.kml'), 'w') as f:
+    path = os.path.join(output_dir, 'position.kml')
+    logger.info("Generating '%s'." % path)
+    with open(path, 'w') as f:
         f.write(KML_TEMPLATE %
                 {'coordinates': '\n'.join(['%.8f,%.8f' % (message.lla_deg[1], message.lla_deg[0])
                                            for message in pose_data.messages
                                            if message.solution_type != SolutionType.Invalid])})
 
-    logger.info("Output stored in '%s'." % os.path.abspath(output_dir))
+    logger.info("Storing output in '%s'." % os.path.abspath(output_dir))
