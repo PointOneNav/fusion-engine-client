@@ -44,7 +44,7 @@ Extract satellite azimuth, elevation, and L1 signal C/N0 data to a CSV file.
             logger.info('Loading %s from log %s.' % (os.path.basename(input_path), log_id))
     except FileNotFoundError as e:
         logger.error(str(e))
-        os.exit(1)
+        sys.exit(1)
 
     # Read satellite data from the file.
     reader = FileReader(input_path)

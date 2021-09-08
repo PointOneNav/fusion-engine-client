@@ -68,7 +68,7 @@ Extract position data to both CSV and KML files.
             logger.info('Loading %s from log %s.' % (os.path.basename(input_path), log_id))
     except FileNotFoundError as e:
         logger.error(str(e))
-        os.exit(1)
+        sys.exit(1)
 
     # Read pose data from the file.
     reader = FileReader(input_path)
