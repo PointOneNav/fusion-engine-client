@@ -184,6 +184,8 @@ The `python/` directory contains source code for reading and analyzing FusionEng
    python3 bin/p1_display.py /path/to/log/directory
    ```
 
+See [Point One FusionEngine Python Client](python) for more details and examples.
+
 ### Compiling Documentation
 
 The documentation for the latest release is generated automatically and hosted at
