@@ -450,7 +450,7 @@ class GNSSSatelliteMessage(MessagePayload):
             string += '      Used in solution: %s\n' % ('yes' if sv.used_in_solution() else 'no')
             string += '      Az/el: %.1f, %.1f deg\n' % (sv.azimuth_deg, sv.elevation_deg)
             if np.isnan(sv.cn0_dbhz):
-                string += '      C/N0: unknown'
+                string += '      C/N0: invalid'
             else:
                 string += '      C/N0: %.1f dB-Hz' % sv.cn0_dbhz
         return string
