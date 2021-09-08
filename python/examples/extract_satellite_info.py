@@ -12,34 +12,10 @@ from fusion_engine_client.analysis.file_reader import FileReader
 from fusion_engine_client.messages.core import *
 from fusion_engine_client.utils.log import find_p1log_file
 
-KML_TEMPLATE = """\
-<kml xmlns="http://www.opengis.net/kml/2.2">
-  <Document>
-    <Placemark>
-      <name>Position</name>
-      <Style>
-        <LineStyle>
-          <width>8</width>
-          <color>#ff0000ff</color>
-        </LineStyle>
-      </Style>
-      <LineString>
-        <extrude>0</extrude>
-        <tesselate>1</tesselate>
-        <altitudeMode>clampToGround</altitudeMode>
-        <coordinates>
-%(coordinates)s
-        </coordinates>
-      </LineString>
-    </Placemark>
-  </Document>
-</kml>
-"""
-
 if __name__ == "__main__":
     # Parse arguments.
     parser = ArgumentParser(description="""\
-Extract position data to both CSV and KML files.  
+Extract satellite azimuth, elevation, and L1 signal C/N0 data to a CSV file.
 """)
     parser.add_argument('--log-base-dir', metavar='DIR', default='/logs',
                         help="The base directory containing FusionEngine logs to be searched if a log pattern is"
@@ -72,22 +48,17 @@ Extract position data to both CSV and KML files.
 
     # Read pose data from the file.
     reader = FileReader(input_path)
-    result = reader.read(message_types=[PoseMessage], show_progress=True)
+    result = reader.read(message_types=[GNSSSatelliteMessage], show_progress=True)
 
     # Generate a CSV file.
-    pose_data = result[PoseMessage.MESSAGE_TYPE]
-    with open(os.path.join(output_dir, 'position.csv'), 'w') as f:
-        f.write('GPS Time (sec), Solution Type, Lat (deg), Lon (deg), Ellipsoid Alt (m)\n')
-        for message in pose_data.messages:
-            if message.solution_type != SolutionType.Invalid and message.gps_time:
-                f.write('%.3f, %d, %.8f, %.8f, %.3f\n' %
-                        (float(message.gps_time), message.solution_type.value, *message.lla_deg))
-
-    # Generate a KML file.
-    with open(os.path.join(output_dir, 'position.kml'), 'w') as f:
-        f.write(KML_TEMPLATE %
-                {'coordinates': '\n'.join(['%.8f,%.8f' % (message.lla_deg[1], message.lla_deg[0])
-                                           for message in pose_data.messages
-                                           if message.solution_type != SolutionType.Invalid])})
+    satellite_data = result[GNSSSatelliteMessage.MESSAGE_TYPE]
+    with open(os.path.join(output_dir, 'satellite_info.csv'), 'w') as f:
+        f.write('GPS Time (sec), System, PRN, Azimuth (deg), Elevation (deg), C/N0 (dB-Hz)\n')
+        for message in satellite_data.messages:
+            if message.gps_time:
+                for sv in message.svs:
+                    f.write('%.3f, %d, %d, %.1f, %.1f, %f\n' %
+                            (float(message.gps_time), int(sv.system), sv.prn, sv.azimuth_deg, sv.elevation_deg,
+                             sv.cn0_dbhz))
 
     logger.info("Output stored in '%s'." % os.path.abspath(output_dir))
