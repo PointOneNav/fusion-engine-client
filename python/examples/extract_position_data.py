@@ -74,6 +74,9 @@ Extract position data to both CSV and KML files.
     reader = FileReader(input_path)
     result = reader.read(message_types=[PoseMessage], show_progress=True)
     pose_data = result[PoseMessage.MESSAGE_TYPE]
+    if len(pose_data.messages) == 0:
+        logger.warning('No pose data found in log file.')
+        sys.exit(2)
 
     # Generate a CSV file.
     path = os.path.join(output_dir, 'position.csv')

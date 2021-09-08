@@ -50,6 +50,9 @@ Extract satellite azimuth, elevation, and L1 signal C/N0 data to a CSV file.
     reader = FileReader(input_path)
     result = reader.read(message_types=[GNSSSatelliteMessage], show_progress=True)
     satellite_data = result[GNSSSatelliteMessage.MESSAGE_TYPE]
+    if len(satellite_data.messages) == 0:
+        logger.warning('No satellite data found in log file.')
+        sys.exit(2)
 
     # Generate a CSV file.
     path = os.path.join(output_dir, 'satellite_info.csv')
