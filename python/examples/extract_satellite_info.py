@@ -58,12 +58,12 @@ Extract satellite azimuth, elevation, and L1 signal C/N0 data to a CSV file.
     path = os.path.join(output_dir, 'satellite_info.csv')
     logger.info("Generating '%s'." % path)
     with open(path, 'w') as f:
-        f.write('GPS Time (sec), System, PRN, Azimuth (deg), Elevation (deg), C/N0 (dB-Hz)\n')
+        f.write('P1 Time (sec), GPS Time (sec), System, PRN, Azimuth (deg), Elevation (deg), C/N0 (dB-Hz)\n')
         for message in satellite_data.messages:
             if message.gps_time:
                 for sv in message.svs:
-                    f.write('%.3f, %d, %d, %.1f, %.1f, %f\n' %
-                            (float(message.gps_time), int(sv.system), sv.prn, sv.azimuth_deg, sv.elevation_deg,
-                             sv.cn0_dbhz))
+                    f.write('%.6f, %.6f, %d, %d, %.1f, %.1f, %f\n' %
+                            (float(message.p1_time), float(message.gps_time),
+                             int(sv.system), sv.prn, sv.azimuth_deg, sv.elevation_deg, sv.cn0_dbhz))
 
     logger.info("Output stored in '%s'." % os.path.abspath(output_dir))

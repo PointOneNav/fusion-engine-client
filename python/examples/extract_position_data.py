@@ -82,11 +82,12 @@ Extract position data to both CSV and KML files.
     path = os.path.join(output_dir, 'position.csv')
     logger.info("Generating '%s'." % path)
     with open(path, 'w') as f:
-        f.write('GPS Time (sec), Solution Type, Lat (deg), Lon (deg), Ellipsoid Alt (m)\n')
+        f.write('P1 Time (sec), GPS Time (sec), Solution Type, Lat (deg), Lon (deg), Ellipsoid Alt (m)\n')
         for message in pose_data.messages:
             if message.solution_type != SolutionType.Invalid and message.gps_time:
-                f.write('%.3f, %d, %.8f, %.8f, %.3f\n' %
-                        (float(message.gps_time), message.solution_type.value, *message.lla_deg))
+                f.write('%.6f, %.6f, %d, %.8f, %.8f, %.3f\n' %
+                        (float(message.p1_time), float(message.gps_time),
+                         message.solution_type.value, *message.lla_deg))
 
     # Generate a KML file.
     path = os.path.join(output_dir, 'position.kml')
