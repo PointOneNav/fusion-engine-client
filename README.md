@@ -180,7 +180,7 @@ The `python/` directory contains source code for reading and analyzing FusionEng
 3. Run any of the applications in `python/bin/` or the example code in `python/examples/`. For example, to plot results
    from a `*.p1log` file or recorded in an Atlas log:
    ```
-   cd python/fusion_engine_client/
+   cd python/
    python3 bin/p1_display.py /path/to/log/directory
    ```
 
