@@ -588,7 +588,7 @@ class FileReader(object):
                     if (p1_time is None or not p1_time) and posix_time_sec is None:
                         self.logger.debug('  Message does not contain time and time range specified. Discarding.')
                         continue
-                    elif p1_time is not None:
+                    elif p1_time is not None and p1_time:
                         message_time_sec = p1_time
                         selected_ref_time_sec = p1_reference_time_sec
                         time_type = 'P1'
