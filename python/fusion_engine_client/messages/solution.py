@@ -457,3 +457,12 @@ class GNSSSatelliteMessage(MessagePayload):
 
     def calcsize(self) -> int:
         return 2 * Timestamp.calcsize() + GNSSSatelliteMessage._SIZE + len(self.svs) * SatelliteInfo.calcsize()
+
+    @classmethod
+    def to_numpy(cls, messages):
+        result = {
+            'p1_time': np.array([float(m.p1_time) for m in messages]),
+            'gps_time': np.array([float(m.gps_time) for m in messages]),
+            'num_svs': np.array([len(m.svs) for m in messages], dtype=int),
+        }
+        return
