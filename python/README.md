@@ -6,7 +6,13 @@ data extraction utilities, and example usage scripts.
 See https://github.com/PointOneNav/fusion-engine-client for full details. See http://docs.pointonenav.com/fusion-engine/
 for the latest API documentation.
 
-#### Python Support
+* [Requirements](#requirements)
+* [Directory Structure](#directory-structure)
+* [Usage Instructions](#usage-instructions)
+* [Examples](#examples)
+* [Using A Python Virtual Environment](#using-a-python-virtual-environment)
+
+### Requirements
 - Python 3.4 or later
 
 ### Directory Structure
@@ -44,32 +50,7 @@ To use the Python library:
    python3 bin/p1_display.py /path/to/log/directory
    ```
 
-#### Virtual Environment
-
-Whenever possible, we strongly encourage the use of a Python
-[virtual environment](https://docs.python.org/3/tutorial/venv.html). To use the FusionEngine client within a virtual
-environment:
-
-1. Create a virtual environment:
-   ```bash
-   python3 -m venv venv
-   ```
-2. Activate the virtual environment:
-   ```bash
-   source venv/bin/activate
-   ```
-   or in Windows:
-   ```bash
-   venv\Scripts\activate.bat
-   ```
-3. Install the pip requirements:
-   ```bash
-   pip install -r requirements.txt
-   ```
-4. Run any of the FusionEngine applications/scripts normally:
-   ```bash
-   python3 bin/p1_display.py /path/to/log/directory
-   ```
+Whenever possible, we strongly encourage the use of a Python [virtual environment](#using-a-python-virtual-environment).
 
 ### Examples
 
@@ -112,4 +93,29 @@ _Requires `GNSSSatelliteMessage` to be enabled._
 
 This will produce the file `/path/to/c25445f4e60d441dbf4af8a3571352fa/position.csv`.
 
+### Using A Python Virtual Environment
 
+Whenever possible, we strongly encourage the use of a
+[Python virtual environment](https://docs.python.org/3/tutorial/venv.html). To use the FusionEngine client within a
+virtual  environment:
+
+1. Create a virtual environment:
+   ```bash
+   python3 -m venv venv
+   ```
+2. Activate the virtual environment:
+   ```bash
+   source venv/bin/activate
+   ```
+   or in Windows:
+   ```bash
+   venv\Scripts\activate.bat
+   ```
+3. Install the pip requirements:
+   ```bash
+   pip install -r requirements.txt
+   ```
+4. Run any of the FusionEngine applications/scripts normally:
+   ```bash
+   python3 bin/p1_display.py /path/to/log/directory
+   ```
