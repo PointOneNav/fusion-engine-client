@@ -15,7 +15,7 @@ from fusion_engine_client.utils.log import find_p1log_file
 if __name__ == "__main__":
     # Parse arguments.
     parser = ArgumentParser(description="""\
-Extract satellite azimuth, elevation, and L1 signal C/N0 data to a CSV file.
+Extract IMU accelerometer and gyroscope measuremenets.
 """)
     parser.add_argument('--log-base-dir', metavar='DIR', default='/logs',
                         help="The base directory containing FusionEngine logs to be searched if a log pattern is"
@@ -48,22 +48,19 @@ Extract satellite azimuth, elevation, and L1 signal C/N0 data to a CSV file.
 
     # Read satellite data from the file.
     reader = FileReader(input_path)
-    result = reader.read(message_types=[GNSSSatelliteMessage], show_progress=True)
-    satellite_data = result[GNSSSatelliteMessage.MESSAGE_TYPE]
-    if len(satellite_data.messages) == 0:
-        logger.warning('No satellite data found in log file.')
+    result = reader.read(message_types=[IMUMeasurement], show_progress=True)
+    imu_data = result[IMUMeasurement.MESSAGE_TYPE]
+    if len(imu_data.messages) == 0:
+        logger.warning('No IMU data found in log file.')
         sys.exit(2)
 
     # Generate a CSV file.
-    path = os.path.join(output_dir, 'satellite_info.csv')
+    path = os.path.join(output_dir, 'imu_data.csv')
     logger.info("Generating '%s'." % path)
     with open(path, 'w') as f:
-        f.write('P1 Time (sec), GPS Time (sec), System, PRN, Azimuth (deg), Elevation (deg), C/N0 (dB-Hz)\n')
-        for message in satellite_data.messages:
-            if message.gps_time:
-                for sv in message.svs:
-                    f.write('%.6f, %.6f, %d, %d, %.1f, %.1f, %f\n' %
-                            (float(message.p1_time), float(message.gps_time),
-                             int(sv.system), sv.prn, sv.azimuth_deg, sv.elevation_deg, sv.cn0_dbhz))
+        f.write('P1 Time (sec), Accel X (m/s^2), Y, Z, Gyro X (rad/s), Y, Z\n')
+        for message in imu_data.messages:
+            f.write('%.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f\n' %
+                    (float(message.p1_time), *message.accel_mps2, *message.gyro_rps))
 
     logger.info("Output stored in '%s'." % os.path.abspath(output_dir))

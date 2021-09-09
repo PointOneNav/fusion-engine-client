@@ -46,19 +46,27 @@ enum class SatelliteType : uint8_t {
 enum class SolutionType : uint8_t {
   /** Invalid, no position available. */
   Invalid = 0,
-  /** Autonomous GPS fix, no correction data used. */
+  /** Standalone GNSS fix, no correction data used. */
   AutonomousGPS = 1,
-  /** DGPS using a local base station or WAAS. */
+  /**
+   * Differential GNSS pseudorange solution using a local RTK base station or
+   * SSR or SBAS corrections.
+   */
   DGPS = 2,
-  /** RTK fixed integers (one or more fixed). */
+  /**
+   * GNSS RTK solution with fixed integer carrier phase ambiguities (one or more
+   * signals fixed).
+   */
   RTKFixed = 4,
-  /** RTK float integers. */
+  /** GNSS RTK solution with floating point carrier phase ambiguities. */
   RTKFloat = 5,
   /** Integrated position using dead reckoning. */
   Integrate = 6,
   /** Using vision measurements. */
   Visual = 9,
-  /** Using PPP. */
+  /**
+   * GNSS precise point positioning (PPP) pseudorange/carrier phase solution.
+   */
   PPP = 10,
   MAX_VALUE = PPP,
 };
