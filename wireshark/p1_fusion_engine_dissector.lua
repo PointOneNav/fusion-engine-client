@@ -58,6 +58,8 @@ local pf_pose_gps_time = ProtoField.new("GPS Time", "fusionengine.pose.gps_time"
 local pf_pose_gps_time_sec = ProtoField.new("Seconds", "fusionengine.pose.gps_time.sec", ftypes.UINT32)
 local pf_pose_gps_time_frac = ProtoField.new("Nanoseconds", "fusionengine.pose.gps_time.frac", ftypes.UINT32)
 local pf_pose_solution_type = ProtoField.new("Solution Type", "fusionengine.pose.solution_type", ftypes.UINT8)
+local pf_pose_undulation_cm = ProtoField.new("Undulation (cm)", "fusionengine.pose.undulation_cm", ftypes.INT16)
+local pf_pose_undulation_m = ProtoField.new("Undulation (m)", "fusionengine.pose.undulation_m", ftypes.STRING)
 local pf_pose_lla = ProtoField.new("LLA (deg)", "fusionengine.pose.lla", ftypes.STRING)
 local pf_pose_lla_lat = ProtoField.new("Latitude (deg)", "fusionengine.pose.lla.lat", ftypes.DOUBLE)
 local pf_pose_lla_lon = ProtoField.new("Longitude (deg)", "fusionengine.pose.lla.lon", ftypes.DOUBLE)
@@ -86,6 +88,8 @@ fe_proto.fields = {
    pf_pose_gps_time_sec,
    pf_pose_gps_time_frac,
    pf_pose_solution_type,
+   pf_pose_undulation_cm,
+   pf_pose_undulation_m,
    pf_pose_lla,
    pf_pose_lla_lat,
    pf_pose_lla_lon,
@@ -100,6 +104,7 @@ local pose_p1_time_sec_field = Field.new("fusionengine.pose.p1_time.sec")
 local pose_p1_time_frac_field = Field.new("fusionengine.pose.p1_time.frac")
 local pose_gps_time_sec_field = Field.new("fusionengine.pose.gps_time.sec")
 local pose_gps_time_frac_field = Field.new("fusionengine.pose.gps_time.frac")
+local pose_undulation_cm_field = Field.new("fusionengine.pose.undulation_cm")
 local pose_lla_lat_field = Field.new("fusionengine.pose.lla.lat")
 local pose_lla_lon_field = Field.new("fusionengine.pose.lla.lon")
 local pose_lla_alt_field = Field.new("fusionengine.pose.lla.alt")
@@ -207,7 +212,15 @@ dissectPoseMessage = function(tvbuf, pktinfo, tree, offset, payload_size, messag
    offset = offset + 1
 
    -- Reserved
-   offset = offset + 3
+   offset = offset + 1
+
+   -- Undulation
+   tree:add_le(pf_pose_undulation_cm, tvbuf:range(offset, 2)):set_hidden(true)
+   local undulation_m = tree:add_le(pf_pose_undulation_m, tvbuf:range(offset, 2))
+   offset = offset + 2
+
+   local undulation_cm = getValue(pose_undulation_cm_field, message_index)
+   undulation_m:set_text(string.format("%s: %.2f", "Undulation (m)", undulation_cm * 0.01))
 
    -- LLA
    local lla = tree:add(pf_pose_lla, tvbuf:range(offset, 24))
