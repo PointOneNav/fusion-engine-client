@@ -617,7 +617,7 @@ class ProfileExecutionMessage(MessagePayload):
         }
         return result
 
-        @classmethod
+    @classmethod
     def remap_by_name(cls, numpy_data, definition_message: ProfileDefinitionMessage):
         id_to_name = definition_message.to_dict()
         numpy_data.points = {id_to_name[id]: data for id, data in numpy_data.points.items()}

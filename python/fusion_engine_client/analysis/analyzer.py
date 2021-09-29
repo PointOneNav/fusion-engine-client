@@ -378,7 +378,7 @@ class Analyzer(object):
         data = result[ProfileFreeRtosSystemStatusMessage.MESSAGE_TYPE]
 
         if len(data.system_time) == 0:
-            self.logger.info('No freertos system profiling data available.')
+            self.logger.info('No FreeRTOS system profiling data available.')
             return
 
         # Read the last task name message to map IDs to names.
@@ -390,34 +390,38 @@ class Analyzer(object):
             definition = result[ProfileFreeRtosSystemStatusMessage.DEFINITION_TYPE].messages[0]
             id_to_name = definition.to_dict()
         else:
+            self.logger.warn('No FreeRTOS task names received.')
             id_to_name = {}
 
         time = data.system_time - data.system_time[0]
 
         figure = make_subplots(rows=3, cols=1, print_grid=False, shared_xaxes=True,
-                               subplot_titles=['CPU Usage', 'Memory Usage', 'Queue Depth'])
+                               subplot_titles=['CPU Usage', 'Stack High Water Marks', 'Dynamic Memory Free'])
 
         figure['layout'].update(showlegend=True)
         figure['layout']['xaxis'].update(title="System Time (sec)")
         for i in range(3):
             figure['layout']['xaxis%d' % (i + 1)].update(showticklabels=True)
         figure['layout']['yaxis1'].update(title="CPU (%)", range=[0, 100])
-        figure['layout']['yaxis2'].update(title="Memory (KB)")
-        figure['layout']['yaxis3'].update(title="# Entries")
+        figure['layout']['yaxis2'].update(title="Memory Free (B)")
+        figure['layout']['yaxis3'].update(title="Memory Free (KB)")
 
-        # figure.add_trace(go.Scattergl(x=time, y=data.total_cpu_usage, name='Total CPU Usage',
-        #                               mode='lines', line={'color': 'black', 'width': 4}),
-        #                  1, 1)
-        # for i in range(data.cpu_usage_per_core.shape[0]):
-        #     color = plotly.colors.DEFAULT_PLOTLY_COLORS[i % len(plotly.colors.DEFAULT_PLOTLY_COLORS)]
-        #     figure.add_trace(go.Scattergl(x=time, y=data.cpu_usage_per_core[i, :], name='CPU %d Usage' % i,
-        #                                   mode='lines', line={'color': color, 'dash': 'dash'}),
-        #                      1, 1)
+        for i in range(len(data.task_cpu_usage_percent)):
+            color = plotly.colors.DEFAULT_PLOTLY_COLORS[i % len(plotly.colors.DEFAULT_PLOTLY_COLORS)]
+            task_name = id_to_name.get(i, f'unknown_{i}')
+            figure.add_trace(go.Scattergl(x=time, y=data.task_cpu_usage_percent[i], name='Task %s CPU Usage' % task_name,
+                                          mode='lines', line={'color': color}),
+                             1, 1)
+            figure.add_trace(go.Scattergl(x=time, y=data.task_min_stack_free_bytes[i], name='Task %s Stack Free' % task_name,
+                                mode='lines', line={'color': color, 'dash': 'dash'}),
+                             2, 1)
 
-        figure.add_trace(go.Scattergl(x=time, y=data.heap_free_bytes / (1024), name='Used Memory',
+        figure.add_trace(go.Scattergl(x=time, y=data.heap_free_bytes / (1024), name='Heap',
+                                      mode='lines', line={'color': 'red'}),
+                         3, 1)
+        figure.add_trace(go.Scattergl(x=time, y=data.sbrk_free_bytes / (1024), name='SBRK',
                                       mode='lines', line={'color': 'blue'}),
-                         2, 1)
-
+                         3, 1)
 
         self._add_figure(name="profile_system_status", figure=figure, title="Profiling: System Status")
 
