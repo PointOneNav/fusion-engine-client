@@ -5,7 +5,6 @@ import math
 import struct
 from zlib import crc32
 
-from construct import Struct, Int32ul, Computed
 import numpy as np
 
 _logger = logging.getLogger('point_one.fusion_engine.messages.defs')
@@ -91,23 +90,8 @@ class Timestamp:
 
     _GPS_EPOCH = datetime(1980, 1, 6, tzinfo=timezone.utc)
 
-    TimestampConstruct = Struct(
-        "_seconds" / Int32ul,
-        "_frac_part_ns" / Int32ul,
-        "timestamp" / Computed(lambda this: Timestamp(int_part=this._seconds, frac_part_ns=this._frac_part_ns))
-    )
-
-    def __init__(self, time_sec=math.nan, *, int_part=None, frac_part_ns=None):
-        if int_part is None or frac_part_ns is None:
-            self.seconds = float(time_sec)
-        else:
-            self._from_integers(int_part, frac_part_ns)
-
-    def _from_integers(self, int_part, frac_part_ns):
-        if int_part == Timestamp._INVALID or frac_part_ns == Timestamp._INVALID:
-            self.seconds = math.nan
-        else:
-            self.seconds = int_part + (frac_part_ns * 1e-9)
+    def __init__(self, time_sec=math.nan):
+        self.seconds = float(time_sec)
 
     def as_gps(self) -> datetime:
         if math.isnan(self.seconds):
@@ -136,18 +120,11 @@ class Timestamp:
 
     def unpack(self, buffer: bytes, offset: int = 0) -> int:
         (int_part, frac_part_ns) = struct.unpack_from(Timestamp._FORMAT, buffer=buffer, offset=offset)
-        self._from_integers(int_part, frac_part_ns)
-        return Timestamp._SIZE
-
-    @classmethod
-    def compute_construct_fields(cls, timestamp_dict):
-        seconds = timestamp_dict['timestamp'].seconds
-        if np.isnan(seconds):
-            timestamp_dict['_seconds'] = Timestamp._INVALID
-            timestamp_dict['_frac_part_ns'] = Timestamp._INVALID
+        if int_part == Timestamp._INVALID or frac_part_ns == Timestamp._INVALID:
+            self.seconds = math.nan
         else:
-            timestamp_dict['_seconds'] = int(seconds)
-            timestamp_dict['_frac_part_ns'] = int((seconds - timestamp_dict['_seconds']) * 1e9)
+            self.seconds = int_part + (frac_part_ns * 1e-9)
+        return Timestamp._SIZE
 
     @classmethod
     def calcsize(cls) -> int:

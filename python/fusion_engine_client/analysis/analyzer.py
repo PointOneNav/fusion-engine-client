@@ -377,7 +377,7 @@ class Analyzer(object):
         result = self.reader.read(message_types=[ProfileFreeRtosSystemStatusMessage], remove_nan_times=False, **self.params)
         data = result[ProfileFreeRtosSystemStatusMessage.MESSAGE_TYPE]
 
-        if len(data.system_time) == 0:
+        if len(data.system_time_sec) == 0:
             self.logger.info('No FreeRTOS system profiling data available.')
             return
 
@@ -393,7 +393,7 @@ class Analyzer(object):
             self.logger.warn('No FreeRTOS task names received.')
             id_to_name = {}
 
-        time = data.system_time - data.system_time[0]
+        time = data.system_time_sec - data.system_time_sec[0]
 
         figure = make_subplots(rows=3, cols=1, print_grid=False, shared_xaxes=True,
                                subplot_titles=['CPU Usage', 'Stack High Water Marks', 'Dynamic Memory Free'])

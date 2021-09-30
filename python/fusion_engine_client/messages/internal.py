@@ -4,7 +4,7 @@ import re
 from typing import List
 
 from aenum import extend_enum
-from construct import Struct, Int32ul, Int8ul, Computed, Padding, this, Array
+from construct import Struct, Int64ul, Int32ul, Int8ul, Computed, Padding, this, Array
 import numpy as np
 
 from . import message_type_to_class
@@ -640,7 +640,7 @@ class ProfileFreeRtosSystemStatusMessage(MessagePayload):
     )
 
     ProfileFreeRtosSystemStatusMessageConstruct = Struct(
-        "system_time" / Timestamp.TimestampConstruct,
+        "system_time_ns" / Int64ul,
         "heap_free_bytes" / Int32ul,
         "sbrk_free_bytes" / Int32ul,
         Padding(3),
@@ -650,9 +650,7 @@ class ProfileFreeRtosSystemStatusMessage(MessagePayload):
 
     def __init__(self):
         self.values = {
-            "system_time": {
-                "timestamp": Timestamp()
-            },
+            "system_time_ns": 0,
             "heap_free_bytes": 0,
             "sbrk_free_bytes": 0,
             "num_tasks": 0,
@@ -706,7 +704,7 @@ class ProfileFreeRtosSystemStatusMessage(MessagePayload):
     @classmethod
     def to_numpy(cls, messages):
         result = {
-            'system_time': np.array([float(m.values['system_time']['timestamp'].seconds) for m in messages]),
+            'system_time_sec': np.array([m.values['system_time_ns'] * 1e-9 for m in messages]),
             'heap_free_bytes': np.array([m.values['heap_free_bytes'] for m in messages]),
             'sbrk_free_bytes': np.array([m.values['sbrk_free_bytes'] for m in messages]),
             'task_cpu_usage_percent': [],
