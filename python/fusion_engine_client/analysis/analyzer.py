@@ -365,6 +365,60 @@ class Analyzer(object):
 
         self._add_figure(name="profile_system_status", figure=figure, title="Profiling: System Status")
 
+    def plot_execution_stats_profiling(self):
+        """!
+        @brief Plot execution profiling stats.
+        """
+        if self.output_dir is None:
+            return
+
+        # Read the data.
+        result = self.reader.read(message_types=[ProfileExecutionStatsMessage], remove_nan_times=False, **self.params)
+        data = result[ProfileExecutionStatsMessage.MESSAGE_TYPE]
+
+        if len(data.system_time_sec) == 0:
+            self.logger.info('No execution profiling stats data available.')
+            return
+
+        # Read the last task name message to map IDs to names.
+        params = copy.deepcopy(self.params)
+        params['max_messages'] = -1
+        result = self.reader.read(message_types=[ProfileExecutionStatsMessage.DEFINITION_TYPE], remove_nan_times=False,
+                                  **params)
+        if len(result[ProfileExecutionStatsMessage.DEFINITION_TYPE].messages) != 0:
+            definition = result[ProfileExecutionStatsMessage.DEFINITION_TYPE].messages[0]
+            id_to_name = definition.to_dict()
+        else:
+            self.logger.warn('No execution profiling stats names received.')
+            id_to_name = {}
+
+        time = data.system_time_sec - data.system_time_sec[0]
+
+        figure = make_subplots(rows=3, cols=1, print_grid=False, shared_xaxes=True,
+                               subplot_titles=['Average Processing Time', 'Max Processing Time', 'Number of Executions Per Update'])
+
+        figure['layout'].update(showlegend=True)
+        figure['layout']['xaxis'].update(title="System Time (sec)")
+        for i in range(3):
+            figure['layout']['xaxis%d' % (i + 1)].update(showticklabels=True)
+        figure['layout']['yaxis1'].update(title="Processing Time (ms)")
+        figure['layout']['yaxis2'].update(title="Processing Time (ms)")
+        figure['layout']['yaxis3'].update(title="Number of Executions")
+
+        for i in range(len(data.running_time_ns)):
+            color = plotly.colors.DEFAULT_PLOTLY_COLORS[i % len(plotly.colors.DEFAULT_PLOTLY_COLORS)]
+            trace_name = id_to_name.get(i, f'unknown_{i}')
+            figure.add_trace(go.Scattergl(x=time, y=data.running_time_ns[i] / data.run_count[i] / 1e6, name=f'{trace_name}',
+                                          mode='lines', line={'color': color}, legendgroup=f'{i}'),
+                             1, 1)
+            figure.add_trace(go.Scattergl(x=time, y=data.max_run_time_ns[i] / 1e6, name=f'{trace_name}',
+                                mode='lines', line={'color': color}, legendgroup=f'{i}', showlegend=False),
+                             2, 1)
+            figure.add_trace(go.Scattergl(x=time, y=data.run_count[i], name=f'{trace_name}',
+                                mode='lines', line={'color': color}, legendgroup=f'{i}', showlegend=False),
+                             3, 1)
+
+        self._add_figure(name="profile_execution_stats", figure=figure, title="Profiling: Execution Stats")
 
     def plot_free_rtos_system_status_profiling(self):
         """!
@@ -423,7 +477,7 @@ class Analyzer(object):
                                       mode='lines', line={'color': 'blue'}),
                          3, 1)
 
-        self._add_figure(name="profile_system_status", figure=figure, title="Profiling: System Status")
+        self._add_figure(name="profile_freertos_system_status", figure=figure, title="Profiling: FreeRTOS System Status")
 
     def plot_measurement_pipeline_profiling(self):
         """!
@@ -788,6 +842,7 @@ Load and display information stored in a FusionEngine binary file.
     analyzer.plot_free_rtos_system_status_profiling()
     analyzer.plot_measurement_pipeline_profiling()
     analyzer.plot_execution_profiling()
+    analyzer.plot_execution_stats_profiling()
 
     analyzer.generate_index(auto_open=not options.no_index)
 
