@@ -1,8 +1,10 @@
 from datetime import datetime, timezone
 from enum import IntEnum
+import re
 from typing import List
 
 from aenum import extend_enum
+from construct import Struct, Int64ul, Int32ul, Int8ul, Computed, Padding, this, Array
 import numpy as np
 
 from . import message_type_to_class
@@ -28,6 +30,8 @@ class InternalMessageType(IntEnum):
     PROFILE_PIPELINE = 20040
     PROFILE_EXECUTION_DEFINITION = 20044
     PROFILE_EXECUTION = 20048
+    PROFILE_FREERTOS_SYSTEM_STATUS = 20052
+    PROFILE_FREERTOS_TASK_DEFINITION = 20056
 
 
 # Extend the message type enum with internal types.
@@ -40,6 +44,8 @@ PROFILING_TYPES = [
     MessageType.PROFILE_PIPELINE,
     MessageType.PROFILE_EXECUTION_DEFINITION,
     MessageType.PROFILE_EXECUTION,
+    MessageType.PROFILE_FREERTOS_SYSTEM_STATUS,
+    MessageType.PROFILE_FREERTOS_TASK_DEFINITION,
 ]
 
 
@@ -617,6 +623,109 @@ class ProfileExecutionMessage(MessagePayload):
         numpy_data.points = {id_to_name[id]: data for id, data in numpy_data.points.items()}
         return id_to_name
 
+class ProfileFreeRtosSystemStatusMessage(MessagePayload):
+    """!
+    @brief FreeRTOS System-level profiling data.
+    """
+    MESSAGE_TYPE = MessageType.PROFILE_FREERTOS_SYSTEM_STATUS
+    DEFINITION_TYPE = MessageType.PROFILE_FREERTOS_TASK_DEFINITION
+
+    _CPU_USAGE_SCALE = 2.0
+
+    ProfileFreeRtosTaskStatusEntryConstruct = Struct(
+        Padding(3),
+        "cpu_usage" / Int8ul,
+        "stack_high_water_mark_bytes" / Int32ul,
+    )
+
+    ProfileFreeRtosSystemStatusMessageConstruct = Struct(
+        "system_time_ns" / Int64ul,
+        "heap_free_bytes" / Int32ul,
+        "sbrk_free_bytes" / Int32ul,
+        Padding(3),
+        "num_tasks" / Int8ul,
+        "task_entries" / Array(this.num_tasks, ProfileFreeRtosTaskStatusEntryConstruct),
+    )
+
+    def __init__(self):
+        self.system_time_ns = 0,
+        self.heap_free_bytes = 0,
+        self.sbrk_free_bytes = 0,
+        self.task_entries = []
+
+    def get_type(self) -> MessageType:
+        return ProfileSystemStatusMessage.MESSAGE_TYPE
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        values = dict(self.__dict__)
+
+        def percent_to_int(value):
+            if np.isnan(value):
+                return ProfileSystemStatusMessage._INVALID_CPU_USAGE
+            else:
+                return int(value * ProfileSystemStatusMessage._CPU_USAGE_SCALE)
+        for status in values['task_entries']:
+            status['cpu_usage'] = percent_to_int(status['cpu_usage'])
+        values['num_tasks'] = len(values['task_entries'])
+
+        packed_data = ProfileFreeRtosSystemStatusMessage.ProfileFreeRtosSystemStatusMessageConstruct.build(values)
+
+        if buffer is None:
+            buffer = packed_data
+        else:
+            buffer[offset:(offset + len(packed_data))] = packed_data
+
+        if return_buffer:
+            return buffer
+        else:
+            return offset - len(packed_data)
+
+    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+        parsed = ProfileFreeRtosSystemStatusMessage.ProfileFreeRtosSystemStatusMessageConstruct.parse(buffer[offset:])
+        self.__dict__.update(parsed)
+        def int_to_percent(value):
+            if value == ProfileSystemStatusMessage._INVALID_CPU_USAGE:
+                return np.isnan(value)
+            else:
+                return value / ProfileSystemStatusMessage._CPU_USAGE_SCALE
+        for status in self.task_entries:
+            status['cpu_usage'] = int_to_percent(status['cpu_usage'])
+        return parsed._io.tell()
+
+    def __repr__(self):
+        return '%s @ system time %s sec' % \
+               (self.MESSAGE_TYPE.name, self.values['system_time']['timestamp'])
+
+    def __str__(self):
+        string = f'FreeRTOS System Profiling @ System time {self.system_time_ns*1e-9:.3} sec\n'
+        string += f'\theap_free_bytes: {self.heap_free_bytes}\n'
+        string += f'\tsbrk_free_bytes: {self.sbrk_free_bytes}\n'
+        string += f'\tTasks:\n'
+        for task in self.task_entries:
+            string += f'\t\tcpu_usage: {task.cpu_usage}%\n'
+            string += f'\t\tstack_high_water_mark_bytes: {task.stack_high_water_mark_bytes}\n'
+        return string
+
+    def calcsize(self) -> int:
+        return len(self.pack())
+
+    @classmethod
+    def to_numpy(cls, messages):
+        result = {
+            'system_time_sec': np.array([m.system_time_ns * 1e-9 for m in messages]),
+            'heap_free_bytes': np.array([m.heap_free_bytes for m in messages]),
+            'sbrk_free_bytes': np.array([m.sbrk_free_bytes for m in messages]),
+            'task_cpu_usage_percent': [],
+            'task_min_stack_free_bytes': [],
+        }
+        if len(messages) > 0:
+            num_tasks = len(messages[0].task_entries)
+            for i in range(num_tasks):
+                task_cpu_usage_percent = np.array([m.task_entries[i].cpu_usage for m in messages])
+                result['task_cpu_usage_percent'].append(task_cpu_usage_percent)
+                task_min_stack_free_bytes = np.array([m.task_entries[i].stack_high_water_mark_bytes for m in messages])
+                result['task_min_stack_free_bytes'].append(task_min_stack_free_bytes)
+        return result
 
 # Extend the message class with internal types.
 message_type_to_class.update({
@@ -625,5 +734,7 @@ message_type_to_class.update({
     ProfilePipelineMessage.DEFINITION_TYPE: ProfileDefinitionMessage,
     ProfilePipelineMessage.MESSAGE_TYPE: ProfilePipelineMessage,
     ProfileExecutionMessage.DEFINITION_TYPE: ProfileDefinitionMessage,
-    ProfileExecutionMessage.MESSAGE_TYPE: ProfileExecutionMessage
+    ProfileExecutionMessage.MESSAGE_TYPE: ProfileExecutionMessage,
+    ProfileFreeRtosSystemStatusMessage.MESSAGE_TYPE: ProfileFreeRtosSystemStatusMessage,
+    ProfileFreeRtosSystemStatusMessage.DEFINITION_TYPE: ProfileDefinitionMessage,
 })
