@@ -634,8 +634,7 @@ class ProfileFreeRtosSystemStatusMessage(MessagePayload):
 
     ProfileFreeRtosTaskStatusEntryConstruct = Struct(
         Padding(3),
-        "_cpu_usage" / Int8ul,
-        "cpu_usage" / Computed(this._cpu_usage / _CPU_USAGE_SCALE),
+        "cpu_usage" / Int8ul,
         "stack_high_water_mark_bytes" / Int32ul,
     )
 
@@ -649,36 +648,32 @@ class ProfileFreeRtosSystemStatusMessage(MessagePayload):
     )
 
     def __init__(self):
-        self.values = {
-            "system_time_ns": 0,
-            "heap_free_bytes": 0,
-            "sbrk_free_bytes": 0,
-            "num_tasks": 0,
-            "task_entries": []
-        }
+        self.system_time_ns = 0,
+        self.heap_free_bytes = 0,
+        self.sbrk_free_bytes = 0,
+        self.task_entries = []
 
     def get_type(self) -> MessageType:
         return ProfileSystemStatusMessage.MESSAGE_TYPE
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        values = dict(self.__dict__)
+
         def percent_to_int(value):
             if np.isnan(value):
                 return ProfileSystemStatusMessage._INVALID_CPU_USAGE
             else:
                 return int(value * ProfileSystemStatusMessage._CPU_USAGE_SCALE)
+        for status in values['task_entries']:
+            status['cpu_usage'] = percent_to_int(status['cpu_usage'])
+        values['num_tasks'] = len(values['task_entries'])
 
-        Timestamp.compute_construct_fields(self.values['system_time'])
-        for status in self.values['task_entries']:
-            status['_cpu_usage'] = percent_to_int(status['cpu_usage'])
-        self.values['num_tasks'] = len(self.values['task_entries'])
-
-        packed_data = ProfileFreeRtosSystemStatusMessage.ProfileFreeRtosSystemStatusMessageConstruct.build(self.values)
+        packed_data = ProfileFreeRtosSystemStatusMessage.ProfileFreeRtosSystemStatusMessageConstruct.build(values)
 
         if buffer is None:
             buffer = packed_data
         else:
-            for i in range(len(packed_data)):
-                buffer[offset + i] = packed_data[i]
+            buffer[offset:(offset + len(packed_data))] = packed_data
 
         if return_buffer:
             return buffer
@@ -686,36 +681,49 @@ class ProfileFreeRtosSystemStatusMessage(MessagePayload):
             return offset - len(packed_data)
 
     def unpack(self, buffer: bytes, offset: int = 0) -> int:
-        self.values = ProfileFreeRtosSystemStatusMessage.ProfileFreeRtosSystemStatusMessageConstruct.parse(buffer[offset:])
-        return self.calcsize()
+        parsed = ProfileFreeRtosSystemStatusMessage.ProfileFreeRtosSystemStatusMessageConstruct.parse(buffer[offset:])
+        self.__dict__.update(parsed)
+        def int_to_percent(value):
+            if value == ProfileSystemStatusMessage._INVALID_CPU_USAGE:
+                return np.isnan(value)
+            else:
+                return value / ProfileSystemStatusMessage._CPU_USAGE_SCALE
+        for status in self.task_entries:
+            status['cpu_usage'] = int_to_percent(status['cpu_usage'])
+        return parsed._io.tell()
 
     def __repr__(self):
         return '%s @ system time %s sec' % \
                (self.MESSAGE_TYPE.name, self.values['system_time']['timestamp'])
 
     def __str__(self):
-        string = self.MESSAGE_TYPE.name + '\n'
-        string += str(self.values)
-        return re.sub(r'\s*Container:', '', string)
+        string = f'FreeRTOS System Profiling @ System time {self.system_time_ns*1e-9:.3} sec\n'
+        string += f'\theap_free_bytes: {self.heap_free_bytes}\n'
+        string += f'\tsbrk_free_bytes: {self.sbrk_free_bytes}\n'
+        string += f'\tTasks:\n'
+        for task in self.task_entries:
+            string += f'\t\tcpu_usage: {task.cpu_usage}%\n'
+            string += f'\t\tstack_high_water_mark_bytes: {task.stack_high_water_mark_bytes}\n'
+        return string
 
     def calcsize(self) -> int:
-        return len(ProfileFreeRtosSystemStatusMessage.ProfileFreeRtosSystemStatusMessageConstruct.build(self.values))
+        return len(self.pack())
 
     @classmethod
     def to_numpy(cls, messages):
         result = {
-            'system_time_sec': np.array([m.values['system_time_ns'] * 1e-9 for m in messages]),
-            'heap_free_bytes': np.array([m.values['heap_free_bytes'] for m in messages]),
-            'sbrk_free_bytes': np.array([m.values['sbrk_free_bytes'] for m in messages]),
+            'system_time_sec': np.array([m.system_time_ns * 1e-9 for m in messages]),
+            'heap_free_bytes': np.array([m.heap_free_bytes for m in messages]),
+            'sbrk_free_bytes': np.array([m.sbrk_free_bytes for m in messages]),
             'task_cpu_usage_percent': [],
             'task_min_stack_free_bytes': [],
         }
         if len(messages) > 0:
-            num_tasks = messages[0].values['num_tasks']
+            num_tasks = len(messages[0].task_entries)
             for i in range(num_tasks):
-                task_cpu_usage_percent = np.array([m.values['task_entries'][i]['cpu_usage'] for m in messages])
+                task_cpu_usage_percent = np.array([m.task_entries[i].cpu_usage for m in messages])
                 result['task_cpu_usage_percent'].append(task_cpu_usage_percent)
-                task_min_stack_free_bytes = np.array([m.values['task_entries'][i]['stack_high_water_mark_bytes'] for m in messages])
+                task_min_stack_free_bytes = np.array([m.task_entries[i].stack_high_water_mark_bytes for m in messages])
                 result['task_min_stack_free_bytes'].append(task_min_stack_free_bytes)
         return result
 
