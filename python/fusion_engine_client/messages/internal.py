@@ -35,6 +35,8 @@ class InternalMessageType(IntEnum):
     PROFILE_FREERTOS_TASK_DEFINITION = 20056
     PROFILE_EXECUTION_STATS = 20060
     PROFILE_EXECUTION_STATS_DEFINITION = 20061
+    PROFILE_COUNTER = 20062
+    PROFILE_COUNTER_DEFINITION = 20063
 
 
 # Extend the message type enum with internal types.
@@ -706,8 +708,8 @@ class ProfileFreeRtosSystemStatusMessage(MessagePayload):
         string += f'\tTasks:\n'
         for task in self.task_entries:
             string += f'\t\tcpu_usage: {task.cpu_usage}%\n'
-            string += f'\t\tstack_high_water_mark_bytes: {task.stack_high_water_mark_bytes}'
-        return string
+            string += f'\t\tstack_high_water_mark_bytes: {task.stack_high_water_mark_bytes}\n'
+        return string[:-1]
 
     def calcsize(self) -> int:
         return len(self.pack())
@@ -785,8 +787,8 @@ class ProfileExecutionStatsMessage(MessagePayload):
         for trace in self.entries:
             string += f'\t\trunning_time_ns: {trace.running_time_ns}\n'
             string += f'\t\tmax_run_time_ns: {trace.max_run_time_ns}\n'
-            string += f'\t\trun_count: {trace.run_count}'
-        return string
+            string += f'\t\trun_count: {trace.run_count}\n'
+        return string[:-1]
 
     def calcsize(self) -> int:
         return len(self.pack())
@@ -810,6 +812,76 @@ class ProfileExecutionStatsMessage(MessagePayload):
                 result['run_count'].append(run_count)
         return result
 
+class ProfileCounterMessage(MessagePayload):
+    """!
+    @brief Execution stats profiling data.
+    """
+    MESSAGE_TYPE = MessageType.PROFILE_COUNTER
+    DEFINITION_TYPE = MessageType.PROFILE_COUNTER_DEFINITION
+
+    ProfileCounterEntryConstruct = Struct(
+        "count" / Int32ul,
+    )
+
+    ProfileCounterMessageConstruct = Struct(
+        "system_time_ns" / Int64ul,
+        Padding(2),
+        "num_entries" / Int16ul,
+        "entries" / Array(this.num_entries, ProfileCounterEntryConstruct),
+    )
+
+    def __init__(self):
+        self.system_time_ns = 0,
+        self.entries = []
+
+    def get_type(self) -> MessageType:
+        return ProfileCounterMessage.MESSAGE_TYPE
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        values = dict(self.__dict__)
+        packed_data = ProfileCounterMessage.ProfileCounterMessageConstruct.build(values)
+
+        if buffer is None:
+            buffer = packed_data
+        else:
+            buffer[offset:(offset + len(packed_data))] = packed_data
+
+        if return_buffer:
+            return buffer
+        else:
+            return offset - len(packed_data)
+
+    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+        parsed = ProfileCounterMessage.ProfileCounterMessageConstruct.parse(buffer[offset:])
+        self.__dict__.update(parsed)
+        return parsed._io.tell()
+
+    def __repr__(self):
+        return f'{self.MESSAGE_TYPE.name} @ System time {self.system_time_ns*1e-9:.3} sec'
+
+    def __str__(self):
+        string = f'Profiling Counters @ System time {self.system_time_ns*1e-9:.3} sec\n'
+        string += f'\Counters:\n'
+        for counter in self.entries:
+            string += f'\t\tcount: {counter.count}\n'
+        return string[-1]
+
+    def calcsize(self) -> int:
+        return len(self.pack())
+
+    @classmethod
+    def to_numpy(cls, messages):
+        result = {
+            'system_time_sec': np.array([m.system_time_ns * 1e-9 for m in messages]),
+            'counters': [],
+        }
+        if len(messages) > 0:
+            num_tasks = len(messages[0].entries)
+            for i in range(num_tasks):
+                counters = np.array([m.entries[i].count for m in messages])
+                result['counters'].append(counters)
+        return result
+
 # Extend the message class with internal types.
 message_type_to_class.update({
     MessageRequest.MESSAGE_TYPE: MessageRequest,
@@ -822,4 +894,6 @@ message_type_to_class.update({
     ProfileFreeRtosSystemStatusMessage.DEFINITION_TYPE: ProfileDefinitionMessage,
     ProfileExecutionStatsMessage.MESSAGE_TYPE: ProfileExecutionStatsMessage,
     ProfileExecutionStatsMessage.DEFINITION_TYPE: ProfileDefinitionMessage,
+    ProfileCounterMessage.MESSAGE_TYPE: ProfileCounterMessage,
+    ProfileCounterMessage.DEFINITION_TYPE: ProfileDefinitionMessage,
 })
