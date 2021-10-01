@@ -697,8 +697,7 @@ class ProfileFreeRtosSystemStatusMessage(MessagePayload):
         return parsed._io.tell()
 
     def __repr__(self):
-        return '%s @ system time %s sec' % \
-               (self.MESSAGE_TYPE.name, self.system_time_ns * 1e-9)
+        return f'{self.MESSAGE_TYPE.name} @ System time {self.system_time_ns*1e-9:.3} sec'
 
     def __str__(self):
         string = f'FreeRTOS System Profiling @ System time {self.system_time_ns*1e-9:.3} sec\n'
@@ -707,7 +706,7 @@ class ProfileFreeRtosSystemStatusMessage(MessagePayload):
         string += f'\tTasks:\n'
         for task in self.task_entries:
             string += f'\t\tcpu_usage: {task.cpu_usage}%\n'
-            string += f'\t\tstack_high_water_mark_bytes: {task.stack_high_water_mark_bytes}\n'
+            string += f'\t\tstack_high_water_mark_bytes: {task.stack_high_water_mark_bytes}'
         return string
 
     def calcsize(self) -> int:
@@ -778,8 +777,7 @@ class ProfileExecutionStatsMessage(MessagePayload):
         return parsed._io.tell()
 
     def __repr__(self):
-        return '%s @ system time %s sec' % \
-               (self.MESSAGE_TYPE.name, self.system_time_ns * 1e-9)
+        return f'{self.MESSAGE_TYPE.name} @ System time {self.system_time_ns*1e-9:.3} sec'
 
     def __str__(self):
         string = f'Execution Stats Profiling @ System time {self.system_time_ns*1e-9:.3} sec\n'
@@ -787,7 +785,7 @@ class ProfileExecutionStatsMessage(MessagePayload):
         for trace in self.entries:
             string += f'\t\trunning_time_ns: {trace.running_time_ns}\n'
             string += f'\t\tmax_run_time_ns: {trace.max_run_time_ns}\n'
-            string += f'\t\trun_count: {trace.run_count}\n'
+            string += f'\t\trun_count: {trace.run_count}'
         return string
 
     def calcsize(self) -> int:
