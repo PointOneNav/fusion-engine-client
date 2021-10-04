@@ -420,6 +420,88 @@ class Analyzer(object):
 
         self._add_figure(name="profile_execution_stats", figure=figure, title="Profiling: Execution Stats")
 
+    def plot_counter_profiling(self):
+        """!
+        @brief Plot execution profiling stats.
+        """
+        if self.output_dir is None:
+            return
+
+        # Read the data.
+        result = self.reader.read(message_types=[ProfileCounterMessage], remove_nan_times=False, **self.params)
+        data = result[ProfileCounterMessage.MESSAGE_TYPE]
+
+        if len(data.system_time_sec) == 0:
+            self.logger.info('No execution profiling stats data available.')
+            return
+
+        # Read the last task name message to map IDs to names.
+        params = copy.deepcopy(self.params)
+        params['max_messages'] = -1
+        result = self.reader.read(message_types=[ProfileCounterMessage.DEFINITION_TYPE], remove_nan_times=False,
+                                  **params)
+        if len(result[ProfileCounterMessage.DEFINITION_TYPE].messages) != 0:
+            definition = result[ProfileCounterMessage.DEFINITION_TYPE].messages[0]
+            id_to_name = definition.to_dict()
+        else:
+            self.logger.warn('No execution profiling stats names received.')
+            id_to_name = {}
+
+        delay_queue_count_idx = None
+        delay_queue_ns_idx = None
+        msg_buff_map = []
+        measurement_map = []
+        for k, v in id_to_name.items():
+            if v == 'delay_queue_count':
+                delay_queue_count_idx = k
+            elif v == 'delay_queue_ns':
+                delay_queue_ns_idx = k
+            elif v.startswith('msg_buff_'):
+                 msg_buff_map.append((k, v))
+            elif v.startswith('meas_'):
+                measurement_map.append((k, v))
+
+        if (delay_queue_count_idx is None or delay_queue_ns_idx is None):
+            self.logger.info('Delay queue depth data missing.')
+            return
+
+        time = data.system_time_sec - data.system_time_sec[0]
+
+        figure = make_subplots(rows=4, cols=1, print_grid=False, shared_xaxes=True,
+                               subplot_titles=['Delay Queue Depth Measurements', 'Delay Queue Depth Age', 'Message Buffer Free Space', 'Measurement Rates'])
+
+        figure['layout'].update(showlegend=True)
+        figure['layout']['xaxis'].update(title="System Time (sec)")
+        for i in range(2):
+            figure['layout']['xaxis%d' % (i + 1)].update(showticklabels=True)
+        figure['layout']['yaxis1'].update(title="Queue Depth (measurements)")
+        figure['layout']['yaxis2'].update(title="Queue Age (ms)")
+        figure['layout']['yaxis3'].update(title="Buffer Free (bytes)")
+        figure['layout']['yaxis4'].update(title="Message Rate (Hz)")
+
+        figure.add_trace(go.Scattergl(x=time, y=data.counters[delay_queue_count_idx], showlegend=False,
+                                        mode='lines', line={'color': 'red'}),
+                            1, 1)
+        figure.add_trace(go.Scattergl(x=time, y=data.counters[delay_queue_ns_idx] / 1e6, showlegend=False,
+                            mode='lines', line={'color': 'blue'}),
+                            2, 1)
+
+        for i in range(len(msg_buff_map)):
+            color = plotly.colors.DEFAULT_PLOTLY_COLORS[i % len(plotly.colors.DEFAULT_PLOTLY_COLORS)]
+            idx, buffer_name = msg_buff_map[i]
+            figure.add_trace(go.Scattergl(x=time, y=data.counters[idx], name=f'{buffer_name}',
+                                            mode='lines', line={'color': color}),
+                            3, 1)
+
+        for i in range(len(measurement_map)):
+            color = plotly.colors.DEFAULT_PLOTLY_COLORS[i % len(plotly.colors.DEFAULT_PLOTLY_COLORS)]
+            idx, measurement_name = measurement_map[i]
+            figure.add_trace(go.Scattergl(x=time, y=np.diff(data.counters[idx]) / np.diff(time), name=f'{measurement_name}',
+                                            mode='lines', line={'color': color}),
+                            4, 1)
+
+        self._add_figure(name="profile_queues_counts", figure=figure, title="Profiling: Queues and Counts")
+
     def plot_free_rtos_system_status_profiling(self):
         """!
         @brief Plot system status profiling data.
@@ -843,6 +925,7 @@ Load and display information stored in a FusionEngine binary file.
     analyzer.plot_measurement_pipeline_profiling()
     analyzer.plot_execution_profiling()
     analyzer.plot_execution_stats_profiling()
+    analyzer.plot_counter_profiling()
 
     analyzer.generate_index(auto_open=not options.no_index)
 
