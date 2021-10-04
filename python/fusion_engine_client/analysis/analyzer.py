@@ -420,105 +420,6 @@ class Analyzer(object):
 
         self._add_figure(name="profile_execution_stats", figure=figure, title="Profiling: Execution Stats")
 
-    def _plot_delay_queue(self, data, id_to_name):
-
-        delay_queue_count_idx = None
-        delay_queue_ns_idx = None
-        for k, v in id_to_name.items():
-            if v == 'delay_queue_count':
-                delay_queue_count_idx = k
-            if v == 'delay_queue_ns':
-                delay_queue_ns_idx = k
-
-        if (delay_queue_count_idx is None or delay_queue_ns_idx is None):
-            self.logger.info('Delay queue depth data missing.')
-            return
-
-        time = data.system_time_sec - data.system_time_sec[0]
-
-        figure = make_subplots(rows=2, cols=1, print_grid=False, shared_xaxes=True,
-                               subplot_titles=['Delay Queue Depth Measurements', 'Delay Queue Depth Age'])
-
-        figure['layout'].update(showlegend=False)
-        figure['layout']['xaxis'].update(title="System Time (sec)")
-        for i in range(2):
-            figure['layout']['xaxis%d' % (i + 1)].update(showticklabels=True)
-        figure['layout']['yaxis1'].update(title="Queue Depth (measurements)")
-        figure['layout']['yaxis2'].update(title="Queue Age (ms)")
-
-        figure.add_trace(go.Scattergl(x=time, y=data.counters[delay_queue_count_idx],
-                                        mode='lines', line={'color': 'red'}),
-                            1, 1)
-        figure.add_trace(go.Scattergl(x=time, y=data.counters[delay_queue_ns_idx] / 1e6,
-                            mode='lines', line={'color': 'blue'}),
-                            2, 1)
-
-        self._add_figure(name="profile_delay_queue_depth", figure=figure, title="Profiling: Delay Queue Depth")
-
-    def _plot_msg_buffers(self, data, id_to_name):
-
-        msg_buff_map = []
-        for k, v in id_to_name.items():
-            if v.startswith('msg_buff_'):
-                msg_buff_map.append((k, v[len('msg_buff_'):]))
-
-        if (len(msg_buff_map) == 0):
-            self.logger.info('Message buffer data missing.')
-            return
-
-        time = data.system_time_sec - data.system_time_sec[0]
-
-        figure = go.Figure(
-            layout=go.Layout(
-                title=go.layout.Title(text="Measurement Buffer Free Space")
-            )
-        )
-
-        figure['layout'].update(showlegend=True)
-        figure['layout']['xaxis'].update(title="System Time (sec)")
-        figure['layout']['xaxis'].update(showticklabels=True)
-        figure['layout']['yaxis'].update(title="Buffer Free (bytes)")
-
-        for i in range(len(msg_buff_map)):
-            color = plotly.colors.DEFAULT_PLOTLY_COLORS[i % len(plotly.colors.DEFAULT_PLOTLY_COLORS)]
-            idx, buffer_name = msg_buff_map[i]
-            figure.add_trace(go.Scattergl(x=time, y=data.counters[idx], name=f'{buffer_name}',
-                                            mode='lines', line={'color': color}))
-
-        self._add_figure(name="profile_msg_buffers", figure=figure, title="Profiling: Message Buffer Free")
-
-    def _plot_measurement_rates(self, data, id_to_name):
-
-        msg_buff_map = []
-        for k, v in id_to_name.items():
-            if v.startswith('meas_'):
-                msg_buff_map.append((k, v[len('meas_'):]))
-
-        if (len(msg_buff_map) == 0):
-            self.logger.info('Measurement count data missing.')
-            return
-
-        time = data.system_time_sec - data.system_time_sec[0]
-
-        figure = go.Figure(
-            layout=go.Layout(
-                title=go.layout.Title(text="Measurement Rates")
-            )
-        )
-
-        figure['layout'].update(showlegend=True)
-        figure['layout']['xaxis'].update(title="System Time (sec)")
-        figure['layout']['xaxis'].update(showticklabels=True)
-        figure['layout']['yaxis'].update(title="Message Rate (Hz)")
-
-        for i in range(len(msg_buff_map)):
-            color = plotly.colors.DEFAULT_PLOTLY_COLORS[i % len(plotly.colors.DEFAULT_PLOTLY_COLORS)]
-            idx, buffer_name = msg_buff_map[i]
-            figure.add_trace(go.Scattergl(x=time, y=np.diff(data.counters[idx]) / np.diff(time), name=f'{buffer_name}',
-                                            mode='lines', line={'color': color}))
-
-        self._add_figure(name="profile_meas_rates", figure=figure, title="Profiling: Measurement Rates")
-
     def plot_counter_profiling(self):
         """!
         @brief Plot execution profiling stats.
@@ -546,9 +447,60 @@ class Analyzer(object):
             self.logger.warn('No execution profiling stats names received.')
             id_to_name = {}
 
-        self._plot_delay_queue(data, id_to_name)
-        self._plot_msg_buffers(data, id_to_name)
-        self._plot_measurement_rates(data, id_to_name)
+        delay_queue_count_idx = None
+        delay_queue_ns_idx = None
+        msg_buff_map = []
+        measurement_map = []
+        for k, v in id_to_name.items():
+            if v == 'delay_queue_count':
+                delay_queue_count_idx = k
+            elif v == 'delay_queue_ns':
+                delay_queue_ns_idx = k
+            elif v.startswith('msg_buff_'):
+                 msg_buff_map.append((k, v))
+            elif v.startswith('meas_'):
+                measurement_map.append((k, v))
+
+        if (delay_queue_count_idx is None or delay_queue_ns_idx is None):
+            self.logger.info('Delay queue depth data missing.')
+            return
+
+        time = data.system_time_sec - data.system_time_sec[0]
+
+        figure = make_subplots(rows=4, cols=1, print_grid=False, shared_xaxes=True,
+                               subplot_titles=['Delay Queue Depth Measurements', 'Delay Queue Depth Age', 'Message Buffer Free Space', 'Measurement Rates'])
+
+        figure['layout'].update(showlegend=True)
+        figure['layout']['xaxis'].update(title="System Time (sec)")
+        for i in range(2):
+            figure['layout']['xaxis%d' % (i + 1)].update(showticklabels=True)
+        figure['layout']['yaxis1'].update(title="Queue Depth (measurements)")
+        figure['layout']['yaxis2'].update(title="Queue Age (ms)")
+        figure['layout']['yaxis3'].update(title="Buffer Free (bytes)")
+        figure['layout']['yaxis4'].update(title="Message Rate (Hz)")
+
+        figure.add_trace(go.Scattergl(x=time, y=data.counters[delay_queue_count_idx], showlegend=False,
+                                        mode='lines', line={'color': 'red'}),
+                            1, 1)
+        figure.add_trace(go.Scattergl(x=time, y=data.counters[delay_queue_ns_idx] / 1e6, showlegend=False,
+                            mode='lines', line={'color': 'blue'}),
+                            2, 1)
+
+        for i in range(len(msg_buff_map)):
+            color = plotly.colors.DEFAULT_PLOTLY_COLORS[i % len(plotly.colors.DEFAULT_PLOTLY_COLORS)]
+            idx, buffer_name = msg_buff_map[i]
+            figure.add_trace(go.Scattergl(x=time, y=data.counters[idx], name=f'{buffer_name}',
+                                            mode='lines', line={'color': color}),
+                            3, 1)
+
+        for i in range(len(measurement_map)):
+            color = plotly.colors.DEFAULT_PLOTLY_COLORS[i % len(plotly.colors.DEFAULT_PLOTLY_COLORS)]
+            idx, measurement_name = measurement_map[i]
+            figure.add_trace(go.Scattergl(x=time, y=np.diff(data.counters[idx]) / np.diff(time), name=f'{measurement_name}',
+                                            mode='lines', line={'color': color}),
+                            4, 1)
+
+        self._add_figure(name="profile_queues_counts", figure=figure, title="Profiling: Queues and Counts")
 
     def plot_free_rtos_system_status_profiling(self):
         """!

@@ -709,7 +709,7 @@ class ProfileFreeRtosSystemStatusMessage(MessagePayload):
         for task in self.task_entries:
             string += f'\t\tcpu_usage: {task.cpu_usage}%\n'
             string += f'\t\tstack_high_water_mark_bytes: {task.stack_high_water_mark_bytes}\n'
-        return string[:-1]
+        return string.rstrip()
 
     def calcsize(self) -> int:
         return len(self.pack())
@@ -788,7 +788,7 @@ class ProfileExecutionStatsMessage(MessagePayload):
             string += f'\t\trunning_time_ns: {trace.running_time_ns}\n'
             string += f'\t\tmax_run_time_ns: {trace.max_run_time_ns}\n'
             string += f'\t\trun_count: {trace.run_count}\n'
-        return string[:-1]
+        return string.rstrip()
 
     def calcsize(self) -> int:
         return len(self.pack())
