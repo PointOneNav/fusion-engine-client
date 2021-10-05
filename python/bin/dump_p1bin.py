@@ -103,7 +103,9 @@ Dump contents of a .p1bin file to individual binary files, separated by message 
                 valid_count += 1
             except:
                 break
+
     print(f'Found {valid_count} messages of types {list(out_files.keys())}')
+    print(f"Output stored in '{output_dir}'.")
 
 
 if __name__ == "__main__":

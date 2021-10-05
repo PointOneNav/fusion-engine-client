@@ -103,7 +103,9 @@ messages).
                     valid_count += 1
                 except ValueError:
                     in_fd.seek(-read_len + 1, os.SEEK_CUR)
+
     print(f'Found {valid_count} valid fusion engine messages')
+    print(f"Output stored in '{output_path}'.")
 
 
 if __name__ == "__main__":
