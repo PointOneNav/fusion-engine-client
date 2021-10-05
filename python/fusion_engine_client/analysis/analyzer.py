@@ -392,7 +392,7 @@ class Analyzer(object):
             self.logger.warn('No execution profiling stats names received.')
             id_to_name = {}
 
-        time = data.system_time_sec - data.system_time_sec[0]
+        time = data.system_time_sec - self.reader.get_system_t0()
 
         figure = make_subplots(rows=3, cols=1, print_grid=False, shared_xaxes=True,
                                subplot_titles=['Average Processing Time', 'Max Processing Time',
@@ -469,7 +469,7 @@ class Analyzer(object):
             self.logger.info('Delay queue depth data missing.')
             return
 
-        time = data.system_time_sec - data.system_time_sec[0]
+        time = data.system_time_sec - self.reader.get_system_t0()
 
         figure = make_subplots(rows=4, cols=1, print_grid=False, shared_xaxes=True,
                                subplot_titles=['Delay Queue Depth Measurements', 'Delay Queue Depth Age',
@@ -535,7 +535,7 @@ class Analyzer(object):
             self.logger.warn('No FreeRTOS task names received.')
             id_to_name = {}
 
-        time = data.system_time_sec - data.system_time_sec[0]
+        time = data.system_time_sec - self.reader.get_system_t0()
 
         figure = make_subplots(rows=3, cols=1, print_grid=False, shared_xaxes=True,
                                subplot_titles=['CPU Usage', 'Stack High Water Marks', 'Dynamic Memory Free'])
