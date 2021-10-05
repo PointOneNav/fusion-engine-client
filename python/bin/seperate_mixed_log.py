@@ -8,7 +8,7 @@ import sys
 root_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(root_dir)
 
-from fusion_engine_client.messages.defs import MessageHeader
+from fusion_engine_client.messages.defs import MessageHeader, MessageType
 # Note: This import isn't actually used explicitly, but by importing it all the internal message types will be added to
 # the MessageType enum and can be printed out in the verbose print below.
 from fusion_engine_client.messages.internal import InternalMessageType
@@ -89,6 +89,7 @@ messages).
 
     header = MessageHeader()
     valid_count = 0
+    message_counts = {}
     with open(input_path, 'rb') as in_fd:
         with open(output_path, 'wb') as out_path:
             while True:
@@ -118,15 +119,21 @@ messages).
                         print('Read %s message @ %d. [length=%d B, # messages=%d]' %
                               (header.get_type_string(), offset, MessageHeader.calcsize() + header.payload_size_bytes,
                                valid_count + 1))
+
                     out_path.write(data)
                     valid_count += 1
+                    message_counts.setdefault(header.message_type, 0)
+                    message_counts[header.message_type] += 1
                 except ValueError as e:
                     offset += 1
                     if options.verbose >= 2:
                         print('%s Rewinding to offset %d.' % (str(e), offset))
                     in_fd.seek(offset, os.SEEK_SET)
 
-    print(f'Found {valid_count} valid fusion engine messages')
+    print(f'Found {valid_count} valid FusionEngine messages.')
+    if options.verbose >= 1:
+        for type, count in message_counts.items():
+            print('  %s: %d' % (MessageType.get_type_string(type), count))
     print(f"Output stored in '{output_path}'.")
 
 
