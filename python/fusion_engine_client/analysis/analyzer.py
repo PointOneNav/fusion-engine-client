@@ -389,7 +389,7 @@ class Analyzer(object):
             definition = result[ProfileExecutionStatsMessage.DEFINITION_TYPE].messages[0]
             id_to_name = definition.to_dict()
         else:
-            self.logger.warn('No execution profiling stats names received.')
+            self.logger.warning('No execution profiling stats names received.')
             id_to_name = {}
 
         time = data.system_time_sec - self.reader.get_system_t0()
@@ -448,7 +448,7 @@ class Analyzer(object):
             definition = result[ProfileCounterMessage.DEFINITION_TYPE].messages[0]
             id_to_name = definition.to_dict()
         else:
-            self.logger.warn('No execution profiling stats names received.')
+            self.logger.warning('No execution profiling stats names received.')
             id_to_name = {}
 
         delay_queue_count_idx = None
@@ -532,7 +532,7 @@ class Analyzer(object):
             definition = result[ProfileFreeRtosSystemStatusMessage.DEFINITION_TYPE].messages[0]
             id_to_name = definition.to_dict()
         else:
-            self.logger.warn('No FreeRTOS task names received.')
+            self.logger.warning('No FreeRTOS task names received.')
             id_to_name = {}
 
         time = data.system_time_sec - self.reader.get_system_t0()
