@@ -44,6 +44,10 @@ messages).
     parser.add_argument('-o', '--output', type=str, metavar='DIR',
                         help="The directory where output will be stored. Defaults to the parent directory of the input"
                              "file, or to the log directory if reading from a log.")
+    parser.add_argument('-p', '--prefix', type=str,
+                        help="Use the specified prefix for the output file: `<prefix>.p1log`. Otherwise, use the "
+                             "filename of the input data file (e.g., `input.p1log`), or `fusion_engine` if reading "
+                             "from a log (e.g., `fusion_engine.p1log`).")
     parser.add_argument('-v', '--verbose', action='count', default=0,
                         help="Print verbose/trace debugging messages.")
 
@@ -74,9 +78,14 @@ messages).
         sys.exit(1)
 
     # Read through the data file, searching for valid FusionEngine messages to extract and store in
-    # 'output_dir/basename.p1log'.
-    basename = os.path.splitext(os.path.basename(input_path))[0]
-    output_path = os.path.join(output_dir, basename + '.p1log')
+    # 'output_dir/<prefix>.p1log'.
+    if options.prefix is not None:
+        prefix = options.prefix
+    elif log_id is not None:
+        prefix = 'fusion_engine'
+    else:
+        prefix = os.path.splitext(os.path.basename(input_path))[0]
+    output_path = os.path.join(output_dir, prefix + '.p1log')
 
     header = MessageHeader()
     valid_count = 0

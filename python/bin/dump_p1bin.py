@@ -52,6 +52,9 @@ Dump contents of a .p1bin file to individual binary files, separated by message 
     parser.add_argument('-o', '--output', type=str, metavar='DIR',
                         help="The directory where output will be stored. Defaults to the parent directory of the input"
                              "file, or to the log directory if reading from a log.")
+    parser.add_argument('-p', '--prefix', type=str,
+                        help="Use the specified prefix for the output file: `<prefix>.p1log`. Otherwise, use the "
+                             "filename of the input data file.")
     parser.add_argument('-v', '--verbose', action='count', default=0,
                         help="Print verbose/trace debugging messages.")
 
@@ -81,9 +84,12 @@ Dump contents of a .p1bin file to individual binary files, separated by message 
         print(str(e))
         sys.exit(1)
 
-    # Parse each entry in the .p1bin file and extract its contents to 'output_dir/basename.message_type.bin', where
+    # Parse each entry in the .p1bin file and extract its contents to 'output_dir/<prefix>.message_type.bin', where
     # message_type is the numeric type identifier.
-    basename = os.path.splitext(os.path.basename(input_path))[0]
+    if options.prefix is not None:
+        prefix = options.prefix
+    else:
+        prefix = os.path.splitext(os.path.basename(input_path))[0]
     out_files = {}
 
     valid_count = 0
@@ -95,7 +101,7 @@ Dump contents of a .p1bin file to individual binary files, separated by message 
                 record = p1bin_entry.parse_stream(in_fd)
                 message_type = record.message_header.message_type
                 if message_type not in out_files:
-                    out_files[message_type] = open(os.path.join(output_dir, f'{basename}.{message_type}.bin'), 'wb')
+                    out_files[message_type] = open(os.path.join(output_dir, f'{prefix}.{message_type}.bin'), 'wb')
                 if options.verbose >= 1:
                     print('Read %d bytes @ %d. [message_type=%d, # messages=%d]' %
                           (len(record.contents), offset, message_type, valid_count + 1))
