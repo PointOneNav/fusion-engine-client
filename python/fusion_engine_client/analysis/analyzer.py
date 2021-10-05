@@ -545,11 +545,13 @@ class Analyzer(object):
         for i in range(len(data.task_cpu_usage_percent)):
             color = plotly.colors.DEFAULT_PLOTLY_COLORS[i % len(plotly.colors.DEFAULT_PLOTLY_COLORS)]
             task_name = id_to_name.get(i, f'unknown_{i}')
-            figure.add_trace(go.Scattergl(x=time, y=data.task_cpu_usage_percent[i], name='Task %s CPU Usage' % task_name,
+            figure.add_trace(go.Scattergl(x=time, y=data.task_cpu_usage_percent[i],
+                                          name='Task %s CPU Usage' % task_name, legendgroup=task_name,
                                           mode='lines', line={'color': color}),
                              1, 1)
-            figure.add_trace(go.Scattergl(x=time, y=data.task_min_stack_free_bytes[i], name='Task %s Stack Free' % task_name,
-                                mode='lines', line={'color': color, 'dash': 'dash'}),
+            figure.add_trace(go.Scattergl(x=time, y=data.task_min_stack_free_bytes[i],
+                                          name='Task %s Stack Free' % task_name, legendgroup=task_name,
+                                          mode='lines', line={'color': color, 'dash': 'dash'}),
                              2, 1)
 
         figure.add_trace(go.Scattergl(x=time, y=data.heap_free_bytes / (1024), name='Heap',
