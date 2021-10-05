@@ -10,7 +10,7 @@ wheel>=0.36.2
 git+https://github.com/adamshapiro0/aenum.git@extend-enum#egg=aenum
 
 numpy>=1.16.0
-constuct>=2.10.0
+construct>=2.10.0
 
 # Required for analysis tools only.
 plotly>=4.0.0
