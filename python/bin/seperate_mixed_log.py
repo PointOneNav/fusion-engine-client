@@ -98,7 +98,7 @@ messages).
 
                 offset = in_fd.tell()
                 if options.verbose >= 2:
-                    print('Reading candidate message @ %d.' % offset)
+                    print('Reading candidate message @ %d (0x%x).' % (offset, offset))
 
                 data = in_fd.read(MessageHeader.calcsize())
                 read_len = len(data)
@@ -116,9 +116,9 @@ messages).
                     header.validate_crc(data)
 
                     if options.verbose >= 1:
-                        print('Read %s message @ %d. [length=%d B, # messages=%d]' %
-                              (header.get_type_string(), offset, MessageHeader.calcsize() + header.payload_size_bytes,
-                               valid_count + 1))
+                        print('Read %s message @ %d (0x%x). [length=%d B, # messages=%d]' %
+                              (header.get_type_string(), offset, offset,
+                               MessageHeader.calcsize() + header.payload_size_bytes, valid_count + 1))
 
                     out_path.write(data)
                     valid_count += 1
@@ -127,7 +127,7 @@ messages).
                 except ValueError as e:
                     offset += 1
                     if options.verbose >= 2:
-                        print('%s Rewinding to offset %d.' % (str(e), offset))
+                        print('%s Rewinding to offset %d (0x%x).' % (str(e), offset, offset))
                     in_fd.seek(offset, os.SEEK_SET)
 
     print(f'Found {valid_count} valid FusionEngine messages.')

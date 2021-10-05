@@ -103,8 +103,8 @@ Dump contents of a .p1bin file to individual binary files, separated by message 
                 if message_type not in out_files:
                     out_files[message_type] = open(os.path.join(output_dir, f'{prefix}.{message_type}.bin'), 'wb')
                 if options.verbose >= 1:
-                    print('Read %d bytes @ %d. [message_type=%d, # messages=%d]' %
-                          (len(record.contents), offset, message_type, valid_count + 1))
+                    print('Read %d bytes @ %d (0x%x). [message_type=%d, # messages=%d]' %
+                          (len(record.contents), offset, offset, message_type, valid_count + 1))
                 out_files[message_type].write(record.contents)
                 valid_count += 1
             except:
