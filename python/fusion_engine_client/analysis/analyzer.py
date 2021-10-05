@@ -347,7 +347,7 @@ class Analyzer(object):
                                           mode='lines', line={'color': color, 'dash': 'dash'}),
                              1, 1)
 
-        figure.add_trace(go.Scattergl(x=time, y=data.used_memory_bytes / (1024 * 1024), name='Used Memory',
+        figure.add_trace(go.Scattergl(x=time, y=data.used_memory_bytes / float(1024 * 1024), name='Used Memory',
                                       mode='lines', line={'color': 'blue'}),
                          2, 1)
 
@@ -560,10 +560,10 @@ class Analyzer(object):
                                           mode='lines', line={'color': color, 'dash': 'dash'}),
                              2, 1)
 
-        figure.add_trace(go.Scattergl(x=time, y=data.heap_free_bytes / (1024), name='Heap',
+        figure.add_trace(go.Scattergl(x=time, y=data.heap_free_bytes / 1024.0, name='Heap',
                                       mode='lines', line={'color': 'red'}),
                          3, 1)
-        figure.add_trace(go.Scattergl(x=time, y=data.sbrk_free_bytes / (1024), name='SBRK',
+        figure.add_trace(go.Scattergl(x=time, y=data.sbrk_free_bytes / 1024.0, name='SBRK',
                                       mode='lines', line={'color': 'blue'}),
                          3, 1)
 
