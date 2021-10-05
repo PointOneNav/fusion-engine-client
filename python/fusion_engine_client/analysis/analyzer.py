@@ -395,7 +395,8 @@ class Analyzer(object):
         time = data.system_time_sec - data.system_time_sec[0]
 
         figure = make_subplots(rows=3, cols=1, print_grid=False, shared_xaxes=True,
-                               subplot_titles=['Average Processing Time', 'Max Processing Time', 'Number of Executions Per Update'])
+                               subplot_titles=['Average Processing Time', 'Max Processing Time',
+                                               'Number of Executions Per Update'])
 
         figure['layout'].update(showlegend=True)
         figure['layout']['xaxis'].update(title="System Time (sec)")
@@ -408,14 +409,17 @@ class Analyzer(object):
         for i in range(len(data.running_time_ns)):
             color = plotly.colors.DEFAULT_PLOTLY_COLORS[i % len(plotly.colors.DEFAULT_PLOTLY_COLORS)]
             trace_name = id_to_name.get(i, f'unknown_{i}')
-            figure.add_trace(go.Scattergl(x=time, y=data.running_time_ns[i] / data.run_count[i] / 1e6, name=f'{trace_name}',
-                                          mode='lines', line={'color': color}, legendgroup=f'{i}'),
+            figure.add_trace(go.Scattergl(x=time, y=data.running_time_ns[i] / data.run_count[i] / 1e6,
+                                          name=trace_name, legendgroup=f'{i}',
+                                          mode='lines', line={'color': color}),
                              1, 1)
-            figure.add_trace(go.Scattergl(x=time, y=data.max_run_time_ns[i] / 1e6, name=f'{trace_name}',
-                                mode='lines', line={'color': color}, legendgroup=f'{i}', showlegend=False),
+            figure.add_trace(go.Scattergl(x=time, y=data.max_run_time_ns[i] / 1e6,
+                                          name=trace_name, legendgroup=f'{i}', showlegend=False,
+                                          mode='lines', line={'color': color}),
                              2, 1)
-            figure.add_trace(go.Scattergl(x=time, y=data.run_count[i], name=f'{trace_name}',
-                                mode='lines', line={'color': color}, legendgroup=f'{i}', showlegend=False),
+            figure.add_trace(go.Scattergl(x=time, y=data.run_count[i],
+                                          name=trace_name, legendgroup=f'{i}', showlegend=False,
+                                          mode='lines', line={'color': color}),
                              3, 1)
 
         self._add_figure(name="profile_execution_stats", figure=figure, title="Profiling: Execution Stats")
@@ -468,7 +472,8 @@ class Analyzer(object):
         time = data.system_time_sec - data.system_time_sec[0]
 
         figure = make_subplots(rows=4, cols=1, print_grid=False, shared_xaxes=True,
-                               subplot_titles=['Delay Queue Depth Measurements', 'Delay Queue Depth Age', 'Message Buffer Free Space', 'Measurement Rates'])
+                               subplot_titles=['Delay Queue Depth Measurements', 'Delay Queue Depth Age',
+                                               'Message Buffer Free Space', 'Measurement Rates'])
 
         figure['layout'].update(showlegend=True)
         figure['layout']['xaxis'].update(title="System Time (sec)")
@@ -480,25 +485,25 @@ class Analyzer(object):
         figure['layout']['yaxis4'].update(title="Message Rate (Hz)")
 
         figure.add_trace(go.Scattergl(x=time, y=data.counters[delay_queue_count_idx], showlegend=False,
-                                        mode='lines', line={'color': 'red'}),
-                            1, 1)
+                                      mode='lines', line={'color': 'red'}),
+                         1, 1)
         figure.add_trace(go.Scattergl(x=time, y=data.counters[delay_queue_ns_idx] / 1e6, showlegend=False,
-                            mode='lines', line={'color': 'blue'}),
-                            2, 1)
+                                      mode='lines', line={'color': 'blue'}),
+                         2, 1)
 
         for i in range(len(msg_buff_map)):
             color = plotly.colors.DEFAULT_PLOTLY_COLORS[i % len(plotly.colors.DEFAULT_PLOTLY_COLORS)]
             idx, buffer_name = msg_buff_map[i]
             figure.add_trace(go.Scattergl(x=time, y=data.counters[idx], name=f'{buffer_name}',
                                             mode='lines', line={'color': color}),
-                            3, 1)
+                             3, 1)
 
         for i in range(len(measurement_map)):
             color = plotly.colors.DEFAULT_PLOTLY_COLORS[i % len(plotly.colors.DEFAULT_PLOTLY_COLORS)]
             idx, measurement_name = measurement_map[i]
-            figure.add_trace(go.Scattergl(x=time, y=np.diff(data.counters[idx]) / np.diff(time), name=f'{measurement_name}',
-                                            mode='lines', line={'color': color}),
-                            4, 1)
+            figure.add_trace(go.Scattergl(x=time, y=np.diff(data.counters[idx]) / np.diff(time),
+                                          name=f'{measurement_name}', mode='lines', line={'color': color}),
+                             4, 1)
 
         self._add_figure(name="profile_queues_counts", figure=figure, title="Profiling: Queues and Counts")
 
@@ -510,7 +515,8 @@ class Analyzer(object):
             return
 
         # Read the data.
-        result = self.reader.read(message_types=[ProfileFreeRtosSystemStatusMessage], remove_nan_times=False, **self.params)
+        result = self.reader.read(message_types=[ProfileFreeRtosSystemStatusMessage], remove_nan_times=False,
+                                  **self.params)
         data = result[ProfileFreeRtosSystemStatusMessage.MESSAGE_TYPE]
 
         if len(data.system_time_sec) == 0:
@@ -520,8 +526,8 @@ class Analyzer(object):
         # Read the last task name message to map IDs to names.
         params = copy.deepcopy(self.params)
         params['max_messages'] = -1
-        result = self.reader.read(message_types=[ProfileFreeRtosSystemStatusMessage.DEFINITION_TYPE], remove_nan_times=False,
-                                  **params)
+        result = self.reader.read(message_types=[ProfileFreeRtosSystemStatusMessage.DEFINITION_TYPE],
+                                  remove_nan_times=False, **params)
         if len(result[ProfileFreeRtosSystemStatusMessage.DEFINITION_TYPE].messages) != 0:
             definition = result[ProfileFreeRtosSystemStatusMessage.DEFINITION_TYPE].messages[0]
             id_to_name = definition.to_dict()
@@ -561,7 +567,8 @@ class Analyzer(object):
                                       mode='lines', line={'color': 'blue'}),
                          3, 1)
 
-        self._add_figure(name="profile_freertos_system_status", figure=figure, title="Profiling: FreeRTOS System Status")
+        self._add_figure(name="profile_freertos_system_status", figure=figure,
+                         title="Profiling: FreeRTOS System Status")
 
     def plot_measurement_pipeline_profiling(self):
         """!
