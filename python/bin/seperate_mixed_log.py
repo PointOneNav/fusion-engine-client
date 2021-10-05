@@ -41,6 +41,9 @@ messages).
     parser.add_argument('--log-base-dir', metavar='DIR', default='/logs',
                         help="The base directory containing FusionEngine logs to be searched if a log pattern is"
                              "specified.")
+    parser.add_argument('-c', '--candidate-files', type=str, metavar='DIR',
+                        help="An optional comma-separated list of candidate input filenames to search within the log "
+                             "directory.")
     parser.add_argument('-o', '--output', type=str, metavar='DIR',
                         help="The directory where output will be stored. Defaults to the parent directory of the input"
                              "file, or to the log directory if reading from a log.")
@@ -62,7 +65,17 @@ messages).
 
     # Locate the input file and set the output directory.
     try:
-        input_path, output_dir, log_id = find_log_file(options.log, candidate_files=['input.p1bin', 'input.rtcm3'],
+        if options.candidate_files is None:
+            # Note that we prioritize the input.66.bin file over the others. For logs containing a single mixed serial
+            # data stream as a single message type within the .p1bin file (e.g., Quectel platforms), individual
+            # FusionEngine messages may be interrupted by .p1bin message headers since the .p1bin entires are just
+            # arbitrary byte blocks. In that case, we must first strip the .p1bin headers using dump_p1bin.py. ID 66 is
+            # the value assigned to Quectel/Teseo data within .p1bin files.
+            candidate_files = ['input.66.bin', 'input.p1bin', 'input.rtcm3']
+        else:
+            candidate_files = options.candidate_files.split(',')
+
+        input_path, output_dir, log_id = find_log_file(options.log, candidate_files=candidate_files,
                                                        return_output_dir=True, return_log_id=True,
                                                        log_base_dir=options.log_base_dir)
 
