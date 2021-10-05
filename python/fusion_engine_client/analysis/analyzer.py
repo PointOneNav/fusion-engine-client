@@ -67,7 +67,7 @@ class Analyzer(object):
         }
 
         self.t0 = self.reader.t0
-        self.posix_t0 = None
+        self.system_t0 = None
 
         self.plots = {}
         self.summary = ''
@@ -321,17 +321,17 @@ class Analyzer(object):
         result = self.reader.read(message_types=[ProfileSystemStatusMessage], remove_nan_times=False, **self.params)
         data = result[ProfileSystemStatusMessage.MESSAGE_TYPE]
 
-        if len(data.posix_time) == 0:
+        if len(data.system_time) == 0:
             self.logger.info('No system profiling data available.')
             return
 
-        time = data.posix_time - self.reader.get_posix_t0()
+        time = data.system_time - self.reader.get_system_t0()
 
         figure = make_subplots(rows=3, cols=1, print_grid=False, shared_xaxes=True,
                                subplot_titles=['CPU Usage', 'Memory Usage', 'Queue Depth'])
 
         figure['layout'].update(showlegend=True)
-        figure['layout']['xaxis'].update(title="POSIX Time (sec)")
+        figure['layout']['xaxis'].update(title="System Time (sec)")
         for i in range(3):
             figure['layout']['xaxis%d' % (i + 1)].update(showticklabels=True)
         figure['layout']['yaxis1'].update(title="CPU (%)", range=[0, 100])
@@ -574,7 +574,7 @@ class Analyzer(object):
         result = self.reader.read(message_types=[ProfilePipelineMessage], **self.params)
         data = result[ProfilePipelineMessage.MESSAGE_TYPE]
 
-        if len(data.posix_time) == 0:
+        if len(data.system_time) == 0:
             self.logger.info('No measurement profiling data available.')
             return
 
@@ -593,12 +593,12 @@ class Analyzer(object):
                                subplot_titles=['Pipeline Delay'])
 
         figure['layout'].update(showlegend=True)
-        figure['layout']['xaxis'].update(title="POSIX Time (sec)")
+        figure['layout']['xaxis'].update(title="System Time (sec)")
         figure['layout']['yaxis1'].update(title="Delay (sec)")
 
         for id, point_data in data.points.items():
             name = id_to_name.get(id, 'unknown_%s' % str(id))
-            time_sec = point_data[0, :] - self.reader.get_posix_t0()
+            time_sec = point_data[0, :] - self.reader.get_system_t0()
             delay_sec = point_data[1, :]
             figure.add_trace(go.Scattergl(x=time_sec, y=delay_sec, name=name, mode='markers'), 1, 1)
 
@@ -634,7 +634,7 @@ class Analyzer(object):
                                subplot_titles=['Code Execution'])
 
         figure['layout'].update(showlegend=True)
-        figure['layout']['xaxis'].update(title="POSIX Time (sec)")
+        figure['layout']['xaxis'].update(title="System Time (sec)")
         figure['layout']['yaxis1'].update(title="Event")
 
         if len(id_to_name) != 0:
@@ -644,7 +644,7 @@ class Analyzer(object):
 
         for i, (id, point_data) in enumerate(data.points.items()):
             name = id_to_name.get(id, 'unknown_%s' % str(id))
-            time_sec = (point_data[0, :] - self.reader.get_posix_t0_ns()) * 1e-9
+            time_sec = (point_data[0, :] - self.reader.get_system_t0_ns()) * 1e-9
             action = point_data[1, :].astype(int)
             color = plotly.colors.DEFAULT_PLOTLY_COLORS[i % len(plotly.colors.DEFAULT_PLOTLY_COLORS)]
 

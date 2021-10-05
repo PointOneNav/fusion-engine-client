@@ -123,7 +123,7 @@ class ProfileSystemStatusMessage(MessagePayload):
 
     def __init__(self):
         self.p1_time = Timestamp()
-        self.posix_time_ns = 0
+        self.system_time_ns = 0
 
         self.num_cpu_cores = 0
         self.total_cpu_usage = np.nan
@@ -149,7 +149,7 @@ class ProfileSystemStatusMessage(MessagePayload):
 
         offset += self.p1_time.pack(buffer, offset, return_buffer=False)
 
-        args = [self.posix_time_ns, self.num_cpu_cores]
+        args = [self.system_time_ns, self.num_cpu_cores]
 
         def percent_to_int(value):
             if np.isnan(value):
@@ -180,7 +180,7 @@ class ProfileSystemStatusMessage(MessagePayload):
         values = struct.unpack_from(ProfileSystemStatusMessage._FORMAT, buffer=buffer, offset=offset)
         offset += ProfileSystemStatusMessage._SIZE
 
-        (self.posix_time_ns, self.num_cpu_cores) = values[:2]
+        (self.system_time_ns, self.num_cpu_cores) = values[:2]
 
         def int_to_percent(value):
             if value == ProfileSystemStatusMessage._INVALID_CPU_USAGE:
@@ -201,13 +201,13 @@ class ProfileSystemStatusMessage(MessagePayload):
     def __repr__(self):
         return '%s @ POSIX time %s (%.6f sec)' % \
                (self.MESSAGE_TYPE.name,
-                datetime.utcfromtimestamp(self.posix_time_ns * 1e-9).replace(tzinfo=timezone.utc),
-                self.posix_time_ns * 1e-9)
+                datetime.utcfromtimestamp(self.system_time_ns * 1e-9).replace(tzinfo=timezone.utc),
+                self.system_time_ns * 1e-9)
 
     def __str__(self):
         string = 'System status @ POSIX time %s (%.6f sec)\n' % \
-                  (datetime.utcfromtimestamp(self.posix_time_ns * 1e-9).replace(tzinfo=timezone.utc),
-                   self.posix_time_ns * 1e-9)
+                  (datetime.utcfromtimestamp(self.system_time_ns * 1e-9).replace(tzinfo=timezone.utc),
+                   self.system_time_ns * 1e-9)
         string += '  P1 time: %s\n' % str(self.p1_time)
         string += '  CPU: %.1f%%\n' % self.total_cpu_usage
         string += '  Total memory: %d B/%d B' % (self.total_used_memory_bytes, self.total_memory_bytes)
@@ -225,7 +225,7 @@ class ProfileSystemStatusMessage(MessagePayload):
     def to_numpy(cls, messages):
         result = {
             'p1_time': np.array([float(m.p1_time) for m in messages]),
-            'posix_time': np.array([m.posix_time_ns * 1e-9 for m in messages]),
+            'system_time': np.array([m.system_time_ns * 1e-9 for m in messages]),
             'num_cpu_cores': np.array([m.num_cpu_cores for m in messages]),
             'total_cpu_usage': np.array([m.total_cpu_usage for m in messages]),
             'cpu_usage_per_core': np.array([m.cpu_usage_per_core for m in messages]).T,
@@ -291,7 +291,7 @@ class ProfileDefinitionMessage(MessagePayload):
     _SIZE: int = struct.calcsize(_FORMAT)
 
     def __init__(self):
-        self.posix_time_ns = 0
+        self.system_time_ns = 0
         self.entries: List[ProfileDefinitionEntry] = []
 
     def get_type(self) -> MessageType:
@@ -304,7 +304,7 @@ class ProfileDefinitionMessage(MessagePayload):
         initial_offset = offset
 
         struct.pack_into(ProfileDefinitionMessage._FORMAT, buffer, offset,
-                         self.posix_time_ns, len(self.entries))
+                         self.system_time_ns, len(self.entries))
         offset += ProfileDefinitionMessage._SIZE
 
         for entry in self.entries:
@@ -318,7 +318,7 @@ class ProfileDefinitionMessage(MessagePayload):
     def unpack(self, buffer: bytes, offset: int = 0) -> int:
         initial_offset = offset
 
-        (self.posix_time_ns, num_entries) = \
+        (self.system_time_ns, num_entries) = \
             struct.unpack_from(ProfileDefinitionMessage._FORMAT, buffer=buffer, offset=offset)
         offset += ProfileDefinitionMessage._SIZE
 
@@ -335,13 +335,13 @@ class ProfileDefinitionMessage(MessagePayload):
 
     def __repr__(self):
         return 'Profile definition @ POSIX time %s (%.6f sec)' % \
-               (datetime.utcfromtimestamp(self.posix_time_ns * 1e-9).replace(tzinfo=timezone.utc),
-                self.posix_time_ns * 1e-9)
+               (datetime.utcfromtimestamp(self.system_time_ns * 1e-9).replace(tzinfo=timezone.utc),
+                self.system_time_ns * 1e-9)
 
     def __str__(self):
         string = 'Profile definition @ POSIX time %s (%.6f sec)\n' % \
-                  (datetime.utcfromtimestamp(self.posix_time_ns * 1e-9).replace(tzinfo=timezone.utc),
-                   self.posix_time_ns * 1e-9)
+                  (datetime.utcfromtimestamp(self.system_time_ns * 1e-9).replace(tzinfo=timezone.utc),
+                   self.system_time_ns * 1e-9)
         string += '  %d entries:' % len(self.entries)
         for entry in self.entries:
             string += '\n'
@@ -400,7 +400,7 @@ class ProfilePipelineMessage(MessagePayload):
     _SIZE: int = struct.calcsize(_FORMAT)
 
     def __init__(self):
-        self.posix_time_ns = 0
+        self.system_time_ns = 0
         self.p1_time = Timestamp()
         self.entries: List[ProfilePipelineEntry] = []
 
@@ -414,7 +414,7 @@ class ProfilePipelineMessage(MessagePayload):
         initial_offset = offset
 
         struct.pack_into(ProfilePipelineMessage._FORMAT, buffer, offset,
-                         self.posix_time_ns, len(self.entries))
+                         self.system_time_ns, len(self.entries))
         offset += ProfilePipelineMessage._SIZE
 
         offset += self.p1_time.pack(buffer, offset, return_buffer=False)
@@ -430,7 +430,7 @@ class ProfilePipelineMessage(MessagePayload):
     def unpack(self, buffer: bytes, offset: int = 0) -> int:
         initial_offset = offset
 
-        (self.posix_time_ns, num_entries) = \
+        (self.system_time_ns, num_entries) = \
             struct.unpack_from(ProfilePipelineMessage._FORMAT, buffer=buffer, offset=offset)
         offset += ProfilePipelineMessage._SIZE
 
@@ -447,13 +447,13 @@ class ProfilePipelineMessage(MessagePayload):
     def __repr__(self):
         return '%s @ POSIX time %s (%.6f sec)' % \
                (self.MESSAGE_TYPE.name,
-                datetime.utcfromtimestamp(self.posix_time_ns * 1e-9).replace(tzinfo=timezone.utc),
-                self.posix_time_ns * 1e-9)
+                datetime.utcfromtimestamp(self.system_time_ns * 1e-9).replace(tzinfo=timezone.utc),
+                self.system_time_ns * 1e-9)
 
     def __str__(self):
         string = 'Pipeline profiling update @ POSIX time %s (%.6f sec)\n' % \
-                  (datetime.utcfromtimestamp(self.posix_time_ns * 1e-9).replace(tzinfo=timezone.utc),
-                   self.posix_time_ns * 1e-9)
+                  (datetime.utcfromtimestamp(self.system_time_ns * 1e-9).replace(tzinfo=timezone.utc),
+                   self.system_time_ns * 1e-9)
         string += '  P1 time: %s\n' % self.p1_time
         string += '  %d entries:' % len(self.entries)
         for entry in self.entries:
@@ -470,13 +470,13 @@ class ProfilePipelineMessage(MessagePayload):
         for m in messages:
             for p in m.entries:
                 if p.id not in points:
-                    points[p.id] = [(m.posix_time_ns * 1e-9, p.delay_sec)]
+                    points[p.id] = [(m.system_time_ns * 1e-9, p.delay_sec)]
                 else:
-                    points[p.id].append((m.posix_time_ns * 1e-9, p.delay_sec))
+                    points[p.id].append((m.system_time_ns * 1e-9, p.delay_sec))
         points = {h: np.array(d).T for h, d in points.items()}
 
         result = {
-            'posix_time': np.array([m.posix_time_ns * 1e-9 for m in messages]),
+            'system_time': np.array([m.system_time_ns * 1e-9 for m in messages]),
             'p1_time': np.array([float(m.p1_time) for m in messages]),
             'points': points
         }
@@ -502,12 +502,12 @@ class ProfileExecutionEntry:
     def __init__(self):
         self.id = 0
         self.action = None
-        self.posix_time_ns = 0
+        self.system_time_ns = 0
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
-        posix_time_ns = -self.posix_time_ns if self.action == ProfileExecutionEntry.STOP else self.posix_time_ns
+        system_time_ns = -self.system_time_ns if self.action == ProfileExecutionEntry.STOP else self.system_time_ns
 
-        args = (self.id, posix_time_ns)
+        args = (self.id, system_time_ns)
         if buffer is None:
             buffer = struct.pack(ProfileExecutionEntry._FORMAT, *args)
         else:
@@ -521,16 +521,16 @@ class ProfileExecutionEntry:
     def unpack(self, buffer: bytes, offset: int = 0) -> int:
         initial_offset = offset
 
-        (self.id, posix_time_ns) = \
+        (self.id, system_time_ns) = \
             struct.unpack_from(ProfileExecutionEntry._FORMAT, buffer=buffer, offset=offset)
         offset += ProfileExecutionEntry._SIZE
 
-        if posix_time_ns < 0:
+        if system_time_ns < 0:
             self.action = ProfileExecutionEntry.STOP
-            self.posix_time_ns = -posix_time_ns
+            self.system_time_ns = -system_time_ns
         else:
             self.action = ProfileExecutionEntry.START
-            self.posix_time_ns = posix_time_ns
+            self.system_time_ns = system_time_ns
 
         return offset - initial_offset
 
@@ -550,7 +550,7 @@ class ProfileExecutionMessage(MessagePayload):
     _SIZE: int = struct.calcsize(_FORMAT)
 
     def __init__(self):
-        self.posix_time_ns = 0
+        self.system_time_ns = 0
         self.entries: List[ProfileExecutionEntry] = []
 
     def get_type(self) -> MessageType:
@@ -563,7 +563,7 @@ class ProfileExecutionMessage(MessagePayload):
         initial_offset = offset
 
         struct.pack_into(ProfileExecutionMessage._FORMAT, buffer, offset,
-                         self.posix_time_ns, len(self.entries))
+                         self.system_time_ns, len(self.entries))
         offset += ProfileExecutionMessage._SIZE
 
         for entry in self.entries:
@@ -577,7 +577,7 @@ class ProfileExecutionMessage(MessagePayload):
     def unpack(self, buffer: bytes, offset: int = 0) -> int:
         initial_offset = offset
 
-        (self.posix_time_ns, num_entries) = \
+        (self.system_time_ns, num_entries) = \
             struct.unpack_from(ProfileExecutionMessage._FORMAT, buffer=buffer, offset=offset)
         offset += ProfileExecutionMessage._SIZE
 
@@ -592,19 +592,19 @@ class ProfileExecutionMessage(MessagePayload):
     def __repr__(self):
         return '%s @ POSIX time %s (%.6f sec)' % \
                (self.MESSAGE_TYPE.name,
-                datetime.utcfromtimestamp(self.posix_time_ns * 1e-9).replace(tzinfo=timezone.utc),
-                self.posix_time_ns * 1e-9)
+                datetime.utcfromtimestamp(self.system_time_ns * 1e-9).replace(tzinfo=timezone.utc),
+                self.system_time_ns * 1e-9)
 
     def __str__(self):
         string = 'Execution profiling update @ POSIX time %s (%.6f sec)\n' % \
-                  (datetime.utcfromtimestamp(self.posix_time_ns * 1e-9).replace(tzinfo=timezone.utc),
-                   self.posix_time_ns * 1e-9)
+                  (datetime.utcfromtimestamp(self.system_time_ns * 1e-9).replace(tzinfo=timezone.utc),
+                   self.system_time_ns * 1e-9)
         string += '  %d entries:' % len(self.entries)
         for entry in self.entries:
             string += '\n'
             string += '    %d: %s @ %f sec' % (entry.id,
                                                'start' if entry.action == ProfileExecutionEntry.START else 'stop',
-                                               entry.posix_time_ns * 1e-9)
+                                               entry.system_time_ns * 1e-9)
         return string
 
     def calcsize(self) -> int:
@@ -616,9 +616,9 @@ class ProfileExecutionMessage(MessagePayload):
         for m in messages:
             for p in m.entries:
                 if p.id not in points:
-                    points[p.id] = [(p.posix_time_ns, p.action)]
+                    points[p.id] = [(p.system_time_ns, p.action)]
                 else:
-                    points[p.id].append((p.posix_time_ns, p.action))
+                    points[p.id].append((p.system_time_ns, p.action))
         points = {h: np.array(d, dtype=int).T for h, d in points.items()}
 
         result = {
@@ -631,6 +631,7 @@ class ProfileExecutionMessage(MessagePayload):
         id_to_name = definition_message.to_dict()
         numpy_data.points = {id_to_name[id]: data for id, data in numpy_data.points.items()}
         return id_to_name
+
 
 class ProfileFreeRtosSystemStatusMessage(MessagePayload):
     """!
@@ -736,6 +737,7 @@ class ProfileFreeRtosSystemStatusMessage(MessagePayload):
                 result['task_min_stack_free_bytes'].append(task_min_stack_free_bytes)
         return result
 
+
 class ProfileExecutionStatsMessage(MessagePayload):
     """!
     @brief Execution stats profiling data.
@@ -816,6 +818,7 @@ class ProfileExecutionStatsMessage(MessagePayload):
                 result['run_count'].append(run_count)
         return result
 
+
 class ProfileCounterMessage(MessagePayload):
     """!
     @brief Execution stats profiling data.
@@ -885,6 +888,7 @@ class ProfileCounterMessage(MessagePayload):
                 counters = np.array([m.entries[i].count for m in messages])
                 result['counters'].append(counters)
         return result
+
 
 # Extend the message class with internal types.
 message_type_to_class.update({
