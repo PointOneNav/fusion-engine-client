@@ -9,6 +9,9 @@ root_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(root_dir)
 
 from fusion_engine_client.messages.defs import MessageHeader
+# Note: This import isn't actually used explicitly, but by importing it all the internal message types will be added to
+# the MessageType enum and can be printed out in the verbose print below.
+from fusion_engine_client.messages.internal import InternalMessageType
 from fusion_engine_client.utils.log import find_log_file
 
 
@@ -41,6 +44,8 @@ messages).
     parser.add_argument('-o', '--output', type=str, metavar='DIR',
                         help="The directory where output will be stored. Defaults to the parent directory of the input"
                              "file, or to the log directory if reading from a log.")
+    parser.add_argument('-v', '--verbose', action='count', default=0,
+                        help="Print verbose/trace debugging messages.")
 
     parser.add_argument('log',
                         help="The log to be read. May be one of:\n"
@@ -80,6 +85,7 @@ messages).
             while True:
                 if not advance_to_next_sync(in_fd):
                     break
+                offset = in_fd.tell()
                 data = in_fd.read(MessageHeader.calcsize())
                 read_len = len(data)
                 try:
@@ -89,6 +95,10 @@ messages).
                     data += in_fd.read(header.payload_size_bytes)
                     read_len = len(data)
                     header.validate_crc(data)
+                    if options.verbose >= 1:
+                        print('Read %s message @ %d. [length=%d B, # messages=%d]' %
+                              (header.get_type_string(), offset, MessageHeader.calcsize() + header.payload_size_bytes,
+                               valid_count + 1))
                     out_path.write(data)
                     valid_count += 1
                 except ValueError:

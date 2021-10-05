@@ -52,6 +52,8 @@ Dump contents of a .p1bin file to individual binary files, separated by message 
     parser.add_argument('-o', '--output', type=str, metavar='DIR',
                         help="The directory where output will be stored. Defaults to the parent directory of the input"
                              "file, or to the log directory if reading from a log.")
+    parser.add_argument('-v', '--verbose', action='count', default=0,
+                        help="Print verbose/trace debugging messages.")
 
     parser.add_argument('log',
                         help="The log to be read. May be one of:\n"
@@ -89,10 +91,14 @@ Dump contents of a .p1bin file to individual binary files, separated by message 
         assert(in_fd.read(1) == b'\x01')
         while True:
             try:
+                offset = in_fd.tell()
                 record = p1bin_entry.parse_stream(in_fd)
                 message_type = record.message_header.message_type
                 if message_type not in out_files:
                     out_files[message_type] = open(os.path.join(output_dir, f'{basename}.{message_type}.bin'), 'wb')
+                if options.verbose >= 1:
+                    print('Read %d bytes @ %d. [message_type=%d, # messages=%d]' %
+                          (len(record.contents), offset, message_type, valid_count + 1))
                 out_files[message_type].write(record.contents)
                 valid_count += 1
             except:
