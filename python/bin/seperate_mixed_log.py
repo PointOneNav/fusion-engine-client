@@ -94,24 +94,37 @@ messages).
             while True:
                 if not advance_to_next_sync(in_fd):
                     break
+
                 offset = in_fd.tell()
+                if options.verbose >= 2:
+                    print('Reading candidate message @ %d.' % offset)
+
                 data = in_fd.read(MessageHeader.calcsize())
                 read_len = len(data)
                 try:
                     header.unpack(data, warn_on_unrecognized=False)
                     if header.payload_size_bytes > MessageHeader._MAX_EXPECTED_SIZE_BYTES:
-                        raise ValueError('payload_size_bytes too large')
-                    data += in_fd.read(header.payload_size_bytes)
-                    read_len = len(data)
+                        raise ValueError('Payload size (%d) too large.' % header.payload_size_bytes)
+
+                    payload = in_fd.read(header.payload_size_bytes)
+                    read_len += len(payload)
+                    if len(payload) != header.payload_size_bytes:
+                        raise ValueError('Not enough data - likely not a valid FusionEngine header.')
+
+                    data += payload
                     header.validate_crc(data)
+
                     if options.verbose >= 1:
                         print('Read %s message @ %d. [length=%d B, # messages=%d]' %
                               (header.get_type_string(), offset, MessageHeader.calcsize() + header.payload_size_bytes,
                                valid_count + 1))
                     out_path.write(data)
                     valid_count += 1
-                except ValueError:
-                    in_fd.seek(-read_len + 1, os.SEEK_CUR)
+                except ValueError as e:
+                    offset += 1
+                    if options.verbose >= 2:
+                        print('%s Rewinding to offset %d.' % (str(e), offset))
+                    in_fd.seek(offset, os.SEEK_SET)
 
     print(f'Found {valid_count} valid fusion engine messages')
     print(f"Output stored in '{output_path}'.")
