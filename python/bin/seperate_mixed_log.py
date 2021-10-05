@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
 
+from argparse import ArgumentParser
 import os
 import sys
 
+# Add the Python root directory (fusion-engine-client/python/) to the import search path.
 root_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(root_dir)
 
 from fusion_engine_client.messages.defs import MessageHeader
+from fusion_engine_client.utils.log import find_log_file
+
 
 def advance_to_next_sync(in_fd):
     try:
@@ -24,19 +28,55 @@ def advance_to_next_sync(in_fd):
     except IndexError:
         return False
 
-def main():
-    if len(sys.argv) != 2 or '--help' == sys.argv[1]:
-        print(f'usage: {sys.argv[0]} INPUT_FILE')
-        print(f'Recover fusion engine log from log with mixed contents')
-        print(f'Creates a INPUT_FILE.p1log in directory of INPUT_FILE')
 
-    in_path = sys.argv[1]
-    out_path = in_path + ".p1log"
+def main():
+    parser = ArgumentParser(description="""\
+Extract FusionEngine message contents from a binary file containing mixed data (e.g., interleaved RTCM and FusionEngine
+messages).
+""")
+
+    parser.add_argument('--log-base-dir', metavar='DIR', default='/logs',
+                        help="The base directory containing FusionEngine logs to be searched if a log pattern is"
+                             "specified.")
+    parser.add_argument('-o', '--output', type=str, metavar='DIR',
+                        help="The directory where output will be stored. Defaults to the parent directory of the input"
+                             "file, or to the log directory if reading from a log.")
+
+    parser.add_argument('log',
+                        help="The log to be read. May be one of:\n"
+                             "- The path to a binary data file\n"
+                             "- The path to a FusionEngine log directory containing an `input.p1bin` file\n"
+                             "- A pattern matching a FusionEngine log directory under the specified base directory "
+                             "(see find_fusion_engine_log() and --log-base-dir)")
+
+    options = parser.parse_args()
+
+    # Locate the input file and set the output directory.
+    try:
+        input_path, output_dir, log_id = find_log_file(options.log, candidate_files=['input.p1bin', 'input.rtcm3'],
+                                                       return_output_dir=True, return_log_id=True,
+                                                       log_base_dir=options.log_base_dir)
+
+        if log_id is None:
+            print('Loading %s.' % os.path.basename(input_path))
+        else:
+            print('Loading %s from log %s.' % (os.path.basename(input_path), log_id))
+
+        if options.output is not None:
+            output_dir = options.output
+    except FileNotFoundError as e:
+        print(str(e))
+        sys.exit(1)
+
+    # Read through the data file, searching for valid FusionEngine messages to extract and store in
+    # 'output_dir/basename.p1log'.
+    basename = os.path.splitext(os.path.basename(input_path))[0]
+    output_path = os.path.join(output_dir, basename + '.p1log')
 
     header = MessageHeader()
     valid_count = 0
-    with open(in_path, 'rb') as in_fd:
-        with open(out_path, 'wb') as out_path:
+    with open(input_path, 'rb') as in_fd:
+        with open(output_path, 'wb') as out_path:
             while True:
                 if not advance_to_next_sync(in_fd):
                     break
@@ -54,6 +94,7 @@ def main():
                 except ValueError:
                     in_fd.seek(-read_len + 1, os.SEEK_CUR)
     print(f'Found {valid_count} valid fusion engine messages')
+
 
 if __name__ == "__main__":
     main()

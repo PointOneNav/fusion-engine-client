@@ -1,8 +1,16 @@
 #!/usr/bin/env python3
 
+from argparse import ArgumentParser
+import os
 import sys
 
 from construct import *
+
+# Add the Python root directory (fusion-engine-client/python/) to the import search path.
+root_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(root_dir)
+
+from fusion_engine_client.utils.log import find_log_file
 
 timestamp = Struct(
     "time_seconds" / Int32ul,
@@ -32,29 +40,65 @@ p1bin_file = Struct(
     "records" / GreedyRange(p1bin_entry),
 )
 
-def main():
-    if len(sys.argv) != 2 or '--help' == sys.argv[1]:
-        print(f'usage: {sys.argv[0]} INPUT_P1BIN_FILE')
-        print(f'Dump contents of p1bin to files by msg_type')
-        print(f'Creates a INPUT_P1BIN_FILE.[TYPE].bin in directory of INPUT_P1BIN_FILE')
 
-    in_path = sys.argv[1]
+def main():
+    parser = ArgumentParser(description="""\
+Dump contents of a .p1bin file to individual binary files, separated by message type.
+""")
+
+    parser.add_argument('--log-base-dir', metavar='DIR', default='/logs',
+                        help="The base directory containing FusionEngine logs to be searched if a log pattern is"
+                             "specified.")
+    parser.add_argument('-o', '--output', type=str, metavar='DIR',
+                        help="The directory where output will be stored. Defaults to the parent directory of the input"
+                             "file, or to the log directory if reading from a log.")
+
+    parser.add_argument('log',
+                        help="The log to be read. May be one of:\n"
+                             "- The path to a .p1bin file\n"
+                             "- The path to a FusionEngine log directory\n"
+                             "- A pattern matching a FusionEngine log directory under the specified base directory "
+                             "(see find_fusion_engine_log() and --log-base-dir)")
+
+    options = parser.parse_args()
+
+    # Locate the input file and set the output directory.
+    try:
+        input_path, output_dir, log_id = find_log_file(options.log, candidate_files='input.p1bin',
+                                                       return_output_dir=True, return_log_id=True,
+                                                       log_base_dir=options.log_base_dir)
+
+        if log_id is None:
+            print('Loading %s.' % os.path.basename(input_path))
+        else:
+            print('Loading %s from log %s.' % (os.path.basename(input_path), log_id))
+
+        if options.output is not None:
+            output_dir = options.output
+    except FileNotFoundError as e:
+        print(str(e))
+        sys.exit(1)
+
+    # Parse each entry in the .p1bin file and extract its contents to 'output_dir/basename.message_type.bin', where
+    # message_type is the numeric type identifier.
+    basename = os.path.splitext(os.path.basename(input_path))[0]
     out_files = {}
 
     valid_count = 0
-    with open(in_path, 'rb') as in_fd:
+    with open(input_path, 'rb') as in_fd:
         assert(in_fd.read(1) == b'\x01')
         while True:
             try:
                 record = p1bin_entry.parse_stream(in_fd)
                 message_type = record.message_header.message_type
                 if message_type not in out_files:
-                    out_files[message_type] = open(f'{in_path}.{message_type}.bin','wb')
+                    out_files[message_type] = open(os.path.join(output_dir, f'{basename}.{message_type}.bin'), 'wb')
                 out_files[message_type].write(record.contents)
                 valid_count += 1
             except:
                 break
     print(f'Found {valid_count} messages of types {list(out_files.keys())}')
+
 
 if __name__ == "__main__":
     main()
