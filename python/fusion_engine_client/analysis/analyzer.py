@@ -505,7 +505,7 @@ class Analyzer(object):
                                           name=f'{measurement_name}', mode='lines', line={'color': color}),
                              4, 1)
 
-        self._add_figure(name="profile_queues_counts", figure=figure, title="Profiling: Queues and Counts")
+        self._add_figure(name="profile_queue_depths", figure=figure, title="Profiling: Queue Depths")
 
     def plot_free_rtos_system_status_profiling(self):
         """!
