@@ -142,7 +142,7 @@ class TimeAlignmentMode(IntEnum):
 class FileReader(object):
     logger = logging.getLogger('point_one.fusion_engine.analysis.file_reader')
 
-    def __init__(self, path=None):
+    def __init__(self, path=None, regenerate_index=False):
         """!
         @brief Create a new reader instance.
 
@@ -156,13 +156,15 @@ class FileReader(object):
         self.index = None
 
         if path is not None:
-            self.open(path)
+            self.open(path, regenerate_index=regenerate_index)
 
-    def open(self, path):
+    def open(self, path, regenerate_index=False):
         """!
         @brief Open a FusionEngine binary file.
 
         @param path The path to the file, or an existing Python file object.
+        @param regenerate_index If `True`, delete the `.p1i` index file if it exists and regenerate it from the `.p1log`
+               data file.
         """
         self.close()
 
@@ -180,7 +182,14 @@ class FileReader(object):
 
         # Load the data index file if present.
         index_path = FileIndex.get_path(self.file.name)
-        if os.path.exists(index_path):
+        have_index = os.path.exists(index_path)
+
+        if have_index and regenerate_index:
+            self.logger.debug("Deleting index file '%s'." % index_path)
+            os.remove(index_path)
+            have_index = False
+
+        if have_index:
             self.logger.debug("Reading index file '%s'." % index_path)
             self.index = FileIndex.load(index_path)
 
