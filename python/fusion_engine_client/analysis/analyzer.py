@@ -467,7 +467,7 @@ Load and display information stored in a FusionEngine binary file.
     parser.add_argument('--imu', action='store_true',
                         help="Plot IMU data (slow).")
     parser.add_argument('--mapbox-token', metavar='TOKEN',
-                        help="A Mabox token to use when generating a map. If unspecified, the token will be read from "
+                        help="A Mapbox token to use when generating a map. If unspecified, the token will be read from "
                              "the MAPBOX_ACCESS_TOKEN or MapboxAccessToken environment variables if set. If no token "
                              "is available, a map will not be displayed.")
     parser.add_argument('--no-index', action='store_true',
