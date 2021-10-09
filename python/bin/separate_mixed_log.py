@@ -9,8 +9,7 @@ import sys
 root_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(root_dir)
 
-from fusion_engine_client.analysis.file_reader import FileReader
-from fusion_engine_client.utils.log import find_log_file
+from fusion_engine_client.utils.log import extract_fusion_engine_log, find_log_file, CANDIDATE_MIXED_FILES
 from fusion_engine_client.utils import trace
 
 
@@ -39,7 +38,7 @@ Extract FusionEngine message contents from a binary file containing mixed data
     parser.add_argument('log',
                         help="The log to be read. May be one of:\n"
                              "- The path to a binary data file\n"
-                             "- The path to a FusionEngine log directory containing an `input.p1bin` file\n"
+                             "- The path to a FusionEngine log directory containing a candidate binary data file\n"
                              "- A pattern matching a FusionEngine log directory under the specified base directory "
                              "(see find_fusion_engine_log() and --log-base-dir)")
 
@@ -56,7 +55,7 @@ Extract FusionEngine message contents from a binary file containing mixed data
     # Locate the input file and set the output directory.
     try:
         if options.candidate_files is None:
-            candidate_files = ['input.rtcm3']
+            candidate_files = CANDIDATE_MIXED_FILES
         else:
             candidate_files = options.candidate_files.split(',')
 
@@ -85,7 +84,7 @@ Extract FusionEngine message contents from a binary file containing mixed data
         prefix = os.path.splitext(os.path.basename(input_path))[0]
     output_path = os.path.join(output_dir, prefix + '.p1log')
 
-    valid_count = FileReader.extract_fusion_engine_log(input_path, output_path)
+    valid_count = extract_fusion_engine_log(input_path, output_path)
     if options.verbose == 0:
         # If verbose > 0, extract_fusion_engine_log() will log messages.
         if valid_count > 0:
