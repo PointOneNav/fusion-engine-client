@@ -33,7 +33,8 @@ _logger = logging.getLogger('point_one.fusion_engine.analysis.analyzer')
 class Analyzer(object):
     logger = _logger
 
-    def __init__(self, file: Union[FileReader, str], output_dir: str = None, prefix: str = '',
+    def __init__(self, file: Union[FileReader, str], output_dir: str = None, ignore_index: bool = False,
+                 prefix: str = '',
                  time_range: Tuple[Union[float, Timestamp], Union[float, Timestamp]] = None,
                  absolute_time: bool = False,
                  max_messages: int = None):
@@ -42,6 +43,8 @@ class Analyzer(object):
 
         @param file A @ref FileReader instance, or the path to a file to be loaded.
         @param output_dir The directory where output will be stored.
+        @param ignore_index If `True`, do not use the `.p1i` index file if present, and instead regenerate it from the
+               `.p1log` data file.
         @param prefix An optional prefix to be appended to the generated filenames.
         @param time_range An optional length-2 tuple specifying desired start and end bounds on the data timestamps.
                Both the start and end values may be set to `None` to read all data.
@@ -51,7 +54,7 @@ class Analyzer(object):
                types.
         """
         if isinstance(file, str):
-            self.reader = FileReader(file)
+            self.reader = FileReader(file, regenerate_index=ignore_index)
         else:
             self.reader = file
 
@@ -829,6 +832,8 @@ Load and display information stored in a FusionEngine binary file.
     parser.add_argument('--absolute-time', '--abs', action='store_true',
                         help="Interpret the timestamps in --time as absolute P1 times. Otherwise, treat them as "
                              "relative to the first message in the file.")
+    parser.add_argument('--ignore-index', action='store_true',
+                        help="If set, ignore the regenerate .p1i index file from the .p1log data file.")
     parser.add_argument('--imu', action='store_true',
                         help="Plot IMU data (slow).")
     parser.add_argument('--mapbox-token', metavar='TOKEN',
@@ -919,7 +924,7 @@ Load and display information stored in a FusionEngine binary file.
         sys.exit(1)
 
     # Read pose data from the file.
-    analyzer = Analyzer(file=input_path, output_dir=output_dir,
+    analyzer = Analyzer(file=input_path, output_dir=output_dir, ignore_index=options.ignore_index,
                         prefix=options.prefix + '.' if options.prefix is not None else '',
                         time_range=time_range, absolute_time=options.absolute_time)
 
