@@ -156,10 +156,6 @@ def find_log_file(input_path, candidate_files=None, return_output_dir=False, ret
                     raise e
 
         # If we found a log directory, see if it contains a FusionEngine output file.
-        #
-        # If a playback file exists, load that first over the original file unless the user specifically says to load
-        # the originally recorded file. In that case, the playback file paths will be set to None and ignored in the
-        # loop below. Note that the playback file is currently stored in a different directory.
         if candidate_files is None:
             candidate_files = ['fusion_engine.p1log']
         elif not isinstance(candidate_files, (tuple, list)):
@@ -208,6 +204,9 @@ def find_p1log_file(input_path, return_output_dir=False, return_log_id=False, lo
             - The path to the located output directory. Only provided if `return_output_dir` is `True`.
             - The log ID string, or `None` if the requested file is not part of a FusionEngine log.
     """
+    # If a playback file exists, load that first over the original file unless the user specifically says to load the
+    # originally recorded file. In that case, the playback file paths will be set to None and ignored in the loop below.
+    # Note that the playback file is currently stored in a different directory.
     candidate_files = ['output/fusion_engine.playback.p1log' if not load_original else None,
                        'fusion_engine.p1log',
                        # Legacy path, maintained for backwards compatibility.
