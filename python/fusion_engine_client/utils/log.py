@@ -187,7 +187,7 @@ def find_log_file(input_path, candidate_files=None, return_output_dir=False, ret
 
 
 def find_p1log_file(input_path, return_output_dir=False, return_log_id=False, log_base_dir='/logs',
-                    load_original=False):
+                    log_test_filename=MANIFEST_FILE_NAME, load_original=False):
     """!
     @brief Locate a FusionEngine `*.p1log` file.
 
@@ -199,6 +199,8 @@ def find_p1log_file(input_path, return_output_dir=False, return_log_id=False, lo
     @param return_output_dir If `True`, return the output directory associated with the located input file.
     @param return_log_id If `True`, return the ID of the log if the requested path is a FusionEngine log.
     @param log_base_dir The base directory to be searched when performing a pattern match for a log directory.
+    @param log_test_filename A test file to locate within the log directory. If `None`, skip the test file requirement
+           and assume the located directory is a FusionEngine log.
     @param load_original If `True`, load the `.p1log` file originally recorded with the log. Otherwise, load the log
            playback output if it exists (default).
 
@@ -212,4 +214,4 @@ def find_p1log_file(input_path, return_output_dir=False, return_log_id=False, lo
                        'filter/output/fe_service/output.playback.p1bin' if not load_original else None,
                        'filter/output/fe_service/output.p1bin']
     return find_log_file(input_path, candidate_files=candidate_files, return_output_dir=return_output_dir,
-                         return_log_id=return_log_id, log_base_dir=log_base_dir)
+                         return_log_id=return_log_id, log_base_dir=log_base_dir, log_test_filename=log_test_filename)
