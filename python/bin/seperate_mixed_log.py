@@ -105,6 +105,7 @@ messages).
     message_counts = {}
     with open(input_path, 'rb') as in_fd:
         with open(output_path, 'wb') as out_path:
+            prev_sequence_number = None
             while True:
                 if not advance_to_next_sync(in_fd):
                     break
@@ -128,10 +129,17 @@ messages).
                     data += payload
                     header.validate_crc(data)
 
+                    if prev_sequence_number is not None and (header.sequence_number - prev_sequence_number) != 1 and \
+                       not (header.sequence_number == 0 and prev_sequence_number == 0xFFFFFFFF):
+                        print('Warning: data gap detected @ %d (0x%x). [sequence=%d, prev_sequence=%d, # messages=%d]' %
+                              (offset, offset, header.sequence_number, prev_sequence_number, valid_count + 1))
+                    prev_sequence_number = header.sequence_number
+
                     if options.verbose >= 1:
-                        print('Read %s message @ %d (0x%x). [length=%d B, # messages=%d]' %
+                        print('Read %s message @ %d (0x%x). [length=%d B, sequence=%d, # messages=%d]' %
                               (header.get_type_string(), offset, offset,
-                               MessageHeader.calcsize() + header.payload_size_bytes, valid_count + 1))
+                               MessageHeader.calcsize() + header.payload_size_bytes, header.sequence_number,
+                               valid_count + 1))
 
                     out_path.write(data)
                     valid_count += 1
