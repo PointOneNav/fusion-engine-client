@@ -39,6 +39,9 @@ namespace ros {
  * See http://docs.ros.org/api/geometry_msgs/html/msg/Pose.html.
  */
 struct PoseMessage {
+  static constexpr MessageType MESSAGE_TYPE = MessageType::ROS_POSE;
+  static constexpr uint8_t MESSAGE_VERSION = 0;
+
   /** The time of the message, in P1 time (beginning at power-on). */
   Timestamp p1_time;
 
@@ -73,6 +76,9 @@ struct PoseMessage {
  * See http://docs.ros.org/api/gps_common/html/msg/GPSFix.html.
  */
 struct GPSFixMessage {
+  static constexpr MessageType MESSAGE_TYPE = MessageType::ROS_GPS_FIX;
+  static constexpr uint8_t MESSAGE_VERSION = 0;
+
   /**
    * @defgroup ros_covariance_type ROS Covariance Type Values
    * @{
@@ -252,6 +258,9 @@ struct GPSFixMessage {
  * calibration data.
  */
 struct IMUMessage {
+  static constexpr MessageType MESSAGE_TYPE = MessageType::ROS_IMU;
+  static constexpr uint8_t MESSAGE_VERSION = 0;
+
   /** The time of the message, in P1 time (beginning at power-on). */
   Timestamp p1_time;
 

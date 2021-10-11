@@ -27,6 +27,8 @@ namespace messages {
  * their @ref p1_time values.
  */
 struct PoseMessage {
+  static constexpr MessageType MESSAGE_TYPE = MessageType::POSE;
+  static constexpr uint8_t MESSAGE_VERSION = 1;
   static constexpr int16_t INVALID_UNDULATION = INT16_MIN;
 
   /** The time of the message, in P1 time (beginning at power-on). */
@@ -147,6 +149,9 @@ struct PoseMessage {
  * @ingroup messages
  */
 struct PoseAuxMessage {
+  static constexpr MessageType MESSAGE_TYPE = MessageType::POSE_AUX;
+  static constexpr uint8_t MESSAGE_VERSION = 0;
+
   /** The time of the message, in P1 time (beginning at power-on). */
   Timestamp p1_time;
 
@@ -187,6 +192,8 @@ struct PoseAuxMessage {
  * @ingroup messages
  */
 struct GNSSInfoMessage {
+  static constexpr MessageType MESSAGE_TYPE = MessageType::GNSS_INFO;
+  static constexpr uint8_t MESSAGE_VERSION = 0;
   static constexpr uint32_t INVALID_REFERENCE_STATION = 0xFFFFFFFF;
 
   /** The time of the message, in P1 time (beginning at power-on). */
@@ -229,6 +236,9 @@ struct GNSSInfoMessage {
  * ```
  */
 struct GNSSSatelliteMessage {
+  static constexpr MessageType MESSAGE_TYPE = MessageType::GNSS_SATELLITE;
+  static constexpr uint8_t MESSAGE_VERSION = 0;
+
   /** The time of the message, in P1 time (beginning at power-on). */
   Timestamp p1_time;
 
