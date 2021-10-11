@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from argparse import ArgumentParser
+import logging
 import os
 import sys
 
@@ -8,28 +9,9 @@ import sys
 root_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(root_dir)
 
-from fusion_engine_client.messages.defs import MessageHeader, MessageType
-# Note: This import isn't actually used explicitly, but by importing it all the internal message types will be added to
-# the MessageType enum and can be printed out in the verbose print below.
-from fusion_engine_client.messages.internal import InternalMessageType
+from fusion_engine_client.analysis.file_reader import FileReader
 from fusion_engine_client.utils.log import find_log_file
-
-
-def advance_to_next_sync(in_fd):
-    try:
-        while True:
-            byte0 = in_fd.read(1)[0]
-            while True:
-                if byte0 == MessageHeader._SYNC0:
-                    byte1 = in_fd.read(1)[0]
-                    if byte1 == MessageHeader._SYNC1:
-                        in_fd.seek(-2, os.SEEK_CUR)
-                        return True
-                    byte0 = byte1
-                else:
-                    break
-    except IndexError:
-        return False
+from fusion_engine_client.utils import trace
 
 
 def main():
@@ -62,6 +44,14 @@ messages).
                              "(see find_fusion_engine_log() and --log-base-dir)")
 
     options = parser.parse_args()
+
+    # Configure logging.
+    logging.basicConfig(level=logging.INFO, format='%(message)s')
+    logger = logging.getLogger('point_one.fusion_engine')
+    if options.verbose == 1:
+        logger.setLevel(logging.DEBUG)
+    elif options.verbose > 1:
+        logger.setLevel(logging.TRACE)
 
     # Locate the input file and set the output directory.
     try:
@@ -100,54 +90,15 @@ messages).
         prefix = os.path.splitext(os.path.basename(input_path))[0]
     output_path = os.path.join(output_dir, prefix + '.p1log')
 
-    header = MessageHeader()
-    valid_count = 0
-    message_counts = {}
-    with open(input_path, 'rb') as in_fd:
-        with open(output_path, 'wb') as out_path:
-            while True:
-                if not advance_to_next_sync(in_fd):
-                    break
+    valid_count = FileReader.extract_fusion_engine_log(input_path, output_path)
+    if options.verbose == 0:
+        # If verbose > 0, extract_fusion_engine_log() will log messages.
+        if valid_count > 0:
+            logger.info('Found %d valid FusionEngine messages.' % valid_count)
+        else:
+            logger.debug('No FusionEngine messages found.')
 
-                offset = in_fd.tell()
-                if options.verbose >= 2:
-                    print('Reading candidate message @ %d (0x%x).' % (offset, offset))
-
-                data = in_fd.read(MessageHeader.calcsize())
-                read_len = len(data)
-                try:
-                    header.unpack(data, warn_on_unrecognized=False)
-                    if header.payload_size_bytes > MessageHeader._MAX_EXPECTED_SIZE_BYTES:
-                        raise ValueError('Payload size (%d) too large.' % header.payload_size_bytes)
-
-                    payload = in_fd.read(header.payload_size_bytes)
-                    read_len += len(payload)
-                    if len(payload) != header.payload_size_bytes:
-                        raise ValueError('Not enough data - likely not a valid FusionEngine header.')
-
-                    data += payload
-                    header.validate_crc(data)
-
-                    if options.verbose >= 1:
-                        print('Read %s message @ %d (0x%x). [length=%d B, # messages=%d]' %
-                              (header.get_type_string(), offset, offset,
-                               MessageHeader.calcsize() + header.payload_size_bytes, valid_count + 1))
-
-                    out_path.write(data)
-                    valid_count += 1
-                    message_counts.setdefault(header.message_type, 0)
-                    message_counts[header.message_type] += 1
-                except ValueError as e:
-                    offset += 1
-                    if options.verbose >= 2:
-                        print('%s Rewinding to offset %d (0x%x).' % (str(e), offset, offset))
-                    in_fd.seek(offset, os.SEEK_SET)
-
-    print(f'Found {valid_count} valid FusionEngine messages.')
-    if options.verbose >= 1:
-        for type, count in message_counts.items():
-            print('  %s: %d' % (MessageType.get_type_string(type), count))
-    print(f"Output stored in '{output_path}'.")
+    logger.info(f"Output stored in '{output_path}'.")
 
 
 if __name__ == "__main__":

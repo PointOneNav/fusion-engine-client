@@ -25,7 +25,9 @@ from ..messages.core import *
 from ..messages.internal import *
 from .attitude import get_enu_rotation_matrix
 from .file_reader import FileReader
-from ..utils.log import find_p1log_file
+from ..utils import trace
+from ..utils.dump_p1bin import dump_p1bin
+from ..utils.log import find_log_file, find_p1log_file
 
 _logger = logging.getLogger('point_one.fusion_engine.analysis.analyzer')
 
@@ -33,7 +35,8 @@ _logger = logging.getLogger('point_one.fusion_engine.analysis.analyzer')
 class Analyzer(object):
     logger = _logger
 
-    def __init__(self, file: Union[FileReader, str], output_dir: str = None, prefix: str = '',
+    def __init__(self, file: Union[FileReader, str], output_dir: str = None, ignore_index: bool = False,
+                 prefix: str = '',
                  time_range: Tuple[Union[float, Timestamp], Union[float, Timestamp]] = None,
                  absolute_time: bool = False,
                  max_messages: int = None):
@@ -42,6 +45,8 @@ class Analyzer(object):
 
         @param file A @ref FileReader instance, or the path to a file to be loaded.
         @param output_dir The directory where output will be stored.
+        @param ignore_index If `True`, do not use the `.p1i` index file if present, and instead regenerate it from the
+               `.p1log` data file.
         @param prefix An optional prefix to be appended to the generated filenames.
         @param time_range An optional length-2 tuple specifying desired start and end bounds on the data timestamps.
                Both the start and end values may be set to `None` to read all data.
@@ -51,7 +56,7 @@ class Analyzer(object):
                types.
         """
         if isinstance(file, str):
-            self.reader = FileReader(file)
+            self.reader = FileReader(file, regenerate_index=ignore_index)
         else:
             self.reader = file
 
@@ -822,6 +827,78 @@ Duration: %(duration_sec).1f seconds
         return None
 
 
+def _find_log_file(options, find_p1log=True):
+    try:
+        if find_p1log:
+            input_path, output_dir, log_id = find_p1log_file(options.log,
+                                                             return_output_dir=True, return_log_id=True,
+                                                             log_base_dir=options.log_base_dir,
+                                                             load_original=options.original)
+        else:
+            candidate_files = ['input.66.bin', 'input.p1bin', 'input.rtcm3']
+            input_path, output_dir, log_id = find_log_file(options.log,
+                                                           candidate_files=candidate_files,
+                                                           return_output_dir=True, return_log_id=True,
+                                                           log_base_dir=options.log_base_dir)
+
+        if log_id is None:
+            _logger.info('Loading %s.' % os.path.basename(input_path))
+        else:
+            _logger.info('Loading %s from log %s.' % (os.path.basename(input_path), log_id))
+
+        if input_path.endswith('.playback.p1log') or input_path.endswith('.playback.p1bin'):
+            _logger.warning('Using .p1log file from log playback. If you want the originally recorded data, set '
+                            '--original.')
+
+        if options.output is None:
+            if log_id is not None:
+                output_dir = os.path.join(output_dir, 'plot_fusion_engine')
+        else:
+            output_dir = options.output
+
+        return input_path, output_dir
+    except (FileNotFoundError, RuntimeError) as e:
+        _logger.error(str(e))
+        return None, None
+
+
+def _locate_log(options):
+    # Try to find the log normally (look for a directory containing a .p1log file).
+    input_path, output_dir = _find_log_file(options, find_p1log=True)
+    if input_path is not None:
+        return input_path, output_dir
+
+    # If that fails, see if we can find a directory containing a mixed content binary file: *.p1bin or *.rtcm3 (e.g.,
+    # Quectel platform logs). If found, try to extract FusionEngine messages from it.
+    _logger.info('Could not find a FusionEngine log directory containing a .p1log file. Searching for a P1 log with '
+                 'mixed binary data.')
+    input_path, output_dir = _find_log_file(options, find_p1log=False)
+    if input_path is not None:
+        # If this is a .p1bin file, dump its contents. p1bin files typically contain unaligned blocks of binary data.
+        # dump_p1bin() will extract the blocks and concatenate them.
+        if input_path.endswith('.p1bin'):
+            _, bin_files = dump_p1bin(input_path=input_path)
+            # Data type 66 contains mixed Quectel binary data, including FusionEngine data.
+            if 66 in bin_files:
+                input_path = bin_files[66]
+            else:
+                _logger.warning('No mixed data extracted from .p1bin file.')
+                return None, None
+
+        # Now, search for FusionEngine messages within the mixed binary data.
+        log_dir = os.path.dirname(input_path)
+        fe_path = os.path.join(log_dir, "fusion_engine.p1log")
+        num_messages = FileReader.extract_fusion_engine_log(input_path=input_path, output_path=fe_path)
+        if num_messages > 0:
+            return fe_path, output_dir
+        else:
+            _logger.warning('No FusionEngine data extracted from .p1bin file.')
+            return None, None
+    else:
+        # _find_log_file() will log a message.
+        return None, None
+
+
 def main():
     parser = ArgumentParser(description="""\
 Load and display information stored in a FusionEngine binary file.
@@ -829,10 +906,12 @@ Load and display information stored in a FusionEngine binary file.
     parser.add_argument('--absolute-time', '--abs', action='store_true',
                         help="Interpret the timestamps in --time as absolute P1 times. Otherwise, treat them as "
                              "relative to the first message in the file.")
+    parser.add_argument('--ignore-index', action='store_true',
+                        help="If set, ignore the regenerate .p1i index file from the .p1log data file.")
     parser.add_argument('--imu', action='store_true',
                         help="Plot IMU data (slow).")
     parser.add_argument('--mapbox-token', metavar='TOKEN',
-                        help="A Mabox token to use when generating a map. If unspecified, the token will be read from "
+                        help="A Mapbox token to use when generating a map. If unspecified, the token will be read from "
                              "the MAPBOX_ACCESS_TOKEN or MapboxAccessToken environment variables if set. If no token "
                              "is available, a map will not be displayed.")
     parser.add_argument('--no-index', action='store_true',
@@ -866,8 +945,10 @@ Load and display information stored in a FusionEngine binary file.
     # Configure logging.
     if options.verbose >= 1:
         logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(name)s:%(lineno)d - %(message)s')
-        logger = logging.getLogger('point_one.fusion_engine')
-        logger.setLevel(logging.DEBUG)
+        if options.verbose == 1:
+            logging.getLogger('point_one.fusion_engine').setLevel(logging.DEBUG)
+        else:
+            logging.getLogger('point_one.fusion_engine').setLevel(logging.TRACE)
     else:
         logging.basicConfig(level=logging.INFO, format='%(message)s')
 
@@ -895,31 +976,13 @@ Load and display information stored in a FusionEngine binary file.
         time_range = None
 
     # Locate the input file and set the output directory.
-    try:
-        input_path, output_dir, log_id = find_p1log_file(options.log, return_output_dir=True, return_log_id=True,
-                                                         log_base_dir=options.log_base_dir,
-                                                         load_original=options.original)
-
-        if log_id is None:
-            _logger.info('Loading %s.' % os.path.basename(input_path))
-        else:
-            _logger.info('Loading %s from log %s.' % (os.path.basename(input_path), log_id))
-
-        if input_path.endswith('.playback.p1log') or input_path.endswith('.playback.p1bin'):
-            _logger.warning('Using .p1log file from log playback. If you want the originally recorded data, set '
-                            '--original.')
-
-        if options.output is None:
-            if log_id is not None:
-                output_dir = os.path.join(output_dir, 'plot_fusion_engine')
-        else:
-            output_dir = options.output
-    except FileNotFoundError as e:
-        _logger.error(str(e))
+    input_path, output_dir = _locate_log(options)
+    if input_path is None:
+        # _find_log() will log an error.
         sys.exit(1)
 
     # Read pose data from the file.
-    analyzer = Analyzer(file=input_path, output_dir=output_dir,
+    analyzer = Analyzer(file=input_path, output_dir=output_dir, ignore_index=options.ignore_index,
                         prefix=options.prefix + '.' if options.prefix is not None else '',
                         time_range=time_range, absolute_time=options.absolute_time)
 
