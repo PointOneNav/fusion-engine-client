@@ -46,7 +46,7 @@ p1bin_file = Struct(
 )
 
 
-def dump_p1bin(input_path, output_dir=None, prefix=None, return_files=False):
+def dump_p1bin(input_path, output_dir=None, prefix=None):
     """!
     @brief Extract streaming binary data from a Point One `*.p1bin` file.
 
@@ -60,9 +60,9 @@ def dump_p1bin(input_path, output_dir=None, prefix=None, return_files=False):
     @param output_dir The directory where generated output files will be stored. If `None`, data will be stored in the
            same directory as `input_path`.
     @param prefix A prefix to include with each generated file. If `None`, will be set to the prefix of `input_path`.
-    @param return_files If `True`, return a the paths to each generated file.
 
-    @return - The number of decoded messages.
+    @return A tuple containing:
+            - The number of decoded messages.
             - A `dict` containing the path to the output file for each message ID. Only provided if `return_files` is
               `True`.
     """
@@ -94,10 +94,7 @@ def dump_p1bin(input_path, output_dir=None, prefix=None, return_files=False):
     for fd in out_files.values():
         fd.close()
 
-    if return_files:
-        return valid_count, out_paths
-    else:
-        return valid_count
+    return valid_count, out_paths
 
 
 def main():
@@ -158,7 +155,7 @@ Dump contents of a .p1bin file to individual binary files, separated by message 
     else:
         prefix = os.path.splitext(os.path.basename(input_path))[0]
 
-    valid_count, out_files = dump_p1bin(input_path=input_path, output_dir=output_dir, prefix=prefix, return_files=True)
+    valid_count, out_files = dump_p1bin(input_path=input_path, output_dir=output_dir, prefix=prefix)
     _logger.info(f'Found {valid_count} messages of types {list(out_files.keys())}')
     _logger.info(f"Output stored in '{output_dir}'.")
 

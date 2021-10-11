@@ -877,7 +877,7 @@ def _locate_log(options):
         # If this is a .p1bin file, dump its contents. p1bin files typically contain unaligned blocks of binary data.
         # dump_p1bin() will extract the blocks and concatenate them.
         if input_path.endswith('.p1bin'):
-            _, bin_files = dump_p1bin(input_path=input_path, return_files=True)
+            _, bin_files = dump_p1bin(input_path=input_path)
             # Data type 66 contains mixed Quectel binary data, including FusionEngine data.
             if 66 in bin_files:
                 input_path = bin_files[66]
