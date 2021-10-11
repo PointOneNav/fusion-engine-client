@@ -26,6 +26,9 @@ namespace messages {
  * frame from the original IMU orientation.
  */
 struct IMUMeasurement {
+  static constexpr MessageType MESSAGE_TYPE = MessageType::IMU_MEASUREMENT;
+  static constexpr uint8_t MESSAGE_VERSION = 0;
+
   /** The time of the message, in P1 time (beginning at power-on). */
   Timestamp p1_time;
 
