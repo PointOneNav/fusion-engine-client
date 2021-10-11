@@ -158,8 +158,7 @@ Dump contents of a .p1bin file to individual binary files, separated by message 
     else:
         prefix = os.path.splitext(os.path.basename(input_path))[0]
 
-    valid_count, out_files = dump_p1bin(input_path=input_path, output_dir=output_dir, prefix=prefix, return_files=True,
-                                        verbose=(options.verbose >= 1))
+    valid_count, out_files = dump_p1bin(input_path=input_path, output_dir=output_dir, prefix=prefix, return_files=True)
     _logger.info(f'Found {valid_count} messages of types {list(out_files.keys())}')
     _logger.info(f"Output stored in '{output_dir}'.")
 
