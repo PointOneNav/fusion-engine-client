@@ -470,10 +470,6 @@ class Analyzer(object):
             elif v.startswith('meas_'):
                 measurement_map.append((k, v))
 
-        if (delay_queue_count_idx is None or delay_queue_ns_idx is None):
-            self.logger.info('Delay queue depth data missing.')
-            return
-
         time = data.system_time_sec - self.reader.get_system_t0()
 
         figure = make_subplots(rows=4, cols=1, print_grid=False, shared_xaxes=True,
@@ -489,12 +485,18 @@ class Analyzer(object):
         figure['layout']['yaxis3'].update(title="Buffer Free (bytes)")
         figure['layout']['yaxis4'].update(title="Message Rate (Hz)")
 
-        figure.add_trace(go.Scattergl(x=time, y=data.counters[delay_queue_count_idx], showlegend=False,
-                                      mode='lines', line={'color': 'red'}),
-                         1, 1)
-        figure.add_trace(go.Scattergl(x=time, y=data.counters[delay_queue_ns_idx] / 1e6, showlegend=False,
-                                      mode='lines', line={'color': 'blue'}),
-                         2, 1)
+        if (delay_queue_count_idx is None):
+            self.logger.info('Delay queue depth data missing.')
+        else:
+            figure.add_trace(go.Scattergl(x=time, y=data.counters[delay_queue_count_idx], showlegend=False,
+                                        mode='lines', line={'color': 'red'}),
+                            1, 1)
+        if (delay_queue_ns_idx is None):
+            self.logger.info('Delay queue age data missing.')
+        else:
+            figure.add_trace(go.Scattergl(x=time, y=data.counters[delay_queue_ns_idx] / 1e6, showlegend=False,
+                                        mode='lines', line={'color': 'blue'}),
+                            2, 1)
 
         for i in range(len(msg_buff_map)):
             color = plotly.colors.DEFAULT_PLOTLY_COLORS[i % len(plotly.colors.DEFAULT_PLOTLY_COLORS)]
