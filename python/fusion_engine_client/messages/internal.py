@@ -37,6 +37,8 @@ class InternalMessageType(IntEnum):
     PROFILE_EXECUTION_STATS_DEFINITION = 20061
     PROFILE_COUNTER = 20062
     PROFILE_COUNTER_DEFINITION = 20063
+    RESET_CMD = 20064
+    CMD_RESPONSE = 20065
 
 
 # Extend the message type enum with internal types.
@@ -889,6 +891,98 @@ class ProfileCounterMessage(MessagePayload):
                 result['counters'].append(counters)
         return result
 
+class ResetCommandMessage(MessagePayload):
+    """!
+    @brief Reset command
+    """
+    MESSAGE_TYPE = MessageType.RESET_CMD
+
+    RESET_NAVIGATION  = 0x00000001
+    RESET_EPHEMERIS   = 0x00000002
+    RESET_CORRECTIONS = 0x00000004
+    RESET_SOFTWARE    = 0x00FFFFFF
+
+    _FORMAT = '<I'
+    _SIZE: int = struct.calcsize(_FORMAT)
+
+    def __init__(self):
+        self.reset_mask = 0
+
+    def get_type(self) -> MessageType:
+        return ResetCommandMessage.MESSAGE_TYPE
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        if buffer is None:
+            buffer = bytearray(self.calcsize())
+
+        struct.pack_into(ResetCommandMessage._FORMAT, buffer, offset,
+                         self.reset_mask)
+
+        if return_buffer:
+            return buffer
+        else:
+            return self.calcsize()
+
+    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+        initial_offset = offset
+
+        (self.reset_mask) = \
+            struct.unpack_from(ResetCommandMessage._FORMAT, buffer=buffer, offset=offset)
+        offset += ResetCommandMessage._SIZE
+
+        return offset - initial_offset
+
+    @classmethod
+    def calcsize(cls) -> int:
+        return ResetCommandMessage._SIZE
+
+class CommandResponseMessage(MessagePayload):
+    """!
+    @brief Reset command
+    """
+    MESSAGE_TYPE = MessageType.RESET_CMD
+
+    class Response(IntEnum):
+        OK = 0,
+        ERROR = 1
+
+    _FORMAT = '<I3xB'
+    _SIZE: int = struct.calcsize(_FORMAT)
+
+    def __init__(self):
+        self.source_sequence_num = 0
+        self.response = CommandResponseMessage.Response.OK
+
+    def get_type(self) -> MessageType:
+        return CommandResponseMessage.MESSAGE_TYPE
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        if buffer is None:
+            buffer = bytes(self.calcsize())
+
+        initial_offset = offset
+
+        struct.pack_into(CommandResponseMessage._FORMAT, buffer, offset,
+                         self.source_sequence_num, self.response)
+        offset = CommandResponseMessage._SIZE
+
+        if return_buffer:
+            return buffer
+        else:
+            return offset - initial_offset
+
+    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+        initial_offset = offset
+
+        (self.source_sequence_num, self.response) = \
+            struct.unpack_from(CommandResponseMessage._FORMAT, buffer=buffer, offset=offset)
+        offset = CommandResponseMessage._SIZE
+
+        return offset - initial_offset
+
+    @classmethod
+    def calcsize(cls) -> int:
+        return CommandResponseMessage._SIZE
 
 # Extend the message class with internal types.
 message_type_to_class.update({
@@ -904,4 +998,6 @@ message_type_to_class.update({
     ProfileExecutionStatsMessage.DEFINITION_TYPE: ProfileDefinitionMessage,
     ProfileCounterMessage.MESSAGE_TYPE: ProfileCounterMessage,
     ProfileCounterMessage.DEFINITION_TYPE: ProfileDefinitionMessage,
+    ResetCommandMessage.MESSAGE_TYPE: ResetCommandMessage,
+    CommandResponseMessage.MESSAGE_TYPE: CommandResponseMessage,
 })
