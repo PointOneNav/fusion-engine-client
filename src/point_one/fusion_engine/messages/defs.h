@@ -223,10 +223,7 @@ inline const char* to_string(SatelliteType type) {
  * @ingroup enum_definitions
  */
 inline std::ostream& operator<<(std::ostream& stream, SatelliteType type) {
-  stream << to_string(type);
-  if (type > SatelliteType::MAX_VALUE) {
-    stream << " (" << (int)type << ")";
-  }
+  stream << to_string(type) << " (" << (int)type << ")";
   return stream;
 }
 
@@ -277,10 +274,7 @@ inline const char* to_string(MessageType type) {
  * @ingroup enum_definitions
  */
 inline std::ostream& operator<<(std::ostream& stream, MessageType type) {
-  stream << to_string(type);
-  if (type > MessageType::MAX_VALUE) {
-    stream << " (" << (int)type << ")";
-  }
+  stream << to_string(type) << " (" << (int)type << ")";
   return stream;
 }
 
@@ -328,10 +322,7 @@ inline const char* to_string(SolutionType type) {
  * @ingroup enum_definitions
  */
 inline std::ostream& operator<<(std::ostream& stream, SolutionType type) {
-  stream << to_string(type);
-  if (type > SolutionType::MAX_VALUE) {
-    stream << " (" << (int)type << ")";
-  }
+  stream << to_string(type) << " (" << (int)type << ")";
   return stream;
 }
 
