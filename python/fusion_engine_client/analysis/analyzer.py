@@ -72,7 +72,7 @@ class Analyzer(object):
         }
 
         self.t0 = self.reader.t0
-        self.system_t0 = None
+        self.system_t0 = self.reader.get_system_t0()
 
         self.plots = {}
         self.summary = ''
@@ -96,7 +96,7 @@ class Analyzer(object):
             self.logger.info('No pose data available.')
             return
 
-        time = pose_data.p1_time - self.reader.get_system_t0()
+        time = pose_data.p1_time - self.system_t0
 
         valid_idx = np.logical_and(~np.isnan(pose_data.p1_time), pose_data.solution_type != SolutionType.Invalid)
         if not np.any(valid_idx):
@@ -330,7 +330,7 @@ class Analyzer(object):
             self.logger.info('No system profiling data available.')
             return
 
-        time = data.system_time - self.reader.get_system_t0()
+        time = data.system_time - self.system_t0
 
         figure = make_subplots(rows=3, cols=1, print_grid=False, shared_xaxes=True,
                                subplot_titles=['CPU Usage', 'Memory Usage', 'Queue Depth'])
@@ -397,7 +397,7 @@ class Analyzer(object):
             self.logger.warning('No execution profiling stats names received.')
             id_to_name = {}
 
-        time = data.system_time_sec - self.reader.get_system_t0()
+        time = data.system_time_sec - self.system_t0
 
         figure = make_subplots(rows=3, cols=1, print_grid=False, shared_xaxes=True,
                                subplot_titles=['Average Processing Time', 'Max Processing Time',
@@ -470,7 +470,7 @@ class Analyzer(object):
             elif v.startswith('meas_'):
                 measurement_map.append((k, v))
 
-        time = data.system_time_sec - self.reader.get_system_t0()
+        time = data.system_time_sec - self.system_t0
 
         figure = make_subplots(rows=4, cols=1, print_grid=False, shared_xaxes=True,
                                subplot_titles=['Delay Queue Depth Measurements', 'Delay Queue Depth Age',
@@ -542,7 +542,7 @@ class Analyzer(object):
             self.logger.warning('No FreeRTOS task names received.')
             id_to_name = {}
 
-        time = data.system_time_sec - self.reader.get_system_t0()
+        time = data.system_time_sec - self.system_t0
 
         figure = make_subplots(rows=3, cols=1, print_grid=False, shared_xaxes=True,
                                subplot_titles=['CPU Usage', 'Stack High Water Marks', 'Dynamic Memory Free'])
@@ -612,7 +612,7 @@ class Analyzer(object):
 
         for id, point_data in data.points.items():
             name = id_to_name.get(id, 'unknown_%s' % str(id))
-            time_sec = point_data[0, :] - self.reader.get_system_t0()
+            time_sec = point_data[0, :] - self.system_t0
             delay_sec = point_data[1, :]
             figure.add_trace(go.Scattergl(x=time_sec, y=delay_sec, name=name, mode='markers'), 1, 1)
 
