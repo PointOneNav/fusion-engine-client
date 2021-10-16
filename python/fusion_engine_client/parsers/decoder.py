@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import List, Dict, Callable, Optional, Tuple
+from typing import List, Dict, Callable, Optional, Tuple, Union
 from ..messages.internal import MessageHeader, MessageType, MessagePayload, message_type_to_class
 
 
@@ -15,7 +15,9 @@ class FusionEngineDecoder:
     def add_callback(self, MessageType, callback: Callable[[MessageHeader, MessagePayload], None]):
         self._callbacks[MessageType].append(callback)
 
-    def on_data(self, data: bytes) -> List[Tuple[MessageHeader, MessagePayload]]:
+    def on_data(self, data:Union[bytes, int]) -> List[Tuple[MessageHeader, MessagePayload]]:
+        if type(data) == int:
+            data = data.to_bytes(1, 'big')
         self._buffer += data
         return self._check_buffer()
 
@@ -50,9 +52,11 @@ class FusionEngineDecoder:
                                 offset=MessageHeader.calcsize())
                 for callback in self._callbacks[self._header.message_type]:
                     callback(self._header, contents)
-            result = tuple(self._header, contents)
+                result = (self._header, contents)
+            else:
+                result = (self._header, bytes(self._buffer[:msg_len]))
             self._header = None
-            self._buffer.pop(msg_len)
+            self._buffer = self._buffer[msg_len:]
             return [result] + self._check_buffer()
         except Exception as e:
             self._header = None
