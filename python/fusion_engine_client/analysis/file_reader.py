@@ -227,7 +227,7 @@ class FileReader(object):
         # messages that do not have P1 time. We want to make sure the 1 message is one with time.
         if self.index is None:
             self.t0 = None
-            self.read(time_range=(0.0, None), max_messages=1, generate_index=False)
+            self.read(time_range=(0.0, None), require_p1time=True, max_messages=1, generate_index=False)
         else:
             idx = np.argmax(~np.isnan(self.index['time']))
             self.t0 = Timestamp(self.index['time'][idx])
@@ -238,7 +238,7 @@ class FileReader(object):
         # read operation.
         self.system_t0 = None
         self.system_t0_ns = None
-        self.read(message_types=internal.PROFILING_TYPES, max_messages=1, ignore_index_max_messages=True)
+        self.read(require_system_time=True, max_messages=1, ignore_index_max_messages=True, generate_index=False)
 
     def close(self):
         """!
@@ -264,7 +264,7 @@ class FileReader(object):
 
     def read(self, message_types: Union[list, tuple] = None,
              time_range: Tuple[Union[float, Timestamp], Union[float, Timestamp]] = None, absolute_time: bool = False,
-             max_messages: int = None,
+             max_messages: int = None, require_p1time: bool = False, require_system_time: bool = False,
              return_numpy: bool = False, keep_messages: bool = False, remove_nan_times: bool = True,
              generate_index: bool = True, show_progress: bool = False,
              ignore_index: bool = False, ignore_index_max_messages: bool = False) \
@@ -287,6 +287,8 @@ class FileReader(object):
                them as relative to the first message in the file.
         @param max_messages If set, read up to the specified maximum number of messages. Applies across all message
                types. If negative, read the last N messages.
+        @param require_p1time If `True`, omit messages that do not contain valid P1 timestamps.
+        @param require_system_time If `True`, omit messages that do not contain valid system timestamps.
         @param return_numpy If `True`, convert the results to numpy arrays for analysis.
         @param keep_messages If `return_numpy == True` and `keep_messages == False`, the raw data in the `messages`
                field will be cleared for each @ref MessageData object for which numpy conversion is supported.
@@ -573,6 +575,8 @@ class FileReader(object):
 
                         if p1_reference_time_sec is None:
                             p1_reference_time_sec = float(p1_time)
+                elif require_p1time:
+                    continue
 
                 if system_time_ns is not None:
                     if self.system_t0 is None:
@@ -583,6 +587,8 @@ class FileReader(object):
 
                         if not absolute_time and system_reference_time_sec is None:
                             system_reference_time_sec = system_time_sec
+                elif require_system_time:
+                    continue
 
                 # Now skip this message if we don't need it.
                 if not message_needed:
