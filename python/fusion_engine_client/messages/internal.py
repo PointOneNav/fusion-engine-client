@@ -940,7 +940,7 @@ class CommandResponseMessage(MessagePayload):
     """!
     @brief Reset command
     """
-    MESSAGE_TYPE = MessageType.RESET_CMD
+    MESSAGE_TYPE = MessageType.CMD_RESPONSE
 
     class Response(IntEnum):
         OK = 0,
