@@ -77,7 +77,7 @@ class MessageRequest(MessagePayload):
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
-            buffer = bytes(self.calcsize())
+            buffer = bytearray(self.calcsize())
 
         initial_offset = offset
 
@@ -145,7 +145,7 @@ class ProfileSystemStatusMessage(MessagePayload):
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
-            buffer = bytes(self.calcsize())
+            buffer = bytearray(self.calcsize())
 
         initial_offset = offset
 
@@ -301,7 +301,7 @@ class ProfileDefinitionMessage(MessagePayload):
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
-            buffer = bytes(self.calcsize())
+            buffer = bytearray(self.calcsize())
 
         initial_offset = offset
 
@@ -411,7 +411,7 @@ class ProfilePipelineMessage(MessagePayload):
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
-            buffer = bytes(self.calcsize())
+            buffer = bytearray(self.calcsize())
 
         initial_offset = offset
 
@@ -560,7 +560,7 @@ class ProfileExecutionMessage(MessagePayload):
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
-            buffer = bytes(self.calcsize())
+            buffer = bytearray(self.calcsize())
 
         initial_offset = offset
 
@@ -926,7 +926,7 @@ class ResetCommandMessage(MessagePayload):
     def unpack(self, buffer: bytes, offset: int = 0) -> int:
         initial_offset = offset
 
-        (self.reset_mask) = \
+        (self.reset_mask,) = \
             struct.unpack_from(ResetCommandMessage._FORMAT, buffer=buffer, offset=offset)
         offset += ResetCommandMessage._SIZE
 
@@ -958,7 +958,7 @@ class CommandResponseMessage(MessagePayload):
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
-            buffer = bytes(self.calcsize())
+            buffer = bytearray(self.calcsize())
 
         initial_offset = offset
 

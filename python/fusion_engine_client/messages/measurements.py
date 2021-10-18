@@ -26,7 +26,7 @@ class IMUMeasurement(MessagePayload):
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
-            buffer = bytes(self.calcsize())
+            buffer = bytearray(self.calcsize())
 
         initial_offset = offset
 
