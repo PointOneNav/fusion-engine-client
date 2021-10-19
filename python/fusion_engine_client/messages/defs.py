@@ -321,8 +321,13 @@ class MessagePayload:
     def __init__(self):
         pass
 
-    def get_type(self) -> MessageType:
-        raise NotImplementedError('get_type() not implemented.')
+    @classmethod
+    def get_type(cls) -> MessageType:
+        return cls.MESSAGE_TYPE
+
+    @classmethod
+    def get_version(cls) -> int:
+        return cls.MESSAGE_VERSION
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         raise NotImplementedError('pack() not implemented.')
