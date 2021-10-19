@@ -39,12 +39,15 @@ def test_multiple_good():
 
 def test_sync():
   # Bad preamble
-  test_bytes = bytearray() + P1_POSE_MESSAGE1 + P1_POSE_MESSAGE2
+  test_bytes = bytearray() + P1_POSE_MESSAGE1 + P1_POSE_MESSAGE2 + P1_POSE_AUX_MESSAGE3
+  # Bad sync0 for first message
   test_bytes[0] = 1
+  # Bad sync1 for second message
+  test_bytes[len(P1_POSE_MESSAGE1) + 1] = 1
   decoder = FusionEngineDecoder()
   ret = decoder.on_data(test_bytes)
   assert len(ret) == 1
-  assert ret[0][0].sequence_number == 1
+  assert ret[0][0].sequence_number == 2
 
   # CRC failure
   test_bytes = bytearray() + P1_POSE_MESSAGE1 + P1_POSE_MESSAGE2
@@ -53,6 +56,14 @@ def test_sync():
   ret = decoder.on_data(test_bytes)
   assert len(ret) == 1
   assert ret[0][0].sequence_number == 1
+
+def test_resync():
+  test_bytes =  P1_POSE_MESSAGE1 + b'.' + P1_POSE_MESSAGE2  + b'.1' + P1_POSE_AUX_MESSAGE3
+  decoder = FusionEngineDecoder(200)
+  ret = decoder.on_data(test_bytes)
+  assert len(ret) == 3
+  for i in range(3):
+    assert ret[i][0].sequence_number == i
 
 def test_unknown_message():
   header = MessageHeader()
@@ -88,3 +99,10 @@ def test_callbacks():
   assert counters[1] == 1
   assert counters[2] == 3
   assert counters[3] == 5
+
+def test_seq_skip_warning(caplog):
+  test_bytes = P1_POSE_MESSAGE1 + P1_POSE_MESSAGE2 + P1_POSE_MESSAGE1
+  decoder = FusionEngineDecoder()
+  decoder.print_seq_skip_warnings(True)
+  decoder.on_data(test_bytes)
+  assert "FusionEngine messages' sequence_number skipped from 1 to 0." in caplog.text
