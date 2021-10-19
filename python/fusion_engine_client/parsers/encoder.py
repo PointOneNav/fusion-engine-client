@@ -16,17 +16,18 @@ class FusionEngineEncoder:
 
     def encode_message(self, message: MessagePayload) -> (bytes):
         """!
-        @brief Generate a header with valid CRC and sequence number and generate
-               a bytes with the serialized header and payload.
+        @brief Serialize a message with valid header and payload.
 
         @post
-        The sequence_number is incremented each time this is called.
+        The header will set the CRC, message type, sequence number, and message
+        version. The sequence_number is incremented each time this is called.
 
         @param message The MessagePayload to serialize.
 
         @return A `bytes` object containing the serialized message.
         """
         header = MessageHeader(message.get_type())
+        header.message_version = message.get_version()
         header.sequence_number = self.sequence_number
         self.sequence_number += 1
 

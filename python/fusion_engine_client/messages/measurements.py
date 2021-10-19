@@ -8,6 +8,7 @@ class IMUMeasurement(MessagePayload):
     @brief IMU sensor measurement data.
     """
     MESSAGE_TYPE = MessageType.IMU_MEASUREMENT
+    MESSAGE_VERSION = 0
 
     _FORMAT = '<3d 3d 3d 3d'
     _SIZE: int = struct.calcsize(_FORMAT)
@@ -20,9 +21,6 @@ class IMUMeasurement(MessagePayload):
 
         self.gyro_rps = np.full((3,), np.nan)
         self.gyro_std_rps = np.full((3,), np.nan)
-
-    def get_type(self) -> MessageType:
-        return IMUMeasurement.MESSAGE_TYPE
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
