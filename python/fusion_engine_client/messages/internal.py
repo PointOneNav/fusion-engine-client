@@ -37,6 +37,8 @@ class InternalMessageType(IntEnum):
     PROFILE_EXECUTION_STATS_DEFINITION = 20061
     PROFILE_COUNTER = 20062
     PROFILE_COUNTER_DEFINITION = 20063
+    RESET_CMD = 20064
+    CMD_RESPONSE = 20065
 
 
 # Extend the message type enum with internal types.
@@ -63,6 +65,7 @@ class MessageRequest(MessagePayload):
     @brief Transmission request for a specified message type.
     """
     MESSAGE_TYPE = MessageType.MESSAGE_REQ
+    MESSAGE_VERSION = 0
 
     _FORMAT = '<H2x'
     _SIZE: int = struct.calcsize(_FORMAT)
@@ -70,12 +73,9 @@ class MessageRequest(MessagePayload):
     def __init__(self, message_type: MessageType = MessageType.INVALID):
         self.message_type: MessageType = message_type
 
-    def get_type(self) -> MessageType:
-        return MessageRequest.MESSAGE_TYPE
-
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
-            buffer = bytes(self.calcsize())
+            buffer = bytearray(self.calcsize())
 
         initial_offset = offset
 
@@ -113,6 +113,7 @@ class ProfileSystemStatusMessage(MessagePayload):
     @brief System-level profiling data.
     """
     MESSAGE_TYPE = MessageType.PROFILE_SYSTEM_STATUS
+    MESSAGE_VERSION = 0
 
     _MAX_CPU_CORES = 16
     _INVALID_CPU_USAGE = 0xFF
@@ -138,12 +139,9 @@ class ProfileSystemStatusMessage(MessagePayload):
         self.dq_depth = 0
         self.dq_depth_sec = np.nan
 
-    def get_type(self) -> MessageType:
-        return ProfileSystemStatusMessage.MESSAGE_TYPE
-
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
-            buffer = bytes(self.calcsize())
+            buffer = bytearray(self.calcsize())
 
         initial_offset = offset
 
@@ -294,12 +292,9 @@ class ProfileDefinitionMessage(MessagePayload):
         self.system_time_ns = 0
         self.entries: List[ProfileDefinitionEntry] = []
 
-    def get_type(self) -> MessageType:
-        return ProfileDefinitionMessage.MESSAGE_TYPE
-
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
-            buffer = bytes(self.calcsize())
+            buffer = bytearray(self.calcsize())
 
         initial_offset = offset
 
@@ -394,6 +389,7 @@ class ProfilePipelineMessage(MessagePayload):
     @brief Measurement pipeline profiling update.
     """
     MESSAGE_TYPE = MessageType.PROFILE_PIPELINE
+    MESSAGE_VERSION = 0
     DEFINITION_TYPE = MessageType.PROFILE_PIPELINE_DEFINITION
 
     _FORMAT = '<q2xH'
@@ -404,12 +400,9 @@ class ProfilePipelineMessage(MessagePayload):
         self.p1_time = Timestamp()
         self.entries: List[ProfilePipelineEntry] = []
 
-    def get_type(self) -> MessageType:
-        return ProfilePipelineMessage.MESSAGE_TYPE
-
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
-            buffer = bytes(self.calcsize())
+            buffer = bytearray(self.calcsize())
 
         initial_offset = offset
 
@@ -544,6 +537,7 @@ class ProfileExecutionMessage(MessagePayload):
     @brief Code execution profiling update.
     """
     MESSAGE_TYPE = MessageType.PROFILE_EXECUTION
+    MESSAGE_VERSION = 0
     DEFINITION_TYPE = MessageType.PROFILE_EXECUTION_DEFINITION
 
     _FORMAT = '<q2xH'
@@ -553,12 +547,9 @@ class ProfileExecutionMessage(MessagePayload):
         self.system_time_ns = 0
         self.entries: List[ProfileExecutionEntry] = []
 
-    def get_type(self) -> MessageType:
-        return ProfileExecutionMessage.MESSAGE_TYPE
-
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
-            buffer = bytes(self.calcsize())
+            buffer = bytearray(self.calcsize())
 
         initial_offset = offset
 
@@ -638,6 +629,7 @@ class ProfileFreeRtosSystemStatusMessage(MessagePayload):
     @brief FreeRTOS System-level profiling data.
     """
     MESSAGE_TYPE = MessageType.PROFILE_FREERTOS_SYSTEM_STATUS
+    MESSAGE_VERSION = 0
     DEFINITION_TYPE = MessageType.PROFILE_FREERTOS_TASK_DEFINITION
 
     _INVALID_CPU_USAGE = 0xFF
@@ -663,9 +655,6 @@ class ProfileFreeRtosSystemStatusMessage(MessagePayload):
         self.heap_free_bytes = 0,
         self.sbrk_free_bytes = 0,
         self.task_entries = []
-
-    def get_type(self) -> MessageType:
-        return ProfileFreeRtosSystemStatusMessage.MESSAGE_TYPE
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         values = dict(self.__dict__)
@@ -743,6 +732,7 @@ class ProfileExecutionStatsMessage(MessagePayload):
     @brief Execution stats profiling data.
     """
     MESSAGE_TYPE = MessageType.PROFILE_EXECUTION_STATS
+    MESSAGE_VERSION = 0
     DEFINITION_TYPE = MessageType.PROFILE_EXECUTION_STATS_DEFINITION
 
     ProfileExecutionStatsEntryConstruct = Struct(
@@ -761,9 +751,6 @@ class ProfileExecutionStatsMessage(MessagePayload):
     def __init__(self):
         self.system_time_ns = 0,
         self.entries = []
-
-    def get_type(self) -> MessageType:
-        return ProfileExecutionStatsMessage.MESSAGE_TYPE
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         values = dict(self.__dict__)
@@ -824,6 +811,7 @@ class ProfileCounterMessage(MessagePayload):
     @brief Execution stats profiling data.
     """
     MESSAGE_TYPE = MessageType.PROFILE_COUNTER
+    MESSAGE_VERSION = 0
     DEFINITION_TYPE = MessageType.PROFILE_COUNTER_DEFINITION
 
     ProfileCounterEntryConstruct = Struct(
@@ -840,9 +828,6 @@ class ProfileCounterMessage(MessagePayload):
     def __init__(self):
         self.system_time_ns = 0,
         self.entries = []
-
-    def get_type(self) -> MessageType:
-        return ProfileCounterMessage.MESSAGE_TYPE
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         values = dict(self.__dict__)
@@ -889,6 +874,94 @@ class ProfileCounterMessage(MessagePayload):
                 result['counters'].append(counters)
         return result
 
+class ResetCommandMessage(MessagePayload):
+    """!
+    @brief Reset command
+    """
+    MESSAGE_TYPE = MessageType.RESET_CMD
+    MESSAGE_VERSION = 0
+
+    RESET_NAVIGATION  = 0x00000001
+    RESET_EPHEMERIS   = 0x00000002
+    RESET_CORRECTIONS = 0x00000004
+    RESET_SOFTWARE    = 0x00FFFFFF
+
+    _FORMAT = '<I'
+    _SIZE: int = struct.calcsize(_FORMAT)
+
+    def __init__(self):
+        self.reset_mask = 0
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        if buffer is None:
+            buffer = bytearray(self.calcsize())
+
+        struct.pack_into(ResetCommandMessage._FORMAT, buffer, offset,
+                         self.reset_mask)
+
+        if return_buffer:
+            return buffer
+        else:
+            return self.calcsize()
+
+    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+        initial_offset = offset
+
+        (self.reset_mask,) = \
+            struct.unpack_from(ResetCommandMessage._FORMAT, buffer=buffer, offset=offset)
+        offset += ResetCommandMessage._SIZE
+
+        return offset - initial_offset
+
+    @classmethod
+    def calcsize(cls) -> int:
+        return ResetCommandMessage._SIZE
+
+class CommandResponseMessage(MessagePayload):
+    """!
+    @brief Reset command
+    """
+    MESSAGE_TYPE = MessageType.CMD_RESPONSE
+    MESSAGE_VERSION = 0
+
+    class Response(IntEnum):
+        OK = 0,
+        ERROR = 1
+
+    _FORMAT = '<I3xB'
+    _SIZE: int = struct.calcsize(_FORMAT)
+
+    def __init__(self):
+        self.source_sequence_num = 0
+        self.response = CommandResponseMessage.Response.OK
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        if buffer is None:
+            buffer = bytearray(self.calcsize())
+
+        initial_offset = offset
+
+        struct.pack_into(CommandResponseMessage._FORMAT, buffer, offset,
+                         self.source_sequence_num, self.response)
+        offset = CommandResponseMessage._SIZE
+
+        if return_buffer:
+            return buffer
+        else:
+            return offset - initial_offset
+
+    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+        initial_offset = offset
+
+        (self.source_sequence_num, self.response) = \
+            struct.unpack_from(CommandResponseMessage._FORMAT, buffer=buffer, offset=offset)
+        offset = CommandResponseMessage._SIZE
+
+        return offset - initial_offset
+
+    @classmethod
+    def calcsize(cls) -> int:
+        return CommandResponseMessage._SIZE
 
 # Extend the message class with internal types.
 message_type_to_class.update({
@@ -904,4 +977,6 @@ message_type_to_class.update({
     ProfileExecutionStatsMessage.DEFINITION_TYPE: ProfileDefinitionMessage,
     ProfileCounterMessage.MESSAGE_TYPE: ProfileCounterMessage,
     ProfileCounterMessage.DEFINITION_TYPE: ProfileDefinitionMessage,
+    ResetCommandMessage.MESSAGE_TYPE: ResetCommandMessage,
+    CommandResponseMessage.MESSAGE_TYPE: CommandResponseMessage,
 })

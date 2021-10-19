@@ -111,7 +111,7 @@ class Timestamp:
             buffer = struct.pack(Timestamp._FORMAT, int_part, frac_part_ns)
         else:
             args = (int_part, frac_part_ns)
-            struct.pack_into(Timestamp._FORMAT, buffer=buffer, offset=offset, *args)
+            struct.pack_into(Timestamp._FORMAT, buffer, offset, *args)
 
         if return_buffer:
             return buffer
@@ -119,7 +119,7 @@ class Timestamp:
             return self.calcsize()
 
     def unpack(self, buffer: bytes, offset: int = 0) -> int:
-        (int_part, frac_part_ns) = struct.unpack_from(Timestamp._FORMAT, buffer=buffer, offset=offset)
+        (int_part, frac_part_ns) = struct.unpack_from(Timestamp._FORMAT, buffer, offset)
         if int_part == Timestamp._INVALID or frac_part_ns == Timestamp._INVALID:
             self.seconds = math.nan
         else:
@@ -194,7 +194,7 @@ class MessageHeader:
         # protocol_version, then add the payload into the CRC.
         self.payload_size_bytes = len(payload)
         header_buffer = self.pack()
-        self.crc = crc32(header_buffer[6:])
+        self.crc = crc32(header_buffer[8:])
         self.crc = crc32(payload, self.crc)
         return self.crc
 
@@ -232,14 +232,14 @@ class MessageHeader:
         if payload is not None:
             self.calculate_crc(payload)
 
-        args = (self.crc, self.protocol_version, self.message_version, int(self.message_type), self.sequence_number,
+        args = (MessageHeader._SYNC0, MessageHeader._SYNC1, self.crc, self.protocol_version, self.message_version, int(self.message_type), self.sequence_number,
                 self.payload_size_bytes, self.source_identifier)
         if buffer is None:
             buffer = struct.pack(MessageHeader._FORMAT, *args)
             if payload is not None:
                 buffer += payload
         else:
-            struct.pack_into(MessageHeader._FORMAT, buffer=buffer, offset=offset, *args)
+            struct.pack_into(MessageHeader._FORMAT, buffer, offset, *args)
             if payload is not None:
                 offset += MessageHeader._SIZE
                 buffer[offset:offset + len(payload)] = payload
@@ -267,7 +267,7 @@ class MessageHeader:
          self.crc, self.protocol_version,
          self.message_version, message_type_int,
          self.sequence_number, self.payload_size_bytes, self.source_identifier) = \
-            struct.unpack_from(MessageHeader._FORMAT, buffer=buffer, offset=offset)
+            struct.unpack_from(MessageHeader._FORMAT, buffer, offset)
 
         if sync0 != MessageHeader._SYNC0 or sync1 != MessageHeader._SYNC1:
             raise ValueError('Received invalid sync bytes. [sync0=0x%02x, sync1=0x%02x]' % (sync0, sync1))
@@ -297,7 +297,7 @@ class MessageHeader:
 
     @classmethod
     def unpack_values(cls, format, buffer, offset=0, *args):
-        values = struct.unpack_from(format, buffer=buffer, offset=offset)
+        values = struct.unpack_from(format, buffer, offset)
 
         args = list(args)
         value_idx = 0
@@ -321,8 +321,13 @@ class MessagePayload:
     def __init__(self):
         pass
 
-    def get_type(self) -> MessageType:
-        raise NotImplementedError('get_type() not implemented.')
+    @classmethod
+    def get_type(cls) -> MessageType:
+        return cls.MESSAGE_TYPE
+
+    @classmethod
+    def get_version(cls) -> int:
+        return cls.MESSAGE_VERSION
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         raise NotImplementedError('pack() not implemented.')
