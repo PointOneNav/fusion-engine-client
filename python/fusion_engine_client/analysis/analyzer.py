@@ -429,6 +429,70 @@ class Analyzer(object):
 
         self._add_figure(name="profile_execution_stats", figure=figure, title="Profiling: Execution Stats")
 
+    def plot_serial_tx_profiling(self, id_to_name, data):
+
+        tx_buffer_free_maps = []
+        tx_error_counts_maps = []
+        tx_sent_counts_maps = []
+        name_map = {
+            'corr': 'NMEA',
+            'user': 'Sensors/FusionEngine',
+        }
+        for k, v in id_to_name.items():
+            if v.startswith('tx_'):
+                serial_name = v.split('_')[-1]
+                serial_name = name_map.get(serial_name, serial_name)
+                if v.startswith('tx_errs'):
+                    tx_error_counts_maps.append((k, serial_name))
+                elif v.startswith('tx_buff'):
+                    tx_buffer_free_maps.append((k, serial_name))
+                else:
+                    tx_sent_counts_maps.append((k, serial_name))
+
+        time = data.system_time_sec - self.system_t0
+
+        figure = make_subplots(rows=3, cols=1, print_grid=False, shared_xaxes=True,
+                               subplot_titles=['Serial Error Counts',
+                                               'Serial Message Buffer Free Space',
+                                               'Serial Write Rates'])
+
+        figure['layout'].update(showlegend=True)
+        figure['layout']['xaxis'].update(title="System Time (sec)")
+        for i in range(2):
+            figure['layout']['xaxis%d' % (i + 1)].update(showticklabels=True)
+        figure['layout']['yaxis1'].update(title="Error Count")
+        figure['layout']['yaxis2'].update(title="Buffer Free (kB)")
+        figure['layout']['yaxis3'].update(title="Message Rate (kB/s)")
+        figure.update_layout(legend_title_text="Serial Port")
+
+        for i in range(len(tx_error_counts_maps)):
+            color = plotly.colors.DEFAULT_PLOTLY_COLORS[i % len(
+                plotly.colors.DEFAULT_PLOTLY_COLORS)]
+            idx, serial_name = tx_error_counts_maps[i]
+            figure.add_trace(go.Scattergl(x=time, y=data.counters[idx], name=f'{serial_name}',
+                                          mode='lines', legendgroup=serial_name, line={'color': color}),
+                             1, 1)
+
+        for i in range(len(tx_buffer_free_maps)):
+            color = plotly.colors.DEFAULT_PLOTLY_COLORS[i % len(
+                plotly.colors.DEFAULT_PLOTLY_COLORS)]
+            idx, serial_name = tx_buffer_free_maps[i]
+            figure.add_trace(go.Scattergl(x=time, y=data.counters[idx] / 1024.0, name=f'{serial_name}',
+                                          mode='lines', showlegend=False, legendgroup=serial_name,
+                                          line={'color': color}),
+                             2, 1)
+
+        for i in range(len(tx_sent_counts_maps)):
+            color = plotly.colors.DEFAULT_PLOTLY_COLORS[i % len(
+                plotly.colors.DEFAULT_PLOTLY_COLORS)]
+            idx, serial_name = tx_sent_counts_maps[i]
+            figure.add_trace(go.Scattergl(x=time, y=np.diff(data.counters[idx]) / 1024.0 / np.diff(time),
+                                          name=f'{serial_name}', showlegend=False,
+                                          legendgroup=serial_name, mode='lines', line={'color': color}),
+                             3, 1)
+
+        self._add_figure(name="profile_serial_tx", figure=figure, title="Profiling: Serial Output")
+
     def plot_counter_profiling(self):
         """!
         @brief Plot execution profiling stats.
@@ -441,7 +505,7 @@ class Analyzer(object):
         data = result[ProfileCounterMessage.MESSAGE_TYPE]
 
         if len(data.system_time_sec) == 0:
-            self.logger.info('No execution profiling stats data available.')
+            self.logger.info('No counter profiling stats data available.')
             return
 
         # Read the last task name message to map IDs to names.
@@ -456,6 +520,8 @@ class Analyzer(object):
             self.logger.warning('No execution profiling stats names received.')
             id_to_name = {}
 
+        self.plot_serial_tx_profiling(id_to_name, data)
+
         delay_queue_count_idx = None
         delay_queue_ns_idx = None
         msg_buff_map = []
@@ -466,7 +532,7 @@ class Analyzer(object):
             elif v == 'delay_queue_ns':
                 delay_queue_ns_idx = k
             elif v.startswith('msg_buff_'):
-                 msg_buff_map.append((k, v))
+                msg_buff_map.append((k, v))
             elif v.startswith('meas_'):
                 measurement_map.append((k, v))
 
@@ -489,20 +555,20 @@ class Analyzer(object):
             self.logger.info('Delay queue depth data missing.')
         else:
             figure.add_trace(go.Scattergl(x=time, y=data.counters[delay_queue_count_idx], showlegend=False,
-                                        mode='lines', line={'color': 'red'}),
-                            1, 1)
+                                          mode='lines', line={'color': 'red'}),
+                             1, 1)
         if (delay_queue_ns_idx is None):
             self.logger.info('Delay queue age data missing.')
         else:
             figure.add_trace(go.Scattergl(x=time, y=data.counters[delay_queue_ns_idx] / 1e6, showlegend=False,
-                                        mode='lines', line={'color': 'blue'}),
-                            2, 1)
+                                          mode='lines', line={'color': 'blue'}),
+                             2, 1)
 
         for i in range(len(msg_buff_map)):
             color = plotly.colors.DEFAULT_PLOTLY_COLORS[i % len(plotly.colors.DEFAULT_PLOTLY_COLORS)]
             idx, buffer_name = msg_buff_map[i]
             figure.add_trace(go.Scattergl(x=time, y=data.counters[idx], name=f'{buffer_name}',
-                                            mode='lines', line={'color': color}),
+                                          mode='lines', line={'color': color}),
                              3, 1)
 
         for i in range(len(measurement_map)):
