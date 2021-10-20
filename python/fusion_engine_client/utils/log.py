@@ -235,7 +235,10 @@ def find_p1log_file(input_path, return_output_dir=False, return_log_id=False, lo
     # originally recorded file. In that case, the playback file paths will be set to None and ignored in the loop below.
     # Note that the playback file is currently stored in a different directory.
     candidate_files = ['output/fusion_engine.playback.p1log' if not load_original else None,
+                       # v- Typically captured at the time the log is recorded.
                        'fusion_engine.p1log',
+                       # V- Content embedded in the log and extracted during playback.
+                       'output/fusion_engine.realtime.p1log',
                        # Legacy path, maintained for backwards compatibility.
                        'filter/output/fe_service/output.playback.p1bin' if not load_original else None,
                        'filter/output/fe_service/output.p1bin']
