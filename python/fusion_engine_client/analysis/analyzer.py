@@ -430,7 +430,6 @@ class Analyzer(object):
         self._add_figure(name="profile_execution_stats", figure=figure, title="Profiling: Execution Stats")
 
     def plot_serial_tx_profiling(self, id_to_name, data):
-
         tx_buffer_free_maps = []
         tx_error_counts_maps = []
         tx_sent_counts_maps = []
