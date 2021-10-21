@@ -96,7 +96,7 @@ class Analyzer(object):
             self.logger.info('No pose data available.')
             return
 
-        time = pose_data.p1_time - self.system_t0
+        time = pose_data.p1_time - float(self.t0)
 
         valid_idx = np.logical_and(~np.isnan(pose_data.p1_time), pose_data.solution_type != SolutionType.Invalid)
         if not np.any(valid_idx):
