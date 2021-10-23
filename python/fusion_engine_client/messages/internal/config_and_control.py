@@ -243,6 +243,10 @@ class ApplyConfigMessage(MessagePayload):
 
 
 class ConfigRequestMessage(MessagePayload):
+    """!
+    @brief Base class for requesting device config data.
+    """
+
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         return PackedDataToBuffer(bytes(0), buffer, offset, return_buffer)
 
@@ -255,21 +259,33 @@ class ConfigRequestMessage(MessagePayload):
 
 
 class ActiveConfigRequestMessage(ConfigRequestMessage):
+    """!
+    @brief Request active config.
+    """
     MESSAGE_TYPE = MessageType.ACTIVE_CONF_REQ
     MESSAGE_VERSION = 0
 
 
 class QueuedConfigRequestMessage(ConfigRequestMessage):
+    """!
+    @brief Request queued config.
+    """
     MESSAGE_TYPE = MessageType.QUEUED_CONF_REQ
     MESSAGE_VERSION = 0
 
 
 class SavedConfigRequestMessage(ConfigRequestMessage):
+    """!
+    @brief Request saved config.
+    """
     MESSAGE_TYPE = MessageType.SAVED_CONF_REQ
     MESSAGE_VERSION = 0
 
 
 class ConfigurationDataMessage(MessagePayload):
+    """!
+    @brief Device user configuration response.
+    """
     MESSAGE_TYPE = MessageType.CONF_DATA
     MESSAGE_VERSION = 0
 
