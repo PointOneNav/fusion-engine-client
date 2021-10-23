@@ -2,7 +2,6 @@ from datetime import datetime, timezone
 from enum import IntEnum
 from typing import List
 
-from aenum import extend_enum
 from construct import (Struct, Int64ul, Int32ul, Int16ul,
                        Int8ul, Padding, this, Array)
 import numpy as np

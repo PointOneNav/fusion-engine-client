@@ -18,4 +18,10 @@ message_type_to_class.update({
     ProfileCounterMessage.DEFINITION_TYPE: ProfileDefinitionMessage,
     ResetMessage.MESSAGE_TYPE: ResetMessage,
     CommandResponseMessage.MESSAGE_TYPE: CommandResponseMessage,
+    QueueConfigParamMessage.MESSAGE_TYPE: QueueConfigParamMessage,
+    ApplyConfigMessage.MESSAGE_TYPE: ApplyConfigMessage,
+    ActiveConfigRequestMessage.MESSAGE_TYPE: ActiveConfigRequestMessage,
+    QueuedConfigRequestMessage.MESSAGE_TYPE: QueuedConfigRequestMessage,
+    SavedConfigRequestMessage.MESSAGE_TYPE: SavedConfigRequestMessage,
+    ConfigurationDataMessage.MESSAGE_TYPE: ConfigurationDataMessage,
 })
