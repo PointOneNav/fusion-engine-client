@@ -56,7 +56,7 @@ class MessageRequest(MessagePayload):
 
 class ResetMessage(MessagePayload):
     """!
-    @brief Reset command
+    @brief Reset part/all of the device software.
     """
     MESSAGE_TYPE = MessageType.RESET_CMD
     MESSAGE_VERSION = 0
@@ -100,7 +100,7 @@ class ResetMessage(MessagePayload):
 
 class CommandResponseMessage(MessagePayload):
     """!
-    @brief Reset command
+    @brief Acknowledges a command and indicates if it succeeded.
     """
     MESSAGE_TYPE = MessageType.CMD_RESPONSE
     MESSAGE_VERSION = 0
