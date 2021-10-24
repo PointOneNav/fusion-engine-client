@@ -1,49 +1,14 @@
 from datetime import datetime, timezone
 from enum import IntEnum
-import re
 from typing import List
 
 from aenum import extend_enum
 from construct import (Struct, Int64ul, Int32ul, Int16ul,
-                       Int8ul, Computed, Padding, this, Array)
+                       Int8ul, Padding, this, Array)
 import numpy as np
 
-from . import message_type_to_class
-from .defs import *
+from .internal_defs import *
 
-
-class InternalMessageType(IntEnum):
-    # Internal message types.
-    SHUTTER_CMD = 20000
-    SHUTTER = 20001
-    VISION_POSE = 20002
-    IMAGE_FEATURES = 20003
-    CONFIG_DATA_REQ = 20004
-    CONFIG_DATA = 20005
-    MANIFEST_DATA_REQ = 20006
-    MANIFEST_DATA = 20007
-
-    MESSAGE_REQ = 20016
-
-    # System profiling data
-    PROFILE_SYSTEM_STATUS = 20032
-    PROFILE_PIPELINE_DEFINITION = 20036
-    PROFILE_PIPELINE = 20040
-    PROFILE_EXECUTION_DEFINITION = 20044
-    PROFILE_EXECUTION = 20048
-    PROFILE_FREERTOS_SYSTEM_STATUS = 20052
-    PROFILE_FREERTOS_TASK_DEFINITION = 20056
-    PROFILE_EXECUTION_STATS = 20060
-    PROFILE_EXECUTION_STATS_DEFINITION = 20061
-    PROFILE_COUNTER = 20062
-    PROFILE_COUNTER_DEFINITION = 20063
-    RESET_CMD = 20064
-    CMD_RESPONSE = 20065
-
-
-# Extend the message type enum with internal types.
-for entry in InternalMessageType:
-    extend_enum(MessageType, entry.name, entry.value)
 
 PROFILING_TYPES = [
     MessageType.PROFILE_SYSTEM_STATUS,
@@ -204,8 +169,8 @@ class ProfileSystemStatusMessage(MessagePayload):
 
     def __str__(self):
         string = 'System status @ POSIX time %s (%.6f sec)\n' % \
-                  (datetime.utcfromtimestamp(self.system_time_ns * 1e-9).replace(tzinfo=timezone.utc),
-                   self.system_time_ns * 1e-9)
+            (datetime.utcfromtimestamp(self.system_time_ns * 1e-9).replace(tzinfo=timezone.utc),
+             self.system_time_ns * 1e-9)
         string += '  P1 time: %s\n' % str(self.p1_time)
         string += '  CPU: %.1f%%\n' % self.total_cpu_usage
         string += '  Total memory: %d B/%d B' % (self.total_used_memory_bytes, self.total_memory_bytes)
@@ -335,8 +300,8 @@ class ProfileDefinitionMessage(MessagePayload):
 
     def __str__(self):
         string = 'Profile definition @ POSIX time %s (%.6f sec)\n' % \
-                  (datetime.utcfromtimestamp(self.system_time_ns * 1e-9).replace(tzinfo=timezone.utc),
-                   self.system_time_ns * 1e-9)
+            (datetime.utcfromtimestamp(self.system_time_ns * 1e-9).replace(tzinfo=timezone.utc),
+             self.system_time_ns * 1e-9)
         string += '  %d entries:' % len(self.entries)
         for entry in self.entries:
             string += '\n'
@@ -445,8 +410,8 @@ class ProfilePipelineMessage(MessagePayload):
 
     def __str__(self):
         string = 'Pipeline profiling update @ POSIX time %s (%.6f sec)\n' % \
-                  (datetime.utcfromtimestamp(self.system_time_ns * 1e-9).replace(tzinfo=timezone.utc),
-                   self.system_time_ns * 1e-9)
+            (datetime.utcfromtimestamp(self.system_time_ns * 1e-9).replace(tzinfo=timezone.utc),
+             self.system_time_ns * 1e-9)
         string += '  P1 time: %s\n' % self.p1_time
         string += '  %d entries:' % len(self.entries)
         for entry in self.entries:
@@ -588,8 +553,8 @@ class ProfileExecutionMessage(MessagePayload):
 
     def __str__(self):
         string = 'Execution profiling update @ POSIX time %s (%.6f sec)\n' % \
-                  (datetime.utcfromtimestamp(self.system_time_ns * 1e-9).replace(tzinfo=timezone.utc),
-                   self.system_time_ns * 1e-9)
+            (datetime.utcfromtimestamp(self.system_time_ns * 1e-9).replace(tzinfo=timezone.utc),
+             self.system_time_ns * 1e-9)
         string += '  %d entries:' % len(self.entries)
         for entry in self.entries:
             string += '\n'
@@ -683,6 +648,7 @@ class ProfileFreeRtosSystemStatusMessage(MessagePayload):
     def unpack(self, buffer: bytes, offset: int = 0) -> int:
         parsed = ProfileFreeRtosSystemStatusMessage.ProfileFreeRtosSystemStatusMessageConstruct.parse(buffer[offset:])
         self.__dict__.update(parsed)
+
         def int_to_percent(value):
             if value == ProfileFreeRtosSystemStatusMessage._INVALID_CPU_USAGE:
                 return np.isnan(value)
@@ -873,110 +839,3 @@ class ProfileCounterMessage(MessagePayload):
                 counters = np.array([m.entries[i].count for m in messages])
                 result['counters'].append(counters)
         return result
-
-class ResetCommandMessage(MessagePayload):
-    """!
-    @brief Reset command
-    """
-    MESSAGE_TYPE = MessageType.RESET_CMD
-    MESSAGE_VERSION = 0
-
-    RESET_NAVIGATION  = 0x00000001
-    RESET_EPHEMERIS   = 0x00000002
-    RESET_CORRECTIONS = 0x00000004
-    RESET_SOFTWARE    = 0x00FFFFFF
-
-    _FORMAT = '<I'
-    _SIZE: int = struct.calcsize(_FORMAT)
-
-    def __init__(self):
-        self.reset_mask = 0
-
-    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
-        if buffer is None:
-            buffer = bytearray(self.calcsize())
-
-        struct.pack_into(ResetCommandMessage._FORMAT, buffer, offset,
-                         self.reset_mask)
-
-        if return_buffer:
-            return buffer
-        else:
-            return self.calcsize()
-
-    def unpack(self, buffer: bytes, offset: int = 0) -> int:
-        initial_offset = offset
-
-        (self.reset_mask,) = \
-            struct.unpack_from(ResetCommandMessage._FORMAT, buffer=buffer, offset=offset)
-        offset += ResetCommandMessage._SIZE
-
-        return offset - initial_offset
-
-    @classmethod
-    def calcsize(cls) -> int:
-        return ResetCommandMessage._SIZE
-
-class CommandResponseMessage(MessagePayload):
-    """!
-    @brief Reset command
-    """
-    MESSAGE_TYPE = MessageType.CMD_RESPONSE
-    MESSAGE_VERSION = 0
-
-    class Response(IntEnum):
-        OK = 0,
-        ERROR = 1
-
-    _FORMAT = '<I3xB'
-    _SIZE: int = struct.calcsize(_FORMAT)
-
-    def __init__(self):
-        self.source_sequence_num = 0
-        self.response = CommandResponseMessage.Response.OK
-
-    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
-        if buffer is None:
-            buffer = bytearray(self.calcsize())
-
-        initial_offset = offset
-
-        struct.pack_into(CommandResponseMessage._FORMAT, buffer, offset,
-                         self.source_sequence_num, self.response)
-        offset = CommandResponseMessage._SIZE
-
-        if return_buffer:
-            return buffer
-        else:
-            return offset - initial_offset
-
-    def unpack(self, buffer: bytes, offset: int = 0) -> int:
-        initial_offset = offset
-
-        (self.source_sequence_num, self.response) = \
-            struct.unpack_from(CommandResponseMessage._FORMAT, buffer=buffer, offset=offset)
-        offset = CommandResponseMessage._SIZE
-
-        return offset - initial_offset
-
-    @classmethod
-    def calcsize(cls) -> int:
-        return CommandResponseMessage._SIZE
-
-# Extend the message class with internal types.
-message_type_to_class.update({
-    MessageRequest.MESSAGE_TYPE: MessageRequest,
-    ProfileSystemStatusMessage.MESSAGE_TYPE: ProfileSystemStatusMessage,
-    ProfilePipelineMessage.DEFINITION_TYPE: ProfileDefinitionMessage,
-    ProfilePipelineMessage.MESSAGE_TYPE: ProfilePipelineMessage,
-    ProfileExecutionMessage.DEFINITION_TYPE: ProfileDefinitionMessage,
-    ProfileExecutionMessage.MESSAGE_TYPE: ProfileExecutionMessage,
-    ProfileFreeRtosSystemStatusMessage.MESSAGE_TYPE: ProfileFreeRtosSystemStatusMessage,
-    ProfileFreeRtosSystemStatusMessage.DEFINITION_TYPE: ProfileDefinitionMessage,
-    ProfileExecutionStatsMessage.MESSAGE_TYPE: ProfileExecutionStatsMessage,
-    ProfileExecutionStatsMessage.DEFINITION_TYPE: ProfileDefinitionMessage,
-    ProfileCounterMessage.MESSAGE_TYPE: ProfileCounterMessage,
-    ProfileCounterMessage.DEFINITION_TYPE: ProfileDefinitionMessage,
-    ResetCommandMessage.MESSAGE_TYPE: ResetCommandMessage,
-    CommandResponseMessage.MESSAGE_TYPE: CommandResponseMessage,
-})
