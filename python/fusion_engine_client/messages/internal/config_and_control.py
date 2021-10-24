@@ -178,14 +178,14 @@ class QueueConfigParamMessage(MessagePayload):
 
     QueueConfigParamMessageConstruct = Struct(
         "config_version" / VersionConstruct,
-        "config_change_offset" / Int32ul,
+        "config_change_offset_bytes" / Int32ul,
         "config_change_length_bytes" / Int32ul,
         "config_change_data" / Array(this.config_change_length_bytes, Int8ul),
     )
 
     def __init__(self, user_config=None):
         self.config_version = USER_CONFIG_VERSION
-        self.config_change_offset = 0
+        self.config_change_offset_bytes = 0
         if user_config:
             self.config_change_data = UserConfigConstruct.build(user_config)
         else:

@@ -354,4 +354,4 @@ def PackedDataToBuffer(packed_data: bytes, buffer: bytes = None, offset: int = 0
     if return_buffer:
         return buffer
     else:
-        return offset - len(packed_data)
+        return len(packed_data)
