@@ -19,11 +19,15 @@ class FusionEngineDecoder:
     messages are decoded.
     """
 
-    def __init__(self, max_payload_len_bytes=MessageHeader._MAX_EXPECTED_SIZE_BYTES):
+    def __init__(self, max_payload_len_bytes: int = MessageHeader._MAX_EXPECTED_SIZE_BYTES,
+                 warn_on_unrecognized: bool = True):
         """!
         @param max_payload_len_bytes assume headers with payloads larger than this
-            value are corrupted and resync.
+               value are corrupted and resync.
+        @param warn_on_unrecognized If set to true, log warnings when a potential header before checking CRC has an
+               unknown type.
         """
+        self._warn_on_unrecognized = warn_on_unrecognized
         self._max_payload_len_bytes = max_payload_len_bytes
         self._buffer = bytearray()
         self._header: Optional[MessageHeader] = None
@@ -109,7 +113,7 @@ class FusionEngineDecoder:
                     self._buffer.pop(0)
                     continue
                 self._header = MessageHeader()
-                self._header.unpack(self._buffer)
+                self._header.unpack(self._buffer, warn_on_unrecognized=self._warn_on_unrecognized)
                 self._msg_len = self._header.payload_size_bytes + MessageHeader.calcsize()
                 if self._header.payload_size_bytes > self._max_payload_len_bytes:
                     self._header = None
