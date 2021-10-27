@@ -126,8 +126,15 @@ class FusionEngineDecoder:
                     self._header.message_type, None)
                 if cls is not None:
                     contents = cls()
-                    contents.unpack(buffer=self._buffer,
-                                    offset=MessageHeader.calcsize())
+                    try:
+                        contents.unpack(buffer=self._buffer,
+                                        offset=MessageHeader.calcsize())
+                    except Exception as e:
+                        _logger.error('Failed unpacking %s: %s',
+                                      self._header.message_type, e)
+                        self._header = None
+                        self._buffer.pop(0)
+                        continue
                     result = (self._header, contents)
                     _logger.debug(
                         'Decoded FusionEngine message %s', repr(contents))

@@ -33,10 +33,8 @@ class InternalMessageType(IntEnum):
     CMD_RESPONSE = 20101
     QUEUE_CONFIG_PARAM_CMD = 20102
     APPLY_CONFIG_CMD = 20103
-    ACTIVE_CONF_REQ = 20104
-    QUEUED_CONF_REQ = 20105
-    SAVED_CONF_REQ = 20106
-    CONF_DATA = 20107
+    CONF_REQ = 20104
+    CONF_DATA = 20105
 
 # Extend the message type enum with internal types.
 for entry in InternalMessageType:

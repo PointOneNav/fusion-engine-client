@@ -21,8 +21,6 @@ message_type_to_class.update({
     CommandResponseMessage.MESSAGE_TYPE: CommandResponseMessage,
     QueueConfigParamMessage.MESSAGE_TYPE: QueueConfigParamMessage,
     ApplyConfigMessage.MESSAGE_TYPE: ApplyConfigMessage,
-    ActiveConfigRequestMessage.MESSAGE_TYPE: ActiveConfigRequestMessage,
-    QueuedConfigRequestMessage.MESSAGE_TYPE: QueuedConfigRequestMessage,
-    SavedConfigRequestMessage.MESSAGE_TYPE: SavedConfigRequestMessage,
+    ConfigRequestMessage.MESSAGE_TYPE: ConfigRequestMessage,
     ConfigurationDataMessage.MESSAGE_TYPE: ConfigurationDataMessage,
 })

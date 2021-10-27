@@ -1,9 +1,11 @@
 from enum import IntEnum
-
-from .internal_defs import *
+from typing import NamedTuple
 
 from construct import (Struct, Enum, Int32ul, Int16ul,
-                       Int8ul, Padding, this, Array, Flag)
+                       Int8ul, Padding, this, Flag, Bytes)
+
+from ...utils.construct_utils import NamedTupleAdapter
+from .internal_defs import *
 
 
 class MessageRequest(MessagePayload):
@@ -151,22 +153,19 @@ class CommandResponseMessage(MessagePayload):
         return string
 
 
-VersionConstruct = Struct(
+VersionConstructRaw = Struct(
     Padding(1),
     "major" / Int8ul,
     "minor" / Int16ul,
 )
 
 
-UserConfigConstruct = Struct(
-    "thing1" / Int8ul,
-    Padding(3),
-    "thing2" / Int32ul,
-    "thing3" / Int32ul,
-)
+class ConfigVersion(NamedTuple):
+    major: int
+    minor: int
 
 
-USER_CONFIG_VERSION = {"major": 1, "minor": 0}
+VersionConstruct = NamedTupleAdapter(ConfigVersion, VersionConstructRaw)
 
 
 class QueueConfigParamMessage(MessagePayload):
@@ -180,16 +179,13 @@ class QueueConfigParamMessage(MessagePayload):
         "config_version" / VersionConstruct,
         "config_change_offset_bytes" / Int32ul,
         "config_change_length_bytes" / Int32ul,
-        "config_change_data" / Array(this.config_change_length_bytes, Int8ul),
+        "config_change_data" / Bytes(this.config_change_length_bytes),
     )
 
-    def __init__(self, user_config=None):
-        self.config_version = USER_CONFIG_VERSION
+    def __init__(self):
+        self.config_version = ConfigVersion(0, 0)
         self.config_change_offset_bytes = 0
-        if user_config:
-            self.config_change_data = UserConfigConstruct.build(user_config)
-        else:
-            self.config_change_data = []
+        self.config_change_data = bytes()
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         values = dict(self.__dict__)
@@ -242,46 +238,6 @@ class ApplyConfigMessage(MessagePayload):
         return cls.ApplyConfigMessageConstruct.sizeof()
 
 
-class ConfigRequestMessage(MessagePayload):
-    """!
-    @brief Base class for requesting device config data.
-    """
-
-    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
-        return PackedDataToBuffer(bytes(0), buffer, offset, return_buffer)
-
-    def unpack(self, buffer: bytes, offset: int = 0) -> int:
-        return 0
-
-    @classmethod
-    def calcsize(cls) -> int:
-        return 0
-
-
-class ActiveConfigRequestMessage(ConfigRequestMessage):
-    """!
-    @brief Request active config.
-    """
-    MESSAGE_TYPE = MessageType.ACTIVE_CONF_REQ
-    MESSAGE_VERSION = 0
-
-
-class QueuedConfigRequestMessage(ConfigRequestMessage):
-    """!
-    @brief Request queued config.
-    """
-    MESSAGE_TYPE = MessageType.QUEUED_CONF_REQ
-    MESSAGE_VERSION = 0
-
-
-class SavedConfigRequestMessage(ConfigRequestMessage):
-    """!
-    @brief Request saved config.
-    """
-    MESSAGE_TYPE = MessageType.SAVED_CONF_REQ
-    MESSAGE_VERSION = 0
-
-
 class ConfigurationDataMessage(MessagePayload):
     """!
     @brief Device user configuration response.
@@ -298,25 +254,68 @@ class ConfigurationDataMessage(MessagePayload):
         "config_version" / VersionConstruct,
         "queued_changes" / Flag,
         "active_differs_from_saved" / Flag,
+        "saved_data_corrupted" / Flag,
         "config_source" / Enum(Int8ul, Source),
-        Padding(1),
-        "config_data" / UserConfigConstruct,
+        "config_length_bytes" / Int32ul,
+        "config_data" / Bytes(this.config_length_bytes),
     )
 
     def __init__(self, user_config=None):
-        self.config_version = USER_CONFIG_VERSION
+        self.config_version = ConfigVersion(0, 0)
         self.queued_changes = False
         self.active_differs_from_saved = False
+        self.saved_data_corrupted = False
         self.config_source = self.Source.ACTIVE
-        self.config_data = {"thing1": 0, "thing2": 0, "thing3": 0}
+        self.config_data = bytes()
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         values = dict(self.__dict__)
+        values['config_length_bytes'] = len(self.config_data)
         packed_data = self.ConfigurationDataMessageConstruct.build(values)
         return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
 
     def unpack(self, buffer: bytes, offset: int = 0) -> int:
         parsed = self.ConfigurationDataMessageConstruct.parse(buffer[offset:])
+        self.__dict__.update(parsed)
+        return parsed._io.tell()
+
+    def __str__(self):
+        fields = ['config_version', 'queued_changes', 'active_differs_from_saved',
+                  'saved_data_corrupted', 'config_source']
+        string = f'Config Data\n'
+        for field in fields:
+            val = str(self.__dict__[field]).replace('Container:', '')
+            val = val.replace('  ', '\t')
+            string += f'\t{field}: {val}\n'
+        return string.rstrip()
+
+    @classmethod
+    def calcsize(cls) -> int:
+        return cls.ConfigurationDataMessageConstruct.sizeof()
+
+
+class ConfigRequestMessage(MessagePayload):
+    """!
+    @brief Base class for requesting device config data.
+    """
+    MESSAGE_TYPE = MessageType.CONF_REQ
+    MESSAGE_VERSION = 0
+
+    ConfigRequestMessageConstruct = Struct(
+        "request_source" / Enum(Int8ul, ConfigurationDataMessage.Source),
+        Padding(3),
+    )
+
+    def __init__(self):
+        self.request_source = ConfigurationDataMessage.Source.ACTIVE
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        values = dict(self.__dict__)
+        packed_data = self.ConfigRequestMessageConstruct.build(values)
+        return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
+
+    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+        parsed = self.ConfigRequestMessageConstruct.parse(buffer[offset:])
         self.__dict__.update(parsed)
         return parsed._io.tell()
 
