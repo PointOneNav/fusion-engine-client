@@ -238,6 +238,12 @@ class ApplyConfigMessage(MessagePayload):
         return cls.ApplyConfigMessageConstruct.sizeof()
 
 
+class ConfigurationSource(IntEnum):
+    ACTIVE = 0,
+    QUEUED = 1,
+    SAVED = 2,
+
+
 class ConfigurationDataMessage(MessagePayload):
     """!
     @brief Device user configuration response.
@@ -245,17 +251,12 @@ class ConfigurationDataMessage(MessagePayload):
     MESSAGE_TYPE = MessageType.CONF_DATA
     MESSAGE_VERSION = 0
 
-    class Source(IntEnum):
-        ACTIVE = 0,
-        QUEUED = 1,
-        SAVED = 2,
-
     ConfigurationDataMessageConstruct = Struct(
         "config_version" / VersionConstruct,
         "queued_changes" / Flag,
         "active_differs_from_saved" / Flag,
         "saved_data_corrupted" / Flag,
-        "config_source" / Enum(Int8ul, Source),
+        "config_source" / Enum(Int8ul, ConfigurationSource),
         "config_length_bytes" / Int32ul,
         "config_data" / Bytes(this.config_length_bytes),
     )
@@ -265,7 +266,7 @@ class ConfigurationDataMessage(MessagePayload):
         self.queued_changes = False
         self.active_differs_from_saved = False
         self.saved_data_corrupted = False
-        self.config_source = self.Source.ACTIVE
+        self.config_source = ConfigurationSource.ACTIVE
         self.config_data = bytes()
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
@@ -302,12 +303,12 @@ class ConfigRequestMessage(MessagePayload):
     MESSAGE_VERSION = 0
 
     ConfigRequestMessageConstruct = Struct(
-        "request_source" / Enum(Int8ul, ConfigurationDataMessage.Source),
+        "request_source" / Enum(Int8ul, ConfigurationSource),
         Padding(3),
     )
 
     def __init__(self):
-        self.request_source = ConfigurationDataMessage.Source.ACTIVE
+        self.request_source = ConfigurationSource.ACTIVE
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         values = dict(self.__dict__)
