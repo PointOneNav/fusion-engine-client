@@ -1,6 +1,7 @@
-from .profiling import *
-from .config_and_control import *
 from .. import message_type_to_class
+from .config_and_control import *
+from .internal_defs import InternalMessageType
+from .profiling import *
 
 # Extend the message class with internal types.
 message_type_to_class.update({
@@ -18,4 +19,8 @@ message_type_to_class.update({
     ProfileCounterMessage.DEFINITION_TYPE: ProfileDefinitionMessage,
     ResetMessage.MESSAGE_TYPE: ResetMessage,
     CommandResponseMessage.MESSAGE_TYPE: CommandResponseMessage,
+    QueueConfigParamMessage.MESSAGE_TYPE: QueueConfigParamMessage,
+    ApplyConfigMessage.MESSAGE_TYPE: ApplyConfigMessage,
+    ConfigRequestMessage.MESSAGE_TYPE: ConfigRequestMessage,
+    ConfigurationDataMessage.MESSAGE_TYPE: ConfigurationDataMessage,
 })

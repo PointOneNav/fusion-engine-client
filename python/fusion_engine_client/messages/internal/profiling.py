@@ -2,7 +2,6 @@ from datetime import datetime, timezone
 from enum import IntEnum
 from typing import List
 
-from aenum import extend_enum
 from construct import (Struct, Int64ul, Int32ul, Int16ul,
                        Int8ul, Padding, this, Array)
 import numpy as np
@@ -634,16 +633,7 @@ class ProfileFreeRtosSystemStatusMessage(MessagePayload):
         values['num_tasks'] = len(values['task_entries'])
 
         packed_data = ProfileFreeRtosSystemStatusMessage.ProfileFreeRtosSystemStatusMessageConstruct.build(values)
-
-        if buffer is None:
-            buffer = packed_data
-        else:
-            buffer[offset:(offset + len(packed_data))] = packed_data
-
-        if return_buffer:
-            return buffer
-        else:
-            return offset - len(packed_data)
+        return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
 
     def unpack(self, buffer: bytes, offset: int = 0) -> int:
         parsed = ProfileFreeRtosSystemStatusMessage.ProfileFreeRtosSystemStatusMessageConstruct.parse(buffer[offset:])
@@ -721,16 +711,7 @@ class ProfileExecutionStatsMessage(MessagePayload):
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         values = dict(self.__dict__)
         packed_data = ProfileExecutionStatsMessage.ProfileExecutionStatsMessageConstruct.build(values)
-
-        if buffer is None:
-            buffer = packed_data
-        else:
-            buffer[offset:(offset + len(packed_data))] = packed_data
-
-        if return_buffer:
-            return buffer
-        else:
-            return offset - len(packed_data)
+        return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
 
     def unpack(self, buffer: bytes, offset: int = 0) -> int:
         parsed = ProfileExecutionStatsMessage.ProfileExecutionStatsMessageConstruct.parse(buffer[offset:])
@@ -798,16 +779,7 @@ class ProfileCounterMessage(MessagePayload):
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         values = dict(self.__dict__)
         packed_data = ProfileCounterMessage.ProfileCounterMessageConstruct.build(values)
-
-        if buffer is None:
-            buffer = packed_data
-        else:
-            buffer[offset:(offset + len(packed_data))] = packed_data
-
-        if return_buffer:
-            return buffer
-        else:
-            return offset - len(packed_data)
+        return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
 
     def unpack(self, buffer: bytes, offset: int = 0) -> int:
         parsed = ProfileCounterMessage.ProfileCounterMessageConstruct.parse(buffer[offset:])
