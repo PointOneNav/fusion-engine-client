@@ -26,8 +26,6 @@ from ..messages.internal import *
 from .attitude import get_enu_rotation_matrix
 from .file_reader import FileReader
 from ..utils import trace
-from ..utils.dump_p1bin import dump_p1bin
-from ..utils.log import find_log_file, find_p1log_file
 from ..utils.mixed_log import locate_log
 _logger = logging.getLogger('point_one.fusion_engine.analysis.analyzer')
 
