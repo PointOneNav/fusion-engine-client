@@ -19,10 +19,9 @@ for the latest API documentation.
   - `python/` - Python source files
     - `bin/` - Application files
       - [p1_display.py](examples/p1_display.py) - Generate HTML plots of vehicle trajectory, etc. (see also
-        `analyze_data.py`)
+        `analyzer.py` below)
     - `examples/` - Python example applications
       - [analyze_data.py](examples/analyze_data.py) - Generate HTML plots of vehicle trajectory, INS filter state, etc.
-        - This class is used by the `bin/p1_display.py` application
       - [extract_imu_data.py](examples/extract_imu_data.py) - Generate a CSV file containing recorded IMU measurements
       - [extract_position_data.py](examples/extract_position_data.py) - Generate CSV and KML files detailing the vehicle
         position over time
@@ -33,7 +32,14 @@ for the latest API documentation.
       - [tcp_client.py](examples/tcp_client.py) - Connect to a device over TCP and decode/display messages in real time
       - [udp_client.py](examples/udp_client.py) - Connect to a device over UDP and decode/display messages in real time
     - `fusion_engine_client` - Top Python package directory
+      - `analysis`
+        - [analyzer.py](analysis/analyzer.py) - `Analyzer` class, used to plot data from a recorded file of FusionEngine
+          messages (vehicle trajectory map, navigation engine state information, etc.)
+          - This class is used by the `bin/p1_display.py` application
+        - [file_reader.py](analysis/file_reader.py) - `FileReader` class, capable of loading and time-aligning
+          FusionEngine data captured in a `*.p1log` file
       - `messages` - Python message definitions
+      - `utils` - Various utility functions used by the other files (e.g., log search support)
     
 ### Usage Instructions
 
