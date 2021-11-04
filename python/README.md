@@ -62,9 +62,9 @@ To use the Python library:
 
 Whenever possible, we strongly encourage the use of a Python [virtual environment](#using-a-python-virtual-environment).
 
-### Examples
+## Examples
 
-#### Analyzing A Recorded Log
+### Analyzing A Recorded Log
 
 The following will generate plots for a log with ID `c25445f4e60d441dbf4af8a3571352fa`.
 
@@ -85,7 +85,7 @@ Use the `--logs-base-dir` argument to search a directory other than `/logs`:
 > python3 bin/p1_display.py --logs-base-dir /my/log/directory c2544
 ```
 
-#### Generate A CSV File Containing Position And Solution Type Information
+### Generate A CSV File Containing Position And Solution Type Information
 
 ```bash
 > python3 examples/extract_position_data.py /path/to/c25445f4e60d441dbf4af8a3571352fa
@@ -93,7 +93,7 @@ Use the `--logs-base-dir` argument to search a directory other than `/logs`:
 
 This will produce the file `/path/to/c25445f4e60d441dbf4af8a3571352fa/position.csv`.
 
-#### Generate A CSV File Containing Satellite Information
+### Generate A CSV File Containing Satellite Information
 
 _Requires `GNSSSatelliteMessage` to be enabled._
 
@@ -103,7 +103,7 @@ _Requires `GNSSSatelliteMessage` to be enabled._
 
 This will produce the file `/path/to/c25445f4e60d441dbf4af8a3571352fa/position.csv`.
 
-#### Framing And Decoding Incoming Messages
+### Framing And Decoding Incoming Messages
 
 ```python
 from fusion_engine_client.messages.core import *
@@ -117,7 +117,7 @@ for (header, payload) in results:
 
 See [examples/tcp_client.py]() for an example use of the decoder class.
 
-#### Serializing Outgoing Messages
+### Serializing Outgoing Messages
 
 ```python
 from fusion_engine_client.messages.core import *
@@ -135,7 +135,7 @@ data = encoder.encode_message(message)
 
 See [examples/encode_data.py]() for an example of data serialization.
 
-### Using A Python Virtual Environment
+## Using A Python Virtual Environment
 
 Whenever possible, we strongly encourage the use of a
 [Python virtual environment](https://docs.python.org/3/tutorial/venv.html). To use the FusionEngine client within a
