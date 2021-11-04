@@ -61,12 +61,33 @@ class ResetMessage(MessagePayload):
     @brief Reset part/all of the device software.
     """
     MESSAGE_TYPE = MessageType.RESET_CMD
-    MESSAGE_VERSION = 0
+    MESSAGE_VERSION = 1
 
-    RESET_NAVIGATION = 0x00000001
-    RESET_EPHEMERIS = 0x00000002
-    RESET_CORRECTIONS = 0x00000004
-    RESET_SOFTWARE = 0x00FFFFFF
+    #  Doesn't clear any persistent data.
+    # Hot start filter.
+    RESTART_NAVIGATION_ENGINE   = 0x00000001
+
+    # Clears short lived data.
+    # Cold start filter.
+    RESET_POSITION_DATA         = 0x00000010
+    # Delete all saved ephemeris.
+    RESET_EPHEMERIS             = 0x00000020
+    # Delete all corrections information.
+    RESET_CORRECTIONS           = 0x00000040
+
+    # Clears long term data.
+    # Delete saved filter state and slowly learned params.
+    RESET_NAVIGATION_ENGINE_DATA = 0x00000100
+    # Delete calibration state.
+    RESET_CALIBRATION_DATA       = 0x00000200
+
+    # Clears system configuration.
+    # Clears configuration back to default.
+    RESET_CONFIG                 = 0x00001000
+
+    # Note: Upper 8 bits reserved for future use (e.g., hardware reset).
+    RESET_SOFTWARE    = 0x000000FF
+    FACTORY_RESET    =  0x00FFFFFF
 
     _FORMAT = '<I'
     _SIZE: int = struct.calcsize(_FORMAT)
