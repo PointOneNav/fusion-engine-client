@@ -34,8 +34,8 @@ for the latest API documentation.
       - [message_decode.py](examples/message_decode.py) - Read a `.p1log` binary file and decode the contents
       - [raw_tcp_client.py](examples/raw_tcp_client.py) - Connect to a device over TCP and decode/display messages in
         real time (decoding messages manually, without the using the `FusionEngineDecoder` helper class)
-      - [tcp_client.py](examples/tcp_client.py) - Connect to a device over TCP and decode/display messages in real time
-        using the `FusionEngineDecoder` helper class
+      - [tcp_client.py](examples/tcp_client.py) - Connect to a device over TCP and decode messages in real time to be
+        displayed and/or logged to disk using the `FusionEngineDecoder` helper class
       - [udp_client.py](examples/udp_client.py) - Connect to a device over UDP and decode/display messages in real time
     - `fusion_engine_client` - Top Python package directory
       - `messages` - Python message definitions
@@ -86,6 +86,16 @@ Use the `--logs-base-dir` argument to search a directory other than `/logs`:
 
 ```bash
 > python3 bin/p1_display.py --logs-base-dir /my/log/directory c2544
+```
+
+### Record Data Over TCP
+
+The [examples/tcp_client.py]() script can be used to record data to a `.p1log` file for post-processing by specifying
+the `--output` argument. Note that we are also setting `--no-display` here, since we only want to record the data and
+are not interested in printing the contents to the console.
+
+```bash
+> python3 examples/tcp_client.py --no-display --output my_data.p1log 192.168.1.2
 ```
 
 ### Reading Messages From A `*.p1log` File
