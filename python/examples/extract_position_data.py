@@ -77,9 +77,10 @@ Extract position data to both CSV and KML files.
     # started or stopped recording in between two messages, or if a message got dropped (CRC failure, etc.), there will
     # be an equal number of all message types and we can simply loop over them.
     reader = FileReader(input_path)
-    result = reader.read(message_types=[PoseMessage, GNSSSatelliteMessage], show_progress=True,
+    result = reader.read(message_types=[PoseMessage, PoseAuxMessage, GNSSSatelliteMessage], show_progress=True,
                          time_align=TimeAlignmentMode.INSERT)
     pose_data = result[PoseMessage.MESSAGE_TYPE]
+    pose_aux_data = result[PoseAuxMessage.MESSAGE_TYPE]
     satellite_data = result[GNSSSatelliteMessage.MESSAGE_TYPE]
     if len(pose_data.messages) == 0:
         logger.warning('No pose data found in log file.')
@@ -89,10 +90,14 @@ Extract position data to both CSV and KML files.
     path = os.path.join(output_dir, 'position.csv')
     logger.info("Generating '%s'." % path)
     with open(path, 'w') as f:
-        f.write('P1 Time (sec), GPS Time (sec), Solution Type, Lat (deg), Lon (deg), Ellipsoid Alt (m), # Satellites\n')
-        for pose, gnss in zip(pose_data.messages, satellite_data.messages):
-            f.write('%.6f, %.6f, %d, %.8f, %.8f, %.3f, %d\n' %
-                    (pose.p1_time, pose.gps_time, pose.solution_type, *pose.lla_deg, len(gnss.svs)))
+        f.write('P1 Time (sec), GPS Time (sec), Solution Type, Lat (deg), Lon (deg), Ellipsoid Alt (m), # Satellites, '
+                'Yaw (deg), Pitch, Roll, Velocity East (m/s), North, Up\n')
+        for pose, pose_aux, gnss in zip(pose_data.messages, pose_aux_data.messages, satellite_data.messages):
+            format = '%.6f, %.6f, %d, %.8f, %.8f, %.3f, %d, ' \
+                     '%.1f, %.1f, %.1f, %.1f, %.1f, %.1f\n'
+            f.write(format %
+                    (pose.p1_time, pose.gps_time, pose.solution_type, *pose.lla_deg, len(gnss.svs),
+                     *pose.ypr_deg, *pose_aux.velocity_enu_mps))
 
     # Generate a KML file.
     path = os.path.join(output_dir, 'position.kml')
