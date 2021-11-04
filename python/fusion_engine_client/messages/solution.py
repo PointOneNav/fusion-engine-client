@@ -354,7 +354,7 @@ class SatelliteInfo:
         if buffer is None:
             buffer = struct.pack(SatelliteInfo._FORMAT, *args)
         else:
-            struct.pack_into(SatelliteInfo._FORMAT, buffer=buffer, offset=offset, *args)
+            struct.pack_into(SatelliteInfo._FORMAT, buffer, offset, *args)
 
         if return_buffer:
             return buffer
