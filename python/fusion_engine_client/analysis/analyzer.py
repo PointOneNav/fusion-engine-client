@@ -335,7 +335,7 @@ class Analyzer(object):
         for title in titles:
             name = title_to_name[title]
             entry = self.plots[name]
-            link = '<br><a href="%s" target="_blank">%s</a>' % (entry['path'], title)
+            link = '<br><a href="%s" target="_blank">%s</a>' % (os.path.relpath(entry['path'], self.output_dir), title)
             links += link
 
         index_html = index_template % {
