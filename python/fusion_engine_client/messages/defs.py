@@ -286,6 +286,14 @@ class MessageHeader:
 
         return MessageHeader._SIZE
 
+    def get_message_size(self) -> int:
+        """!
+        @brief Calculate the total message size (header + payload).
+
+        @return The message size (in bytes).
+        """
+        return MessageHeader._SIZE + self.payload_size_bytes
+
     @classmethod
     def calcsize(cls) -> int:
         """!
