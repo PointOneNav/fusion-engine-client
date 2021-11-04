@@ -32,10 +32,18 @@ for the latest API documentation.
       - [extract_satellite_info.py](examples/extract_satellite_info.py) - Generate a CSV file containing satellite 
         azimuth/elevation and C/N0 information over time
       - [message_decode.py](examples/message_decode.py) - Read a `.p1log` binary file and decode the contents
+      - [raw_tcp_client.py](examples/raw_tcp_client.py) - Connect to a device over TCP and decode/display messages in
+        real time (decoding messages manually, without the using the `FusionEngineDecoder` helper class)
       - [tcp_client.py](examples/tcp_client.py) - Connect to a device over TCP and decode/display messages in real time
+        using the `FusionEngineDecoder` helper class
       - [udp_client.py](examples/udp_client.py) - Connect to a device over UDP and decode/display messages in real time
     - `fusion_engine_client` - Top Python package directory
       - `messages` - Python message definitions
+      - `parsers` - Message encoding and decoding support
+        - [decoder.py](parsers/decoder.py) - `FusionEngineDecoder` class, used to frame and parse incoming streaming
+          data (e.g., received over TCP or serial)
+        - [encoder.py](parsers/encoder.py) - `FusionEngineEncoder` class, used when serializing messages to be sent to a
+          connected device
     
 ### Usage Instructions
 
@@ -94,6 +102,38 @@ _Requires `GNSSSatelliteMessage` to be enabled._
 ```
 
 This will produce the file `/path/to/c25445f4e60d441dbf4af8a3571352fa/position.csv`.
+
+#### Framing And Decoding Incoming Messages
+
+```python
+from fusion_engine_client.messages.core import *
+from fusion_engine_client.parsers import FusionEngineDecoder
+
+decoder = FusionEngineDecoder()
+results = decoder.on_data(received_bytes)
+for (header, payload) in results:
+    ...
+```
+
+See [examples/tcp_client.py]() for an example use of the decoder class.
+
+#### Serializing Outgoing Messages
+
+```python
+from fusion_engine_client.messages.core import *
+from fusion_engine_client.parsers import FusionEngineEncoder
+
+encoder = FusionEngineEncoder()
+
+message = PoseMessage()
+message.p1_time = Timestamp(1.0)
+message.solution_type = SolutionType.DGPS
+message.lla_deg = np.array([37.776417, -122.417711, 0.0])
+message.ypr_deg = np.array([45.0, 0.0, 0.0])
+data = encoder.encode_message(message)
+```
+
+See [examples/encode_data.py]() for an example of data serialization.
 
 ### Using A Python Virtual Environment
 
