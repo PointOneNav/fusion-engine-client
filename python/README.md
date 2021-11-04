@@ -23,6 +23,8 @@ for the latest API documentation.
     - `examples/` - Python example applications
       - [analyze_data.py](examples/analyze_data.py) - Generate HTML plots of vehicle trajectory, INS filter state, etc.
         - This class is used by the `bin/p1_display.py` application
+      - [encode_data.py](examples/encode_data.py) - Construct and serialize FusionEngine messages, and save them in a
+        `*.p1log` file that can be used with the other example utilities
       - [extract_imu_data.py](examples/extract_imu_data.py) - Generate a CSV file containing recorded IMU measurements
       - [extract_position_data.py](examples/extract_position_data.py) - Generate CSV and KML files detailing the vehicle
         position over time
