@@ -60,7 +60,10 @@ Whenever possible, we strongly encourage the use of a Python [virtual environmen
 
 ## Examples
 
-### Analyzing A Recorded Log
+### Analyzing A Recorded Log And Plotting Results
+
+> Note: In order to generate a map, you must provide a Mapbox access token using the `--mapbox-token` argument, or by
+> setting either the `MAPBOX_ACCESS_TOKEN` or `MapboxAccessToken` environment variables.
 
 The following will generate plots for a log with ID `c25445f4e60d441dbf4af8a3571352fa`.
 
@@ -81,6 +84,18 @@ Use the `--logs-base-dir` argument to search a directory other than `/logs`:
 > python3 bin/p1_display.py --logs-base-dir /my/log/directory c2544
 ```
 
+### Reading Messages From A `*.p1log` File
+
+```python
+from fusion_engine_client.analysis.file_reader import FileReader
+from fusion_engine_client.messages.core import *
+
+reader = FileReader(input_path)
+result = reader.read(message_types=[PoseMessage])
+for message in result[PoseMessage.MESSAGE_TYPE].messages:
+    print("LLA: %.6f, %.6f, %.3f" % message.lla_deg)
+```
+
 ### Generate A CSV File Containing Position And Solution Type Information
 
 ```bash
@@ -91,7 +106,7 @@ This will produce the file `/path/to/c25445f4e60d441dbf4af8a3571352fa/position.c
 
 ### Generate A CSV File Containing Satellite Information
 
-_Requires `GNSSSatelliteMessage` to be enabled._
+_Requires `GNSSSatelliteMessage` to be enabled on the device._
 
 ```bash
 > python3 examples/extract_position_data.py /path/to/c25445f4e60d441dbf4af8a3571352fa
