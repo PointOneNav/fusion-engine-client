@@ -42,7 +42,7 @@ if __name__ == "__main__":
 Extract position data to both CSV and KML files.  
 """)
     parser.add_argument('--log-base-dir', metavar='DIR', default='/logs',
-                        help="The base directory containing FusionEngine logs to be searched if a log pattern is"
+                        help="The base directory containing FusionEngine logs to be searched if a log pattern is "
                              "specified.")
     parser.add_argument('log',
                         help="The log to be read. May be one of:\n"

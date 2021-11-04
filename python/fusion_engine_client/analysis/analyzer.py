@@ -480,7 +480,7 @@ Load and display information stored in a FusionEngine binary file.
                         help="Print verbose/trace debugging messages.")
 
     parser.add_argument('--log-base-dir', metavar='DIR', default='/logs',
-                        help="The base directory containing FusionEngine logs to be searched if a log pattern is"
+                        help="The base directory containing FusionEngine logs to be searched if a log pattern is "
                              "specified.")
     parser.add_argument('log',
                         help="The log to be read. May be one of:\n"
