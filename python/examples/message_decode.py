@@ -48,18 +48,23 @@ def decode_message(header, data, offset):
         contents = ros.IMUMessage()
         contents.unpack(buffer=data, offset=offset)
     else:
-        print('Decoded %s message [sequence=%d, size=%d B]' %
-              (header.get_type_string(), header.sequence_number, len(data)))
         contents = None
 
-    if contents is not None:
-        parts = str(contents).split('\n')
-        parts[0] += ' [sequence=%d, size=%d B]' % (header.sequence_number, len(data))
-        print('\n'.join(parts))
+    print_message(header, contents)
 
     return True
 
 decode_message.expected_sequence_number = 0
+
+
+def print_message(header, contents):
+    if isinstance(contents, MessagePayload):
+        parts = str(contents).split('\n')
+        parts[0] += ' [sequence=%d, size=%d B]' % (header.sequence_number, header.get_message_size())
+        print('\n'.join(parts))
+    else:
+        print('Decoded %s message [sequence=%d, size=%d B]' %
+              (header.get_type_string(), header.sequence_number, header.get_message_size()))
 
 
 if __name__ == "__main__":
