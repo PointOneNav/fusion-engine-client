@@ -1,13 +1,14 @@
 import numpy as np
 
 from fusion_engine_client.analysis.file_reader import FileReader, MessageData, TimeAlignmentMode
-from fusion_engine_client.messages import PoseMessage, PoseAuxMessage, Timestamp
+from fusion_engine_client.messages import *
 
 
 def setup():
     data = {
         PoseMessage.MESSAGE_TYPE: MessageData(PoseMessage.MESSAGE_TYPE, None),
         PoseAuxMessage.MESSAGE_TYPE: MessageData(PoseAuxMessage.MESSAGE_TYPE, None),
+        GNSSInfoMessage.MESSAGE_TYPE: MessageData(GNSSInfoMessage.MESSAGE_TYPE, None),
     }
 
     message = PoseMessage()
@@ -30,6 +31,16 @@ def setup():
     message.velocity_enu_mps = np.array([17.0, 18.0, 19.0])
     data[PoseAuxMessage.MESSAGE_TYPE].messages.append(message)
 
+    message = GNSSInfoMessage()
+    message.p1_time = Timestamp(2.0)
+    message.gdop = 5.0
+    data[GNSSInfoMessage.MESSAGE_TYPE].messages.append(message)
+
+    message = GNSSInfoMessage()
+    message.p1_time = Timestamp(3.0)
+    message.gdop = 6.0
+    data[GNSSInfoMessage.MESSAGE_TYPE].messages.append(message)
+
     return data
 
 
@@ -40,6 +51,8 @@ def test_time_align_drop():
     assert float(data[PoseMessage.MESSAGE_TYPE].messages[0].p1_time) == 2.0
     assert len(data[PoseAuxMessage.MESSAGE_TYPE].messages) == 1
     assert float(data[PoseAuxMessage.MESSAGE_TYPE].messages[0].p1_time) == 2.0
+    assert len(data[GNSSInfoMessage.MESSAGE_TYPE].messages) == 1
+    assert float(data[GNSSInfoMessage.MESSAGE_TYPE].messages[0].p1_time) == 2.0
 
 
 def test_time_align_insert():
@@ -61,3 +74,24 @@ def test_time_align_insert():
     assert np.isnan(data[PoseAuxMessage.MESSAGE_TYPE].messages[0].velocity_enu_mps[0])
     assert data[PoseAuxMessage.MESSAGE_TYPE].messages[1].velocity_enu_mps[0] == 14.0
     assert data[PoseAuxMessage.MESSAGE_TYPE].messages[2].velocity_enu_mps[0] == 17.0
+
+    assert len(data[GNSSInfoMessage.MESSAGE_TYPE].messages) == 3
+    assert float(data[GNSSInfoMessage.MESSAGE_TYPE].messages[0].p1_time) == 1.0
+    assert float(data[GNSSInfoMessage.MESSAGE_TYPE].messages[1].p1_time) == 2.0
+    assert float(data[GNSSInfoMessage.MESSAGE_TYPE].messages[2].p1_time) == 3.0
+    assert np.isnan(data[GNSSInfoMessage.MESSAGE_TYPE].messages[0].gdop)
+    assert data[GNSSInfoMessage.MESSAGE_TYPE].messages[1].gdop == 5.0
+    assert data[GNSSInfoMessage.MESSAGE_TYPE].messages[2].gdop == 6.0
+
+
+def test_time_align_specific():
+    data = setup()
+    FileReader.time_align_data(data, TimeAlignmentMode.DROP,
+                               message_types=[PoseMessage.MESSAGE_TYPE, GNSSInfoMessage.MESSAGE_TYPE])
+    assert len(data[PoseMessage.MESSAGE_TYPE].messages) == 1
+    assert float(data[PoseMessage.MESSAGE_TYPE].messages[0].p1_time) == 2.0
+    assert len(data[PoseAuxMessage.MESSAGE_TYPE].messages) == 2
+    assert float(data[PoseAuxMessage.MESSAGE_TYPE].messages[0].p1_time) == 2.0
+    assert float(data[PoseAuxMessage.MESSAGE_TYPE].messages[1].p1_time) == 3.0
+    assert len(data[GNSSInfoMessage.MESSAGE_TYPE].messages) == 1
+    assert float(data[GNSSInfoMessage.MESSAGE_TYPE].messages[0].p1_time) == 2.0
