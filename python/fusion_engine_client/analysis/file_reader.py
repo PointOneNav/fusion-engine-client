@@ -1,7 +1,9 @@
 from typing import Dict, Tuple, Union
 
 from collections import deque
+import copy
 from datetime import datetime
+from enum import IntEnum
 import io
 import logging
 import os
@@ -131,6 +133,12 @@ class FileIndex(object):
         return raw_data
 
 
+class TimeAlignmentMode(IntEnum):
+    NONE = 0
+    DROP = 1
+    INSERT = 2
+
+
 class FileReader(object):
     logger = logging.getLogger('point_one.fusion_engine.analysis.file_reader')
 
@@ -241,10 +249,12 @@ class FileReader(object):
             if prev_data is not None:
                 self.data[MessageType.POSE] = prev_data
 
-    def read(self, message_types: Union[list, tuple] = None,
+    def read(self, message_types: Union[list, tuple, set] = None,
              time_range: Tuple[Union[float, Timestamp], Union[float, Timestamp]] = None, absolute_time: bool = False,
              max_messages: int = None,
              return_numpy: bool = False, keep_messages: bool = False, remove_nan_times: bool = True,
+             time_align: TimeAlignmentMode = TimeAlignmentMode.NONE,
+             aligned_message_types: Union[list, tuple, set] = None,
              generate_index: bool = True, show_progress: bool = False,
              ignore_index: bool = False, ignore_index_max_messages: bool = False) \
             -> Dict[MessageType, MessageData]:
@@ -271,6 +281,13 @@ class FileReader(object):
                field will be cleared for each @ref MessageData object for which numpy conversion is supported.
         @param remove_nan_times If `True`, remove messages whose P1 timestamps are `NaN` when converting to numpy.
                Ignored if `return_numpy == False`.
+        @param time_align The type of alignment to be performed (for data with P1 timestamps):
+               - @ref TimeAlignmentMode.NONE - Do nothing
+               - @ref TimeAlignmentMode.DROP - Drop messages at times when _all_ message types are not present
+               - @ref TimeAlignmentMode.INSERT - Insert default-constructed messages for any message types not present
+                 at a given time epoch
+        @param aligned_message_types A list of message types for which time alignment will be performed. Any message
+               types not present in the list will be left unmodified. If `None`, all message types will be aligned.
         @param show_progress If `True`, print the read progress every 10 MB (useful for large files).
         @param generate_index If `True` and an index file does not exist for this data file, read the entire data file
                and create an index file on the first call to this function. The file will be stored in the same
@@ -284,7 +301,7 @@ class FileReader(object):
         """
         if message_types is None:
             message_types = []
-        elif not isinstance(message_types, (list, tuple)):
+        elif not isinstance(message_types, (list, tuple, set)):
             message_types = (message_types,)
 
         if time_range is None:
@@ -593,6 +610,9 @@ class FileReader(object):
             self.logger.debug("Saving index file '%s' with %d entries." % (index_path, len(index_entries)))
             self.index = FileIndex.save(index_path, index_entries)
 
+        # Time-align the data if requested.
+        FileReader.time_align_data(result, mode=time_align, message_types=aligned_message_types)
+
         # Convert the resulting message data to numpy (if supported).
         if return_numpy:
             FileReader.to_numpy(result, keep_messages=keep_messages, remove_nan_times=remove_nan_times)
@@ -601,13 +621,96 @@ class FileReader(object):
         return result
 
     @classmethod
+    def time_align_data(cls, data: dict, mode: TimeAlignmentMode = TimeAlignmentMode.INSERT,
+                        message_types: Union[list, tuple, set] = None):
+        """!
+        @brief Time-align messages of different types.
+
+        @post
+        `data` will be modified in-place. Message types that do not contain P1 time will be left unmodified.
+
+        @param data A data `dict` as returned by @ref read().
+        @param mode The type of alignment to be performed:
+               - @ref TimeAlignmentMode.NONE - Do nothing
+               - @ref TimeAlignmentMode.DROP - Drop messages at times when _all_ message types are not present
+               - @ref TimeAlignmentMode.INSERT - Insert default-constructed messages for any message types not present
+                 at a given time epoch
+        @param message_types A list of message types for which alignment will be performed. Any message types not
+               present in the list will be left unmodified. If `None`, all message types will be aligned.
+
+        @return A modified `dict` with removed or inserted messages.
+        """
+        # Time alignment disabled - do nothing.
+        if mode == TimeAlignmentMode.NONE:
+            return data
+
+        if message_types is not None:
+            # Allow the user to pass in a list of message classes for convenience and convert them to message types
+            # automatically.
+            message_types = set([(t if isinstance(t, MessageType) else t.MESSAGE_TYPE) for t in message_types])
+
+        # Pull out the P1 times for each message type. In drop mode, compute the intersection of all P1 timestamps. In
+        # insert mode, make a list of all unique P1 timestamps.
+        info_by_type = {}
+        time_set = None
+        for type, entry in data.items():
+            default = entry.message_class()
+            if 'p1_time' in default.__dict__ and (message_types is None or entry.message_type in message_types):
+                p1_time = np.array([float(m.p1_time) for m in entry.messages])
+                info_by_type[type] = {'p1_time': p1_time, 'messages': entry.messages, 'class': entry.message_class}
+
+                if mode == TimeAlignmentMode.DROP:
+                    if time_set is None:
+                        time_set = p1_time
+                    else:
+                        time_set = np.intersect1d(time_set, p1_time)
+                else:
+                    if time_set is None:
+                        time_set = p1_time
+                    else:
+                        time_set = np.hstack((time_set, p1_time))
+
+        # In insertion mode, insert default-constructed objects for any missing timestamps.
+        if mode == TimeAlignmentMode.INSERT:
+            time_set = np.unique(time_set)
+
+            for type, entry in info_by_type.items():
+                # Locate the timestamps where we do/do not have data. For timestamps with data we store the index of the
+                # corresponding message. For timestamps without we store -1.
+                _, idx, all_idx = np.intersect1d(entry['p1_time'], time_set, return_indices=True)
+                message_indices = np.full_like(time_set, -1, dtype=int)
+                message_indices[all_idx] = idx
+
+                # Now interlace messages with defaults as needed.
+                messages = entry['messages']
+                cls = entry['class']
+                def _get_value(i):
+                    message_idx = message_indices[i]
+                    if message_idx >= 0:
+                        return messages[message_idx]
+                    else:
+                        default = cls()
+                        default.p1_time = time_set[i]
+                        return default
+                data[type].messages = [_get_value(i) for i in range(len(time_set))]
+        # In drop mode, drop messages that aren't present across _all_ message types.
+        elif mode == TimeAlignmentMode.DROP:
+            for type, entry in info_by_type.items():
+                _, idx, _ = np.intersect1d(entry['p1_time'], time_set, return_indices=True)
+                data[type].messages = [entry['messages'][i] for i in idx]
+        else:
+            raise ValueError('Unrecognized alignment mode.')
+
+        return data
+
+    @classmethod
     def to_numpy(cls, data: dict, keep_messages: bool = True, remove_nan_times: bool = True):
         """!
         @brief Convert all (supported) messages in a data dictionary to numpy for analysis.
 
         See @ref MessageData.to_numpy().
 
-        @param data A data dictionary as returned by @ref read().
+        @param data A data `dict` as returned by @ref read().
         @param keep_messages If `False`, the raw data in the `messages` field will be cleared for each @ref MessageData
                object for which numpy conversion is supported.
         @param remove_nan_times If `True`, remove entries whose P1 timestamps are `NaN` (if P1 time is available for

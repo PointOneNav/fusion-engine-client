@@ -18,7 +18,7 @@ if __name__ == "__main__":
 Extract satellite azimuth, elevation, and L1 signal C/N0 data to a CSV file.
 """)
     parser.add_argument('--log-base-dir', metavar='DIR', default='/logs',
-                        help="The base directory containing FusionEngine logs to be searched if a log pattern is"
+                        help="The base directory containing FusionEngine logs to be searched if a log pattern is "
                              "specified.")
     parser.add_argument('log',
                         help="The log to be read. May be one of:\n"
