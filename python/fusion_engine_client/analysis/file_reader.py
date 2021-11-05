@@ -249,7 +249,7 @@ class FileReader(object):
             if prev_data is not None:
                 self.data[MessageType.POSE] = prev_data
 
-    def read(self, message_types: Union[list, tuple] = None,
+    def read(self, message_types: Union[list, tuple, set] = None,
              time_range: Tuple[Union[float, Timestamp], Union[float, Timestamp]] = None, absolute_time: bool = False,
              max_messages: int = None,
              return_numpy: bool = False, keep_messages: bool = False, remove_nan_times: bool = True,
@@ -301,7 +301,7 @@ class FileReader(object):
         """
         if message_types is None:
             message_types = []
-        elif not isinstance(message_types, (list, tuple)):
+        elif not isinstance(message_types, (list, tuple, set)):
             message_types = (message_types,)
 
         if time_range is None:
