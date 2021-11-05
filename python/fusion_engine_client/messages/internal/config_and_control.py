@@ -61,12 +61,56 @@ class ResetMessage(MessagePayload):
     @brief Reset part/all of the device software.
     """
     MESSAGE_TYPE = MessageType.RESET_CMD
-    MESSAGE_VERSION = 0
+    MESSAGE_VERSION = 1
 
-    RESET_NAVIGATION = 0x00000001
-    RESET_EPHEMERIS = 0x00000002
-    RESET_CORRECTIONS = 0x00000004
-    RESET_SOFTWARE = 0x00FFFFFF
+    ##
+    # @name Runtime State Reset
+    # @{
+
+    ## Restart the navigation engine, but do not clear its position estimate.
+    RESTART_NAVIGATION_ENGINE = 0x00000001
+
+    ## @}
+
+    ##
+    # @name Clear Short Lived Data
+    # @{
+
+    ## Reset the navigation engine's estimate of position, velocity, and orientation.
+    RESET_POSITION_DATA = 0x00000010
+    ## Delete all saved ephemeris.
+    RESET_EPHEMERIS = 0x00000020
+    ## Delete all corrections information.
+    RESET_CORRECTIONS = 0x00000040
+
+    ## @}
+
+    ##
+    # @name Clear Long Lived Data
+    # @{
+
+    ## Reset all stored navigation engine data.
+    RESET_NAVIGATION_ENGINE_DATA = 0x00000100
+    ## Delete calibration state.
+    RESET_CALIBRATION_DATA = 0x00000200
+
+    ## @}
+
+    ##
+    # @name Clear Configuration Data
+    # @{
+
+    ## Clears configuration back to default.
+    RESET_CONFIG = 0x00001000
+
+    ## @}
+
+    ## Restart mask recommended for typical usage.
+    RESET_SOFTWARE = 0x000000FF
+
+    ## Restart mask to set all persistent data back to factry defaults.
+    ## Note: Upper 8 bits reserved for future use (e.g., hardware reset).
+    FACTORY_RESET = 0x00FFFFFF
 
     _FORMAT = '<I'
     _SIZE: int = struct.calcsize(_FORMAT)
