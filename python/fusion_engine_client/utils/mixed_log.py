@@ -16,54 +16,6 @@ _logger = logging.getLogger('point_one.utils.mixed_log')
 CANDIDATE_MIXED_FILES = ['input.66.bin', 'input.p1bin', 'input.rtcm3']
 
 
-def find_mixed_log_file(input_path, find_p1log=True, log_base_dir='/logs', return_output_dir=False,
-                        return_log_id=False):
-    """!
-    @copydoc locate_log()
-
-    See @ref locate_log().
-
-    @param find_p1log If `True`, search for a log directory containing a `*.p1log` file. Otherwise, search for a mixed
-           binary file from the list of candidate files (@ref CANDIDATE_MIXED_FILES).
-    """
-    try:
-        if find_p1log:
-            input_path, output_dir, log_id = \
-                find_p1log_file(input_path,
-                                return_output_dir=True, return_log_id=True, log_base_dir=log_base_dir)
-        else:
-            input_path, output_dir, log_id = \
-                find_log_file(input_path, candidate_files=CANDIDATE_MIXED_FILES,
-                              return_output_dir=True, return_log_id=True, log_base_dir=log_base_dir)
-
-        if log_id is None:
-            _logger.info('Loading %s.' % os.path.basename(input_path))
-        else:
-            _logger.info('Loading %s from log %s.' % (os.path.basename(input_path), log_id))
-
-        if input_path.endswith('.playback.p1log') or input_path.endswith('.playback.p1bin'):
-            _logger.warning('Using .p1log file from log playback. If you want the originally recorded data, set '
-                            '--original.')
-
-        result = [input_path]
-        if return_output_dir:
-            result.append(output_dir)
-        if return_log_id:
-            result.append(log_id)
-
-        return result
-    except (FileNotFoundError, RuntimeError) as e:
-        _logger.error(str(e))
-
-        result = [None]
-        if return_output_dir:
-            result.append(None)
-        if return_log_id:
-            result.append(None)
-
-        return result
-
-
 def locate_log(input_path, log_base_dir='/logs', return_output_dir=False, return_log_id=False):
     """!
     @brief Locate a FusionEngine `*.p1log` file, or a binary file containing a mixed stream of FusionEngine messages and
@@ -90,42 +42,46 @@ def locate_log(input_path, log_base_dir='/logs', return_output_dir=False, return
               `return_log_id` is `True`.
     """
     # Try to find the log normally (look for a directory containing a .p1log file).
-    result = find_mixed_log_file(input_path=input_path, log_base_dir=log_base_dir, find_p1log=True,
+    try:
+        result = find_p1log_file(input_path, log_base_dir=log_base_dir,
                                  return_output_dir=return_output_dir, return_log_id=return_log_id)
-    if result[0] is not None:
         return result
+    except (FileNotFoundError, RuntimeError) as e:
+        _logger.error(str(e))
 
     # If that fails, see if we can find a directory containing a mixed content binary file: *.p1bin or *.rtcm3 (e.g.,
     # Quectel platform logs). If found, try to extract FusionEngine messages from it.
     _logger.info('Could not find a FusionEngine log directory containing a .p1log file. Searching for a P1 log with '
                  'mixed binary data.')
-    result = find_mixed_log_file(input_path=input_path, log_base_dir=log_base_dir, find_p1log=False,
-                                 return_output_dir=return_output_dir, return_log_id=return_log_id)
-    mixed_file_path = result[0]
-    if mixed_file_path is not None:
-        # If this is a .p1bin file, dump its contents. p1bin files typically contain unaligned blocks of binary data.
-        # dump_p1bin() will extract the blocks and concatenate them.
-        if mixed_file_path.endswith('.p1bin'):
-            _, bin_files = dump_p1bin(input_path=mixed_file_path)
-            # Data type 66 contains mixed Quectel binary data, including FusionEngine data.
-            if 66 in bin_files:
-                mixed_file_path = bin_files[66]
-            else:
-                _logger.warning('No mixed data extracted from .p1bin file.')
-                return [None for _ in result]
+    try:
+        result = find_log_file(input_path, candidate_files=CANDIDATE_MIXED_FILES, log_base_dir=log_base_dir,
+                               return_output_dir=return_output_dir, return_log_id=return_log_id)
+        mixed_file_path = result[0]
+    except (FileNotFoundError, RuntimeError) as e:
+        _logger.error(str(e))
+        return [None for _ in result]
 
-        # Now, search for FusionEngine messages within the mixed binary data.
-        _logger.info("Found mixed log file '%s'. Extracting FusionEngine content." % mixed_file_path)
-        log_dir = os.path.dirname(mixed_file_path)
-        p1log_path = os.path.join(log_dir, "fusion_engine.p1log")
-        num_messages = FileReader.extract_fusion_engine_log(input_path=mixed_file_path, output_path=p1log_path)
-        if num_messages > 0:
-            result = list(result)
-            result[0] = p1log_path
-            return result
+    # If this is a .p1bin file, dump its contents. p1bin files typically contain unaligned blocks of binary data.
+    # dump_p1bin() will extract the blocks and concatenate them.
+    if mixed_file_path.endswith('.p1bin'):
+        _logger.info("Found p1bin file '%s'. Extracting binary stream." % mixed_file_path)
+        _, bin_files = dump_p1bin(input_path=mixed_file_path)
+        # Data type 66 contains mixed Quectel binary data, including FusionEngine data.
+        if 66 in bin_files:
+            mixed_file_path = bin_files[66]
         else:
-            _logger.warning('No FusionEngine data extracted from .p1bin file.')
+            _logger.warning('No mixed data extracted from .p1bin file.')
             return [None for _ in result]
+
+    # Now, search for FusionEngine messages within the mixed binary data.
+    _logger.info("Found mixed log file '%s'. Extracting FusionEngine content." % mixed_file_path)
+    log_dir = os.path.dirname(mixed_file_path)
+    fe_path = os.path.join(log_dir, "fusion_engine.p1log")
+    num_messages = FileReader.extract_fusion_engine_log(input_path=mixed_file_path, output_path=fe_path)
+    if num_messages > 0:
+        result = list(result)
+        result[0] = fe_path
+        return result
     else:
-        # find_mixed_log_file() will log a message.
+        _logger.warning('No FusionEngine data extracted from .p1bin file.')
         return [None for _ in result]

@@ -9,10 +9,10 @@ _logger = logging.getLogger('point_one.utils.log')
 MANIFEST_FILE_NAME = 'maniphest.json'
 
 
-def find_fusion_engine_log(pattern, log_base_dir='/logs', allow_multiple=False,
-                           log_test_filenames=(MANIFEST_FILE_NAME,), return_test_file=False):
+def find_log_by_pattern(pattern, log_base_dir='/logs', allow_multiple=False,
+                        log_test_filenames=(MANIFEST_FILE_NAME,), return_test_file=False):
     """!
-    @brief Locate a FusionEngine log directory.
+    @brief Perform a pattern match to locate a log directory containing the specified files.
 
     FusionEngine data logs are typically a directory, named with a unique hash, containing a JSON log manifest file and
     binary input/output data files. This function can locate a requested log directory under a base directory based on
@@ -114,10 +114,15 @@ def find_fusion_engine_log(pattern, log_base_dir='/logs', allow_multiple=False,
 
 def find_log_file(input_path, candidate_files=None, return_output_dir=False, return_log_id=False, log_base_dir='/logs'):
     """!
-    @brief Locate a FusionEngine log data file.
+    @brief Locate a log directory containing the specified file(s).
 
-    This function locates a data file within a FusionEngine log directory, searching for the first match to a list of
-    candidate files within the log directory.
+    `input_path` may be a file, a directory, or a pattern to be matched to a parent directory within `log_base_dir`.
+
+    If `input_path` is a directory or pattern, this function will attempt to locate a log directory containing a data
+    file from a list of candidate filenames (`candidate_files`).
+
+    If `input_path` is a file, `candidate_files` will be ignored and the returned output directory will be the parent
+    directory of that file.
 
     ```
     /logs/2021-10-01/
@@ -129,8 +134,8 @@ def find_log_file(input_path, candidate_files=None, return_output_dir=False, ret
     /logs/2021-10-01/abcdef/fusion_engine.p1log
     ```
 
-    If `input_path` is a file, the returned output directory will be the parent directory of that file. If it is a
-    FusionEngine log directory, the returned output directory will be the log directory itself.
+    @note
+    For normal use, it is recommended that you call @ref locate_log() or @ref find_p1log_file() instead.
 
     @param input_path The path to a data file, a FusionEngine log directory, or a pattern to be matched (see @ref
            find_fusion_engine_log()).
@@ -154,8 +159,10 @@ def find_log_file(input_path, candidate_files=None, return_output_dir=False, ret
     # that the .p1log may be contained within a subdirectory).
     else:
         if candidate_files is None:
+            # No candidate files specified. Default to 'fusion_engine.p1log'.
             candidate_files = ['fusion_engine.p1log']
         elif not isinstance(candidate_files, (tuple, list)):
+            # User specified a string, not a list. Convert to a list.
             candidate_files = [candidate_files]
 
         # First, see if the user's path is an existing log directory containing a data file. If so, use that.
@@ -184,8 +191,8 @@ def find_log_file(input_path, candidate_files=None, return_output_dir=False, ret
                 _logger.info("File '%s' not found. Searching for a matching log." % input_path)
 
             try:
-                matches = find_fusion_engine_log(input_path, log_base_dir=log_base_dir,
-                                                 log_test_filenames=candidate_files, return_test_file=True)
+                matches = find_log_by_pattern(input_path, log_base_dir=log_base_dir,
+                                              log_test_filenames=candidate_files, return_test_file=True)
                 log_dir = matches[0][0]
                 log_id = matches[0][1]
                 input_path = matches[0][2]
@@ -215,10 +222,12 @@ def find_log_file(input_path, candidate_files=None, return_output_dir=False, ret
 def find_p1log_file(input_path, return_output_dir=False, return_log_id=False, log_base_dir='/logs',
                     load_original=False):
     """!
-    @brief Locate a FusionEngine `*.p1log` file.
+    @brief Locate a FusionEngine log directory containing a `*.p1log` file from a list of expected candidate paths.
 
     If `input_path` is a file, the returned output directory will be the parent directory of that file. If it is a
     FusionEngine log, the returned output directory will be the log directory.
+
+    See also @ref locate_log(), which supports both `*.p1log` files and mixed binary files.
 
     @param input_path The path to a `.p1log` file, a FusionEngine log directory, or a pattern to be matched (see @ref
            find_fusion_engine_log()).
@@ -244,5 +253,10 @@ def find_p1log_file(input_path, return_output_dir=False, return_log_id=False, lo
                        # Legacy path, maintained for backwards compatibility.
                        'filter/output/fe_service/output.playback.p1bin' if not load_original else None,
                        'filter/output/fe_service/output.p1bin']
-    return find_log_file(input_path, candidate_files=candidate_files, return_output_dir=return_output_dir,
-                         return_log_id=return_log_id, log_base_dir=log_base_dir)
+    result = find_log_file(input_path, candidate_files=candidate_files, return_output_dir=return_output_dir,
+                           return_log_id=return_log_id, log_base_dir=log_base_dir)
+    p1log_path = result[0]
+    if p1log_path.endswith('.playback.p1log') or p1log_path.endswith('.playback.p1bin'):
+        _logger.warning('Using .p1log file from log playback. If you want the originally recorded data, set '
+                        '--original.')
+    return result
