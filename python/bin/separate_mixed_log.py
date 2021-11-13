@@ -11,6 +11,7 @@ sys.path.append(root_dir)
 
 from fusion_engine_client.analysis.file_reader import FileReader
 from fusion_engine_client.utils.log import find_log_file
+from fusion_engine_client.utils.mixed_log import CANDIDATE_MIXED_FILES
 from fusion_engine_client.utils import trace
 
 
@@ -39,7 +40,7 @@ Extract FusionEngine message contents from a binary file containing mixed data
     parser.add_argument('log',
                         help="The log to be read. May be one of:\n"
                              "- The path to a binary data file\n"
-                             "- The path to a FusionEngine log directory containing an `input.p1bin` file\n"
+                             "- The path to a FusionEngine log directory containing a candidate binary data file\n"
                              "- A pattern matching a FusionEngine log directory under the specified base directory "
                              "(see find_fusion_engine_log() and --log-base-dir)")
 
@@ -56,12 +57,7 @@ Extract FusionEngine message contents from a binary file containing mixed data
     # Locate the input file and set the output directory.
     try:
         if options.candidate_files is None:
-            # Note that we prioritize the input.66.bin file over the others. For logs containing a single mixed serial
-            # data stream as a single message type within the .p1bin file (e.g., Quectel platforms), individual
-            # FusionEngine messages may be interrupted by .p1bin message headers since the .p1bin entires are just
-            # arbitrary byte blocks. In that case, we must first strip the .p1bin headers using dump_p1bin.py. ID 66 is
-            # the value assigned to Quectel/Teseo data within .p1bin files.
-            candidate_files = ['input.66.bin', 'input.p1bin', 'input.rtcm3']
+            candidate_files = CANDIDATE_MIXED_FILES
         else:
             candidate_files = options.candidate_files.split(',')
 

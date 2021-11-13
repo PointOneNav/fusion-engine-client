@@ -142,7 +142,8 @@ def find_log_file(input_path, candidate_files=None, return_output_dir=False, ret
 
     @return - The path to the located file.
             - The path to the located output directory. Only provided if `return_output_dir` is `True`.
-            - The log ID string, or `None` if the requested file is not part of a FusionEngine log.
+            - The log ID string, or `None` if the requested file is not part of a FusionEngine log. Only provided if
+              `return_log_id` is `True`.
     """
     # Check if the input path is a file. If so, return it and set the output directory to its parent directory.
     if os.path.isfile(input_path):
@@ -229,7 +230,8 @@ def find_p1log_file(input_path, return_output_dir=False, return_log_id=False, lo
 
     @return - The path to the located file.
             - The path to the located output directory. Only provided if `return_output_dir` is `True`.
-            - The log ID string, or `None` if the requested file is not part of a FusionEngine log.
+            - The log ID string, or `None` if the requested file is not part of a FusionEngine log. Only provided if
+              `return_log_id` is `True`.
     """
     # If a playback file exists, load that first over the original file unless the user specifically says to load the
     # originally recorded file. In that case, the playback file paths will be set to None and ignored in the loop below.
