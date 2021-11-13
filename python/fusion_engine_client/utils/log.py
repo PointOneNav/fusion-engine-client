@@ -369,7 +369,8 @@ def extract_fusion_engine_log(input_path, output_path=None, warn_on_gaps=True, r
         return valid_count
 
 
-def locate_log(input_path, log_base_dir='/logs', return_output_dir=False, return_log_id=False):
+def locate_log(input_path, log_base_dir='/logs', return_output_dir=False, return_log_id=False,
+               load_original=False):
     """!
     @brief Locate a FusionEngine `*.p1log` file, or a binary file containing a mixed stream of FusionEngine messages and
            other content.
@@ -389,6 +390,8 @@ def locate_log(input_path, log_base_dir='/logs', return_output_dir=False, return
     @param log_base_dir The base directory to be searched when performing a pattern match for a log directory.
     @param return_output_dir If `True`, return the output directory associated with the located input file.
     @param return_log_id If `True`, return the ID of the log if the requested path is a FusionEngine log.
+    @param load_original If `True`, load the `.p1log` file originally recorded with the log. Otherwise, load the log
+           playback output if it exists (default).
 
     @return A tuple of:
             - The path to the located (or extracted) `*.p1log` file
@@ -399,7 +402,8 @@ def locate_log(input_path, log_base_dir='/logs', return_output_dir=False, return
     # Try to find the log normally (look for a directory containing a .p1log file).
     try:
         result = find_p1log_file(input_path, log_base_dir=log_base_dir,
-                                 return_output_dir=return_output_dir, return_log_id=return_log_id)
+                                 return_output_dir=return_output_dir, return_log_id=return_log_id,
+                                 load_original=load_original)
         return result
     except (FileNotFoundError, RuntimeError) as e:
         _logger.error(str(e))

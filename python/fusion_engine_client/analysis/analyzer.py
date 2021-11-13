@@ -970,7 +970,8 @@ Load and display information stored in a FusionEngine binary file.
 
     # Locate the input file and set the output directory.
     input_path, output_dir, log_id = locate_log(input_path=options.log, log_base_dir=options.log_base_dir,
-                                                return_output_dir=True, return_log_id=True)
+                                                return_output_dir=True, return_log_id=True,
+                                                load_original=options.original)
     if input_path is None:
         # locate_log() will log an error.
         sys.exit(1)
