@@ -443,5 +443,5 @@ def locate_log(input_path, log_base_dir='/logs', return_output_dir=False, return
         result[0] = fe_path
         return result
     else:
-        _logger.warning('No FusionEngine data extracted from .p1bin file.')
+        _logger.warning('No FusionEngine data extracted from mixed data file.')
         return [None for _ in result]
