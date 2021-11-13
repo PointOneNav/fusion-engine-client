@@ -16,8 +16,8 @@ from fusion_engine_client.utils import trace
 
 def main():
     parser = ArgumentParser(description="""\
-Extract FusionEngine message contents from a binary file containing mixed data (e.g., interleaved RTCM and FusionEngine
-messages).
+Extract FusionEngine message contents from a binary file containing mixed data
+(e.g., interleaved RTCM and FusionEngine messages).
 """)
 
     parser.add_argument('--log-base-dir', metavar='DIR', default='/logs',

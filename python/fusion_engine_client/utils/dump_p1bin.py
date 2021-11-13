@@ -99,7 +99,8 @@ def dump_p1bin(input_path, output_dir=None, prefix=None):
 
 def main():
     parser = ArgumentParser(description="""\
-Dump contents of a .p1bin file to individual binary files, separated by message type.
+Dump contents of a .p1bin file to individual binary files, separated by message
+type.
 """)
 
     parser.add_argument('--log-base-dir', metavar='DIR', default='/logs',
