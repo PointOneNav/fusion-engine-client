@@ -3,10 +3,20 @@ import os
 
 import logging
 
+from ..messages import MessageHeader, MessageType
+from .dump_p1bin import dump_p1bin
+
 _logger = logging.getLogger('point_one.utils.log')
 
 # Note: The spelling here is intentional.
 MANIFEST_FILE_NAME = 'maniphest.json'
+
+# Note that we prioritize the input.66.bin file over the others. For logs containing a single mixed serial
+# data stream as a single message type within the .p1bin file (e.g., Quectel platforms), individual
+# FusionEngine messages may be interrupted by .p1bin message headers since the .p1bin entires are just
+# arbitrary byte blocks. In that case, we must first strip the .p1bin headers using dump_p1bin.py. ID 66 is
+# the value assigned to Quectel/Teseo data within .p1bin files.
+CANDIDATE_MIXED_FILES = ['input.66.bin', 'input.p1bin', 'input.rtcm3']
 
 
 def find_log_by_pattern(pattern, log_base_dir='/logs', allow_multiple=False,
@@ -260,3 +270,174 @@ def find_p1log_file(input_path, return_output_dir=False, return_log_id=False, lo
         _logger.warning('Using .p1log file from log playback. If you want the originally recorded data, set '
                         '--original.')
     return result
+
+
+def extract_fusion_engine_log(input_path, output_path=None, warn_on_gaps=True, return_counts=False):
+    """!
+    @brief Extract FusionEngine data from a file containing mixed binary data.
+
+    @param input_path The path to the binary file to be read.
+    @param output_path The path to an output file to be generated. If `None`, set to `<prefix>.p1log`, where
+           `input_path` is `<prefix>.<ext>`.
+    @param warn_on_gaps If `True`, print a warning if gaps are detected in the data sequence numbers.
+    @param return_counts If `True`, return the number of messages extracted for each message type.
+
+    @return - The number of decoded messages.
+            - A `dict` containing the number of messages extracted for each message type. Only provided if
+              `return_counts` is `True`.
+    """
+    def _advance_to_next_sync(in_fd):
+        try:
+            while True:
+                byte0 = in_fd.read(1)[0]
+                while True:
+                    if byte0 == MessageHeader._SYNC0:
+                        byte1 = in_fd.read(1)[0]
+                        if byte1 == MessageHeader._SYNC1:
+                            in_fd.seek(-2, os.SEEK_CUR)
+                            return True
+                        byte0 = byte1
+                    else:
+                        break
+        except IndexError:
+            return False
+
+    if output_path is None:
+        output_path = os.path.splitext(input_path)[0] + '.p1log'
+
+    header = MessageHeader()
+    valid_count = 0
+    message_counts = {}
+    with open(input_path, 'rb') as in_fd:
+        with open(output_path, 'wb') as out_path:
+            prev_sequence_number = None
+            while True:
+                if not _advance_to_next_sync(in_fd):
+                    break
+
+                offset = in_fd.tell()
+                _logger.trace('Reading candidate message @ %d (0x%x).' % (offset, offset))
+
+                data = in_fd.read(MessageHeader.calcsize())
+                read_len = len(data)
+                try:
+                    header.unpack(data, warn_on_unrecognized=False)
+                    if header.payload_size_bytes > MessageHeader._MAX_EXPECTED_SIZE_BYTES:
+                        raise ValueError('Payload size (%d) too large.' % header.payload_size_bytes)
+
+                    payload = in_fd.read(header.payload_size_bytes)
+                    read_len += len(payload)
+                    if len(payload) != header.payload_size_bytes:
+                        raise ValueError('Not enough data - likely not a valid FusionEngine header.')
+
+                    data += payload
+                    header.validate_crc(data)
+
+                    if prev_sequence_number is not None and \
+                       (header.sequence_number - prev_sequence_number) != 1 and \
+                       not (header.sequence_number == 0 and prev_sequence_number == 0xFFFFFFFF):
+                        func = _logger.warning if warn_on_gaps else _logger.debug
+                        func('Data gap detected @ %d (0x%x). [sequence=%d, prev_sequence=%d, # messages=%d]' %
+                             (offset, offset, header.sequence_number, prev_sequence_number, valid_count + 1))
+                    prev_sequence_number = header.sequence_number
+
+                    _logger.debug('Read %s message @ %d (0x%x). [length=%d B, sequence=%d, # messages=%d]' %
+                                  (header.get_type_string(), offset, offset,
+                                   MessageHeader.calcsize() + header.payload_size_bytes, header.sequence_number,
+                                   valid_count + 1))
+
+                    out_path.write(data)
+                    valid_count += 1
+                    message_counts.setdefault(header.message_type, 0)
+                    message_counts[header.message_type] += 1
+                except ValueError as e:
+                    offset += 1
+                    _logger.trace('%s Rewinding to offset %d (0x%x).' % (str(e), offset, offset))
+                    in_fd.seek(offset, os.SEEK_SET)
+
+        if valid_count > 0:
+            _logger.debug('Found %d valid FusionEngine messages.' % valid_count)
+            for type, count in message_counts.items():
+                _logger.debug('  %s: %d' % (MessageType.get_type_string(type), count))
+        else:
+            _logger.debug('No FusionEngine messages found.')
+            os.remove(output_path)
+
+    if return_counts:
+        return valid_count, message_counts
+    else:
+        return valid_count
+
+
+def locate_log(input_path, log_base_dir='/logs', return_output_dir=False, return_log_id=False):
+    """!
+    @brief Locate a FusionEngine `*.p1log` file, or a binary file containing a mixed stream of FusionEngine messages and
+           other content.
+
+    If a mixed binary file is found, extract the FusionEngine content into a `*.p1log` file in the same directory.
+
+    If `input_path` is a file, the returned output directory will be the parent directory of that file. If it is a
+    FusionEngine log, the returned output directory will be the log directory.
+
+    See also @ref find_p1log_file().
+
+    @param input_path One of:
+           - The path to a `.p1log` file or mixed content binary file
+           - A FusionEngine log directory or a directory containing one of the recognized mixed content files (see @ref
+             CANDIDATE_MIXED_FILES)
+           - A log pattern to be matched (see @ref find_fusion_engine_log()).
+    @param log_base_dir The base directory to be searched when performing a pattern match for a log directory.
+    @param return_output_dir If `True`, return the output directory associated with the located input file.
+    @param return_log_id If `True`, return the ID of the log if the requested path is a FusionEngine log.
+
+    @return A tuple of:
+            - The path to the located (or extracted) `*.p1log` file
+            - The path to the located output directory. Only provided if `return_output_dir` is `True`.
+            - The log ID string, or `None` if the requested file is not part of a FusionEngine log. Only provided if
+              `return_log_id` is `True`.
+    """
+    # Try to find the log normally (look for a directory containing a .p1log file).
+    try:
+        result = find_p1log_file(input_path, log_base_dir=log_base_dir,
+                                 return_output_dir=return_output_dir, return_log_id=return_log_id)
+        return result
+    except (FileNotFoundError, RuntimeError) as e:
+        _logger.error(str(e))
+
+    # If that fails, see if we can find a directory containing a mixed content binary file. If found, try to extract
+    # FusionEngine messages from it.
+    _logger.info('Could not find a FusionEngine log directory containing a .p1log file. Searching for a P1 log with '
+                 'mixed binary data.')
+    try:
+        result = find_log_file(input_path, candidate_files=CANDIDATE_MIXED_FILES, log_base_dir=log_base_dir,
+                               return_output_dir=return_output_dir, return_log_id=return_log_id)
+        mixed_file_path = result[0]
+    except (FileNotFoundError, RuntimeError) as e:
+        _logger.error(str(e))
+        return [None for _ in result]
+
+    # If this is a .p1bin file, dump its contents. p1bin files typically contain unaligned blocks of binary data.
+    # dump_p1bin() will extract the blocks and concatenate them.
+    if mixed_file_path.endswith('.p1bin'):
+        _logger.info("Found p1bin file '%s'. Extracting binary stream." % mixed_file_path)
+        _, bin_files = dump_p1bin(input_path=mixed_file_path)
+        # Data type 66 contains mixed Quectel binary data, including FusionEngine data.
+        if 66 in bin_files:
+            mixed_file_path = bin_files[66]
+        else:
+            _logger.warning('No mixed data extracted from .p1bin file.')
+            return [None for _ in result]
+
+    # Now, search for FusionEngine messages within the mixed binary data.
+    mixed_file_path = result[0]
+    _logger.info("Found mixed log file '%s'. Extracting FusionEngine content." % mixed_file_path)
+    log_dir = os.path.dirname(mixed_file_path)
+    fe_path = os.path.join(log_dir, "fusion_engine.p1log")
+    num_messages = extract_fusion_engine_log(input_path=mixed_file_path, output_path=fe_path)
+    if num_messages > 0:
+        result = list(result)
+        result[0] = fe_path
+        return result
+    else:
+        _logger.warning('No FusionEngine data extracted from .p1bin file.')
+        return [None for _ in result]
