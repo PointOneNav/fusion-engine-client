@@ -2,9 +2,7 @@ from collections import defaultdict
 import logging
 from typing import List, Dict, Callable, Optional, Tuple, Union
 
-from ..messages import MessageHeader, MessageType, MessagePayload
-# Note: This should be imported from `..messages` in the public repo.
-from ..messages.internal import message_type_to_class
+from ..messages import MessageHeader, MessageType, MessagePayload, message_type_to_class
 
 _logger = logging.getLogger('point_one.fusion_engine.parsers.decoder')
 
