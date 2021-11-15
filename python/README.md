@@ -19,10 +19,11 @@ for the latest API documentation.
   - `python/` - Python source files
     - `bin/` - Application files
       - [p1_display.py](examples/p1_display.py) - Generate HTML plots of vehicle trajectory, etc. (see also
-        `analyze_data.py`)
+        `analyzer.py` below)
+      - [separate_mixed_log.py](examples/separate_mixed_log.py) - Extract FusionEngine message contents from a binary 
+        file containing mixed data (e.g., interleaved RTCM and FusionEngine messages) 
     - `examples/` - Python example applications
       - [analyze_data.py](examples/analyze_data.py) - Generate HTML plots of vehicle trajectory, INS filter state, etc.
-        - This class is used by the `bin/p1_display.py` application
       - [encode_data.py](examples/encode_data.py) - Construct and serialize FusionEngine messages, and save them in a
         `*.p1log` file that can be used with the other example utilities
       - [extract_imu_data.py](examples/extract_imu_data.py) - Generate a CSV file containing recorded IMU measurements
@@ -38,12 +39,19 @@ for the latest API documentation.
         displayed and/or logged to disk using the `FusionEngineDecoder` helper class
       - [udp_client.py](examples/udp_client.py) - Connect to a device over UDP and decode/display messages in real time
     - `fusion_engine_client` - Top Python package directory
+      - `analysis`
+        - [analyzer.py](analysis/analyzer.py) - `Analyzer` class, used to plot data from a recorded file of FusionEngine
+          messages (vehicle trajectory map, navigation engine state information, etc.)
+          - This class is used by the `bin/p1_display.py` application
+        - [file_reader.py](analysis/file_reader.py) - `FileReader` class, capable of loading and time-aligning
+          FusionEngine data captured in a `*.p1log` file
       - `messages` - Python message definitions
       - `parsers` - Message encoding and decoding support
         - [decoder.py](parsers/decoder.py) - `FusionEngineDecoder` class, used to frame and parse incoming streaming
           data (e.g., received over TCP or serial)
         - [encoder.py](parsers/encoder.py) - `FusionEngineEncoder` class, used when serializing messages to be sent to a
           connected device
+      - `utils` - Various utility functions used by the other files (e.g., log search support)
     
 ### Usage Instructions
 

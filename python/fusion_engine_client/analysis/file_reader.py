@@ -11,7 +11,6 @@ import os
 import numpy as np
 
 from ..messages import *
-from ..messages import internal
 from ..utils import trace
 
 
@@ -367,7 +366,7 @@ class FileReader(object):
 
         needed_message_types = [t for t in needed_message_types if message_class[t] is not None]
 
-        system_time_messages_requested = any([t in internal.PROFILING_TYPES for t in needed_message_types])
+        system_time_messages_requested = any([t in PROFILING_TYPES for t in needed_message_types])
 
         # Create a dict with references to the requested types only to be returned below.
         result = {t: self.data[t] for t in message_types}

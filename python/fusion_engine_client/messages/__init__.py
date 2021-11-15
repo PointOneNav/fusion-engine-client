@@ -11,3 +11,6 @@ message_type_to_class = {
     ros.GPSFixMessage.MESSAGE_TYPE: ros.GPSFixMessage,
     ros.IMUMessage.MESSAGE_TYPE: ros.IMUMessage,
 }
+
+# Note: This must be imported after message_type_to_class is defined.
+from .internal import *

@@ -5,25 +5,26 @@ class FusionEngineEncoder:
     """!
     @brief Helper class for serializing FusionEngine messages.
 
-    @post
-    Takes instances of MessagePayload and returns the serialized header+payload
-    as a byte array. Increments a sequence_number which it updates in each
-    header.
+    This class takes instances of @ref MessagePayload and returns the serialized message content (header + payload) as a
+    byte array (`bytes`). It attaches sequence numbers and CRCs automatically to the outbound byte stream.
     """
 
     def __init__(self):
+        """!
+        @brief Construct a new encoder instance.
+        """
         self.sequence_number = 0
 
-    def encode_message(self, message: MessagePayload, source_identifier=0) -> (bytes):
+    def encode_message(self, message: MessagePayload, source_identifier: int = 0) -> (bytes):
         """!
         @brief Serialize a message with valid header and payload.
 
-        @post
-        The header will set the CRC, message type, sequence number, source
-        identifier, and message version. The sequence_number is incremented
-        each time this is called.
+        Construct a header for the specified payload, automatically setting the message type and version from the
+        payload object, and populating the message sequence number, source identifier, and CRC. Then serialize both the
+        header and payload into a `bytes` object.
 
         @param message The MessagePayload to serialize.
+        @param source_identifier A numeric source identifier to associate with this message (optional).
 
         @return A `bytes` object containing the serialized message.
         """

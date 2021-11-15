@@ -21,8 +21,7 @@ if __name__ == "__main__" and (__package__ is None or __package__ == ''):
     sys.path.append(root_dir)
     __package__ = "fusion_engine_client.analysis"
 
-from ..messages.core import *
-from ..messages.internal import *
+from ..messages import *
 from .attitude import get_enu_rotation_matrix
 from .file_reader import FileReader
 from ..utils import trace
