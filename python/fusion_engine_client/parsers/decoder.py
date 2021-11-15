@@ -39,7 +39,7 @@ class FusionEngineDecoder:
             Union[MessagePayload, bytes]], None]]] = defaultdict(list)
 
     def add_callback(self, type: MessageType,
-                     callback: Callable[[Optional[MessageType],
+                     callback: Callable[[MessageHeader,
                                          Union[MessagePayload, bytes]], None]):
         """!
         @brief Register a function to be called when a specific message is decoded.
