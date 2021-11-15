@@ -20,6 +20,8 @@ for the latest API documentation.
     - `bin/` - Application files
       - [p1_display.py](examples/p1_display.py) - Generate HTML plots of vehicle trajectory, etc. (see also
         `analyzer.py` below)
+      - [separate_mixed_log.py](examples/separate_mixed_log.py) - Extract FusionEngine message contents from a binary 
+        file containing mixed data (e.g., interleaved RTCM and FusionEngine messages) 
     - `examples/` - Python example applications
       - [analyze_data.py](examples/analyze_data.py) - Generate HTML plots of vehicle trajectory, INS filter state, etc.
       - [extract_imu_data.py](examples/extract_imu_data.py) - Generate a CSV file containing recorded IMU measurements
