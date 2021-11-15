@@ -14,7 +14,7 @@ class FusionEngineEncoder:
     def __init__(self):
         self.sequence_number = 0
 
-    def encode_message(self, message: MessagePayload, source_identifier=0) -> (bytes):
+    def encode_message(self, message: MessagePayload, source_identifier: int = 0) -> (bytes):
         """!
         @brief Serialize a message with valid header and payload.
 
