@@ -194,7 +194,7 @@ class MessageHeader:
         # protocol_version, then add the payload into the CRC.
         self.payload_size_bytes = len(payload)
         header_buffer = self.pack()
-        self.crc = crc32(header_buffer[6:])
+        self.crc = crc32(header_buffer[8:])
         self.crc = crc32(payload, self.crc)
         return self.crc
 
