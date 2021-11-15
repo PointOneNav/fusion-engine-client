@@ -9,21 +9,23 @@ _logger = logging.getLogger('point_one.fusion_engine.parsers.decoder')
 
 class FusionEngineDecoder:
     """!
-    @brief Helper class for deserializing FusionEngine messages.
+    @brief Helper class for framing and deserializing FusionEngine messages.
 
-    @post
-    This class keeps and internal buffer to track the state of the message
-    currently being decoded. It will resync on errors to ensure all possible
-    messages are decoded.
+    This class performs message framing and validation operations on an incoming stream of bytes to decode any
+    FusionEngine messages found within the stream. If an error is detected (CRC failure, invalid message length, etc.),
+    the stream will resynchronize automatically.
     """
 
     def __init__(self, max_payload_len_bytes: int = MessageHeader._MAX_EXPECTED_SIZE_BYTES,
                  warn_on_unrecognized: bool = True):
         """!
-        @param max_payload_len_bytes assume headers with payloads larger than this
-               value are corrupted and resync.
-        @param warn_on_unrecognized If set to true, log warnings when a potential header before checking CRC has an
-               unknown type.
+        @brief Construct a new decoder instance.
+
+        @param max_payload_len_bytes The maximum expected payload length (in bytes). Incoming headers with reported
+               payload lengths larger than this value will be treated as corrupted/invalid and will trigger a
+               resynchronization.
+        @param warn_on_unrecognized If `True`, print a warning if a deserialized message header contains an unrecognized
+               or unsupported message type.
         """
         self._warn_on_unrecognized = warn_on_unrecognized
         self._max_payload_len_bytes = max_payload_len_bytes
@@ -40,22 +42,18 @@ class FusionEngineDecoder:
                      callback: Callable[[Optional[MessageType],
                                          Union[MessagePayload, bytes]], None]):
         """!
-        @brief Register a function to be called for certion MessageType.
+        @brief Register a function to be called when a specific message is decoded.
 
-        @post
-        Registering multiple callbacks with the same type will result in
-        multiple matching callbacks being called.
+        @note
+        Multiple callbacks may be registered for the same message type.
 
-        @param type The type of message for this callback to receive. If type
-               is None, this callback will be called for all messages.
-        @param callback The function to call with decoded messages and their
-               headers. For wild card callbacks or callbacks registered for a
-               @ref MessageType without a corresponding MessagePayload, the
-               payload contents will be returned as a byte array in the place
-               of a @ref MessagePayload.
+        @param type The type of message for this callback to receive. If type is `None`, this callback will be called
+               for all messages.
+        @param callback The function to call with the message header and decoded contents (@ref MessagePayload object).
+               If the incoming message type is not recognized, the second argument will be a `bytes` object containing
+               the uninterpreted payload contents.
         """
-        # `self._callbacks` is a `defaultdict(list)` so no need to initialize
-        # list on first entry.
+        # `self._callbacks` is a `defaultdict(list)` so no need to initialize list on first entry.
         self._callbacks[type].append(callback)
 
     def print_seq_skip_warnings(self, enable):
@@ -72,37 +70,35 @@ class FusionEngineDecoder:
         """!
         @brief Decode FusionEngine messages from serialized data.
 
-        @post
-        This class maintains the state of decoding as it goes, so this function
-        should be in a loop, called with data as it becomes available.
+        This function should be called when any incoming bytes are received. Data will be buffered internally until
+        complete messages are received.
 
-        As messages are decoded they will trigger any matching registered
-        callbacks.
+        When complete messages are decoded and validated, this function will provide them to any registered callback
+        functions (see @ref add_callback()). When finished, this function will return a list of completed messages.
 
-        @param data Either a single byte (which is of type `int` in python3) or
-               a byte array for the message stream being decoded.
+        @param data Either a single byte (which is of type `int` in Python 3) or a byte array (`bytes`) containing
+               incoming data to be decoded.
 
-        @return A list of message results for any messages completed with the
-                input `data`. Known message types will be a tuple of the @ref
-                MessageHeader and a child of @ref MessagePayload corresponding
-                to the @ref MessageType. Unknown messages will be a tuple of the @ref
-                MessageHeader and a byte array with the payload contents.
+        @return A list of message results for any messages completed with the input `data`. Each list entry will contain
+                the message header and the decoded contents (@ref MessagePayload object). If the incoming message type
+                is not recognized, the second argument will be a `bytes` containing the uninterpreted payload contents.
         """
         # Cast singleton byte values to a byte array.
         if type(data) == int:
             data = data.to_bytes(1, 'big')
+
+        # Append the new data to the buffer.
         self._buffer += data
 
+        # Decode all messages found in the buffer.
         decoded_messages = []
-        # While there may be a message in @ref self._buffer keep looping.
         while self._buffer:
             # Message must be at least long enough for header.
             if len(self._buffer) < MessageHeader.calcsize():
                 break
             # Looking for a valid header.
             if self._header is None:
-                # Explicitly check for the first two sync bytes to be a bit
-                # more efficient then doing it inside the @ref
+                # Explicitly check for the first two sync bytes to be a bit more efficient then doing it inside the @ref
                 # MessageHeader.unpack() with an exception.
                 if self._buffer[0] != MessageHeader._SYNC0:
                     self._buffer.pop(0)
@@ -110,6 +106,8 @@ class FusionEngineDecoder:
                 if self._buffer[1] != MessageHeader._SYNC1:
                     self._buffer.pop(0)
                     continue
+
+                # Possible header found. Decode it and wait for the payload.
                 self._header = MessageHeader()
                 self._header.unpack(self._buffer, warn_on_unrecognized=self._warn_on_unrecognized)
                 self._msg_len = self._header.payload_size_bytes + MessageHeader.calcsize()
@@ -117,9 +115,12 @@ class FusionEngineDecoder:
                     self._header = None
                     self._buffer.pop(0)
                     continue
-            # Looking for complete message.
+
+            # If there's not enough data to complete the message, we're done looping.
             if len(self._buffer) < self._msg_len:
                 break
+
+            # Validate the CRC. This will raise an exception on CRC failure.
             try:
                 self._header.validate_crc(self._buffer)
                 # If cls is not None, it is a child of @ref MessagePayload that
