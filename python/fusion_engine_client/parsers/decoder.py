@@ -44,7 +44,7 @@ class FusionEngineDecoder:
             MessageHeader,
             Union[MessagePayload, bytes]], None]]] = defaultdict(list)
 
-    def add_callback(self, type: MessageType,
+    def add_callback(self, type: Optional[MessageType],
                      callback: Callable[[MessageHeader,
                                          Union[MessagePayload, bytes]], None]):
         """!
