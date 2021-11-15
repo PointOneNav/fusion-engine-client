@@ -98,6 +98,29 @@ for message in result[PoseMessage.MESSAGE_TYPE].messages:
     print("LLA: %.6f, %.6f, %.3f" % message.lla_deg)
 ```
 
+### Time-Aligning Multiple Message Types
+
+The `FileReader` class has built-in support for aligning multiple message types based on their P1 timestamps. When
+`INSERT` mode is enabled, the `FileReader` will create messages automatically for any times when they are not present
+(dropped due to invalid CRC, etc.). The created message objects will be set to their default values.
+
+```python
+from fusion_engine_client.analysis.file_reader import FileReader, TimeAlignmentMode
+from fusion_engine_client.messages.core import *
+
+reader = FileReader(input_path)
+result = reader.read(message_types=[PoseMessage, GNSSSatelliteMessage], time_align=TimeAlignmentMode.INSERT)
+for pose, gnss in zip(result[PoseMessage.MESSAGE_TYPE].messages, result[GNSSSatelliteMessage.MESSAGE_TYPE].messages):
+    print("LLA: %.6f, %.6f, %.3f, # satellites: %d" % (pose.lla_deg, len(gnss.svs)))
+```
+
+> Note that some message types are not synchronous. For example, raw sensor measurements (IMU data, etc.) are not
+guaranteed to occur at the same time as the generated position solutions. Attempting to time-align asynchronous message
+types may result in unexpected behavior.
+
+See [extract_position_data.py](examples/extract_position_data.py) for an example of time-aligning multiple message
+types.
+
 ### Generate A CSV File Containing Position And Solution Type Information
 
 ```bash
