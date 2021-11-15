@@ -798,6 +798,89 @@ class FileReader(object):
         return data
 
     @classmethod
+    def time_align_data(cls, data: dict, mode: TimeAlignmentMode = TimeAlignmentMode.INSERT,
+                        message_types: Union[list, tuple, set] = None):
+        """!
+        @brief Time-align messages of different types.
+
+        @post
+        `data` will be modified in-place. Message types that do not contain P1 time will be left unmodified.
+
+        @param data A data `dict` as returned by @ref read().
+        @param mode The type of alignment to be performed:
+               - @ref TimeAlignmentMode.NONE - Do nothing
+               - @ref TimeAlignmentMode.DROP - Drop messages at times when _all_ message types are not present
+               - @ref TimeAlignmentMode.INSERT - Insert default-constructed messages for any message types not present
+                 at a given time epoch
+        @param message_types A list of message types for which alignment will be performed. Any message types not
+               present in the list will be left unmodified. If `None`, all message types will be aligned.
+
+        @return A modified `dict` with removed or inserted messages.
+        """
+        # Time alignment disabled - do nothing.
+        if mode == TimeAlignmentMode.NONE:
+            return data
+
+        if message_types is not None:
+            # Allow the user to pass in a list of message classes for convenience and convert them to message types
+            # automatically.
+            message_types = set([(t if isinstance(t, MessageType) else t.MESSAGE_TYPE) for t in message_types])
+
+        # Pull out the P1 times for each message type. In drop mode, compute the intersection of all P1 timestamps. In
+        # insert mode, make a list of all unique P1 timestamps.
+        info_by_type = {}
+        time_set = None
+        for type, entry in data.items():
+            default = entry.message_class()
+            if 'p1_time' in default.__dict__ and (message_types is None or entry.message_type in message_types):
+                p1_time = np.array([float(m.p1_time) for m in entry.messages])
+                info_by_type[type] = {'p1_time': p1_time, 'messages': entry.messages, 'class': entry.message_class}
+
+                if mode == TimeAlignmentMode.DROP:
+                    if time_set is None:
+                        time_set = p1_time
+                    else:
+                        time_set = np.intersect1d(time_set, p1_time)
+                else:
+                    if time_set is None:
+                        time_set = p1_time
+                    else:
+                        time_set = np.hstack((time_set, p1_time))
+
+        # In insertion mode, insert default-constructed objects for any missing timestamps.
+        if mode == TimeAlignmentMode.INSERT:
+            time_set = np.unique(time_set)
+
+            for type, entry in info_by_type.items():
+                # Locate the timestamps where we do/do not have data. For timestamps with data we store the index of the
+                # corresponding message. For timestamps without we store -1.
+                _, idx, all_idx = np.intersect1d(entry['p1_time'], time_set, return_indices=True)
+                message_indices = np.full_like(time_set, -1, dtype=int)
+                message_indices[all_idx] = idx
+
+                # Now interlace messages with defaults as needed.
+                messages = entry['messages']
+                cls = entry['class']
+                def _get_value(i):
+                    message_idx = message_indices[i]
+                    if message_idx >= 0:
+                        return messages[message_idx]
+                    else:
+                        default = cls()
+                        default.p1_time = time_set[i]
+                        return default
+                data[type].messages = [_get_value(i) for i in range(len(time_set))]
+        # In drop mode, drop messages that aren't present across _all_ message types.
+        elif mode == TimeAlignmentMode.DROP:
+            for type, entry in info_by_type.items():
+                _, idx, _ = np.intersect1d(entry['p1_time'], time_set, return_indices=True)
+                data[type].messages = [entry['messages'][i] for i in idx]
+        else:
+            raise ValueError('Unrecognized alignment mode.')
+
+        return data
+
+    @classmethod
     def to_numpy(cls, data: dict, keep_messages: bool = True, remove_nan_times: bool = True):
         """!
         @brief Convert all (supported) messages in a data dictionary to numpy for analysis.

@@ -24,3 +24,7 @@ docs/html/
 Doxyfile.version
 docs/include_header.js
 docs/versions.html
+
+# Other output files.
+*.csv
+*.kml

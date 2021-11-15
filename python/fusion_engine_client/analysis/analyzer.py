@@ -774,7 +774,7 @@ class Analyzer(object):
         for title in titles:
             name = title_to_name[title]
             entry = self.plots[name]
-            link = '<br><a href="%s" target="_blank">%s</a>' % (entry['path'], title)
+            link = '<br><a href="%s" target="_blank">%s</a>' % (os.path.relpath(entry['path'], self.output_dir), title)
             links += link
 
         index_html = index_template % {
@@ -921,7 +921,7 @@ Load and display information stored in a FusionEngine binary file.
                         help="Print verbose/trace debugging messages.")
 
     parser.add_argument('--log-base-dir', metavar='DIR', default='/logs',
-                        help="The base directory containing FusionEngine logs to be searched if a log pattern is"
+                        help="The base directory containing FusionEngine logs to be searched if a log pattern is "
                              "specified.")
     parser.add_argument('--original', action='store_true',
                         help='When loading from a log, load the recorded FusionEngine output file instead of playback '
