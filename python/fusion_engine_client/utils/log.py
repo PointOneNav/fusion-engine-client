@@ -433,7 +433,6 @@ def locate_log(input_path, log_base_dir='/logs', return_output_dir=False, return
             return [None for _ in result]
 
     # Now, search for FusionEngine messages within the mixed binary data.
-    mixed_file_path = result[0]
     _logger.info("Found mixed log file '%s'. Extracting FusionEngine content." % mixed_file_path)
     log_dir = os.path.dirname(mixed_file_path)
     fe_path = os.path.join(log_dir, "fusion_engine.p1log")
