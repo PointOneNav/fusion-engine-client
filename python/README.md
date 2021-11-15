@@ -20,6 +20,8 @@ for the latest API documentation.
     - `bin/` - Application files
       - [p1_display.py](examples/p1_display.py) - Generate HTML plots of vehicle trajectory, etc. (see also
         `analyzer.py` below)
+      - [separate_mixed_log.py](examples/separate_mixed_log.py) - Extract FusionEngine message contents from a binary 
+        file containing mixed data (e.g., interleaved RTCM and FusionEngine messages) 
     - `examples/` - Python example applications
       - [analyze_data.py](examples/analyze_data.py) - Generate HTML plots of vehicle trajectory, INS filter state, etc.
       - [extract_imu_data.py](examples/extract_imu_data.py) - Generate a CSV file containing recorded IMU measurements
@@ -58,9 +60,12 @@ To use the Python library:
 
 Whenever possible, we strongly encourage the use of a Python [virtual environment](#using-a-python-virtual-environment).
 
-### Examples
+## Examples
 
-#### Analyzing A Recorded Log
+### Analyzing A Recorded Log And Plotting Results
+
+> Note: In order to generate a map, you must provide a Mapbox access token using the `--mapbox-token` argument, or by
+> setting either the `MAPBOX_ACCESS_TOKEN` or `MapboxAccessToken` environment variables.
 
 The following will generate plots for a log with ID `c25445f4e60d441dbf4af8a3571352fa`.
 
@@ -81,7 +86,42 @@ Use the `--logs-base-dir` argument to search a directory other than `/logs`:
 > python3 bin/p1_display.py --logs-base-dir /my/log/directory c2544
 ```
 
-#### Generate A CSV File Containing Position And Solution Type Information
+### Reading Messages From A `*.p1log` File
+
+```python
+from fusion_engine_client.analysis.file_reader import FileReader
+from fusion_engine_client.messages.core import *
+
+reader = FileReader(input_path)
+result = reader.read(message_types=[PoseMessage])
+for message in result[PoseMessage.MESSAGE_TYPE].messages:
+    print("LLA: %.6f, %.6f, %.3f" % message.lla_deg)
+```
+
+### Time-Aligning Multiple Message Types
+
+The `FileReader` class has built-in support for aligning multiple message types based on their P1 timestamps. When
+`INSERT` mode is enabled, the `FileReader` will create messages automatically for any times when they are not present
+(dropped due to invalid CRC, etc.). The created message objects will be set to their default values.
+
+```python
+from fusion_engine_client.analysis.file_reader import FileReader, TimeAlignmentMode
+from fusion_engine_client.messages.core import *
+
+reader = FileReader(input_path)
+result = reader.read(message_types=[PoseMessage, GNSSSatelliteMessage], time_align=TimeAlignmentMode.INSERT)
+for pose, gnss in zip(result[PoseMessage.MESSAGE_TYPE].messages, result[GNSSSatelliteMessage.MESSAGE_TYPE].messages):
+    print("LLA: %.6f, %.6f, %.3f, # satellites: %d" % (pose.lla_deg, len(gnss.svs)))
+```
+
+> Note that some message types are not synchronous. For example, raw sensor measurements (IMU data, etc.) are not
+guaranteed to occur at the same time as the generated position solutions. Attempting to time-align asynchronous message
+types may result in unexpected behavior.
+
+See [extract_position_data.py](examples/extract_position_data.py) for an example of time-aligning multiple message
+types.
+
+### Generate A CSV File Containing Position And Solution Type Information
 
 ```bash
 > python3 examples/extract_position_data.py /path/to/c25445f4e60d441dbf4af8a3571352fa
@@ -89,9 +129,9 @@ Use the `--logs-base-dir` argument to search a directory other than `/logs`:
 
 This will produce the file `/path/to/c25445f4e60d441dbf4af8a3571352fa/position.csv`.
 
-#### Generate A CSV File Containing Satellite Information
+### Generate A CSV File Containing Satellite Information
 
-_Requires `GNSSSatelliteMessage` to be enabled._
+_Requires `GNSSSatelliteMessage` to be enabled on the device._
 
 ```bash
 > python3 examples/extract_position_data.py /path/to/c25445f4e60d441dbf4af8a3571352fa
@@ -99,7 +139,7 @@ _Requires `GNSSSatelliteMessage` to be enabled._
 
 This will produce the file `/path/to/c25445f4e60d441dbf4af8a3571352fa/position.csv`.
 
-### Using A Python Virtual Environment
+## Using A Python Virtual Environment
 
 Whenever possible, we strongly encourage the use of a
 [Python virtual environment](https://docs.python.org/3/tutorial/venv.html). To use the FusionEngine client within a

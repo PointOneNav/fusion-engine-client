@@ -20,6 +20,7 @@ class PoseMessage(MessagePayload):
     the time of the first @ref PoseMessage.
     """
     MESSAGE_TYPE = MessageType.ROS_POSE
+    MESSAGE_VERSION = 0
 
     _FORMAT = '< 3d 4d'
     _SIZE: int = struct.calcsize(_FORMAT)
@@ -33,12 +34,9 @@ class PoseMessage(MessagePayload):
         # component last (x, y, z, w)
         self.orientation = np.full((4,), np.nan)
 
-    def get_type(self) -> MessageType:
-        return PoseMessage.MESSAGE_TYPE
-
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
-            buffer = bytes(self.calcsize())
+            buffer = bytearray(self.calcsize())
 
         initial_offset = offset
 
@@ -92,6 +90,7 @@ class GPSFixMessage(MessagePayload):
     @brief ROS `GPSFix` message (MessageType::ROS_GPS_FIX).
     """
     MESSAGE_TYPE = MessageType.ROS_GPS_FIX
+    MESSAGE_VERSION = 0
 
     _FORMAT = '< ddd ddd ddd d ddddd dddddddddd 9d B 3B'
     _SIZE: int = struct.calcsize(_FORMAT)
@@ -157,12 +156,9 @@ class GPSFixMessage(MessagePayload):
 
         self.reserved = np.full((3,), 0, np.uint8)
 
-    def get_type(self) -> MessageType:
-        return GPSFixMessage.MESSAGE_TYPE
-
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
-            buffer = bytes(self.calcsize())
+            buffer = bytearray(self.calcsize())
 
         initial_offset = offset
 
@@ -265,6 +261,7 @@ class IMUMessage(MessagePayload):
     @brief ROS `Imu` message (@ref MessageType::ROS_IMU)
     """
     MESSAGE_TYPE = MessageType.ROS_IMU
+    MESSAGE_VERSION = 0
 
     _FORMAT = '< 4d 9d 3d 9d 3d 9d'
     _SIZE: int = struct.calcsize(_FORMAT)
@@ -287,12 +284,9 @@ class IMUMessage(MessagePayload):
         # Vehicle x/y/z acceleration covariance matrix. Set to -1 if not available
         self.acceleration_covariance = np.full((9,), -1)
 
-    def get_type(self) -> MessageType:
-        return IMUMessage.MESSAGE_TYPE
-
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
-            buffer = bytes(self.calcsize())
+            buffer = bytearray(self.calcsize())
 
         initial_offset = offset
 

@@ -11,6 +11,7 @@ class PoseMessage(MessagePayload):
     @brief Platform pose solution (position, velocity, attitude).
     """
     MESSAGE_TYPE = MessageType.POSE
+    MESSAGE_VERSION = 1
 
     INVALID_UNDULATION = -32768
 
@@ -39,12 +40,9 @@ class PoseMessage(MessagePayload):
         self.horizontal_protection_level_m = np.nan
         self.vertical_protection_level_m = np.nan
 
-    def get_type(self) -> MessageType:
-        return PoseMessage.MESSAGE_TYPE
-
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
-            buffer = bytes(self.calcsize())
+            buffer = bytearray(self.calcsize())
 
         initial_offset = offset
 
@@ -153,6 +151,7 @@ class PoseAuxMessage(MessagePayload):
     @brief Auxiliary platform pose information.
     """
     MESSAGE_TYPE = MessageType.POSE_AUX
+    MESSAGE_VERSION = 0
 
     _FORMAT = '<3f 9d 4d 3d 3f'
     _SIZE: int = struct.calcsize(_FORMAT)
@@ -168,12 +167,9 @@ class PoseAuxMessage(MessagePayload):
         self.velocity_enu_mps = np.full((3,), np.nan)
         self.velocity_std_enu_mps = np.full((3,), np.nan)
 
-    def get_type(self) -> MessageType:
-        return PoseAuxMessage.MESSAGE_TYPE
-
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
-            buffer = bytes(self.calcsize())
+            buffer = bytearray(self.calcsize())
 
         initial_offset = offset
 
@@ -236,6 +232,7 @@ class GNSSInfoMessage(MessagePayload):
     @brief Information about the GNSS data used in the @ref PoseMessage with the corresponding timestamp.
     """
     MESSAGE_TYPE = MessageType.GNSS_INFO
+    MESSAGE_VERSION = 0
 
     INVALID_REFERENCE_STATION = 0xFFFFFFFF
 
@@ -257,12 +254,9 @@ class GNSSInfoMessage(MessagePayload):
 
         self.gps_time_std_sec = np.nan
 
-    def get_type(self) -> MessageType:
-        return GNSSInfoMessage.MESSAGE_TYPE
-
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
-            buffer = bytes(self.calcsize())
+            buffer = bytearray(self.calcsize())
 
         initial_offset = offset
 
@@ -388,6 +382,7 @@ class GNSSSatelliteMessage(MessagePayload):
     @brief Information about the GNSS data used in the @ref PoseMessage with the corresponding timestamp.
     """
     MESSAGE_TYPE = MessageType.GNSS_SATELLITE
+    MESSAGE_VERSION = 0
 
     _FORMAT = '<H2x'
     _SIZE: int = struct.calcsize(_FORMAT)
@@ -398,12 +393,9 @@ class GNSSSatelliteMessage(MessagePayload):
 
         self.svs: List[SatelliteInfo] = []
 
-    def get_type(self) -> MessageType:
-        return GNSSSatelliteMessage.MESSAGE_TYPE
-
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
-            buffer = bytes(self.calcsize())
+            buffer = bytearray(self.calcsize())
 
         initial_offset = offset
 
