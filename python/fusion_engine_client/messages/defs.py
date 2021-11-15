@@ -232,14 +232,14 @@ class MessageHeader:
         if payload is not None:
             self.calculate_crc(payload)
 
-        args = (self.crc, self.protocol_version, self.message_version, int(self.message_type), self.sequence_number,
-                self.payload_size_bytes, self.source_identifier)
+        args = (MessageHeader._SYNC0, MessageHeader._SYNC1, self.crc, self.protocol_version, self.message_version,
+                int(self.message_type), self.sequence_number, self.payload_size_bytes, self.source_identifier)
         if buffer is None:
             buffer = struct.pack(MessageHeader._FORMAT, *args)
             if payload is not None:
                 buffer += payload
         else:
-            struct.pack_into(MessageHeader._FORMAT, buffer=buffer, offset=offset, *args)
+            struct.pack_into(MessageHeader._FORMAT, buffer, offset, *args)
             if payload is not None:
                 offset += MessageHeader._SIZE
                 buffer[offset:offset + len(payload)] = payload
