@@ -9,15 +9,14 @@ import sys
 root_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(root_dir)
 
-from fusion_engine_client.analysis.file_reader import FileReader
-from fusion_engine_client.utils.log import find_log_file
+from fusion_engine_client.utils.log import extract_fusion_engine_log, find_log_file, CANDIDATE_MIXED_FILES
 from fusion_engine_client.utils import trace
 
 
 def main():
     parser = ArgumentParser(description="""\
-Extract FusionEngine message contents from a binary file containing mixed data (e.g., interleaved RTCM and FusionEngine
-messages).
+Extract FusionEngine message contents from a binary file containing mixed data
+(e.g., interleaved RTCM and FusionEngine messages).
 """)
 
     parser.add_argument('--log-base-dir', metavar='DIR', default='/logs',
@@ -39,7 +38,7 @@ messages).
     parser.add_argument('log',
                         help="The log to be read. May be one of:\n"
                              "- The path to a binary data file\n"
-                             "- The path to a FusionEngine log directory containing an `input.p1bin` file\n"
+                             "- The path to a FusionEngine log directory containing a candidate binary data file\n"
                              "- A pattern matching a FusionEngine log directory under the specified base directory "
                              "(see find_fusion_engine_log() and --log-base-dir)")
 
@@ -56,12 +55,7 @@ messages).
     # Locate the input file and set the output directory.
     try:
         if options.candidate_files is None:
-            # Note that we prioritize the input.66.bin file over the others. For logs containing a single mixed serial
-            # data stream as a single message type within the .p1bin file (e.g., Quectel platforms), individual
-            # FusionEngine messages may be interrupted by .p1bin message headers since the .p1bin entires are just
-            # arbitrary byte blocks. In that case, we must first strip the .p1bin headers using dump_p1bin.py. ID 66 is
-            # the value assigned to Quectel/Teseo data within .p1bin files.
-            candidate_files = ['input.66.bin', 'input.p1bin', 'input.rtcm3']
+            candidate_files = CANDIDATE_MIXED_FILES
         else:
             candidate_files = options.candidate_files.split(',')
 
@@ -90,7 +84,7 @@ messages).
         prefix = os.path.splitext(os.path.basename(input_path))[0]
     output_path = os.path.join(output_dir, prefix + '.p1log')
 
-    valid_count = FileReader.extract_fusion_engine_log(input_path, output_path)
+    valid_count = extract_fusion_engine_log(input_path, output_path)
     if options.verbose == 0:
         # If verbose > 0, extract_fusion_engine_log() will log messages.
         if valid_count > 0:

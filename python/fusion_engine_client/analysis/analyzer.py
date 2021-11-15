@@ -26,7 +26,7 @@ from ..messages.internal import *
 from .attitude import get_enu_rotation_matrix
 from .file_reader import FileReader
 from ..utils import trace
-from ..utils.mixed_log import locate_log
+from ..utils.log import locate_log
 _logger = logging.getLogger('point_one.fusion_engine.analysis.analyzer')
 
 
@@ -969,10 +969,23 @@ Load and display information stored in a FusionEngine binary file.
         time_range = None
 
     # Locate the input file and set the output directory.
-    input_path, output_dir = locate_log(options)
+    input_path, output_dir, log_id = locate_log(input_path=options.log, log_base_dir=options.log_base_dir,
+                                                return_output_dir=True, return_log_id=True,
+                                                load_original=options.original)
     if input_path is None:
-        # _find_log() will log an error.
+        # locate_log() will log an error.
         sys.exit(1)
+
+    if log_id is None:
+        _logger.info('Loading %s.' % os.path.basename(input_path))
+    else:
+        _logger.info('Loading %s from log %s.' % (os.path.basename(input_path), log_id))
+
+    if options.output is None:
+        if log_id is not None:
+            output_dir = os.path.join(output_dir, 'plot_fusion_engine')
+    else:
+        output_dir = options.output
 
     # Read pose data from the file.
     analyzer = Analyzer(file=input_path, output_dir=output_dir, ignore_index=options.ignore_index,
