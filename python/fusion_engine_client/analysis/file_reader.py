@@ -11,6 +11,7 @@ import os
 import numpy as np
 
 from ..messages import *
+from ..utils import trace
 
 
 class MessageData(object):
