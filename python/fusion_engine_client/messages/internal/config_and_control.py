@@ -66,51 +66,81 @@ class ResetMessage(MessagePayload):
     ##
     # @name Runtime State Reset
     # @{
-
     ## Restart the navigation engine, but do not clear its position estimate.
     RESTART_NAVIGATION_ENGINE = 0x00000001
-
+    ## Delete all GNSS corrections information.
+    RESET_CORRECTIONS = 0x00000002
     ## @}
 
     ##
     # @name Clear Short Lived Data
     # @{
-
-    ## Reset the navigation engine's estimate of position, velocity, and orientation.
-    RESET_POSITION_DATA = 0x00000010
-    ## Delete all saved ephemeris.
-    RESET_EPHEMERIS = 0x00000020
-    ## Delete all corrections information.
-    RESET_CORRECTIONS = 0x00000040
-
+    ## Reset the navigation engine's estimate of position, velocity, and
+    ## orientation.
+    RESET_POSITION_DATA = 0x00000100
+    ## Delete all saved satellite ephemeris.
+    RESET_EPHEMERIS = 0x00000200
     ## @}
 
     ##
     # @name Clear Long Lived Data
     # @{
+    ## Reset all stored navigation engine data, including position, velocity, and
+    ## orientation state, as well as training data.
+    RESET_NAVIGATION_ENGINE_DATA = 0x00001000
 
-    ## Reset all stored navigation engine data.
-    RESET_NAVIGATION_ENGINE_DATA = 0x00000100
-    ## Delete calibration state.
-    RESET_CALIBRATION_DATA = 0x00000200
-
+    ## Reset the device calibration data.
+    ##
+    ## @note
+    ## This does _not_ reset any existing navigation engine state. It is
+    ## recommended that you set @ref RESET_NAVIGATION_ENGINE_DATA as well under
+    ## normal circumstances.
+    RESET_CALIBRATION_DATA = 0x00002000
     ## @}
 
     ##
     # @name Clear Configuration Data
     # @{
-
-    ## Clears configuration back to default.
-    RESET_CONFIG = 0x00001000
-
+    ## Clear all configuration data.
+    RESET_CONFIG = 0x00100000
     ## @}
 
-    ## Restart mask recommended for typical usage.
-    RESET_SOFTWARE = 0x000000FF
+    ##
+    # @name Device Reset Bitmasks
+    # @{
 
-    ## Restart mask to set all persistent data back to factry defaults.
+    ## Perform a device hot start: reload the navigation engine and clear all
+    ## runtime data (GNSS corrections, etc.), but do not reset any saved state
+    ## data (position, orientation, training parameters, calibration, etc.).
+    ##
+    ## A hot start is typically used to restart the navigation engine in a
+    ## deterministic state, particularly for logging purposes.
+    HOT_START = 0x000000FF
+
+    ## Perform a device warm start: reload the navigation engine, resetting the
+    ## saved position, velocity, and orientation, but do not reset training
+    ## parameters or calibration data.
+    ##
+    ## A warm start is typically used to reset the device's position estimate in
+    ## case of error.
+    WARM_START = 0x000001FF
+
+    ## Perform a device cold start: reset the navigation engine including saved
+    ## position, velocity, and orientation state, but do not reset training data,
+    ## calibration data, or user configuration parameters.
+    ##
+    ## @note
+    ## To reset training or calibration data as well, set the @ref
+    ## RESET_NAVIGATION_ENGINE_DATA and @ref RESET_CALIBRATION_DATA bits.
+    COLD_START = 0x00000FFF
+
+    ## Restart mask to set all persistent data, including calibration and user
+    ## configuration, back to factory defaults.
+    ##
     ## Note: Upper 8 bits reserved for future use (e.g., hardware reset).
     FACTORY_RESET = 0x00FFFFFF
+
+    ## @}
 
     _FORMAT = '<I'
     _SIZE: int = struct.calcsize(_FORMAT)
