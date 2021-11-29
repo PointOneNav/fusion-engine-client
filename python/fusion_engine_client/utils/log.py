@@ -387,7 +387,12 @@ def locate_log(input_path, log_base_dir='/logs', return_output_dir=False, return
                                return_output_dir=return_output_dir, return_log_id=return_log_id)
     except (FileNotFoundError, RuntimeError) as e:
         _logger.error(str(e))
-        return [None for _ in result]
+        result = [None]
+        if return_output_dir:
+            result.append(None)
+        if return_log_id:
+            result.append(None)
+        return result
 
     # Now, search for FusionEngine messages within the mixed binary data.
     mixed_file_path = result[0]
