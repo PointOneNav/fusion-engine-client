@@ -10,7 +10,7 @@ _logger = logging.getLogger('point_one.utils.log')
 # Note: The spelling here is intentional.
 MANIFEST_FILE_NAME = 'maniphest.json'
 
-CANDIDATE_MIXED_FILES = ['input.rtcm3']
+CANDIDATE_MIXED_FILES = ['input.raw', 'input.bin', 'input.rtcm3']
 
 
 def find_log_by_pattern(pattern, log_base_dir='/logs', allow_multiple=False,
@@ -407,4 +407,3 @@ def locate_log(input_path, log_base_dir='/logs', return_output_dir=False, return
     else:
         _logger.warning('No FusionEngine data extracted from mixed data file.')
         return [None for _ in result]
-
