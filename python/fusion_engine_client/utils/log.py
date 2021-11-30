@@ -16,7 +16,7 @@ MANIFEST_FILE_NAME = 'maniphest.json'
 # FusionEngine messages may be interrupted by .p1bin message headers since the .p1bin entires are just
 # arbitrary byte blocks. In that case, we must first strip the .p1bin headers using dump_p1bin.py. ID 66 is
 # the value assigned to Quectel/Teseo data within .p1bin files.
-CANDIDATE_MIXED_FILES = ['input.66.bin', 'input.p1bin', 'input.rtcm3']
+CANDIDATE_MIXED_FILES = ['input.66.bin', 'input.p1bin', 'input.raw', 'input.bin', 'input.rtcm3']
 
 
 def find_log_by_pattern(pattern, log_base_dir='/logs', allow_multiple=False,
@@ -155,7 +155,8 @@ def find_log_file(input_path, candidate_files=None, return_output_dir=False, ret
     @param return_log_id If `True`, return the ID of the log if the requested path is a FusionEngine log.
     @param log_base_dir The base directory to be searched when performing a pattern match for a log directory.
 
-    @return - The path to the located file.
+    @return A tuple containing:
+            - The path to the located file.
             - The path to the located output directory. Only provided if `return_output_dir` is `True`.
             - The log ID string, or `None` if the requested file is not part of a FusionEngine log. Only provided if
               `return_log_id` is `True`.
@@ -247,7 +248,8 @@ def find_p1log_file(input_path, return_output_dir=False, return_log_id=False, lo
     @param load_original If `True`, load the `.p1log` file originally recorded with the log. Otherwise, load the log
            playback output if it exists (default).
 
-    @return - The path to the located file.
+    @return A tuple containing:
+            - The path to the located file.
             - The path to the located output directory. Only provided if `return_output_dir` is `True`.
             - The log ID string, or `None` if the requested file is not part of a FusionEngine log. Only provided if
               `return_log_id` is `True`.
@@ -282,7 +284,8 @@ def extract_fusion_engine_log(input_path, output_path=None, warn_on_gaps=True, r
     @param warn_on_gaps If `True`, print a warning if gaps are detected in the data sequence numbers.
     @param return_counts If `True`, return the number of messages extracted for each message type.
 
-    @return - The number of decoded messages.
+    @return A tuple containing:
+            - The number of decoded messages.
             - A `dict` containing the number of messages extracted for each message type. Only provided if
               `return_counts` is `True`.
     """
@@ -418,7 +421,12 @@ def locate_log(input_path, log_base_dir='/logs', return_output_dir=False, return
         mixed_file_path = result[0]
     except (FileNotFoundError, RuntimeError) as e:
         _logger.error(str(e))
-        return [None for _ in result]
+        result = [None]
+        if return_output_dir:
+            result.append(None)
+        if return_log_id:
+            result.append(None)
+        return result
 
     # If this is a .p1bin file, dump its contents. p1bin files typically contain unaligned blocks of binary data.
     # dump_p1bin() will extract the blocks and concatenate them.
