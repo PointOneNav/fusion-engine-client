@@ -267,6 +267,8 @@ class ConfigType(IntEnum):
     DEVICE_COARSE_ORIENTATION = 17
     GNSS_LEVER_ARM = 18
     OUTPUT_LEVER_ARM = 19
+    UART0_BAUD = 256
+    UART1_BAUD = 257
 
 
 class SetConfigMessage(MessagePayload):
