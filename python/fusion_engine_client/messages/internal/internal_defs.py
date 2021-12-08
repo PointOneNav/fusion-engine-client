@@ -31,10 +31,17 @@ class InternalMessageType(IntEnum):
     # Config and command messages
     RESET_CMD = 20100
     CMD_RESPONSE = 20101
-    QUEUE_CONFIG_PARAM_CMD = 20102
-    APPLY_CONFIG_CMD = 20103
-    CONF_REQ = 20104
-    CONF_DATA = 20105
+
+    SET_PLATFORM_STORAGE_CMD = 20102
+    GET_PLATFORM_STORAGE_CMD = 20104
+    PLATFORM_STORAGE_DATA = 20105
+
+    EVENT_NOTIFICATION = 20107
+
+    SET_CONFIG_CMD = 20108
+    GET_CONFIG_CMD = 20109
+    CONF_DATA = 20110
+    SAVE_CONFIG_CMD = 20111
 
 # Extend the message type enum with internal types.
 for entry in InternalMessageType:

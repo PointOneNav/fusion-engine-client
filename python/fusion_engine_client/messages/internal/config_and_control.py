@@ -1,7 +1,7 @@
 from enum import IntEnum
 from typing import NamedTuple
 
-from construct import (Struct, Enum, Int32ul, Int16ul,
+from construct import (Struct, Enum, Int64ul, Int32ul, Int16ul,
                        Int8ul, Padding, this, Flag, Bytes)
 
 from ...utils.construct_utils import NamedTupleAdapter
@@ -179,11 +179,24 @@ class CommandResponseMessage(MessagePayload):
     @brief Acknowledges a command and indicates if it succeeded.
     """
     MESSAGE_TYPE = MessageType.CMD_RESPONSE
-    MESSAGE_VERSION = 0
+    MESSAGE_VERSION = 1
 
     class Response(IntEnum):
         OK = 0,
-        ERROR = 1
+        ## A version specified in the command or subcommand could not be handled. This could mean that the version was
+        ## too new and not supported by the device, or it was older than the version used by the device and there was no
+        ## translation for it.
+        UNSUPPORTED_CMD_VERSION = 1,
+        ## The command interacts with a feature that is not present on the target device (e.g., setting the baud rate on
+        ## a device without a serial port).
+        UNSUPPORTED_FEATURE = 2,
+        ## One or more values in the command were not in acceptable ranges (e.g., an undefined enum value, or an invalid
+        ## baud rate).
+        VALUE_ERROR = 3,
+        ## The command would require adding too many elements to internal storage.
+        INSUFFICIENT_SPACE = 4,
+        ## There was a runtime failure executing the command.
+        EXECUTION_FAILURE = 5,
 
     _FORMAT = '<IB3x'
     _SIZE: int = struct.calcsize(_FORMAT)
@@ -242,80 +255,105 @@ class ConfigVersion(NamedTuple):
 VersionConstruct = NamedTupleAdapter(ConfigVersion, VersionConstructRaw)
 
 
-class QueueConfigParamMessage(MessagePayload):
+class ConfigurationSource(IntEnum):
+    ACTIVE = 0,
+    SAVED = 1
+
+
+class ConfigType(IntEnum):
+    INVALID = 0,
+    OUTPUT_STREAM_MSGS = 1
+    DEVICE_LEVER_ARM = 16
+    DEVICE_COARSE_ORIENTATION = 17
+    GNSS_LEVER_ARM = 18
+    OUTPUT_LEVER_ARM = 19
+
+
+class SetConfigMessage(MessagePayload):
     """!
-    @brief Command to queue config change
+    @brief Command to apply a config change
     """
-    MESSAGE_TYPE = MessageType.QUEUE_CONFIG_PARAM_CMD
+    MESSAGE_TYPE = MessageType.SET_CONFIG_CMD
     MESSAGE_VERSION = 0
 
-    QueueConfigParamMessageConstruct = Struct(
-        "config_version" / VersionConstruct,
-        "config_change_offset_bytes" / Int32ul,
+    SetConfigMessageConstruct = Struct(
+        "config_type" / Enum(Int16ul, ConfigType),
+        "config_version" / Int8ul,
+        Padding(1),
         "config_change_length_bytes" / Int32ul,
         "config_change_data" / Bytes(this.config_change_length_bytes),
     )
 
     def __init__(self):
-        self.config_version = ConfigVersion(0, 0)
-        self.config_change_offset_bytes = 0
+        self.config_type = ConfigType.INVALID
+        self.config_version = 0
+        self.config_change_length_bytes = 0
         self.config_change_data = bytes()
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         values = dict(self.__dict__)
         values['config_change_length_bytes'] = len(self.config_change_data)
 
-        packed_data = QueueConfigParamMessage.QueueConfigParamMessageConstruct.build(values)
+        packed_data = self.SetConfigMessageConstruct.build(values)
         return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
 
     def unpack(self, buffer: bytes, offset: int = 0) -> int:
-        parsed = QueueConfigParamMessage.QueueConfigParamMessageConstruct.parse(buffer[offset:])
+        parsed = self.SetConfigMessageConstruct.parse(buffer[offset:])
         self.__dict__.update(parsed)
         return parsed._io.tell()
+
+    def __str__(self):
+        fields = ['config_type', 'config_version', "config_change_length_bytes"]
+        string = f'Set Config Command\n'
+        for field in fields:
+            val = str(self.__dict__[field]).replace('Container:', '')
+            val = val.replace('  ', '\t')
+            string += f'\t{field}: {val}\n'
+        return string.rstrip()
 
     def calcsize(self) -> int:
         return len(self.pack())
 
 
-class ApplyConfigMessage(MessagePayload):
+class GetConfigMessage(MessagePayload):
     """!
-    @brief Command to apply config change
+    @brief Message for requesting device config data.
     """
-    MESSAGE_TYPE = MessageType.APPLY_CONFIG_CMD
+    MESSAGE_TYPE = MessageType.GET_CONFIG_CMD
     MESSAGE_VERSION = 0
 
-    class Action(IntEnum):
-        APPLY = 0,
-        APPLY_AND_SAVE = 1,
-        CLEAR_QUEUED = 2,
-        RELOAD_FROM_SAVED = 3,
-
-    ApplyConfigMessageConstruct = Struct(
-        "action" / Enum(Int8ul, Action),
-        Padding(3)
+    GetConfigMessageConstruct = Struct(
+        "config_type" / Enum(Int16ul, ConfigType),
+        "request_source" / Enum(Int8ul, ConfigurationSource),
+        Padding(1),
     )
 
     def __init__(self):
-        self.action = self.Action.APPLY
+        self.request_source = ConfigurationSource.ACTIVE
+        self.config_type = ConfigType.INVALID
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
-        packed_data = self.ApplyConfigMessageConstruct.build({"action": self.action})
+        values = dict(self.__dict__)
+        packed_data = self.GetConfigMessageConstruct.build(values)
         return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
 
     def unpack(self, buffer: bytes, offset: int = 0) -> int:
-        parsed = self.ApplyConfigMessageConstruct.parse(buffer[offset:])
-        self.action = parsed.action
+        parsed = self.GetConfigMessageConstruct.parse(buffer[offset:])
+        self.__dict__.update(parsed)
         return parsed._io.tell()
+
+    def __str__(self):
+        fields = ['request_source', 'config_type']
+        string = f'Get Config Command\n'
+        for field in fields:
+            val = str(self.__dict__[field]).replace('Container:', '')
+            val = val.replace('  ', '\t')
+            string += f'\t{field}: {val}\n'
+        return string.rstrip()
 
     @classmethod
     def calcsize(cls) -> int:
-        return cls.ApplyConfigMessageConstruct.sizeof()
-
-
-class ConfigurationSource(IntEnum):
-    ACTIVE = 0,
-    QUEUED = 1,
-    SAVED = 2,
+        return cls.GetConfigMessageConstruct.sizeof()
 
 
 class ConfigurationDataMessage(MessagePayload):
@@ -326,21 +364,19 @@ class ConfigurationDataMessage(MessagePayload):
     MESSAGE_VERSION = 0
 
     ConfigurationDataMessageConstruct = Struct(
-        "config_version" / VersionConstruct,
-        "queued_changes" / Flag,
-        "active_differs_from_saved" / Flag,
-        "saved_data_corrupted" / Flag,
         "config_source" / Enum(Int8ul, ConfigurationSource),
+        "active_differs_from_saved" / Flag,
+        "config_type" / Enum(Int16ul, ConfigType),
+        "config_version" / Int8ul,
+        Padding(3),
         "config_length_bytes" / Int32ul,
         "config_data" / Bytes(this.config_length_bytes),
     )
 
     def __init__(self, user_config=None):
-        self.config_version = ConfigVersion(0, 0)
-        self.queued_changes = False
-        self.active_differs_from_saved = False
-        self.saved_data_corrupted = False
         self.config_source = ConfigurationSource.ACTIVE
+        self.active_differs_from_saved = False
+        self.config_version = 0
         self.config_data = bytes()
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
@@ -355,8 +391,8 @@ class ConfigurationDataMessage(MessagePayload):
         return parsed._io.tell()
 
     def __str__(self):
-        fields = ['config_version', 'queued_changes', 'active_differs_from_saved',
-                  'saved_data_corrupted', 'config_source']
+        fields = ['config_type', 'config_version', 'active_differs_from_saved',
+                  'config_source', 'config_length_bytes']
         string = f'Config Data\n'
         for field in fields:
             val = str(self.__dict__[field]).replace('Container:', '')
@@ -364,38 +400,91 @@ class ConfigurationDataMessage(MessagePayload):
             string += f'\t{field}: {val}\n'
         return string.rstrip()
 
-    @classmethod
-    def calcsize(cls) -> int:
-        return cls.ConfigurationDataMessageConstruct.sizeof()
+    def calcsize(self) -> int:
+        return len(self.pack())
 
 
-class ConfigRequestMessage(MessagePayload):
+class SaveConfigMessage(MessagePayload):
     """!
-    @brief Base class for requesting device config data.
+    @brief Command to apply config change
     """
-    MESSAGE_TYPE = MessageType.CONF_REQ
+    MESSAGE_TYPE = MessageType.SAVE_CONFIG_CMD
     MESSAGE_VERSION = 0
 
-    ConfigRequestMessageConstruct = Struct(
-        "request_source" / Enum(Int8ul, ConfigurationSource),
-        Padding(3),
+    class Action(IntEnum):
+        SAVE = 0
+        REVERT_TO_SAVED = 1
+        REVERT_TO_DEFAULTS = 2
+
+    SaveConfigMessageConstruct = Struct(
+        "action" / Enum(Int8ul, Action),
+        Padding(3)
     )
 
     def __init__(self):
-        self.request_source = ConfigurationSource.ACTIVE
+        self.action = self.Action.SAVE
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
-        values = dict(self.__dict__)
-        packed_data = self.ConfigRequestMessageConstruct.build(values)
+        packed_data = self.SaveConfigMessageConstruct.build({"action": self.action})
         return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
 
     def unpack(self, buffer: bytes, offset: int = 0) -> int:
-        parsed = self.ConfigRequestMessageConstruct.parse(buffer[offset:])
+        parsed = self.SaveConfigMessageConstruct.parse(buffer[offset:])
+        self.action = parsed.action
+        return parsed._io.tell()
+
+    def __str__(self):
+        fields = ['action']
+        string = f'Save Config Command\n'
+        for field in fields:
+            val = str(self.__dict__[field]).replace('Container:', '')
+            val = val.replace('  ', '\t')
+            string += f'\t{field}: {val}\n'
+        return string.rstrip()
+
+    def calcsize(self) -> int:
+        return len(self.pack())
+
+    @classmethod
+    def calcsize(cls) -> int:
+        return cls.SaveConfigMessageConstruct.sizeof()
+
+
+class PlatformStorageDataMessage(MessagePayload):
+    """!
+    @brief Device user configuration response.
+    """
+    MESSAGE_TYPE = MessageType.PLATFORM_STORAGE_DATA
+    MESSAGE_VERSION = 1
+
+    PlatformStorageDataMessageConstruct = Struct(
+        "data_type" / Int8ul,
+        "data_validity" / Int8ul,
+        Padding(2),
+        "data_version" / VersionConstruct,
+        "data_length_bytes" / Int32ul,
+        "data" / Bytes(this.data_length_bytes),
+    )
+
+    def __init__(self, user_config=None):
+        self.data_version = ConfigVersion(0, 0)
+        self.data_type = 255
+        self.data_validity = 0
+        self.data = bytes()
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        values = dict(self.__dict__)
+        values['data_length_bytes'] = len(self.data)
+        packed_data = self.PlatformStorageDataMessageConstruct.build(values)
+        return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
+
+    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+        parsed = self.PlatformStorageDataMessageConstruct.parse(buffer[offset:])
         self.__dict__.update(parsed)
         return parsed._io.tell()
 
     def __str__(self):
-        fields = ['config_version', 'queued_changes', 'active_differs_from_saved', 'config_source', 'config_data']
+        fields = ['data_type', 'data_validity', 'data_version']
         string = f'Config Data\n'
         for field in fields:
             val = str(self.__dict__[field]).replace('Container:', '')
@@ -403,6 +492,56 @@ class ConfigRequestMessage(MessagePayload):
             string += f'\t{field}: {val}\n'
         return string.rstrip()
 
-    @classmethod
-    def calcsize(cls) -> int:
-        return cls.ConfigurationDataMessageConstruct.sizeof()
+    def calcsize(self) -> int:
+        return len(self.pack())
+
+
+class EventNotificationMessage(MessagePayload):
+    """!
+    @brief An event notification.
+    """
+    MESSAGE_TYPE = MessageType.EVENT_NOTIFICATION
+    MESSAGE_VERSION = 0
+
+    class Action(IntEnum):
+        LOG = 0
+        RESET = 1
+        CONFIG_CHANGE = 2
+
+    EventNotificationConstruct = Struct(
+        "action" / Enum(Int8ul, Action),
+        Padding(3),
+        "system_time_ns" / Int64ul,
+        "event_flags" / Int64ul,
+        "event_description_len_bytes" / Int32ul,
+        "event_description" / Bytes(this.event_description_len_bytes),
+    )
+
+    def __init__(self, user_config=None):
+        self.action = self.Action.LOG
+        self.system_time_ns = 0
+        self.event_flags = 0
+        self.event_description = bytes()
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        values = dict(self.__dict__)
+        values['event_description_len_bytes'] = len(self.event_description)
+        packed_data = self.EventNotificationConstruct.build(values)
+        return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
+
+    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+        parsed = self.EventNotificationConstruct.parse(buffer[offset:])
+        self.__dict__.update(parsed)
+        return parsed._io.tell()
+
+    def __str__(self):
+        fields = ['action', 'system_time_ns', 'event_flags', 'event_description']
+        string = f'Event Notification\n'
+        for field in fields:
+            val = str(self.__dict__[field]).replace('Container:', '')
+            val = val.replace('  ', '\t')
+            string += f'\t{field}: {val}\n'
+        return string.rstrip()
+
+    def calcsize(self) -> int:
+        return len(self.pack())
