@@ -14,9 +14,11 @@ namespace point_one {
 namespace fusion_engine {
 namespace messages {
 
-// Enforce 4-byte alignment and packing of all data structures and values so
-// that floating point values are aligned on platforms that require it.
-#pragma pack(push, 4)
+// Enforce 4-byte alignment and packing of all data structures and values.
+// Floating point values are aligned on platforms that require it. This is done
+// with a combinatation of setting struct attributes, and manual alignment
+// within the definitions. See the "Message Packing" section of the README.
+#pragma pack(push, 1)
 
 /**
  * @defgroup enum_definitions Common Enumeration Definitions
@@ -104,7 +106,7 @@ enum class MessageType : uint16_t {
  * to the start of the device), UNIX times (referenced to January 1, 1970), or
  * GPS times (referenced to January 6, 1980).
  */
-struct Timestamp {
+struct alignas(4) Timestamp {
   static constexpr uint32_t INVALID = 0xFFFFFFFF;
 
   /**
@@ -123,7 +125,7 @@ struct Timestamp {
  * The header is followed immediately in the binary stream by the message
  * payload specified by @ref message_type.
  */
-struct MessageHeader {
+struct alignas(4) MessageHeader {
   static constexpr uint8_t SYNC0 = 0x2E; // '.'
   static constexpr uint8_t SYNC1 = 0x31; // '1'
 
