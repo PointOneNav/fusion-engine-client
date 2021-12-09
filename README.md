@@ -24,6 +24,9 @@ See http://docs.pointonenav.com/fusion-engine/ for the latest API documentation.
     * [Running Examples](#running-examples)
   * [Python](#python)
   * [Compiling Documentation](#compiling-documentation)
+* [Implementation Notes](#implementation-notes)
+  * [Message Packing](#message-packing)
+  * [Endianness](#endianness)
 * [Usage](#usage)
   * [Body Coordinate Frame Definition](#body-coordinate-frame-definition)
 
@@ -192,6 +195,32 @@ The documentation for the latest release is generated automatically and hosted a
 http://docs.pointonenav.com/fusion-engine/. If you would like to build documentation locally, simply run `doxygen` from
 the repository root directory. The generated output will be located in `docs/html/`. To view it, open
 `docs/html/index.html` in a web browser.
+
+## Implementation Notes
+
+### Message Packing
+
+The canonical definitions for the fusion engine messages are their C++ struct definitions. These definitions are given
+the attributes:
+ * `packed` - This attribute sets that no implicit padding should be inserted between members of the struct. For example:
+   ```
+   struct Foo {
+     uint8_t a;
+     uint64_t b;
+   };
+   ```
+   Without the `packed` attribute, the size of `Foo` could be 12 or 16 bytes with 3 or 7 bytes of padding inserted
+   between the members `a` and `b`. With `packed`, the two member variables will be back-to-back in memory.
+ * `aligned(4)` - This attribute ensures that the the size of the struct will be padded at the end to be a multiple of 4
+   bytes. It also makes the default alignment of the struct in memory 4 bytes as well.
+
+In addition to these struct attributes, the struct definitions manually enforce 4 byte alignment for floating point values (i.e., `float` and `double`).
+
+### Endianness
+
+Generally, functions in this library assume that serialized data is little-endian.
+
+No special detection of conversion is done to enforce this, so external handling would be needed to use this library with a big-endian system.
 
 ## Usage
 

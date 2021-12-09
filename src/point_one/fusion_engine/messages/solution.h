@@ -11,9 +11,11 @@ namespace point_one {
 namespace fusion_engine {
 namespace messages {
 
-// Enforce 4-byte alignment and packing of all data structures and values so
-// that floating point values are aligned on platforms that require it.
-#pragma pack(push, 4)
+// Enforce 4-byte alignment and packing of all data structures and values.
+// Floating point values are aligned on platforms that require it. This is done
+// with a combination of setting struct attributes, and manual alignment
+// within the definitions. See the "Message Packing" section of the README.
+#pragma pack(push, 1)
 
 /**
  * @brief Platform pose solution: position, velocity, attitude (@ref
@@ -26,7 +28,7 @@ namespace messages {
  * GNSSInfoMessage, @ref GNSSSatelliteMessage, etc.) may be associated using
  * their @ref p1_time values.
  */
-struct PoseMessage {
+struct alignas(4) PoseMessage {
   static constexpr MessageType MESSAGE_TYPE = MessageType::POSE;
   static constexpr uint8_t MESSAGE_VERSION = 1;
   static constexpr int16_t INVALID_UNDULATION = INT16_MIN;
@@ -148,7 +150,7 @@ struct PoseMessage {
  *        version 1.0.
  * @ingroup messages
  */
-struct PoseAuxMessage {
+struct alignas(4) PoseAuxMessage {
   static constexpr MessageType MESSAGE_TYPE = MessageType::POSE_AUX;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
@@ -191,7 +193,7 @@ struct PoseAuxMessage {
  *        corresponding timestamp (@ref MessageType::GNSS_INFO).
  * @ingroup messages
  */
-struct GNSSInfoMessage {
+struct alignas(4) GNSSInfoMessage {
   static constexpr MessageType MESSAGE_TYPE = MessageType::GNSS_INFO;
   static constexpr uint8_t MESSAGE_VERSION = 0;
   static constexpr uint32_t INVALID_REFERENCE_STATION = 0xFFFFFFFF;
@@ -235,7 +237,7 @@ struct GNSSInfoMessage {
  * {MessageHeader, GNSSSatelliteMessage, SatelliteInfo, SatelliteInfo, ...}
  * ```
  */
-struct GNSSSatelliteMessage {
+struct alignas(4) GNSSSatelliteMessage {
   static constexpr MessageType MESSAGE_TYPE = MessageType::GNSS_SATELLITE;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
@@ -259,7 +261,7 @@ struct GNSSSatelliteMessage {
  * tracked by the receiver but not used for navigation, or may just be expected
  * according to available ephemeris data.
  */
-struct SatelliteInfo {
+struct alignas(4) SatelliteInfo {
   /**
    * @defgroup satellite_usage Bit definitions for the satellite usage bitmask
    *           (@ref SatelliteInfo::usage).

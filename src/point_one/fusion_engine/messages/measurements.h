@@ -11,9 +11,11 @@ namespace point_one {
 namespace fusion_engine {
 namespace messages {
 
-// Enforce 4-byte alignment and packing of all data structures and values so
-// that floating point values are aligned on platforms that require it.
-#pragma pack(push, 4)
+// Enforce 4-byte alignment and packing of all data structures and values.
+// Floating point values are aligned on platforms that require it. This is done
+// with a combination of setting struct attributes, and manual alignment
+// within the definitions. See the "Message Packing" section of the README.
+#pragma pack(push, 1)
 
 /**
  * @brief IMU sensor measurement data (@ref MessageType::IMU_MEASUREMENT),
@@ -25,7 +27,7 @@ namespace messages {
  * gyro biases and scale factors, and has been rotated into the vehicle body
  * frame from the original IMU orientation.
  */
-struct IMUMeasurement {
+struct alignas(4) IMUMeasurement {
   static constexpr MessageType MESSAGE_TYPE = MessageType::IMU_MEASUREMENT;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
