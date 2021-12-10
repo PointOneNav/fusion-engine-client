@@ -547,3 +547,57 @@ class EventNotificationMessage(MessagePayload):
 
     def calcsize(self) -> int:
         return len(self.pack())
+
+
+class VersionDataMessage(MessagePayload):
+    """!
+    @brief An event notification.
+    """
+    MESSAGE_TYPE = MessageType.VERSION_DATA
+    MESSAGE_VERSION = 0
+
+    VersionDataMessageConstruct = Struct(
+        "system_time_ns" / Int64ul,
+        "fw_version_length" / Int8ul,
+        "engine_version_length" / Int8ul,
+        "hw_version_length" / Int8ul,
+        "rx_version_length" / Int8ul,
+        Padding(4),
+        "fw_version_str" /  Bytes(this.fw_version_length),
+        "engine_version_str" /  Bytes(this.engine_version_length),
+        "hw_version_str" /  Bytes(this.hw_version_length),
+        "rx_version_str" /  Bytes(this.rx_version_length),
+    )
+
+    def __init__(self, user_config=None):
+        self.system_time_ns = 0
+        self.fw_version_str = ""
+        self.engine_version_str = ""
+        self.hw_version_str = ""
+        self.rx_version_str = ""
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        values = dict(self.__dict__)
+        values['fw_version_length'] = len(self.fw_version_str)
+        values['engine_version_length'] = len(self.engine_version_str)
+        values['hw_version_length'] = len(self.hw_version_str)
+        values['rx_version_length'] = len(self.rx_version_str)
+        packed_data = self.VersionDataMessageConstruct.build(values)
+        return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
+
+    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+        parsed = self.VersionDataMessageConstruct.parse(buffer[offset:])
+        self.__dict__.update(parsed)
+        return parsed._io.tell()
+
+    def __str__(self):
+        fields = ['system_time_ns', 'fw_version_str', 'engine_version_str', 'hw_version_str', 'rx_version_str']
+        string = f'Version Data\n'
+        for field in fields:
+            val = str(self.__dict__[field]).replace('Container:', '')
+            val = val.replace('  ', '\t')
+            string += f'\t{field}: {val}\n'
+        return string.rstrip()
+
+    def calcsize(self) -> int:
+        return len(self.pack())

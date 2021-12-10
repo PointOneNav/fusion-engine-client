@@ -834,13 +834,40 @@ class Analyzer(object):
 """ % len(self.reader.index)
         message_table = message_table.replace('\n', '')
 
+        version_table = """
+<table>
+  <tr>
+    <td>Version Type</td>
+    <td>Value</td>
+  </tr>
+"""
+        result = self.reader.read(message_types=[VersionDataMessage.MESSAGE_TYPE], remove_nan_times=False,
+                                  **self.params)
+        if len(result[VersionDataMessage.MESSAGE_TYPE].messages) != 0:
+            version = result[VersionDataMessage.MESSAGE_TYPE].messages[-1]
+        version_map = {k:vars(version)[k + '_version_str'] for k in ('fw', 'engine', 'hw', 'rx')}
+        for t, v in version_map.items():
+            version_table += """
+  <tr>
+    <td>%s</td>
+    <td>%s</td>
+  </tr>
+""" % (t, v.decode('utf-8', 'ignore'))
+        version_table += """
+</table>
+"""
+        version_table = version_table.replace('\n', '')
+
         args = {
             'duration_sec': duration_sec,
             'message_table': message_table,
+            'version_table': version_table,
         }
 
         self.summary += """
 Duration: %(duration_sec).1f seconds
+
+%(version_table)s
 
 %(message_table)s
 """ % args

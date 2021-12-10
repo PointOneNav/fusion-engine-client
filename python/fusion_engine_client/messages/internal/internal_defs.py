@@ -43,6 +43,8 @@ class InternalMessageType(IntEnum):
     CONF_DATA = 20110
     SAVE_CONFIG_CMD = 20111
 
+    VERSION_DATA = 20112
+
 # Extend the message type enum with internal types.
 for entry in InternalMessageType:
     extend_enum(MessageType, entry.name, entry.value)
