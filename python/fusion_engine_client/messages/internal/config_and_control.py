@@ -551,7 +551,7 @@ class EventNotificationMessage(MessagePayload):
 
 class VersionDataMessage(MessagePayload):
     """!
-    @brief An event notification.
+    @brief Version information.
     """
     MESSAGE_TYPE = MessageType.VERSION_DATA
     MESSAGE_VERSION = 0
