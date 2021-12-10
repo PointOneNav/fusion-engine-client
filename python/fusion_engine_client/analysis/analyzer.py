@@ -770,7 +770,6 @@ class Analyzer(object):
 
         self._add_figure(name="profile_execution", figure=figure, title="Profiling: Code Execution")
 
-
     def generate_event_table(self):
         """!
         @brief Generate a table of event notifications.
@@ -788,15 +787,14 @@ class Analyzer(object):
 
         table_columns = ['System Time (s)', 'Event', 'Flags', 'Description']
         table_data = [[], [], [], []]
-        table_data[0] = [f'{m.system_time_ns / 1e9:.3f}' for m in data.messages]
+        table_data[0] = [f'{(m.system_time_ns - self.reader.get_system_t0_ns()) / 1e9:.3f}' for m in data.messages]
         table_data[1] = [str(m.action) for m in data.messages]
         table_data[2] = [f'0x{m.event_flags:016X}' for m in data.messages]
         table_data[3] = [m.event_description.decode('utf-8') for m in data.messages]
-        
+
         table_html = _data_to_table(table_columns, table_data)
 
         self._add_page('Event Log', table_html)
-
 
     def generate_index(self, auto_open=True):
         """!
@@ -867,27 +865,11 @@ class Analyzer(object):
         result = self.reader.read(message_types=[VersionDataMessage.MESSAGE_TYPE], remove_nan_times=False,
                                   **self.params)
         if len(result[VersionDataMessage.MESSAGE_TYPE].messages) != 0:
-
-            version_table = """
-<table>
-  <tr>
-    <td>Version Type</td>
-    <td>Value</td>
-  </tr>
-"""
             version = result[VersionDataMessage.MESSAGE_TYPE].messages[-1]
-            version_map = {k:vars(version)[k + '_version_str'] for k in ('fw', 'engine', 'hw', 'rx')}
-            for t, v in version_map.items():
-                version_table += """
-  <tr>
-    <td>%s</td>
-    <td>%s</td>
-  </tr>
-""" % (t, v.decode('utf-8', 'ignore'))
-            version_table += """
-</table>
-"""
-            version_table = version_table.replace('\n', '')
+            version_types = ['fw', 'engine', 'hw', 'rx']
+            # Strip 'b' from byte string conversion
+            version_values = [str(vars(version)[k + '_version_str'])[1:] for k in version_types]
+            version_table = _data_to_table(['Version Type', 'Value'], [version_types, version_values])
         else:
             version_table = 'No version information.'
 
