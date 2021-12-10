@@ -444,9 +444,6 @@ class SaveConfigMessage(MessagePayload):
             string += f'\t{field}: {val}\n'
         return string.rstrip()
 
-    def calcsize(self) -> int:
-        return len(self.pack())
-
     @classmethod
     def calcsize(cls) -> int:
         return cls.SaveConfigMessageConstruct.sizeof()
@@ -601,3 +598,37 @@ class VersionDataMessage(MessagePayload):
 
     def calcsize(self) -> int:
         return len(self.pack())
+
+
+class MessageRequest(MessagePayload):
+    """!
+    @brief Command to request a message be sent.
+    """
+    MESSAGE_TYPE = MessageType.MESSAGE_REQ
+    MESSAGE_VERSION = 0
+
+    MessageRequestConstruct = Struct(
+        "message_type" / Enum(Int16ul, MessageType),
+        Padding(2)
+    )
+
+    def __init__(self):
+        self.message_type = MessageType.INVALID
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        packed_data = self.MessageRequestConstruct.build({"message_type": self.message_type})
+        return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
+
+    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+        parsed = self.MessageRequestConstruct.parse(buffer[offset:])
+        self.message_type = parsed.message_type
+        return parsed._io.tell()
+
+    def __str__(self):
+        string = 'Save Config Command\n'
+        string += f'\tmessage_type: {self.message_type}'
+        return string
+
+    @classmethod
+    def calcsize(cls) -> int:
+        return cls.MessageRequestConstruct.sizeof()

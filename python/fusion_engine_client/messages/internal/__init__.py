@@ -26,4 +26,5 @@ message_type_to_class.update({
     ConfigurationDataMessage.MESSAGE_TYPE: ConfigurationDataMessage,
     SaveConfigMessage.MESSAGE_TYPE: SaveConfigMessage,
     VersionDataMessage.MESSAGE_TYPE: VersionDataMessage,
+    MessageRequest.MESSAGE_TYPE: MessageRequest,
 })
