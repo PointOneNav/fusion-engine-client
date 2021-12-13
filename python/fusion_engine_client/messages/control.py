@@ -1,6 +1,6 @@
 from enum import IntEnum
 
-from construct import (Struct, Int64ul, Int8ul, Padding, this, Bytes)
+from construct import (Struct, Int64ul, Int16ul, Int8ul, Padding, this, Enum, Bytes)
 
 from .defs import *
 
@@ -285,6 +285,57 @@ class VersionInfoMessage(MessagePayload):
     def __str__(self):
         fields = ['system_time_ns', 'fw_version_str', 'engine_version_str', 'hw_version_str', 'rx_version_str']
         string = f'Version Data\n'
+        for field in fields:
+            val = str(self.__dict__[field]).replace('Container:', '')
+            string += f'  {field}: {val}\n'
+        return string.rstrip()
+
+    def calcsize(self) -> int:
+        return len(self.pack())
+
+
+class EventNotificationMessage(MessagePayload):
+    """!
+    @brief Notification of a system event for logging purposes.
+    """
+    MESSAGE_TYPE = MessageType.EVENT_NOTIFICATION
+    MESSAGE_VERSION = 0
+
+    class Action(IntEnum):
+        LOG = 0
+        RESET = 1
+        CONFIG_CHANGE = 2
+
+    EventNotificationConstruct = Struct(
+        "action" / Enum(Int8ul, Action),
+        Padding(3),
+        "system_time_ns" / Int64ul,
+        "event_flags" / Int64ul,
+        "event_description_len_bytes" / Int16ul,
+        Padding(2),
+        "event_description" / Bytes(this.event_description_len_bytes),
+    )
+
+    def __init__(self):
+        self.action = self.Action.LOG
+        self.system_time_ns = 0
+        self.event_flags = 0
+        self.event_description = bytes()
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        values = dict(self.__dict__)
+        values['event_description_len_bytes'] = len(self.event_description)
+        packed_data = self.EventNotificationConstruct.build(values)
+        return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
+
+    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+        parsed = self.EventNotificationConstruct.parse(buffer[offset:])
+        self.__dict__.update(parsed)
+        return parsed._io.tell()
+
+    def __str__(self):
+        fields = ['action', 'system_time_ns', 'event_flags', 'event_description']
+        string = f'Event Notification\n'
         for field in fields:
             val = str(self.__dict__[field]).replace('Container:', '')
             string += f'  {field}: {val}\n'

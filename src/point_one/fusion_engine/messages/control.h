@@ -275,6 +275,61 @@ struct alignas(4) VersionInfoMessage {
   char fw_version_str[0];
 };
 
+/**
+ * @brief Notification of a system event for logging purposes (@ref
+ *        MessageType::EVENT_NOTIFICATION, version 1.0).
+ * @ingroup config_and_ctrl_messages
+ */
+struct alignas(4) EventNotificationMessage {
+  enum class EventType : uint8_t {
+    LOG = 0,
+    RESET = 1,
+    CONFIG_CHANGE = 2,
+  };
+
+  static constexpr const char* to_string(EventType type) {
+    switch (type) {
+      case EventType::LOG:
+        return "Log";
+
+      case EventType::RESET:
+        return "Reset";
+
+      case EventType::CONFIG_CHANGE:
+        return "Config Change";
+
+      default:
+        return "Unknown";
+    }
+  }
+
+  static constexpr MessageType MESSAGE_TYPE = MessageType::EVENT_NOTIFICATION;
+  static constexpr uint8_t MESSAGE_VERSION = 0;
+
+  /** The type of event that occurred. */
+  EventType type = EventType::LOG;
+
+  uint8_t reserved1[3] = {0};
+
+  /** The current system timestamp (in ns).*/
+  int64_t system_time_ns = 0;
+
+  /** A bitmask of flags associated with the event. */
+  uint64_t event_flags = 0;
+
+  /** The number of bytes in the @ref event_description string. */
+  uint16_t event_description_len_bytes = 0;
+
+  uint8_t reserved2[2] = {0};
+
+  /**
+   * This is a dummy entry to provide a pointer to this offset.
+   *
+   * This is used for populating string describing the event, where applicable.
+   */
+  char* event_description[0];
+};
+
 #pragma pack(pop)
 
 } // namespace messages

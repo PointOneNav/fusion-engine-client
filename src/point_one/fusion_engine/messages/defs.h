@@ -99,8 +99,9 @@ enum class MessageType : uint16_t {
   MESSAGE_REQUEST = 13001, ///< @ref MessageRequest
   RESET_REQUEST = 13002, ///< @ref ResetRequest
   VERSION_INFO = 13003, ///< @ref VersionInfoMessage
+  EVENT_NOTIFICATION = 13004, /// @ref EventNotificationMessage
 
-  MAX_VALUE = VERSION_INFO,
+  MAX_VALUE = EVENT_NOTIFICATION,
 };
 
 /** @} */
@@ -290,6 +291,9 @@ inline const char* to_string(MessageType type) {
 
     case MessageType::VERSION_INFO:
       return "Version Information";
+
+    case MessageType::EVENT_NOTIFICATION:
+      return "Event Notification";
 
     default:
       return "Unrecognized Message";
