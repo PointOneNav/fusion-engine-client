@@ -1,5 +1,5 @@
 from .. import message_type_to_class
-from .config_and_control import *
+from .platform_storage import *
 from .internal_defs import InternalMessageType
 from .profiling import *
 
