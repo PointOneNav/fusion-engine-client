@@ -82,7 +82,7 @@ enum class ConfigType : uint16_t {
  *
  * @return The corresponding string name.
  */
-constexpr const char* to_string(ConfigType type) {
+inline const char* to_string(ConfigType type) {
   switch (type) {
     case ConfigType::INVALID:
       return "Invalid";
@@ -137,7 +137,7 @@ enum class ConfigurationSource : uint8_t {
  *
  * @return The corresponding string name.
  */
-constexpr const char* to_string(ConfigurationSource source) {
+inline const char* to_string(ConfigurationSource source) {
   switch (source) {
     case ConfigurationSource::ACTIVE:
       return "Active";
@@ -181,7 +181,7 @@ enum class SaveAction : uint8_t {
  *
  * @return The corresponding string name.
  */
-static constexpr const char* to_string(SaveAction action) {
+inline const char* to_string(SaveAction action) {
   switch (action) {
     case SaveAction::SAVE:
       return "Save";
