@@ -287,7 +287,7 @@ struct alignas(4) EventNotificationMessage : public MessagePayload {
     CONFIG_CHANGE = 2,
   };
 
-  static constexpr const char* to_string(EventType type) {
+  static const char* to_string(EventType type) {
     switch (type) {
       case EventType::LOG:
         return "Log";
