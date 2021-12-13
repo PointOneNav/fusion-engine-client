@@ -13,6 +13,10 @@ class ConfigurationSource(IntEnum):
 
 class ConfigType(IntEnum):
     INVALID = 0,
+    DEVICE_LEVER_ARM = 16
+    DEVICE_COARSE_ORIENTATION = 17
+    GNSS_LEVER_ARM = 18
+    OUTPUT_LEVER_ARM = 19
     UART0_BAUD = 256
     UART1_BAUD = 257
 

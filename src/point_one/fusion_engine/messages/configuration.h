@@ -27,6 +27,38 @@ namespace messages {
  */
 enum class ConfigType : uint16_t {
   INVALID = 0,
+
+  /**
+   * The location of the device IMU with respect to the vehicle body frame (in
+   * meters).
+   *
+   * Payload format: @ref Point3f
+   */
+  DEVICE_LEVER_ARM = 16,
+
+  /**
+   * The orientation of the device IMU with respect to the vehicle body axes.
+   *
+   * Payload format: @ref CoarseOrientation
+   */
+  DEVICE_COARSE_ORIENTATION = 17,
+
+  /**
+   * The location of the GNSS antenna with respect to the vehicle body frame (in
+   * meters).
+   *
+   * Payload format: @ref Point3f
+   */
+  GNSS_LEVER_ARM = 18,
+
+  /**
+   * The location of the desired output location with respect to the vehicle
+   * body frame (in meters).
+   *
+   * Payload format: @ref Point3f
+   */
+  OUTPUT_LEVER_ARM = 19,
+
   /**
    * Configure the UART0 serial baud rate (in bits/second).
    *
@@ -54,6 +86,18 @@ constexpr const char* to_string(ConfigType type) {
   switch (type) {
     case ConfigType::INVALID:
       return "Invalid";
+
+    case ConfigType::DEVICE_LEVER_ARM:
+      return "Device Lever Arm";
+
+    case ConfigType::DEVICE_COARSE_ORIENTATION:
+      return "Device Coarse Orientation";
+
+    case ConfigType::GNSS_LEVER_ARM:
+      return "GNSS Lever Arm";
+
+    case ConfigType::OUTPUT_LEVER_ARM:
+      return "Output Lever Arm";
 
     case ConfigType::UART0_BAUD:
       return "UART0 Baud Rate";
@@ -297,6 +341,48 @@ struct alignas(4) ConfigDataMessage : public MessagePayload {
    * See @ref ConfigType.
    */
   uint8_t config_change_data[0];
+};
+
+/**
+ * @brief A 3-dimensional vector (used for lever arms, etc.).
+ */
+struct alignas(4) Point3f {
+  float x = NAN;
+  float y = NAN;
+  float z = NAN;
+};
+
+/**
+ * @brief The orientation of a device with respect to the vehicle body axes.
+ *
+ * A device's orientation is defined by specifying how the +x and +z axes of its
+ * IMU are aligned with the vehicle body axes. For example, in a car:
+ * - `forward,up`: device +x = vehicle +x, device +z = vehicle +z (i.e.,
+ *   IMU pointed towards the front of the vehicle).
+ * - `left,up`: device +x = vehicle +y, device +z = vehicle +z (i.e., IMU
+ *   pointed towards the left side of the vehicle)
+ * - `up,backward`: device +x = vehicle +z, device +z = vehicle -x (i.e.,
+ *   IMU pointed vertically upward, with the top of the IMU pointed towards the
+ *   trunk)
+ */
+struct alignas(4) CoarseOrientation {
+  enum class Direction : uint8_t {
+    FORWARD = 0, ///< Aligned with vehicle +x axis.
+    BACKWARD = 1, ///< Aligned with vehicle -x axis.
+    LEFT = 2, ///< Aligned with vehicle +y axis.
+    RIGHT = 3, ///< Aligned with vehicle -y axis.
+    UP = 4, ///< Aligned with vehicle +z axis.
+    DOWN = 5, ///< Aligned with vehicle -z axis.
+    INVALID = 255
+  };
+
+  /** The direction of the device +x axis relative to the vehicle body axes. */
+  Direction x_direction = Direction::FORWARD;
+
+  /** The direction of the device +z axis relative to the vehicle body axes. */
+  Direction z_direction = Direction::UP;
+
+  uint8_t reserved[2] = {0};
 };
 
 #pragma pack(pop)
