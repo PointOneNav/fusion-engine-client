@@ -45,7 +45,7 @@ class SolutionType(IntEnum):
 class MessageType(IntEnum):
     INVALID = 0
 
-    # INS solution messages.
+    # Navigation solution messages.
     POSE = 10000
     GNSS_INFO = 10001
     GNSS_SATELLITE = 10002
