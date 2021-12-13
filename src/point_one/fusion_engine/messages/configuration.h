@@ -253,10 +253,7 @@ struct alignas(4) SetConfigMessage : public MessagePayload {
   /** The type of parameter to be configured. */
   ConfigType config_type;
 
-  /** The version of the configuration contents. */
-  uint8_t config_version = 0;
-
-  uint8_t reserved[1] = {0};
+  uint8_t reserved[2] = {0};
 
   /** The size of the parameter value, @ref config_change_data (in bytes). */
   uint32_t config_length_bytes = 0;
@@ -323,9 +320,10 @@ struct alignas(4) SaveConfigMessage : public MessagePayload {
  * {MessageHeader, ConfigDataMessage, uint32_t}
  * ```
  *
- * In response to a @ref GetConfigMessage with an invalid @ref ConfigType or an
- * unsupported version, @ref config_type will be set to @ref
- * ConfigType::INVALID.
+ * In response to a @ref GetConfigMessage with an invalid or unsupported @ref
+ * ConfigType, @ref config_type in the resulting @ref ConfigDataMessage will be
+ * set to @ref ConfigType::INVALID. Note that invalid and rejected requests will
+ * receive a @ref ConfigDataMessage, not a @ref CommandResponseMessage.
  */
 struct alignas(4) ConfigDataMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::CONFIG_DATA;
@@ -343,13 +341,7 @@ struct alignas(4) ConfigDataMessage : public MessagePayload {
   /** The type of configuration parameter contained in this message. */
   ConfigType config_type = ConfigType::INVALID;
 
-  /**
-   * The version of the configuration parameter payload reported by this
-   * message.
-   */
-  uint8_t config_version = 0;
-
-  uint8_t reserved[3] = {0};
+  uint8_t reserved[4] = {0};
 
   /** The size of the parameter value, @ref config_change_data (in bytes). */
   uint32_t config_length_bytes = 0;

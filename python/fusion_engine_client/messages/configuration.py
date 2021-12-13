@@ -31,15 +31,13 @@ class SetConfigMessage(MessagePayload):
 
     SetConfigMessageConstruct = Struct(
         "config_type" / Enum(Int16ul, ConfigType),
-        "config_version" / Int8ul,
-        Padding(1),
+        Padding(2),
         "config_change_length_bytes" / Int32ul,
         "config_change_data" / Bytes(this.config_change_length_bytes),
     )
 
     def __init__(self):
         self.config_type = ConfigType.INVALID
-        self.config_version = 0
         self.config_change_length_bytes = 0
         self.config_change_data = bytes()
 
@@ -56,7 +54,7 @@ class SetConfigMessage(MessagePayload):
         return parsed._io.tell()
 
     def __str__(self):
-        fields = ['config_type', 'config_version', "config_change_length_bytes"]
+        fields = ['config_type', 'config_change_length_bytes']
         string = f'Set Config Command\n'
         for field in fields:
             val = str(self.__dict__[field]).replace('Container:', '')
@@ -161,8 +159,7 @@ class ConfigDataMessage(MessagePayload):
         "config_source" / Enum(Int8ul, ConfigurationSource),
         "active_differs_from_saved" / Flag,
         "config_type" / Enum(Int16ul, ConfigType),
-        "config_version" / Int8ul,
-        Padding(3),
+        Padding(4),
         "config_length_bytes" / Int32ul,
         "config_data" / Bytes(this.config_length_bytes),
     )
@@ -170,7 +167,6 @@ class ConfigDataMessage(MessagePayload):
     def __init__(self):
         self.config_source = ConfigurationSource.ACTIVE
         self.active_differs_from_saved = False
-        self.config_version = 0
         self.config_data = bytes()
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
@@ -185,8 +181,7 @@ class ConfigDataMessage(MessagePayload):
         return parsed._io.tell()
 
     def __str__(self):
-        fields = ['config_type', 'config_version', 'active_differs_from_saved',
-                  'config_source', 'config_length_bytes']
+        fields = ['config_type', 'active_differs_from_saved', 'config_source', 'config_length_bytes']
         string = f'Config Data\n'
         for field in fields:
             val = str(self.__dict__[field]).replace('Container:', '')
