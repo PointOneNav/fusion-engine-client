@@ -80,7 +80,7 @@ enum class SolutionType : uint8_t {
 enum class MessageType : uint16_t {
   INVALID = 0, ///< Invalid message type
 
-  // INS solution messages.
+  // Navigation solution messages.
   POSE = 10000, ///< @ref PoseMessage
   GNSS_INFO = 10001, ///< @ref GNSSInfoMessage
   GNSS_SATELLITE = 10002, ///< @ref GNSSSatelliteMessage
@@ -242,6 +242,7 @@ inline const char* to_string(MessageType type) {
     case MessageType::INVALID:
       return "Invalid";
 
+    // Navigation solution messages.
     case MessageType::POSE:
       return "Pose";
 
@@ -254,9 +255,11 @@ inline const char* to_string(MessageType type) {
     case MessageType::POSE_AUX:
       return "Pose Auxiliary";
 
+    // Sensor measurement messages.
     case MessageType::IMU_MEASUREMENT:
       return "IMU Measurement";
 
+    // ROS messages.
     case MessageType::ROS_POSE:
       return "ROS Pose";
 
