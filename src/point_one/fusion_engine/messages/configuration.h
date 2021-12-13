@@ -182,7 +182,7 @@ inline std::ostream& operator<<(std::ostream& stream, SaveAction type) {
  * their previous values on reset. To save configuration settings to persistent
  * storage, see @ref SaveConfigMessage.
  */
-struct alignas(4) SetConfigMessage {
+struct alignas(4) SetConfigMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::SET_CONFIG;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
@@ -211,7 +211,7 @@ struct alignas(4) SetConfigMessage {
  * The device will respond with a @ref ConfigDataMessage containing the
  * requested parameter value, or a @ref CommandResponseMessage on failure.
  */
-struct alignas(4) GetConfigMessage {
+struct alignas(4) GetConfigMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::GET_CONFIG;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
@@ -232,7 +232,7 @@ struct alignas(4) GetConfigMessage {
  * The device will respond with a @ref CommandResponseMessage indicating whether
  * or not the request was accepted.
  */
-struct alignas(4) SaveConfigMessage {
+struct alignas(4) SaveConfigMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::SAVE_CONFIG;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
@@ -261,7 +261,7 @@ struct alignas(4) SaveConfigMessage {
  * set to @ref ConfigType::INVALID. Note that invalid and rejected requests will
  * receive a @ref ConfigDataMessage, not a @ref CommandResponseMessage.
  */
-struct alignas(4) ConfigDataMessage {
+struct alignas(4) ConfigDataMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::CONFIG_DATA;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
