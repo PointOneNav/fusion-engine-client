@@ -133,6 +133,7 @@ struct alignas(4) Timestamp {
 
 /**
  * @brief The header present at the beginning of every message.
+ * @ingroup messages
  *
  * The header is followed immediately in the binary stream by the message
  * payload specified by @ref message_type.
@@ -186,6 +187,7 @@ struct alignas(4) MessageHeader {
 
 /**
  * @brief The base class for all message payloads.
+ * @ingroup messages
  */
 struct MessagePayload {
   // Currently empty - used simply to distinguish between payload definitions

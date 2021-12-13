@@ -18,9 +18,17 @@ namespace messages {
 #pragma pack(push, 1)
 
 /**
+ * @defgroup measurement_messages Sensor Measurement Message Definitions
+ * @brief Measurement data from available sensors.
+ * @ingroup messages
+ *
+ * See also @ref messages.
+ */
+
+/**
  * @brief IMU sensor measurement data (@ref MessageType::IMU_MEASUREMENT,
  *        version 1.0).
- * @ingroup messages
+ * @ingroup measurement_messages
  *
  * @note
  * The data contained in this message has been corrected for accelerometer and
