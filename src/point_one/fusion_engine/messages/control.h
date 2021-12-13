@@ -217,6 +217,64 @@ struct alignas(4) ResetRequest {
   uint32_t reset_mask = 0;
 };
 
+/**
+ * @brief Software and hardware version information, (@ref
+ *        MessageType::VERSION_INFO, version 1.0).
+ * @ingroup config_and_ctrl_messages
+ *
+ * This message contains version strings for each of the following, where
+ * available:
+ * - Firmware - The current version of the platform software/firmware being used
+ * - Engine - The version of Point One FusionEngine being used
+ * - Hardware - The version of the platform hardware being used
+ * - GNSS Receiver - The version of firmware being used by the device's GNSS
+ *   receiver
+ *
+ * The message payload specifies the length of each string (in bytes). It is
+ * followed by each of the listed version strings consecutively. The strings are
+ * _not_ null terminated.
+ *
+ * ```
+ * {MessageHeader, VersionInfoMessage, "Firmware Version", "Engine Version",
+ *  "Hardware Version", "Receiver Version"}
+ * ```
+ */
+struct alignas(4) VersionInfoMessage {
+  static constexpr MessageType MESSAGE_TYPE = MessageType::VERSION_INFO;
+  static constexpr uint8_t MESSAGE_VERSION = 0;
+
+  /** The current system timestamp (in ns).*/
+  int64_t system_time_ns = 0;
+
+  /** The length of the firmware version string (in bytes). */
+  uint8_t fw_version_length = 0;
+
+  /** The length of the FusionEngine version string (in bytes). */
+  uint8_t engine_version_length = 0;
+
+  /** The length of the hardware version string (in bytes). */
+  uint8_t hw_version_length = 0;
+
+  /** The length of the GNSS receiver version string (in bytes). */
+  uint8_t rx_version_length = 0;
+
+  uint8_t reserved[4] = {0};
+
+  /**
+   * The beginning of the firmware version string.
+   *
+   * All other version strings follow immediately after this one in the data
+   * buffer. For example, the FusionEngine version string can be obtained as
+   * follows:
+   * ```cpp
+   * std::string engine_version_str(
+   *     fw_version_str + message.fw_version_length,
+   *     message.engine_version_length);
+   * ```
+   */
+  char fw_version_str[0];
+};
+
 #pragma pack(pop)
 
 } // namespace messages

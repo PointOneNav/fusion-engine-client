@@ -862,10 +862,10 @@ class Analyzer(object):
 ''')
         message_table = message_table.replace('\n', '')
 
-        result = self.reader.read(message_types=[VersionDataMessage.MESSAGE_TYPE], remove_nan_times=False,
+        result = self.reader.read(message_types=[VersionInfoMessage.MESSAGE_TYPE], remove_nan_times=False,
                                   **self.params)
-        if len(result[VersionDataMessage.MESSAGE_TYPE].messages) != 0:
-            version = result[VersionDataMessage.MESSAGE_TYPE].messages[-1]
+        if len(result[VersionInfoMessage.MESSAGE_TYPE].messages) != 0:
+            version = result[VersionInfoMessage.MESSAGE_TYPE].messages[-1]
             version_types = ['fw', 'engine', 'hw', 'rx']
             # Strip 'b' from byte string conversion
             version_values = [str(vars(version)[k + '_version_str'])[1:] for k in version_types]

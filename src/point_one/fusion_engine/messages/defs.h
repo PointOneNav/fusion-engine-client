@@ -98,8 +98,9 @@ enum class MessageType : uint16_t {
   COMMAND_RESPONSE = 13000, ///< @ref CommandResponseMessage
   MESSAGE_REQUEST = 13001, ///< @ref MessageRequest
   RESET_REQUEST = 13002, ///< @ref ResetRequest
+  VERSION_INFO = 13003, ///< @ref VersionInfoMessage
 
-  MAX_VALUE = RESET_REQUEST,
+  MAX_VALUE = VERSION_INFO,
 };
 
 /** @} */
@@ -283,6 +284,9 @@ inline const char* to_string(MessageType type) {
 
     case MessageType::RESET_REQUEST:
       return "Reset Request";
+
+    case MessageType::VERSION_INFO:
+      return "Version Information";
 
     default:
       return "Unrecognized Message";
