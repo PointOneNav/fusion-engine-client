@@ -66,6 +66,11 @@ class MessageType(IntEnum):
     VERSION_INFO = 13003
     EVENT_NOTIFICATION = 13004
 
+    SET_CONFIG = 13100
+    GET_CONFIG = 13101
+    SAVE_CONFIG = 13102
+    CONFIG_DATA = 13103
+
     RESERVED = 20000
 
     @classmethod
