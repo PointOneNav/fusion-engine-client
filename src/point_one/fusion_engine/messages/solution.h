@@ -19,7 +19,7 @@ namespace messages {
 
 /**
  * @brief Platform pose solution: position, velocity, attitude (@ref
- *        MessageType::POSE), version 1.1.
+ *        MessageType::POSE, version 1.1).
  * @ingroup messages
  *
  * @note
@@ -146,8 +146,8 @@ struct alignas(4) PoseMessage {
 };
 
 /**
- * @brief Auxiliary platform pose information (@ref MessageType::POSE_AUX),
- *        version 1.0.
+ * @brief Auxiliary platform pose information (@ref MessageType::POSE_AUX,
+ *        version 1.0).
  * @ingroup messages
  */
 struct alignas(4) PoseAuxMessage {
@@ -190,7 +190,7 @@ struct alignas(4) PoseAuxMessage {
 
 /**
  * @brief Information about the GNSS data used in the @ref PoseMessage with the
- *        corresponding timestamp (@ref MessageType::GNSS_INFO).
+ *        corresponding timestamp (@ref MessageType::GNSS_INFO, version 1.0).
  * @ingroup messages
  */
 struct alignas(4) GNSSInfoMessage {
@@ -226,7 +226,7 @@ struct alignas(4) GNSSInfoMessage {
 /**
  * @brief Information about the individual satellites used in the @ref
  *        PoseMessage and @ref GNSSInfoMessage with the corresponding timestamp
- *        (@ref MessageType::GNSS_SATELLITE), version 1.1.
+ *        (@ref MessageType::GNSS_SATELLITE, version 1.0).
  * @ingroup messages
  *
  * This message is followed by `N` @ref SatelliteInfo objects, where `N` is
