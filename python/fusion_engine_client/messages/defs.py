@@ -59,6 +59,11 @@ class MessageType(IntEnum):
     ROS_GPS_FIX = 12010
     ROS_IMU = 12011
 
+    # Command and control messages.
+    COMMAND_RESPONSE = 13000
+    MESSAGE_REQUEST = 13001
+    RESET_REQUEST = 13002
+
     RESERVED = 20000
 
     @classmethod

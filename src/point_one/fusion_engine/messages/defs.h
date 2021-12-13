@@ -94,7 +94,12 @@ enum class MessageType : uint16_t {
   ROS_GPS_FIX = 12010, ///< @ref ros::GPSFixMessage
   ROS_IMU = 12011, ///< @ref ros::IMUMessage
 
-  MAX_VALUE = ROS_IMU,
+  // Command and control messages.
+  COMMAND_RESPONSE = 13000, ///< @ref CommandResponseMessage
+  MESSAGE_REQUEST = 13001, ///< @ref MessageRequest
+  RESET_REQUEST = 13002, ///< @ref ResetRequest
+
+  MAX_VALUE = RESET_REQUEST,
 };
 
 /** @} */
@@ -268,6 +273,16 @@ inline const char* to_string(MessageType type) {
 
     case MessageType::ROS_IMU:
       return "ROS IMU";
+
+    // Command and control messages.
+    case MessageType::COMMAND_RESPONSE:
+      return "Command Response";
+
+    case MessageType::MESSAGE_REQUEST:
+      return "Message Transmission Request";
+
+    case MessageType::RESET_REQUEST:
+      return "Reset Request";
 
     default:
       return "Unrecognized Message";
