@@ -184,6 +184,14 @@ struct alignas(4) MessageHeader {
   uint32_t source_identifier = INVALID_SOURCE_ID;
 };
 
+/**
+ * @brief The base class for all message payloads.
+ */
+struct MessagePayload {
+  // Currently empty - used simply to distinguish between payload definitions
+  // and other types.
+};
+
 #pragma pack(pop)
 
 /**

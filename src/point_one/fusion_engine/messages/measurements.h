@@ -27,7 +27,7 @@ namespace messages {
  * gyro biases and scale factors, and has been rotated into the vehicle body
  * frame from the original IMU orientation.
  */
-struct alignas(4) IMUMeasurement {
+struct alignas(4) IMUMeasurement : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::IMU_MEASUREMENT;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 

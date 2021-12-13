@@ -28,7 +28,7 @@ namespace messages {
  * GNSSInfoMessage, @ref GNSSSatelliteMessage, etc.) may be associated using
  * their @ref p1_time values.
  */
-struct alignas(4) PoseMessage {
+struct alignas(4) PoseMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::POSE;
   static constexpr uint8_t MESSAGE_VERSION = 1;
   static constexpr int16_t INVALID_UNDULATION = INT16_MIN;
@@ -150,7 +150,7 @@ struct alignas(4) PoseMessage {
  *        version 1.0).
  * @ingroup messages
  */
-struct alignas(4) PoseAuxMessage {
+struct alignas(4) PoseAuxMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::POSE_AUX;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
@@ -193,9 +193,10 @@ struct alignas(4) PoseAuxMessage {
  *        corresponding timestamp (@ref MessageType::GNSS_INFO, version 1.0).
  * @ingroup messages
  */
-struct alignas(4) GNSSInfoMessage {
+struct alignas(4) GNSSInfoMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::GNSS_INFO;
   static constexpr uint8_t MESSAGE_VERSION = 0;
+
   static constexpr uint32_t INVALID_REFERENCE_STATION = 0xFFFFFFFF;
 
   /** The time of the message, in P1 time (beginning at power-on). */
@@ -237,7 +238,7 @@ struct alignas(4) GNSSInfoMessage {
  * {MessageHeader, GNSSSatelliteMessage, SatelliteInfo, SatelliteInfo, ...}
  * ```
  */
-struct alignas(4) GNSSSatelliteMessage {
+struct alignas(4) GNSSSatelliteMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::GNSS_SATELLITE;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 

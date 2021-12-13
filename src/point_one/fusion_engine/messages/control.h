@@ -38,7 +38,7 @@ namespace messages {
  *        1.0).
  * @ingroup config_and_ctrl_messages
  */
-struct alignas(4) CommandResponseMessage {
+struct alignas(4) CommandResponseMessage : public MessagePayload {
   /** @brief Command response status indicators. */
   enum class Response : uint8_t {
     OK = 0,
@@ -96,7 +96,7 @@ struct alignas(4) CommandResponseMessage {
  * The generated response may not immediately follow the request if other
  * outbound messages are already enqueued to be sent.
  */
-struct alignas(4) MessageRequest {
+struct alignas(4) MessageRequest : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::MESSAGE_REQUEST;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
@@ -114,7 +114,7 @@ struct alignas(4) MessageRequest {
  * This message contains a bitmask indicating the set of components to be reset.
  * Helper bitmasks are provided for common reset operations.
  */
-struct alignas(4) ResetRequest {
+struct alignas(4) ResetRequest : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::RESET_REQUEST;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
@@ -239,7 +239,7 @@ struct alignas(4) ResetRequest {
  *  "Hardware Version", "Receiver Version"}
  * ```
  */
-struct alignas(4) VersionInfoMessage {
+struct alignas(4) VersionInfoMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::VERSION_INFO;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
@@ -280,7 +280,7 @@ struct alignas(4) VersionInfoMessage {
  *        MessageType::EVENT_NOTIFICATION, version 1.0).
  * @ingroup config_and_ctrl_messages
  */
-struct alignas(4) EventNotificationMessage {
+struct alignas(4) EventNotificationMessage : public MessagePayload {
   enum class EventType : uint8_t {
     LOG = 0,
     RESET = 1,
