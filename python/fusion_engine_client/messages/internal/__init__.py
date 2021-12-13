@@ -17,8 +17,4 @@ message_type_to_class.update({
     ProfileCounterMessage.MESSAGE_TYPE: ProfileCounterMessage,
     ProfileCounterMessage.DEFINITION_TYPE: ProfileDefinitionMessage,
     PlatformStorageDataMessage.MESSAGE_TYPE: PlatformStorageDataMessage,
-    SetConfigMessage.MESSAGE_TYPE: SetConfigMessage,
-    GetConfigMessage.MESSAGE_TYPE: GetConfigMessage,
-    ConfigurationDataMessage.MESSAGE_TYPE: ConfigurationDataMessage,
-    SaveConfigMessage.MESSAGE_TYPE: SaveConfigMessage,
 })
