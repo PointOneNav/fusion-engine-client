@@ -133,12 +133,12 @@ enum class ConfigurationSource : uint8_t {
  *        ConfigurationSource.
  * @ingroup config_and_ctrl_messages
  *
- * @param type The desired configuration source.
+ * @param source The desired configuration source.
  *
  * @return The corresponding string name.
  */
-constexpr const char* to_string(ConfigurationSource type) {
-  switch (type) {
+constexpr const char* to_string(ConfigurationSource source) {
+  switch (source) {
     case ConfigurationSource::ACTIVE:
       return "Active";
 
@@ -155,8 +155,8 @@ constexpr const char* to_string(ConfigurationSource type) {
  * @ingroup config_and_ctrl_messages
  */
 inline std::ostream& operator<<(std::ostream& stream,
-                                ConfigurationSource type) {
-  stream << to_string(type) << " (" << (int)type << ")";
+                                ConfigurationSource source) {
+  stream << to_string(source) << " (" << (int)source << ")";
   return stream;
 }
 
@@ -177,7 +177,7 @@ enum class SaveAction : uint8_t {
  * @brief Get a human-friendly string name for the specified @ref SaveAction.
  * @ingroup config_and_ctrl_messages
  *
- * @param type The desired save operation.
+ * @param action The desired save operation.
  *
  * @return The corresponding string name.
  */
@@ -201,8 +201,8 @@ static constexpr const char* to_string(SaveAction action) {
  * @brief @ref SaveAction stream operator.
  * @ingroup config_and_ctrl_messages
  */
-inline std::ostream& operator<<(std::ostream& stream, SaveAction type) {
-  stream << to_string(type) << " (" << (int)type << ")";
+inline std::ostream& operator<<(std::ostream& stream, SaveAction action) {
+  stream << to_string(action) << " (" << (int)action << ")";
   return stream;
 }
 

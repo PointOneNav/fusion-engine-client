@@ -24,8 +24,8 @@ namespace messages {
  *
  * When a configuration/control message is received, a device typically responds
  * with either a @ref CommandResponseMessage or another appropriate response.
- * For example, a @ref MessageRequest requesting @ref MessageType::VERSION_DATA
- * may result in a @ref VersionDataMessage response, or a @ref
+ * For example, a @ref MessageRequest requesting @ref MessageType::VERSION_INFO
+ * may result in a @ref VersionInfoMessage response, or a @ref
  * CommandResponseMessage indicating that directly requesting version messages
  * is not supported. See the documentation for the individual control messages
  * for details on the expected response.
@@ -34,8 +34,8 @@ namespace messages {
  */
 
 /**
- * @brief Response to indicate if command was processed successfully (version
- *        1.0).
+ * @brief Response to indicate if command was processed successfully (@ref
+ *        MessageType::COMMAND_RESPONSE, version 1.0).
  * @ingroup config_and_ctrl_messages
  */
 struct alignas(4) CommandResponseMessage : public MessagePayload {
