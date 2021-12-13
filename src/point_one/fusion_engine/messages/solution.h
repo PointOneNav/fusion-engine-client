@@ -18,9 +18,17 @@ namespace messages {
 #pragma pack(push, 1)
 
 /**
+ * @defgroup solution_messages Navigation Solution Message Definitions
+ * @brief Output messages containing position, navigation, and time results.
+ * @ingroup messages
+ *
+ * See also @ref messages.
+ */
+
+/**
  * @brief Platform pose solution: position, velocity, attitude (@ref
  *        MessageType::POSE, version 1.1).
- * @ingroup messages
+ * @ingroup solution_messages
  *
  * @note
  * All data is timestamped using the Point One Time, which is a monotonic
@@ -148,7 +156,7 @@ struct alignas(4) PoseMessage : public MessagePayload {
 /**
  * @brief Auxiliary platform pose information (@ref MessageType::POSE_AUX,
  *        version 1.0).
- * @ingroup messages
+ * @ingroup solution_messages
  */
 struct alignas(4) PoseAuxMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::POSE_AUX;
@@ -191,7 +199,7 @@ struct alignas(4) PoseAuxMessage : public MessagePayload {
 /**
  * @brief Information about the GNSS data used in the @ref PoseMessage with the
  *        corresponding timestamp (@ref MessageType::GNSS_INFO, version 1.0).
- * @ingroup messages
+ * @ingroup solution_messages
  */
 struct alignas(4) GNSSInfoMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::GNSS_INFO;
@@ -228,7 +236,7 @@ struct alignas(4) GNSSInfoMessage : public MessagePayload {
  * @brief Information about the individual satellites used in the @ref
  *        PoseMessage and @ref GNSSInfoMessage with the corresponding timestamp
  *        (@ref MessageType::GNSS_SATELLITE, version 1.0).
- * @ingroup messages
+ * @ingroup solution_messages
  *
  * This message is followed by `N` @ref SatelliteInfo objects, where `N` is
  * equal to @ref num_satellites. For example, a message with two satellites
