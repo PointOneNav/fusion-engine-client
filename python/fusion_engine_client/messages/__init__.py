@@ -15,4 +15,9 @@ message_type_to_class = {
     ros.PoseMessage.MESSAGE_TYPE: ros.PoseMessage,
     ros.GPSFixMessage.MESSAGE_TYPE: ros.GPSFixMessage,
     ros.IMUMessage.MESSAGE_TYPE: ros.IMUMessage,
+
+    # Command and control messages.
+    CommandResponseMessage.MESSAGE_TYPE: CommandResponseMessage,
+    MessageRequest.MESSAGE_TYPE: MessageRequest,
+    ResetRequest.MESSAGE_TYPE: ResetRequest,
 }
