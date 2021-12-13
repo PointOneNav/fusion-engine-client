@@ -29,6 +29,14 @@ enum class ConfigType : uint16_t {
   INVALID = 0,
 
   /**
+   * Configure the set of protocols and messages enabled for a given output
+   * stream.
+   *
+   * Payload format: @ref OutputStreamMsgsConfig
+   */
+  OUTPUT_STREAM_MSGS = 1,
+
+  /**
    * The location of the device IMU with respect to the vehicle body frame (in
    * meters).
    *
@@ -86,6 +94,9 @@ constexpr const char* to_string(ConfigType type) {
   switch (type) {
     case ConfigType::INVALID:
       return "Invalid";
+
+    case ConfigType::OUTPUT_STREAM_MSGS:
+      return "Output Stream Messages";
 
     case ConfigType::DEVICE_LEVER_ARM:
       return "Device Lever Arm";
@@ -343,6 +354,11 @@ struct alignas(4) ConfigDataMessage : public MessagePayload {
   uint8_t config_change_data[0];
 };
 
+/**************************************************************************/ /**
+ * @name Configuration Settings Type Definitions
+ * @{
+ ******************************************************************************/
+
 /**
  * @brief A 3-dimensional vector (used for lever arms, etc.).
  */
@@ -384,6 +400,125 @@ struct alignas(4) CoarseOrientation {
 
   uint8_t reserved[2] = {0};
 };
+
+/** @} */
+
+/**************************************************************************/ /**
+ * @name Input/Output Stream Control
+ * @{
+ ******************************************************************************/
+
+/**
+ * @brief The framing protocol of a message.
+ */
+enum class ProtocolType : uint8_t {
+  INVALID = 0,
+  FUSION_ENGINE = 1,
+  NMEA = 2,
+  RTCM = 3,
+};
+
+/**
+ * @brief Identifies a message type.
+ */
+struct alignas(4) MsgType {
+  ProtocolType protocol = ProtocolType::INVALID;
+  uint8_t reserved[1] = {0};
+  uint16_t msg_id = 0;
+};
+
+/**
+ * @brief An output rate for a message.
+ */
+struct alignas(4) MsgRate {
+  /** @brief The type of message to configure. */
+  MsgType type;
+  /**
+   * @brief Reserved value for @ref update_period_ms to indicate that the
+   *        message should come out at its max rate.
+   *
+   * Also used for messages that output at a fixed rate.
+   */
+  static constexpr uint16_t MAX_RATE = 0xFFFF;
+  /** @brief The desired message update interval (in ms). */
+  uint16_t update_period_ms = 0;
+  uint8_t reserved[2] = {0};
+};
+
+/**
+ * @brief Type of IO interface transport.
+ */
+enum class TransportType : uint8_t {
+  INVALID = 0,
+  SERIAL = 1,
+  FILE = 2,
+  TCP_CLIENT = 3,
+  TCP_SERVER = 4,
+  UDP_CLIENT = 5,
+  UDP_SERVER = 6,
+};
+
+/**
+ * @brief Identifies an IO interface.
+ */
+struct alignas(4) InterfaceID {
+  TransportType type = TransportType::INVALID;
+  /**
+   * @brief An identifier for the instance of this transport.
+   *
+   * For example serial port 1 or serial port 2.
+   */
+  uint8_t index = 0;
+  uint8_t reserved[2] = {0};
+};
+
+/**
+ * @brief Configuration for an output Stream.
+ *
+ * Sets the messages associated with an output stream and which output interface
+ * it they should be sent out.
+ *
+ * This message is followed by `N` @ref MsgRate objects, where `N`
+ * is equal to @ref num_msgs. For example:
+ *
+ * ```
+ * {MessageHeader, SetConfigMessage, OutputStreamMsgsConfig,
+ *  MsgRate, MsgRate,  ...}
+ * ```
+ */
+struct alignas(4) OutputStreamMsgsConfig {
+  /**
+   * @brief The ways that this configuration message can be applied to the
+   *        previous state of the output stream.
+   */
+  enum class Action : uint8_t {
+    /**
+     * @brief Replace the previous messages in this stream with the set provided
+     *        in this configuration.
+     */
+    REPLACE = 0
+  };
+  /** @brief The stream this message configures. */
+  uint8_t stream_index = 0;
+  /**
+   * @brief The type of action this configuration message applies to the
+   *        previous state of the output stream.
+   */
+  Action update_action = Action::REPLACE;
+  uint8_t reserved1[2] = {0};
+  /** The output interface to send this stream's messages to. */
+  InterfaceID stream_output_interface;
+  /** The number of `msg_rates` entries this message contains. */
+  uint16_t num_msgs = 0;
+  uint8_t reserved2[2] = {0};
+  /** Placeholder pointer for variable length set of messages. */
+  MsgRate msg_rates[0];
+};
+
+// TODO: Add `OutputStreamInterfacesConfig` to configure the list of
+// `InterfaceID` associated with a stream.
+
+/** @} */
 
 #pragma pack(pop)
 
