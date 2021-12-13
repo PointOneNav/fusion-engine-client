@@ -35,7 +35,7 @@ namespace ros {
  */
 
 /**
- * @brief ROS `Pose` message (MessageType::ROS_POSE).
+ * @brief ROS `Pose` message (MessageType::ROS_POSE, version 1.0).
  * @ingroup ros_messages
  *
  * See http://docs.ros.org/api/geometry_msgs/html/msg/Pose.html.
@@ -72,7 +72,7 @@ struct alignas(4) PoseMessage {
 };
 
 /**
- * @brief ROS `GPSFix` message (MessageType::ROS_GPS_FIX).
+ * @brief ROS `GPSFix` message (MessageType::ROS_GPS_FIX, version 1.0).
  * @ingroup ros_messages
  *
  * See http://docs.ros.org/api/gps_common/html/msg/GPSFix.html.
@@ -244,7 +244,7 @@ struct alignas(4) GPSFixMessage {
 };
 
 /**
- * @brief ROS `Imu` message (MessageType::ROS_IMU).
+ * @brief ROS `Imu` message (MessageType::ROS_IMU, version 1.0).
  * @ingroup ros_messages
  *
  * If any of the data elements are not available (e.g., IMU doesn't produce an
