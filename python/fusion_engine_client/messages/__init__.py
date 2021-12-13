@@ -20,4 +20,5 @@ message_type_to_class = {
     CommandResponseMessage.MESSAGE_TYPE: CommandResponseMessage,
     MessageRequest.MESSAGE_TYPE: MessageRequest,
     ResetRequest.MESSAGE_TYPE: ResetRequest,
+    VersionInfoMessage.MESSAGE_TYPE: VersionInfoMessage,
 }

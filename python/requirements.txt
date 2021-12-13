@@ -1,4 +1,5 @@
 numpy>=1.16.0
+construct>=2.10.0
 
 # Required for analysis tools only.
 plotly>=4.0.0

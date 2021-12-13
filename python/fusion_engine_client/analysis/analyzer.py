@@ -402,6 +402,17 @@ class Analyzer(object):
 """ % len(self.reader.index)
         message_table = message_table.replace('\n', '')
 
+        result = self.reader.read(message_types=[VersionInfoMessage.MESSAGE_TYPE], remove_nan_times=False,
+                                  **self.params)
+        if len(result[VersionInfoMessage.MESSAGE_TYPE].messages) != 0:
+            version = result[VersionInfoMessage.MESSAGE_TYPE].messages[-1]
+            version_types = ['fw', 'engine', 'hw', 'rx']
+            # Strip 'b' from byte string conversion
+            version_values = [str(vars(version)[k + '_version_str'])[1:] for k in version_types]
+            version_table = _data_to_table(['Version Type', 'Value'], [version_types, version_values])
+        else:
+            version_table = 'No version information.'
+
         args = {
             'duration_sec': duration_sec,
             'message_table': message_table,

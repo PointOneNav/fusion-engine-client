@@ -1,5 +1,7 @@
 from enum import IntEnum
 
+from construct import (Struct, Int64ul, Int8ul, Padding, this, Bytes)
+
 from .defs import *
 
 
@@ -237,3 +239,56 @@ class ResetRequest(MessagePayload):
 
     def __str__(self):
         return 'Reset request. [mask=0x%08x]' % self.reset_mask
+
+
+class VersionInfoMessage(MessagePayload):
+    """!
+    @brief Software and hardware version information.
+    """
+    MESSAGE_TYPE = MessageType.VERSION_INFO
+    MESSAGE_VERSION = 0
+
+    VersionInfoMessageConstruct = Struct(
+        "system_time_ns" / Int64ul,
+        "fw_version_length" / Int8ul,
+        "engine_version_length" / Int8ul,
+        "hw_version_length" / Int8ul,
+        "rx_version_length" / Int8ul,
+        Padding(4),
+        "fw_version_str" / Bytes(this.fw_version_length),
+        "engine_version_str" / Bytes(this.engine_version_length),
+        "hw_version_str" / Bytes(this.hw_version_length),
+        "rx_version_str" / Bytes(this.rx_version_length),
+    )
+
+    def __init__(self):
+        self.system_time_ns = 0
+        self.fw_version_str = ""
+        self.engine_version_str = ""
+        self.hw_version_str = ""
+        self.rx_version_str = ""
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        values = dict(self.__dict__)
+        values['fw_version_length'] = len(self.fw_version_str)
+        values['engine_version_length'] = len(self.engine_version_str)
+        values['hw_version_length'] = len(self.hw_version_str)
+        values['rx_version_length'] = len(self.rx_version_str)
+        packed_data = self.VersionInfoMessageConstruct.build(values)
+        return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
+
+    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+        parsed = self.VersionInfoMessageConstruct.parse(buffer[offset:])
+        self.__dict__.update(parsed)
+        return parsed._io.tell()
+
+    def __str__(self):
+        fields = ['system_time_ns', 'fw_version_str', 'engine_version_str', 'hw_version_str', 'rx_version_str']
+        string = f'Version Data\n'
+        for field in fields:
+            val = str(self.__dict__[field]).replace('Container:', '')
+            string += f'  {field}: {val}\n'
+        return string.rstrip()
+
+    def calcsize(self) -> int:
+        return len(self.pack())
