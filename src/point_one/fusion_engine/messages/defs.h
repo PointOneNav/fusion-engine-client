@@ -101,7 +101,12 @@ enum class MessageType : uint16_t {
   VERSION_INFO = 13003, ///< @ref VersionInfoMessage
   EVENT_NOTIFICATION = 13004, /// @ref EventNotificationMessage
 
-  MAX_VALUE = EVENT_NOTIFICATION,
+  SET_CONFIG = 13100, /// @ref SetConfigMessage
+  GET_CONFIG = 13101, /// @ref GetConfigMessage
+  SAVE_CONFIG = 13102, /// @ref SaveConfigMessage
+  CONFIG_DATA = 13103, /// @ref ConfigDataMessage
+
+  MAX_VALUE = CONFIG_DATA,
 };
 
 /** @} */
@@ -291,6 +296,18 @@ inline const char* to_string(MessageType type) {
 
     case MessageType::EVENT_NOTIFICATION:
       return "Event Notification";
+
+    case MessageType::SET_CONFIG:
+      return "Set Configuration Parameter";
+
+    case MessageType::GET_CONFIG:
+      return "Get Configuration Parameter";
+
+    case MessageType::SAVE_CONFIG:
+      return "Save Configuration";
+
+    case MessageType::CONFIG_DATA:
+      return "Configuration Parameter Value";
 
     default:
       return "Unrecognized Message";

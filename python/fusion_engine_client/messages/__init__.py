@@ -22,6 +22,11 @@ message_type_to_class = {
     ResetRequest.MESSAGE_TYPE: ResetRequest,
     VersionInfoMessage.MESSAGE_TYPE: VersionInfoMessage,
     EventNotificationMessage.MESSAGE_TYPE: EventNotificationMessage,
+
+    SetConfigMessage.MESSAGE_TYPE: SetConfigMessage,
+    GetConfigMessage.MESSAGE_TYPE: GetConfigMessage,
+    SaveConfigMessage.MESSAGE_TYPE: SaveConfigMessage,
+    ConfigDataMessage.MESSAGE_TYPE: ConfigDataMessage,
 }
 
 # Note: This must be imported after message_type_to_class is defined.
