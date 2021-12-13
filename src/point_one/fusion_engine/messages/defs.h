@@ -99,14 +99,14 @@ enum class MessageType : uint16_t {
   MESSAGE_REQUEST = 13001, ///< @ref MessageRequest
   RESET_REQUEST = 13002, ///< @ref ResetRequest
   VERSION_INFO = 13003, ///< @ref VersionInfoMessage
-  EVENT_NOTIFICATION = 13004, /// @ref EventNotificationMessage
+  EVENT_NOTIFICATION = 13004, ///< @ref EventNotificationMessage
 
-  SET_CONFIG = 13100, /// @ref SetConfigMessage
-  GET_CONFIG = 13101, /// @ref GetConfigMessage
-  SAVE_CONFIG = 13102, /// @ref SaveConfigMessage
-  CONFIG_DATA = 13103, /// @ref ConfigDataMessage
+  SET_CONFIG = 13100, ///< @ref SetConfigMessage
+  GET_CONFIG = 13101, ///< @ref GetConfigMessage
+  SAVE_CONFIG = 13102, ///< @ref SaveConfigMessage
+  CONFIG_DATA = 13103, ///< @ref ConfigDataMessage
 
-  MAX_VALUE = CONFIG_DATA,
+  MAX_VALUE = CONFIG_DATA, ///< The maximum defined @ref MessageType enum value.
 };
 
 /** @} */
