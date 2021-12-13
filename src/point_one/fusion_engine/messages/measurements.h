@@ -13,7 +13,7 @@ namespace messages {
 
 // Enforce 4-byte alignment and packing of all data structures and values.
 // Floating point values are aligned on platforms that require it. This is done
-// with a combinatation of setting struct attributes, and manual alignment
+// with a combination of setting struct attributes, and manual alignment
 // within the definitions. See the "Message Packing" section of the README.
 #pragma pack(push, 1)
 
