@@ -21,6 +21,7 @@ message_type_to_class = {
     MessageRequest.MESSAGE_TYPE: MessageRequest,
     ResetRequest.MESSAGE_TYPE: ResetRequest,
     VersionInfoMessage.MESSAGE_TYPE: VersionInfoMessage,
+    EventNotificationMessage.MESSAGE_TYPE: EventNotificationMessage,
 }
 
 # Note: This must be imported after message_type_to_class is defined.
