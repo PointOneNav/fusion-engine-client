@@ -30,9 +30,9 @@ _logger = logging.getLogger('point_one.fusion_engine.analysis.analyzer')
 
 
 def _data_to_table(col_titles: List[str], col_values: List[List[Any]]):
-    table_html = '<table><tr>'
+    table_html = '<table><tr style="background-color: #a2c4fa">'
     for title in col_titles:
-        table_html += f'<td>{title}</td>'
+        table_html += f'<th>{title}</th>'
     table_html += '</tr>'
     length = min([len(l) for l in col_values])
     for i in range(length):
@@ -869,7 +869,7 @@ class Analyzer(object):
             version_types = {'fw': 'Firmware', 'engine': 'FusionEngine', 'hw': 'Hardware', 'rx': 'GNSS Receiver'}
             # Strip 'b' from byte string conversion
             version_values = [str(vars(version)[k + '_version_str'])[1:] for k in version_types.keys()]
-            version_table = _data_to_table(['Version Type', 'Value'], [version_types.values(), version_values])
+            version_table = _data_to_table(['Type', 'Version'], [list(version_types.values()), version_values])
         else:
             version_table = 'No version information.'
 
