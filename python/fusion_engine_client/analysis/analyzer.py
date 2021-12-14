@@ -869,7 +869,7 @@ class Analyzer(object):
             version_types = {'fw': 'Firmware', 'engine': 'FusionEngine', 'hw': 'Hardware', 'rx': 'GNSS Receiver'}
             # Strip 'b' from byte string conversion
             version_values = [str(vars(version)[k + '_version_str'])[1:] for k in version_types.keys()]
-            version_table = _data_to_table(['Version Type', 'Value'], [version_types.values(), version_values])
+            version_table = _data_to_table(['Version Type', 'Value'], [list(version_types.values()), version_values])
         else:
             version_table = 'No version information.'
 
