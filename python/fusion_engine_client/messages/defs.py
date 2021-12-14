@@ -45,7 +45,7 @@ class SolutionType(IntEnum):
 class MessageType(IntEnum):
     INVALID = 0
 
-    # INS solution messages.
+    # Navigation solution messages.
     POSE = 10000
     GNSS_INFO = 10001
     GNSS_SATELLITE = 10002
@@ -58,6 +58,18 @@ class MessageType(IntEnum):
     ROS_POSE = 12000
     ROS_GPS_FIX = 12010
     ROS_IMU = 12011
+
+    # Command and control messages.
+    COMMAND_RESPONSE = 13000
+    MESSAGE_REQUEST = 13001
+    RESET_REQUEST = 13002
+    VERSION_INFO = 13003
+    EVENT_NOTIFICATION = 13004
+
+    SET_CONFIG = 13100
+    GET_CONFIG = 13101
+    SAVE_CONFIG = 13102
+    CONFIG_DATA = 13103
 
     RESERVED = 20000
 

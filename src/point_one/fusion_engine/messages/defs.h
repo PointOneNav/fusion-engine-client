@@ -16,7 +16,7 @@ namespace messages {
 
 // Enforce 4-byte alignment and packing of all data structures and values.
 // Floating point values are aligned on platforms that require it. This is done
-// with a combinatation of setting struct attributes, and manual alignment
+// with a combination of setting struct attributes, and manual alignment
 // within the definitions. See the "Message Packing" section of the README.
 #pragma pack(push, 1)
 
@@ -80,7 +80,7 @@ enum class SolutionType : uint8_t {
 enum class MessageType : uint16_t {
   INVALID = 0, ///< Invalid message type
 
-  // INS solution messages.
+  // Navigation solution messages.
   POSE = 10000, ///< @ref PoseMessage
   GNSS_INFO = 10001, ///< @ref GNSSInfoMessage
   GNSS_SATELLITE = 10002, ///< @ref GNSSSatelliteMessage
@@ -94,7 +94,19 @@ enum class MessageType : uint16_t {
   ROS_GPS_FIX = 12010, ///< @ref ros::GPSFixMessage
   ROS_IMU = 12011, ///< @ref ros::IMUMessage
 
-  MAX_VALUE = ROS_IMU,
+  // Command and control messages.
+  COMMAND_RESPONSE = 13000, ///< @ref CommandResponseMessage
+  MESSAGE_REQUEST = 13001, ///< @ref MessageRequest
+  RESET_REQUEST = 13002, ///< @ref ResetRequest
+  VERSION_INFO = 13003, ///< @ref VersionInfoMessage
+  EVENT_NOTIFICATION = 13004, ///< @ref EventNotificationMessage
+
+  SET_CONFIG = 13100, ///< @ref SetConfigMessage
+  GET_CONFIG = 13101, ///< @ref GetConfigMessage
+  SAVE_CONFIG = 13102, ///< @ref SaveConfigMessage
+  CONFIG_DATA = 13103, ///< @ref ConfigDataMessage
+
+  MAX_VALUE = CONFIG_DATA, ///< The maximum defined @ref MessageType enum value.
 };
 
 /** @} */
@@ -121,6 +133,7 @@ struct alignas(4) Timestamp {
 
 /**
  * @brief The header present at the beginning of every message.
+ * @ingroup messages
  *
  * The header is followed immediately in the binary stream by the message
  * payload specified by @ref message_type.
@@ -170,6 +183,15 @@ struct alignas(4) MessageHeader {
 
   /** Identifies the source of the serialized data. */
   uint32_t source_identifier = INVALID_SOURCE_ID;
+};
+
+/**
+ * @brief The base class for all message payloads.
+ * @ingroup messages
+ */
+struct MessagePayload {
+  // Currently empty - used simply to distinguish between payload definitions
+  // and other types.
 };
 
 #pragma pack(pop)
@@ -242,6 +264,7 @@ inline const char* to_string(MessageType type) {
     case MessageType::INVALID:
       return "Invalid";
 
+    // Navigation solution messages.
     case MessageType::POSE:
       return "Pose";
 
@@ -254,9 +277,11 @@ inline const char* to_string(MessageType type) {
     case MessageType::POSE_AUX:
       return "Pose Auxiliary";
 
+    // Sensor measurement messages.
     case MessageType::IMU_MEASUREMENT:
       return "IMU Measurement";
 
+    // ROS messages.
     case MessageType::ROS_POSE:
       return "ROS Pose";
 
@@ -265,6 +290,34 @@ inline const char* to_string(MessageType type) {
 
     case MessageType::ROS_IMU:
       return "ROS IMU";
+
+    // Command and control messages.
+    case MessageType::COMMAND_RESPONSE:
+      return "Command Response";
+
+    case MessageType::MESSAGE_REQUEST:
+      return "Message Transmission Request";
+
+    case MessageType::RESET_REQUEST:
+      return "Reset Request";
+
+    case MessageType::VERSION_INFO:
+      return "Version Information";
+
+    case MessageType::EVENT_NOTIFICATION:
+      return "Event Notification";
+
+    case MessageType::SET_CONFIG:
+      return "Set Configuration Parameter";
+
+    case MessageType::GET_CONFIG:
+      return "Get Configuration Parameter";
+
+    case MessageType::SAVE_CONFIG:
+      return "Save Configuration";
+
+    case MessageType::CONFIG_DATA:
+      return "Configuration Parameter Value";
 
     default:
       return "Unrecognized Message";

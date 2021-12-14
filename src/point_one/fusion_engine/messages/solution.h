@@ -13,14 +13,22 @@ namespace messages {
 
 // Enforce 4-byte alignment and packing of all data structures and values.
 // Floating point values are aligned on platforms that require it. This is done
-// with a combinatation of setting struct attributes, and manual alignment
+// with a combination of setting struct attributes, and manual alignment
 // within the definitions. See the "Message Packing" section of the README.
 #pragma pack(push, 1)
 
 /**
- * @brief Platform pose solution: position, velocity, attitude (@ref
- *        MessageType::POSE), version 1.1.
+ * @defgroup solution_messages Navigation Solution Message Definitions
+ * @brief Output messages containing position, navigation, and time results.
  * @ingroup messages
+ *
+ * See also @ref messages.
+ */
+
+/**
+ * @brief Platform pose solution: position, velocity, attitude (@ref
+ *        MessageType::POSE, version 1.1).
+ * @ingroup solution_messages
  *
  * @note
  * All data is timestamped using the Point One Time, which is a monotonic
@@ -28,7 +36,7 @@ namespace messages {
  * GNSSInfoMessage, @ref GNSSSatelliteMessage, etc.) may be associated using
  * their @ref p1_time values.
  */
-struct alignas(4) PoseMessage {
+struct alignas(4) PoseMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::POSE;
   static constexpr uint8_t MESSAGE_VERSION = 1;
   static constexpr int16_t INVALID_UNDULATION = INT16_MIN;
@@ -146,11 +154,11 @@ struct alignas(4) PoseMessage {
 };
 
 /**
- * @brief Auxiliary platform pose information (@ref MessageType::POSE_AUX),
- *        version 1.0.
- * @ingroup messages
+ * @brief Auxiliary platform pose information (@ref MessageType::POSE_AUX,
+ *        version 1.0).
+ * @ingroup solution_messages
  */
-struct alignas(4) PoseAuxMessage {
+struct alignas(4) PoseAuxMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::POSE_AUX;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
@@ -190,12 +198,13 @@ struct alignas(4) PoseAuxMessage {
 
 /**
  * @brief Information about the GNSS data used in the @ref PoseMessage with the
- *        corresponding timestamp (@ref MessageType::GNSS_INFO).
- * @ingroup messages
+ *        corresponding timestamp (@ref MessageType::GNSS_INFO, version 1.0).
+ * @ingroup solution_messages
  */
-struct alignas(4) GNSSInfoMessage {
+struct alignas(4) GNSSInfoMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::GNSS_INFO;
   static constexpr uint8_t MESSAGE_VERSION = 0;
+
   static constexpr uint32_t INVALID_REFERENCE_STATION = 0xFFFFFFFF;
 
   /** The time of the message, in P1 time (beginning at power-on). */
@@ -226,8 +235,8 @@ struct alignas(4) GNSSInfoMessage {
 /**
  * @brief Information about the individual satellites used in the @ref
  *        PoseMessage and @ref GNSSInfoMessage with the corresponding timestamp
- *        (@ref MessageType::GNSS_SATELLITE), version 1.1.
- * @ingroup messages
+ *        (@ref MessageType::GNSS_SATELLITE, version 1.0).
+ * @ingroup solution_messages
  *
  * This message is followed by `N` @ref SatelliteInfo objects, where `N` is
  * equal to @ref num_satellites. For example, a message with two satellites
@@ -237,7 +246,7 @@ struct alignas(4) GNSSInfoMessage {
  * {MessageHeader, GNSSSatelliteMessage, SatelliteInfo, SatelliteInfo, ...}
  * ```
  */
-struct alignas(4) GNSSSatelliteMessage {
+struct alignas(4) GNSSSatelliteMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::GNSS_SATELLITE;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 

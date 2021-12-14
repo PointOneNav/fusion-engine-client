@@ -13,21 +13,29 @@ namespace messages {
 
 // Enforce 4-byte alignment and packing of all data structures and values.
 // Floating point values are aligned on platforms that require it. This is done
-// with a combinatation of setting struct attributes, and manual alignment
+// with a combination of setting struct attributes, and manual alignment
 // within the definitions. See the "Message Packing" section of the README.
 #pragma pack(push, 1)
 
 /**
- * @brief IMU sensor measurement data (@ref MessageType::IMU_MEASUREMENT),
- *        version 1.0.
+ * @defgroup measurement_messages Sensor Measurement Message Definitions
+ * @brief Measurement data from available sensors.
  * @ingroup messages
+ *
+ * See also @ref messages.
+ */
+
+/**
+ * @brief IMU sensor measurement data (@ref MessageType::IMU_MEASUREMENT,
+ *        version 1.0).
+ * @ingroup measurement_messages
  *
  * @note
  * The data contained in this message has been corrected for accelerometer and
  * gyro biases and scale factors, and has been rotated into the vehicle body
  * frame from the original IMU orientation.
  */
-struct alignas(4) IMUMeasurement {
+struct alignas(4) IMUMeasurement : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::IMU_MEASUREMENT;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
