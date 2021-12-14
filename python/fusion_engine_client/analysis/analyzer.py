@@ -96,6 +96,7 @@ class Analyzer(object):
         }
 
         self.t0 = self.reader.t0
+        self.system_t0 = self.reader.get_system_t0()
 
         self.plots = {}
         self.summary = ''
@@ -338,6 +339,32 @@ class Analyzer(object):
 
         self._add_figure(name="imu", figure=figure, title="IMU Measurements")
 
+    def generate_event_table(self):
+        """!
+        @brief Generate a table of event notifications.
+        """
+        if self.output_dir is None:
+            return
+
+        # Read the data.
+        result = self.reader.read(message_types=[EventNotificationMessage], remove_nan_times=False, **self.params)
+        data = result[EventNotificationMessage.MESSAGE_TYPE]
+
+        if len(data.messages) == 0:
+            self.logger.info('No event notification data available.')
+            return
+
+        table_columns = ['System Time (s)', 'Event', 'Flags', 'Description']
+        table_data = [[], [], [], []]
+        table_data[0] = [f'{(m.system_time_ns - self.reader.get_system_t0_ns()) / 1e9:.3f}' for m in data.messages]
+        table_data[1] = [str(m.action) for m in data.messages]
+        table_data[2] = [f'0x{m.event_flags:016X}' for m in data.messages]
+        table_data[3] = [m.event_description.decode('utf-8') for m in data.messages]
+
+        table_html = _data_to_table(table_columns, table_data)
+
+        self._add_page('Event Log', table_html)
+
     def generate_index(self, auto_open=True):
         """!
         @brief Generate an `index.html` page with links to all generated figures.
@@ -428,6 +455,25 @@ Duration: %(duration_sec).1f seconds
 
 %(message_table)s
 """ % args
+
+    def _add_page(self, name, html_body):
+        if name in self.plots:
+            raise ValueError('Plot "%s" already exists.' % name)
+        elif name == 'index':
+            raise ValueError('Plot name cannot be index.')
+
+        path = os.path.join(self.output_dir, self.prefix + name + '.html')
+        self.logger.info('Creating %s...' % path)
+
+        table_html = _page_template % {
+            'title': name,
+            'body': html_body
+        }
+
+        with open(path, 'w') as fd:
+            fd.write(table_html)
+
+        self.plots[name] = {'title': name, 'path': path}
 
     def _add_figure(self, name, figure, title=None):
         if title is None:
@@ -576,6 +622,8 @@ Load and display information stored in a FusionEngine binary file.
 
     if options.imu:
         analyzer.plot_imu()
+
+    analyzer.generate_event_table()
 
     analyzer.generate_index(auto_open=not options.no_index)
 
