@@ -366,7 +366,7 @@ class FileReader(object):
 
         needed_message_types = [t for t in needed_message_types if message_class[t] is not None]
 
-        system_time_messages_requested = any([t in PROFILING_TYPES for t in needed_message_types])
+        system_time_messages_requested = any([t in messages_with_system_time for t in needed_message_types])
 
         # Create a dict with references to the requested types only to be returned below.
         result = {t: self.data[t] for t in message_types}
@@ -393,8 +393,8 @@ class FileReader(object):
         else:
             p1_reference_time_sec = None
 
-        # For profiling data, which is timestamped in system time, we only support relative time ranges (since absolute
-        # time is specified as P1 time, not system).
+        # For data which is timestamped in system time (CPU time, POSIX time, etc.) and not P1 time, we only support
+        # relative time ranges (since absolute time is specified as P1 time, not system).
         if absolute_time:
             # Explicitly _not_ defining system_reference_time_sec. That way, if we attempt to use it below we'll hit
             # an exception.
