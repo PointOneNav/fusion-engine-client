@@ -30,9 +30,9 @@ _logger = logging.getLogger('point_one.fusion_engine.analysis.analyzer')
 
 
 def _data_to_table(col_titles: List[str], col_values: List[List[Any]]):
-    table_html = '<table><tr>'
+    table_html = '<table><tr style="background-color: #a2c4fa">'
     for title in col_titles:
-        table_html += f'<td>{title}</td>'
+        table_html += f'<th>{title}</th>'
     table_html += '</tr>'
     length = min([len(l) for l in col_values])
     for i in range(length):
