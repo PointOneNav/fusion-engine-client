@@ -1,7 +1,4 @@
 from setuptools import setup, find_packages
-import pathlib
-
-here = pathlib.Path(__file__).parent.resolve()
 
 setup(
     name='fusion-engine-client',
@@ -14,6 +11,6 @@ setup(
         'construct>=2.10.0',
     ],
     extras_require={
-        'analysis': ["plotly>=4.0.0","pymap3d>=2.4.3"],
+        'analysis': ["plotly>=4.0.0", "pymap3d>=2.4.3"],
     },
 )
