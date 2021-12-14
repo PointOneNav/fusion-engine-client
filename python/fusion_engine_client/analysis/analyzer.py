@@ -362,8 +362,12 @@ class Analyzer(object):
         table_data[3] = [m.event_description.decode('utf-8') for m in data.messages]
 
         table_html = _data_to_table(table_columns, table_data)
+        body_html = f"""\
+<h2>Device Event Log</h2>
+<pre>{table_html}</pre>
+"""
 
-        self._add_page('Event Log', table_html)
+        self._add_page('Event Log', body_html)
 
     def generate_index(self, auto_open=True):
         """!
