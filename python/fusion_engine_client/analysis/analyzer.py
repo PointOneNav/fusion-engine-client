@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from typing import Tuple, Union
+from typing import Tuple, Union, List, Any
 
 from argparse import ArgumentParser
 import logging
@@ -27,6 +27,34 @@ from ..utils import trace
 from ..utils.log import locate_log
 _logger = logging.getLogger('point_one.fusion_engine.analysis.analyzer')
 
+
+def _data_to_table(col_titles: List[str], col_values: List[List[Any]]):
+    table_html = '<table><tr style="background-color: #a2c4fa">'
+    for title in col_titles:
+        table_html += f'<th>{title}</th>'
+    table_html += '</tr>'
+    length = min([len(l) for l in col_values])
+    for i in range(length):
+        table_html += '<tr>'
+        for l in col_values:
+            table_html += f'<td>{l[i]}</td>'
+        table_html += '</tr>'
+    table_html += '</table>'
+    return table_html
+
+
+_page_template = '''\
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+  <meta content="text/html; charset=ISO-8859-1" http-equiv="content-type">
+  <title>%(title)s</title>
+</head>
+<body>
+  %(body)s
+</body>
+</html>
+'''
 
 class Analyzer(object):
     logger = _logger
@@ -68,6 +96,7 @@ class Analyzer(object):
         }
 
         self.t0 = self.reader.t0
+        self.system_t0 = self.reader.get_system_t0()
 
         self.plots = {}
         self.summary = ''
@@ -310,6 +339,36 @@ class Analyzer(object):
 
         self._add_figure(name="imu", figure=figure, title="IMU Measurements")
 
+    def generate_event_table(self):
+        """!
+        @brief Generate a table of event notifications.
+        """
+        if self.output_dir is None:
+            return
+
+        # Read the data.
+        result = self.reader.read(message_types=[EventNotificationMessage], remove_nan_times=False, **self.params)
+        data = result[EventNotificationMessage.MESSAGE_TYPE]
+
+        if len(data.messages) == 0:
+            self.logger.info('No event notification data available.')
+            return
+
+        table_columns = ['System Time (s)', 'Event', 'Flags', 'Description']
+        table_data = [[], [], [], []]
+        table_data[0] = [f'{(m.system_time_ns - self.reader.get_system_t0_ns()) / 1e9:.3f}' for m in data.messages]
+        table_data[1] = [str(m.action) for m in data.messages]
+        table_data[2] = [f'0x{m.event_flags:016X}' for m in data.messages]
+        table_data[3] = [m.event_description.decode('utf-8') for m in data.messages]
+
+        table_html = _data_to_table(table_columns, table_data)
+        body_html = f"""\
+<h2>Device Event Log</h2>
+<pre>{table_html}</pre>
+"""
+
+        self._add_page('Event Log', body_html)
+
     def generate_index(self, auto_open=True):
         """!
         @brief Generate an `index.html` page with links to all generated figures.
@@ -322,19 +381,6 @@ class Analyzer(object):
 
         self._set_data_summary()
 
-        index_template = '''\
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
-<html>
-<head>
-  <meta content="text/html; charset=ISO-8859-1" http-equiv="content-type">
-  <title>%(title)s</title>
-</head>
-<body>
-  %(links)s
-  %(summary)s
-</body>
-</html>
-'''
         links = ''
         title_to_name = {e['title']: n for n, e in self.plots.items()}
         titles = list(title_to_name.keys())
@@ -345,10 +391,9 @@ class Analyzer(object):
             link = '<br><a href="%s" target="_blank">%s</a>' % (os.path.relpath(entry['path'], self.output_dir), title)
             links += link
 
-        index_html = index_template % {
+        index_html = _page_template % {
             'title': 'FusionEngine Output',
-            'links': links,
-            'summary': '<pre>' + self.summary.replace('\n', '<br>') + '</pre>'
+            'body': links + '\n<pre>' + self.summary.replace('\n', '<br>') + '</pre>'
         }
 
         index_path = os.path.join(self.output_dir, self.prefix + 'index.html')
@@ -374,44 +419,65 @@ class Analyzer(object):
         if self.summary != '':
             self.summary += '\n\n'
 
-        message_table = """
-<table>
-  <tr>
-    <td>Message Type</td>
-    <td>Count</td>
-  </tr>
-"""
         message_types, message_counts = np.unique(self.reader.index['type'], return_counts=True)
-        for t, c in zip(message_types, message_counts):
-            message_table += """
-  <tr>
-    <td>%s</td>
-    <td>%d</td>
-  </tr>
-""" % (MessageType.get_type_string(t), c)
-        message_table += """
+        message_types = [MessageType.get_type_string(t) for t in message_types]
+        message_table = _data_to_table(['Message Type', 'Count'], [message_types, message_counts])
+        message_table = message_table.replace('</table>', f'''
   <tr>
     <td><hr></td>
     <td><hr></td>
   </tr>
   <tr>
     <td>Total</td>
-    <td>%d</td>
+    <td>{len(self.reader.index)}</td>
   </tr>
 </table>
-""" % len(self.reader.index)
+''')
         message_table = message_table.replace('\n', '')
+
+        result = self.reader.read(message_types=[VersionInfoMessage.MESSAGE_TYPE], remove_nan_times=False,
+                                  **self.params)
+        if len(result[VersionInfoMessage.MESSAGE_TYPE].messages) != 0:
+            version = result[VersionInfoMessage.MESSAGE_TYPE].messages[-1]
+            version_types = {'fw': 'Firmware', 'engine': 'FusionEngine', 'hw': 'Hardware', 'rx': 'GNSS Receiver'}
+            # Strip 'b' from byte string conversion
+            version_values = [str(vars(version)[k + '_version_str'])[1:] for k in version_types.keys()]
+            version_table = _data_to_table(['Type', 'Version'], [list(version_types.values()), version_values])
+        else:
+            version_table = 'No version information.'
 
         args = {
             'duration_sec': duration_sec,
             'message_table': message_table,
+            'version_table': version_table,
         }
 
         self.summary += """
 Duration: %(duration_sec).1f seconds
 
+%(version_table)s
+
 %(message_table)s
 """ % args
+
+    def _add_page(self, name, html_body):
+        if name in self.plots:
+            raise ValueError('Plot "%s" already exists.' % name)
+        elif name == 'index':
+            raise ValueError('Plot name cannot be index.')
+
+        path = os.path.join(self.output_dir, self.prefix + name + '.html')
+        self.logger.info('Creating %s...' % path)
+
+        table_html = _page_template % {
+            'title': name,
+            'body': html_body
+        }
+
+        with open(path, 'w') as fd:
+            fd.write(table_html)
+
+        self.plots[name] = {'title': name, 'path': path}
 
     def _add_figure(self, name, figure, title=None):
         if title is None:
@@ -560,6 +626,8 @@ Load and display information stored in a FusionEngine binary file.
 
     if options.imu:
         analyzer.plot_imu()
+
+    analyzer.generate_event_table()
 
     analyzer.generate_index(auto_open=not options.no_index)
 

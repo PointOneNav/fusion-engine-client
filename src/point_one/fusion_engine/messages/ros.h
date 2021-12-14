@@ -12,9 +12,11 @@ namespace fusion_engine {
 namespace messages {
 namespace ros {
 
-// Enforce 4-byte alignment and packing of all data structures and values so
-// that floating point values are aligned on platforms that require it.
-#pragma pack(push, 4)
+// Enforce 4-byte alignment and packing of all data structures and values.
+// Floating point values are aligned on platforms that require it. This is done
+// with a combination of setting struct attributes, and manual alignment
+// within the definitions. See the "Message Packing" section of the README.
+#pragma pack(push, 1)
 
 /**
  * @defgroup ros_messages ROS Support Message Definitions
@@ -33,12 +35,12 @@ namespace ros {
  */
 
 /**
- * @brief ROS `Pose` message (MessageType::ROS_POSE).
+ * @brief ROS `Pose` message (MessageType::ROS_POSE, version 1.0).
  * @ingroup ros_messages
  *
  * See http://docs.ros.org/api/geometry_msgs/html/msg/Pose.html.
  */
-struct PoseMessage {
+struct alignas(4) PoseMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::ROS_POSE;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
@@ -70,12 +72,12 @@ struct PoseMessage {
 };
 
 /**
- * @brief ROS `GPSFix` message (MessageType::ROS_GPS_FIX).
+ * @brief ROS `GPSFix` message (MessageType::ROS_GPS_FIX, version 1.0).
  * @ingroup ros_messages
  *
  * See http://docs.ros.org/api/gps_common/html/msg/GPSFix.html.
  */
-struct GPSFixMessage {
+struct alignas(4) GPSFixMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::ROS_GPS_FIX;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
@@ -242,7 +244,7 @@ struct GPSFixMessage {
 };
 
 /**
- * @brief ROS `Imu` message (MessageType::ROS_IMU).
+ * @brief ROS `Imu` message (MessageType::ROS_IMU, version 1.0).
  * @ingroup ros_messages
  *
  * If any of the data elements are not available (e.g., IMU doesn't produce an
@@ -257,7 +259,7 @@ struct GPSFixMessage {
  * frame from the original IMU orientation using the FusionEngine sensor
  * calibration data.
  */
-struct IMUMessage {
+struct alignas(4) IMUMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::ROS_IMU;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
