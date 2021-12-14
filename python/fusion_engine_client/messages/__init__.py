@@ -23,3 +23,5 @@ message_type_to_class = {
     VersionInfoMessage.MESSAGE_TYPE: VersionInfoMessage,
     EventNotificationMessage.MESSAGE_TYPE: EventNotificationMessage,
 }
+
+messages_with_system_time = [t for t, c in message_type_to_class.items() if hasattr(c(), 'system_time_ns')]
