@@ -29,5 +29,7 @@ message_type_to_class = {
     ConfigDataMessage.MESSAGE_TYPE: ConfigDataMessage,
 }
 
-# Note: This must be imported after message_type_to_class is defined.
+# Note: This must be imported after message_type_to_class is defined, but before messages_with_system_time is defined.
 from .internal import *
+
+messages_with_system_time = [t for t, c in message_type_to_class.items() if hasattr(c(), 'system_time_ns')]

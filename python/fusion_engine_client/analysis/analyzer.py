@@ -866,10 +866,10 @@ class Analyzer(object):
                                   **self.params)
         if len(result[VersionInfoMessage.MESSAGE_TYPE].messages) != 0:
             version = result[VersionInfoMessage.MESSAGE_TYPE].messages[-1]
-            version_types = ['fw', 'engine', 'hw', 'rx']
+            version_types = {'fw': 'Firmware', 'engine': 'FusionEngine', 'hw': 'Hardware', 'rx': 'GNSS Receiver'}
             # Strip 'b' from byte string conversion
-            version_values = [str(vars(version)[k + '_version_str'])[1:] for k in version_types]
-            version_table = _data_to_table(['Version Type', 'Value'], [version_types, version_values])
+            version_values = [str(vars(version)[k + '_version_str'])[1:] for k in version_types.keys()]
+            version_table = _data_to_table(['Version Type', 'Value'], [version_types.values(), version_values])
         else:
             version_table = 'No version information.'
 
@@ -886,7 +886,6 @@ Duration: %(duration_sec).1f seconds
 
 %(message_table)s
 """ % args
-
 
     def _add_page(self, name, html_body):
         if name in self.plots:
@@ -906,7 +905,6 @@ Duration: %(duration_sec).1f seconds
             fd.write(table_html)
 
         self.plots[name] = {'title': name, 'path': path}
-
 
     def _add_figure(self, name, figure, title=None):
         if title is None:
@@ -1066,6 +1064,7 @@ Load and display information stored in a FusionEngine binary file.
     analyzer.plot_execution_profiling()
     analyzer.plot_execution_stats_profiling()
     analyzer.plot_counter_profiling()
+
     analyzer.generate_event_table()
 
     analyzer.generate_index(auto_open=not options.no_index)
