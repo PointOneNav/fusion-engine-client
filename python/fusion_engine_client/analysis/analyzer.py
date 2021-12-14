@@ -887,7 +887,6 @@ Duration: %(duration_sec).1f seconds
 %(message_table)s
 """ % args
 
-
     def _add_page(self, name, html_body):
         if name in self.plots:
             raise ValueError('Plot "%s" already exists.' % name)
@@ -906,7 +905,6 @@ Duration: %(duration_sec).1f seconds
             fd.write(table_html)
 
         self.plots[name] = {'title': name, 'path': path}
-
 
     def _add_figure(self, name, figure, title=None):
         if title is None:
@@ -1066,6 +1064,7 @@ Load and display information stored in a FusionEngine binary file.
     analyzer.plot_execution_profiling()
     analyzer.plot_execution_stats_profiling()
     analyzer.plot_counter_profiling()
+
     analyzer.generate_event_table()
 
     analyzer.generate_index(auto_open=not options.no_index)
