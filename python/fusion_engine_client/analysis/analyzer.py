@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from typing import Tuple, Union
+from typing import Tuple, Union, List, Any
 
 from argparse import ArgumentParser
 import logging
@@ -27,6 +27,34 @@ from ..utils import trace
 from ..utils.log import locate_log
 _logger = logging.getLogger('point_one.fusion_engine.analysis.analyzer')
 
+
+def _data_to_table(col_titles: List[str], col_values: List[List[Any]]):
+    table_html = '<table><tr>'
+    for title in col_titles:
+        table_html += f'<td>{title}</td>'
+    table_html += '</tr>'
+    length = min([len(l) for l in col_values])
+    for i in range(length):
+        table_html += '<tr>'
+        for l in col_values:
+            table_html += f'<td>{l[i]}</td>'
+        table_html += '</tr>'
+    table_html += '</table>'
+    return table_html
+
+
+_page_template = '''\
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+  <meta content="text/html; charset=ISO-8859-1" http-equiv="content-type">
+  <title>%(title)s</title>
+</head>
+<body>
+  %(body)s
+</body>
+</html>
+'''
 
 class Analyzer(object):
     logger = _logger
@@ -322,19 +350,6 @@ class Analyzer(object):
 
         self._set_data_summary()
 
-        index_template = '''\
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
-<html>
-<head>
-  <meta content="text/html; charset=ISO-8859-1" http-equiv="content-type">
-  <title>%(title)s</title>
-</head>
-<body>
-  %(links)s
-  %(summary)s
-</body>
-</html>
-'''
         links = ''
         title_to_name = {e['title']: n for n, e in self.plots.items()}
         titles = list(title_to_name.keys())
@@ -345,10 +360,9 @@ class Analyzer(object):
             link = '<br><a href="%s" target="_blank">%s</a>' % (os.path.relpath(entry['path'], self.output_dir), title)
             links += link
 
-        index_html = index_template % {
+        index_html = _page_template % {
             'title': 'FusionEngine Output',
-            'links': links,
-            'summary': '<pre>' + self.summary.replace('\n', '<br>') + '</pre>'
+            'body': links + '\n<pre>' + self.summary.replace('\n', '<br>') + '</pre>'
         }
 
         index_path = os.path.join(self.output_dir, self.prefix + 'index.html')
@@ -374,32 +388,20 @@ class Analyzer(object):
         if self.summary != '':
             self.summary += '\n\n'
 
-        message_table = """
-<table>
-  <tr>
-    <td>Message Type</td>
-    <td>Count</td>
-  </tr>
-"""
         message_types, message_counts = np.unique(self.reader.index['type'], return_counts=True)
-        for t, c in zip(message_types, message_counts):
-            message_table += """
-  <tr>
-    <td>%s</td>
-    <td>%d</td>
-  </tr>
-""" % (MessageType.get_type_string(t), c)
-        message_table += """
+        message_types = [MessageType.get_type_string(t) for t in message_types]
+        message_table = _data_to_table(['Message Type', 'Count'], [message_types, message_counts])
+        message_table = message_table.replace('</table>', f'''
   <tr>
     <td><hr></td>
     <td><hr></td>
   </tr>
   <tr>
     <td>Total</td>
-    <td>%d</td>
+    <td>{len(self.reader.index)}</td>
   </tr>
 </table>
-""" % len(self.reader.index)
+''')
         message_table = message_table.replace('\n', '')
 
         result = self.reader.read(message_types=[VersionInfoMessage.MESSAGE_TYPE], remove_nan_times=False,
@@ -416,10 +418,13 @@ class Analyzer(object):
         args = {
             'duration_sec': duration_sec,
             'message_table': message_table,
+            'version_table': version_table,
         }
 
         self.summary += """
 Duration: %(duration_sec).1f seconds
+
+%(version_table)s
 
 %(message_table)s
 """ % args
