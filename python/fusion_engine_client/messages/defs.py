@@ -356,3 +356,15 @@ class MessagePayload:
 
     def __str__(self):
         return repr(self)
+
+
+def PackedDataToBuffer(packed_data: bytes, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+    if buffer is None:
+        buffer = packed_data
+    else:
+        buffer[offset:(offset + len(packed_data))] = packed_data
+
+    if return_buffer:
+        return buffer
+    else:
+        return len(packed_data)
