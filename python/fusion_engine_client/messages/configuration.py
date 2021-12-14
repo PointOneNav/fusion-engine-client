@@ -7,12 +7,12 @@ from .defs import *
 
 
 class ConfigurationSource(IntEnum):
-    ACTIVE = 0,
+    ACTIVE = 0
     SAVED = 1
 
 
 class ConfigType(IntEnum):
-    INVALID = 0,
+    INVALID = 0
     DEVICE_LEVER_ARM = 16
     DEVICE_COARSE_ORIENTATION = 17
     GNSS_LEVER_ARM = 18
