@@ -46,6 +46,13 @@ enum class ConfigType : uint16_t {
   OUTPUT_STREAM_MSGS = 1,
 
   /**
+   * Configure the set of output streams enabled for a given output interface.
+   *
+   * Payload format: @ref OutputInterfaceConfig
+   */
+  OUTPUT_INTERFACE_STREAMS = 2,
+
+  /**
    * The location of the device IMU with respect to the vehicle body frame (in
    * meters).
    *
@@ -106,6 +113,9 @@ inline const char* to_string(ConfigType type) {
 
     case ConfigType::OUTPUT_STREAM_MSGS:
       return "Output Stream Messages";
+
+    case ConfigType::OUTPUT_INTERFACE_STREAMS:
+      return "Output Interface Streams";
 
     case ConfigType::DEVICE_LEVER_ARM:
       return "Device Lever Arm";
@@ -461,23 +471,31 @@ enum class TransportType : uint8_t {
 
 /**
  * @brief Identifies an IO interface.
+ * 
+ * (e.g., serial port 0 or TCP server 2)
  */
 struct alignas(4) InterfaceID {
+  /** The interface's transport type. **/
   TransportType type = TransportType::INVALID;
-  /**
-   * @brief An identifier for the instance of this transport.
-   *
-   * For example serial port 1 or serial port 2.
-   */
+  /** An identifier for the instance of this transport. */
   uint8_t index = 0;
   uint8_t reserved[2] = {0};
 };
 
 /**
- * @brief Configuration for an output Stream.
- *
- * Sets the messages associated with an output stream and which output interface
- * it they should be sent out.
+ * @brief The ways that this configuration message can be applied to the
+ *        previous list of values for that configuration type.
+ */
+enum class UpdateAction : uint8_t {
+  /**
+   * Replace the previous list of values with the set provided in
+   * this configuration.
+   */
+  REPLACE = 0
+};
+
+/**
+ * @brief Configure which stream(s) will be sent to an output interface.
  *
  * This message is followed by `N` @ref MsgRate objects, where `N`
  * is equal to @ref num_msgs. For example:
@@ -488,36 +506,53 @@ struct alignas(4) InterfaceID {
  * ```
  */
 struct alignas(4) OutputStreamMsgsConfig {
-  /**
-   * @brief The ways that this configuration message can be applied to the
-   *        previous state of the output stream.
-   */
-  enum class Action : uint8_t {
-    /**
-     * @brief Replace the previous messages in this stream with the set provided
-     *        in this configuration.
-     */
-    REPLACE = 0
-  };
-  /** @brief The stream this message configures. */
+  /** The stream this message configures. */
   uint8_t stream_index = 0;
   /**
-   * @brief The type of action this configuration message applies to the
-   *        previous state of the output stream.
+   * The type of action this configuration message applies to the
+   * previous state of the output stream.
    */
-  Action update_action = Action::REPLACE;
-  uint8_t reserved1[2] = {0};
-  /** The output interface to send this stream's messages to. */
-  InterfaceID stream_output_interface;
+  UpdateAction update_action = UpdateAction::REPLACE;
   /** The number of `msg_rates` entries this message contains. */
   uint16_t num_msgs = 0;
-  uint8_t reserved2[2] = {0};
   /** Placeholder pointer for variable length set of messages. */
   MsgRate msg_rates[0];
 };
 
-// TODO: Add `OutputStreamInterfacesConfig` to configure the list of
-// `InterfaceID` associated with a stream.
+/**
+ * @brief Configuration for an output interface.
+ *
+ * Sets the streams associated with an output interface.
+ *
+ * This message is followed by `N` `uint8_t` stream indices, where `N`
+ * is equal to @ref num_streams. For example:
+ *
+ * ```
+ * {MessageHeader, SetConfigMessage, OutputInterfaceConfig,
+ *  uint8_t, uint8_t,  ...}
+ * ```
+ */
+struct alignas(4) OutputInterfaceConfig {
+  /** The output interface to configure. */
+  InterfaceID output_interface;
+  /**
+   * The type of action this configuration message applies to the
+   * previous list of streams.
+   */
+  UpdateAction update_action = UpdateAction::REPLACE;
+  /** The number of `stream_indices` entries this message contains. */
+  uint8_t num_streams = 0;
+  uint8_t reserved[2] = {0};
+  /** 
+   * Placeholder pointer for variable length set of indices.
+   * 
+   * In the future these streams will be user defined, but for now they are as:
+   * - `0`: All FusionEngine messages.
+   * - `1`: All NMEA messages.
+   * - `2`: All RTCM messages.
+   */
+  uint8_t stream_indices[0];
+};
 
 /** @} */
 
