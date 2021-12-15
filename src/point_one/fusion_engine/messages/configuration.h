@@ -46,7 +46,7 @@ enum class ConfigType : uint16_t {
   OUTPUT_STREAM_MSGS = 1,
 
   /**
-   * Configure the set of output streamsenabled for a given output interface.
+   * Configure the set of output streams enabled for a given output interface.
    *
    * Payload format: @ref OutputInterfaceConfig
    */
@@ -471,14 +471,13 @@ enum class TransportType : uint8_t {
 
 /**
  * @brief Identifies an IO interface.
+ * 
+ * (e.g., serial port 0 or TCP server 2)
  */
 struct alignas(4) InterfaceID {
+  /** The interface's transport type. **/
   TransportType type = TransportType::INVALID;
-  /**
-   * @brief An identifier for the instance of this transport.
-   *
-   * For example serial port 1 or serial port 2.
-   */
+  /** An identifier for the instance of this transport. */
   uint8_t index = 0;
   uint8_t reserved[2] = {0};
 };
@@ -496,9 +495,7 @@ enum class UpdateAction : uint8_t {
 };
 
 /**
- * @brief Configuration for an output Stream.
- *
- * Sets the messages associated with an output stream.
+ * @brief Configure which stream(s) will be sent to an output interface.
  *
  * This message is followed by `N` @ref MsgRate objects, where `N`
  * is equal to @ref num_msgs. For example:
@@ -527,7 +524,7 @@ struct alignas(4) OutputStreamMsgsConfig {
  *
  * Sets the streams associated with an output interface.
  *
- * This message is followed by `N` `uint8_t` stream indexes, where `N`
+ * This message is followed by `N` `uint8_t` stream indices, where `N`
  * is equal to @ref num_streams. For example:
  *
  * ```
@@ -543,18 +540,18 @@ struct alignas(4) OutputInterfaceConfig {
    * previous list of streams.
    */
   UpdateAction update_action = UpdateAction::REPLACE;
-  /** The number of `stream_indexes` entries this message contains. */
+  /** The number of `stream_indices` entries this message contains. */
   uint8_t num_streams = 0;
   uint8_t reserved[2] = {0};
   /** 
-   * @brief Placeholder pointer for variable length set of indexes.
+   * Placeholder pointer for variable length set of indices.
    * 
    * In the future these streams will be user defined, but for now they are as:
    * - `0`: All FusionEngine messages.
    * - `1`: All NMEA messages.
    * - `2`: All RTCM messages.
    */
-  uint8_t stream_indexes[0];
+  uint8_t stream_indices[0];
 };
 
 /** @} */
