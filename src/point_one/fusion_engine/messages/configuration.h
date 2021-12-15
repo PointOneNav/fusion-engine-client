@@ -114,6 +114,9 @@ inline const char* to_string(ConfigType type) {
     case ConfigType::OUTPUT_STREAM_MSGS:
       return "Output Stream Messages";
 
+    case ConfigType::OUTPUT_INTERFACE_STREAMS:
+      return "Output Interface Streams";
+
     case ConfigType::DEVICE_LEVER_ARM:
       return "Device Lever Arm";
 
