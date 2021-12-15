@@ -551,7 +551,7 @@ struct alignas(4) OutputInterfaceConfig {
    * - `1`: All NMEA messages.
    * - `2`: All RTCM messages.
    */
-  MsgRate stream_indexes[0];
+  uint8_t stream_indexes[0];
 };
 
 /** @} */
