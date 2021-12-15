@@ -524,7 +524,7 @@ struct alignas(4) OutputStreamMsgsConfig {
  *
  * Sets the streams associated with an output interface.
  *
- * This message is followed by `N` @ref uint8_t stream indexes, where `N`
+ * This message is followed by `N` `uint8_t` stream indexes, where `N`
  * is equal to @ref num_streams. For example:
  *
  * ```
