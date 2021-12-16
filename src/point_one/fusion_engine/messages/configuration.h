@@ -555,11 +555,11 @@ struct alignas(4) InterfaceID {
 };
 
 /**
- * @brief @ref ConfigurationSource stream operator.
+ * @brief @ref InterfaceID stream operator.
  * @ingroup config_and_ctrl_messages
  */
 inline std::ostream& operator<<(std::ostream& stream, InterfaceID val) {
-  stream << '[type=' << to_string(val.type) << ", index=" << (int)val.index
+  stream << "[type=" << to_string(val.type) << ", index=" << (int)val.index
          << "]";
   return stream;
 }
