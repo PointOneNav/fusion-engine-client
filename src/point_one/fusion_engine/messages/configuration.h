@@ -552,6 +552,14 @@ struct alignas(4) InterfaceID {
   /** An identifier for the instance of this transport. */
   uint8_t index = 0;
   uint8_t reserved[2] = {0};
+
+  bool operator==(const InterfaceID& other) const {
+    return type == other.type && index == other.index;
+  }
+
+  bool inline operator!=(const InterfaceID& other) const {
+    return !(*this == other);
+  }
 };
 
 /**
