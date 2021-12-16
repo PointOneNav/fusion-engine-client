@@ -223,7 +223,7 @@ inline const char* to_string(SaveAction action) {
       return "Revert To Default";
 
     default:
-      return "Unknown";
+      return "Unrecognized";
   }
 }
 
@@ -430,6 +430,39 @@ enum class ProtocolType : uint8_t {
 };
 
 /**
+ * @brief Get a human-friendly string name for the specified @ref
+ *        ProtocolType.
+ * @ingroup config_and_ctrl_messages
+ *
+ * @param val The enum to get the string name for.
+ *
+ * @return The corresponding string name.
+ */
+inline const char* to_string(ProtocolType val) {
+  switch (val) {
+    case ProtocolType::INVALID:
+      return "Invalid";
+    case ProtocolType::FUSION_ENGINE:
+      return "FusionEngine";
+    case ProtocolType::NMEA:
+      return "NMEA";
+    case ProtocolType::RTCM:
+      return "RTCM";
+    default:
+      return "Unrecognized";
+  }
+}
+
+/**
+ * @brief @ref ProtocolType stream operator.
+ * @ingroup config_and_ctrl_messages
+ */
+inline std::ostream& operator<<(std::ostream& stream, ProtocolType val) {
+  stream << to_string(val) << " (" << (int)val << ")";
+  return stream;
+}
+
+/**
  * @brief Identifies a message type.
  */
 struct alignas(4) MsgType {
@@ -470,8 +503,47 @@ enum class TransportType : uint8_t {
 };
 
 /**
+ * @brief Get a human-friendly string name for the specified @ref
+ *        TransportType.
+ * @ingroup config_and_ctrl_messages
+ *
+ * @param val The enum to get the string name for.
+ *
+ * @return The corresponding string name.
+ */
+inline const char* to_string(TransportType val) {
+  switch (val) {
+    case TransportType::INVALID:
+      return "Invalid";
+    case TransportType::SERIAL:
+      return "Serial";
+    case TransportType::FILE:
+      return "File";
+    case TransportType::TCP_CLIENT:
+      return "TCP Client";
+    case TransportType::TCP_SERVER:
+      return "TCP Server";
+    case TransportType::UDP_CLIENT:
+      return "UDP Client";
+    case TransportType::UDP_SERVER:
+      return "UDP Server";
+    default:
+      return "Unrecognized";
+  }
+}
+
+/**
+ * @brief @ref TransportType stream operator.
+ * @ingroup config_and_ctrl_messages
+ */
+inline std::ostream& operator<<(std::ostream& stream, TransportType val) {
+  stream << to_string(val) << " (" << (int)val << ")";
+  return stream;
+}
+
+/**
  * @brief Identifies an IO interface.
- * 
+ *
  * (e.g., serial port 0 or TCP server 2)
  */
 struct alignas(4) InterfaceID {
@@ -480,7 +552,25 @@ struct alignas(4) InterfaceID {
   /** An identifier for the instance of this transport. */
   uint8_t index = 0;
   uint8_t reserved[2] = {0};
+
+  bool operator==(const InterfaceID& other) const {
+    return type == other.type && index == other.index;
+  }
+
+  bool inline operator!=(const InterfaceID& other) const {
+    return !(*this == other);
+  }
 };
+
+/**
+ * @brief @ref InterfaceID stream operator.
+ * @ingroup config_and_ctrl_messages
+ */
+inline std::ostream& operator<<(std::ostream& stream, InterfaceID val) {
+  stream << "[type=" << to_string(val.type) << ", index=" << (int)val.index
+         << "]";
+  return stream;
+}
 
 /**
  * @brief The ways that this configuration message can be applied to the
@@ -543,9 +633,9 @@ struct alignas(4) OutputInterfaceConfig {
   /** The number of `stream_indices` entries this message contains. */
   uint8_t num_streams = 0;
   uint8_t reserved[2] = {0};
-  /** 
+  /**
    * Placeholder pointer for variable length set of indices.
-   * 
+   *
    * In the future these streams will be user defined, but for now they are as:
    * - `0`: All FusionEngine messages.
    * - `1`: All NMEA messages.
