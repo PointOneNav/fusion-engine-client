@@ -443,7 +443,7 @@ inline const char* to_string(ProtocolType val) {
     case ProtocolType::INVALID:
       return "Invalid";
     case ProtocolType::FUSION_ENGINE:
-      return "Fusion Engine";
+      return "FusionEngine";
     case ProtocolType::NMEA:
       return "NMEA";
     case ProtocolType::RTCM:
