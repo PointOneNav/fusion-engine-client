@@ -40,33 +40,34 @@ class Direction(IntEnum):
 
 class _ConfigClassGenerator:
     """!
-    @brief Internal class for generating ConfigClass children.
+    @brief Internal class for generating `ConfigClass` children.
 
     These classes consist of 3 pieces:
-    - The ConfigType associated with the class.
+    - The `ConfigType` associated with the class.
     - An accessor class. This is the class that's used to get/set the values for the config object.
     - A serialization class. This is the class that (de)serializes the data for the config object.
 
     To generate a ConfigClass:
-    - Declared as a child of NamedTuple. The NamedTuple defines the fields.
-    - Add a create_config_class decorator that takes the ConfigType and serialization Construct associated with the class.
+    - Declared as a child of `NamedTuple`. The `NamedTuple` defines the fields.
+    - Add a `create_config_class` decorator that takes the `ConfigType` and serialization Construct associated with the
+      class.
 
     For example:
     ```{.py}
-        gen = _ConfigClassGenerator()
+        _gen = _ConfigClassGenerator()
 
-        class Foo(NamedTuple):
+        class _FooData(NamedTuple):
             x: int
 
-        FooConstruct = Struct(
+        _FooConstruct = Struct(
             "x" / Int32ul
         )
 
-        @gen.create_config_class(ConfigType.BAR, FooConstruct)
-        class Bar(Foo)
+        @_gen.create_config_class(ConfigType.BAR, _FooConstruct)
+        class Bar(_FooData): pass
     ```
-    Would create a new ConfigClass Bar. Messages with ConfigType.BAR will attempt to (de)serialize to Bar. This
-    serialization is defined by FooConstruct. The user accessible fields are defined in Foo.
+    Would create a new `ConfigClass` Bar. Messages with ConfigType.BAR will attempt to (de)serialize to Bar. This
+    serialization is defined by _FooConstruct. The user accessible fields are defined in _FooData.
     """
     class ConfigClass:
         """!
@@ -178,14 +179,14 @@ class OutputLeverArmConfig(_conf_gen.Point3F):
 @_conf_gen.create_config_class(ConfigType.UART0_BAUD, _conf_gen.UInt32Construct)
 class Uart0BaudConfig(_conf_gen.IntegerVal):
     """!
-    @brief Configure the UART0 serial baud rate (in bits/second).
+    @brief The UART0 serial baud rate (in bits/second).
     """
     pass
 
 @_conf_gen.create_config_class(ConfigType.UART1_BAUD, _conf_gen.UInt32Construct)
 class Uart1BaudConfig(_conf_gen.IntegerVal):
     """!
-    @brief Configure the UART1 serial baud rate (in bits/second).
+    @brief The UART1 serial baud rate (in bits/second).
     """
     pass
 
