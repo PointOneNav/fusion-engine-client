@@ -6,6 +6,7 @@ cc_library(
     deps = [
         ":core",
         ":messages",
+        ":parsers",
     ],
 )
 
@@ -82,6 +83,21 @@ cc_library(
         "src/point_one/fusion_engine/common/portability.h",
     ],
     includes = ["src"],
+)
+
+# Message encode/decode support.
+cc_library(
+    name = "parsers",
+    srcs = [
+        "src/point_one/fusion_engine/parsers/fusion_engine_framer.cc",
+    ],
+    hdrs = [
+        "src/point_one/fusion_engine/parsers/fusion_engine_framer.h",
+    ],
+    deps = [
+        ":core_headers",
+        ":crc",
+    ],
 )
 
 # CRC support.
