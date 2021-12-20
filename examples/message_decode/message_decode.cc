@@ -86,11 +86,19 @@ bool DecodeMessage(std::ifstream& stream, size_t available_bytes) {
     double p1_time_sec =
         contents.p1_time.seconds + (contents.p1_time.fraction_ns * 1e-9);
 
+    static constexpr double SEC_PER_WEEK = 7 * 24 * 3600.0;
+    double gps_time_sec =
+        contents.gps_time.seconds + (contents.gps_time.fraction_ns * 1e-9);
+    int gps_week = std::lround(gps_time_sec / SEC_PER_WEEK);
+    double gps_tow_sec = gps_time_sec - (gps_week * SEC_PER_WEEK);
+
     printf("Received pose message @ P1 time %.3f seconds. [sequence=%u, "
            "size=%zu B]\n",
            p1_time_sec, header.sequence_number, message_size);
     printf("  Position (LLA): %.6f, %.6f, %.3f (deg, deg, m)\n",
            contents.lla_deg[0], contents.lla_deg[1], contents.lla_deg[2]);
+    printf("  GPS Time: %d:%.3f (%.3f seconds)\n", gps_week, gps_tow_sec,
+           gps_time_sec);
     printf("  Attitude (YPR): %.2f, %.2f, %.2f (deg, deg, deg)\n",
            contents.ypr_deg[0], contents.ypr_deg[1], contents.ypr_deg[2]);
     printf("  Velocity (Body): %.2f, %.2f, %.2f (m/s, m/s, m/s)\n",
