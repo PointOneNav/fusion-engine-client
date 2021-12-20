@@ -87,6 +87,11 @@ public:
   /**
    * @brief Enable/disable warnings for CRC and "message too large" failures.
    *
+   * This is typically used when the incoming stream has multiple types of
+   * binary content (e.g., interleaved FusionEngine and RTCM messages), and the
+   * FusionEngine message preamble is expected to appear in the non-FusionEngine
+   * content occasionally.
+   *
    * @param enabled If `true`, issue warnings on errors.
    */
   void WarnOnError(bool enabled) {
