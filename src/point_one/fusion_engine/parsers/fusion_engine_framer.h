@@ -5,10 +5,12 @@
 
 #pragma once
 
+#include <cstddef> // For size_t
 #include <cstdint>
 #include <functional>
 #include <memory>
 
+#include "point_one/fusion_engine/common/portability.h" // For p1_ssize_t
 #include "point_one/fusion_engine/messages/defs.h"
 
 namespace point_one {
@@ -157,7 +159,7 @@ public:
    * @return The total size of all valid, complete messages, 0 if no messages
    *         were completed, or <0 CRC or "message too large" error.
    */
-  ssize_t OnByte(bool quiet);
+  p1_ssize_t OnByte(bool quiet);
 
   /**
    * @brief Perform a resynchronization operation starting at `buffer_[1]`.

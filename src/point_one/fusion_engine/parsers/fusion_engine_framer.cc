@@ -95,7 +95,7 @@ size_t FusionEngineFramer::OnData(const uint8_t* buffer, size_t length_bytes) {
     for (size_t idx = 0; idx < length_bytes; ++idx) {
       uint8_t byte = buffer[idx];
       buffer_[next_byte_index_++] = byte;
-      ssize_t dispatched_message_size = OnByte(false);
+      p1_ssize_t dispatched_message_size = OnByte(false);
       if (dispatched_message_size == 0) {
         // Waiting for more data. Nothing to do.
       }
@@ -130,7 +130,7 @@ size_t FusionEngineFramer::OnData(const uint8_t* buffer, size_t length_bytes) {
 }
 
 /******************************************************************************/
-ssize_t FusionEngineFramer::OnByte(bool quiet) {
+p1_ssize_t FusionEngineFramer::OnByte(bool quiet) {
   // User-supplied buffer was too small. Can't parse messages.
   if (buffer_ == nullptr) {
     return 0;
@@ -267,7 +267,7 @@ ssize_t FusionEngineFramer::OnByte(bool quiet) {
         callback_(*header, payload);
       }
       state_ = State::SYNC0;
-      return current_message_size_;
+      return static_cast<p1_ssize_t>(current_message_size_);
     }
     else {
       if (quiet) {
@@ -360,7 +360,7 @@ size_t FusionEngineFramer::Resync() {
     // Note that next_byte_index_ always points to the next open slot, i.e.,
     // one byte _after_ the current byte.
     next_byte_index_ = offset + 1;
-    ssize_t message_size = OnByte(true);
+    p1_ssize_t message_size = OnByte(true);
 
     if (state_ == State::SYNC0) {
       // Note that offset will be incremented when we loop around, so we set it
