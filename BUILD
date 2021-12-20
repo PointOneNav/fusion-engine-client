@@ -44,7 +44,6 @@ cc_library(
 cc_library(
     name = "core_headers",
     hdrs = [
-        "src/point_one/fusion_engine/common/portability.h",
         "src/point_one/fusion_engine/messages/configuration.h",
         "src/point_one/fusion_engine/messages/control.h",
         "src/point_one/fusion_engine/messages/core.h",
@@ -52,7 +51,9 @@ cc_library(
         "src/point_one/fusion_engine/messages/measurements.h",
         "src/point_one/fusion_engine/messages/solution.h",
     ],
-    includes = ["src"],
+    deps = [
+        ":common",
+    ],
 )
 
 # ROS translation message definitions.
@@ -69,6 +70,19 @@ cc_library(
 ################################################################################
 # Support Functionality
 ################################################################################
+
+# Common support code.
+cc_library(
+    name = "common",
+    srcs = [
+        "src/point_one/fusion_engine/common/logging.cc",
+    ],
+    hdrs = [
+        "src/point_one/fusion_engine/common/logging.h",
+        "src/point_one/fusion_engine/common/portability.h",
+    ],
+    includes = ["src"],
+)
 
 # CRC support.
 cc_library(
