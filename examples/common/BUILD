@@ -1,12 +1,14 @@
 package(default_visibility = ["//visibility:public"])
 
-cc_binary(
-    name = "tcp_client",
+cc_library(
+    name = "print_message",
     srcs = [
-        "tcp_client.cc",
+        "print_message.cc",
+    ],
+    hdrs = [
+        "print_message.h",
     ],
     deps = [
-        "//common:print_message",
         "@fusion_engine_client",
     ],
 )

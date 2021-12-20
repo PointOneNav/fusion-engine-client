@@ -22,10 +22,11 @@
 #include <sys/socket.h> // For socket support.
 #include <unistd.h> // For close()
 
-#include <point_one/fusion_engine/messages/core.h>
 #include <point_one/fusion_engine/parsers/fusion_engine_framer.h>
 
-using namespace point_one::fusion_engine::messages;
+#include "../common/print_message.h"
+
+using namespace point_one::fusion_engine::examples;
 using namespace point_one::fusion_engine::parsers;
 
 static bool shutdown_pending_ = false;
@@ -35,50 +36,6 @@ void HandleSignal(int signal) {
   if (signal == SIGINT || signal == SIGTERM) {
     std::signal(signal, SIG_DFL);
     shutdown_pending_ = true;
-  }
-}
-
-/******************************************************************************/
-void HandleMessage(const MessageHeader& header, const void* payload) {
-  if (header.message_type == MessageType::POSE) {
-    auto& contents = *static_cast<const PoseMessage*>(payload);
-
-    double p1_time_sec =
-        contents.p1_time.seconds + (contents.p1_time.fraction_ns * 1e-9);
-
-    static constexpr double SEC_PER_WEEK = 7 * 24 * 3600.0;
-    double gps_time_sec =
-        contents.gps_time.seconds + (contents.gps_time.fraction_ns * 1e-9);
-    int gps_week = std::lround(gps_time_sec / SEC_PER_WEEK);
-    double gps_tow_sec = gps_time_sec - (gps_week * SEC_PER_WEEK);
-
-    printf(
-        "Received pose message @ P1 time %.3f seconds. [sequence=%u, "
-        "size=%zu B]\n",
-        p1_time_sec, header.sequence_number,
-        sizeof(MessageHeader) + header.payload_size_bytes);
-    printf("  GPS Time: %d:%.3f (%.3f seconds)\n", gps_week, gps_tow_sec,
-           gps_time_sec);
-    printf("  Position (LLA): %.6f, %.6f, %.3f (deg, deg, m)\n",
-           contents.lla_deg[0], contents.lla_deg[1], contents.lla_deg[2]);
-    printf("  Attitude (YPR): %.2f, %.2f, %.2f (deg, deg, deg)\n",
-           contents.ypr_deg[0], contents.ypr_deg[1], contents.ypr_deg[2]);
-    printf("  Velocity (Body): %.2f, %.2f, %.2f (m/s, m/s, m/s)\n",
-           contents.velocity_body_mps[0], contents.velocity_body_mps[1],
-           contents.velocity_body_mps[2]);
-    printf("  Position Std Dev (ENU): %.2f, %.2f, %.2f (m, m, m)\n",
-           contents.position_std_enu_m[0], contents.position_std_enu_m[1],
-           contents.position_std_enu_m[2]);
-    printf("  Attitude Std Dev (YPR): %.2f, %.2f, %.2f (deg, deg, deg)\n",
-           contents.ypr_std_deg[0], contents.ypr_std_deg[1],
-           contents.ypr_std_deg[2]);
-    printf("  Velocity Std Dev (Body): %.2f, %.2f, %.2f (m/s, m/s, m/s)\n",
-           contents.velocity_std_body_mps[0], contents.velocity_std_body_mps[1],
-           contents.velocity_std_body_mps[2]);
-    printf("  Protection Levels:\n");
-    printf("    Aggregate: %.2f m\n", contents.aggregate_protection_level_m);
-    printf("    Horizontal: %.2f m\n", contents.horizontal_protection_level_m);
-    printf("    Vertical: %.2f m\n", contents.vertical_protection_level_m);
   }
 }
 
@@ -132,7 +89,7 @@ contents.
 
   // Receive incoming data.
   FusionEngineFramer framer(1024);
-  framer.SetMessageCallback(HandleMessage);
+  framer.SetMessageCallback(PrintMessage);
 
   uint8_t buffer[1024];
   size_t total_bytes_read = 0;

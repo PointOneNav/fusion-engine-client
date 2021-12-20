@@ -1,2 +1,3 @@
 add_executable(tcp_client tcp_client.cc)
 target_link_libraries(tcp_client PUBLIC fusion_engine_client)
+target_link_libraries(tcp_client PUBLIC print_message)
