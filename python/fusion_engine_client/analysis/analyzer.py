@@ -3,6 +3,7 @@
 from typing import Tuple, Union, List, Any
 
 from argparse import ArgumentParser
+from collections import namedtuple
 import logging
 import os
 import sys
@@ -26,6 +27,19 @@ from .file_reader import FileReader
 from ..utils import trace
 from ..utils.log import locate_log
 _logger = logging.getLogger('point_one.fusion_engine.analysis.analyzer')
+
+
+SolutionTypeInfo = namedtuple('SolutionTypeInfo', ['name', 'style'])
+
+_SOLUTION_TYPE_MAP = {
+    SolutionType.Integrate: SolutionTypeInfo(name='Integrated', style={'color': 'cyan'}),
+    SolutionType.AutonomousGPS: SolutionTypeInfo(name='Standalone', style={'color': 'red'}),
+    SolutionType.DGPS: SolutionTypeInfo(name='DGPS', style={'color': 'blue'}),
+    SolutionType.RTKFloat: SolutionTypeInfo(name='RTK Float', style={'color': 'green'}),
+    SolutionType.RTKFixed: SolutionTypeInfo(name='RTK Fixed', style={'color': 'orange'}),
+    SolutionType.PPP: SolutionTypeInfo(name='PPP', style={'color': 'pink'}),
+    SolutionType.Visual: SolutionTypeInfo(name='Vision', style={'color': 'purple'}),
+}
 
 
 def _data_to_table(col_titles: List[str], col_values: List[List[Any]]):
@@ -295,8 +309,8 @@ class Analyzer(object):
                 # If there's no data, draw a dummy trace so it shows up in the legend anyway.
                 map_data.append(go.Scattermapbox(lat=[np.nan], lon=[np.nan], name=name, **style))
 
-        _plot_data('Non-Fixed', solution_type != SolutionType.RTKFixed, {'color': 'red'})
-        _plot_data('RTK Fixed', solution_type == SolutionType.RTKFixed, {'color': 'orange'})
+        for type, info in _SOLUTION_TYPE_MAP.items():
+            _plot_data(info.name, solution_type == type, marker_style=info.style)
 
         # Create the map.
         layout = go.Layout(
