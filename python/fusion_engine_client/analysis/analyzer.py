@@ -56,6 +56,7 @@ _page_template = '''\
 </html>
 '''
 
+
 class Analyzer(object):
     logger = _logger
 
@@ -214,6 +215,36 @@ class Analyzer(object):
                          2, 3)
 
         self._add_figure(name="pose", figure=figure, title="Vehicle Pose")
+
+    def plot_solution_type(self):
+        """!
+        @brief Plot the solution type over time.
+        """
+        if self.output_dir is None:
+            return
+
+        # Read the pose data.
+        result = self.reader.read(message_types=[PoseMessage], **self.params)
+        pose_data = result[PoseMessage.MESSAGE_TYPE]
+
+        if len(pose_data.p1_time) == 0:
+            self.logger.info('No pose data available.')
+            return
+
+        # Setup the figure.
+        figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=True, subplot_titles=['Solution Type'])
+
+        figure['layout']['xaxis'].update(title="Time (sec)")
+        figure['layout']['yaxis1'].update(title="Solution Type",
+                                          ticktext=['%s (%d)' % (e.name, e.value) for e in SolutionType],
+                                          tickvals=[e.value for e in SolutionType])
+
+        time = pose_data.p1_time - float(self.t0)
+
+        text = ["Time: %.3f sec (%.3f sec)" % (t, t + float(self.t0)) for t in time]
+        figure.add_trace(go.Scattergl(x=time, y=pose_data.solution_type, text=text), 1, 1)
+
+        self._add_figure(name="solution_type", figure=figure, title="Solution Type")
 
     def plot_map(self, mapbox_token):
         """!
@@ -621,6 +652,7 @@ Load and display information stored in a FusionEngine binary file.
                         prefix=options.prefix + '.' if options.prefix is not None else '',
                         time_range=time_range, absolute_time=options.absolute_time)
 
+    analyzer.plot_solution_type()
     analyzer.plot_pose()
     analyzer.plot_map(mapbox_token=options.mapbox_token)
 
