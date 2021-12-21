@@ -307,7 +307,7 @@ class Analyzer(object):
                                                  **style))
             else:
                 # If there's no data, draw a dummy trace so it shows up in the legend anyway.
-                map_data.append(go.Scattermapbox(lat=[np.nan], lon=[np.nan], name=name, **style))
+                map_data.append(go.Scattermapbox(lat=[np.nan], lon=[np.nan], name=name, visible='legendonly', **style))
 
         for type, info in _SOLUTION_TYPE_MAP.items():
             _plot_data(info.name, solution_type == type, marker_style=info.style)
