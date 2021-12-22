@@ -98,8 +98,10 @@ class EnumAdapter(Adapter):
             FOO = 0
             BAR = 1
 
+        ConfigConstruct = EnumAdapter(ConfigType, Enum(Int32ul, ConfigType))
+
         UserConfigConstruct = Struct(
-            "config_type" / Enum(Int16ul, ConfigType),
+            "config_type" / ConfigConstruct,
         )
 
         data = UserConfigConstruct.build({'config_type': ConfigType.ACTIVE})
@@ -123,4 +125,21 @@ class EnumAdapter(Adapter):
         return obj
 
 def AutoEnum(construct_cls, enum_cls):
+    """!
+    @brief Wrapper for @ref EnumAdapter to make its arguments simpler.
+
+    Usage Example:
+    ```{.py}
+        class ConfigType(IntEnum):
+            FOO = 0
+            BAR = 1
+
+        UserConfigConstruct = Struct(
+            "config_type" / AutoEnum(Int32ul, ConfigType),
+        )
+
+        data = UserConfigConstruct.build({'config_type': ConfigType.ACTIVE})
+        assert ConfigType.ACTIVE == UserConfigConstruct.parse(data).config_type
+    ```
+    """
     return EnumAdapter(enum_cls, Enum(construct_cls, enum_cls))

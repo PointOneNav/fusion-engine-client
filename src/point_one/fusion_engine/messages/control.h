@@ -48,36 +48,6 @@ namespace messages {
  * @ingroup config_and_ctrl_messages
  */
 struct alignas(4) CommandResponseMessage : public MessagePayload {
-  /** @brief Command response status indicators. */
-  enum class Response : uint8_t {
-    OK = 0,
-    /**
-     * A version specified in the command or subcommand could not be handled.
-     * This could mean that the version was too new, or it was old and there was
-     * not a translation for it.
-     */
-    UNSUPPORTED_CMD_VERSION = 1,
-    /**
-     * The command interacts with a feature that is not present on the target
-     * device (e.g., Setting the baud rate on a device without a serial port).
-     */
-    UNSUPPORTED_FEATURE = 2,
-    /**
-     * One or more values in the command were not in acceptable ranges (e.g., An
-     * undefined enum value, or an invalid baud rate).
-     */
-    VALUE_ERROR = 3,
-    /**
-     * The command would require adding too many elements to an internal
-     * storage.
-     */
-    INSUFFICIENT_SPACE = 4,
-    /**
-     * There was a runtime failure executing the command.
-     */
-    EXECUTION_FAILURE = 5,
-  };
-
   static constexpr MessageType MESSAGE_TYPE = MessageType::COMMAND_RESPONSE;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
@@ -99,7 +69,7 @@ struct alignas(4) CommandResponseMessage : public MessagePayload {
  *
  * Not all message types may be requested explicitly. If a message type cannot
  * be requested on demand or is not supported, the device will respond with a
- * @ref CommandResponseMessage::Response::UNSUPPORTED_FEATURE message.
+ * @ref Response::UNSUPPORTED_FEATURE message.
  *
  * @note
  * The generated response may not immediately follow the request if other
