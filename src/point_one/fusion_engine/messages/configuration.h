@@ -261,7 +261,7 @@ struct alignas(4) SetConfigMessage : public MessagePayload {
  *        MessageType::GET_CONFIG, version 1.0).
  * @ingroup config_and_ctrl_messages
  *
- * The device will respond with a @ref ConfigDataMessage containing the
+ * The device will respond with a @ref ConfigResponseMessage containing the
  * requested parameter value, or a @ref CommandResponseMessage on failure.
  */
 struct alignas(4) GetConfigMessage : public MessagePayload {
@@ -306,15 +306,15 @@ struct alignas(4) SaveConfigMessage : public MessagePayload {
  * payload will include a single 32-bit unsigned integer:
  *
  * ```
- * {MessageHeader, ConfigDataMessage, uint32_t}
+ * {MessageHeader, ConfigResponseMessage, uint32_t}
  * ```
  *
  * In response to a @ref GetConfigMessage with an invalid or unsupported @ref
- * ConfigType, @ref config_type in the resulting @ref ConfigDataMessage will be
+ * ConfigType, @ref config_type in the resulting @ref ConfigResponseMessage will be
  * set to @ref ConfigType::INVALID. Note that invalid and rejected requests will
- * receive a @ref ConfigDataMessage, not a @ref CommandResponseMessage.
+ * receive a @ref ConfigResponseMessage, not a @ref CommandResponseMessage.
  */
-struct alignas(4) ConfigDataMessage : public MessagePayload {
+struct alignas(4) ConfigResponseMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::CONFIG_DATA;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
@@ -330,7 +330,10 @@ struct alignas(4) ConfigDataMessage : public MessagePayload {
   /** The type of configuration parameter contained in this message. */
   ConfigType config_type = ConfigType::INVALID;
 
-  uint8_t reserved[4] = {0};
+  /** The response status (success, error, etc.). */
+  Response response = Response::OK;
+
+  uint8_t reserved[3] = {0};
 
   /** The size of the parameter value, @ref config_change_data (in bytes). */
   uint32_t config_length_bytes = 0;
@@ -390,6 +393,318 @@ struct alignas(4) CoarseOrientation {
 
   uint8_t reserved[2] = {0};
 };
+
+/** @} */
+
+/**************************************************************************/ /**
+ * @name Input/Output Stream Control
+ * @{
+ ******************************************************************************/
+
+/**
+ * @brief The framing protocol of a message.
+ */
+enum class ProtocolType : uint8_t {
+  INVALID = 0,
+  FUSION_ENGINE = 1,
+  NMEA = 2,
+  RTCM = 3,
+};
+
+/**
+ * @brief Get a human-friendly string name for the specified @ref
+ *        ProtocolType.
+ * @ingroup config_and_ctrl_messages
+ *
+ * @param val The enum to get the string name for.
+ *
+ * @return The corresponding string name.
+ */
+inline const char* to_string(ProtocolType val) {
+  switch (val) {
+    case ProtocolType::INVALID:
+      return "Invalid";
+    case ProtocolType::FUSION_ENGINE:
+      return "FusionEngine";
+    case ProtocolType::NMEA:
+      return "NMEA";
+    case ProtocolType::RTCM:
+      return "RTCM";
+    default:
+      return "Unrecognized";
+  }
+}
+
+/**
+ * @brief @ref ProtocolType stream operator.
+ * @ingroup config_and_ctrl_messages
+ */
+inline std::ostream& operator<<(std::ostream& stream, ProtocolType val) {
+  stream << to_string(val) << " (" << (int)val << ")";
+  return stream;
+}
+
+/**
+ * @brief Type of IO interface transport.
+ */
+enum class TransportType : uint8_t {
+  INVALID = 0,
+  SERIAL = 1,
+  FILE = 2,
+  TCP_CLIENT = 3,
+  TCP_SERVER = 4,
+  UDP_CLIENT = 5,
+  UDP_SERVER = 6,
+  /** This is used for requesting the configuration for all interfaces. */
+  ALL = 255,
+};
+
+/**
+ * @brief Get a human-friendly string name for the specified @ref
+ *        TransportType.
+ * @ingroup config_and_ctrl_messages
+ *
+ * @param val The enum to get the string name for.
+ *
+ * @return The corresponding string name.
+ */
+inline const char* to_string(TransportType val) {
+  switch (val) {
+    case TransportType::INVALID:
+      return "Invalid";
+    case TransportType::SERIAL:
+      return "Serial";
+    case TransportType::FILE:
+      return "File";
+    case TransportType::TCP_CLIENT:
+      return "TCP Client";
+    case TransportType::TCP_SERVER:
+      return "TCP Server";
+    case TransportType::UDP_CLIENT:
+      return "UDP Client";
+    case TransportType::UDP_SERVER:
+      return "UDP Server";
+    case TransportType::ALL:
+      return "All";
+    default:
+      return "Unrecognized";
+  }
+}
+
+/**
+ * @brief @ref TransportType stream operator.
+ * @ingroup config_and_ctrl_messages
+ */
+inline std::ostream& operator<<(std::ostream& stream, TransportType val) {
+  stream << to_string(val) << " (" << (int)val << ")";
+  return stream;
+}
+
+/**
+ * @brief Identifies an IO interface.
+ *
+ * (e.g., serial port 0 or TCP server 2)
+ */
+struct alignas(4) InterfaceID {
+  /** The interface's transport type. **/
+  TransportType type = TransportType::INVALID;
+  /** An identifier for the instance of this transport. */
+  uint8_t index = 0;
+  uint8_t reserved[2] = {0};
+
+  bool operator==(const InterfaceID& other) const {
+    return type == other.type && index == other.index;
+  }
+
+  bool inline operator!=(const InterfaceID& other) const {
+    return !(*this == other);
+  }
+};
+
+/**
+ * @brief @ref InterfaceID stream operator.
+ * @ingroup config_and_ctrl_messages
+ */
+inline std::ostream& operator<<(std::ostream& stream, InterfaceID val) {
+  stream << "[type=" << to_string(val.type) << ", index=" << (int)val.index
+         << "]";
+  return stream;
+}
+
+/**
+ * @brief The ways that this configuration message can be applied to the
+ *        previous list of values for that configuration type.
+ */
+enum class UpdateAction : uint8_t {
+  /**
+   * Replace the previous list of values with the set provided in
+   * this configuration.
+   */
+  REPLACE = 0
+};
+
+/**
+ * @brief Get a human-friendly string name for the specified @ref
+ *        UpdateAction.
+ * @ingroup config_and_ctrl_messages
+ *
+ * @param val The enum to get the string name for.
+ *
+ * @return The corresponding string name.
+ */
+inline const char* to_string(UpdateAction val) {
+  switch (val) {
+    case UpdateAction::REPLACE:
+      return "Replace";
+    default:
+      return "Unrecognized";
+  }
+}
+
+/**
+ * @brief @ref UpdateAction stream operator.
+ * @ingroup config_and_ctrl_messages
+ */
+inline std::ostream& operator<<(std::ostream& stream, UpdateAction val) {
+  stream << to_string(val) << " (" << (int)val << ")";
+  return stream;
+}
+
+/**
+ * @brief Configuration for the streams associated with an output interface.
+ *
+ * This object is used in the payload of the @ref
+ * SetOutputInterfaceConfigMessage and @ref
+ * OutputInterfaceConfigResponseMessage messages. The declared contents are
+ * followed by `N` `uint8_t` stream indices, where `N` is equal to @ref
+ * num_streams. For example:
+ *
+ * ```
+ * {MessageHeader, SetOutputInterfaceConfigMessage, OutputInterfaceConfig,
+ *  uint8_t, uint8_t,  ...}
+ * ```
+ */
+struct alignas(4) OutputInterfaceConfig {
+  /** The output interface to configure. */
+  InterfaceID output_interface;
+  /** The number of `stream_indices` entries this message contains. */
+  uint8_t num_streams = 0;
+  uint8_t reserved[3] = {0};
+  /**
+   * Placeholder pointer for variable length set of indices.
+   *
+   * In the future these streams will be user defined, but for now they are:
+   * - `0`: All FusionEngine messages.
+   * - `1`: All NMEA messages.
+   * - `2`: All RTCM messages.
+   */
+  uint8_t stream_indices[0];
+};
+
+/**
+ * @brief Configure the set of output streams enabled for a given output
+ *        interface (@ref MessageType::SET_OUTPUT_INFERFACE_STREAMS, version
+ *        1.0).
+ * @ingroup config_and_ctrl_messages
+
+ * The device will respond with a @ref CommandResponseMessage indicating whether
+ * or not the request was accepted. Not all interfaces defined in @ref
+ * InterfaceID are supported on all devices.
+ *
+ * Parameter changes are applied to the device's active configuration
+ * immediately, but are not saved to persistent storage and will be restored to
+ * their previous values on reset. To save configuration settings to persistent
+ * storage, see @ref SaveConfigMessage.
+ */
+struct alignas(4) SetOutputInterfaceConfigMessage : public MessagePayload {
+  static constexpr MessageType MESSAGE_TYPE =
+      MessageType::SET_OUTPUT_INFERFACE_STREAMS;
+  static constexpr uint8_t MESSAGE_VERSION = 0;
+  /**
+   * The type of action this configuration message applies to the
+   * previous list of streams.
+   */
+  UpdateAction update_action = UpdateAction::REPLACE;
+  uint8_t reserved[3] = {0};
+
+  /**
+   * The new output interface configuration to be applied.
+   */
+  OutputInterfaceConfig output_interface_data;
+};
+
+/**
+ * @brief Query the set of message streams configured to be output by the device
+ *        on a specified interface. (@ref
+ *        MessageType::GET_OUTPUT_INFERFACE_STREAMS, version 1.0).
+ * @ingroup config_and_ctrl_messages
+ *
+ * The device will respond with a @ref OutputInterfaceConfigResponseMessage
+ * containing the values.
+ */
+struct alignas(4) GetOutputInterfaceConfigMessage : public MessagePayload {
+  static constexpr MessageType MESSAGE_TYPE =
+      MessageType::GET_OUTPUT_INFERFACE_STREAMS;
+  static constexpr uint8_t MESSAGE_VERSION = 0;
+
+  /** The config source to request data from (active, saved, etc.). */
+  ConfigurationSource request_source = ConfigurationSource::ACTIVE;
+
+  uint8_t reserved[3] = {0};
+
+  /**
+   * The output interface to get the config for. If the `type` is @ref
+   * TransportType::ALL then request the configuration for all interfaces.
+   */
+  InterfaceID output_interface;
+};
+
+/**
+ * @brief Response to a @ref GetOutputInterfaceConfigMessage request (@ref
+ *        MessageType::OUTPUT_INFERFACE_STREAMS_DATA, version 1.0).
+ * @ingroup config_and_ctrl_messages
+ *
+ * This message is followed by `N` @ref OutputInterfaceConfig objects, where
+ * `N` is equal to @ref number_of_interfaces. Each of these interfaces is
+ * variable size, and the sum of the objects should add up to the message size
+ * from the header.
+ *
+ * For example if the @ref number_of_interfaces is 2 and both interfaces have
+ * two streams the payload will look as follows:
+ *
+ * ```
+ * {MessageHeader, OutputInterfaceConfigResponseMessage, OutputInterfaceConfig,
+ *  uint8_t, uint8_t, OutputInterfaceConfig, uint8_t, uint8_t}
+ * ```
+ */
+struct alignas(4) OutputInterfaceConfigResponseMessage : public MessagePayload {
+  static constexpr MessageType MESSAGE_TYPE = MessageType::OUTPUT_INFERFACE_STREAMS_DATA;
+  static constexpr uint8_t MESSAGE_VERSION = 0;
+
+  /** The source of the parameter value (active, saved, etc.). */
+  ConfigurationSource config_source = ConfigurationSource::ACTIVE;
+
+  /** The response status (success, error, etc.). */
+  Response response = Response::OK;
+
+  /**
+   * Set to `true` if the active configuration differs from the saved
+   * configuration for this parameter.
+   */
+  bool active_differs_from_saved = false;
+
+  /** The size of the parameter value, output_interface_data (in bytes). */
+  uint8_t number_of_interfaces = 0;
+
+  /**
+   * A pointer to the beginning of the interface data.
+   */
+  // Note: This causes a compiler error on MSVC so it is not included:
+  //       https://docs.microsoft.com/en-us/cpp/error-messages/compiler-errors-1/compiler-error-c2233
+  // OutputInterfaceConfig output_interface_data[0];
+};
+
+/** @} */
 
 #pragma pack(pop)
 

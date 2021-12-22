@@ -1,6 +1,7 @@
-from typing import NamedTuple, Optional
+import re
+from typing import NamedTuple, Optional, List
 
-from construct import (Struct, Float32l, Int32ul, Int16ul, Int8ul, Padding, this, Flag, Bytes)
+from construct import (Struct, Float32l, Int32ul, Int16ul, Int8ul, Padding, this, Flag, Bytes, Array, Adapter)
 
 from ..utils.construct_utils import NamedTupleAdapter, AutoEnum
 from .defs import *
@@ -36,6 +37,22 @@ class Direction(IntEnum):
     DOWN = 5,
     ## Error value.
     INVALID = 255
+
+
+class TransportType(IntEnum):
+  INVALID = 0,
+  SERIAL = 1,
+  FILE = 2,
+  TCP_CLIENT = 3,
+  TCP_SERVER = 4,
+  UDP_CLIENT = 5,
+  UDP_SERVER = 6,
+  ## This is used for requesting the configuration for all interfaces.
+  ALL = 255,
+
+
+class UpdateAction(IntEnum):
+    REPLACE = 0
 
 
 class _ConfigClassGenerator:
@@ -218,6 +235,20 @@ class InvalidConfig(_conf_gen.Empty):
 class SetConfigMessage(MessagePayload):
     """!
     @brief Set a user configuration parameter.
+
+    The `config_object` should be set to a `ConfigClass` instance for the configuration parameter to update.
+
+    Usage examples:
+    ```{.py}
+    # A message for setting the device UART1 baud rate to 9600.
+    set_config = SetOutputInterfaceConfigMessage(Uart1BaudConfig(9600))
+
+    # A message for setting the device lever arm to [1.1, 0, 1.2].
+    set_config = SetOutputInterfaceConfigMessage(DeviceLeverArmConfig(1.1, 0, 1.2))
+
+    # A message for setting the device coarse orientation to the default values.
+    set_config = SetOutputInterfaceConfigMessage(DeviceCourseOrientationConfig())
+    ```
     """
     MESSAGE_TYPE = MessageType.SET_CONFIG
     MESSAGE_VERSION = 0
@@ -347,24 +378,26 @@ class SaveConfigMessage(MessagePayload):
         return cls.SaveConfigMessageConstruct.sizeof()
 
 
-class ConfigDataMessage(MessagePayload):
+class ConfigResponseMessage(MessagePayload):
     """!
     @brief Response to a @ref GetConfigMessage request.
     """
     MESSAGE_TYPE = MessageType.CONFIG_DATA
     MESSAGE_VERSION = 0
 
-    ConfigDataMessageConstruct = Struct(
+    ConfigResponseMessageConstruct = Struct(
         "config_source" / AutoEnum(Int8ul, ConfigurationSource),
         "active_differs_from_saved" / Flag,
         "config_type" / AutoEnum(Int16ul, ConfigType),
-        Padding(4),
+        "response" / AutoEnum(Int8ul, Response),
+        Padding(3),
         "config_length_bytes" / Int32ul,
         "config_data" / Bytes(this.config_length_bytes),
     )
 
     def __init__(self):
         self.config_source = ConfigurationSource.ACTIVE
+        self.response = Response.OK
         self.active_differs_from_saved = False
         self.config_object: _conf_gen.ConfigClass = None
 
@@ -381,20 +414,196 @@ class ConfigDataMessage(MessagePayload):
             'config_data': data,
             'config_length_bytes': len(data)
         })
-        packed_data = self.ConfigDataMessageConstruct.build(values)
+        packed_data = self.ConfigResponseMessageConstruct.build(values)
         return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
 
     def unpack(self, buffer: bytes, offset: int = 0) -> int:
-        parsed = self.ConfigDataMessageConstruct.parse(buffer[offset:])
+        parsed = self.ConfigResponseMessageConstruct.parse(buffer[offset:])
         self.__dict__.update(parsed)
         self.config_object = _conf_gen.CONFIG_MAP[parsed.config_type].parse(parsed.config_data)
         return parsed._io.tell()
 
     def __str__(self):
-        fields = ['active_differs_from_saved', 'config_source', 'config_object']
+        fields = ['active_differs_from_saved', 'config_source', 'response', 'config_object']
         string = f'Config Data\n'
         for field in fields:
             val = str(self.__dict__[field]).replace('Container:', '')
+            string += f'  {field}: {val}\n'
+        return string.rstrip()
+
+    def calcsize(self) -> int:
+        return len(self.pack())
+
+
+class InterfaceID(NamedTuple):
+    type: TransportType = TransportType.INVALID
+    index: int = 0
+
+
+class OutputInterfaceConfig(NamedTuple):
+    output_interface: InterfaceID = InterfaceID()
+    stream_indices: List[int] = []
+
+
+_InterfaceIDConstructRaw = Struct(
+    "type" / AutoEnum(Int8ul, TransportType),
+    "index" / Int8ul,
+    Padding(2)
+)
+_InterfaceIDConstruct = NamedTupleAdapter(InterfaceID, _InterfaceIDConstructRaw)
+
+
+class _OutputInterfaceConfigConstruct(Adapter):
+    """!
+    Adapter to handle setting `num_streams` implicitly.
+    """
+    def __init__(self):
+        super().__init__(Struct(
+            "output_interface" / _InterfaceIDConstruct,
+            "num_streams" / Int8ul,
+            Padding(3),
+            "stream_indices" / Array(this.num_streams, Int8ul),
+        ))
+
+    def _decode(self, obj, context, path):
+        return OutputInterfaceConfig(obj.output_interface, obj.stream_indices)
+
+    def _encode(self, obj, context, path):
+        return {
+            "output_interface": obj.output_interface,
+            "num_streams": len(obj.stream_indices),
+            "stream_indices": obj.stream_indices
+        }
+
+
+class SetOutputInterfaceConfigMessage(MessagePayload):
+    """!
+    @brief Configure the set of output streams enabled for a given output interface.
+
+    An example usage:
+    ```{.py}
+    # Set the device Serial 0 to output stream 1 and 2 messages.
+    set_out_streams = SetOutputInterfaceConfigMessage()
+    set_out_streams.output_interface_config =
+        OutputInterfaceConfig(InterfaceID(TransportType.SERIAL, 0), [1, 2])
+    message = fe_encoder.encode_message(set_out_streams)
+    serial_out.write(message)
+    ```
+    """
+    MESSAGE_TYPE = MessageType.SET_OUTPUT_INFERFACE_STREAMS
+    MESSAGE_VERSION = 0
+
+    SetOutputInterfaceConfigMessageConstruct = Struct(
+        "update_action" / AutoEnum(Int8ul, UpdateAction),
+        Padding(3),
+        "output_interface_config" / _OutputInterfaceConfigConstruct(),
+    )
+
+    def __init__(self):
+        self.update_action = UpdateAction.REPLACE
+        self.output_interface_config = OutputInterfaceConfig()
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        packed_data = self.SetOutputInterfaceConfigMessageConstruct.build(self.__dict__)
+        return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
+
+    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+        parsed = self.SetOutputInterfaceConfigMessageConstruct.parse(buffer[offset:])
+        self.__dict__.update(parsed)
+        return parsed._io.tell()
+
+    def __str__(self):
+        fields = ['update_action', 'output_interface_config']
+        string = f'Set Output Interface Streams Config Command\n'
+        for field in fields:
+            val = str(self.__dict__[field]).replace('Container:', '')
+            string += f'  {field}: {val}\n'
+        return string.rstrip()
+
+    def calcsize(self) -> int:
+        return len(self.pack())
+
+
+class GetOutputInterfaceConfigMessage(MessagePayload):
+    """!
+    @brief Query the set of message streams configured to be output by the device on a specified interface.
+
+    If the `type in `output_interface` is @ref TransportType.ALL then request the configuration for all interfaces.
+    """
+    MESSAGE_TYPE = MessageType.GET_OUTPUT_INFERFACE_STREAMS
+    MESSAGE_VERSION = 0
+
+    GetOutputInterfaceConfigMessageConstruct = Struct(
+        "request_source" / AutoEnum(Int8ul, ConfigurationSource),
+        Padding(3),
+        "output_interface" / _InterfaceIDConstruct,
+    )
+
+    def __init__(self):
+        self.request_source = ConfigurationSource.ACTIVE
+        self.output_interface = InterfaceID(TransportType.ALL, 0)
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        packed_data = self.GetOutputInterfaceConfigMessageConstruct.build(self.__dict__)
+        return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
+
+    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+        parsed = self.GetOutputInterfaceConfigMessageConstruct.parse(buffer[offset:])
+        self.__dict__.update(parsed)
+        return parsed._io.tell()
+
+    def __str__(self):
+        fields = ['request_source', 'output_interface']
+        string = f'Get Output Interface Streams Config\n'
+        for field in fields:
+            val = str(self.__dict__[field]).replace('Container:', '')
+            string += f'  {field}: {val}\n'
+        return string.rstrip()
+
+    @classmethod
+    def calcsize(cls) -> int:
+        return cls.GetOutputInterfaceConfigMessageConstruct.sizeof()
+
+
+class OutputInterfaceConfigResponseMessage(MessagePayload):
+    """!
+    @brief Response to a @ref GetOutputInterfaceConfigMessage request.
+    """
+    MESSAGE_TYPE = MessageType.OUTPUT_INFERFACE_STREAMS_DATA
+    MESSAGE_VERSION = 0
+
+    OutputInterfaceConfigResponseMessageConstruct = Struct(
+        "config_source" / AutoEnum(Int8ul, ConfigurationSource),
+        "response" / AutoEnum(Int8ul, Response),
+        "active_differs_from_saved" / Flag,
+        "number_of_interfaces" / Int8ul,
+        "output_interface_data" / Array(this.number_of_interfaces, _OutputInterfaceConfigConstruct()),
+    )
+
+    def __init__(self):
+        self.config_source = ConfigurationSource.ACTIVE
+        self.response = Response.OK
+        self.active_differs_from_saved = False
+        self.output_interface_data: List[OutputInterfaceConfig] = []
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        values = dict(self.__dict__)
+        values['number_of_interfaces'] = len(self.output_interface_data)
+        packed_data = self.OutputInterfaceConfigResponseMessageConstruct.build(values)
+        return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
+
+    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+        parsed = self.OutputInterfaceConfigResponseMessageConstruct.parse(buffer[offset:])
+        self.__dict__.update(parsed)
+        return parsed._io.tell()
+
+    def __str__(self):
+        fields = ['active_differs_from_saved', 'config_source', 'response', 'output_interface_data']
+        string = f'Output Interface Streams Config Response\n'
+        for field in fields:
+            val = str(self.__dict__[field]).replace('Container:', '')
+            val = re.sub(r'ListContainer\((.+)\)', r'\1', val)
+            val = re.sub(r'<TransportType\.(.+): [0-9]+>', r'\1', val)
             string += f'  {field}: {val}\n'
         return string.rstrip()
 
