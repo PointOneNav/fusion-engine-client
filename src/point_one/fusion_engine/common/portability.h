@@ -5,6 +5,8 @@
 
 #pragma once
 
+#include <cstdint>
+
 // References:
 // - https://gcc.gnu.org/wiki/Visibility.
 // - https://github.com/protocolbuffers/protobuf/blob/master/src/google/protobuf/port_def.inc
@@ -31,4 +33,14 @@
     #define P1_EXPORT
     #define P1_HIDDEN
   #endif
+#endif
+
+// ssize_t is a POSIX extension and is not supported on Windows.
+#if defined(_WIN32)
+typedef int32_t p1_ssize_t;
+#elif defined(_MSC_VER)
+typedef int64_t p1_ssize_t;
+#else
+#include <sys/types.h> // For ssize_t
+typedef ssize_t p1_ssize_t;
 #endif
