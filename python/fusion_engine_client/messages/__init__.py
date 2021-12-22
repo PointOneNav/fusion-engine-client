@@ -26,7 +26,11 @@ message_type_to_class = {
     SetConfigMessage.MESSAGE_TYPE: SetConfigMessage,
     GetConfigMessage.MESSAGE_TYPE: GetConfigMessage,
     SaveConfigMessage.MESSAGE_TYPE: SaveConfigMessage,
-    ConfigDataMessage.MESSAGE_TYPE: ConfigDataMessage,
+    ConfigResponseMessage.MESSAGE_TYPE: ConfigResponseMessage,
+
+    SetOutputInterfaceConfigMessage.MESSAGE_TYPE: SetOutputInterfaceConfigMessage,
+    GetOutputInterfaceConfigMessage.MESSAGE_TYPE: GetOutputInterfaceConfigMessage,
+    OutputInterfaceConfigResponseMessage.MESSAGE_TYPE: OutputInterfaceConfigResponseMessage,
 }
 
 # Note: This must be imported after message_type_to_class is defined, but before messages_with_system_time is defined.
