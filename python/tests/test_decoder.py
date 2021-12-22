@@ -102,7 +102,6 @@ def test_callbacks():
 
 def test_seq_skip_warning(caplog):
   test_bytes = P1_POSE_MESSAGE1 + P1_POSE_MESSAGE2 + P1_POSE_MESSAGE1
-  decoder = FusionEngineDecoder()
-  decoder.print_seq_skip_warnings(True)
+  decoder = FusionEngineDecoder(warn_on_gap=True)
   decoder.on_data(test_bytes)
-  assert "FusionEngine messages' sequence_number skipped from 1 to 0." in caplog.text
+  assert "Gap detected in FusionEngine message sequence numbers. [expected=2, received=0]." in caplog.text
