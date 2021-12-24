@@ -1,7 +1,8 @@
 from enum import IntEnum
 
-from construct import (Struct, Int64ul, Int16ul, Int8ul, Padding, this, Enum, Bytes)
+from construct import (Struct, Int64ul, Int16ul, Int8ul, Padding, this, Bytes)
 
+from ..utils.construct_utils import AutoEnum
 from .defs import *
 
 
@@ -12,30 +13,12 @@ class CommandResponseMessage(MessagePayload):
     MESSAGE_TYPE = MessageType.COMMAND_RESPONSE
     MESSAGE_VERSION = 0
 
-    class Response(IntEnum):
-        ## Command succeeded.
-        OK = 0
-        ## A version specified in the command or subcommand could not be handled. This could mean that the version was
-        ## too new and not supported by the device, or it was older than the version used by the device and there was no
-        ## translation for it.
-        UNSUPPORTED_CMD_VERSION = 1
-        ## The command interacts with a feature that is not present on the target device (e.g., setting the baud rate on
-        ## a device without a serial port).
-        UNSUPPORTED_FEATURE = 2
-        ## One or more values in the command were not in acceptable ranges (e.g., an undefined enum value, or an invalid
-        ## baud rate).
-        VALUE_ERROR = 3
-        ## The command would require adding too many elements to internal storage.
-        INSUFFICIENT_SPACE = 4
-        ## There was a runtime failure executing the command.
-        EXECUTION_FAILURE = 5
-
     _FORMAT = '<IB3x'
     _SIZE: int = struct.calcsize(_FORMAT)
 
     def __init__(self):
         self.source_sequence_num = 0
-        self.response = CommandResponseMessage.Response.OK
+        self.response = Response.OK
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
@@ -60,7 +43,7 @@ class CommandResponseMessage(MessagePayload):
         offset = CommandResponseMessage._SIZE
 
         try:
-            self.response = CommandResponseMessage.Response(self.response)
+            self.response = Response(self.response)
         except ValueError:
             pass
 
@@ -73,7 +56,7 @@ class CommandResponseMessage(MessagePayload):
     def __str__(self):
         string = f'Command Response\n'
         string += f'  Sequence number: {self.source_sequence_num}\n'
-        if isinstance(self.response, CommandResponseMessage.Response):
+        if isinstance(self.response, Response):
             string += f'  Response: {str(self.response)} ({int(self.response)})'
         else:
             string += f'  Response: UNKNOWN ({int(self.response)})'
@@ -307,7 +290,7 @@ class EventNotificationMessage(MessagePayload):
         CONFIG_CHANGE = 2
 
     EventNotificationConstruct = Struct(
-        "action" / Enum(Int8ul, Action),
+        "action" / AutoEnum(Int8ul, Action),
         Padding(3),
         "system_time_ns" / Int64ul,
         "event_flags" / Int64ul,

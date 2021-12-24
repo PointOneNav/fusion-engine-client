@@ -42,6 +42,83 @@ enum class SatelliteType : uint8_t {
   MAX_VALUE = IRNSS,
 };
 
+/** @brief Command response status indicators. */
+enum class Response : uint8_t {
+  OK = 0,
+  /**
+   * A version specified in the command or subcommand could not be handled.
+   * This could mean that the version was too new, or it was old and there was
+   * not a translation for it.
+   */
+  UNSUPPORTED_CMD_VERSION = 1,
+  /**
+   * The command interacts with a feature that is not present on the target
+   * device (e.g., Setting the baud rate on a device without a serial port).
+   */
+  UNSUPPORTED_FEATURE = 2,
+  /**
+   * One or more values in the command were not in acceptable ranges (e.g., An
+   * undefined enum value, or an invalid baud rate).
+   */
+  VALUE_ERROR = 3,
+  /**
+   * The command would require adding too many elements to an internal
+   * storage.
+   */
+  INSUFFICIENT_SPACE = 4,
+  /**
+   * There was a runtime failure executing the command.
+   */
+  EXECUTION_FAILURE = 5,
+  /**
+   * The header `payload_size_bytes` is in conflict with the size of the
+   * message based on its type and type specific length fields.
+   */
+  INCONSISTENT_PAYLOAD_LENGTH = 6,
+  /**
+   * Requested data was corrupted and not available.
+   */
+  DATA_CORRUPTED = 7,
+};
+
+/**
+ * @brief Get a human-friendly string name for the specified @ref Response.
+ *
+ * @param val The enum to get the string name for.
+ *
+ * @return The corresponding string name.
+ */
+inline const char* to_string(Response val) {
+  switch (val) {
+    case Response::OK:
+      return "Ok";
+    case Response::UNSUPPORTED_CMD_VERSION:
+      return "Unsupported Command Version";
+    case Response::UNSUPPORTED_FEATURE:
+      return "Unsupported Feature";
+    case Response::VALUE_ERROR:
+      return "Value Error";
+    case Response::INSUFFICIENT_SPACE:
+      return "Insufficient Space";
+    case Response::EXECUTION_FAILURE:
+      return "Execution Failure";
+    case Response::INCONSISTENT_PAYLOAD_LENGTH:
+      return "Inconsistent Payload Length";
+    case Response::DATA_CORRUPTED:
+      return "Data Corrupted";
+    default:
+      return "Unrecognized";
+  }
+}
+
+/**
+ * @brief @ref Response stream operator.
+ */
+inline std::ostream& operator<<(std::ostream& stream, Response val) {
+  stream << to_string(val) << " (" << (int)val << ")";
+  return stream;
+}
+
 /**
  * @brief Navigation solution type definitions.
  */
@@ -104,7 +181,11 @@ enum class MessageType : uint16_t {
   SET_CONFIG = 13100, ///< @ref SetConfigMessage
   GET_CONFIG = 13101, ///< @ref GetConfigMessage
   SAVE_CONFIG = 13102, ///< @ref SaveConfigMessage
-  CONFIG_DATA = 13103, ///< @ref ConfigDataMessage
+  CONFIG_DATA = 13103, ///< @ref ConfigResponseMessage
+
+  SET_OUTPUT_INFERFACE_STREAMS = 13200, ///< @ref SetOutputInterfaceConfigMessage
+  GET_OUTPUT_INFERFACE_STREAMS = 13201, ///< @ref GetOutputInterfaceConfigMessage
+  OUTPUT_INFERFACE_STREAMS_DATA = 13202, ///< @ref OutputInterfaceConfigResponseMessage
 
   MAX_VALUE = CONFIG_DATA, ///< The maximum defined @ref MessageType enum value.
 };
