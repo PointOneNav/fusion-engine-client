@@ -7,5 +7,6 @@ filegroup(
         "//generate_data",
         "//message_decode",
         "//tcp_client",
+        "//udp_client",
     ]
 )
