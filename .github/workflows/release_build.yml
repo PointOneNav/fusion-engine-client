@@ -275,11 +275,35 @@ jobs:
         aws s3 cp --acl public-read docs/favicon.ico s3://docs.pointonenav.com/fusion-engine/
         aws s3 cp --acl public-read docs/point_one_logo.png s3://docs.pointonenav.com/fusion-engine/
 
+  # Run Python unit tests.
+  test_python:
+    name: Python Unit Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: python
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Setup Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+
+    - name: Install Python Requirements
+      run: |
+        pip install -r requirements.txt
+        pip install pytest
+
+    - name: Run Unit Tests
+      run: |
+        python -m pytest
+
   # Create a release only on a tag (not on a branch push).
   release:
     name: Create Release
     if: startsWith(github.ref, 'refs/tags/')
-    needs: [check_style, build_bazel, build_cmake, build_doxygen, upload_doxygen]
+    needs: [check_style, build_bazel, build_cmake, build_doxygen, upload_doxygen, test_python]
     runs-on: ubuntu-latest
     outputs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
