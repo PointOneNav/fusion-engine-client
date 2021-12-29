@@ -9,6 +9,9 @@ on:
     # Build on a push of any tag named v* (v1.0, etc.) and generate a release.
     tags:
       - 'v*'
+  pull_request:
+    # Build when a pull request is opened or updated.
+    types: [opened, synchronize, reopened]
 
 jobs:
   # Check code style.
