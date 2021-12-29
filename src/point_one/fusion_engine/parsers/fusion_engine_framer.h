@@ -44,7 +44,7 @@ namespace parsers {
  * ```
  */
 class FusionEngineFramer {
-public:
+ public:
   /**
    * @brief Construct a framer instance with no buffer allocated.
    *
@@ -96,9 +96,7 @@ public:
    *
    * @param enabled If `true`, issue warnings on errors.
    */
-  void WarnOnError(bool enabled) {
-    warn_on_error_ = enabled;
-  }
+  void WarnOnError(bool enabled) { warn_on_error_ = enabled; }
 
   /**
    * @brief Specify a function to be called when a message is framed.

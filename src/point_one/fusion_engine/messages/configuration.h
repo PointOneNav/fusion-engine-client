@@ -10,8 +10,8 @@
 // Zero-sized arrays are supported by MSVC, GCC, and Clang, and we use them as
 // convenience placeholders for variable sized message payloads.
 #ifdef _MSC_VER
-#pragma warning(push)
-#pragma warning(disable: 4200)
+#  pragma warning(push)
+#  pragma warning(disable : 4200)
 #endif
 
 #include <ostream>
@@ -678,7 +678,8 @@ struct alignas(4) GetOutputInterfaceConfigMessage : public MessagePayload {
  * ```
  */
 struct alignas(4) OutputInterfaceConfigResponseMessage : public MessagePayload {
-  static constexpr MessageType MESSAGE_TYPE = MessageType::OUTPUT_INFERFACE_STREAMS_DATA;
+  static constexpr MessageType MESSAGE_TYPE =
+      MessageType::OUTPUT_INFERFACE_STREAMS_DATA;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
   /** The source of the parameter value (active, saved, etc.). */
@@ -713,5 +714,5 @@ struct alignas(4) OutputInterfaceConfigResponseMessage : public MessagePayload {
 } // namespace point_one
 
 #ifdef _MSC_VER
-#pragma warning(pop)
+#  pragma warning(pop)
 #endif
