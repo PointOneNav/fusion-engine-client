@@ -10,8 +10,8 @@
 // Zero-sized arrays are supported by MSVC, GCC, and Clang, and we use them as
 // convenience placeholders for variable sized message payloads.
 #ifdef _MSC_VER
-#pragma warning(push)
-#pragma warning(disable: 4200)
+#  pragma warning(push)
+#  pragma warning(disable : 4200)
 #endif
 
 #include "point_one/fusion_engine/messages/defs.h"
@@ -316,5 +316,5 @@ struct alignas(4) EventNotificationMessage : public MessagePayload {
 } // namespace point_one
 
 #ifdef _MSC_VER
-#pragma warning(pop)
+#  pragma warning(pop)
 #endif

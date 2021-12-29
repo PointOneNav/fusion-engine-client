@@ -11,6 +11,15 @@ time, as well as processing recorded output data. Both C++ and Python are suppor
 
 See http://docs.pointonenav.com/fusion-engine/ for the latest API documentation.
 
+This library is released under the [MIT license agreement](LICENSE). We welcome code and documentation contributions
+from users. See [Contributing](CONTRIBUTING.md) for instructions on how to report issues and develop, test, and submit
+code changes.
+
+If you encounter an issue, please [submit a ticket](CONTRIBUTING.md#reporting-issues). If you need support with Point
+One FusionEngine or a Point One device (Atlas, Quectel LG69T, etc.), please contact support@pointonenav.com.
+
+### Table Of Contents
+
 * [Requirements](#requirements)
 * [Directory Structure](#directory-structure)
   * [Example Applications](#example-applications)

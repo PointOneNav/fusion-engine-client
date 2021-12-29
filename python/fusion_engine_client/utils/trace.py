@@ -12,6 +12,7 @@ if not hasattr(logging, 'TRACE'):
     else:
         logging._nameToLevel['TRACE'] = logging.TRACE
         logging._levelToName[logging.TRACE] = 'TRACE'
+
     def trace(self, msg, *args, **kwargs):
         self.log(logging.TRACE, msg, *args, **kwargs)
     logging.Logger.trace = trace
