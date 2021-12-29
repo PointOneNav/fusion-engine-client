@@ -1,0 +1,10 @@
+[pycodestyle]
+max_line_length = 120
+aggressive = 3
+recursive = true
+
+# - E265,E266 - Do not reformat double-# Doxygen comment blocks.
+# - E402 - Do not reorder imports to the top of the file (fusion_engine_client
+#   imports in the example applications must come after the sys.path.append()
+#   call).
+ignore = E265,E266,E402
