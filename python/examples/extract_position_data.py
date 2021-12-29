@@ -39,7 +39,7 @@ KML_TEMPLATE = """\
 if __name__ == "__main__":
     # Parse arguments.
     parser = ArgumentParser(description="""\
-Extract position data to both CSV and KML files.  
+Extract position data to both CSV and KML files.
 """)
     parser.add_argument('--log-base-dir', metavar='DIR', default='/logs',
                         help="The base directory containing FusionEngine logs to be searched if a log pattern is "

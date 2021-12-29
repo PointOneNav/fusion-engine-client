@@ -54,6 +54,7 @@ def decode_message(header, data, offset):
 
     return True
 
+
 decode_message.expected_sequence_number = 0
 
 

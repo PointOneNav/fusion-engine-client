@@ -292,20 +292,21 @@ class IMUMessage(MessagePayload):
 
         offset += self.p1_time.pack(buffer, offset, return_buffer=False)
 
-        struct.pack_into(IMUMessage._FORMAT, buffer, offset,
-                         self.orientation[0], self.orientation[1], self.orientation[2], self.orientation[3],
-                         self.orientation_covariance[0], self.orientation_covariance[1], self.orientation_covariance[2],
-                         self.orientation_covariance[3], self.orientation_covariance[4], self.orientation_covariance[5],
-                         self.orientation_covariance[6], self.orientation_covariance[7], self.orientation_covariance[8],
-                         self.angular_velocity_rps[0], self.angular_velocity_rps[1], self.angular_velocity_rps[2],
-                         self.angular_velocity_covariance[0], self.angular_velocity_covariance[1], self.angular_velocity_covariance[2],
-                         self.angular_velocity_covariance[3], self.angular_velocity_covariance[4], self.angular_velocity_covariance[5],
-                         self.angular_velocity_covariance[6], self.angular_velocity_covariance[7], self.angular_velocity_covariance[8],
-                         self.acceleration_mps2[0], self.acceleration_mps2[1], self.acceleration_mps2[2],
-                         self.acceleration_covariance[0], self.acceleration_covariance[1], self.acceleration_covariance[2],
-                         self.acceleration_covariance[3], self.acceleration_covariance[4], self.acceleration_covariance[5],
-                         self.acceleration_covariance[6], self.acceleration_covariance[7], self.acceleration_covariance[8],
-                         )
+        struct.pack_into(
+            IMUMessage._FORMAT, buffer, offset,
+            self.orientation[0], self.orientation[1], self.orientation[2], self.orientation[3],
+            self.orientation_covariance[0], self.orientation_covariance[1], self.orientation_covariance[2],
+            self.orientation_covariance[3], self.orientation_covariance[4], self.orientation_covariance[5],
+            self.orientation_covariance[6], self.orientation_covariance[7], self.orientation_covariance[8],
+            self.angular_velocity_rps[0], self.angular_velocity_rps[1], self.angular_velocity_rps[2],
+            self.angular_velocity_covariance[0], self.angular_velocity_covariance[1], self.angular_velocity_covariance[2],  # noqa
+            self.angular_velocity_covariance[3], self.angular_velocity_covariance[4], self.angular_velocity_covariance[5],  # noqa
+            self.angular_velocity_covariance[6], self.angular_velocity_covariance[7], self.angular_velocity_covariance[8],  # noqa
+            self.acceleration_mps2[0], self.acceleration_mps2[1], self.acceleration_mps2[2],
+            self.acceleration_covariance[0], self.acceleration_covariance[1], self.acceleration_covariance[2],
+            self.acceleration_covariance[3], self.acceleration_covariance[4], self.acceleration_covariance[5],
+            self.acceleration_covariance[6], self.acceleration_covariance[7], self.acceleration_covariance[8],
+            )
 
         if return_buffer:
             return buffer
@@ -316,19 +317,19 @@ class IMUMessage(MessagePayload):
         initial_offset = offset
 
         offset += self.p1_time.unpack(buffer, offset)
-        ( self.orientation[0], self.orientation[1], self.orientation[2], self.orientation[3],
-                         self.orientation_covariance[0], self.orientation_covariance[1], self.orientation_covariance[2],
-                         self.orientation_covariance[3], self.orientation_covariance[4], self.orientation_covariance[5],
-                         self.orientation_covariance[6], self.orientation_covariance[7], self.orientation_covariance[8],
-                         self.angular_velocity_rps[0], self.angular_velocity_rps[1], self.angular_velocity_rps[2],
-                         self.angular_velocity_covariance[0], self.angular_velocity_covariance[1], self.angular_velocity_covariance[2],
-                         self.angular_velocity_covariance[3], self.angular_velocity_covariance[4], self.angular_velocity_covariance[5],
-                         self.angular_velocity_covariance[6], self.angular_velocity_covariance[7], self.angular_velocity_covariance[8],
-                         self.acceleration_mps2[0], self.acceleration_mps2[1], self.acceleration_mps2[2],
-                         self.acceleration_covariance[0], self.acceleration_covariance[1], self.acceleration_covariance[2],
-                         self.acceleration_covariance[3], self.acceleration_covariance[4], self.acceleration_covariance[5],
-                         self.acceleration_covariance[6], self.acceleration_covariance[7], self.acceleration_covariance[8],
-                         ) = \
+        (self.orientation[0], self.orientation[1], self.orientation[2], self.orientation[3],
+         self.orientation_covariance[0], self.orientation_covariance[1], self.orientation_covariance[2],
+         self.orientation_covariance[3], self.orientation_covariance[4], self.orientation_covariance[5],
+         self.orientation_covariance[6], self.orientation_covariance[7], self.orientation_covariance[8],
+         self.angular_velocity_rps[0], self.angular_velocity_rps[1], self.angular_velocity_rps[2],
+         self.angular_velocity_covariance[0], self.angular_velocity_covariance[1], self.angular_velocity_covariance[2],
+         self.angular_velocity_covariance[3], self.angular_velocity_covariance[4], self.angular_velocity_covariance[5],
+         self.angular_velocity_covariance[6], self.angular_velocity_covariance[7], self.angular_velocity_covariance[8],
+         self.acceleration_mps2[0], self.acceleration_mps2[1], self.acceleration_mps2[2],
+         self.acceleration_covariance[0], self.acceleration_covariance[1], self.acceleration_covariance[2],
+         self.acceleration_covariance[3], self.acceleration_covariance[4], self.acceleration_covariance[5],
+         self.acceleration_covariance[6], self.acceleration_covariance[7], self.acceleration_covariance[8],
+         ) = \
             struct.unpack_from(IMUMessage._FORMAT,
                                buffer=buffer, offset=offset)
         offset += IMUMessage._SIZE

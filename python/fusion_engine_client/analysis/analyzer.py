@@ -428,8 +428,7 @@ class Analyzer(object):
 
         links = ''
         title_to_name = {e['title']: n for n, e in self.plots.items()}
-        titles = list(title_to_name.keys())
-        titles.sort()
+        titles = sorted(title_to_name.keys())
         for title in titles:
             name = title_to_name[title]
             entry = self.plots[name]
@@ -549,7 +548,7 @@ Duration: %(duration_sec).1f seconds
     def _open_browser(self, filename):
         try:
             webbrowser.open("file:///" + os.path.abspath(filename))
-        except:
+        except BaseException:
             self.logger.error("Unable to open web browser.")
 
     @classmethod
