@@ -99,14 +99,12 @@ contents.
     if (bytes_read == 0) {
       printf("Socket closed remotely.\n");
       break;
-    }
-    else if (bytes_read < 0) {
+    } else if (bytes_read < 0) {
       printf("Error reading from socket: %s (%d)\n", std::strerror(errno),
              errno);
       ret = 4;
       break;
-    }
-    else {
+    } else {
       total_bytes_read += bytes_read;
       framer.OnData(buffer, (size_t)bytes_read);
     }

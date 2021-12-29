@@ -19,7 +19,7 @@ using namespace point_one::fusion_engine::parsers;
 
 /******************************************************************************/
 class PrintableByte {
-public:
+ public:
   uint8_t byte_;
 
   PrintableByte(uint8_t byte) : byte_(byte) {}
@@ -63,8 +63,7 @@ void FusionEngineFramer::SetBuffer(void* buffer, size_t capacity_bytes) {
   if (buffer == nullptr) {
     managed_buffer_.reset(new uint8_t[capacity_bytes]);
     buffer = managed_buffer_.get();
-  }
-  else if (buffer != managed_buffer_.get()) {
+  } else if (buffer != managed_buffer_.get()) {
     managed_buffer_.reset(nullptr);
   }
 
@@ -98,13 +97,11 @@ size_t FusionEngineFramer::OnData(const uint8_t* buffer, size_t length_bytes) {
       p1_ssize_t dispatched_message_size = OnByte(false);
       if (dispatched_message_size == 0) {
         // Waiting for more data. Nothing to do.
-      }
-      else if (dispatched_message_size > 0) {
+      } else if (dispatched_message_size > 0) {
         // Message framed successfully. Reset for the next one.
         next_byte_index_ = 0;
         total_dispatched_bytes += (size_t)dispatched_message_size;
-      }
-      else if (next_byte_index_ > 0) {
+      } else if (next_byte_index_ > 0) {
         // If OnByte() indicated an error (size < 0) and there is still data in
         // the buffer, either the CRC failed or the payload was too big to fit
         // in the buffer.
@@ -116,15 +113,13 @@ size_t FusionEngineFramer::OnData(const uint8_t* buffer, size_t length_bytes) {
         // somewhere after byte 0. Perform a resync operation to find valid
         // messages.
         total_dispatched_bytes += Resync();
-      }
-      else {
+      } else {
         // OnByte() caught an unrecoverable error and reset the buffer. Nothing
         // to do.
       }
     }
     return total_dispatched_bytes;
-  }
-  else {
+  } else {
     return 0;
   }
 }
@@ -161,8 +156,7 @@ p1_ssize_t FusionEngineFramer::OnByte(bool quiet) {
     if (byte == MessageHeader::SYNC0) {
       VLOG(4) << "Found sync byte 0.";
       state_ = State::SYNC1;
-    }
-    else {
+    } else {
       --next_byte_index_;
     }
   }
@@ -174,12 +168,10 @@ p1_ssize_t FusionEngineFramer::OnByte(bool quiet) {
       VLOG(4) << "Found duplicate sync byte 0.";
       state_ = State::SYNC1;
       --next_byte_index_;
-    }
-    else if (byte == MessageHeader::SYNC1) {
+    } else if (byte == MessageHeader::SYNC1) {
       VLOG(3) << "Preamble found. Waiting for header.";
       state_ = State::HEADER;
-    }
-    else {
+    } else {
       VLOG(4) << "Did not find sync byte 1. Resetting. [byte="
               << PrintableByte(byte) << "]";
       state_ = State::SYNC0;
@@ -214,14 +206,12 @@ p1_ssize_t FusionEngineFramer::OnByte(bool quiet) {
         else {
           state_ = State::DATA;
         }
-      }
-      else {
+      } else {
         if (quiet) {
           VLOG(2) << "Message too large for buffer. [size="
                   << current_message_size_
                   << " B, buffer_capacity=" << capacity_bytes_ << " B]";
-        }
-        else {
+        } else {
           LOG(WARNING) << "Message too large for buffer. [size="
                        << current_message_size_
                        << " B, buffer_capacity=" << capacity_bytes_ << " B]";
@@ -268,8 +258,7 @@ p1_ssize_t FusionEngineFramer::OnByte(bool quiet) {
       }
       state_ = State::SYNC0;
       return static_cast<p1_ssize_t>(current_message_size_);
-    }
-    else {
+    } else {
       if (quiet) {
         VLOG(2) << "CRC check failed. [message=" << header->message_type << " ("
                 << (unsigned)header->message_type
@@ -277,8 +266,7 @@ p1_ssize_t FusionEngineFramer::OnByte(bool quiet) {
                 << ", size=" << current_message_size_ << " B, crc=0x"
                 << std::hex << std::setfill('0') << std::setw(8) << crc
                 << ", expected_crc=0x" << std::setw(8) << header->crc << "]";
-      }
-      else {
+      } else {
         LOG(WARNING) << "CRC check failed. [message=" << header->message_type
                      << " (" << (unsigned)header->message_type
                      << "), seq=" << header->sequence_number
@@ -339,8 +327,7 @@ size_t FusionEngineFramer::Resync() {
         available_bytes -= offset;
         std::memmove(buffer_, buffer_ + offset, available_bytes);
         offset = 0;
-      }
-      else {
+      } else {
         VLOG(4) << "Skipping non-sync byte 0 @ offset " << offset << "/"
                 << available_bytes << ". [byte=" << PrintableByte(current_byte)
                 << "]";
@@ -374,8 +361,7 @@ size_t FusionEngineFramer::Resync() {
             << ". [message_size=" << message_size << ", "
             << (available_bytes - message_size - 1)
             << " candidate bytes remaining]";
-      }
-      else {
+      } else {
         --available_bytes;
         size_t prev_offset = offset;
         offset = 0;
