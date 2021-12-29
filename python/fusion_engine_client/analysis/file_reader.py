@@ -63,7 +63,7 @@ class MessageData(object):
                         keep_idx = ~is_nan
                         for key, value in self.__dict__.items():
                             if (key not in ('message_type', 'message_class', 'params', 'messages') and
-                                isinstance(value, np.ndarray)):
+                                    isinstance(value, np.ndarray)):
                                 if len(value.shape) == 1:
                                     self.__dict__[key] = value[keep_idx]
                                 elif len(value.shape) == 2:
@@ -375,7 +375,7 @@ class FileReader(object):
         if num_needed == 0:
             # Nothing to read. Return cached data.
             self.logger.debug('Requested data already cached. [# types=%d, start=%s, end=%s]' %
-                              (len(message_types),  str(time_range[0]), str(time_range[1])))
+                              (len(message_types), str(time_range[0]), str(time_range[1])))
             return result
         elif self.file is None:
             raise IOError("File not open.")
@@ -545,7 +545,7 @@ class FileReader(object):
             if (not message_needed and
                 self.t0 is not None and
                 (not system_time_messages_requested or self.system_t0 is not None) and
-                not generate_index):
+                    not generate_index):
                 continue
 
             # Now decode the payload.
@@ -778,6 +778,7 @@ class FileReader(object):
                 # Now interlace messages with defaults as needed.
                 messages = entry['messages']
                 cls = entry['class']
+
                 def _get_value(i):
                     message_idx = message_indices[i]
                     if message_idx >= 0:

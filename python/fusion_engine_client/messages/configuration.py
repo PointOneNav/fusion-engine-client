@@ -40,15 +40,15 @@ class Direction(IntEnum):
 
 
 class TransportType(IntEnum):
-  INVALID = 0,
-  SERIAL = 1,
-  FILE = 2,
-  TCP_CLIENT = 3,
-  TCP_SERVER = 4,
-  UDP_CLIENT = 5,
-  UDP_SERVER = 6,
-  ## This is used for requesting the configuration for all interfaces.
-  ALL = 255,
+    INVALID = 0,
+    SERIAL = 1,
+    FILE = 2,
+    TCP_CLIENT = 3,
+    TCP_SERVER = 4,
+    UDP_CLIENT = 5,
+    UDP_SERVER = 6,
+    ## This is used for requesting the configuration for all interfaces.
+    ALL = 255,
 
 
 class UpdateAction(IntEnum):
@@ -179,12 +179,14 @@ class DeviceLeverArmConfig(_conf_gen.Point3F):
     """
     pass
 
+
 @_conf_gen.create_config_class(ConfigType.GNSS_LEVER_ARM, _conf_gen.Point3FConstruct)
 class GnssLeverArmConfig(_conf_gen.Point3F):
     """!
     @brief The location of the GNSS antenna with respect to the vehicle body frame (in meters).
     """
     pass
+
 
 @_conf_gen.create_config_class(ConfigType.OUTPUT_LEVER_ARM, _conf_gen.Point3FConstruct)
 class OutputLeverArmConfig(_conf_gen.Point3F):
@@ -193,6 +195,7 @@ class OutputLeverArmConfig(_conf_gen.Point3F):
     """
     pass
 
+
 @_conf_gen.create_config_class(ConfigType.UART0_BAUD, _conf_gen.UInt32Construct)
 class Uart0BaudConfig(_conf_gen.IntegerVal):
     """!
@@ -200,12 +203,14 @@ class Uart0BaudConfig(_conf_gen.IntegerVal):
     """
     pass
 
+
 @_conf_gen.create_config_class(ConfigType.UART1_BAUD, _conf_gen.UInt32Construct)
 class Uart1BaudConfig(_conf_gen.IntegerVal):
     """!
     @brief The UART1 serial baud rate (in bits/second).
     """
     pass
+
 
 @_conf_gen.create_config_class(ConfigType.DEVICE_COARSE_ORIENTATION, _conf_gen.CoarseOrientationConstruct)
 class DeviceCourseOrientationConfig(_conf_gen.CoarseOrientation):
@@ -223,6 +228,7 @@ class DeviceCourseOrientationConfig(_conf_gen.CoarseOrientation):
       trunk)
     """
     pass
+
 
 @_conf_gen.create_config_class(ConfigType.INVALID, _conf_gen.EmptyConstruct)
 class InvalidConfig(_conf_gen.Empty):
@@ -266,7 +272,7 @@ class SetConfigMessage(MessagePayload):
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if not isinstance(self.config_object, _conf_gen.ConfigClass):
             raise TypeError(f'The config_object member ({str(self.config_object)}) must be set to a class decorated '
-                             'with create_config_class.')
+                            'with create_config_class.')
         config_type = self.config_object.GetType()
         construct_obj = _conf_gen.CONFIG_MAP[config_type]
         data = construct_obj.build(self.config_object)
@@ -404,7 +410,7 @@ class ConfigResponseMessage(MessagePayload):
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if not isinstance(self.config_object, _conf_gen.ConfigClass):
             raise TypeError(f'The config_object member ({str(self.config_object)}) must be set to a class decorated '
-                             'with create_config_class.')
+                            'with create_config_class.')
         values = dict(self.__dict__)
         config_type = self.config_object.GetType()
         construct_obj = _conf_gen.CONFIG_MAP[config_type]
@@ -457,6 +463,7 @@ class _OutputInterfaceConfigConstruct(Adapter):
     """!
     Adapter to handle setting `num_streams` implicitly.
     """
+
     def __init__(self):
         super().__init__(Struct(
             "output_interface" / _InterfaceIDConstruct,

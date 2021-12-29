@@ -124,6 +124,7 @@ class EnumAdapter(Adapter):
     def _encode(self, obj, context, path):
         return obj
 
+
 def AutoEnum(construct_cls, enum_cls):
     """!
     @brief Wrapper for @ref EnumAdapter to make its arguments simpler.

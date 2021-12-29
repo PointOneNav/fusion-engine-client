@@ -116,7 +116,7 @@ class MessageType(IntEnum):
             try:
                 if int(type) >= MessageType.RESERVED:
                     return 'RESERVED (%s)' % str(type)
-            except:
+            except BaseException:
                 pass
 
             return 'UNKNOWN (%s)' % str(type)
@@ -201,8 +201,8 @@ class Timestamp:
 class MessageHeader:
     INVALID_SOURCE_ID = 0xFFFFFFFF
 
-    _SYNC0 = 0x2E # '.'
-    _SYNC1 = 0x31 # '1'
+    _SYNC0 = 0x2E  # '.'
+    _SYNC1 = 0x31  # '1'
 
     _FORMAT = '<BB2xIBBHIII'
     _SIZE: int = struct.calcsize(_FORMAT)
@@ -366,6 +366,7 @@ class MessagePayload:
     """!
     @brief Message payload API.
     """
+
     def __init__(self):
         pass
 
@@ -393,7 +394,8 @@ class MessagePayload:
         return repr(self)
 
 
-def PackedDataToBuffer(packed_data: bytes, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+def PackedDataToBuffer(packed_data: bytes, buffer: bytes = None, offset: int = 0,
+                       return_buffer: bool = True) -> (bytes, int):
     if buffer is None:
         buffer = packed_data
     else:

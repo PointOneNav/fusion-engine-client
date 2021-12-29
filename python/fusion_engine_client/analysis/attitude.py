@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def get_ned_rotation_matrix(latitude, longitude, deg=False):
     """!
     @brief Get the rotation matrix resolving from ECEF to the local NED frame.
