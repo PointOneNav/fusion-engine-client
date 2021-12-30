@@ -3,6 +3,7 @@ from fusion_engine_client.messages.defs import MessageHeader, MessageType
 from fusion_engine_client.parsers import FusionEngineDecoder
 
 import logging
+
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logging.getLogger('point_one').setLevel(logging.DEBUG)
 

@@ -478,8 +478,6 @@ struct alignas(4) MsgType {
  * @brief An output rate for a message.
  */
 struct alignas(4) MsgRate {
-  /** @brief The type of message to configure. */
-  MsgType type;
   /**
    * @brief Reserved value for @ref update_period_ms to indicate that the
    *        message should come out at its max rate.
@@ -487,6 +485,9 @@ struct alignas(4) MsgRate {
    * Also used for messages that output at a fixed rate.
    */
   static constexpr uint16_t MAX_RATE = 0xFFFF;
+
+  /** @brief The type of message to configure. */
+  MsgType type;
   /** @brief The desired message update interval (in ms). */
   uint16_t update_period_ms = 0;
   uint8_t reserved[2] = {0};
