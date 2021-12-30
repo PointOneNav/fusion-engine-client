@@ -9,8 +9,36 @@ on:
     # Build on a push of any tag named v* (v1.0, etc.) and generate a release.
     tags:
       - 'v*'
+  pull_request:
+    # Build when a pull request is opened or updated.
+    types: [opened, synchronize, reopened]
 
 jobs:
+  # Check code style.
+  check_style:
+    name: Check Style
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    # Check Python formatting.
+    - name: Check Python Formatting
+      id: autopep8
+      uses: peter-evans/autopep8@v1
+      with:
+        args: --in-place python/fusion_engine_client python/examples python/bin python/tests
+
+    - name: Test Python Result
+      if: steps.autopep8.outputs.exit-code == 2
+      run: exit 1
+
+    # Check C++ formatting.
+    - name: Check C++ Formatting
+      uses: jidicula/clang-format-action@v4.4.1
+      with:
+        clang-format-version: '13'
+        check-path: '.'
+
   # Build the library and example applications (Bazel).
   build_bazel:
     name: Bazel Build
@@ -250,11 +278,35 @@ jobs:
         aws s3 cp --acl public-read docs/favicon.ico s3://docs.pointonenav.com/fusion-engine/
         aws s3 cp --acl public-read docs/point_one_logo.png s3://docs.pointonenav.com/fusion-engine/
 
+  # Run Python unit tests.
+  test_python:
+    name: Python Unit Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: python
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Setup Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+
+    - name: Install Python Requirements
+      run: |
+        pip install -r requirements.txt
+        pip install pytest
+
+    - name: Run Unit Tests
+      run: |
+        python -m pytest
+
   # Create a release only on a tag (not on a branch push).
   release:
     name: Create Release
     if: startsWith(github.ref, 'refs/tags/')
-    needs: [build_bazel, build_cmake, build_doxygen, upload_doxygen]
+    needs: [check_style, build_bazel, build_cmake, build_doxygen, upload_doxygen, test_python]
     runs-on: ubuntu-latest
     outputs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}

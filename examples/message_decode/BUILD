@@ -9,6 +9,7 @@ cc_binary(
         "example_data.p1log",
     ],
     deps = [
+        "//common:print_message",
         "@fusion_engine_client",
     ],
 )

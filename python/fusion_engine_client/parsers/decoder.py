@@ -80,7 +80,7 @@ class FusionEngineDecoder:
                 is not recognized, the second argument will be a `bytes` containing the uninterpreted payload contents.
         """
         # Cast singleton byte values to a byte array.
-        if type(data) == int:
+        if isinstance(data, int):
             data = data.to_bytes(1, 'big')
 
         # Append the new data to the buffer.

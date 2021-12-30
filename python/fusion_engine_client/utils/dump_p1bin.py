@@ -76,7 +76,7 @@ def dump_p1bin(input_path, output_dir=None, prefix=None):
                               (len(record.contents), offset, offset, message_type, valid_count + 1))
                 out_files[message_type].write(record.contents)
                 valid_count += 1
-            except:
+            except BaseException:
                 break
 
     for fd in out_files.values():

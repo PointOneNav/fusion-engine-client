@@ -791,7 +791,7 @@ class ProfileCounterMessage(MessagePayload):
 
     def __str__(self):
         string = f'Profiling Counters @ System time {self.system_time_ns*1e-9:.3} sec\n'
-        string += f'\Counters:\n'
+        string += f'\\Counters:\n'
         for counter in self.entries:
             string += f'\t\tcount: {counter.count}\n'
         return string[-1]

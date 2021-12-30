@@ -3,6 +3,7 @@
 from typing import Tuple, Union, List, Any
 
 from argparse import ArgumentParser
+from collections import namedtuple
 import copy
 import logging
 import os
@@ -27,6 +28,19 @@ from .file_reader import FileReader
 from ..utils import trace
 from ..utils.log import locate_log
 _logger = logging.getLogger('point_one.fusion_engine.analysis.analyzer')
+
+
+SolutionTypeInfo = namedtuple('SolutionTypeInfo', ['name', 'style'])
+
+_SOLUTION_TYPE_MAP = {
+    SolutionType.Integrate: SolutionTypeInfo(name='Integrated', style={'color': 'cyan'}),
+    SolutionType.AutonomousGPS: SolutionTypeInfo(name='Standalone', style={'color': 'red'}),
+    SolutionType.DGPS: SolutionTypeInfo(name='DGPS', style={'color': 'blue'}),
+    SolutionType.RTKFloat: SolutionTypeInfo(name='RTK Float', style={'color': 'green'}),
+    SolutionType.RTKFixed: SolutionTypeInfo(name='RTK Fixed', style={'color': 'orange'}),
+    SolutionType.PPP: SolutionTypeInfo(name='PPP', style={'color': 'pink'}),
+    SolutionType.Visual: SolutionTypeInfo(name='Vision', style={'color': 'purple'}),
+}
 
 
 def _data_to_table(col_titles: List[str], col_values: List[List[Any]]):
@@ -56,6 +70,7 @@ _page_template = '''\
 </body>
 </html>
 '''
+
 
 class Analyzer(object):
     logger = _logger
@@ -216,6 +231,36 @@ class Analyzer(object):
 
         self._add_figure(name="pose", figure=figure, title="Vehicle Pose")
 
+    def plot_solution_type(self):
+        """!
+        @brief Plot the solution type over time.
+        """
+        if self.output_dir is None:
+            return
+
+        # Read the pose data.
+        result = self.reader.read(message_types=[PoseMessage], **self.params)
+        pose_data = result[PoseMessage.MESSAGE_TYPE]
+
+        if len(pose_data.p1_time) == 0:
+            self.logger.info('No pose data available.')
+            return
+
+        # Setup the figure.
+        figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=True, subplot_titles=['Solution Type'])
+
+        figure['layout']['xaxis'].update(title="Time (sec)")
+        figure['layout']['yaxis1'].update(title="Solution Type",
+                                          ticktext=['%s (%d)' % (e.name, e.value) for e in SolutionType],
+                                          tickvals=[e.value for e in SolutionType])
+
+        time = pose_data.p1_time - float(self.t0)
+
+        text = ["Time: %.3f sec (%.3f sec)" % (t, t + float(self.t0)) for t in time]
+        figure.add_trace(go.Scattergl(x=time, y=pose_data.solution_type, text=text), 1, 1)
+
+        self._add_figure(name="solution_type", figure=figure, title="Solution Type")
+
     def plot_map(self, mapbox_token):
         """!
         @brief Plot a map of the position data.
@@ -263,10 +308,10 @@ class Analyzer(object):
                                                  **style))
             else:
                 # If there's no data, draw a dummy trace so it shows up in the legend anyway.
-                map_data.append(go.Scattermapbox(lat=[np.nan], lon=[np.nan], name=name, **style))
+                map_data.append(go.Scattermapbox(lat=[np.nan], lon=[np.nan], name=name, visible='legendonly', **style))
 
-        _plot_data('RTK Fixed', solution_type == SolutionType.RTKFixed, {'color': 'orange'})
-        _plot_data('Non-Fixed', solution_type != SolutionType.RTKFixed, {'color': 'red'})
+        for type, info in _SOLUTION_TYPE_MAP.items():
+            _plot_data(info.name, solution_type == type, marker_style=info.style)
 
         # Create the map.
         layout = go.Layout(
@@ -814,8 +859,7 @@ class Analyzer(object):
 
         links = ''
         title_to_name = {e['title']: n for n, e in self.plots.items()}
-        titles = list(title_to_name.keys())
-        titles.sort()
+        titles = sorted(title_to_name.keys())
         for title in titles:
             name = title_to_name[title]
             entry = self.plots[name]
@@ -935,7 +979,7 @@ Duration: %(duration_sec).1f seconds
     def _open_browser(self, filename):
         try:
             webbrowser.open("file:///" + os.path.abspath(filename))
-        except:
+        except BaseException:
             self.logger.error("Unable to open web browser.")
 
     @classmethod
@@ -1056,6 +1100,7 @@ Load and display information stored in a FusionEngine binary file.
                         prefix=options.prefix + '.' if options.prefix is not None else '',
                         time_range=time_range, absolute_time=options.absolute_time)
 
+    analyzer.plot_solution_type()
     analyzer.plot_pose()
     analyzer.plot_map(mapbox_token=options.mapbox_token)
 
