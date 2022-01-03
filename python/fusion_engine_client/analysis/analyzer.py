@@ -180,6 +180,14 @@ class Analyzer(object):
         if len(event_data.messages) > 0:
             system_time_sec = np.array([(m.system_time_ns * 1e-9) for m in event_data.messages])
 
+        result = self.reader.read(message_types=[ProfileFreeRtosSystemStatusMessage], **self.params)
+        profiling_data = result[ProfileFreeRtosSystemStatusMessage.MESSAGE_TYPE]
+        if len(profiling_data.system_time_sec) > 0:
+            if system_time_sec is None:
+                system_time_sec = profiling_data.system_time_sec
+            else:
+                system_time_sec = np.union1d(system_time_sec, profiling_data.system_time_sec)
+
         if system_time_sec is not None:
             time = system_time_sec - self.system_t0
 
