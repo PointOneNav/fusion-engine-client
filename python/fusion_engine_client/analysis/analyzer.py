@@ -139,6 +139,23 @@ class Analyzer(object):
         if len(pose_data.p1_time) > 0:
             time = pose_data.p1_time - float(self.t0)
 
+            # plotly starts to struggle with > 2 hours of data and won't display mouseover text, so decimate if
+            # necessary.
+            dt_sec = time[-1] - time[0]
+            if dt_sec > 7200.0:
+                step = math.ceil(dt_sec / 7200.0)
+                idx = np.full_like(time, False, dtype=bool)
+                idx[0::step] = True
+
+                time = time[idx]
+                p1_time = pose_data.p1_time[idx]
+                gps_time = pose_data.gps_time[idx]
+
+                figure['layout'].update(title=figure.layout.title.text + "<br>Decimated %dx" % step)
+            else:
+                p1_time = pose_data.p1_time
+                gps_time = pose_data.gps_time
+
             def gps_sec_to_string(gps_time_sec):
                 if np.isnan(gps_time_sec):
                     return "GPS: N/A<br>UTC: N/A"
@@ -150,8 +167,7 @@ class Analyzer(object):
                     return "GPS: %d:%.3f (%.3f sec)<br>UTC: %s" %\
                            (week, tow_sec, gps_time_sec, utc_time.strftime('%Y-%m-%d %H:%M:%S %Z'))
 
-            text = ['P1: %.3f sec<br>%s' % (p, gps_sec_to_string(g))
-                    for p, g in zip(pose_data.p1_time, pose_data.gps_time)]
+            text = ['P1: %.3f sec<br>%s' % (p, gps_sec_to_string(g)) for p, g in zip(p1_time, gps_time)]
             figure.add_trace(go.Scattergl(x=time, y=np.full_like(time, 1), name='P1/GPS Time', text=text,
                                           mode='markers'))
 
@@ -165,6 +181,18 @@ class Analyzer(object):
 
         if system_time_sec is not None:
             time = system_time_sec - self.system_t0
+
+            # plotly starts to struggle with > 2 hours of data and won't display mouseover text, so decimate if
+            # necessary.
+            dt_sec = time[-1] - time[0]
+            if dt_sec > 7200.0:
+                step = math.ceil(dt_sec / 7200.0)
+                idx = np.full_like(time, False, dtype=bool)
+                idx[0::step] = True
+
+                time = time[idx]
+                system_time_sec = system_time_sec[idx]
+
             text = ['System: %.3f sec' % t for t in system_time_sec]
             figure.add_trace(go.Scattergl(x=time, y=np.full_like(time, 2), name='System Time', text=text,
                                           mode='markers'))
