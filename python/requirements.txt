@@ -2,5 +2,8 @@ numpy>=1.16.0
 construct>=2.10.0
 
 # Required for analysis tools only.
+# Note: Using the P1 fork of gpstime until Windows and microsecond fixes are mainlined.
+https://github.com/PointOneNav/gpstime/archive/416601324bc46ec496c393bb3e8ab7edd47fb937.zip#egg=gpstime
+#gpstime>=0.4.6
 plotly>=4.0.0
 pymap3d>=2.4.3

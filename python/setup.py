@@ -5,6 +5,7 @@ setup(
     version='v1.9.0',
     packages=find_packages(where='.'),
     install_requires=[
+        'gpstime @ https://github.com/PointOneNav/gpstime/archive/416601324bc46ec496c393bb3e8ab7edd47fb937.zip#egg=gpstime',
         'numpy>=1.16.0',
         'construct>=2.10.0',
     ],
