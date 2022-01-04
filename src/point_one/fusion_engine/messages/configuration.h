@@ -604,7 +604,7 @@ struct alignas(4) OutputInterfaceConfigEntry {
 
 /**
  * @brief Configure the set of output streams enabled for a given output
- *        interface (@ref MessageType::SET_OUTPUT_INFERFACE_STREAMS, version
+ *        interface (@ref MessageType::SET_OUTPUT_INTERFACE_CONFIG, version
  *        1.0).
  * @ingroup config_and_ctrl_messages
 
@@ -619,7 +619,7 @@ struct alignas(4) OutputInterfaceConfigEntry {
  */
 struct alignas(4) SetOutputInterfaceConfigMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE =
-      MessageType::SET_OUTPUT_INFERFACE_STREAMS;
+      MessageType::SET_OUTPUT_INTERFACE_CONFIG;
   static constexpr uint8_t MESSAGE_VERSION = 0;
   /**
    * The type of action this configuration message applies to the
@@ -637,7 +637,7 @@ struct alignas(4) SetOutputInterfaceConfigMessage : public MessagePayload {
 /**
  * @brief Query the set of message streams configured to be output by the device
  *        on a specified interface. (@ref
- *        MessageType::GET_OUTPUT_INFERFACE_STREAMS, version 1.0).
+ *        MessageType::GET_OUTPUT_INTERFACE_CONFIG, version 1.0).
  * @ingroup config_and_ctrl_messages
  *
  * The device will respond with a @ref OutputInterfaceConfigResponseMessage
@@ -645,7 +645,7 @@ struct alignas(4) SetOutputInterfaceConfigMessage : public MessagePayload {
  */
 struct alignas(4) GetOutputInterfaceConfigMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE =
-      MessageType::GET_OUTPUT_INFERFACE_STREAMS;
+      MessageType::GET_OUTPUT_INTERFACE_CONFIG;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
   /** The config source to request data from (active, saved, etc.). */
@@ -662,7 +662,7 @@ struct alignas(4) GetOutputInterfaceConfigMessage : public MessagePayload {
 
 /**
  * @brief Response to a @ref GetOutputInterfaceConfigMessage request (@ref
- *        MessageType::OUTPUT_INFERFACE_STREAMS_DATA, version 1.0).
+ *        MessageType::OUTPUT_INTERFACE_CONFIG_RESPONSE, version 1.0).
  * @ingroup config_and_ctrl_messages
  *
  * This message is followed by `N` @ref OutputInterfaceConfigEntry objects,
@@ -681,7 +681,7 @@ struct alignas(4) GetOutputInterfaceConfigMessage : public MessagePayload {
  */
 struct alignas(4) OutputInterfaceConfigResponseMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE =
-      MessageType::OUTPUT_INFERFACE_STREAMS_DATA;
+      MessageType::OUTPUT_INTERFACE_CONFIG_RESPONSE;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
   /** The source of the parameter value (active, saved, etc.). */

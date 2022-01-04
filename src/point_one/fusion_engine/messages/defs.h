@@ -183,11 +183,9 @@ enum class MessageType : uint16_t {
   SAVE_CONFIG = 13102, ///< @ref SaveConfigMessage
   CONFIG_DATA = 13103, ///< @ref ConfigResponseMessage
 
-  SET_OUTPUT_INFERFACE_STREAMS =
-      13200, ///< @ref SetOutputInterfaceConfigMessage
-  GET_OUTPUT_INFERFACE_STREAMS =
-      13201, ///< @ref GetOutputInterfaceConfigMessage
-  OUTPUT_INFERFACE_STREAMS_DATA =
+  SET_OUTPUT_INTERFACE_CONFIG = 13200, ///< @ref SetOutputInterfaceConfigMessage
+  GET_OUTPUT_INTERFACE_CONFIG = 13201, ///< @ref GetOutputInterfaceConfigMessage
+  OUTPUT_INTERFACE_CONFIG_RESPONSE =
       13202, ///< @ref OutputInterfaceConfigResponseMessage
 
   MAX_VALUE = CONFIG_DATA, ///< The maximum defined @ref MessageType enum value.

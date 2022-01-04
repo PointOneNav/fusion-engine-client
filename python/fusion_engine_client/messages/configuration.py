@@ -497,7 +497,7 @@ class SetOutputInterfaceConfigMessage(MessagePayload):
     serial_out.write(message)
     ```
     """
-    MESSAGE_TYPE = MessageType.SET_OUTPUT_INFERFACE_STREAMS
+    MESSAGE_TYPE = MessageType.SET_OUTPUT_INTERFACE_CONFIG
     MESSAGE_VERSION = 0
 
     SetOutputInterfaceConfigMessageConstruct = Struct(
@@ -537,7 +537,7 @@ class GetOutputInterfaceConfigMessage(MessagePayload):
 
     If the `type in `output_interface` is @ref TransportType.ALL then request the configuration for all interfaces.
     """
-    MESSAGE_TYPE = MessageType.GET_OUTPUT_INFERFACE_STREAMS
+    MESSAGE_TYPE = MessageType.GET_OUTPUT_INTERFACE_CONFIG
     MESSAGE_VERSION = 0
 
     GetOutputInterfaceConfigMessageConstruct = Struct(
@@ -576,7 +576,7 @@ class OutputInterfaceConfigResponseMessage(MessagePayload):
     """!
     @brief Response to a @ref GetOutputInterfaceConfigMessage request.
     """
-    MESSAGE_TYPE = MessageType.OUTPUT_INFERFACE_STREAMS_DATA
+    MESSAGE_TYPE = MessageType.OUTPUT_INTERFACE_CONFIG_RESPONSE
     MESSAGE_VERSION = 0
 
     OutputInterfaceConfigResponseMessageConstruct = Struct(
