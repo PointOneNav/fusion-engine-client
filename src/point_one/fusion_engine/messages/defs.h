@@ -188,7 +188,8 @@ enum class MessageType : uint16_t {
   OUTPUT_INTERFACE_CONFIG_RESPONSE =
       13202, ///< @ref OutputInterfaceConfigResponseMessage
 
-  MAX_VALUE = CONFIG_DATA, ///< The maximum defined @ref MessageType enum value.
+  /// The maximum defined @ref MessageType enum value.
+  MAX_VALUE = OUTPUT_INTERFACE_CONFIG_RESPONSE,
 };
 
 /** @} */
