@@ -38,21 +38,6 @@ enum class ConfigType : uint16_t {
   INVALID = 0,
 
   /**
-   * Configure the set of protocols and messages enabled for a given output
-   * stream.
-   *
-   * Payload format: @ref OutputStreamMsgsConfig
-   */
-  OUTPUT_STREAM_MSGS = 1,
-
-  /**
-   * Configure the set of output streams enabled for a given output interface.
-   *
-   * Payload format: @ref OutputInterfaceConfig
-   */
-  OUTPUT_INTERFACE_STREAMS = 2,
-
-  /**
    * The location of the device IMU with respect to the vehicle body frame (in
    * meters).
    *
@@ -110,12 +95,6 @@ inline const char* to_string(ConfigType type) {
   switch (type) {
     case ConfigType::INVALID:
       return "Invalid";
-
-    case ConfigType::OUTPUT_STREAM_MSGS:
-      return "Output Stream Messages";
-
-    case ConfigType::OUTPUT_INTERFACE_STREAMS:
-      return "Output Interface Streams";
 
     case ConfigType::DEVICE_LEVER_ARM:
       return "Device Lever Arm";
