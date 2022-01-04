@@ -310,9 +310,9 @@ struct alignas(4) SaveConfigMessage : public MessagePayload {
  * ```
  *
  * In response to a @ref GetConfigMessage with an invalid or unsupported @ref
- * ConfigType, @ref config_type in the resulting @ref ConfigResponseMessage will be
- * set to @ref ConfigType::INVALID. Note that invalid and rejected requests will
- * receive a @ref ConfigResponseMessage, not a @ref CommandResponseMessage.
+ * ConfigType, @ref config_type in the resulting @ref ConfigResponseMessage will
+ * be set to @ref ConfigType::INVALID. Note that invalid and rejected requests
+ * will receive a @ref ConfigResponseMessage, not a @ref CommandResponseMessage.
  */
 struct alignas(4) ConfigResponseMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::CONFIG_DATA;
@@ -571,7 +571,8 @@ inline std::ostream& operator<<(std::ostream& stream, UpdateAction val) {
 }
 
 /**
- * @brief Configuration for the streams associated with an output interface.
+ * @brief Configuration for the streams associated with a single output
+ *        interface.
  *
  * This object is used in the payload of the @ref
  * SetOutputInterfaceConfigMessage and @ref
@@ -580,8 +581,8 @@ inline std::ostream& operator<<(std::ostream& stream, UpdateAction val) {
  * num_streams. For example:
  *
  * ```
- * {MessageHeader, SetOutputInterfaceConfigMessage, OutputInterfaceConfig,
- *  uint8_t, uint8_t,  ...}
+ * {MessageHeader, SetOutputInterfaceConfigMessage,
+ *  OutputInterfaceConfigEntry, uint8_t, uint8_t,  ...}
  * ```
  */
 struct alignas(4) OutputInterfaceConfig {
