@@ -14,8 +14,6 @@ class ConfigurationSource(IntEnum):
 
 class ConfigType(IntEnum):
     INVALID = 0
-    OUTPUT_STREAM_MSGS = 1
-    OUTPUT_INTERFACE_STREAMS = 2
     DEVICE_LEVER_ARM = 16
     DEVICE_COARSE_ORIENTATION = 17
     GNSS_LEVER_ARM = 18
