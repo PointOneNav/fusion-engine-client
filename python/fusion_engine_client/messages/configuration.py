@@ -7,6 +7,11 @@ from ..utils.construct_utils import NamedTupleAdapter, AutoEnum
 from .defs import *
 
 
+################################################################################
+# Device Configuration Support
+################################################################################
+
+
 class ConfigurationSource(IntEnum):
     ACTIVE = 0
     SAVED = 1
@@ -439,6 +444,11 @@ class ConfigResponseMessage(MessagePayload):
 
     def calcsize(self) -> int:
         return len(self.pack())
+
+
+################################################################################
+# Input/Output Stream Control
+################################################################################
 
 
 class InterfaceID(NamedTuple):
