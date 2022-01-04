@@ -402,6 +402,15 @@ inline const char* to_string(MessageType type) {
     case MessageType::CONFIG_RESPONSE:
       return "Configuration Parameter Value";
 
+    case MessageType::SET_OUTPUT_INTERFACE_CONFIG:
+      return "Set Output Interface Config";
+
+    case MessageType::GET_OUTPUT_INTERFACE_CONFIG:
+      return "Get Output Interface Config";
+
+    case MessageType::OUTPUT_INTERFACE_CONFIG_RESPONSE:
+      return "Output Interface Config Response";
+
     default:
       return "Unrecognized Message";
   }
