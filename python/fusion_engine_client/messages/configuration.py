@@ -247,13 +247,13 @@ class SetConfigMessage(MessagePayload):
     Usage examples:
     ```{.py}
     # A message for setting the device UART1 baud rate to 9600.
-    set_config = SetOutputInterfaceConfigMessage(Uart1BaudConfig(9600))
+    set_config = SetConfigMessage(Uart1BaudConfig(9600))
 
     # A message for setting the device lever arm to [1.1, 0, 1.2].
-    set_config = SetOutputInterfaceConfigMessage(DeviceLeverArmConfig(1.1, 0, 1.2))
+    set_config = SetConfigMessage(DeviceLeverArmConfig(1.1, 0, 1.2))
 
     # A message for setting the device coarse orientation to the default values.
-    set_config = SetOutputInterfaceConfigMessage(DeviceCourseOrientationConfig())
+    set_config = SetConfigMessage(DeviceCourseOrientationConfig())
     ```
     """
     MESSAGE_TYPE = MessageType.SET_CONFIG
