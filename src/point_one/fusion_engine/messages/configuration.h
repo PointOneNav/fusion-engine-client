@@ -585,7 +585,7 @@ inline std::ostream& operator<<(std::ostream& stream, UpdateAction val) {
  *  OutputInterfaceConfigEntry, uint8_t, uint8_t,  ...}
  * ```
  */
-struct alignas(4) OutputInterfaceConfig {
+struct alignas(4) OutputInterfaceConfigEntry {
   /** The output interface to configure. */
   InterfaceID output_interface;
   /** The number of `stream_indices` entries this message contains. */
@@ -631,7 +631,7 @@ struct alignas(4) SetOutputInterfaceConfigMessage : public MessagePayload {
   /**
    * The new output interface configuration to be applied.
    */
-  OutputInterfaceConfig output_interface_data;
+  OutputInterfaceConfigEntry output_interface_data;
 };
 
 /**
@@ -665,8 +665,8 @@ struct alignas(4) GetOutputInterfaceConfigMessage : public MessagePayload {
  *        MessageType::OUTPUT_INFERFACE_STREAMS_DATA, version 1.0).
  * @ingroup config_and_ctrl_messages
  *
- * This message is followed by `N` @ref OutputInterfaceConfig objects, where
- * `N` is equal to @ref number_of_interfaces. Each of these interfaces is
+ * This message is followed by `N` @ref OutputInterfaceConfigEntry objects,
+ * where `N` is equal to @ref number_of_interfaces. Each of these interfaces is
  * variable size, and the sum of the objects should add up to the message size
  * from the header.
  *
@@ -674,8 +674,9 @@ struct alignas(4) GetOutputInterfaceConfigMessage : public MessagePayload {
  * two streams the payload will look as follows:
  *
  * ```
- * {MessageHeader, OutputInterfaceConfigResponseMessage, OutputInterfaceConfig,
- *  uint8_t, uint8_t, OutputInterfaceConfig, uint8_t, uint8_t}
+ * {MessageHeader, OutputInterfaceConfigResponseMessage,
+ *  OutputInterfaceConfigEntry, uint8_t, uint8_t,
+ *  OutputInterfaceConfigEntry, uint8_t, uint8_t}
  * ```
  */
 struct alignas(4) OutputInterfaceConfigResponseMessage : public MessagePayload {
@@ -703,7 +704,7 @@ struct alignas(4) OutputInterfaceConfigResponseMessage : public MessagePayload {
    */
   // Note: This causes a compiler error on MSVC so it is not included:
   //       https://docs.microsoft.com/en-us/cpp/error-messages/compiler-errors-1/compiler-error-c2233
-  // OutputInterfaceConfig output_interface_data[0];
+  // OutputInterfaceConfigEntry output_interface_data[0];
 };
 
 /** @} */
