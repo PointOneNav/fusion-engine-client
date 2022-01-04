@@ -9,6 +9,7 @@ import os
 import sys
 import webbrowser
 
+from gpstime import gpstime
 import plotly
 import plotly.graph_objs as go
 from plotly.subplots import make_subplots
@@ -119,6 +120,84 @@ class Analyzer(object):
         if self.output_dir is not None:
             if not os.path.exists(self.output_dir):
                 os.makedirs(self.output_dir)
+
+    def plot_time_scale(self):
+        if self.output_dir is None:
+            return
+
+        figure = go.Figure()
+        figure['layout'].update(title='Device Time vs Relative Time', showlegend=False)
+        figure['layout']['xaxis1'].update(title="Relative Time (sec)")
+        figure['layout']['yaxis1'].update(title="Absolute Time",
+                                          ticktext=['P1/GPS Time', 'System Time'],
+                                          tickvals=[1, 2])
+
+        # Read the pose data to get P1 and GPS timestamps.
+        result = self.reader.read(message_types=[PoseMessage], **self.params)
+        pose_data = result[PoseMessage.MESSAGE_TYPE]
+
+        if len(pose_data.p1_time) > 0:
+            time = pose_data.p1_time - float(self.t0)
+
+            # plotly starts to struggle with > 2 hours of data and won't display mouseover text, so decimate if
+            # necessary.
+            dt_sec = time[-1] - time[0]
+            if dt_sec > 7200.0:
+                step = math.ceil(dt_sec / 7200.0)
+                idx = np.full_like(time, False, dtype=bool)
+                idx[0::step] = True
+
+                time = time[idx]
+                p1_time = pose_data.p1_time[idx]
+                gps_time = pose_data.gps_time[idx]
+
+                figure['layout'].update(title=figure.layout.title.text + "<br>Decimated %dx" % step)
+            else:
+                p1_time = pose_data.p1_time
+                gps_time = pose_data.gps_time
+
+            def gps_sec_to_string(gps_time_sec):
+                if np.isnan(gps_time_sec):
+                    return "GPS: N/A<br>UTC: N/A"
+                else:
+                    SECS_PER_WEEK = 7 * 24 * 3600.0
+                    week = int(gps_time_sec / SECS_PER_WEEK)
+                    tow_sec = gps_time_sec - week * SECS_PER_WEEK
+                    utc_time = gpstime.fromgps(gps_time_sec)
+                    return "GPS: %d:%.3f (%.3f sec)<br>UTC: %s" %\
+                           (week, tow_sec, gps_time_sec, utc_time.strftime('%Y-%m-%d %H:%M:%S %Z'))
+
+            text = ['P1: %.3f sec<br>%s' % (p, gps_sec_to_string(g)) for p, g in zip(p1_time, gps_time)]
+            figure.add_trace(go.Scattergl(x=time, y=np.full_like(time, 1), name='P1/GPS Time', text=text,
+                                          mode='markers'))
+
+        # Read system timestamps from event notifications, if present.
+        result = self.reader.read(message_types=[EventNotificationMessage], **self.params)
+        event_data = result[EventNotificationMessage.MESSAGE_TYPE]
+
+        system_time_sec = None
+        if len(event_data.messages) > 0:
+            system_time_sec = np.array([(m.system_time_ns * 1e-9) for m in event_data.messages])
+
+        if system_time_sec is not None:
+            time = system_time_sec - self.system_t0
+
+            # plotly starts to struggle with > 2 hours of data and won't display mouseover text, so decimate if
+            # necessary.
+            dt_sec = time[-1] - time[0]
+            if dt_sec > 7200.0:
+                step = math.ceil(dt_sec / 7200.0)
+                idx = np.full_like(time, False, dtype=bool)
+                idx[0::step] = True
+
+                time = time[idx]
+                system_time_sec = system_time_sec[idx]
+
+            text = ['System: %.3f sec' % t for t in system_time_sec]
+            figure.add_trace(go.Scattergl(x=time, y=np.full_like(time, 2), name='System Time', text=text,
+                                          mode='markers'))
+
+        self._add_figure(name="time_scale", figure=figure, title="Time Scale")
 
     def plot_pose(self):
         """!
@@ -665,6 +744,7 @@ Load and display information stored in a FusionEngine binary file.
                         prefix=options.prefix + '.' if options.prefix is not None else '',
                         time_range=time_range, absolute_time=options.absolute_time)
 
+    analyzer.plot_time_scale()
     analyzer.plot_solution_type()
     analyzer.plot_pose()
     analyzer.plot_map(mapbox_token=options.mapbox_token)
