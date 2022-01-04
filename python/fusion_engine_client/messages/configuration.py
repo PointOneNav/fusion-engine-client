@@ -388,7 +388,7 @@ class ConfigResponseMessage(MessagePayload):
     """!
     @brief Response to a @ref GetConfigMessage request.
     """
-    MESSAGE_TYPE = MessageType.CONFIG_DATA
+    MESSAGE_TYPE = MessageType.CONFIG_RESPONSE
     MESSAGE_VERSION = 0
 
     ConfigResponseMessageConstruct = Struct(

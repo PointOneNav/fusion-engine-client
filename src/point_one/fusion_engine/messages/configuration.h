@@ -297,7 +297,7 @@ struct alignas(4) SaveConfigMessage : public MessagePayload {
 
 /**
  * @brief Response to a @ref GetConfigMessage request (@ref
- *        MessageType::CONFIG_DATA, version 1.0).
+ *        MessageType::CONFIG_RESPONSE, version 1.0).
  * @ingroup config_and_ctrl_messages
  *
  * This message is followed by `N` bytes, where `N` is equal to @ref
@@ -311,11 +311,13 @@ struct alignas(4) SaveConfigMessage : public MessagePayload {
  *
  * In response to a @ref GetConfigMessage with an invalid or unsupported @ref
  * ConfigType, @ref config_type in the resulting @ref ConfigResponseMessage will
- * be set to @ref ConfigType::INVALID. Note that invalid and rejected requests
- * will receive a @ref ConfigResponseMessage, not a @ref CommandResponseMessage.
+ * be set to @ref ConfigType::INVALID, and @ref response will indicate the
+ * reason. Note that all @ref GetConfigMessage requests, including invalid and
+ * rejected requests, will receive a @ref ConfigResponseMessage, not a
+ * @ref CommandResponseMessage.
  */
 struct alignas(4) ConfigResponseMessage : public MessagePayload {
-  static constexpr MessageType MESSAGE_TYPE = MessageType::CONFIG_DATA;
+  static constexpr MessageType MESSAGE_TYPE = MessageType::CONFIG_RESPONSE;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
   /** The source of the parameter value (active, saved, etc.). */

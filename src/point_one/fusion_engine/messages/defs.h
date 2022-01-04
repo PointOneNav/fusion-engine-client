@@ -181,7 +181,7 @@ enum class MessageType : uint16_t {
   SET_CONFIG = 13100, ///< @ref SetConfigMessage
   GET_CONFIG = 13101, ///< @ref GetConfigMessage
   SAVE_CONFIG = 13102, ///< @ref SaveConfigMessage
-  CONFIG_DATA = 13103, ///< @ref ConfigResponseMessage
+  CONFIG_RESPONSE = 13103, ///< @ref ConfigResponseMessage
 
   SET_OUTPUT_INTERFACE_CONFIG = 13200, ///< @ref SetOutputInterfaceConfigMessage
   GET_OUTPUT_INTERFACE_CONFIG = 13201, ///< @ref GetOutputInterfaceConfigMessage
@@ -399,7 +399,7 @@ inline const char* to_string(MessageType type) {
     case MessageType::SAVE_CONFIG:
       return "Save Configuration";
 
-    case MessageType::CONFIG_DATA:
+    case MessageType::CONFIG_RESPONSE:
       return "Configuration Parameter Value";
 
     default:
