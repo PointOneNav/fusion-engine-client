@@ -297,7 +297,7 @@ struct alignas(4) SaveConfigMessage : public MessagePayload {
 
 /**
  * @brief Response to a @ref GetConfigMessage request (@ref
- *        MessageType::CONFIG_DATA, version 1.0).
+ *        MessageType::CONFIG_RESPONSE, version 1.0).
  * @ingroup config_and_ctrl_messages
  *
  * This message is followed by `N` bytes, where `N` is equal to @ref
@@ -310,12 +310,14 @@ struct alignas(4) SaveConfigMessage : public MessagePayload {
  * ```
  *
  * In response to a @ref GetConfigMessage with an invalid or unsupported @ref
- * ConfigType, @ref config_type in the resulting @ref ConfigResponseMessage will be
- * set to @ref ConfigType::INVALID. Note that invalid and rejected requests will
- * receive a @ref ConfigResponseMessage, not a @ref CommandResponseMessage.
+ * ConfigType, @ref config_type in the resulting @ref ConfigResponseMessage will
+ * be set to @ref ConfigType::INVALID, and @ref response will indicate the
+ * reason. Note that all @ref GetConfigMessage requests, including invalid and
+ * rejected requests, will receive a @ref ConfigResponseMessage, not a
+ * @ref CommandResponseMessage.
  */
 struct alignas(4) ConfigResponseMessage : public MessagePayload {
-  static constexpr MessageType MESSAGE_TYPE = MessageType::CONFIG_DATA;
+  static constexpr MessageType MESSAGE_TYPE = MessageType::CONFIG_RESPONSE;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
   /** The source of the parameter value (active, saved, etc.). */
@@ -571,7 +573,8 @@ inline std::ostream& operator<<(std::ostream& stream, UpdateAction val) {
 }
 
 /**
- * @brief Configuration for the streams associated with an output interface.
+ * @brief Configuration for the streams associated with a single output
+ *        interface.
  *
  * This object is used in the payload of the @ref
  * SetOutputInterfaceConfigMessage and @ref
@@ -580,11 +583,11 @@ inline std::ostream& operator<<(std::ostream& stream, UpdateAction val) {
  * num_streams. For example:
  *
  * ```
- * {MessageHeader, SetOutputInterfaceConfigMessage, OutputInterfaceConfig,
- *  uint8_t, uint8_t,  ...}
+ * {MessageHeader, SetOutputInterfaceConfigMessage,
+ *  OutputInterfaceConfigEntry, uint8_t, uint8_t,  ...}
  * ```
  */
-struct alignas(4) OutputInterfaceConfig {
+struct alignas(4) OutputInterfaceConfigEntry {
   /** The output interface to configure. */
   InterfaceID output_interface;
   /** The number of `stream_indices` entries this message contains. */
@@ -603,7 +606,7 @@ struct alignas(4) OutputInterfaceConfig {
 
 /**
  * @brief Configure the set of output streams enabled for a given output
- *        interface (@ref MessageType::SET_OUTPUT_INFERFACE_STREAMS, version
+ *        interface (@ref MessageType::SET_OUTPUT_INTERFACE_CONFIG, version
  *        1.0).
  * @ingroup config_and_ctrl_messages
 
@@ -618,7 +621,7 @@ struct alignas(4) OutputInterfaceConfig {
  */
 struct alignas(4) SetOutputInterfaceConfigMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE =
-      MessageType::SET_OUTPUT_INFERFACE_STREAMS;
+      MessageType::SET_OUTPUT_INTERFACE_CONFIG;
   static constexpr uint8_t MESSAGE_VERSION = 0;
   /**
    * The type of action this configuration message applies to the
@@ -630,13 +633,13 @@ struct alignas(4) SetOutputInterfaceConfigMessage : public MessagePayload {
   /**
    * The new output interface configuration to be applied.
    */
-  OutputInterfaceConfig output_interface_data;
+  OutputInterfaceConfigEntry output_interface_data;
 };
 
 /**
  * @brief Query the set of message streams configured to be output by the device
  *        on a specified interface. (@ref
- *        MessageType::GET_OUTPUT_INFERFACE_STREAMS, version 1.0).
+ *        MessageType::GET_OUTPUT_INTERFACE_CONFIG, version 1.0).
  * @ingroup config_and_ctrl_messages
  *
  * The device will respond with a @ref OutputInterfaceConfigResponseMessage
@@ -644,7 +647,7 @@ struct alignas(4) SetOutputInterfaceConfigMessage : public MessagePayload {
  */
 struct alignas(4) GetOutputInterfaceConfigMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE =
-      MessageType::GET_OUTPUT_INFERFACE_STREAMS;
+      MessageType::GET_OUTPUT_INTERFACE_CONFIG;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
   /** The config source to request data from (active, saved, etc.). */
@@ -661,11 +664,11 @@ struct alignas(4) GetOutputInterfaceConfigMessage : public MessagePayload {
 
 /**
  * @brief Response to a @ref GetOutputInterfaceConfigMessage request (@ref
- *        MessageType::OUTPUT_INFERFACE_STREAMS_DATA, version 1.0).
+ *        MessageType::OUTPUT_INTERFACE_CONFIG_RESPONSE, version 1.0).
  * @ingroup config_and_ctrl_messages
  *
- * This message is followed by `N` @ref OutputInterfaceConfig objects, where
- * `N` is equal to @ref number_of_interfaces. Each of these interfaces is
+ * This message is followed by `N` @ref OutputInterfaceConfigEntry objects,
+ * where `N` is equal to @ref number_of_interfaces. Each of these interfaces is
  * variable size, and the sum of the objects should add up to the message size
  * from the header.
  *
@@ -673,13 +676,14 @@ struct alignas(4) GetOutputInterfaceConfigMessage : public MessagePayload {
  * two streams the payload will look as follows:
  *
  * ```
- * {MessageHeader, OutputInterfaceConfigResponseMessage, OutputInterfaceConfig,
- *  uint8_t, uint8_t, OutputInterfaceConfig, uint8_t, uint8_t}
+ * {MessageHeader, OutputInterfaceConfigResponseMessage,
+ *  OutputInterfaceConfigEntry, uint8_t, uint8_t,
+ *  OutputInterfaceConfigEntry, uint8_t, uint8_t}
  * ```
  */
 struct alignas(4) OutputInterfaceConfigResponseMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE =
-      MessageType::OUTPUT_INFERFACE_STREAMS_DATA;
+      MessageType::OUTPUT_INTERFACE_CONFIG_RESPONSE;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
   /** The source of the parameter value (active, saved, etc.). */
@@ -702,7 +706,7 @@ struct alignas(4) OutputInterfaceConfigResponseMessage : public MessagePayload {
    */
   // Note: This causes a compiler error on MSVC so it is not included:
   //       https://docs.microsoft.com/en-us/cpp/error-messages/compiler-errors-1/compiler-error-c2233
-  // OutputInterfaceConfig output_interface_data[0];
+  // OutputInterfaceConfigEntry output_interface_data[0];
 };
 
 /** @} */

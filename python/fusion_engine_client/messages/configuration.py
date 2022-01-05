@@ -7,6 +7,11 @@ from ..utils.construct_utils import NamedTupleAdapter, AutoEnum
 from .defs import *
 
 
+################################################################################
+# Device Configuration Support
+################################################################################
+
+
 class ConfigurationSource(IntEnum):
     ACTIVE = 0
     SAVED = 1
@@ -247,13 +252,13 @@ class SetConfigMessage(MessagePayload):
     Usage examples:
     ```{.py}
     # A message for setting the device UART1 baud rate to 9600.
-    set_config = SetOutputInterfaceConfigMessage(Uart1BaudConfig(9600))
+    set_config = SetConfigMessage(Uart1BaudConfig(9600))
 
     # A message for setting the device lever arm to [1.1, 0, 1.2].
-    set_config = SetOutputInterfaceConfigMessage(DeviceLeverArmConfig(1.1, 0, 1.2))
+    set_config = SetConfigMessage(DeviceLeverArmConfig(1.1, 0, 1.2))
 
     # A message for setting the device coarse orientation to the default values.
-    set_config = SetOutputInterfaceConfigMessage(DeviceCourseOrientationConfig())
+    set_config = SetConfigMessage(DeviceCourseOrientationConfig())
     ```
     """
     MESSAGE_TYPE = MessageType.SET_CONFIG
@@ -388,7 +393,7 @@ class ConfigResponseMessage(MessagePayload):
     """!
     @brief Response to a @ref GetConfigMessage request.
     """
-    MESSAGE_TYPE = MessageType.CONFIG_DATA
+    MESSAGE_TYPE = MessageType.CONFIG_RESPONSE
     MESSAGE_VERSION = 0
 
     ConfigResponseMessageConstruct = Struct(
@@ -439,6 +444,11 @@ class ConfigResponseMessage(MessagePayload):
 
     def calcsize(self) -> int:
         return len(self.pack())
+
+
+################################################################################
+# Input/Output Stream Control
+################################################################################
 
 
 class InterfaceID(NamedTuple):
@@ -497,7 +507,7 @@ class SetOutputInterfaceConfigMessage(MessagePayload):
     serial_out.write(message)
     ```
     """
-    MESSAGE_TYPE = MessageType.SET_OUTPUT_INFERFACE_STREAMS
+    MESSAGE_TYPE = MessageType.SET_OUTPUT_INTERFACE_CONFIG
     MESSAGE_VERSION = 0
 
     SetOutputInterfaceConfigMessageConstruct = Struct(
@@ -537,7 +547,7 @@ class GetOutputInterfaceConfigMessage(MessagePayload):
 
     If the `type in `output_interface` is @ref TransportType.ALL then request the configuration for all interfaces.
     """
-    MESSAGE_TYPE = MessageType.GET_OUTPUT_INFERFACE_STREAMS
+    MESSAGE_TYPE = MessageType.GET_OUTPUT_INTERFACE_CONFIG
     MESSAGE_VERSION = 0
 
     GetOutputInterfaceConfigMessageConstruct = Struct(
@@ -576,7 +586,7 @@ class OutputInterfaceConfigResponseMessage(MessagePayload):
     """!
     @brief Response to a @ref GetOutputInterfaceConfigMessage request.
     """
-    MESSAGE_TYPE = MessageType.OUTPUT_INFERFACE_STREAMS_DATA
+    MESSAGE_TYPE = MessageType.OUTPUT_INTERFACE_CONFIG_RESPONSE
     MESSAGE_VERSION = 0
 
     OutputInterfaceConfigResponseMessageConstruct = Struct(

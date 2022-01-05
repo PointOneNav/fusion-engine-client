@@ -181,16 +181,15 @@ enum class MessageType : uint16_t {
   SET_CONFIG = 13100, ///< @ref SetConfigMessage
   GET_CONFIG = 13101, ///< @ref GetConfigMessage
   SAVE_CONFIG = 13102, ///< @ref SaveConfigMessage
-  CONFIG_DATA = 13103, ///< @ref ConfigResponseMessage
+  CONFIG_RESPONSE = 13103, ///< @ref ConfigResponseMessage
 
-  SET_OUTPUT_INFERFACE_STREAMS =
-      13200, ///< @ref SetOutputInterfaceConfigMessage
-  GET_OUTPUT_INFERFACE_STREAMS =
-      13201, ///< @ref GetOutputInterfaceConfigMessage
-  OUTPUT_INFERFACE_STREAMS_DATA =
+  SET_OUTPUT_INTERFACE_CONFIG = 13200, ///< @ref SetOutputInterfaceConfigMessage
+  GET_OUTPUT_INTERFACE_CONFIG = 13201, ///< @ref GetOutputInterfaceConfigMessage
+  OUTPUT_INTERFACE_CONFIG_RESPONSE =
       13202, ///< @ref OutputInterfaceConfigResponseMessage
 
-  MAX_VALUE = CONFIG_DATA, ///< The maximum defined @ref MessageType enum value.
+  /// The maximum defined @ref MessageType enum value.
+  MAX_VALUE = OUTPUT_INTERFACE_CONFIG_RESPONSE,
 };
 
 /** @} */
@@ -400,8 +399,17 @@ inline const char* to_string(MessageType type) {
     case MessageType::SAVE_CONFIG:
       return "Save Configuration";
 
-    case MessageType::CONFIG_DATA:
+    case MessageType::CONFIG_RESPONSE:
       return "Configuration Parameter Value";
+
+    case MessageType::SET_OUTPUT_INTERFACE_CONFIG:
+      return "Set Output Interface Config";
+
+    case MessageType::GET_OUTPUT_INTERFACE_CONFIG:
+      return "Get Output Interface Config";
+
+    case MessageType::OUTPUT_INTERFACE_CONFIG_RESPONSE:
+      return "Output Interface Config Response";
 
     default:
       return "Unrecognized Message";
