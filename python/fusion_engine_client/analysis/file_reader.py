@@ -413,7 +413,7 @@ class FileReader(object):
             # If t0 has never been set, this is probably the "first message" read done in open() to set t0. Ignore the
             # time range.
             if time_range_specified and self.t0 is not None:
-                time_idx = np.full_like(self.index['time'], False, dtype=bool)
+                time_idx = np.full_like(self.index['time'], True, dtype=bool)
                 limit_time = self.index['time'] - p1_reference_time_sec
                 if time_range[0] is not None:
                     # Note: The index stores only the integer part of the timestamp.

@@ -7,6 +7,7 @@ setup(
     install_requires=[
         'wheel>=0.36.2',
         'aenum @ git+https://github.com/PointOneNav/aenum.git@extend-enum#egg=aenum',
+        'gpstime @ https://github.com/PointOneNav/gpstime/archive/416601324bc46ec496c393bb3e8ab7edd47fb937.zip#egg=gpstime',
         'numpy>=1.16.0',
         'construct>=2.10.0',
     ],
