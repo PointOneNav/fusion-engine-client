@@ -10,7 +10,6 @@
 #include <functional>
 #include <memory>
 
-#include "point_one/fusion_engine/common/portability.h" // For p1_ssize_t
 #include "point_one/fusion_engine/messages/defs.h"
 
 namespace point_one {
@@ -140,11 +139,11 @@ class FusionEngineFramer {
 
   std::unique_ptr<uint8_t[]> managed_buffer_;
   uint8_t* buffer_{nullptr};
-  size_t capacity_bytes_{0};
+  uint32_t capacity_bytes_{0};
 
   State state_{State::SYNC0};
-  size_t next_byte_index_{0};
-  size_t current_message_size_{0};
+  uint32_t next_byte_index_{0};
+  uint32_t current_message_size_{0};
 
   /**
    * @brief Process a single byte.
@@ -157,7 +156,7 @@ class FusionEngineFramer {
    * @return The total size of all valid, complete messages, 0 if no messages
    *         were completed, or <0 CRC or "message too large" error.
    */
-  p1_ssize_t OnByte(bool quiet);
+  int32_t OnByte(bool quiet);
 
   /**
    * @brief Perform a resynchronization operation starting at `buffer_[1]`.
@@ -165,7 +164,7 @@ class FusionEngineFramer {
    * @return The total size of all valid, complete messages, or 0 if no messages
    *         were completed.
    */
-  size_t Resync();
+  uint32_t Resync();
 };
 
 } // namespace parsers
