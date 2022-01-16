@@ -189,6 +189,15 @@ p1_ssize_t FusionEngineFramer::OnByte(bool quiet) {
       // Compute the full message size. If the message is too large to fit in
       // the buffer, we cannot parse it. Otherwise, start collecting the
       // message payload.
+      //
+      // Note that while we compute the current_message_size_ here, we
+      // intentionally do the "too big" check below with the payload size. That
+      // way we implicitly handle cases where the payload is large enough to
+      // cause current_message_size_ to overflow. Normally, this won't happen
+      // for legit packets that are just too big for the user's buffer, but it
+      // could happen on a bogus header if we find the preamble randomly in an
+      // incoming byte stream. The buffer capacity is always
+      // >=sizeof(MessageHeader), so the subtraction will never be negative.
       auto* header = reinterpret_cast<MessageHeader*>(buffer_);
       current_message_size_ =
           sizeof(MessageHeader) + header->payload_size_bytes;
@@ -196,7 +205,8 @@ p1_ssize_t FusionEngineFramer::OnByte(bool quiet) {
               << header->message_type << " (" << (unsigned)header->message_type
               << "), seq=" << header->sequence_number
               << ", payload_size=" << header->payload_size_bytes << " B]";
-      if (current_message_size_ <= capacity_bytes_) {
+      if (header->payload_size_bytes <=
+          capacity_bytes_ - sizeof(MessageHeader)) {
         // If there's no payload, do the CRC check now.
         if (header->payload_size_bytes == 0) {
           VLOG(3) << "Message has no payload. Checking CRC.";
@@ -210,11 +220,17 @@ p1_ssize_t FusionEngineFramer::OnByte(bool quiet) {
         if (quiet) {
           VLOG(2) << "Message too large for buffer. [size="
                   << current_message_size_
-                  << " B, buffer_capacity=" << capacity_bytes_ << " B]";
+                  << " B (payload=" << header->payload_size_bytes
+                  << " B), buffer_capacity=" << capacity_bytes_
+                  << " B (max_payload="
+                  << capacity_bytes_ - sizeof(MessageHeader) << " B)]";
         } else {
           LOG(WARNING) << "Message too large for buffer. [size="
                        << current_message_size_
-                       << " B, buffer_capacity=" << capacity_bytes_ << " B]";
+                       << " B (payload=" << header->payload_size_bytes
+                       << " B), buffer_capacity=" << capacity_bytes_
+                       << " B (max_payload="
+                       << capacity_bytes_ - sizeof(MessageHeader) << " B)]";
         }
 
         state_ = State::SYNC0;
