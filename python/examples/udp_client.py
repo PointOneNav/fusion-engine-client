@@ -10,7 +10,7 @@ sys.path.append(root_dir)
 
 from fusion_engine_client.messages.core import *
 
-from examples.message_decode import decode_message
+from examples.raw_message_decode import decode_message
 
 
 if __name__ == "__main__":
