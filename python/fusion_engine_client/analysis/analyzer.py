@@ -314,7 +314,7 @@ class Analyzer(object):
                                       showlegend=False, mode='lines', line={'color': 'blue'}),
                          2, 3)
 
-        self._add_figure(name="pose", figure=figure, title="Vehicle Pose")
+        self._add_figure(name="pose", figure=figure, title="Vehicle Pose vs. Time")
 
     def plot_solution_type(self):
         """!
