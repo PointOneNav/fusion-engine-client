@@ -355,7 +355,7 @@ class Analyzer(object):
 
         mapbox_token = self.get_mapbox_token(mapbox_token)
         if mapbox_token is None:
-            self.logger.info('Mapbox token not specified. Skipping map display.')
+            self.logger.info('*' * 80 + '\n\nMapbox token not specified. Skipping map display.\n\n' + '*' * 80)
             return
 
         # Read the pose data.
