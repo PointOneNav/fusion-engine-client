@@ -19,6 +19,9 @@ Connect to an Atlas device over UDP and print out the incoming message contents.
 
 When using UDP, you must configure the Atlas device to send data to your
 machine.
+
+This application assumes that the UDP stream contains only FusionEngine
+messages.
 """)
     parser.add_argument('-p', '--port', type=int, default=12345,
                         help="The UDP port to which messages are being sent.")
