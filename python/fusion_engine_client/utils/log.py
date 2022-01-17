@@ -279,6 +279,9 @@ def extract_fusion_engine_log(input_path, output_path=None, warn_on_gaps=True, r
     if output_path is None:
         output_path = os.path.splitext(input_path)[0] + '.p1log'
 
+    if input_path == output_path:
+        raise ValueError("Input and output paths match. Cannot overwrite existing file '%s'." % input_path)
+
     header = MessageHeader()
     valid_count = 0
     message_counts = {}
