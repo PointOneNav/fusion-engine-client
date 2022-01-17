@@ -40,6 +40,9 @@ if __name__ == "__main__":
     # Parse arguments.
     parser = ArgumentParser(description="""\
 Extract position data to both CSV and KML files.
+
+Note that the specified file must contain only FusionEngine messages. For logs
+containing mixed content, see separate_mixed_log.py.
 """)
     parser.add_argument('--log-base-dir', metavar='DIR', default='/logs',
                         help="The base directory containing FusionEngine logs to be searched if a log pattern is "
