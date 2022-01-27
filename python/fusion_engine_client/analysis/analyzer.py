@@ -625,7 +625,7 @@ class Analyzer(object):
             figure['layout']['xaxis%d' % (i + 1)].update(showticklabels=True)
         figure['layout']['yaxis1'].update(title="Error Count")
         figure['layout']['yaxis2'].update(title="Buffer Free (kB)")
-        figure['layout']['yaxis3'].update(title="Message Rate (kB/s)")
+        figure['layout']['yaxis3'].update(title="Message Rate (bps)")
         figure.update_layout(legend_title_text="Serial Port")
 
         for i in range(len(tx_error_counts_maps)):
@@ -649,7 +649,7 @@ class Analyzer(object):
             color = plotly.colors.DEFAULT_PLOTLY_COLORS[i % len(
                 plotly.colors.DEFAULT_PLOTLY_COLORS)]
             idx, serial_name = tx_sent_counts_maps[i]
-            figure.add_trace(go.Scattergl(x=time, y=np.diff(data.counters[idx]) / 1024.0 / np.diff(time),
+            figure.add_trace(go.Scattergl(x=time, y=np.diff(data.counters[idx]) * 8 / np.diff(time),
                                           name=f'{serial_name}', showlegend=False,
                                           legendgroup=serial_name, mode='lines', line={'color': color}),
                              3, 1)
