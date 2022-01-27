@@ -500,8 +500,7 @@ class Analyzer(object):
         @param auto_open If `True`, open the page automatically in a web browser.
         """
         if len(self.plots) == 0:
-            self.logger.warning('No plots generated. Skipping index generation.')
-            return
+            self.logger.warning('No plots generated. Index will contain summary only.')
 
         self._set_data_summary()
 
