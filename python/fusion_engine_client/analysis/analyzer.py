@@ -48,11 +48,17 @@ def _data_to_table(col_titles: List[str], col_values: List[List[Any]]):
     for title in col_titles:
         table_html += f'<th>{title}</th>'
     table_html += '</tr>'
-    length = min([len(l) for l in col_values])
-    for i in range(length):
+    num_rows = min([len(l) for l in col_values])
+    for row_idx in range(num_rows):
         table_html += '<tr>'
-        for l in col_values:
-            table_html += f'<td>{l[i]}</td>'
+
+        separator_row = col_values[0][row_idx] is None
+        for col_data in col_values:
+            if separator_row:
+                table_html += '<td><hr></td>'
+            else:
+                table_html += f'<td>{col_data[row_idx]}</td>'
+
         table_html += '</tr>'
     table_html += '</table>'
     return table_html
@@ -542,19 +548,15 @@ class Analyzer(object):
         # Create a table with the types and counts of each FusionEngine message type in the log.
         message_types, message_counts = np.unique(self.reader.index['type'], return_counts=True)
         message_types = [MessageType.get_type_string(t) for t in message_types]
+
+        message_counts = message_counts.tolist()
+        message_types.append(None)
+        message_counts.append(None)
+
+        message_types.append('Total')
+        message_counts.append(f'{len(self.reader.index)}')
+
         message_table = _data_to_table(['Message Type', 'Count'], [message_types, message_counts])
-        message_table = message_table.replace('</table>', f'''
-  <tr>
-    <td><hr></td>
-    <td><hr></td>
-  </tr>
-  <tr>
-    <td>Total</td>
-    <td>{len(self.reader.index)}</td>
-  </tr>
-</table>
-''')
-        message_table = message_table.replace('\n', '')
 
         # Create a software version table.
         result = self.reader.read(message_types=[VersionInfoMessage.MESSAGE_TYPE], remove_nan_times=False,
