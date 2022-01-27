@@ -33,6 +33,7 @@ _logger = logging.getLogger('point_one.fusion_engine.analysis.analyzer')
 SolutionTypeInfo = namedtuple('SolutionTypeInfo', ['name', 'style'])
 
 _SOLUTION_TYPE_MAP = {
+    SolutionType.Invalid: SolutionTypeInfo(name='Invalid', style={'color': 'black'}),
     SolutionType.Integrate: SolutionTypeInfo(name='Integrated', style={'color': 'cyan'}),
     SolutionType.AutonomousGPS: SolutionTypeInfo(name='Standalone', style={'color': 'red'}),
     SolutionType.DGPS: SolutionTypeInfo(name='DGPS', style={'color': 'blue'}),
@@ -545,6 +546,32 @@ class Analyzer(object):
         else:
             duration_sec = np.nan
 
+        # Create a table with position solution type statistics.
+        result = self.reader.read(message_types=[PoseMessage], **self.params)
+        pose_data = result[PoseMessage.MESSAGE_TYPE]
+        num_pose_messages = len(pose_data.solution_type)
+        solution_type_count = {}
+        for type, info in _SOLUTION_TYPE_MAP.items():
+            solution_type_count[info.name] = np.sum(pose_data.solution_type == type)
+
+        types = list(solution_type_count.keys())
+        counts = ['%d' % c for c in solution_type_count.values()]
+        percents = ['%.1f%%' % (float(c) / num_pose_messages * 100.0) for c in solution_type_count.values()]
+
+        types.append(None)
+        counts.append(None)
+        percents.append(None)
+
+        types.append('Total')
+        counts.append('%d' % num_pose_messages)
+        percents.append('')
+
+        types.append('Log Duration')
+        counts.append('%.1f seconds' % duration_sec)
+        percents.append('')
+
+        solution_type_table = _data_to_table(['Position Type', 'Count', 'Percent'], [types, counts, percents])
+
         # Create a table with the types and counts of each FusionEngine message type in the log.
         message_types, message_counts = np.unique(self.reader.index['type'], return_counts=True)
         message_types = [MessageType.get_type_string(t) for t in message_types]
@@ -578,12 +605,13 @@ class Analyzer(object):
             'duration_sec': duration_sec,
             'message_table': message_table,
             'version_table': version_table,
+            'solution_type_table': solution_type_table,
         }
 
         self.summary += """
-Duration: %(duration_sec).1f seconds
-
 %(version_table)s
+
+%(solution_type_table)s
 
 %(message_table)s
 """ % args
