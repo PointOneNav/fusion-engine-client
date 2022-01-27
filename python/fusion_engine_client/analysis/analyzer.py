@@ -342,7 +342,7 @@ class Analyzer(object):
         time = pose_data.p1_time - float(self.t0)
 
         text = ["Time: %.3f sec (%.3f sec)" % (t, t + float(self.t0)) for t in time]
-        figure.add_trace(go.Scattergl(x=time, y=pose_data.solution_type, text=text), 1, 1)
+        figure.add_trace(go.Scattergl(x=time, y=pose_data.solution_type, text=text, mode='markers'), 1, 1)
 
         self._add_figure(name="solution_type", figure=figure, title="Solution Type")
 
