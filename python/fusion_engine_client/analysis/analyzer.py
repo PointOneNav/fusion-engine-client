@@ -528,9 +528,10 @@ class Analyzer(object):
 
     def _set_data_summary(self):
         # Generate an index file, which we need to calculate the log duration, in case it wasn't created earlier (i.e.,
-        # we didn't read anything to plot.
+        # we didn't read anything to plot).
         self.reader.generate_index()
 
+        # Calculate the log duration.
         idx = ~np.isnan(self.reader.index['time'])
         time = self.reader.index['time'][idx]
         if len(time) >= 2:
@@ -538,9 +539,7 @@ class Analyzer(object):
         else:
             duration_sec = np.nan
 
-        if self.summary != '':
-            self.summary += '\n\n'
-
+        # Create a table with the types and counts of each FusionEngine message type in the log.
         message_types, message_counts = np.unique(self.reader.index['type'], return_counts=True)
         message_types = [MessageType.get_type_string(t) for t in message_types]
         message_table = _data_to_table(['Message Type', 'Count'], [message_types, message_counts])
@@ -557,6 +556,7 @@ class Analyzer(object):
 ''')
         message_table = message_table.replace('\n', '')
 
+        # Create a software version table.
         result = self.reader.read(message_types=[VersionInfoMessage.MESSAGE_TYPE], remove_nan_times=False,
                                   **self.params)
         if len(result[VersionInfoMessage.MESSAGE_TYPE].messages) != 0:
@@ -567,6 +567,10 @@ class Analyzer(object):
             version_table = _data_to_table(['Type', 'Version'], [list(version_types.values()), version_values])
         else:
             version_table = 'No version information.'
+
+        # Now populate the summary.
+        if self.summary != '':
+            self.summary += '\n\n'
 
         args = {
             'duration_sec': duration_sec,
