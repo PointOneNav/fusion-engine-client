@@ -34,6 +34,7 @@ _logger = logging.getLogger('point_one.fusion_engine.analysis.analyzer')
 SolutionTypeInfo = namedtuple('SolutionTypeInfo', ['name', 'style'])
 
 _SOLUTION_TYPE_MAP = {
+    SolutionType.Invalid: SolutionTypeInfo(name='Invalid', style={'color': 'black'}),
     SolutionType.Integrate: SolutionTypeInfo(name='Integrated', style={'color': 'cyan'}),
     SolutionType.AutonomousGPS: SolutionTypeInfo(name='Standalone', style={'color': 'red'}),
     SolutionType.DGPS: SolutionTypeInfo(name='DGPS', style={'color': 'blue'}),
@@ -49,11 +50,17 @@ def _data_to_table(col_titles: List[str], col_values: List[List[Any]]):
     for title in col_titles:
         table_html += f'<th>{title}</th>'
     table_html += '</tr>'
-    length = min([len(l) for l in col_values])
-    for i in range(length):
+    num_rows = min([len(l) for l in col_values])
+    for row_idx in range(num_rows):
         table_html += '<tr>'
-        for l in col_values:
-            table_html += f'<td>{l[i]}</td>'
+
+        separator_row = col_values[0][row_idx] is None
+        for col_data in col_values:
+            if separator_row:
+                table_html += '<td><hr></td>'
+            else:
+                table_html += f'<td>{col_data[row_idx]}</td>'
+
         table_html += '</tr>'
     table_html += '</table>'
     return table_html
@@ -344,7 +351,7 @@ class Analyzer(object):
         time = pose_data.p1_time - float(self.t0)
 
         text = ["Time: %.3f sec (%.3f sec)" % (t, t + float(self.t0)) for t in time]
-        figure.add_trace(go.Scattergl(x=time, y=pose_data.solution_type, text=text), 1, 1)
+        figure.add_trace(go.Scattergl(x=time, y=pose_data.solution_type, text=text, mode='markers'), 1, 1)
 
         self._add_figure(name="solution_type", figure=figure, title="Solution Type")
 
@@ -939,8 +946,7 @@ class Analyzer(object):
         @param auto_open If `True`, open the page automatically in a web browser.
         """
         if len(self.plots) == 0:
-            self.logger.warning('No plots generated. Skipping index generation.')
-            return
+            self.logger.warning('No plots generated. Index will contain summary only.')
 
         self._set_data_summary()
 
@@ -968,9 +974,10 @@ class Analyzer(object):
 
     def _set_data_summary(self):
         # Generate an index file, which we need to calculate the log duration, in case it wasn't created earlier (i.e.,
-        # we didn't read anything to plot.
+        # we didn't read anything to plot).
         self.reader.generate_index()
 
+        # Calculate the log duration.
         idx = ~np.isnan(self.reader.index['time'])
         time = self.reader.index['time'][idx]
         if len(time) >= 2:
@@ -978,25 +985,46 @@ class Analyzer(object):
         else:
             duration_sec = np.nan
 
-        if self.summary != '':
-            self.summary += '\n\n'
+        # Create a table with position solution type statistics.
+        result = self.reader.read(message_types=[PoseMessage], **self.params)
+        pose_data = result[PoseMessage.MESSAGE_TYPE]
+        num_pose_messages = len(pose_data.solution_type)
+        solution_type_count = {}
+        for type, info in _SOLUTION_TYPE_MAP.items():
+            solution_type_count[info.name] = np.sum(pose_data.solution_type == type)
 
+        types = list(solution_type_count.keys())
+        counts = ['%d' % c for c in solution_type_count.values()]
+        percents = ['%.1f%%' % (float(c) / num_pose_messages * 100.0) for c in solution_type_count.values()]
+
+        types.append(None)
+        counts.append(None)
+        percents.append(None)
+
+        types.append('Total')
+        counts.append('%d' % num_pose_messages)
+        percents.append('')
+
+        types.append('Log Duration')
+        counts.append('%.1f seconds' % duration_sec)
+        percents.append('')
+
+        solution_type_table = _data_to_table(['Position Type', 'Count', 'Percent'], [types, counts, percents])
+
+        # Create a table with the types and counts of each FusionEngine message type in the log.
         message_types, message_counts = np.unique(self.reader.index['type'], return_counts=True)
         message_types = [MessageType.get_type_string(t) for t in message_types]
-        message_table = _data_to_table(['Message Type', 'Count'], [message_types, message_counts])
-        message_table = message_table.replace('</table>', f'''
-  <tr>
-    <td><hr></td>
-    <td><hr></td>
-  </tr>
-  <tr>
-    <td>Total</td>
-    <td>{len(self.reader.index)}</td>
-  </tr>
-</table>
-''')
-        message_table = message_table.replace('\n', '')
 
+        message_counts = message_counts.tolist()
+        message_types.append(None)
+        message_counts.append(None)
+
+        message_types.append('Total')
+        message_counts.append(f'{len(self.reader.index)}')
+
+        message_table = _data_to_table(['Message Type', 'Count'], [message_types, message_counts])
+
+        # Create a software version table.
         result = self.reader.read(message_types=[VersionInfoMessage.MESSAGE_TYPE], remove_nan_times=False,
                                   **self.params)
         if len(result[VersionInfoMessage.MESSAGE_TYPE].messages) != 0:
@@ -1008,16 +1036,21 @@ class Analyzer(object):
         else:
             version_table = 'No version information.'
 
+        # Now populate the summary.
+        if self.summary != '':
+            self.summary += '\n\n'
+
         args = {
             'duration_sec': duration_sec,
             'message_table': message_table,
             'version_table': version_table,
+            'solution_type_table': solution_type_table,
         }
 
         self.summary += """
-Duration: %(duration_sec).1f seconds
-
 %(version_table)s
+
+%(solution_type_table)s
 
 %(message_table)s
 """ % args
