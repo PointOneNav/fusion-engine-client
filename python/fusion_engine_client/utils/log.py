@@ -151,6 +151,8 @@ def find_log_file(input_path, candidate_files=None, return_output_dir=False, ret
     # Check if the input path is a file. If so, return it and set the output directory to its parent directory.
     if os.path.isfile(input_path):
         output_dir = os.path.dirname(input_path)
+        if output_dir == "":
+            output_dir = "."
         log_id = None
     # If the input path is a directory, see if it's a P1 log. If it is not a directory, see if it pattern matches to a
     # log directory within `log_base_dir`. If so for either case, set the output directory to the log directory (note
