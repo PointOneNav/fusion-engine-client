@@ -226,7 +226,9 @@ def find_p1log_file(input_path, return_output_dir=False, return_log_id=False, lo
     If `input_path` is a file, the returned output directory will be the parent directory of that file. If it is a
     FusionEngine log, the returned output directory will be the log directory.
 
-    See also @ref locate_log(), which supports both `*.p1log` files and mixed binary files.
+    @note
+    `*.p1log` files must contain _only_ FusionEngine messages. See also @ref locate_log(), which supports both `*.p1log`
+    files and mixed binary files.
 
     @param input_path The path to a `.p1log` file, a FusionEngine log directory, or a pattern to be matched (see @ref
            find_fusion_engine_log()).
@@ -243,8 +245,16 @@ def find_p1log_file(input_path, return_output_dir=False, return_log_id=False, lo
     candidate_files = ['fusion_engine.p1log',
                        # Legacy path, maintained for backwards compatibility.
                        'filter/output/fe_service/output.p1bin']
-    return find_log_file(input_path, candidate_files=candidate_files, return_output_dir=return_output_dir,
-                         return_log_id=return_log_id, log_base_dir=log_base_dir)
+    result = find_log_file(input_path, candidate_files=candidate_files, return_output_dir=return_output_dir,
+                           return_log_id=return_log_id, log_base_dir=log_base_dir)
+    p1log_path = result[0]
+    if p1log_path.endswith('.p1log') or p1log_path.endswith('filter/output/fe_service/output.p1bin'):
+        return result
+    else:
+        # If we got here and find_log_file() didn't raise an exception, the user specified a file (not a directory) and
+        # it does not end in .p1log. We'll assume it is not a .p1log file -- it may contained mixed contents, including
+        # FusionEngine messages, but it is not a .p1log file with _exclusively_ FusionEngine messages.
+        raise FileExistsError('Specified file is not a .p1log file.')
 
 
 def extract_fusion_engine_log(input_path, output_path=None, warn_on_gaps=True, return_counts=False):
@@ -381,29 +391,42 @@ def locate_log(input_path, log_base_dir='/logs', return_output_dir=False, return
                                  return_output_dir=return_output_dir, return_log_id=return_log_id)
         return result
     except (FileNotFoundError, RuntimeError) as e:
+        is_mixed_file = False
         _logger.error(str(e))
+    except FileExistsError as e:
+        is_mixed_file = True
 
     # If that fails, see if we can find a directory containing a mixed content binary file. If found, try to extract
     # FusionEngine messages from it.
-    _logger.info('Could not find a FusionEngine log directory containing a .p1log file. Searching for a P1 log with '
-                 'mixed binary data.')
-    try:
-        result = find_log_file(input_path, candidate_files=CANDIDATE_MIXED_FILES, log_base_dir=log_base_dir,
-                               return_output_dir=return_output_dir, return_log_id=return_log_id)
-    except (FileNotFoundError, RuntimeError) as e:
-        _logger.error(str(e))
-        result = [None]
-        if return_output_dir:
-            result.append(None)
-        if return_log_id:
-            result.append(None)
-        return result
+    if is_mixed_file:
+        # We already know where the file is, but we call find_log_file() anyway just to populate a result tuple for us.
+        result = find_log_file(input_path, return_output_dir=return_output_dir, return_log_id=return_log_id)
+        mixed_file_path = input_path
+    else:
+        _logger.info('Could not find a FusionEngine log directory containing a .p1log file. Searching for a P1 log '
+                     'with mixed binary data.')
+        try:
+            result = find_log_file(input_path, candidate_files=CANDIDATE_MIXED_FILES, log_base_dir=log_base_dir,
+                                   return_output_dir=return_output_dir, return_log_id=return_log_id)
+            mixed_file_path = result[0]
+        except (FileNotFoundError, RuntimeError) as e:
+            _logger.error(str(e))
+            result = [None]
+            if return_output_dir:
+                result.append(None)
+            if return_log_id:
+                result.append(None)
+            return result
 
     # Now, search for FusionEngine messages within the mixed binary data.
-    mixed_file_path = result[0]
-    _logger.info("Found mixed log file '%s'. Extracting FusionEngine content." % mixed_file_path)
+    _logger.info("Found mixed-content log file '%s'." % mixed_file_path)
     log_dir = os.path.dirname(mixed_file_path)
-    fe_path = os.path.join(log_dir, "fusion_engine.p1log")
+    if is_mixed_file:
+        fe_path = os.path.splitext(mixed_file_path)[0] + '.p1log'
+    else:
+        fe_path = os.path.join(log_dir, "fusion_engine.p1log")
+
+    _logger.info("Extracting FusionEngine content to '%s'." % fe_path)
     num_messages = extract_fusion_engine_log(input_path=mixed_file_path, output_path=fe_path)
     if num_messages > 0:
         result = list(result)
