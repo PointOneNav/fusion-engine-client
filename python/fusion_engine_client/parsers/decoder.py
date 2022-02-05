@@ -6,6 +6,12 @@ from ..messages import MessageHeader, MessageType, MessagePayload, message_type_
 
 _logger = logging.getLogger('point_one.fusion_engine.parsers.decoder')
 
+Callback = Callable[[MessageHeader, Union[MessagePayload, bytes]], None]
+CallbackWithBytes = Callable[[MessageHeader, Union[MessagePayload, bytes], bytes], None]
+
+MessageTuple = Tuple[MessageHeader, Union[MessagePayload, bytes]]
+MessageWithBytesTuple = Tuple[MessageHeader, Union[MessagePayload, bytes], bytes]
+
 
 class FusionEngineDecoder:
     """!
@@ -17,7 +23,8 @@ class FusionEngineDecoder:
     """
 
     def __init__(self, max_payload_len_bytes: int = MessageHeader._MAX_EXPECTED_SIZE_BYTES,
-                 warn_on_unrecognized: bool = False, warn_on_gap: bool = False, warn_on_error: bool = False):
+                 warn_on_unrecognized: bool = False, warn_on_gap: bool = False, warn_on_error: bool = False,
+                 return_bytes: bool = False):
         """!
         @brief Construct a new decoder instance.
 
@@ -29,10 +36,14 @@ class FusionEngineDecoder:
         @param warn_on_gap If `True`, print a warning if a gap is detected in the incoming message sequence numbers.
         @param warn_on_error If `True`, print a warning if an error is detected (invalid CRC, invalid payload length,
                etc.).
+        @param return_bytes If `True`, return a `bytes` object with the raw data (header + payload) in addition to the
+               decoded message object.
         """
         self._warn_on_unrecognized = warn_on_unrecognized
         self._warn_on_seq_skip = warn_on_gap
         self._warn_on_error = warn_on_error
+
+        self._return_bytes = return_bytes
 
         self._max_payload_len_bytes = max_payload_len_bytes
         self._buffer = bytearray()
@@ -44,9 +55,7 @@ class FusionEngineDecoder:
             MessageHeader,
             Union[MessagePayload, bytes]], None]]] = defaultdict(list)
 
-    def add_callback(self, type: Optional[MessageType],
-                     callback: Callable[[MessageHeader,
-                                         Union[MessagePayload, bytes]], None]):
+    def add_callback(self, type: Optional[MessageType], callback: Union[Callback, CallbackWithBytes]):
         """!
         @brief Register a function to be called when a specific message is decoded.
 
@@ -57,12 +66,13 @@ class FusionEngineDecoder:
                for all messages.
         @param callback The function to call with the message header and decoded contents (@ref MessagePayload object).
                If the incoming message type is not recognized, the second argument will be a `bytes` object containing
-               the uninterpreted payload contents.
+               the uninterpreted payload contents. If `return_bytes == True`, the function will be called with a third
+               argument containing the uninterpreted message contents (including the header).
         """
         # `self._callbacks` is a `defaultdict(list)` so no need to initialize list on first entry.
         self._callbacks[type].append(callback)
 
-    def on_data(self, data: Union[bytes, int]) -> List[Tuple[MessageHeader, Union[MessagePayload, bytes]]]:
+    def on_data(self, data: Union[bytes, int]) -> List[Union[MessageTuple, MessageWithBytesTuple]]:
         """!
         @brief Decode FusionEngine messages from serialized data.
 
@@ -78,6 +88,8 @@ class FusionEngineDecoder:
         @return A list of message results for any messages completed with the input `data`. Each list entry will contain
                 the message header and the decoded contents (@ref MessagePayload object). If the incoming message type
                 is not recognized, the second argument will be a `bytes` containing the uninterpreted payload contents.
+                If `return_bytes == True`, each list entry will include a third value containing the uninterpreted
+                message contents (including the header).
         """
         # Cast singleton byte values to a byte array.
         if isinstance(data, int):
@@ -109,7 +121,7 @@ class FusionEngineDecoder:
                 self._msg_len = self._header.payload_size_bytes + MessageHeader.calcsize()
                 if self._header.payload_size_bytes > self._max_payload_len_bytes:
                     print_func = _logger.warning if self._warn_on_error else _logger.debug
-                    print_func('Message payload too big. [paylaod_size=%d B, max=%d B]',
+                    print_func('Message payload too big. [payload_size=%d B, max=%d B]',
                                self._header.payload_size_bytes, self._max_payload_len_bytes)
                     self._header = None
                     self._buffer.pop(0)
@@ -155,16 +167,20 @@ class FusionEngineDecoder:
                     self._msg_len = 0
                     self._buffer.pop(0)
                     continue
-                result = (self._header, contents)
                 _logger.debug('Decoded FusionEngine message %s.', repr(contents))
             # If cls is None, we don't have a class for the message type. Return a copy of the payload bytes.
             else:
-                result = (self._header, bytes(self._buffer[MessageHeader.calcsize():self._msg_len]))
+                contents = bytes(self._buffer[MessageHeader.calcsize():self._msg_len])
                 print_func = _logger.warning if self._warn_on_unrecognized else _logger.debug
                 print_func('Decoded unknown FusionEngine message. [type=%d, payload_size=%d B]',
                            self._header.message_type, self._header.payload_size_bytes)
 
             # Store the result.
+            if self._return_bytes:
+                result = (self._header, contents, self._buffer[:self._msg_len])
+            else:
+                result = (self._header, contents)
+
             decoded_messages.append(result)
 
             # Call any callbacks registered for this message type.

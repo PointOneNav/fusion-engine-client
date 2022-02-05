@@ -15,7 +15,10 @@ from fusion_engine_client.utils.log import find_p1log_file
 if __name__ == "__main__":
     # Parse arguments.
     parser = ArgumentParser(description="""\
-Extract IMU accelerometer and gyroscope measuremenets.
+Extract IMU accelerometer and gyroscope measurements.
+
+Note that the specified file must contain only FusionEngine messages. For logs
+containing mixed content, see separate_mixed_log.py.
 """)
     parser.add_argument('--log-base-dir', metavar='DIR', default='/logs',
                         help="The base directory containing FusionEngine logs to be searched if a log pattern is "

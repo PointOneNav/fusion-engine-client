@@ -323,7 +323,7 @@ class Analyzer(object):
                                       showlegend=False, mode='lines', line={'color': 'blue'}),
                          2, 3)
 
-        self._add_figure(name="pose", figure=figure, title="Vehicle Pose")
+        self._add_figure(name="pose", figure=figure, title="Vehicle Pose vs. Time")
 
     def plot_solution_type(self):
         """!
@@ -364,7 +364,7 @@ class Analyzer(object):
 
         mapbox_token = self.get_mapbox_token(mapbox_token)
         if mapbox_token is None:
-            self.logger.info('Mapbox token not specified. Skipping map display.')
+            self.logger.info('*' * 80 + '\n\nMapbox token not specified. Skipping map display.\n\n' + '*' * 80)
             return
 
         # Read the pose data.

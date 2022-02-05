@@ -15,6 +15,9 @@ from fusion_engine_client.messages.core import *
 if __name__ == "__main__":
     parser = ArgumentParser(description="""\
 Compute the average LLA position for the data contained in a *.p1log file.
+
+Note that the specified file must contain only FusionEngine messages. For logs
+containing mixed content, see separate_mixed_log.py.
 """)
     parser.add_argument('file', type=str, help="The path to a binary file to be read.")
     options = parser.parse_args()
