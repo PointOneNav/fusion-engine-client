@@ -10,7 +10,7 @@ sys.path.append(root_dir)
 
 from fusion_engine_client.messages.core import *
 
-from examples.message_decode import decode_message
+from examples.raw_message_decode import decode_message
 
 
 if __name__ == "__main__":
@@ -19,7 +19,8 @@ Connect to an Atlas device over TCP and print out the incoming message
 contents.
 
 This example interprets the incoming data directly, and does not use the
-FusionEngineDecoder class. See also tcp_client.py.
+FusionEngineDecoder class. The incoming data stream must contain only
+FusionEngine messages. See also tcp_client.py.
 """)
     parser.add_argument('-p', '--port', type=int, default=30201,
                         help="The FusionEngine TCP port on the Atlas device.")
