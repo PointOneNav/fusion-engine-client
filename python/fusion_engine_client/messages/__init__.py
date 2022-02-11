@@ -34,3 +34,5 @@ message_type_to_class = {
 }
 
 messages_with_system_time = [t for t, c in message_type_to_class.items() if hasattr(c(), 'system_time_ns')]
+
+message_type_by_name = {c.__name__: t for t, c in message_type_to_class.items()}
