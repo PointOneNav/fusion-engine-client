@@ -305,7 +305,7 @@ class ProfileDefinitionMessage(MessagePayload):
         for entry in self.entries:
             string += '\n'
             string += '    %d: %s' % (entry.id, entry.name)
-        return string
+        return string.rstrip()
 
     def calcsize(self) -> int:
         return ProfileDefinitionMessage._SIZE + len(self.entries) * ProfileDefinitionEntry.calcsize()
@@ -416,7 +416,7 @@ class ProfilePipelineMessage(MessagePayload):
         for entry in self.entries:
             string += '\n'
             string += '    %d: %f sec' % (entry.id, entry.delay_sec)
-        return string
+        return string.rstrip()
 
     def calcsize(self) -> int:
         return ProfilePipelineMessage._SIZE + Timestamp.calcsize() + len(self.entries) * ProfilePipelineEntry.calcsize()
@@ -560,7 +560,7 @@ class ProfileExecutionMessage(MessagePayload):
             string += '    %d: %s @ %f sec' % (entry.id,
                                                'start' if entry.action == ProfileExecutionEntry.START else 'stop',
                                                entry.system_time_ns * 1e-9)
-        return string
+        return string.rstrip()
 
     def calcsize(self) -> int:
         return ProfileExecutionMessage._SIZE + len(self.entries) * ProfileExecutionEntry.calcsize()
@@ -655,8 +655,8 @@ class ProfileFreeRtosSystemStatusMessage(MessagePayload):
         string = f'FreeRTOS System Profiling @ System time {self.system_time_ns*1e-9:.3} sec\n'
         string += f'\theap_free_bytes: {self.heap_free_bytes}\n'
         string += f'\tsbrk_free_bytes: {self.sbrk_free_bytes}\n'
-        string += f'\tTasks:\n'
-        for task in self.task_entries:
+        for i, task in enumerate(self.task_entries):
+            string += f'\tTask[{i}]:\n'
             string += f'\t\tcpu_usage: {task.cpu_usage}%\n'
             string += f'\t\tstack_high_water_mark_bytes: {task.stack_high_water_mark_bytes}\n'
         return string.rstrip()
@@ -723,8 +723,8 @@ class ProfileExecutionStatsMessage(MessagePayload):
 
     def __str__(self):
         string = f'Execution Stats Profiling @ System time {self.system_time_ns*1e-9:.3} sec\n'
-        string += f'\tTraces:\n'
-        for trace in self.entries:
+        for i, trace in enumerate(self.entries):
+            string += f'\tTrace[{i}]:\n'
             string += f'\t\trunning_time_ns: {trace.running_time_ns}\n'
             string += f'\t\tmax_run_time_ns: {trace.max_run_time_ns}\n'
             string += f'\t\trun_count: {trace.run_count}\n'
@@ -791,10 +791,9 @@ class ProfileCounterMessage(MessagePayload):
 
     def __str__(self):
         string = f'Profiling Counters @ System time {self.system_time_ns*1e-9:.3} sec\n'
-        string += f'\\Counters:\n'
-        for counter in self.entries:
-            string += f'\t\tcount: {counter.count}\n'
-        return string[-1]
+        for i, counter in enumerate(self.entries):
+            string += f'\tCount[{i}]: {counter.count}\n'
+        return string.rstrip()
 
     def calcsize(self) -> int:
         return len(self.pack())
