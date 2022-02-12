@@ -69,6 +69,11 @@ other types of data.
         message_types = set(message_types)
 
     decoder = FusionEngineDecoder()
+
+    first_p1_time_sec = None
+    last_p1_time_sec = None
+    first_system_time_sec = None
+    last_system_time_sec = None
     total_messages = 0
     message_stats = {}
     with open(input_path, 'rb') as f:
@@ -83,6 +88,18 @@ other types of data.
             for (header, message) in messages:
                 if len(message_types) == 0 or header.message_type in message_types:
                     if options.summary:
+                        p1_time = message.__dict__.get('p1_time', None)
+                        if p1_time is not None:
+                            if first_p1_time_sec is None:
+                                first_p1_time_sec = float(p1_time)
+                            last_p1_time_sec = float(p1_time)
+
+                        system_time_ns = message.__dict__.get('system_time_ns', None)
+                        if system_time_ns is not None:
+                            if first_system_time_sec is None:
+                                first_system_time_sec = system_time_ns * 1e-9
+                            last_system_time_sec = system_time_ns * 1e-9
+
                         total_messages += 1
                         if header.message_type not in message_stats:
                             message_stats[header.message_type] = {
@@ -97,6 +114,10 @@ other types of data.
     if options.summary:
         print('Input file: %s' % input_path)
         print('Log ID: %s' % log_id)
+        if first_p1_time_sec is not None:
+            print('Duration: %d seconds' % (last_p1_time_sec - first_p1_time_sec))
+        elif first_system_time_sec is not None:
+            print('Duration: %d seconds' % (last_system_time_sec - first_system_time_sec))
         print('')
 
         format_string = '| {:<50} | {:>8} |'
