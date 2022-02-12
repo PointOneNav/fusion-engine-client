@@ -3,7 +3,7 @@ from typing import NamedTuple
 
 from construct import (Struct, Int32ul, Int16ul, Int8ul, Padding, this, Bytes)
 
-from ...utils.construct_utils import NamedTupleAdapter
+from ...utils.construct_utils import AutoEnum, NamedTupleAdapter
 from .internal_defs import *
 
 
@@ -22,6 +22,20 @@ class ConfigVersion(NamedTuple):
 VersionConstruct = NamedTupleAdapter(ConfigVersion, VersionConstructRaw)
 
 
+class DataType(IntEnum):
+    CALIBRATION_STATE = 0
+    CRASH_LOG = 1
+    FILTER_STATE = 2
+    USER_CONFIG = 3
+
+
+class DataValidity(IntEnum):
+    UNKNOWN = 0
+    NO_DATA_STORED = 1
+    DATA_VALID = 2
+    DATA_CORRUPTED = 3
+
+
 class PlatformStorageDataMessage(MessagePayload):
     """!
     @brief Device user configuration response.
@@ -30,8 +44,8 @@ class PlatformStorageDataMessage(MessagePayload):
     MESSAGE_VERSION = 1
 
     PlatformStorageDataMessageConstruct = Struct(
-        "data_type" / Int8ul,
-        "data_validity" / Int8ul,
+        "data_type" / AutoEnum(Int8ul, DataType),
+        "data_validity" / AutoEnum(Int8ul, DataValidity),
         Padding(2),
         "data_version" / VersionConstruct,
         "data_length_bytes" / Int32ul,
