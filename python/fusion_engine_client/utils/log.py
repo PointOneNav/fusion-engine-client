@@ -4,6 +4,7 @@ import os
 import logging
 
 from ..messages import MessageHeader, MessageType
+from ..utils import trace
 
 _logger = logging.getLogger('point_one.utils.log')
 
