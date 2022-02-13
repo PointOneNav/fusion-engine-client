@@ -14,8 +14,6 @@ class InternalMessageType(IntEnum):
     MANIFEST_DATA_REQ = 20006
     MANIFEST_DATA = 20007
 
-    MESSAGE_REQ = 20016
-
     # System profiling data
     PROFILE_SYSTEM_STATUS = 20032
     PROFILE_PIPELINE_DEFINITION = 20036
