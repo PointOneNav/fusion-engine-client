@@ -266,12 +266,13 @@ class VersionInfoMessage(MessagePayload):
         return parsed._io.tell()
 
     def __str__(self):
-        fields = ['system_time_ns', 'fw_version_str', 'engine_version_str', 'hw_version_str', 'rx_version_str']
         string = f'Version Data\n'
-        for field in fields:
-            val = str(self.__dict__[field]).replace('Container:', '')
-            string += f'  {field}: {val}\n'
-        return string.rstrip()
+        string += f'  System time: %.1f sec\n' % (self.system_time_ns * 1e-9)
+        string += f'  Firmware: {self.fw_version_str}\n'
+        string += f'  FusionEngine: {self.engine_version_str}\n'
+        string += f'  Hardware: {self.hw_version_str}\n'
+        string += f'  GNSS receiver: {self.rx_version_str}'
+        return string
 
     def calcsize(self) -> int:
         return len(self.pack())

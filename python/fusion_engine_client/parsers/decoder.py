@@ -95,6 +95,9 @@ class FusionEngineDecoder:
         if isinstance(data, int):
             data = data.to_bytes(1, 'big')
 
+        if len(data) == 0:
+            return []
+
         # Append the new data to the buffer.
         self._buffer += data
 

@@ -4,6 +4,7 @@ import os
 import logging
 
 from ..messages import MessageHeader, MessageType
+from ..utils import trace
 
 _logger = logging.getLogger('point_one.utils.log')
 
@@ -142,7 +143,7 @@ def find_log_file(input_path, candidate_files=None, return_output_dir=False, ret
     @param return_log_id If `True`, return the ID of the log if the requested path is a FusionEngine log.
     @param log_base_dir The base directory to be searched when performing a pattern match for a log directory.
 
-    @return A tuple containing:
+    @return The path to the located file or a tuple containing:
             - The path to the located file.
             - The path to the located output directory. Only provided if `return_output_dir` is `True`.
             - The log ID string, or `None` if the requested file is not part of a FusionEngine log. Only provided if
@@ -216,7 +217,10 @@ def find_log_file(input_path, candidate_files=None, return_output_dir=False, ret
     if return_log_id:
         result.append(log_id)
 
-    return result
+    if len(result) == 1:
+        return result[0]
+    else:
+        return tuple(result)
 
 
 def find_p1log_file(input_path, return_output_dir=False, return_log_id=False, log_base_dir='/logs'):
@@ -236,7 +240,7 @@ def find_p1log_file(input_path, return_output_dir=False, return_log_id=False, lo
     @param return_log_id If `True`, return the ID of the log if the requested path is a FusionEngine log.
     @param log_base_dir The base directory to be searched when performing a pattern match for a log directory.
 
-    @return A tuple containing:
+    @return The path to the located file or a tuple containing:
             - The path to the located file.
             - The path to the located output directory. Only provided if `return_output_dir` is `True`.
             - The log ID string, or `None` if the requested file is not part of a FusionEngine log. Only provided if
@@ -247,7 +251,11 @@ def find_p1log_file(input_path, return_output_dir=False, return_log_id=False, lo
                        'filter/output/fe_service/output.p1bin']
     result = find_log_file(input_path, candidate_files=candidate_files, return_output_dir=return_output_dir,
                            return_log_id=return_log_id, log_base_dir=log_base_dir)
-    p1log_path = result[0]
+    if isinstance(result, tuple):
+        p1log_path = result[0]
+    else:
+        p1log_path = result
+
     if p1log_path.endswith('.p1log') or p1log_path.endswith('filter/output/fe_service/output.p1bin'):
         return result
     else:
@@ -379,7 +387,7 @@ def locate_log(input_path, log_base_dir='/logs', return_output_dir=False, return
     @param return_output_dir If `True`, return the output directory associated with the located input file.
     @param return_log_id If `True`, return the ID of the log if the requested path is a FusionEngine log.
 
-    @return A tuple of:
+    @return The path to the located file or a tuple of:
             - The path to the located (or extracted) `*.p1log` file
             - The path to the located output directory. Only provided if `return_output_dir` is `True`.
             - The log ID string, or `None` if the requested file is not part of a FusionEngine log. Only provided if
@@ -408,7 +416,10 @@ def locate_log(input_path, log_base_dir='/logs', return_output_dir=False, return
         try:
             result = find_log_file(input_path, candidate_files=CANDIDATE_MIXED_FILES, log_base_dir=log_base_dir,
                                    return_output_dir=return_output_dir, return_log_id=return_log_id)
-            mixed_file_path = result[0]
+            if isinstance(result, tuple):
+                mixed_file_path = result[0]
+            else:
+                mixed_file_path = result
         except (FileNotFoundError, RuntimeError) as e:
             _logger.error(str(e))
             result = [None]
@@ -416,7 +427,11 @@ def locate_log(input_path, log_base_dir='/logs', return_output_dir=False, return
                 result.append(None)
             if return_log_id:
                 result.append(None)
-            return result
+
+            if len(result) == 1:
+                return result[0]
+            else:
+                return tuple(result)
 
     # Now, search for FusionEngine messages within the mixed binary data.
     _logger.info("Found mixed-content log file '%s'." % mixed_file_path)
@@ -429,9 +444,15 @@ def locate_log(input_path, log_base_dir='/logs', return_output_dir=False, return
     _logger.info("Extracting FusionEngine content to '%s'." % fe_path)
     num_messages = extract_fusion_engine_log(input_path=mixed_file_path, output_path=fe_path)
     if num_messages > 0:
-        result = list(result)
-        result[0] = fe_path
-        return result
+        if isinstance(result, tuple):
+            result = list(result)
+            result[0] = fe_path
+            return tuple(result)
+        else:
+            return result
     else:
         _logger.warning('No FusionEngine data extracted from mixed data file.')
-        return [None for _ in result]
+        if isinstance(result, tuple):
+            return [None for _ in result]
+        else:
+            return None
