@@ -375,6 +375,10 @@ class MessagePayload:
         return cls.MESSAGE_TYPE
 
     @classmethod
+    def get_type_string(cls):
+        return MessageType.get_type_string(cls.get_type())
+
+    @classmethod
     def get_version(cls) -> int:
         return cls.MESSAGE_VERSION
 
