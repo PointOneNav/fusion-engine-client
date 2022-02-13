@@ -38,6 +38,9 @@ other types of data.
     parser.add_argument('--log-base-dir', metavar='DIR', default='/logs',
                         help="The base directory containing FusionEngine logs to be searched if a log pattern is "
                              "specified.")
+    parser.add_argument('--original', action='store_true',
+                        help='When loading from a log, load the recorded FusionEngine output file instead of playback '
+                             'results.')
     parser.add_argument('log',
                         help="The log to be read. May be one of:\n"
                              "- The path to a .p1log file\n"
@@ -48,7 +51,8 @@ other types of data.
     options = parser.parse_args()
 
     # Locate the input file and set the output directory.
-    input_path, log_id = locate_log(input_path=options.log, log_base_dir=options.log_base_dir, return_log_id=True)
+    input_path, log_id = locate_log(input_path=options.log, log_base_dir=options.log_base_dir, return_log_id=True,
+                                    load_original=options.original)
     if input_path is None:
         # locate_log() will log an error.
         sys.exit(1)
