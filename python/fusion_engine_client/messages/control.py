@@ -193,8 +193,8 @@ class ResetRequest(MessagePayload):
     _FORMAT = '<I'
     _SIZE: int = struct.calcsize(_FORMAT)
 
-    def __init__(self):
-        self.reset_mask = 0
+    def __init__(self, reset_mask: int = 0):
+        self.reset_mask = reset_mask
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
