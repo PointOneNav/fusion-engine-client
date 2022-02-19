@@ -698,7 +698,7 @@ struct alignas(4) OutputInterfaceConfigResponseMessage : public MessagePayload {
    */
   bool active_differs_from_saved = false;
 
-  /** The size of the parameter value, output_interface_data (in bytes). */
+  /** The number of output interfaces to follow. */
   uint8_t number_of_interfaces = 0;
 
   /**
