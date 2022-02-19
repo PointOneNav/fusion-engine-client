@@ -209,7 +209,7 @@ the repository root directory. The generated output will be located in `docs/htm
 
 ### Message Packing
 
-The canonical definitions for the fusion engine messages are their C++ struct definitions. These definitions are given
+The canonical definitions for the FusionEngine messages are their C++ struct definitions. These definitions are given
 the attributes:
  * `packed` - This attribute sets that no implicit padding should be inserted between members of the struct. For example:
    ```
