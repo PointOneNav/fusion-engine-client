@@ -110,9 +110,9 @@ jobs:
       with:
         cmake-version: '3.16.x'
 
-    - name: Install msbuild (Windows)
+    - name: Configure VS Toolchain (Windows)
       if: matrix.os == 'windows-latest'
-      uses: microsoft/setup-msbuild@v1.0.2
+      uses: ilammy/msvc-dev-cmd@v1
 
     - name: Setup Environment (Windows)
       if: matrix.os == 'windows-latest'
@@ -150,15 +150,16 @@ jobs:
       if: matrix.os == 'windows-latest'
       run: |
         cd cmake_build
-        MSBuild.exe p1_fusion_engine_client.sln
+        nmake
+        nmake install
 
     - name: Install Test Files (Windows)
       if: matrix.os == 'windows-latest'
       run: |
         mkdir test
-        cp cmake_build/Debug/fusion_engine_client.dll ./test/
-        cp cmake_build/examples/message_decode/Debug/message_decode.exe ./test/
-        cp cmake_build/examples/generate_data/Debug/generate_data.exe ./test/
+        cp cmake_build/fusion_engine_client.dll ./test/
+        cp cmake_build/examples/message_decode/message_decode.exe ./test/
+        cp cmake_build/examples/generate_data/generate_data.exe ./test/
         cp examples/message_decode/example_data.p1log ./test/
 
     # Run unit tests.
