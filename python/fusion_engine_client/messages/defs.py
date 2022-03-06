@@ -171,22 +171,22 @@ class Timestamp:
         return Timestamp._SIZE
 
     def __eq__(self, other):
-        return self.seconds == other.seconds
+        return self.seconds == float(other)
 
     def __ne__(self, other):
-        return self.seconds != other.seconds
+        return self.seconds != float(other)
 
     def __lt__(self, other):
-        return self.seconds < other.seconds
+        return self.seconds < float(other)
 
     def __le__(self, other):
-        return self.seconds <= other.seconds
+        return self.seconds <= float(other)
 
     def __gt__(self, other):
-        return self.seconds > other.seconds
+        return self.seconds > float(other)
 
     def __ge__(self, other):
-        return self.seconds >= other.seconds
+        return self.seconds >= float(other)
 
     def __bool__(self):
         return not math.isnan(self.seconds)
