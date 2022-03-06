@@ -113,15 +113,10 @@ class ProfileSystemStatusMessage(MessagePayload):
         return offset - initial_offset
 
     def __repr__(self):
-        return '%s @ POSIX time %s (%.6f sec)' % \
-               (self.MESSAGE_TYPE.name,
-                datetime.utcfromtimestamp(self.system_time_ns * 1e-9).replace(tzinfo=timezone.utc),
-                self.system_time_ns * 1e-9)
+        return '%s @ %s' % (self.MESSAGE_TYPE.name, system_time_to_str(self.system_time_ns))
 
     def __str__(self):
-        string = 'System status @ POSIX time %s (%.6f sec)\n' % \
-            (datetime.utcfromtimestamp(self.system_time_ns * 1e-9).replace(tzinfo=timezone.utc),
-             self.system_time_ns * 1e-9)
+        string = 'System Status @ %s\n' % system_time_to_str(self.system_time_ns)
         string += '  P1 time: %s\n' % str(self.p1_time)
         string += '  CPU: %.1f%%\n' % self.total_cpu_usage
         string += '  Total memory: %d B/%d B' % (self.total_used_memory_bytes, self.total_memory_bytes)
@@ -200,6 +195,9 @@ class ProfileDefinitionEntry:
 class ProfileDefinitionMessage(MessagePayload):
     """!
     @brief Profiling point definitions.
+
+    @note
+    This class is used for multiple profiling data types.
     """
     _FORMAT = '<q2xH'
     _SIZE: int = struct.calcsize(_FORMAT)
@@ -245,14 +243,10 @@ class ProfileDefinitionMessage(MessagePayload):
         return {e.id: e.name for e in self.entries}
 
     def __repr__(self):
-        return 'Profile definition @ POSIX time %s (%.6f sec)' % \
-               (datetime.utcfromtimestamp(self.system_time_ns * 1e-9).replace(tzinfo=timezone.utc),
-                self.system_time_ns * 1e-9)
+        return '%s @ %s' % (self.__class__.__name__, system_time_to_str(self.system_time_ns))
 
     def __str__(self):
-        string = 'Profile definition @ POSIX time %s (%.6f sec)\n' % \
-            (datetime.utcfromtimestamp(self.system_time_ns * 1e-9).replace(tzinfo=timezone.utc),
-             self.system_time_ns * 1e-9)
+        string = 'Profile Definition @ %s\n' % system_time_to_str(self.system_time_ns)
         string += '  %d entries:' % len(self.entries)
         for entry in self.entries:
             string += '\n'
@@ -354,15 +348,10 @@ class ProfilePipelineMessage(MessagePayload):
         return offset - initial_offset
 
     def __repr__(self):
-        return '%s @ POSIX time %s (%.6f sec)' % \
-               (self.MESSAGE_TYPE.name,
-                datetime.utcfromtimestamp(self.system_time_ns * 1e-9).replace(tzinfo=timezone.utc),
-                self.system_time_ns * 1e-9)
+        return '%s @ %s' % (self.MESSAGE_TYPE.name, system_time_to_str(self.system_time_ns))
 
     def __str__(self):
-        string = 'Pipeline profiling update @ POSIX time %s (%.6f sec)\n' % \
-            (datetime.utcfromtimestamp(self.system_time_ns * 1e-9).replace(tzinfo=timezone.utc),
-             self.system_time_ns * 1e-9)
+        string = 'Pipeline Profiling Update @ %s\n' % system_time_to_str(self.system_time_ns)
         string += '  P1 time: %s\n' % self.p1_time
         string += '  %d entries:' % len(self.entries)
         for entry in self.entries:
@@ -497,15 +486,10 @@ class ProfileExecutionMessage(MessagePayload):
         return offset - initial_offset
 
     def __repr__(self):
-        return '%s @ POSIX time %s (%.6f sec)' % \
-               (self.MESSAGE_TYPE.name,
-                datetime.utcfromtimestamp(self.system_time_ns * 1e-9).replace(tzinfo=timezone.utc),
-                self.system_time_ns * 1e-9)
+        return '%s @ %s' % (self.MESSAGE_TYPE.name, system_time_to_str(self.system_time_ns))
 
     def __str__(self):
-        string = 'Execution profiling update @ POSIX time %s (%.6f sec)\n' % \
-            (datetime.utcfromtimestamp(self.system_time_ns * 1e-9).replace(tzinfo=timezone.utc),
-             self.system_time_ns * 1e-9)
+        string = 'Execution Profiling Update @ %s\n' % system_time_to_str(self.system_time_ns)
         string += '  %d entries:' % len(self.entries)
         for entry in self.entries:
             string += '\n'
@@ -601,10 +585,10 @@ class ProfileFreeRtosSystemStatusMessage(MessagePayload):
         return parsed._io.tell()
 
     def __repr__(self):
-        return f'{self.MESSAGE_TYPE.name} @ System time {self.system_time_ns*1e-9:.3} sec'
+        return '%s @ %s' % (self.MESSAGE_TYPE.name, system_time_to_str(self.system_time_ns))
 
     def __str__(self):
-        string = f'FreeRTOS System Profiling @ System time {self.system_time_ns*1e-9:.3} sec\n'
+        string = f'FreeRTOS System Profiling @ %s\n' % system_time_to_str(self.system_time_ns)
         string += f'\theap_free_bytes: {self.heap_free_bytes}\n'
         string += f'\tsbrk_free_bytes: {self.sbrk_free_bytes}\n'
         for i, task in enumerate(self.task_entries):
@@ -671,10 +655,10 @@ class ProfileExecutionStatsMessage(MessagePayload):
         return parsed._io.tell()
 
     def __repr__(self):
-        return f'{self.MESSAGE_TYPE.name} @ System time {self.system_time_ns*1e-9:.3} sec'
+        return '%s @ %s' % (self.MESSAGE_TYPE.name, system_time_to_str(self.system_time_ns))
 
     def __str__(self):
-        string = f'Execution Stats Profiling @ System time {self.system_time_ns*1e-9:.3} sec\n'
+        string = f'Execution Stats Profiling @ %s\n' % system_time_to_str(self.system_time_ns)
         for i, trace in enumerate(self.entries):
             string += f'\tTrace[{i}]:\n'
             string += f'\t\trunning_time_ns: {trace.running_time_ns}\n'
@@ -739,10 +723,10 @@ class ProfileCounterMessage(MessagePayload):
         return parsed._io.tell()
 
     def __repr__(self):
-        return f'{self.MESSAGE_TYPE.name} @ System time {self.system_time_ns*1e-9:.3} sec'
+        return '%s @ %s' % (self.MESSAGE_TYPE.name, system_time_to_str(self.system_time_ns))
 
     def __str__(self):
-        string = f'Profiling Counters @ System time {self.system_time_ns*1e-9:.3} sec\n'
+        string = f'Profiling Counters @ %s\n' % system_time_to_str(self.system_time_ns)
         for i, counter in enumerate(self.entries):
             string += f'\tCount[{i}]: {counter.count}\n'
         return string.rstrip()
