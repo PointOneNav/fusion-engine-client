@@ -37,10 +37,17 @@ class TimeRange(object):
 
         self._range_specified = self.start is not None or self.end is not None
 
+        self._in_range_started = False
+        self._in_range_ended = False
+
+    def in_range_started(self) -> bool:
+        return self._in_range_started
+
     def is_in_range(self, message: MessagePayload, return_timestamps: bool = False) ->\
             Union[bool, Tuple[bool, Timestamp, float]]:
         # Shortcut if no range is specified.
         if not self._range_specified and not return_timestamps:
+            self._in_range_started = True
             return True
 
         # Extract P1 and system timestamps, where applicable.
@@ -58,6 +65,7 @@ class TimeRange(object):
 
         # Shortcut if no range is specified.
         if not self._range_specified:
+            self._in_range_started = True
             return True, p1_time, system_time_sec
 
         # Select the appropriate timestamp and reference t0 value.
@@ -75,7 +83,20 @@ class TimeRange(object):
 
         # Test if we fall within the time range.
         if message_time_sec is None:
-            in_range = False
+            # If this message doesn't have any timestamps, or we're testing against absolute P1 time and it only has
+            # system time, we'll set its status based on whether or not previous messages were in range. For example:
+            #   PoseMessage @ 123.4 [out of range]
+            #   DummyMessage @ no P1 time [out of range]
+            #   PoseMessage @ 124.0 [in range]
+            #   DummyMessage @ no P1 time [in range]
+            #   PoseMessage @ 125.0 [in range]
+            #   DummyMessage @ no P1 time [in range]
+            #   PoseMessage @ 126.0 [out of range]
+            #   DummyMessage @ no P1 time [out of range]
+            #
+            # Note that this assumes data is processed in order. If timestamps are received out of order, all messages
+            # received after _in_range_ended is set to True will be discarded.
+            in_range = self._in_range_started and not self._in_range_ended
         else:
             if self.absolute:
                 comparison_time_sec = message_time_sec
@@ -88,6 +109,11 @@ class TimeRange(object):
                 in_range = False
             else:
                 in_range = True
+
+        if in_range:
+            self._in_range_started = True
+        elif self._in_range_started:
+            self._in_range_ended = True
 
         if return_timestamps:
             return in_range, p1_time, system_time_sec

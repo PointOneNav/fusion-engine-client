@@ -75,7 +75,7 @@ other types of data.
         sys.exit(1)
 
     # Parse the time range.
-    time_range = TimeRange.parse(options.time)
+    time_range = TimeRange.parse(options.time, absolute=options.absolute_time)
 
     # If the user specified a set of message names, lookup their type values. Below, we will limit the printout to only
     # those message types.
@@ -120,7 +120,7 @@ other types of data.
                     # Limit to the user-specified time range if applicable.
                     in_range, p1_time, system_time_ns = time_range.is_in_range(message, return_timestamps=True)
                     if not in_range:
-                        if total_messages > 0:
+                        if time_range.in_range_started():
                             still_working = False
                             break
                         else:
@@ -129,7 +129,6 @@ other types of data.
                     bytes_decoded += len(message_raw)
 
                     # Update the data summary in summary mode, or print the message contents otherwise.
-                    total_messages += 1
                     if options.summary:
                         if p1_time is not None:
                             if first_p1_time_sec is None:
@@ -141,6 +140,7 @@ other types of data.
                                 first_system_time_sec = system_time_ns * 1e-9
                             last_system_time_sec = system_time_ns * 1e-9
 
+                        total_messages += 1
                         if header.message_type not in message_stats:
                             message_stats[header.message_type] = {
                                 'count': 1

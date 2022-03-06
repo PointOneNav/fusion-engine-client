@@ -112,7 +112,7 @@ def test_return_timestamps():
     assert result[2] == 3.0
 
 
-def test_no_timestamp():
+def test_timestamp_invalid():
     time_range = TimeRange.parse('', absolute=False)
     message = PoseMessage()
     assert time_range.is_in_range(message)
@@ -120,3 +120,27 @@ def test_no_timestamp():
     time_range = TimeRange.parse('0:2', absolute=False)
     message = PoseMessage()
     assert not time_range.is_in_range(message)
+
+
+def test_defer_no_timestamp():
+    time_range = TimeRange.parse('1:2', absolute=False)
+    timed_message = PoseMessage()
+    untimed_message = PoseMessage()
+
+    # Time range not entered yet - untimestamped messages will be considered out of range.
+    timed_message.p1_time = Timestamp(3.0)
+    assert not time_range.is_in_range(timed_message)
+    assert not time_range.is_in_range(untimed_message)
+
+    # Enter range - untimestamped messages now considered in range.
+    timed_message.p1_time = Timestamp(4.0)
+    assert time_range.is_in_range(timed_message)
+    assert time_range.is_in_range(untimed_message)
+    timed_message.p1_time = Timestamp(4.5)
+    assert time_range.is_in_range(timed_message)
+    assert time_range.is_in_range(untimed_message)
+
+    # Exit time range - untimestamped messages no longer in range.
+    timed_message.p1_time = Timestamp(5.1)
+    assert not time_range.is_in_range(timed_message)
+    assert not time_range.is_in_range(untimed_message)
