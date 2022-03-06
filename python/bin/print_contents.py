@@ -93,13 +93,15 @@ other types of data.
         message_types = set(message_types)
 
     # Process all data in the file.
-    decoder = FusionEngineDecoder()
+    decoder = FusionEngineDecoder(return_bytes=True)
 
     first_p1_time_sec = None
     last_p1_time_sec = None
     first_system_time_sec = None
     last_system_time_sec = None
     total_messages = 0
+    bytes_read = 0
+    bytes_decoded = 0
     message_stats = {}
     with open(input_path, 'rb') as f:
         while True:
@@ -107,15 +109,19 @@ other types of data.
             data = f.read(1024)
             if len(data) == 0:
                 break
+            else:
+                bytes_read += len(data)
 
             # Decode the incoming data and print the contents of any complete messages.
             messages = decoder.on_data(data)
-            for (header, message) in messages:
+            for (header, message, message_raw) in messages:
                 if len(message_types) == 0 or header.message_type in message_types:
                     # Limit to the user-specified time range if applicable.
                     in_range, p1_time, system_time_ns = time_range.is_in_range(message, return_timestamps=True)
                     if not in_range:
                         continue
+
+                    bytes_decoded += len(message_raw)
 
                     # Update the data summary in summary mode, or print the message contents otherwise.
                     if options.summary:
@@ -147,6 +153,8 @@ other types of data.
             print('Duration: %d seconds' % (last_p1_time_sec - first_p1_time_sec))
         elif first_system_time_sec is not None:
             print('Duration: %d seconds' % (last_system_time_sec - first_system_time_sec))
+        print('Total data read: %d B' % bytes_read)
+        print('Selected data size: %d B' % bytes_decoded)
         print('')
 
         format_string = '| {:<50} | {:>8} |'
