@@ -12,7 +12,7 @@ class CovarianceType(IntEnum):
     COVARIANCE_TYPE_KNOWN = 3
 
 
-class PoseMessage(MessagePayload):
+class ROSPoseMessage(MessagePayload):
     """!
     @brief ROS `Pose` message (@ref MessageType::ROS_POSE)
 
@@ -42,7 +42,7 @@ class PoseMessage(MessagePayload):
 
         offset += self.p1_time.pack(buffer, offset, return_buffer=False)
 
-        struct.pack_into(PoseMessage._FORMAT, buffer, offset,
+        struct.pack_into(ROSPoseMessage._FORMAT, buffer, offset,
                          self.position_rel_m[0], self.position_rel_m[1], self.position_rel_m[2],
                          self.orientation[0], self.orientation[1], self.orientation[2], self.orientation[3])
 
@@ -57,9 +57,9 @@ class PoseMessage(MessagePayload):
         offset += self.p1_time.unpack(buffer, offset)
         (self.position_rel_m[0], self.position_rel_m[1], self.position_rel_m[2],
          self.orientation[0], self.orientation[1], self.orientation[2], self.orientation[3]) = \
-            struct.unpack_from(PoseMessage._FORMAT,
+            struct.unpack_from(ROSPoseMessage._FORMAT,
                                buffer=buffer, offset=offset)
-        offset += PoseMessage._SIZE
+        offset += ROSPoseMessage._SIZE
         return offset - initial_offset
 
     def __repr__(self):
@@ -73,7 +73,7 @@ class PoseMessage(MessagePayload):
 
     @classmethod
     def calcsize(cls) -> int:
-        return Timestamp.calcsize() + PoseMessage._SIZE
+        return Timestamp.calcsize() + ROSPoseMessage._SIZE
 
     @classmethod
     def to_numpy(cls, messages):
@@ -85,7 +85,7 @@ class PoseMessage(MessagePayload):
         return result
 
 
-class GPSFixMessage(MessagePayload):
+class ROSGPSFixMessage(MessagePayload):
     """!
     @brief ROS `GPSFix` message (MessageType::ROS_GPS_FIX).
     """
@@ -164,7 +164,7 @@ class GPSFixMessage(MessagePayload):
 
         offset += self.p1_time.pack(buffer, offset, return_buffer=False)
 
-        struct.pack_into(GPSFixMessage._FORMAT, buffer, offset,
+        struct.pack_into(ROSGPSFixMessage._FORMAT, buffer, offset,
                          self.latitude_deg,
                          self.longitude_deg,
                          self.altitude_m,
@@ -235,9 +235,9 @@ class GPSFixMessage(MessagePayload):
          self.position_covariance_m2[6], self.position_covariance_m2[7], self.position_covariance_m2[8],
          self.position_covariance_type,
          self.reserved[0], self.reserved[1], self.reserved[2]) = \
-            struct.unpack_from(GPSFixMessage._FORMAT,
+            struct.unpack_from(ROSGPSFixMessage._FORMAT,
                                buffer=buffer, offset=offset)
-        offset += GPSFixMessage._SIZE
+        offset += ROSGPSFixMessage._SIZE
         return offset - initial_offset
 
     def __repr__(self):
@@ -253,10 +253,10 @@ class GPSFixMessage(MessagePayload):
 
     @classmethod
     def calcsize(cls) -> int:
-        return Timestamp.calcsize() + GPSFixMessage._SIZE
+        return Timestamp.calcsize() + ROSGPSFixMessage._SIZE
 
 
-class IMUMessage(MessagePayload):
+class ROSIMUMessage(MessagePayload):
     """!
     @brief ROS `Imu` message (@ref MessageType::ROS_IMU)
     """
@@ -293,7 +293,7 @@ class IMUMessage(MessagePayload):
         offset += self.p1_time.pack(buffer, offset, return_buffer=False)
 
         struct.pack_into(
-            IMUMessage._FORMAT, buffer, offset,
+            ROSIMUMessage._FORMAT, buffer, offset,
             self.orientation[0], self.orientation[1], self.orientation[2], self.orientation[3],
             self.orientation_covariance[0], self.orientation_covariance[1], self.orientation_covariance[2],
             self.orientation_covariance[3], self.orientation_covariance[4], self.orientation_covariance[5],
@@ -330,9 +330,9 @@ class IMUMessage(MessagePayload):
          self.acceleration_covariance[3], self.acceleration_covariance[4], self.acceleration_covariance[5],
          self.acceleration_covariance[6], self.acceleration_covariance[7], self.acceleration_covariance[8],
          ) = \
-            struct.unpack_from(IMUMessage._FORMAT,
+            struct.unpack_from(ROSIMUMessage._FORMAT,
                                buffer=buffer, offset=offset)
-        offset += IMUMessage._SIZE
+        offset += ROSIMUMessage._SIZE
         return offset - initial_offset
 
     def __repr__(self):
@@ -350,4 +350,4 @@ class IMUMessage(MessagePayload):
 
     @classmethod
     def calcsize(cls) -> int:
-        return Timestamp.calcsize() + IMUMessage._SIZE
+        return Timestamp.calcsize() + ROSIMUMessage._SIZE
