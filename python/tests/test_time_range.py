@@ -109,7 +109,7 @@ def test_return_timestamps():
     assert len(result) == 3
     assert result[0]
     assert result[1] is None
-    assert result[2] == 3.0
+    assert result[2] == 3000000000
 
 
 def test_timestamp_invalid():

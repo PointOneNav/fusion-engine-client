@@ -65,12 +65,13 @@ class TimeRange(object):
                     self.system_t0 = system_time_sec
         else:
             p1_time = None
+            system_time_ns = None
             system_time_sec = None
 
         # Shortcut if no range is specified.
         if not self._range_specified:
             self._in_range_started = True
-            return True, p1_time, system_time_sec
+            return True, p1_time, system_time_ns
 
         # Select the appropriate timestamp and reference t0 value.
         message_time_sec = None
@@ -120,7 +121,7 @@ class TimeRange(object):
             self._in_range_ended = True
 
         if return_timestamps:
-            return in_range, p1_time, system_time_sec
+            return in_range, p1_time, system_time_ns
         else:
             return in_range
 
