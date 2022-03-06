@@ -290,6 +290,9 @@ class EventNotificationMessage(MessagePayload):
         RESET = 1
         CONFIG_CHANGE = 2
 
+        def __str__(self):
+            return super().__str__().replace(self.__class__.__name__ + '.', '')
+
     EventNotificationConstruct = Struct(
         "action" / AutoEnum(Int8ul, Action),
         Padding(3),

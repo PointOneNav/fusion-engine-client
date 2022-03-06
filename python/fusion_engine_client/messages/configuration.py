@@ -16,6 +16,9 @@ class ConfigurationSource(IntEnum):
     ACTIVE = 0
     SAVED = 1
 
+    def __str__(self):
+        return super().__str__().replace(self.__class__.__name__ + '.', '')
+
 
 class ConfigType(IntEnum):
     INVALID = 0
@@ -25,6 +28,9 @@ class ConfigType(IntEnum):
     OUTPUT_LEVER_ARM = 19
     UART0_BAUD = 256
     UART1_BAUD = 257
+
+    def __str__(self):
+        return super().__str__().replace(self.__class__.__name__ + '.', '')
 
 
 class Direction(IntEnum):
@@ -43,6 +49,9 @@ class Direction(IntEnum):
     ## Error value.
     INVALID = 255
 
+    def __str__(self):
+        return super().__str__().replace(self.__class__.__name__ + '.', '')
+
 
 class TransportType(IntEnum):
     INVALID = 0,
@@ -55,9 +64,15 @@ class TransportType(IntEnum):
     ## This is used for requesting the configuration for all interfaces.
     ALL = 255,
 
+    def __str__(self):
+        return super().__str__().replace(self.__class__.__name__ + '.', '')
+
 
 class UpdateAction(IntEnum):
     REPLACE = 0
+
+    def __str__(self):
+        return super().__str__().replace(self.__class__.__name__ + '.', '')
 
 
 class _ConfigClassGenerator:
@@ -352,6 +367,9 @@ class SaveAction(IntEnum):
     SAVE = 0
     REVERT_TO_SAVED = 1
     REVERT_TO_DEFAULT = 2
+
+    def __str__(self):
+        return super().__str__().replace(self.__class__.__name__ + '.', '')
 
 
 class SaveConfigMessage(MessagePayload):
