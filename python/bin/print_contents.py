@@ -29,21 +29,26 @@ Decode and print the contents of messages contained in a *.p1log file or other
 binary file containing FusionEngine messages. The binary file may also contain
 other types of data.
 """)
-    parser.add_argument('-t', '--type', type=str, action='append',
-                        help="An optional list of class names corresponding with the message types to be displayed. "
-                             "Supported types:\n%s" % '\n'.join(['  %s' % c for c in message_type_by_name.keys()]))
-    parser.add_argument('-s', '--summary', action='store_true',
-                        help="Print a summary of the messages in the file.")
 
-    parser.add_argument('--log-base-dir', metavar='DIR', default='/logs',
-                        help="The base directory containing FusionEngine logs to be searched if a log pattern is "
-                             "specified.")
-    parser.add_argument('log',
-                        help="The log to be read. May be one of:\n"
-                             "- The path to a .p1log file\n"
-                             "- The path to a FusionEngine log directory\n"
-                             "- A pattern matching a FusionEngine log directory under the specified base directory "
-                             "(see find_fusion_engine_log() and --log-base-dir)")
+    parser.add_argument(
+        '-s', '--summary', action='store_true',
+        help="Print a summary of the messages in the file.")
+    parser.add_argument(
+        '-t', '--type', type=str, action='append',
+        help="An optional list of class names corresponding with the message types to be displayed. "
+             "Supported types:\n%s" % '\n'.join(['  %s' % c for c in message_type_by_name.keys()]))
+
+    log_parser = parser.add_argument_group('Log Control')
+    log_parser.add_argument(
+        '--log-base-dir', metavar='DIR', default='/logs',
+        help="The base directory containing FusionEngine logs to be searched if a log pattern is specified.")
+    log_parser.add_argument(
+        'log',
+        help="The log to be read. May be one of:\n"
+             "- The path to a .p1log file\n"
+             "- The path to a FusionEngine log directory\n"
+             "- A pattern matching a FusionEngine log directory under the specified base directory "
+             "(see find_fusion_engine_log() and --log-base-dir)")
 
     options = parser.parse_args()
 
