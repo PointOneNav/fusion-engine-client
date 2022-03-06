@@ -76,8 +76,8 @@ class PlatformStorageDataMessage(MessagePayload):
         return parsed._io.tell()
 
     def __str__(self):
-        fields = ['data_type', 'data_validity', 'data_version']
-        string = f'Platform Storage Data\n'
+        fields = ['data_validity', 'data_version']
+        string = f'Platform storage data ({str(self.data_type)}, {len(self.data)} B)\n'
         for field in fields:
             val = str(self.__dict__[field]).replace('Container:', '')
             val = val.replace('  ', '\t')
