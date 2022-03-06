@@ -104,7 +104,8 @@ other types of data.
     bytes_decoded = 0
     message_stats = {}
     with open(input_path, 'rb') as f:
-        while True:
+        still_working = True
+        while still_working:
             # Read the next message header.
             data = f.read(1024)
             if len(data) == 0:
@@ -119,11 +120,16 @@ other types of data.
                     # Limit to the user-specified time range if applicable.
                     in_range, p1_time, system_time_ns = time_range.is_in_range(message, return_timestamps=True)
                     if not in_range:
-                        continue
+                        if total_messages > 0:
+                            still_working = False
+                            break
+                        else:
+                            continue
 
                     bytes_decoded += len(message_raw)
 
                     # Update the data summary in summary mode, or print the message contents otherwise.
+                    total_messages += 1
                     if options.summary:
                         if p1_time is not None:
                             if first_p1_time_sec is None:
@@ -135,7 +141,6 @@ other types of data.
                                 first_system_time_sec = system_time_ns * 1e-9
                             last_system_time_sec = system_time_ns * 1e-9
 
-                        total_messages += 1
                         if header.message_type not in message_stats:
                             message_stats[header.message_type] = {
                                 'count': 1
