@@ -9,8 +9,9 @@ import sys
 root_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(root_dir)
 
-from fusion_engine_client.utils.log import extract_fusion_engine_log, find_log_file, CANDIDATE_MIXED_FILES
+from fusion_engine_client.utils.argument_parser import ArgumentParser
 from fusion_engine_client.utils import trace
+from fusion_engine_client.utils.log import extract_fusion_engine_log, find_log_file, CANDIDATE_MIXED_FILES
 
 
 def main():

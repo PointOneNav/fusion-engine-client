@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-from argparse import ArgumentParser
 import os
 import sys
 
@@ -10,6 +9,7 @@ sys.path.append(root_dir)
 
 from fusion_engine_client.messages import MessagePayload, message_type_to_class, message_type_by_name
 from fusion_engine_client.parsers import FusionEngineDecoder
+from fusion_engine_client.utils.argument_parser import ArgumentParser
 from fusion_engine_client.utils.log import locate_log
 
 
