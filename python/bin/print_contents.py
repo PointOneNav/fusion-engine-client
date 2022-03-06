@@ -52,7 +52,7 @@ other types of data.
     parser.add_argument(
         '-t', '--type', type=str, action='append',
         help="An optional list of class names corresponding with the message types to be displayed. "
-             "Supported types:\n%s" % '\n'.join(['  %s' % c for c in message_type_by_name.keys()]))
+             "Supported types:\n%s" % '\n'.join(['- %s' % c for c in message_type_by_name.keys()]))
 
     log_parser = parser.add_argument_group('Log Control')
     log_parser.add_argument(

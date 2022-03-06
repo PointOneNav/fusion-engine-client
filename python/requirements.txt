@@ -2,6 +2,7 @@ numpy>=1.16.0
 construct>=2.10.0
 
 # Required for analysis tools only.
+argparse-formatter>=1.4
 # Note: Using the P1 fork of gpstime until Windows and microsecond fixes are mainlined.
 https://github.com/PointOneNav/gpstime/archive/f9e2ab58a8beeeafee992d87a0eafc50887ba849.zip#egg=gpstime
 #gpstime>=0.4.6

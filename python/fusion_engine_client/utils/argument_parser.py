@@ -11,6 +11,8 @@ from __future__ import absolute_import
 
 import argparse
 
+from argparse_formatter import FlexiFormatter
+
 
 # Modified from argparse.ArgumentDefaultsHelpFormatter to omit when default is None.
 class ArgumentDefaultsHelpFormatter(argparse.HelpFormatter):
@@ -24,7 +26,7 @@ class ArgumentDefaultsHelpFormatter(argparse.HelpFormatter):
         return help
 
 
-class CapitalisedHelpFormatter(argparse.RawDescriptionHelpFormatter, ArgumentDefaultsHelpFormatter):
+class CapitalisedHelpFormatter(FlexiFormatter, ArgumentDefaultsHelpFormatter):
     def add_usage(self, usage, actions, groups, prefix=None):
         if prefix is None:
             prefix = 'Usage: '
