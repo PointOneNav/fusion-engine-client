@@ -13,11 +13,14 @@ from fusion_engine_client.utils.argument_parser import ArgumentParser
 from fusion_engine_client.utils.log import locate_log
 
 
-def print_message(header, contents):
+def print_message(header, contents, one_line=False):
     if isinstance(contents, MessagePayload):
         parts = str(contents).split('\n')
         parts[0] += ' [sequence=%d, size=%d B]' % (header.sequence_number, header.get_message_size())
-        print('\n'.join(parts))
+        if one_line:
+            print(parts[0])
+        else:
+            print('\n'.join(parts))
     else:
         print('Decoded %s message [sequence=%d, size=%d B]' %
               (header.get_type_string(), header.sequence_number, header.get_message_size()))
@@ -30,6 +33,9 @@ binary file containing FusionEngine messages. The binary file may also contain
 other types of data.
 """)
 
+    parser.add_argument(
+        '-f', '--format', choices=['pretty', 'oneline'], default='pretty',
+        help="Specify the format used to print the message contents.")
     parser.add_argument(
         '-s', '--summary', action='store_true',
         help="Print a summary of the messages in the file.")
@@ -114,7 +120,7 @@ other types of data.
                             entry = message_stats[header.message_type]
                             entry['count'] += 1
                     else:
-                        print_message(header, message)
+                        print_message(header, message, one_line=options.format == 'oneline')
 
     if options.summary:
         print('Input file: %s' % input_path)
