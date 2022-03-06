@@ -11,6 +11,7 @@ from fusion_engine_client.messages import MessagePayload, message_type_to_class,
 from fusion_engine_client.parsers import FusionEngineDecoder
 from fusion_engine_client.utils.argument_parser import ArgumentParser
 from fusion_engine_client.utils.log import locate_log
+from fusion_engine_client.utils.time_range import TimeRange
 
 
 def print_message(header, contents, one_line=False):
@@ -34,11 +35,20 @@ other types of data.
 """)
 
     parser.add_argument(
+        '--absolute-time', '--abs', action='store_true',
+        help="Interpret the timestamps in --time as absolute P1 times. Otherwise, treat them as relative to the first "
+             "message in the file.")
+    parser.add_argument(
         '-f', '--format', choices=['pretty', 'oneline'], default='pretty',
         help="Specify the format used to print the message contents.")
     parser.add_argument(
         '-s', '--summary', action='store_true',
         help="Print a summary of the messages in the file.")
+    parser.add_argument(
+        '--time', type=str, metavar='[START][:END]',
+        help="The desired time range to be analyzed. Both start and end may be omitted to read from beginning or to "
+             "the end of the file. By default, timestamps are treated as relative to the first message in the file. "
+             "See --absolute-time.")
     parser.add_argument(
         '-t', '--type', type=str, action='append',
         help="An optional list of class names corresponding with the message types to be displayed. "
@@ -64,6 +74,9 @@ other types of data.
         # locate_log() will log an error.
         sys.exit(1)
 
+    # Parse the time range.
+    time_range = TimeRange.parse(options.time)
+
     # If the user specified a set of message names, lookup their type values. Below, we will limit the printout to only
     # those message types.
     message_types = []
@@ -79,6 +92,7 @@ other types of data.
                 message_types.append(message_type)
         message_types = set(message_types)
 
+    # Process all data in the file.
     decoder = FusionEngineDecoder()
 
     first_p1_time_sec = None
@@ -98,14 +112,18 @@ other types of data.
             messages = decoder.on_data(data)
             for (header, message) in messages:
                 if len(message_types) == 0 or header.message_type in message_types:
+                    # Limit to the user-specified time range if applicable.
+                    in_range, p1_time, system_time_ns = time_range.is_in_range(message, return_timestamps=True)
+                    if not in_range:
+                        continue
+
+                    # Update the data summary in summary mode, or print the message contents otherwise.
                     if options.summary:
-                        p1_time = message.__dict__.get('p1_time', None)
                         if p1_time is not None:
                             if first_p1_time_sec is None:
                                 first_p1_time_sec = float(p1_time)
                             last_p1_time_sec = float(p1_time)
 
-                        system_time_ns = message.__dict__.get('system_time_ns', None)
                         if system_time_ns is not None:
                             if first_system_time_sec is None:
                                 first_system_time_sec = system_time_ns * 1e-9
