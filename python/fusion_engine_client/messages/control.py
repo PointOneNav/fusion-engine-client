@@ -221,7 +221,7 @@ class ResetRequest(MessagePayload):
         return ResetRequest._SIZE
 
     def __str__(self):
-        return 'Reset request. [mask=0x%08x]' % self.reset_mask
+        return 'Reset Request [mask=0x%08x]' % self.reset_mask
 
 
 class VersionInfoMessage(MessagePayload):
@@ -266,8 +266,7 @@ class VersionInfoMessage(MessagePayload):
         return parsed._io.tell()
 
     def __str__(self):
-        string = f'Version Data\n'
-        string += f'  System time: %.1f sec\n' % (self.system_time_ns * 1e-9)
+        string = f'Version Info @ %s\n' % system_time_to_str(self.system_time_ns)
         string += f'  Firmware: {self.fw_version_str}\n'
         string += f'  FusionEngine: {self.engine_version_str}\n'
         string += f'  Hardware: {self.hw_version_str}\n'
@@ -321,8 +320,8 @@ class EventNotificationMessage(MessagePayload):
         return parsed._io.tell()
 
     def __str__(self):
-        fields = ['action', 'system_time_ns', 'event_flags', 'event_description']
-        string = f'Event Notification\n'
+        fields = ['action', 'event_flags', 'event_description']
+        string = f'Event Notification @ %s\n' % system_time_to_str(self.system_time_ns)
         for field in fields:
             val = str(self.__dict__[field]).replace('Container:', '')
             string += f'  {field}: {val}\n'

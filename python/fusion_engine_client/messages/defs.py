@@ -195,7 +195,16 @@ class Timestamp:
         return self.seconds
 
     def __str__(self):
-        return '%.3f seconds' % self.seconds
+        return 'P1 time %.3f sec' % self.seconds
+
+
+def system_time_to_str(system_time_ns):
+    system_time_sec = system_time_ns * 1e-9
+    if system_time_sec >= 946684800: # 2000/1/1 00:00:00
+        return 'POSIX time %s (%.3f sec)' % \
+               (datetime.utcfromtimestamp(system_time_sec).replace(tzinfo=timezone.utc), system_time_sec)
+    else:
+        return 'SYstem time %.3f sec' % system_time_sec
 
 
 class MessageHeader:

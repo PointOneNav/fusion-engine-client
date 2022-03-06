@@ -69,7 +69,7 @@ class ROSPoseMessage(MessagePayload):
         return '%s @ %s' % (self.MESSAGE_TYPE.name, self.p1_time)
 
     def __str__(self):
-        string = 'ROS Pose message @ P1 time %s\n' % str(self.p1_time)
+        string = 'ROS Pose Message @ %s\n' % str(self.p1_time)
         string += '  Position : %.6f, %.6f, %.6f \n' % tuple(self.position_rel_m)
         string += '  Orientation: %.12f, %.12f, %.12f, %.12f \n' % tuple(self.orientation)
         return string
@@ -247,7 +247,7 @@ class ROSGPSFixMessage(MessagePayload):
         return '%s @ %s' % (self.MESSAGE_TYPE.name, self.p1_time)
 
     def __str__(self):
-        string = 'ROS GPSFix message @ P1 time %s\n' % str(self.p1_time)
+        string = 'ROS GPSFix Message @ %s\n' % str(self.p1_time)
         string += '  Position : %.8f, %.8f, %.2f \n' % (
             self.latitude_deg, self.longitude_deg, self.altitude_m)
         string += '  Velocity: %.6f, %.6f, %.6f\n' % (
@@ -342,7 +342,7 @@ class ROSIMUMessage(MessagePayload):
         return '%s @ %s' % (self.MESSAGE_TYPE.name, self.p1_time)
 
     def __str__(self):
-        string = 'ROS IMU message @ P1 time %s\n' % str(self.p1_time)
+        string = 'ROS IMU Message @ %s\n' % str(self.p1_time)
         string += '  Orientation: %.6f, %.6f, %.6f, %.6f \n' % tuple(
             self.orientation)
         string += '  Angular Velocity: %.6f, %.6f, %.6f \n' % tuple(

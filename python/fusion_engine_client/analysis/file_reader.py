@@ -596,8 +596,8 @@ class FileReader(object):
 
                 if system_time_ns is not None:
                     if self.system_t0 is None:
-                        self.logger.debug('Received first system-timestamped message. [type=%s, time=%.3f]' %
-                                          (header.get_type_string(), system_time_sec))
+                        self.logger.debug('Received first system-timestamped message. [type=%s, time=%s]' %
+                                          (header.get_type_string(), system_time_to_str(system_time_ns)))
                         self.system_t0 = system_time_sec
                         self.system_t0_ns = system_time_ns
 
