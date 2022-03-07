@@ -12,6 +12,7 @@ import numpy as np
 
 from ..messages import *
 from ..utils import trace
+from .file_index import FileIndex
 
 
 class MessageData(object):
@@ -82,89 +83,6 @@ class MessageData(object):
         else:
             raise ValueError('Message type %s does not support numpy conversion.' %
                              MessageType.get_type_string(self.message_type))
-
-
-class FileIndex(object):
-    # Note: To reduce the index file size, we've made the following limitations:
-    # - Fractional timestamp is floored so time 123.4 becomes 123. The data read should not assume that an entry's
-    #   timestamp is its exact time
-    RAW_DTYPE = np.dtype([('int', '<u4'), ('type', '<u2'), ('offset', '<u8')])
-
-    DTYPE = np.dtype([('time', '<f8'), ('type', '<u2'), ('offset', '<u8')])
-
-    def __init__(self, data: Union[np.ndarray, list] = None, index_path: str = None):
-        if data is None:
-            self._data = None
-        elif isinstance(data, np.ndarray) and data.dtype == FileIndex.RAW_DTYPE:
-            self._data = FileIndex._from_raw(data)
-        else:
-            if isinstance(data, list):
-                self._data = np.array(data, dtype=FileIndex.DTYPE)
-            elif data.dtype != FileIndex.DTYPE:
-                raise ValueError('Unsupported array format.')
-
-        if index_path is not None:
-            if self._data is None:
-                self.load(index_path)
-            else:
-                raise ValueError('Cannot specify both path and data.')
-
-    def load(self, index_path):
-        if os.path.exists(index_path):
-            raw_data = np.fromfile(index_path, dtype=FileIndex.RAW_DTYPE)
-            self._data = FileIndex._from_raw(raw_data)
-        else:
-            raise FileNotFoundError("Index file '%s' does not exist." % index_path)
-
-    def save(self, index_path):
-        if self._data is not None:
-            raw_data = FileIndex._to_raw(self._data)
-
-            if os.path.exists(index_path):
-                os.remove(index_path)
-            raw_data.tofile(index_path)
-
-    def __len__(self):
-        if self._data is None:
-            return 0
-        else:
-            return len(self._data['time'])
-
-    def __getattr__(self, key):
-        if key == 'time':
-            return self._data['time'] if self._data is not None else None
-        elif key == 'type':
-            return self._data['type'] if self._data is not None else None
-        elif key == 'offset':
-            return self._data['offset'] if self._data is not None else None
-        else:
-            # Assume the key is a data index or slice descriptor and return a new FileIndex slice.
-            return self.__getitem__(key)
-
-    def __getitem__(self, key):
-        if self._data is None:
-            return FileIndex()
-        else:
-            return FileIndex(self._data[key])
-
-    @classmethod
-    def get_path(cls, data_path):
-        return os.path.splitext(data_path)[0] + '.p1i'
-
-    @classmethod
-    def _from_raw(cls, raw_data):
-        idx = raw_data['int'] == Timestamp._INVALID
-        data = raw_data.astype(dtype=cls.DTYPE)
-        data['time'][idx] = np.nan
-        return data
-
-    @classmethod
-    def _to_raw(cls, data):
-        time_sec = data['time']
-        idx = np.isnan(time_sec)
-        raw_data = data.astype(dtype=cls.RAW_DTYPE)
-        raw_data['int'][idx] = Timestamp._INVALID
-        return raw_data
 
 
 class TimeAlignmentMode(IntEnum):
