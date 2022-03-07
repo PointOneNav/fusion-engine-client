@@ -61,12 +61,13 @@ class FileIndex(object):
         elif key == 'offset':
             return self._data['offset'] if self._data is not None else None
         else:
-            # Assume the key is a data index or slice descriptor and return a new FileIndex slice.
-            return self.__getitem__(key)
+            raise AttributeError
 
     def __getitem__(self, key):
         if self._data is None:
             return FileIndex()
+        elif isinstance(key, int):
+            return FileIndex(self._data[key:(key + 1)])
         else:
             return FileIndex(self._data[key])
 
