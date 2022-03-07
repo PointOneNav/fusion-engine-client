@@ -12,7 +12,7 @@ import numpy as np
 
 from ..messages import *
 from ..utils import trace
-from .file_index import FileIndex
+from .file_index import FileIndex, FileIndexBuilder
 
 
 class MessageData(object):
@@ -396,7 +396,7 @@ class FileReader(object):
         # Otherwise, seek to the start of the file and read all messages.
         else:
             data_offsets = None
-            index_entries = []
+            index_builder = FileIndexBuilder()
             self.file.seek(0, 0)
 
             if generate_index:
@@ -526,8 +526,8 @@ class FileReader(object):
                 # If we're building up an index file, add an entry for this message. If this is an unrecognized message
                 # type, we won't have P1 time so we'll just insert a nan.
                 if generate_index:
-                    index_entries.append((float(p1_time) if p1_time is not None else np.nan, int(header.message_type),
-                                          message_offset_bytes))
+                    index_builder.append(message_type=header.message_type, offset_bytes=message_offset_bytes,
+                                         p1_time=p1_time)
 
                 if contents is None:
                     # Unrecognized type - skip.
@@ -646,8 +646,8 @@ class FileReader(object):
         # Save the index file for faster reading in the future.
         if generate_index:
             index_path = FileIndex.get_path(self.file.name)
-            self.logger.debug("Saving index file '%s' with %d entries." % (index_path, len(index_entries)))
-            self.index = FileIndex(index_entries)
+            self.logger.debug("Saving index file '%s' with %d entries." % (index_path, len(index_builder)))
+            self.index = index_builder.to_index()
             self.index.save(index_path)
 
         # Time-align the data if requested.

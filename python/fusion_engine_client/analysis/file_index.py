@@ -4,7 +4,7 @@ import os
 
 import numpy as np
 
-from ..messages import Timestamp
+from ..messages import MessageType, Timestamp
 
 
 class FileIndex(object):
@@ -88,3 +88,22 @@ class FileIndex(object):
         raw_data = data.astype(dtype=cls.RAW_DTYPE)
         raw_data['int'][idx] = Timestamp._INVALID
         return raw_data
+
+
+class FileIndexBuilder(object):
+    def __init__(self):
+        self.raw_data = []
+
+    def append(self, message_type: MessageType, offset_bytes: int, p1_time: Timestamp = None):
+        if p1_time is None:
+            time_sec = np.nan
+        else:
+            time_sec = float(p1_time)
+
+        self.raw_data.append((time_sec, int(message_type), offset_bytes))
+
+    def to_index(self):
+        return FileIndex(self.raw_data)
+
+    def __len__(self):
+        return len(self.raw_data)
