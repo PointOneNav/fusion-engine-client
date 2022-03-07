@@ -23,7 +23,9 @@ class FileIndex(object):
         else:
             if isinstance(data, list):
                 self._data = np.array(data, dtype=FileIndex.DTYPE)
-            elif data.dtype != FileIndex.DTYPE:
+            elif data.dtype == FileIndex.DTYPE:
+                self._data = data
+            else:
                 raise ValueError('Unsupported array format.')
 
         if index_path is not None:
