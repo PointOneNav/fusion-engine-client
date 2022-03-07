@@ -12,9 +12,9 @@ message_type_to_class = {
     IMUMeasurement.MESSAGE_TYPE: IMUMeasurement,
 
     # ROS messages.
-    ros.PoseMessage.MESSAGE_TYPE: ros.PoseMessage,
-    ros.GPSFixMessage.MESSAGE_TYPE: ros.GPSFixMessage,
-    ros.IMUMessage.MESSAGE_TYPE: ros.IMUMessage,
+    ros.ROSPoseMessage.MESSAGE_TYPE: ros.ROSPoseMessage,
+    ros.ROSGPSFixMessage.MESSAGE_TYPE: ros.ROSGPSFixMessage,
+    ros.ROSIMUMessage.MESSAGE_TYPE: ros.ROSIMUMessage,
 
     # Command and control messages.
     CommandResponseMessage.MESSAGE_TYPE: CommandResponseMessage,
