@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-from argparse import ArgumentParser
 import logging
 import os
 import sys
@@ -9,9 +8,10 @@ import sys
 root_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(root_dir)
 
-from fusion_engine_client.utils.log import find_log_file
+from fusion_engine_client.utils.argument_parser import ArgumentParser
 from fusion_engine_client.utils.dump_p1bin import dump_p1bin
 from fusion_engine_client.utils import trace
+from fusion_engine_client.utils.log import find_log_file
 
 
 def main():

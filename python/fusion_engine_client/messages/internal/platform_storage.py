@@ -28,12 +28,18 @@ class DataType(IntEnum):
     FILTER_STATE = 2
     USER_CONFIG = 3
 
+    def __str__(self):
+        return super().__str__().replace(self.__class__.__name__ + '.', '')
+
 
 class DataValidity(IntEnum):
     UNKNOWN = 0
     NO_DATA_STORED = 1
     DATA_VALID = 2
     DATA_CORRUPTED = 3
+
+    def __str__(self):
+        return super().__str__().replace(self.__class__.__name__ + '.', '')
 
 
 class PlatformStorageDataMessage(MessagePayload):
@@ -70,8 +76,8 @@ class PlatformStorageDataMessage(MessagePayload):
         return parsed._io.tell()
 
     def __str__(self):
-        fields = ['data_type', 'data_validity', 'data_version']
-        string = f'Platform Storage Data\n'
+        fields = ['data_validity', 'data_version']
+        string = f'Platform Storage Data ({str(self.data_type)}, {len(self.data)} B)\n'
         for field in fields:
             val = str(self.__dict__[field]).replace('Container:', '')
             val = val.replace('  ', '\t')
