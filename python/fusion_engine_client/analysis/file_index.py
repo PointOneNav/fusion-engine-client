@@ -66,6 +66,9 @@ class FileIndex(object):
     def __getitem__(self, key):
         if self._data is None:
             return FileIndex()
+        elif isinstance(key, MessageType):
+            idx = self._data['type'] == key
+            return FileIndex(self._data[idx])
         elif isinstance(key, int):
             return FileIndex(self._data[key:(key + 1)])
         else:
