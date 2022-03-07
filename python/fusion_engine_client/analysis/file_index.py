@@ -15,7 +15,7 @@ class FileIndex(object):
 
     DTYPE = np.dtype([('time', '<f8'), ('type', '<u2'), ('offset', '<u8')])
 
-    def __init__(self, data: Union[np.ndarray, list] = None, index_path: str = None):
+    def __init__(self, data: Union[np.ndarray, list] = None, index_path: str = None, t0: Timestamp = None):
         if data is None:
             self._data = None
         elif isinstance(data, np.ndarray) and data.dtype == FileIndex.RAW_DTYPE:
@@ -33,6 +33,17 @@ class FileIndex(object):
                 self.load(index_path)
             else:
                 raise ValueError('Cannot specify both path and data.')
+
+        if t0 is not None:
+            self.t0 = t0
+        elif self._data is None:
+            self.t0 = None
+        else:
+            idx = np.argmax(~np.isnan(self._data['time']))
+            if idx >= 0:
+                self.t0 = Timestamp(self._data['time'][idx])
+            else:
+                self.t0 = None
 
     def load(self, index_path):
         if os.path.exists(index_path):
@@ -70,16 +81,16 @@ class FileIndex(object):
             return FileIndex()
         elif isinstance(key, MessageType):
             idx = self._data['type'] == key
-            return FileIndex(self._data[idx])
+            return FileIndex(self._data[idx], t0=self.t0)
         elif isinstance(key, (set, list, tuple)) and len(key) > 0 and isinstance(key[0], MessageType):
             idx = np.isin(self._data['type'], key)
-            return FileIndex(self._data[idx])
+            return FileIndex(self._data[idx], t0=self.t0)
         elif isinstance(key, int):
-            return FileIndex(self._data[key:(key + 1)])
+            return FileIndex(self._data[key:(key + 1)], t0=self.t0)
         else:
             if isinstance(key, (set, list, tuple)):
                 key = np.array(key)
-            return FileIndex(self._data[key])
+            return FileIndex(self._data[key], t0=self.t0)
 
     @classmethod
     def get_path(cls, data_path):

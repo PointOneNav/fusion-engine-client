@@ -187,8 +187,7 @@ class FileReader(object):
             self.t0 = None
             self.read(time_range=(0.0, None), require_p1time=True, max_messages=1, generate_index=False)
         else:
-            idx = np.argmax(~np.isnan(self.index.time))
-            self.t0 = Timestamp(self.index.time[idx])
+            self.t0 = self.index.t0
 
         # Similarly, we also set the system t0 based on the first system-stamped (typically POSIX) message to appear in
         # the log, if any (profiling data, etc.). Unlike P1 time, since the index file does not contain system
