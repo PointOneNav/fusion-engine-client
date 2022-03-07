@@ -41,8 +41,14 @@ def test_index():
 
 def test_type_slice():
     index = FileIndex(RAW_DATA)
+
     pose_index = index[MessageType.POSE]
     raw = [e for e in RAW_DATA if e[1] == MessageType.POSE]
+    assert len(pose_index) == len(raw)
+    assert (pose_index.offset == [e[2] for e in raw]).all()
+
+    pose_index = index[(MessageType.POSE, MessageType.GNSS_INFO)]
+    raw = [e for e in RAW_DATA if e[1] == MessageType.POSE or e[1] == MessageType.GNSS_INFO]
     assert len(pose_index) == len(raw)
     assert (pose_index.offset == [e[2] for e in raw]).all()
 
@@ -71,6 +77,12 @@ def test_index_slice():
     # Access a range.
     sliced_index = index[2:4]
     raw = RAW_DATA[2:4]
+    assert _test_time(sliced_index.time, raw)
+    assert (sliced_index.offset == [e[2] for e in raw]).all()
+
+    # Access individual indices.
+    sliced_index = index[(2, 3, 5)]
+    raw = [RAW_DATA[i] for i in (2, 3, 5)]
     assert _test_time(sliced_index.time, raw)
     assert (sliced_index.offset == [e[2] for e in raw]).all()
 

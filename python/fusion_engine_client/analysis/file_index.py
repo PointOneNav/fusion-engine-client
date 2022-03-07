@@ -71,9 +71,14 @@ class FileIndex(object):
         elif isinstance(key, MessageType):
             idx = self._data['type'] == key
             return FileIndex(self._data[idx])
+        elif isinstance(key, (set, list, tuple)) and len(key) > 0 and isinstance(key[0], MessageType):
+            idx = np.isin(self._data['type'], key)
+            return FileIndex(self._data[idx])
         elif isinstance(key, int):
             return FileIndex(self._data[key:(key + 1)])
         else:
+            if isinstance(key, (set, list, tuple)):
+                key = np.array(key)
             return FileIndex(self._data[key])
 
     @classmethod
