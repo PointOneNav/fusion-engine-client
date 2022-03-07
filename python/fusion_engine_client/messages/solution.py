@@ -106,7 +106,7 @@ class PoseMessage(MessagePayload):
         return '%s @ %s' % (self.MESSAGE_TYPE.name, self.p1_time)
 
     def __str__(self):
-        string = 'Pose message @ P1 time %s\n' % str(self.p1_time)
+        string = 'Pose Message @ %s\n' % str(self.p1_time)
         string += '  Solution type: %s\n' % self.solution_type.name
         string += '  GPS time: %s\n' % str(self.gps_time.as_gps())
         string += '  Position (LLA): %.6f, %.6f, %.3f (deg, deg, m)\n' % tuple(self.lla_deg)
@@ -207,7 +207,7 @@ class PoseAuxMessage(MessagePayload):
         return '%s @ %s' % (self.MESSAGE_TYPE.name, self.p1_time)
 
     def __str__(self):
-        return 'Pose aux message @ P1 time %s' % str(self.p1_time)
+        return 'Pose Aux Message @ %s' % str(self.p1_time)
 
     @classmethod
     def calcsize(cls) -> int:
@@ -299,7 +299,7 @@ class GNSSInfoMessage(MessagePayload):
         return '%s @ %s' % (self.MESSAGE_TYPE.name, self.p1_time)
 
     def __str__(self):
-        string = 'GNSS info message @ P1 time %s\n' % str(self.p1_time)
+        string = 'GNSS Info Message @ %s\n' % str(self.p1_time)
         string += '  GPS time: %s\n' % str(self.gps_time.as_gps())
         string += ('  Reference station: %s\n' %
                    (str(self.reference_station_id)
@@ -434,7 +434,7 @@ class GNSSSatelliteMessage(MessagePayload):
         return '%s @ %s [%d SVs]' % (self.MESSAGE_TYPE.name, self.p1_time, len(self.svs))
 
     def __str__(self):
-        string = 'GNSS satellite message @ P1 time %s\n' % str(self.p1_time)
+        string = 'GNSS Satellite Message @ %s\n' % str(self.p1_time)
         string += '  %d SVs:' % len(self.svs)
         for sv in self.svs:
             string += '\n'

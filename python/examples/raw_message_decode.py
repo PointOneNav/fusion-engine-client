@@ -43,11 +43,11 @@ def decode_message(header, data, offset):
     elif header.message_type == ros.PoseMessage.MESSAGE_TYPE:
         contents = ros.PoseMessage()
         contents.unpack(buffer=data, offset=offset)
-    elif header.message_type == ros.GPSFixMessage.MESSAGE_TYPE:
-        contents = ros.GPSFixMessage()
+    elif header.message_type == ros.ROSGPSFixMessage.MESSAGE_TYPE:
+        contents = ros.ROSGPSFixMessage()
         contents.unpack(buffer=data, offset=offset)
-    elif header.message_type == ros.IMUMessage.MESSAGE_TYPE:
-        contents = ros.IMUMessage()
+    elif header.message_type == ros.ROSIMUMessage.MESSAGE_TYPE:
+        contents = ros.ROSIMUMessage()
         contents.unpack(buffer=data, offset=offset)
     else:
         contents = None

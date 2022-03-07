@@ -10,6 +10,10 @@ setup(
         'construct>=2.10.0',
     ],
     extras_require={
-        'analysis': ["plotly>=4.0.0", "pymap3d>=2.4.3"],
+        'analysis': [
+            'argparse-formatter>=1.4',
+            'plotly>=4.0.0',
+            'pymap3d>=2.4.3',
+        ],
     },
 )

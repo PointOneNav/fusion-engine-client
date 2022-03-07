@@ -2,7 +2,6 @@
 
 from typing import Tuple, Union, List, Any
 
-from argparse import ArgumentParser
 from collections import namedtuple
 import logging
 import os
@@ -26,6 +25,7 @@ from ..messages import *
 from .attitude import get_enu_rotation_matrix
 from .file_reader import FileReader
 from ..utils import trace
+from ..utils.argument_parser import ArgumentParser
 from ..utils.log import locate_log
 _logger = logging.getLogger('point_one.fusion_engine.analysis.analyzer')
 
