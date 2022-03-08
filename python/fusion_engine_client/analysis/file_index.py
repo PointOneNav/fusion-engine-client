@@ -77,16 +77,24 @@ class FileIndex(object):
             raise AttributeError
 
     def __getitem__(self, key):
+        # No data available.
         if self._data is None:
             return FileIndex()
+        # Key is a string (e.g., index['type']), defer to getattr() (e.g., index.type).
+        elif isinstance(key, str):
+            return getattr(self, key)
+        # Return entries for a specific message type.
         elif isinstance(key, MessageType):
             idx = self._data['type'] == key
             return FileIndex(self._data[idx], t0=self.t0)
+        # Return entries for a list of message types.
         elif isinstance(key, (set, list, tuple)) and len(key) > 0 and isinstance(key[0], MessageType):
             idx = np.isin(self._data['type'], key)
             return FileIndex(self._data[idx], t0=self.t0)
+        # Return a single element by index.
         elif isinstance(key, int):
             return FileIndex(self._data[key:(key + 1)], t0=self.t0)
+        # Key is a slice. Return a subset of the data.
         else:
             if isinstance(key, (set, list, tuple)):
                 key = np.array(key)
