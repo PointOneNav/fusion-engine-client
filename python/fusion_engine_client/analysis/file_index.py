@@ -24,6 +24,93 @@ class FileIndexIterator(object):
 
 
 class FileIndex(object):
+    """!
+    @brief An index of FusionEngine message entries within a `.p1log` file used to facilitate quick access.
+
+    This class reads a `.p1i` file from disk containing FusionEngine message index entries. Each index entry includes
+    the P1 time of the message (if applicable), the @ref MessageType, and the message offset within the file (in bytes).
+    A @ref FileIndex instance may be used to quickly locate entries within a specific time range, or entries for one or
+    more message types, without having to parse the variable-length messages in the `.p1log` file itself.
+
+    @section file_index_examples Usage Examples
+
+    @subsection file_index_iterate Iterate Over Elements
+
+    @ref FileIndex supports supports two methods for accessing individual FusionEngine message entries. You can iterate
+    over the @ref FileIndex class itself, accessing one @ref FileIndexEntry object at a time:
+
+    ```py
+    for entry in file_index:
+        log_file.seek(entry.offset, io.SEEK_SET)
+        ...
+    ```
+
+    Alternatively, you can access any of the `time`, `type`, or `offset` arrays directly. Each of these members returns
+    a NumPy `ndarray` object listing the P1 times (in seconds), @ref MessageType values, or byte offsets respectively:
+
+    ```.py
+    for offset in file_index.offset:
+        log_file.seek(offset, io.SEEK_SET)
+        ...
+    ```
+
+    @subsection file_index_type Find All Messages For A Specific Type
+
+    @ref FileIndex supports slicing by a single @ref MessageType:
+
+    ```py
+    for entry in file_index[MessageType.POSE]:
+        log_file.seek(entry.offset, io.SEEK_SET)
+        ...
+    ```
+
+    or by a list containing one or more @ref MessageType values:
+
+    ```py
+    for entry in file_index[(MessageType.POSE, MessageType.GNSS_INFO)]:
+        log_file.seek(entry.offset, io.SEEK_SET)
+        ...
+    ```
+
+    @subsection file_index_time Find All Messages For A Specific Time Range
+
+    One of the most common uses is to search for messages within a specific time range. @ref FileIndex supports slicing
+    by P1 time using `Timestamp` objects or `float` values:
+
+    ```py
+    for entry in file_index[Timestamp(2.0):Timestamp(5.0)]:
+        log_file.seek(entry.offset, io.SEEK_SET)
+        ...
+
+    for entry in file_index[2.0:5.0]:
+        log_file.seek(entry.offset, io.SEEK_SET)
+        ...
+    ```
+
+    As with all Python `slice()` operations, the start time is inclusive and the stop time is exclusive. Either time may
+    be omitted to slice from the beginning or to the end of the data:
+
+    ```py
+    for entry in file_index[:5.0]:
+        log_file.seek(entry.offset, io.SEEK_SET)
+        ...
+
+    for entry in file_index[2.0:]:
+        log_file.seek(entry.offset, io.SEEK_SET)
+        ...
+    ```
+
+    @subsection file_index_by_index Access Messages By Index
+
+    Similar to @ref file_index_time "slicing by time", if desired you can access elements within a specific range of
+    indices within the file. For example, the following returns elements 2 through 7 in the file:
+
+    ```py
+    for entry in file_index[2:8]:
+        log_file.seek(entry.offset, io.SEEK_SET)
+        ...
+    ```
+    """
     # Note: To reduce the index file size, we've made the following limitations:
     # - Fractional timestamp is floored so time 123.4 becomes 123. The data read should not assume that an entry's
     #   timestamp is its exact time
@@ -32,6 +119,14 @@ class FileIndex(object):
     DTYPE = np.dtype([('time', '<f8'), ('type', '<u2'), ('offset', '<u8')])
 
     def __init__(self, data: Union[np.ndarray, list] = None, index_path: str = None, t0: Timestamp = None):
+        """!
+        @brief Construct a new @ref FileIndex instance.
+
+        @param index_path The path to a `.p1i` index file to be loaded.
+        @param data A NumPy `ndarray` or Python `list` containing information about each FusionEngine message in the
+               `.p1log` file. For internal use.
+        @param t0 The P1 time corresponding with the start of the `.p1log` file, if known. For internal use.
+        """
         if data is None:
             self._data = None
         elif isinstance(data, np.ndarray) and data.dtype == FileIndex.RAW_DTYPE:
@@ -62,6 +157,11 @@ class FileIndex(object):
                 self.t0 = None
 
     def load(self, index_path):
+        """!
+        @brief Load a `.p1i` index file from disk.
+
+        @param index_path The path to the file to be read.
+        """
         if os.path.exists(index_path):
             raw_data = np.fromfile(index_path, dtype=FileIndex.RAW_DTYPE)
             self._data = FileIndex._from_raw(raw_data)
@@ -69,6 +169,11 @@ class FileIndex(object):
             raise FileNotFoundError("Index file '%s' does not exist." % index_path)
 
     def save(self, index_path):
+        """!
+        @brief Save the contents of this index as a `.p1i` file.
+
+        @param index_path The path to the file to be written.
+        """
         if self._data is not None:
             raw_data = FileIndex._to_raw(self._data)
 
@@ -153,10 +258,22 @@ class FileIndex(object):
 
 
 class FileIndexBuilder(object):
+    """!
+    @brief Helper class for constructing a @ref FileIndex.
+
+    This class can be used to construct a @ref FileIndex and a corresponding `.p1i` file when reading a `.p1log` file.
+    """
     def __init__(self):
         self.raw_data = []
 
     def append(self, message_type: MessageType, offset_bytes: int, p1_time: Timestamp = None):
+        """!
+        @brief Add an entry to the index data being accumulated.
+
+        @param message_type The type of the FusionEngine message.
+        @param offset_bytes The offset of the message within the `.p1log` file (in bytes).
+        @param p1_time The P1 time of the message, or `None` if the message does not have P1 time.
+        """
         if p1_time is None:
             time_sec = np.nan
         else:
@@ -164,7 +281,22 @@ class FileIndexBuilder(object):
 
         self.raw_data.append((time_sec, int(message_type), offset_bytes))
 
+    def save(self, index_path):
+        """!
+        @brief Save the contents of the generated index as a `.p1i` file.
+
+        @param index_path The path to the file to be written.
+        """
+        index = self.to_index()
+        index.save(index_path)
+        return index
+
     def to_index(self):
+        """!
+        @brief Construct a @ref FileIndex from the current set of data.
+
+        @return The generated @ref FileIndex instance.
+        """
         return FileIndex(self.raw_data)
 
     def __len__(self):
