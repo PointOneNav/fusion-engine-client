@@ -129,8 +129,6 @@ class FileIndex(object):
         """
         if data is None:
             self._data = None
-        elif isinstance(data, np.ndarray) and data.dtype == FileIndex.RAW_DTYPE:
-            self._data = FileIndex._from_raw(data)
         else:
             if isinstance(data, list):
                 self._data = np.array(data, dtype=FileIndex.DTYPE)
