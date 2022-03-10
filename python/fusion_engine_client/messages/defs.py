@@ -204,7 +204,7 @@ def system_time_to_str(system_time_ns):
         return 'POSIX time %s (%.3f sec)' % \
                (datetime.utcfromtimestamp(system_time_sec).replace(tzinfo=timezone.utc), system_time_sec)
     else:
-        return 'SYstem time %.3f sec' % system_time_sec
+        return 'System time %.3f sec' % system_time_sec
 
 
 class MessageHeader:

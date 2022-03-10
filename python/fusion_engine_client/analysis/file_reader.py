@@ -12,6 +12,7 @@ import numpy as np
 
 from ..messages import *
 from ..utils import trace
+from .file_index import FileIndex, FileIndexBuilder
 
 
 class MessageData(object):
@@ -84,56 +85,6 @@ class MessageData(object):
                              MessageType.get_type_string(self.message_type))
 
 
-class FileIndex(object):
-    # Note: To reduce the index file size, we've made the following limitations:
-    # - Fractional timestamp is floored so time 123.4 becomes 123. The data read should not assume that an entry's
-    #   timestamp is its exact time
-    RAW_DTYPE = np.dtype([('int', '<u4'), ('type', '<u2'), ('offset', '<u8')])
-
-    DTYPE = np.dtype([('time', '<f8'), ('type', '<u2'), ('offset', '<u8')])
-
-    @classmethod
-    def load(cls, index_path):
-        raw_data = np.fromfile(index_path, dtype=cls.RAW_DTYPE)
-        return cls._from_raw(raw_data)
-
-    @classmethod
-    def save(cls, index_path, data: Union[np.ndarray, list]):
-        if isinstance(data, np.ndarray) and data.dtype == cls.RAW_DTYPE:
-            raw_data = data
-            data = cls._from_raw(raw_data)
-        else:
-            if isinstance(data, list):
-                data = np.array(data, dtype=cls.DTYPE)
-
-            if data.dtype == cls.DTYPE:
-                raw_data = cls._to_raw(data)
-            else:
-                raise ValueError('Unsupported array format.')
-
-        raw_data.tofile(index_path)
-        return data
-
-    @classmethod
-    def get_path(cls, data_path):
-        return os.path.splitext(data_path)[0] + '.p1i'
-
-    @classmethod
-    def _from_raw(cls, raw_data):
-        idx = raw_data['int'] == Timestamp._INVALID
-        data = raw_data.astype(dtype=cls.DTYPE)
-        data['time'][idx] = np.nan
-        return data
-
-    @classmethod
-    def _to_raw(cls, data):
-        time_sec = data['time']
-        idx = np.isnan(time_sec)
-        raw_data = data.astype(dtype=cls.RAW_DTYPE)
-        raw_data['int'][idx] = Timestamp._INVALID
-        return raw_data
-
-
 class TimeAlignmentMode(IntEnum):
     NONE = 0
     DROP = 1
@@ -194,16 +145,16 @@ class FileReader(object):
 
         if have_index:
             self.logger.debug("Reading index file '%s'." % index_path)
-            self.index = FileIndex.load(index_path)
+            self.index = FileIndex(index_path=index_path)
 
             # If the index doesn't cover the full binary file, the user might have interrupted the read when it was
             # being generated. Delete it and create a new one.
             index_valid = True
-            if len(self.index['time']) == 0:
+            if len(self.index) == 0:
                 self.logger.warning("Index file '%s' is empty. Deleting." % index_path)
                 index_valid = False
             else:
-                last_offset = self.index['offset'][-1]
+                last_offset = self.index.offset[-1]
                 if last_offset > self.file_size + MessageHeader.calcsize():
                     self.logger.warning("Last index entry past end of file. Deleting index.")
                     index_valid = False
@@ -236,8 +187,7 @@ class FileReader(object):
             self.t0 = None
             self.read(time_range=(0.0, None), require_p1time=True, max_messages=1, generate_index=False)
         else:
-            idx = np.argmax(~np.isnan(self.index['time']))
-            self.t0 = Timestamp(self.index['time'][idx])
+            self.t0 = self.index.t0
 
         # Similarly, we also set the system t0 based on the first system-stamped (typically POSIX) message to appear in
         # the log, if any (profiling data, etc.). Unlike P1 time, since the index file does not contain system
@@ -406,15 +356,15 @@ class FileReader(object):
 
         # If there's an index file, use it to determine the offsets to all the messages we're interested in.
         if self.index is not None and not ignore_index:
-            type_idx = np.full_like(self.index['time'], False, dtype=bool)
+            type_idx = np.full_like(self.index.time, False, dtype=bool)
             for type in needed_message_types:
-                type_idx = np.logical_or(type_idx, self.index['type'] == type)
+                type_idx = np.logical_or(type_idx, self.index.type == type)
 
             # If t0 has never been set, this is probably the "first message" read done in open() to set t0. Ignore the
             # time range.
             if time_range_specified and self.t0 is not None:
-                time_idx = np.full_like(self.index['time'], True, dtype=bool)
-                limit_time = self.index['time'] - p1_reference_time_sec
+                time_idx = np.full_like(self.index.time, True, dtype=bool)
+                limit_time = self.index.time - p1_reference_time_sec
                 if time_range[0] is not None:
                     # Note: The index stores only the integer part of the timestamp.
                     time_idx = np.logical_and(time_idx, limit_time >= np.floor(time_range[0]))
@@ -425,7 +375,7 @@ class FileReader(object):
                 # before P1 time is established. We'll allow any NAN times to pass this check, and we will decode and
                 # filter them later based on their system timestamps.
                 if system_time_messages_requested:
-                    time_idx = np.logical_or(time_idx, np.isnan(self.index['time']))
+                    time_idx = np.logical_or(time_idx, np.isnan(self.index.time))
 
                 idx = np.logical_and(type_idx, time_idx)
             else:
@@ -441,11 +391,11 @@ class FileReader(object):
                     data_index = data_index[max_messages:]
 
             generate_index = False
-            data_offsets = data_index['offset']
+            data_offsets = data_index.offset
         # Otherwise, seek to the start of the file and read all messages.
         else:
             data_offsets = None
-            index_entries = []
+            index_builder = FileIndexBuilder()
             self.file.seek(0, 0)
 
             if generate_index:
@@ -575,8 +525,8 @@ class FileReader(object):
                 # If we're building up an index file, add an entry for this message. If this is an unrecognized message
                 # type, we won't have P1 time so we'll just insert a nan.
                 if generate_index:
-                    index_entries.append((float(p1_time) if p1_time is not None else np.nan, int(header.message_type),
-                                          message_offset_bytes))
+                    index_builder.append(message_type=header.message_type, offset_bytes=message_offset_bytes,
+                                         p1_time=p1_time)
 
                 if contents is None:
                     # Unrecognized type - skip.
@@ -695,8 +645,9 @@ class FileReader(object):
         # Save the index file for faster reading in the future.
         if generate_index:
             index_path = FileIndex.get_path(self.file.name)
-            self.logger.debug("Saving index file '%s' with %d entries." % (index_path, len(index_entries)))
-            self.index = FileIndex.save(index_path, index_entries)
+            self.logger.debug("Saving index file '%s' with %d entries." % (index_path, len(index_builder)))
+            self.index = index_builder.to_index()
+            self.index.save(index_path)
 
         # Time-align the data if requested.
         FileReader.time_align_data(result, mode=time_align, message_types=aligned_message_types)

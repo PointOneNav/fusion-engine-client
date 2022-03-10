@@ -24,7 +24,7 @@ class FusionEngineDecoder:
 
     def __init__(self, max_payload_len_bytes: int = MessageHeader._MAX_EXPECTED_SIZE_BYTES,
                  warn_on_unrecognized: bool = False, warn_on_gap: bool = False, warn_on_error: bool = False,
-                 return_bytes: bool = False):
+                 return_bytes: bool = False, return_offset: bool = False):
         """!
         @brief Construct a new decoder instance.
 
@@ -38,18 +38,21 @@ class FusionEngineDecoder:
                etc.).
         @param return_bytes If `True`, return a `bytes` object with the raw data (header + payload) in addition to the
                decoded message object.
+        @param return_offset If `True`, the byte offset into the data stream at which the message was found.
         """
         self._warn_on_unrecognized = warn_on_unrecognized
         self._warn_on_seq_skip = warn_on_gap
         self._warn_on_error = warn_on_error
 
         self._return_bytes = return_bytes
+        self._return_offset = return_offset
 
         self._max_payload_len_bytes = max_payload_len_bytes
         self._buffer = bytearray()
         self._header: Optional[MessageHeader] = None
         self._msg_len = 0
         self._last_sequence_number = None
+        self._bytes_processed = 0
 
         self._callbacks: Dict[Optional[MessageType], List[Callable[[
             MessageHeader,
@@ -88,8 +91,10 @@ class FusionEngineDecoder:
         @return A list of message results for any messages completed with the input `data`. Each list entry will contain
                 the message header and the decoded contents (@ref MessagePayload object). If the incoming message type
                 is not recognized, the second argument will be a `bytes` containing the uninterpreted payload contents.
-                If `return_bytes == True`, each list entry will include a third value containing the uninterpreted
+                - If `return_bytes == True`, each list entry will include a third value containing the uninterpreted
                 message contents (including the header).
+                - If `return_offset == True`, each list entry will include a fourth value containing the message byte
+                offset within the data stream..
         """
         # Cast singleton byte values to a byte array.
         if isinstance(data, int):
@@ -113,9 +118,11 @@ class FusionEngineDecoder:
                 # MessageHeader.unpack() with an exception.
                 if self._buffer[0] != MessageHeader._SYNC0:
                     self._buffer.pop(0)
+                    self._bytes_processed += 1
                     continue
                 if self._buffer[1] != MessageHeader._SYNC1:
                     self._buffer.pop(0)
+                    self._bytes_processed += 1
                     continue
 
                 # Possible header found. Decode it and wait for the payload.
@@ -128,6 +135,7 @@ class FusionEngineDecoder:
                                self._header.payload_size_bytes, self._max_payload_len_bytes)
                     self._header = None
                     self._buffer.pop(0)
+                    self._bytes_processed += 1
                     continue
 
             # If there's not enough data to complete the message, we're done looping.
@@ -144,6 +152,7 @@ class FusionEngineDecoder:
                 self._header = None
                 self._msg_len = 0
                 self._buffer.pop(0)
+                self._bytes_processed += 1
                 continue
 
             # Check for sequence number gaps.
@@ -169,6 +178,7 @@ class FusionEngineDecoder:
                     self._header = None
                     self._msg_len = 0
                     self._buffer.pop(0)
+                    self._bytes_processed += 1
                     continue
                 _logger.debug('Decoded FusionEngine message %s.', repr(contents))
             # If cls is None, we don't have a class for the message type. Return a copy of the payload bytes.
@@ -179,10 +189,11 @@ class FusionEngineDecoder:
                            self._header.message_type, self._header.payload_size_bytes)
 
             # Store the result.
+            result = [self._header, contents]
             if self._return_bytes:
-                result = (self._header, contents, self._buffer[:self._msg_len])
-            else:
-                result = (self._header, contents)
+                result.append(self._buffer[:self._msg_len])
+            if self._return_offset:
+                result.append(self._bytes_processed)
 
             decoded_messages.append(result)
 
@@ -201,6 +212,7 @@ class FusionEngineDecoder:
                 callback(*result)
 
             # Move decoder past the current message.
+            self._bytes_processed += self._msg_len
             self._buffer = self._buffer[self._msg_len:]
             self._header = None
             self._msg_len = 0
