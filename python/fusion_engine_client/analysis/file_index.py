@@ -114,9 +114,9 @@ class FileIndex(object):
     # Note: To reduce the index file size, we've made the following limitations:
     # - Fractional timestamp is floored so time 123.4 becomes 123. The data read should not assume that an entry's
     #   timestamp is its exact time
-    RAW_DTYPE = np.dtype([('int', '<u4'), ('type', '<u2'), ('offset', '<u8')])
+    _RAW_DTYPE = np.dtype([('int', '<u4'), ('type', '<u2'), ('offset', '<u8')])
 
-    DTYPE = np.dtype([('time', '<f8'), ('type', '<u2'), ('offset', '<u8')])
+    _DTYPE = np.dtype([('time', '<f8'), ('type', '<u2'), ('offset', '<u8')])
 
     def __init__(self, index_path: str = None, data: Union[np.ndarray, list] = None, t0: Timestamp = None):
         """!
@@ -131,8 +131,8 @@ class FileIndex(object):
             self._data = None
         else:
             if isinstance(data, list):
-                self._data = np.array(data, dtype=FileIndex.DTYPE)
-            elif data.dtype == FileIndex.DTYPE:
+                self._data = np.array(data, dtype=FileIndex._DTYPE)
+            elif data.dtype == FileIndex._DTYPE:
                 self._data = data
             else:
                 raise ValueError('Unsupported array format.')
@@ -161,7 +161,7 @@ class FileIndex(object):
         @param index_path The path to the file to be read.
         """
         if os.path.exists(index_path):
-            raw_data = np.fromfile(index_path, dtype=FileIndex.RAW_DTYPE)
+            raw_data = np.fromfile(index_path, dtype=FileIndex._RAW_DTYPE)
             self._data = FileIndex._from_raw(raw_data)
         else:
             raise FileNotFoundError("Index file '%s' does not exist." % index_path)
@@ -249,7 +249,7 @@ class FileIndex(object):
     @classmethod
     def _from_raw(cls, raw_data):
         idx = raw_data['int'] == Timestamp._INVALID
-        data = raw_data.astype(dtype=cls.DTYPE)
+        data = raw_data.astype(dtype=cls._DTYPE)
         data['time'][idx] = np.nan
         return data
 
@@ -257,7 +257,7 @@ class FileIndex(object):
     def _to_raw(cls, data):
         time_sec = data['time']
         idx = np.isnan(time_sec)
-        raw_data = data.astype(dtype=cls.RAW_DTYPE)
+        raw_data = data.astype(dtype=cls._RAW_DTYPE)
         raw_data['int'][idx] = Timestamp._INVALID
         return raw_data
 
