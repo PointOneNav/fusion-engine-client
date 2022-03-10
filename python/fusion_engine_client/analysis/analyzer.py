@@ -505,7 +505,7 @@ class Analyzer(object):
             figure['layout']['xaxis%d' % (i + 1)].update(showticklabels=True)
         figure['layout']['yaxis1'].update(title="CPU (%)", range=[0, 100])
         figure['layout']['yaxis2'].update(title="Memory (MB)")
-        figure['layout']['yaxis3'].update(title="# Entries")
+        figure['layout']['yaxis3'].update(title="# Entries", rangemode="tozero")
 
         figure.add_trace(go.Scattergl(x=time, y=data.total_cpu_usage, name='Total CPU Usage',
                                       mode='lines', line={'color': 'black', 'width': 4}),
@@ -573,7 +573,7 @@ class Analyzer(object):
             figure['layout']['xaxis%d' % (i + 1)].update(showticklabels=True)
         figure['layout']['yaxis1'].update(title="Processing Time (ms)")
         figure['layout']['yaxis2'].update(title="Processing Time (ms)")
-        figure['layout']['yaxis3'].update(title="Number of Executions")
+        figure['layout']['yaxis3'].update(title="Number of Executions", rangemode="nonnegative")
 
         for i in range(len(data.running_time_ns)):
             color = plotly.colors.DEFAULT_PLOTLY_COLORS[i % len(plotly.colors.DEFAULT_PLOTLY_COLORS)]
@@ -623,9 +623,9 @@ class Analyzer(object):
         figure['layout']['xaxis'].update(title="System Time (sec)")
         for i in range(2):
             figure['layout']['xaxis%d' % (i + 1)].update(showticklabels=True)
-        figure['layout']['yaxis1'].update(title="Error Count")
-        figure['layout']['yaxis2'].update(title="Buffer Free (kB)")
-        figure['layout']['yaxis3'].update(title="Message Rate (bps)")
+        figure['layout']['yaxis1'].update(title="Error Count", rangemode="nonnegative")
+        figure['layout']['yaxis2'].update(title="Buffer Free (kB)", rangemode="tozero")
+        figure['layout']['yaxis3'].update(title="Message Rate (bps)", rangemode="nonnegative")
         figure.update_layout(legend_title_text="Serial Port")
 
         for i in range(len(tx_error_counts_maps)):
@@ -709,10 +709,10 @@ class Analyzer(object):
         figure['layout']['xaxis'].update(title="System Time (sec)")
         for i in range(2):
             figure['layout']['xaxis%d' % (i + 1)].update(showticklabels=True)
-        figure['layout']['yaxis1'].update(title="Queue Depth (measurements)")
-        figure['layout']['yaxis2'].update(title="Queue Age (ms)")
-        figure['layout']['yaxis3'].update(title="Buffer Free (bytes)")
-        figure['layout']['yaxis4'].update(title="Message Rate (Hz)")
+        figure['layout']['yaxis1'].update(title="Queue Depth (measurements)", rangemode="nonnegative")
+        figure['layout']['yaxis2'].update(title="Queue Age (ms)", rangemode="nonnegative")
+        figure['layout']['yaxis3'].update(title="Buffer Free (bytes)", rangemode="tozero")
+        figure['layout']['yaxis4'].update(title="Message Rate (Hz)", rangemode="nonnegative")
 
         if (delay_queue_count_idx is None):
             self.logger.info('Delay queue depth data missing.')
@@ -781,8 +781,8 @@ class Analyzer(object):
         for i in range(3):
             figure['layout']['xaxis%d' % (i + 1)].update(showticklabels=True)
         figure['layout']['yaxis1'].update(title="CPU (%)", range=[0, 100])
-        figure['layout']['yaxis2'].update(title="Memory Free (B)")
-        figure['layout']['yaxis3'].update(title="Memory Free (KB)")
+        figure['layout']['yaxis2'].update(title="Memory Free (B)", rangemode="tozero")
+        figure['layout']['yaxis3'].update(title="Memory Free (KB)", rangemode="tozero")
 
         for i in range(len(data.task_cpu_usage_percent)):
             color = plotly.colors.DEFAULT_PLOTLY_COLORS[i % len(plotly.colors.DEFAULT_PLOTLY_COLORS)]
