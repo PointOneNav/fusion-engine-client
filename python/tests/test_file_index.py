@@ -39,6 +39,12 @@ def test_index():
     assert (index.offset[idx] == [e[2] for e in raw]).all()
 
 
+def test_iterator():
+    index = FileIndex(RAW_DATA)
+    for i, entry in enumerate(index):
+        assert entry.type == RAW_DATA[i][1]
+
+
 def test_type_slice():
     index = FileIndex(RAW_DATA)
 

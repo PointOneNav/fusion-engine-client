@@ -1,10 +1,26 @@
 from typing import Union
 
+from collections import namedtuple
 import os
 
 import numpy as np
 
 from ..messages import MessageType, Timestamp
+
+
+FileIndexEntry = namedtuple('Element', ['time', 'type', 'offset'])
+
+
+class FileIndexIterator(object):
+    def __init__(self, np_iterator):
+        self.np_iterator = np_iterator
+
+    def __next__(self):
+        if self.np_iterator is None:
+            raise StopIteration()
+        else:
+            entry = next(self.np_iterator)
+            return FileIndexEntry(time=Timestamp(entry[0]), type=MessageType(entry[1]), offset=entry[2])
 
 
 class FileIndex(object):
@@ -99,6 +115,12 @@ class FileIndex(object):
             if isinstance(key, (set, list, tuple)):
                 key = np.array(key)
             return FileIndex(self._data[key], t0=self.t0)
+
+    def __iter__(self):
+        if self._data is None:
+            return FileIndexIterator(None)
+        else:
+            return FileIndexIterator(iter(self._data))
 
     @classmethod
     def get_path(cls, data_path):
