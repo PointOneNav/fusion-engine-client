@@ -118,7 +118,7 @@ class FileIndex(object):
 
     DTYPE = np.dtype([('time', '<f8'), ('type', '<u2'), ('offset', '<u8')])
 
-    def __init__(self, data: Union[np.ndarray, list] = None, index_path: str = None, t0: Timestamp = None):
+    def __init__(self, index_path: str = None, data: Union[np.ndarray, list] = None, t0: Timestamp = None):
         """!
         @brief Construct a new @ref FileIndex instance.
 
@@ -207,14 +207,14 @@ class FileIndex(object):
         # Return entries for a specific message type.
         elif isinstance(key, MessageType):
             idx = self._data['type'] == key
-            return FileIndex(self._data[idx], t0=self.t0)
+            return FileIndex(data=self._data[idx], t0=self.t0)
         # Return entries for a list of message types.
         elif isinstance(key, (set, list, tuple)) and len(key) > 0 and isinstance(key[0], MessageType):
             idx = np.isin(self._data['type'], key)
-            return FileIndex(self._data[idx], t0=self.t0)
+            return FileIndex(data=self._data[idx], t0=self.t0)
         # Return a single element by index.
         elif isinstance(key, int):
-            return FileIndex(self._data[key:(key + 1)], t0=self.t0)
+            return FileIndex(data=self._data[key:(key + 1)], t0=self.t0)
         # Key is a slice in time. Return a subset of the data.
         elif isinstance(key, slice) and (isinstance(key.start, (Timestamp, float)) or
                                          isinstance(key.stop, (Timestamp, float))):
@@ -224,12 +224,12 @@ class FileIndex(object):
             else:
                 start_idx = np.argmax(self._data['time'] >= key.start) if key.start is not None else 0
                 end_idx = np.argmax(self._data['time'] >= key.stop) if key.stop is not None else len(self._data)
-                return FileIndex(self._data[start_idx:end_idx], t0=self.t0)
+                return FileIndex(data=self._data[start_idx:end_idx], t0=self.t0)
         # Key is an index slice or a list of individual element indices. Return a subset of the data.
         else:
             if isinstance(key, (set, list, tuple)):
                 key = np.array(key)
-            return FileIndex(self._data[key], t0=self.t0)
+            return FileIndex(data=self._data[key], t0=self.t0)
 
     def __iter__(self):
         if self._data is None:
@@ -239,6 +239,13 @@ class FileIndex(object):
 
     @classmethod
     def get_path(cls, data_path):
+        """!
+        @brief Get the `.p1i` index file path corresponding with a FusionEngine `.p1log` file.
+
+        @param data_path The path to the `.p1log` file.
+
+        @return The corresponding `.p1i` file path.
+        """
         return os.path.splitext(data_path)[0] + '.p1i'
 
     @classmethod
@@ -297,7 +304,7 @@ class FileIndexBuilder(object):
 
         @return The generated @ref FileIndex instance.
         """
-        return FileIndex(self.raw_data)
+        return FileIndex(data=self.raw_data)
 
     def __len__(self):
         return len(self.raw_data)

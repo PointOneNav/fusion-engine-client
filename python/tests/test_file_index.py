@@ -24,7 +24,7 @@ def _test_time(time, raw_data):
 
 
 def test_index():
-    index = FileIndex(RAW_DATA)
+    index = FileIndex(data=RAW_DATA)
     assert len(index) == len(RAW_DATA)
 
     raw = [e for e in RAW_DATA if e[1] == MessageType.POSE]
@@ -40,13 +40,13 @@ def test_index():
 
 
 def test_iterator():
-    index = FileIndex(RAW_DATA)
+    index = FileIndex(data=RAW_DATA)
     for i, entry in enumerate(index):
         assert entry.type == RAW_DATA[i][1]
 
 
 def test_type_slice():
-    index = FileIndex(RAW_DATA)
+    index = FileIndex(data=RAW_DATA)
 
     pose_index = index[MessageType.POSE]
     raw = [e for e in RAW_DATA if e[1] == MessageType.POSE]
@@ -60,7 +60,7 @@ def test_type_slice():
 
 
 def test_index_slice():
-    index = FileIndex(RAW_DATA)
+    index = FileIndex(data=RAW_DATA)
 
     # Access a single element.
     sliced_index = index[3]
@@ -97,7 +97,7 @@ def test_time_slice():
     def _lower_bound(time):
         return next(i for i, e in enumerate(RAW_DATA) if (e[0] is not None and e[0] >= time))
 
-    index = FileIndex(RAW_DATA)
+    index = FileIndex(data=RAW_DATA)
 
     # Access to the end.
     sliced_index = index[2.0:]
