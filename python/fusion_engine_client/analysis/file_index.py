@@ -5,7 +5,8 @@ import os
 
 import numpy as np
 
-from ..messages import MessageType, Timestamp
+from ..messages import MessageHeader, MessageType, Timestamp
+from ..parsers import FusionEngineDecoder
 
 
 FileIndexEntry = namedtuple('Element', ['time', 'type', 'offset'])
@@ -270,6 +271,24 @@ class FileIndexBuilder(object):
     """
     def __init__(self):
         self.raw_data = []
+
+    def from_file(self, data_path: str):
+        """!
+        @brief Construct a @ref FileIndex from an existing `.p1log` file.
+
+        @param data_path The path to the `.p1log` file.
+
+        @return The generated @ref FileIndex instance.
+        """
+        decoder = FusionEngineDecoder(return_offset=True)
+        with open(data_path, 'rb') as f:
+            # Read a chunk of data and process all messages found in it.
+            data = f.read(65536)
+            messages = decoder.on_data(data)
+            for (header, message, offset_bytes) in messages:
+                p1_time = message.__dict__.get('p1_time', None)
+                self.append(message_type=header.message_type, offset_bytes=offset_bytes, p1_time=p1_time)
+        return self.to_index()
 
     def append(self, message_type: MessageType, offset_bytes: int, p1_time: Timestamp = None):
         """!
