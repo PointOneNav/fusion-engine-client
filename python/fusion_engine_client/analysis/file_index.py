@@ -110,7 +110,17 @@ class FileIndex(object):
         # Return a single element by index.
         elif isinstance(key, int):
             return FileIndex(self._data[key:(key + 1)], t0=self.t0)
-        # Key is a slice. Return a subset of the data.
+        # Key is a slice in time. Return a subset of the data.
+        elif isinstance(key, slice) and (isinstance(key.start, (Timestamp, float)) or
+                                         isinstance(key.stop, (Timestamp, float))):
+            # Time is continuous, so step sizes are not supported.
+            if key.step is not None:
+                raise ValueError('Step size not supported for time ranges.')
+            else:
+                start_idx = np.argmax(self._data['time'] >= key.start) if key.start is not None else 0
+                end_idx = np.argmax(self._data['time'] >= key.stop) if key.stop is not None else len(self._data)
+                return FileIndex(self._data[start_idx:end_idx], t0=self.t0)
+        # Key is an index slice or a list of individual element indices. Return a subset of the data.
         else:
             if isinstance(key, (set, list, tuple)):
                 key = np.array(key)

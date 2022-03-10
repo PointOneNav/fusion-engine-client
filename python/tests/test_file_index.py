@@ -93,6 +93,37 @@ def test_index_slice():
     assert (sliced_index.offset == [e[2] for e in raw]).all()
 
 
+def test_time_slice():
+    def _lower_bound(time):
+        return next(i for i, e in enumerate(RAW_DATA) if (e[0] is not None and e[0] >= time))
+
+    index = FileIndex(RAW_DATA)
+
+    # Access to the end.
+    sliced_index = index[2.0:]
+    raw = RAW_DATA[_lower_bound(2.0):]
+    assert _test_time(sliced_index.time, raw)
+    assert (sliced_index.offset == [e[2] for e in raw]).all()
+
+    # Access from the beginning.
+    sliced_index = index[:3.0]
+    raw = RAW_DATA[:_lower_bound(3.0)]
+    assert _test_time(sliced_index.time, raw)
+    assert (sliced_index.offset == [e[2] for e in raw]).all()
+
+    # Access a range.
+    sliced_index = index[2.0:3.0]
+    raw = RAW_DATA[_lower_bound(2.0):_lower_bound(3.0)]
+    assert _test_time(sliced_index.time, raw)
+    assert (sliced_index.offset == [e[2] for e in raw]).all()
+
+    # Access by Timestamp.
+    sliced_index = index[Timestamp(2.0):Timestamp(3.0)]
+    raw = RAW_DATA[_lower_bound(2.0):_lower_bound(3.0)]
+    assert _test_time(sliced_index.time, raw)
+    assert (sliced_index.offset == [e[2] for e in raw]).all()
+
+
 def test_empty_index():
     index = FileIndex()
     assert len(index) == 0
