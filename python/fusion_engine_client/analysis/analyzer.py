@@ -1128,7 +1128,9 @@ Load and display information stored in a FusionEngine binary file.
                         help="Interpret the timestamps in --time as absolute P1 times. Otherwise, treat them as "
                              "relative to the first message in the file.")
     parser.add_argument('--ignore-index', action='store_true',
-                        help="If set, ignore the regenerate .p1i index file from the .p1log data file.")
+                        help="If set, do not load the .p1i index file corresponding with the .p1log data file. If "
+                             "specified and a .p1i file does not exist, do not generate one. Otherwise, a .p1i file "
+                             "will be created automatically to improve data read speed in the future.")
     parser.add_argument('--imu', action='store_true',
                         help="Plot IMU data (slow).")
     parser.add_argument('--mapbox-token', metavar='TOKEN',
