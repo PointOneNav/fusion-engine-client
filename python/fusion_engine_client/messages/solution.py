@@ -1,5 +1,6 @@
+from enum import IntEnum
 import struct
-from typing import List
+from typing import List, Sequence
 
 import numpy as np
 
@@ -458,3 +459,175 @@ class GNSSSatelliteMessage(MessagePayload):
             'num_svs': np.array([len(m.svs) for m in messages], dtype=int),
         }
         return
+
+
+class CalibrationStage(IntEnum):
+    """!
+    @brief The stages of the device calibration process.
+    """
+    UNKNOWN = 0, ##< Calibration stage not known.
+    MOUNTING_ANGLE = 1, ##< Estimating IMU mounting angles.
+    DONE = 255, ##< Calibration complete.
+
+    def __str__(self):
+        return super().__str__().replace(self.__class__.__name__ + '.', '')
+
+
+class CalibrationStatus(MessagePayload):
+    """!
+    @brief Device calibration status update.
+    """
+    MESSAGE_TYPE = MessageType.CALIBRATION_STATUS
+    MESSAGE_VERSION = 0
+
+    _STRUCT = struct.Struct('<B3x 3f3f f 24x ?3x BBB 5x f3f')
+
+    def __init__(self):
+        ## The most recent P1 time, if available.
+        self.p1_time = Timestamp()
+
+        ## @name Calibration State Data
+        ## @{
+
+        ## The current calibration stage.
+        self.calibration_stage = CalibrationStage.UNKNOWN
+
+        ## The IMU yaw, pitch, and roll mounting angle offsets (in degrees).
+        self.ypr_deg = np.full((3,), np.nan)
+
+        ## The IMU yaw, pitch, and roll mounting angle standard deviations (in degrees).
+        self.ypr_std_dev_deg = np.full((3,), np.nan)
+
+        ## The accumulated calibration travel distance (in meters).
+        self.travel_distance_m = np.nan
+
+        ## @}
+
+        ## @name Calibration Process Status
+        ## @{
+
+        ## Set to `True` once the navigation engine state is validated after initialization.
+        self.state_verified = False
+
+        ## The completion percentage for gyro bias estimation.
+        self.gyro_bias_percent_complete = 0.0
+
+        ## The completion percentage for accelerometer bias estimation.
+        self.accel_bias_percent_complete = 0.0
+
+        ## The completion percentage for IMU mounting angle estimation.
+        self.mounting_angle_percent_complete = 0.0
+
+        ## @}
+
+        ## @name Calibration Thresholds
+        ## @{
+
+        ## The minimum accumulated calibration travel distance needed to complete mounting angle calibration.
+        self.min_travel_distance_m = np.nan
+
+        ## The max threshold for each of the YPR mounting angle states (in degrees), above which calibration is
+        ##  incomplete.
+        self.mounting_angle_max_std_dev_deg = np.full((3,), np.nan)
+
+        ## @}
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        if buffer is None:
+            buffer = bytearray(self.calcsize())
+
+        initial_offset = offset
+
+        offset += self.p1_time.pack(buffer, offset, return_buffer=False)
+
+        self._STRUCT.pack_into(buffer, offset,
+                               self.calibration_stage,
+                               self.ypr_deg[0], self.ypr_deg[2], self.ypr_deg[3],
+                               self.ypr_std_dev_deg[0], self.ypr_std_dev_deg[2], self.ypr_std_dev_deg[3],
+                               self.travel_distance_m,
+                               self.state_verified,
+                               self.gyro_bias_percent_complete * 2.0,
+                               self.accel_bias_percent_complete * 2.0,
+                               self.mounting_angle_percent_complete * 2.0,
+                               self.min_travel_distance_m,
+                               self.mounting_angle_max_std_dev_deg[0], self.mounting_angle_max_std_dev_deg[1],
+                               self.mounting_angle_max_std_dev_deg[2])
+        offset += self._STRUCT.size
+
+        if return_buffer:
+            return buffer
+        else:
+            return offset - initial_offset
+
+    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+        initial_offset = offset
+
+        offset += self.p1_time.unpack(buffer, offset)
+
+        (self.calibration_stage,
+         self.ypr_deg[0], self.ypr_deg[1], self.ypr_deg[2],
+         self.ypr_std_dev_deg[0], self.ypr_std_dev_deg[1], self.ypr_std_dev_deg[2],
+         self.travel_distance_m,
+         self.state_verified,
+         self.gyro_bias_percent_complete,
+         self.accel_bias_percent_complete,
+         self.mounting_angle_percent_complete,
+         self.min_travel_distance_m,
+         self.mounting_angle_max_std_dev_deg[0], self.mounting_angle_max_std_dev_deg[1],
+         self.mounting_angle_max_std_dev_deg[2]) = \
+            self._STRUCT.unpack_from(buffer=buffer, offset=offset)
+        offset += self._STRUCT.size
+
+        self.calibration_stage = CalibrationStage(self.calibration_stage)
+
+        self.gyro_bias_percent_complete /= 2.0
+        self.accel_bias_percent_complete /= 2.0
+        self.mounting_angle_percent_complete /= 2.0
+
+        return offset - initial_offset
+
+    def __repr__(self):
+        return '%s @ %s [stage=%s, mounting_angle=%.1f%%]' % (self.MESSAGE_TYPE.name, self.p1_time,
+                                                              str(self.calibration_stage),
+                                                              self.mounting_angle_percent_complete)
+
+    def __str__(self):
+        string = 'Calibration Status Message @ %s\n' % str(self.p1_time)
+        string += '  Stage: %s\n' % str(self.calibration_stage)
+        string += '  Completion: gyro=%.1f%%, accel=%.1f%%, mounting angles=%.1f%%\n' % \
+                  (self.gyro_bias_percent_complete, self.accel_bias_percent_complete,
+                   self.mounting_angle_percent_complete)
+        string += '  Distance traveled: %.3f km (min: %.1f km)%s\n' % \
+                  (self.travel_distance_m, self.min_travel_distance_m,
+                   ' [OK]' if self.travel_distance_m < self.min_travel_distance_m else '')
+        string += '  Yaw: %.1f deg (std dev: %.1f deg, max: %.1f deg)%s\n' % \
+                  (self.ypr_deg[0], self.ypr_std_dev_deg[0], self.mounting_angle_max_std_dev_deg[0],
+                   ' [OK]' if self.ypr_std_dev_deg[0] < self.mounting_angle_max_std_dev_deg[0] else '')
+        string += '  Pitch: %.1f deg (std dev: %.1f deg, max: %.1f deg)%s\n' % \
+                  (self.ypr_deg[1], self.ypr_std_dev_deg[1], self.mounting_angle_max_std_dev_deg[1],
+                   ' [OK]' if self.ypr_std_dev_deg[1] < self.mounting_angle_max_std_dev_deg[1] else '')
+        string += '  Roll: %.1f deg (std dev: %.1f deg, max: %.1f deg)%s\n' % \
+                  (self.ypr_deg[2], self.ypr_std_dev_deg[2], self.mounting_angle_max_std_dev_deg[2],
+                   ' [OK]' if self.ypr_std_dev_deg[2] < self.mounting_angle_max_std_dev_deg[2] else '')
+        return string
+
+    def calcsize(self) -> int:
+        return Timestamp.calcsize() + self._STRUCT.size
+
+    @classmethod
+    def to_numpy(cls, messages: Sequence['CalibrationStatus']):
+        result = {
+            'p1_time': np.array([float(m.p1_time) for m in messages]),
+            'calibration_stage': np.array([int(m.calibration_stage) for m in messages], dtype=int),
+            'ypr_deg': np.array([m.ypr_deg for m in messages]).T,
+            'ypr_std_dev_deg': np.array([m.ypr_std_dev_deg for m in messages]).T,
+            'travel_distance_m': np.array([m.travel_distance_m for m in messages]),
+            'state_verified': np.array([m.state_verified for m in messages], dtype=bool),
+            'gyro_bias_percent_complete': np.array([m.gyro_bias_percent_complete for m in messages]),
+            'accel_bias_percent_complete': np.array([m.accel_bias_percent_complete for m in messages]),
+            'mounting_angle_percent_complete': np.array([m.mounting_angle_percent_complete for m in messages]),
+            'min_travel_distance_m': messages[0].min_travel_distance_m if len(messages) > 0 else np.nan,
+            'mounting_angle_max_std_dev_deg': (messages[0].mounting_angle_max_std_dev_deg
+                                               if len(messages) > 0 else np.full((3,), np.nan)),
+        }
+        return result

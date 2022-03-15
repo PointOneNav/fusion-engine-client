@@ -7,6 +7,7 @@ message_type_to_class = {
     PoseAuxMessage.MESSAGE_TYPE: PoseAuxMessage,
     GNSSInfoMessage.MESSAGE_TYPE: GNSSInfoMessage,
     GNSSSatelliteMessage.MESSAGE_TYPE: GNSSSatelliteMessage,
+    CalibrationStatus.MESSAGE_TYPE: CalibrationStatus,
 
     # Sensor measurement messages.
     IMUMeasurement.MESSAGE_TYPE: IMUMeasurement,

@@ -317,6 +317,139 @@ struct alignas(4) SatelliteInfo {
   float elevation_deg = NAN;
 };
 
+/**
+ * @brief The stages of the device calibration process.
+ * @ingroup solution_messages
+ */
+enum class CalibrationStage : uint8_t {
+  UNKNOWN = 0, ///< Calibration stage not known.
+  MOUNTING_ANGLE = 1, ///< Estimating IMU mounting angles.
+  DONE = 255, ///< Calibration complete.
+};
+
+/**
+ * @brief Get a human-friendly string name for the specified @ref
+ *        CalibrationStage.
+ *
+ * @param val The enum to get the string name for.
+ *
+ * @return The corresponding string name.
+ */
+inline const char* to_string(CalibrationStage val) {
+  switch (val) {
+    case CalibrationStage::UNKNOWN:
+      return "Unknown";
+    case CalibrationStage::MOUNTING_ANGLE:
+      return "IMU Mounting Angles";
+    case CalibrationStage::DONE:
+      return "Done";
+    default:
+      return "Unrecognized";
+  }
+}
+
+/**
+ * @brief @ref CalibrationStage stream operator.
+ */
+inline std::ostream& operator<<(std::ostream& stream, CalibrationStage val) {
+  stream << to_string(val) << " (" << (int)val << ")";
+  return stream;
+}
+
+/**
+ * @brief Device calibration status update. (@ref
+ *        MessageType::CALIBRATION_STATUS, version 1).
+ * @brief
+ * @ingroup solution_messages
+ */
+struct alignas(4) CalibrationStatusMessage : public MessagePayload {
+  static constexpr MessageType MESSAGE_TYPE = MessageType::CALIBRATION_STATUS;
+  static constexpr uint8_t MESSAGE_VERSION = 1;
+
+  /** The most recent P1 time, if available. */
+  Timestamp p1_time;
+
+  /**
+   * @name Calibration State Data
+   * @{
+   */
+
+  /** The current calibration stage. */
+  CalibrationStage calibration_stage = CalibrationStage::UNKNOWN;
+
+  uint8_t reserved1[3] = {0};
+
+  /** The IMU yaw, pitch, and roll mounting angle offsets (in degrees). */
+  float ypr_deg[3] = {NAN, NAN, NAN};
+
+  /**
+   * The IMU yaw, pitch, and roll mounting angle standard deviations (in
+   * degrees).
+   */
+  float ypr_std_dev_deg[3] = {NAN, NAN, NAN};
+
+  /** The accumulated calibration travel distance (in meters). */
+  float travel_distance_m = 0.0;
+
+  uint8_t reserved2[24] = {0};
+
+  /** @} */
+
+  /**
+   * @name Calibration Process Status
+   * @{
+   */
+
+  /**
+   * Set to 1 once the navigation engine state is validated after
+   * initialization.
+   */
+  uint8_t state_verified{0};
+
+  uint8_t reserved3[3] = {0};
+
+  /**
+   * The completion percentage for gyro bias estimation, stored with a
+   * scale factor of 0.5% (0-200).
+   */
+  uint8_t gyro_bias_percent_complete = 0;
+
+  /**
+   * The completion percentage for accelerometer bias estimation, stored with a
+   * scale factor of 0.5% (0-200).
+   */
+  uint8_t accel_bias_percent_complete = 0;
+
+  /**
+   * The completion percentage for IMU mounting angle estimation, stored with a
+   * scale factor of 0.5% (0-200).
+   */
+  uint8_t mounting_angle_percent_complete = 0;
+
+  uint8_t reserved4[5] = {0};
+
+  /** @} */
+
+  /**
+   * @name Calibration Thresholds
+   * @{
+   */
+
+  /**
+   * The minimum accumulated calibration travel distance needed to complete
+   * mounting angle calibration.
+   */
+  float min_travel_distance_m = NAN;
+
+  /**
+   * The max threshold for each of the YPR mounting angle states (in degrees),
+   * above which calibration is incomplete.
+   */
+  float mounting_angle_max_std_dev_deg[3] = {NAN, NAN, NAN};
+
+  /** @} */
+};
+
 #pragma pack(pop)
 
 } // namespace messages
