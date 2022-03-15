@@ -124,6 +124,8 @@ class Analyzer(object):
         self.plots = {}
         self.summary = ''
 
+        self._mapbox_token_missing = False
+
         if self.output_dir is not None:
             if not os.path.exists(self.output_dir):
                 os.makedirs(self.output_dir)
@@ -356,6 +358,7 @@ class Analyzer(object):
         mapbox_token = self.get_mapbox_token(mapbox_token)
         if mapbox_token is None:
             self.logger.info('*' * 80 + '\n\nMapbox token not specified. Skipping map display.\n\n' + '*' * 80)
+            self._mapbox_token_missing = True
             return
 
         # Read the pose data.
@@ -510,6 +513,11 @@ class Analyzer(object):
             self.logger.warning('No plots generated. Index will contain summary only.')
 
         self._set_data_summary()
+
+        if self._mapbox_token_missing:
+            self.summary += '\n\n<p style="color: red">Warning: Mapbox token not specified. ' \
+                            'Could not generate a trajectory map. Please specify --mapbox-token or set the ' \
+                            'MAPBOX_ACCESS_TOKEN environment variable.</p>\n'
 
         links = ''
         title_to_name = {e['title']: n for n, e in self.plots.items()}
