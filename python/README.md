@@ -13,7 +13,7 @@ for the latest API documentation.
 * [Using A Python Virtual Environment](#using-a-python-virtual-environment)
 
 ### Requirements
-- Python 3.4 or later
+- Python 3.6 or later
 
 ### Directory Structure
   - `python/` - Python source files
