@@ -318,6 +318,107 @@ class Analyzer(object):
 
         self._add_figure(name="pose", figure=figure, title="Vehicle Pose vs. Time")
 
+    def plot_calibration(self):
+        """!
+        @brief Plot the calibration progress over time.
+        """
+        if self.output_dir is None:
+            return
+
+        # Read the pose data.
+        result = self.reader.read(message_types=[CalibrationStatus], **self.params)
+        cal_data = result[CalibrationStatus.MESSAGE_TYPE]
+
+        if len(cal_data.p1_time) == 0:
+            self.logger.info('No calibration data available.')
+            return
+
+        time = cal_data.p1_time - float(self.t0)
+        text = ["Time: %.3f sec (%.3f sec)" % (t, t + float(self.t0)) for t in time]
+
+        # Map calibration stage enum values onto a [0, N) range for plotting.
+        stage_map = {e.value: i for i, e in enumerate(CalibrationStage)}
+        calibration_stage = [stage_map[s] for s in cal_data.calibration_stage]
+
+        # Setup the figure.
+        figure = make_subplots(rows=4, cols=1, print_grid=False, shared_xaxes=True,
+                               subplot_titles=['<- Percent Complete // Stage ->', 'Mounting Angles',
+                                               'Mounting Angle Standard Deviation', 'Travel Distance'],
+                               specs=[[{"secondary_y": True}], [{}], [{}], [{}]])
+
+        figure['layout'].update(showlegend=True)
+        figure['layout']['xaxis'].update(title="Time (sec)")
+        for i in range(4):
+            figure['layout']['xaxis%d' % (i + 1)].update(showticklabels=True)
+        figure['layout']['yaxis1'].update(title="Percent Complete", range=[0, 100])
+        figure['layout']['yaxis2'].update(ticktext=['%s' % e.name for e in CalibrationStage],
+                                          tickvals=list(range(len(stage_map))))
+        figure['layout']['yaxis3'].update(title="Degrees")
+        figure['layout']['yaxis4'].update(title="Degrees")
+        figure['layout']['yaxis5'].update(title="Meters")
+
+        # Plot calibration stage and completion percentages.
+        figure.add_trace(go.Scattergl(x=time, y=cal_data.gyro_bias_percent_complete, name='Gyro Bias Completion',
+                                      text=text, mode='lines', line={'color': 'red'}),
+                         1, 1)
+        figure.add_trace(go.Scattergl(x=time, y=cal_data.accel_bias_percent_complete, name='Accel Bias Completion',
+                                      text=text, mode='lines', line={'color': 'green'}),
+                         1, 1)
+        figure.add_trace(go.Scattergl(x=time, y=cal_data.mounting_angle_percent_complete,
+                                      name='Mounting Angle Completion', text=text,
+                                      mode='lines', line={'color': 'blue'}),
+                         1, 1)
+
+        figure.add_trace(go.Scattergl(x=time, y=calibration_stage, name='Stage', text=text,
+                                      mode='lines', line={'color': 'black', 'dash': 'dash'}),
+                         1, 1, secondary_y=True)
+
+        # Plot mounting angles.
+        figure.add_trace(go.Scattergl(x=time, y=cal_data.ypr_deg[0, :], name='Yaw', legendgroup='y', text=text,
+                                      mode='lines', line={'color': 'red'}),
+                         2, 1)
+        figure.add_trace(go.Scattergl(x=time, y=cal_data.ypr_deg[1, :], name='Pitch', legendgroup='p', text=text,
+                                      mode='lines', line={'color': 'green'}),
+                         2, 1)
+        figure.add_trace(go.Scattergl(x=time, y=cal_data.ypr_deg[2, :], name='Roll', legendgroup='r', text=text,
+                                      mode='lines', line={'color': 'blue'}),
+                         2, 1)
+
+        figure.add_trace(go.Scattergl(x=time, y=cal_data.ypr_std_dev_deg[0, :], name='Yaw Std Dev', legendgroup='y',
+                                      text=text, mode='lines', line={'color': 'red'}),
+                         3, 1)
+        figure.add_trace(go.Scattergl(x=time, y=cal_data.ypr_std_dev_deg[1, :], name='Pitch Std Dev', legendgroup='p',
+                                      text=text, mode='lines', line={'color': 'green'}),
+                         3, 1)
+        figure.add_trace(go.Scattergl(x=time, y=cal_data.ypr_std_dev_deg[2, :], name='Roll Std Dev', legendgroup='r',
+                                      text=text, mode='lines', line={'color': 'blue'}),
+                         3, 1)
+
+        thresh_time = time[np.array((0, -1))]
+        figure.add_trace(go.Scattergl(x=thresh_time, y=[cal_data.mounting_angle_max_std_dev_deg[0]] * 2,
+                                      name='Max Yaw Std Dev', legendgroup='y',
+                                      mode='lines', line={'color': 'red', 'dash': 'dash'}),
+                         3, 1)
+        figure.add_trace(go.Scattergl(x=thresh_time, y=[cal_data.mounting_angle_max_std_dev_deg[1]] * 2,
+                                      name='Max Pitch Std Dev', legendgroup='p',
+                                      text=text, mode='lines', line={'color': 'green', 'dash': 'dash'}),
+                         3, 1)
+        figure.add_trace(go.Scattergl(x=thresh_time, y=[cal_data.mounting_angle_max_std_dev_deg[2]] * 2,
+                                      name='Max Roll Std Dev', legendgroup='r',
+                                      text=text, mode='lines', line={'color': 'blue', 'dash': 'dash'}),
+                         3, 1)
+
+        # Plot travel distance.
+        figure.add_trace(go.Scattergl(x=time, y=cal_data.travel_distance_m, name='Travel Distance', text=text,
+                                      mode='lines', line={'color': 'blue'}),
+                         4, 1)
+        figure.add_trace(go.Scattergl(x=thresh_time, y=[cal_data.min_travel_distance_m] * 2,
+                                      name='Min Travel Distance', text=text,
+                                      mode='lines', line={'color': 'black', 'dash': 'dash'}),
+                         4, 1)
+
+        self._add_figure(name="calibration", figure=figure, title="Calibration Status")
+
     def plot_solution_type(self):
         """!
         @brief Plot the solution type over time.
@@ -791,6 +892,7 @@ Load and display information stored in a FusionEngine binary file.
     analyzer.plot_solution_type()
     analyzer.plot_pose()
     analyzer.plot_map(mapbox_token=options.mapbox_token)
+    analyzer.plot_calibration()
 
     if options.imu:
         analyzer.plot_imu()
