@@ -602,7 +602,7 @@ class Analyzer(object):
 <pre>{table_html}</pre>
 """
 
-        self._add_page('Event Log', body_html)
+        self._add_page(name='event_log', html_body=body_html, title="Event Log")
 
     def generate_index(self, auto_open=True):
         """!
@@ -725,7 +725,10 @@ class Analyzer(object):
 %(message_table)s
 """ % args
 
-    def _add_page(self, name, html_body):
+    def _add_page(self, name, html_body, title=None):
+        if title is None:
+            title = name
+
         if name in self.plots:
             raise ValueError('Plot "%s" already exists.' % name)
         elif name == 'index':
@@ -735,14 +738,14 @@ class Analyzer(object):
         self.logger.info('Creating %s...' % path)
 
         table_html = _page_template % {
-            'title': name,
+            'title': title,
             'body': html_body
         }
 
         with open(path, 'w') as fd:
             fd.write(table_html)
 
-        self.plots[name] = {'title': name, 'path': path}
+        self.plots[name] = {'title': title, 'path': path}
 
     def _add_figure(self, name, figure, title=None):
         if title is None:
