@@ -1,3 +1,4 @@
+import struct
 from datetime import datetime, timezone
 from enum import IntEnum
 from typing import List
@@ -35,8 +36,7 @@ class ProfileSystemStatusMessage(MessagePayload):
     _INVALID_CPU_USAGE = 0xFF
     _CPU_USAGE_SCALE = 2.0
 
-    _FORMAT = '<qB2xB%dBQQQHHH2xf' % _MAX_CPU_CORES
-    _SIZE: int = struct.calcsize(_FORMAT)
+    _STRUCT = struct.Struct('<qB2xB%dBQQQHHH2xf' % _MAX_CPU_CORES)
 
     def __init__(self):
         self.p1_time = Timestamp()
@@ -78,8 +78,8 @@ class ProfileSystemStatusMessage(MessagePayload):
 
         args.extend([self.total_memory_bytes, self.total_used_memory_bytes, self.used_memory_bytes,
                      self.log_queue_depth, self.propagator_depth, self.dq_depth, self.dq_depth_sec])
-        struct.pack_into(ProfileSystemStatusMessage._FORMAT, buffer, offset, *args)
-        offset += ProfileSystemStatusMessage._SIZE
+        self._STRUCT.pack_into(buffer, offset, *args)
+        offset += self._STRUCT.size
 
         if return_buffer:
             return buffer
@@ -91,8 +91,8 @@ class ProfileSystemStatusMessage(MessagePayload):
 
         offset += self.p1_time.unpack(buffer, offset)
 
-        values = struct.unpack_from(ProfileSystemStatusMessage._FORMAT, buffer=buffer, offset=offset)
-        offset += ProfileSystemStatusMessage._SIZE
+        values = self._STRUCT.unpack_from(buffer=buffer, offset=offset)
+        offset += self._STRUCT.size
 
         (self.system_time_ns, self.num_cpu_cores) = values[:2]
 
@@ -128,7 +128,7 @@ class ProfileSystemStatusMessage(MessagePayload):
 
     @classmethod
     def calcsize(cls) -> int:
-        return Timestamp.calcsize() + ProfileSystemStatusMessage._SIZE
+        return Timestamp.calcsize() + cls._STRUCT.size
 
     @classmethod
     def to_numpy(cls, messages):
@@ -199,8 +199,7 @@ class ProfileDefinitionMessage(MessagePayload):
     @note
     This class is used for multiple profiling data types.
     """
-    _FORMAT = '<q2xH'
-    _SIZE: int = struct.calcsize(_FORMAT)
+    _STRUCT = struct.Struct('<q2xH')
 
     def __init__(self):
         self.system_time_ns = 0
@@ -212,9 +211,8 @@ class ProfileDefinitionMessage(MessagePayload):
 
         initial_offset = offset
 
-        struct.pack_into(ProfileDefinitionMessage._FORMAT, buffer, offset,
-                         self.system_time_ns, len(self.entries))
-        offset += ProfileDefinitionMessage._SIZE
+        self._STRUCT.pack_into(buffer, offset, self.system_time_ns, len(self.entries))
+        offset += self._STRUCT.size
 
         for entry in self.entries:
             offset += entry.pack(buffer, offset, return_buffer=False)
@@ -228,8 +226,8 @@ class ProfileDefinitionMessage(MessagePayload):
         initial_offset = offset
 
         (self.system_time_ns, num_entries) = \
-            struct.unpack_from(ProfileDefinitionMessage._FORMAT, buffer=buffer, offset=offset)
-        offset += ProfileDefinitionMessage._SIZE
+            self._STRUCT.unpack_from(buffer=buffer, offset=offset)
+        offset += self._STRUCT.size
 
         self.entries = []
         for i in range(num_entries):
@@ -254,15 +252,14 @@ class ProfileDefinitionMessage(MessagePayload):
         return string.rstrip()
 
     def calcsize(self) -> int:
-        return ProfileDefinitionMessage._SIZE + len(self.entries) * ProfileDefinitionEntry.calcsize()
+        return self._STRUCT.size + len(self.entries) * ProfileDefinitionEntry.calcsize()
 
 
 class ProfilePipelineEntry:
     """!
     @brief Pipeline profiling point.
     """
-    _FORMAT = '<If'
-    _SIZE: int = struct.calcsize(_FORMAT)
+    _STRUCT = struct.Struct('<If')
 
     def __init__(self):
         self.id = 0
@@ -271,27 +268,27 @@ class ProfilePipelineEntry:
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         args = (self.id, self.delay_sec)
         if buffer is None:
-            buffer = struct.pack(ProfilePipelineEntry._FORMAT, *args)
+            buffer = self._STRUCT.pack(*args)
         else:
-            struct.pack_into(ProfilePipelineEntry._FORMAT, buffer=buffer, offset=offset, *args)
+            self._STRUCT.pack_into(buffer=buffer, offset=offset, *args)
 
         if return_buffer:
             return buffer
         else:
-            return self.calcsize()
+            return self._STRUCT.size
 
     def unpack(self, buffer: bytes, offset: int = 0) -> int:
         initial_offset = offset
 
         (self.id, self.delay_sec) = \
-            struct.unpack_from(ProfilePipelineEntry._FORMAT, buffer=buffer, offset=offset)
-        offset += ProfilePipelineEntry._SIZE
+            self._STRUCT.unpack_from(buffer=buffer, offset=offset)
+        offset += self._STRUCT.size
 
         return offset - initial_offset
 
     @classmethod
     def calcsize(cls) -> int:
-        return ProfilePipelineEntry._SIZE
+        return cls._STRUCT.size
 
 
 class ProfilePipelineMessage(MessagePayload):
@@ -302,8 +299,7 @@ class ProfilePipelineMessage(MessagePayload):
     MESSAGE_VERSION = 0
     DEFINITION_TYPE = MessageType.PROFILE_PIPELINE_DEFINITION
 
-    _FORMAT = '<q2xH'
-    _SIZE: int = struct.calcsize(_FORMAT)
+    _STRUCT = struct.Struct('<q2xH')
 
     def __init__(self):
         self.system_time_ns = 0
@@ -316,9 +312,8 @@ class ProfilePipelineMessage(MessagePayload):
 
         initial_offset = offset
 
-        struct.pack_into(ProfilePipelineMessage._FORMAT, buffer, offset,
-                         self.system_time_ns, len(self.entries))
-        offset += ProfilePipelineMessage._SIZE
+        self._STRUCT.pack_into(buffer, offset, self.system_time_ns, len(self.entries))
+        offset += self._STRUCT.size
 
         offset += self.p1_time.pack(buffer, offset, return_buffer=False)
 
@@ -334,8 +329,8 @@ class ProfilePipelineMessage(MessagePayload):
         initial_offset = offset
 
         (self.system_time_ns, num_entries) = \
-            struct.unpack_from(ProfilePipelineMessage._FORMAT, buffer=buffer, offset=offset)
-        offset += ProfilePipelineMessage._SIZE
+            self._STRUCT.unpack_from(buffer=buffer, offset=offset)
+        offset += self._STRUCT.size
 
         offset += self.p1_time.unpack(buffer, offset)
 
@@ -360,7 +355,7 @@ class ProfilePipelineMessage(MessagePayload):
         return string.rstrip()
 
     def calcsize(self) -> int:
-        return ProfilePipelineMessage._SIZE + Timestamp.calcsize() + len(self.entries) * ProfilePipelineEntry.calcsize()
+        return self._STRUCT.size + Timestamp.calcsize() + len(self.entries) * ProfilePipelineEntry.calcsize()
 
     @classmethod
     def to_numpy(cls, messages):
@@ -391,8 +386,7 @@ class ProfileExecutionEntry:
     """!
     @brief Execution profiling point.
     """
-    _FORMAT = '<Iq'
-    _SIZE: int = struct.calcsize(_FORMAT)
+    _STRUCT = struct.Struct('<Iq')
 
     START = 0
     STOP = 1
@@ -407,21 +401,21 @@ class ProfileExecutionEntry:
 
         args = (self.id, system_time_ns)
         if buffer is None:
-            buffer = struct.pack(ProfileExecutionEntry._FORMAT, *args)
+            buffer = self._STRUCT.pack(*args)
         else:
-            struct.pack_into(ProfileExecutionEntry._FORMAT, buffer=buffer, offset=offset, *args)
+            self._STRUCT.pack_into(buffer=buffer, offset=offset, *args)
 
         if return_buffer:
             return buffer
         else:
-            return self.calcsize()
+            return self._STRUCT.size
 
     def unpack(self, buffer: bytes, offset: int = 0) -> int:
         initial_offset = offset
 
         (self.id, system_time_ns) = \
-            struct.unpack_from(ProfileExecutionEntry._FORMAT, buffer=buffer, offset=offset)
-        offset += ProfileExecutionEntry._SIZE
+            self._STRUCT.unpack_from(buffer=buffer, offset=offset)
+        offset += self._STRUCT.size
 
         if system_time_ns < 0:
             self.action = ProfileExecutionEntry.STOP
@@ -434,7 +428,7 @@ class ProfileExecutionEntry:
 
     @classmethod
     def calcsize(cls) -> int:
-        return ProfileExecutionEntry._SIZE
+        return cls._STRUCT.size
 
 
 class ProfileExecutionMessage(MessagePayload):
@@ -445,8 +439,7 @@ class ProfileExecutionMessage(MessagePayload):
     MESSAGE_VERSION = 0
     DEFINITION_TYPE = MessageType.PROFILE_EXECUTION_DEFINITION
 
-    _FORMAT = '<q2xH'
-    _SIZE: int = struct.calcsize(_FORMAT)
+    _STRUCT = struct.Struct('<q2xH')
 
     def __init__(self):
         self.system_time_ns = 0
@@ -458,9 +451,8 @@ class ProfileExecutionMessage(MessagePayload):
 
         initial_offset = offset
 
-        struct.pack_into(ProfileExecutionMessage._FORMAT, buffer, offset,
-                         self.system_time_ns, len(self.entries))
-        offset += ProfileExecutionMessage._SIZE
+        self._STRUCT.pack_into(buffer, offset, self.system_time_ns, len(self.entries))
+        offset += self._STRUCT.size
 
         for entry in self.entries:
             offset += entry.pack(buffer, offset, return_buffer=False)
@@ -474,8 +466,8 @@ class ProfileExecutionMessage(MessagePayload):
         initial_offset = offset
 
         (self.system_time_ns, num_entries) = \
-            struct.unpack_from(ProfileExecutionMessage._FORMAT, buffer=buffer, offset=offset)
-        offset += ProfileExecutionMessage._SIZE
+            self._STRUCT.unpack_from(buffer=buffer, offset=offset)
+        offset += self._STRUCT.size
 
         self.entries = []
         for i in range(num_entries):
@@ -499,7 +491,7 @@ class ProfileExecutionMessage(MessagePayload):
         return string.rstrip()
 
     def calcsize(self) -> int:
-        return ProfileExecutionMessage._SIZE + len(self.entries) * ProfileExecutionEntry.calcsize()
+        return self._STRUCT.size + len(self.entries) * ProfileExecutionEntry.calcsize()
 
     @classmethod
     def to_numpy(cls, messages):
