@@ -155,7 +155,7 @@ class FileReader(object):
                 index_valid = False
             else:
                 last_offset = self.index.offset[-1]
-                if last_offset > self.file_size + MessageHeader.calcsize():
+                if last_offset > self.file_size - MessageHeader.calcsize():
                     self.logger.warning("Last index entry past end of file. Deleting index.")
                     index_valid = False
                 else:
