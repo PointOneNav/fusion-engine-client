@@ -1,6 +1,7 @@
 from typing import Union
 
 from collections import namedtuple
+import io
 import os
 
 import numpy as np
@@ -119,11 +120,16 @@ class FileIndex(object):
 
     _DTYPE = np.dtype([('time', '<f8'), ('type', '<u2'), ('offset', '<u8')])
 
-    def __init__(self, index_path: str = None, data: Union[np.ndarray, list] = None, t0: Timestamp = None):
+    def __init__(self, index_path: str = None, data_path: str = None, delete_on_error=True,
+                 data: Union[np.ndarray, list] = None, t0: Timestamp = None):
         """!
         @brief Construct a new @ref FileIndex instance.
 
         @param index_path The path to a `.p1i` index file to be loaded.
+        @param data_path The path to the `.p1log` data file corresponding with `index_path`, used to validate the loaded
+               index entries. If `None`, defaults to `filename.p1log` if it exists.
+        @param delete_on_error If `True`, delete the index file if an error is detected before raising an exception.
+               Otherwise, leave the file unchanged.
         @param data A NumPy `ndarray` or Python `list` containing information about each FusionEngine message in the
                `.p1log` file. For internal use.
         @param t0 The P1 time corresponding with the start of the `.p1log` file, if known. For internal use.
@@ -140,7 +146,7 @@ class FileIndex(object):
 
         if index_path is not None:
             if self._data is None:
-                self.load(index_path)
+                self.load(index_path=index_path, data_path=data_path, delete_on_error=delete_on_error)
             else:
                 raise ValueError('Cannot specify both path and data.')
 
@@ -155,17 +161,74 @@ class FileIndex(object):
             else:
                 self.t0 = None
 
-    def load(self, index_path):
+    def load(self, index_path, data_path=None, delete_on_error=True):
         """!
         @brief Load a `.p1i` index file from disk.
 
         @param index_path The path to the file to be read.
+        @param data_path The path to the `.p1log` data file corresponding with `index_path`, used to validate the loaded
+               index entries. If `None`, defaults to `filename.p1log` if it exists.
+        @param delete_on_error If `True`, delete the index file if an error is detected before raising an exception.
+               Otherwise, leave the file unchanged.
         """
         if os.path.exists(index_path):
             raw_data = np.fromfile(index_path, dtype=FileIndex._RAW_DTYPE)
             self._data = FileIndex._from_raw(raw_data)
         else:
             raise FileNotFoundError("Index file '%s' does not exist." % index_path)
+
+        # If a .p1log data file exists for this index file, check that the data file size is consistent with the index.
+        # If the index doesn't cover the full binary file, the user might have interrupted the read when it was being
+        # generated, or they may have overwritten the .p1log file.
+        if data_path is None:
+            data_path = os.path.splitext(index_path)[0] + '.p1log'
+            if not os.path.exists(data_path):
+                # If the user didn't explicitly set data_path and the default file doesn't exist, it is not considered
+                # an error.
+                return
+        elif not os.path.exists(data_path):
+            raise ValueError("Specified data file '%s' not found." % data_path)
+
+        with open(data_path, 'rb') as data_file:
+            # Compute the data file size.
+            data_file.seek(0, io.SEEK_END)
+            data_file_size = data_file.tell()
+            data_file.seek(0, 0)
+
+            # Check for empty files.
+            if data_file_size == 0 and len(self) != 0:
+                if delete_on_error:
+                    os.remove(index_path)
+                raise ValueError("Data file empty but index populated. [%d elements]" % len(self))
+            elif data_file_size != 0 and len(self) == 0:
+                if delete_on_error:
+                    os.remove(index_path)
+                raise ValueError("Index file empty but data file not 0 length. [size=%d B]" % data_file_size)
+
+            # See if the index is larger than the data file.
+            last_offset = self.offset[-1]
+            if last_offset > data_file_size - MessageHeader.calcsize():
+                if delete_on_error:
+                    os.remove(index_path)
+                raise ValueError("Last index entry past end of file. [size=%d B, start_offset=%d B]" %
+                                 (data_file_size, last_offset))
+
+            # Read the header of the last entry to get its size, then use that to compute the expected data file size
+            # from the offset in the last index entry.
+            data_file.seek(last_offset, io.SEEK_SET)
+            buffer = data_file.read(MessageHeader.calcsize())
+            data_file.seek(0, io.SEEK_SET)
+
+            header = MessageHeader()
+            header.unpack(buffer=buffer, warn_on_unrecognized=False)
+            message_size_bytes = MessageHeader.calcsize() + header.payload_size_bytes
+
+            index_size = last_offset + message_size_bytes
+            if index_size != data_file_size:
+                if delete_on_error:
+                    os.remove(index_path)
+                raise ValueError("Size expected by index file does not match binary file. [size=%d B, expected=%d B]" %
+                                 (data_file_size, index_size))
 
     def save(self, index_path):
         """!

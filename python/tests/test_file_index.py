@@ -1,9 +1,11 @@
 import os
 
 import numpy as np
+import pytest
 
 from fusion_engine_client.analysis.file_index import FileIndex, FileIndexBuilder
-from fusion_engine_client.messages import MessageType, Timestamp
+from fusion_engine_client.messages import MessageType, Timestamp, message_type_to_class
+from fusion_engine_client.parsers import FusionEngineEncoder
 
 RAW_DATA = [
     (None, MessageType.VERSION_INFO, 0),
@@ -144,3 +146,93 @@ def test_builder(tmpdir):
     index.save(index_path)
     assert os.path.exists(index_path)
     assert os.path.getsize(index_path) > 0
+
+
+@pytest.fixture
+def data_path(tmpdir):
+    prefix = tmpdir.join('my_data')
+
+    # Construct an binary data file and a corresponding index.
+    data_path = prefix + '.p1log'
+    index_path = prefix + '.p1i'
+
+    builder = FileIndexBuilder()
+    encoder = FusionEngineEncoder()
+
+    with open(data_path, 'wb') as f:
+        for entry in RAW_DATA:
+            builder.append(p1_time=entry[0], message_type=entry[1], offset_bytes=f.tell())
+
+            cls = message_type_to_class[entry[1]]
+            message = cls()
+            if entry[0] is not None and hasattr(message, 'p1_time'):
+                message.p1_time = entry[0]
+            f.write(encoder.encode_message(message))
+
+    builder.save(index_path)
+
+    return data_path
+
+
+def test_validate_good(data_path):
+    index_path = FileIndex.get_path(data_path)
+    index = FileIndex(index_path=index_path, data_path=data_path)
+    assert len(index) == len(RAW_DATA)
+
+
+def test_validate_index_empty(data_path):
+    index_path = FileIndex.get_path(data_path)
+
+    # Clear the index file.
+    with open(index_path, 'wb'):
+        pass
+
+    with pytest.raises(ValueError):
+        index = FileIndex(index_path=index_path, data_path=data_path)
+
+
+def test_validate_data_file_empty(data_path):
+    index_path = FileIndex.get_path(data_path)
+
+    # Clear the data file.
+    with open(data_path, 'wb'):
+        pass
+
+    with pytest.raises(ValueError):
+        index = FileIndex(index_path=index_path, data_path=data_path)
+
+
+def test_validate_index_too_small(data_path):
+    index_path = FileIndex.get_path(data_path)
+
+    # Strip one entry from the index file.
+    file_size = os.path.getsize(index_path)
+    with open(index_path, 'wb') as f:
+        f.truncate(file_size - FileIndex._RAW_DTYPE.itemsize)
+
+    with pytest.raises(ValueError):
+        index = FileIndex(index_path=index_path, data_path=data_path)
+
+
+def test_validate_data_too_small(data_path):
+    index_path = FileIndex.get_path(data_path)
+
+    # Strip one entry from the index file.
+    file_size = os.path.getsize(data_path)
+    with open(data_path, 'wb') as f:
+        f.truncate(file_size - 10)
+
+    with pytest.raises(ValueError):
+        index = FileIndex(index_path=index_path, data_path=data_path)
+
+
+def test_validate_data_too_large(data_path):
+    index_path = FileIndex.get_path(data_path)
+
+    # Strip one entry from the index file.
+    file_size = os.path.getsize(data_path)
+    with open(data_path, 'ab') as f:
+        f.write(b'abcd')
+
+    with pytest.raises(ValueError):
+        index = FileIndex(index_path=index_path, data_path=data_path)
