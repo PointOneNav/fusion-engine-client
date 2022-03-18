@@ -272,9 +272,6 @@ class GNSSInfoMessage(MessagePayload):
                          self.gps_time_std_sec)
         offset += GNSSInfoMessage._SIZE
 
-        for sv in self.svs:
-            offset += sv.pack(buffer, offset, return_buffer=False)
-
         if return_buffer:
             return buffer
         else:
