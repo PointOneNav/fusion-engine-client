@@ -1,6 +1,6 @@
 from enum import IntEnum
 
-from construct import (Struct, Int64ul, Int16ul, Int8ul, Padding, this, Bytes)
+from construct import (Struct, Int64ul, Int16ul, Int8ul, Padding, this, Bytes, PaddedString)
 
 from ..utils.construct_utils import AutoEnum
 from .defs import *
@@ -238,10 +238,10 @@ class VersionInfoMessage(MessagePayload):
         "hw_version_length" / Int8ul,
         "rx_version_length" / Int8ul,
         Padding(4),
-        "fw_version_str" / Bytes(this.fw_version_length),
-        "engine_version_str" / Bytes(this.engine_version_length),
-        "hw_version_str" / Bytes(this.hw_version_length),
-        "rx_version_str" / Bytes(this.rx_version_length),
+        "fw_version_str" / PaddedString(this.fw_version_length, 'utf8'),
+        "engine_version_str" / PaddedString(this.engine_version_length, 'utf8'),
+        "hw_version_str" / PaddedString(this.hw_version_length, 'utf8'),
+        "rx_version_str" / PaddedString(this.rx_version_length, 'utf8'),
     )
 
     def __init__(self):
