@@ -13,8 +13,7 @@ class CommandResponseMessage(MessagePayload):
     MESSAGE_TYPE = MessageType.COMMAND_RESPONSE
     MESSAGE_VERSION = 0
 
-    _FORMAT = '<IB3x'
-    _SIZE: int = struct.calcsize(_FORMAT)
+    _STRUCT = struct.Struct('<IB3x')
 
     def __init__(self):
         self.source_sequence_num = 0
@@ -26,9 +25,8 @@ class CommandResponseMessage(MessagePayload):
 
         initial_offset = offset
 
-        struct.pack_into(CommandResponseMessage._FORMAT, buffer, offset,
-                         self.source_sequence_num, self.response)
-        offset = CommandResponseMessage._SIZE
+        self._STRUCT.pack_into(buffer, offset, self.source_sequence_num, self.response)
+        offset = self._STRUCT.size
 
         if return_buffer:
             return buffer
@@ -39,8 +37,8 @@ class CommandResponseMessage(MessagePayload):
         initial_offset = offset
 
         (self.source_sequence_num, self.response) = \
-            struct.unpack_from(CommandResponseMessage._FORMAT, buffer=buffer, offset=offset)
-        offset = CommandResponseMessage._SIZE
+            self._STRUCT.unpack_from(buffer=buffer, offset=offset)
+        offset = self._STRUCT.size
 
         try:
             self.response = Response(self.response)
@@ -51,7 +49,7 @@ class CommandResponseMessage(MessagePayload):
 
     @classmethod
     def calcsize(cls) -> int:
-        return CommandResponseMessage._SIZE
+        return cls._STRUCT.size
 
     def __str__(self):
         string = f'Command Response\n'
@@ -70,8 +68,7 @@ class MessageRequest(MessagePayload):
     MESSAGE_TYPE = MessageType.MESSAGE_REQUEST
     MESSAGE_VERSION = 0
 
-    _FORMAT = '<H2x'
-    _SIZE: int = struct.calcsize(_FORMAT)
+    _STRUCT = struct.Struct('<H2x')
 
     def __init__(self, message_type: MessageType = MessageType.INVALID):
         self.message_type: MessageType = message_type
@@ -82,8 +79,8 @@ class MessageRequest(MessagePayload):
 
         initial_offset = offset
 
-        struct.pack_into(MessageRequest._FORMAT, buffer, offset, self.message_type.value)
-        offset += MessageRequest._SIZE
+        self._STRUCT.pack_into(buffer, offset, self.message_type.value)
+        offset += self._STRUCT.size
 
         if return_buffer:
             return buffer
@@ -93,8 +90,8 @@ class MessageRequest(MessagePayload):
     def unpack(self, buffer: bytes, offset: int = 0) -> int:
         initial_offset = offset
 
-        message_type = struct.unpack_from(MessageRequest._FORMAT, buffer=buffer, offset=offset)[0]
-        offset += MessageRequest._SIZE
+        (message_type,) = self._STRUCT.unpack_from(buffer=buffer, offset=offset)
+        offset += self._STRUCT._SIZE
 
         self.message_type = MessageType(message_type)
 
@@ -108,7 +105,7 @@ class MessageRequest(MessagePayload):
 
     @classmethod
     def calcsize(cls) -> int:
-        return MessageRequest._SIZE
+        return cls._STRUCT.size
 
 
 class ResetRequest(MessagePayload):
@@ -190,8 +187,7 @@ class ResetRequest(MessagePayload):
 
     ## @}
 
-    _FORMAT = '<I'
-    _SIZE: int = struct.calcsize(_FORMAT)
+    _STRUCT = struct.Struct('<I')
 
     def __init__(self, reset_mask: int = 0):
         self.reset_mask = reset_mask
@@ -200,7 +196,7 @@ class ResetRequest(MessagePayload):
         if buffer is None:
             buffer = bytearray(self.calcsize())
 
-        struct.pack_into(ResetRequest._FORMAT, buffer, offset, self.reset_mask)
+        self._STRUCT.pack_into(buffer, offset, self.reset_mask)
 
         if return_buffer:
             return buffer
@@ -211,14 +207,14 @@ class ResetRequest(MessagePayload):
         initial_offset = offset
 
         (self.reset_mask,) = \
-            struct.unpack_from(ResetRequest._FORMAT, buffer=buffer, offset=offset)
+            self._STRUCT.unpack_from(buffer=buffer, offset=offset)
         offset += ResetRequest._SIZE
 
         return offset - initial_offset
 
     @classmethod
     def calcsize(cls) -> int:
-        return ResetRequest._SIZE
+        return cls._STRUCT.size
 
     def __str__(self):
         return 'Reset Request [mask=0x%08x]' % self.reset_mask

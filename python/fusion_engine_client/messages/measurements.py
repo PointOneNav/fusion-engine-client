@@ -10,8 +10,7 @@ class IMUMeasurement(MessagePayload):
     MESSAGE_TYPE = MessageType.IMU_MEASUREMENT
     MESSAGE_VERSION = 0
 
-    _FORMAT = '<3d 3d 3d 3d'
-    _SIZE: int = struct.calcsize(_FORMAT)
+    _STRUCT = struct.Struct('<3d 3d 3d 3d')
 
     def __init__(self):
         self.p1_time = Timestamp()
@@ -31,7 +30,7 @@ class IMUMeasurement(MessagePayload):
         offset += self.p1_time.pack(buffer, offset, return_buffer=False)
 
         offset += self.pack_values(
-            self._FORMAT, buffer, offset,
+            self._STRUCT, buffer, offset,
             self.accel_mps2,
             self.accel_std_mps2,
             self.gyro_rps,
@@ -48,7 +47,7 @@ class IMUMeasurement(MessagePayload):
         offset += self.p1_time.unpack(buffer, offset)
 
         offset += self.unpack_values(
-            self._FORMAT, buffer, offset,
+            self._STRUCT, buffer, offset,
             self.accel_mps2,
             self.accel_std_mps2,
             self.gyro_rps,
@@ -75,4 +74,4 @@ class IMUMeasurement(MessagePayload):
 
     @classmethod
     def calcsize(cls) -> int:
-        return Timestamp.calcsize() + IMUMeasurement._SIZE
+        return Timestamp.calcsize() + cls._STRUCT.size
