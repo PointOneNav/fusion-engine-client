@@ -176,13 +176,13 @@ class PoseAuxMessage(MessagePayload):
 
         offset += self.p1_time.pack(buffer, offset, return_buffer=False)
 
-        struct.pack_into(PoseAuxMessage._FORMAT, buffer, offset,
-                         *self.position_std_body_m,
-                         *self.position_cov_enu_m2.flat,
-                         *self.attitude_quaternion,
-                         *self.velocity_enu_mps,
-                         *self.velocity_std_enu_mps)
-        offset += PoseAuxMessage._SIZE
+        offset += self.pack_values(
+            self._FORMAT, buffer, offset,
+            self.position_std_body_m,
+            self.position_cov_enu_m2,
+            self.attitude_quaternion,
+            self.velocity_enu_mps,
+            self.velocity_std_enu_mps)
 
         if return_buffer:
             return buffer
@@ -194,13 +194,13 @@ class PoseAuxMessage(MessagePayload):
 
         offset += self.p1_time.unpack(buffer, offset)
 
-        MessageHeader.unpack_values(PoseAuxMessage._FORMAT, buffer, offset,
-                                    self.position_std_body_m,
-                                    self.position_cov_enu_m2,
-                                    self.attitude_quaternion,
-                                    self.velocity_enu_mps,
-                                    self.velocity_std_enu_mps)
-        offset += PoseAuxMessage._SIZE
+        offset += self.unpack_values(
+            self._FORMAT, buffer, offset,
+            self.position_std_body_m,
+            self.position_cov_enu_m2,
+            self.attitude_quaternion,
+            self.velocity_enu_mps,
+            self.velocity_std_enu_mps)
 
         return offset - initial_offset
 

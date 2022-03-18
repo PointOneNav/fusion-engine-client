@@ -30,12 +30,12 @@ class IMUMeasurement(MessagePayload):
 
         offset += self.p1_time.pack(buffer, offset, return_buffer=False)
 
-        struct.pack_into(IMUMeasurement._FORMAT, buffer, offset,
-                         *self.accel_mps2,
-                         *self.accel_std_mps2.flat,
-                         *self.gyro_rps,
-                         *self.gyro_std_rps)
-        offset += IMUMeasurement._SIZE
+        offset += self.pack_values(
+            self._FORMAT, buffer, offset,
+            self.accel_mps2,
+            self.accel_std_mps2,
+            self.gyro_rps,
+            self.gyro_std_rps)
 
         if return_buffer:
             return buffer
@@ -47,12 +47,12 @@ class IMUMeasurement(MessagePayload):
 
         offset += self.p1_time.unpack(buffer, offset)
 
-        MessageHeader.unpack_values(IMUMeasurement._FORMAT, buffer, offset,
-                                    self.accel_mps2,
-                                    self.accel_std_mps2,
-                                    self.gyro_rps,
-                                    self.gyro_std_rps)
-        offset += IMUMeasurement._SIZE
+        offset += self.unpack_values(
+            self._FORMAT, buffer, offset,
+            self.accel_mps2,
+            self.accel_std_mps2,
+            self.gyro_rps,
+            self.gyro_std_rps)
 
         return offset - initial_offset
 
