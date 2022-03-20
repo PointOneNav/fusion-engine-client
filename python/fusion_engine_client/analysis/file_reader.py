@@ -144,37 +144,12 @@ class FileReader(object):
             have_index = False
 
         if have_index:
-            self.logger.debug("Reading index file '%s'." % index_path)
-            self.index = FileIndex(index_path=index_path)
-
-            # If the index doesn't cover the full binary file, the user might have interrupted the read when it was
-            # being generated. Delete it and create a new one.
-            index_valid = True
-            if len(self.index) == 0:
-                self.logger.warning("Index file '%s' is empty. Deleting." % index_path)
-                index_valid = False
-            else:
-                last_offset = self.index.offset[-1]
-                if last_offset > self.file_size + MessageHeader.calcsize():
-                    self.logger.warning("Last index entry past end of file. Deleting index.")
-                    index_valid = False
-                else:
-                    # Read the header of the last entry to get its size.
-                    self.file.seek(last_offset, io.SEEK_SET)
-                    buffer = self.file.read(MessageHeader.calcsize())
-                    self.file.seek(0, io.SEEK_SET)
-
-                    header = MessageHeader()
-                    header.unpack(buffer=buffer, warn_on_unrecognized=False)
-                    message_size_bytes = MessageHeader.calcsize() + header.payload_size_bytes
-
-                    index_size = last_offset + message_size_bytes
-                    if index_size != self.file_size:
-                        self.logger.warning("Size expected by index file does not match binary file. Deleting index.")
-                        index_valid = False
-
-            if not index_valid:
-                os.remove(index_path)
+            try:
+                self.logger.debug("Reading index file '%s'." % index_path)
+                self.index = FileIndex(index_path=index_path, data_path=path, delete_on_error=True)
+            except ValueError as e:
+                # Index file didn't match the data file and was deleted. Rebuild.
+                self.logger.warning('%s. Deleting index.' % str(e))
                 self.index = None
         else:
             self.index = None

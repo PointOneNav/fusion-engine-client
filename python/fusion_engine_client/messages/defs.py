@@ -74,6 +74,7 @@ class MessageType(IntEnum):
     GNSS_INFO = 10001
     GNSS_SATELLITE = 10002
     POSE_AUX = 10003
+    CALIBRATION_STATUS = 10004
 
     # Sensor measurement messages.
     IMU_MEASUREMENT = 11000

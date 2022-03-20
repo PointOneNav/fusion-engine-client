@@ -47,7 +47,7 @@ One FusionEngine or a Point One device (Atlas, Quectel LG69T, etc.), please cont
 - GCC, Clang, or Microsoft Visual Studio
 
 #### Python Support
-- Python 3.4 or later
+- Python 3.6 or later
 
 #### Documentation Build Support (Optional)
 - [Doxygen](https://www.doxygen.nl/) version 1.8.18
