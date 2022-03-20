@@ -612,6 +612,14 @@ class CalibrationStatus(MessagePayload):
 
     @classmethod
     def to_numpy(cls, messages: Sequence['CalibrationStatus']):
+        # In some cases, the early calibration status messages may not be complete, and may include entries with an
+        # unknown stage and nan values if the system is not fully initialized. Find the first non-nan entry.
+        if len(messages) > 0:
+            calibration_stage = np.array([int(m.calibration_stage) for m in messages], dtype=int)
+            idx = np.argmax(calibration_stage != CalibrationStage.UNKNOWN)
+            if idx > 0 or not calibration_stage[0] != CalibrationStage.UNKNOWN:
+                messages = messages[idx:]
+
         result = {
             'p1_time': np.array([float(m.p1_time) for m in messages]),
             'calibration_stage': np.array([int(m.calibration_stage) for m in messages], dtype=int),
@@ -626,4 +634,5 @@ class CalibrationStatus(MessagePayload):
             'mounting_angle_max_std_dev_deg': (messages[0].mounting_angle_max_std_dev_deg
                                                if len(messages) > 0 else np.full((3,), np.nan)),
         }
+
         return result
