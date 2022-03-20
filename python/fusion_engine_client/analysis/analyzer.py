@@ -125,6 +125,8 @@ class Analyzer(object):
         self.plots = {}
         self.summary = ''
 
+        self._mapbox_token_missing = False
+
         if self.output_dir is not None:
             if not os.path.exists(self.output_dir):
                 os.makedirs(self.output_dir)
@@ -313,17 +315,118 @@ class Analyzer(object):
                                       mode='lines', line={'color': 'blue'}),
                          1, 3)
 
-        figure.add_trace(go.Scattergl(x=time, y=pose_data.velocity_body_mps[0, :], name='X', legendgroup='x',
+        figure.add_trace(go.Scattergl(x=time, y=pose_data.velocity_std_body_mps[0, :], name='X', legendgroup='x',
                                       showlegend=False, mode='lines', line={'color': 'red'}),
                          2, 3)
-        figure.add_trace(go.Scattergl(x=time, y=pose_data.velocity_body_mps[1, :], name='Y', legendgroup='y',
+        figure.add_trace(go.Scattergl(x=time, y=pose_data.velocity_std_body_mps[1, :], name='Y', legendgroup='y',
                                       showlegend=False, mode='lines', line={'color': 'green'}),
                          2, 3)
-        figure.add_trace(go.Scattergl(x=time, y=pose_data.velocity_body_mps[2, :], name='Z', legendgroup='z',
+        figure.add_trace(go.Scattergl(x=time, y=pose_data.velocity_std_body_mps[2, :], name='Z', legendgroup='z',
                                       showlegend=False, mode='lines', line={'color': 'blue'}),
                          2, 3)
 
         self._add_figure(name="pose", figure=figure, title="Vehicle Pose vs. Time")
+
+    def plot_calibration(self):
+        """!
+        @brief Plot the calibration progress over time.
+        """
+        if self.output_dir is None:
+            return
+
+        # Read the pose data.
+        result = self.reader.read(message_types=[CalibrationStatus], **self.params)
+        cal_data = result[CalibrationStatus.MESSAGE_TYPE]
+
+        if len(cal_data.p1_time) == 0:
+            self.logger.info('No calibration data available.')
+            return
+
+        time = cal_data.p1_time - float(self.t0)
+        text = ["Time: %.3f sec (%.3f sec)" % (t, t + float(self.t0)) for t in time]
+
+        # Map calibration stage enum values onto a [0, N) range for plotting.
+        stage_map = {e.value: i for i, e in enumerate(CalibrationStage)}
+        calibration_stage = [stage_map[s] for s in cal_data.calibration_stage]
+
+        # Setup the figure.
+        figure = make_subplots(rows=4, cols=1, print_grid=False, shared_xaxes=True,
+                               subplot_titles=['<- Percent Complete // Stage ->', 'Mounting Angles',
+                                               'Mounting Angle Standard Deviation', 'Travel Distance'],
+                               specs=[[{"secondary_y": True}], [{}], [{}], [{}]])
+
+        figure['layout'].update(showlegend=True)
+        figure['layout']['xaxis'].update(title="Time (sec)")
+        for i in range(4):
+            figure['layout']['xaxis%d' % (i + 1)].update(showticklabels=True)
+        figure['layout']['yaxis1'].update(title="Percent Complete", range=[0, 100])
+        figure['layout']['yaxis2'].update(ticktext=['%s' % e.name for e in CalibrationStage],
+                                          tickvals=list(range(len(stage_map))))
+        figure['layout']['yaxis3'].update(title="Degrees")
+        figure['layout']['yaxis4'].update(title="Degrees")
+        figure['layout']['yaxis5'].update(title="Meters")
+
+        # Plot calibration stage and completion percentages.
+        figure.add_trace(go.Scattergl(x=time, y=cal_data.gyro_bias_percent_complete, name='Gyro Bias Completion',
+                                      text=text, mode='lines', line={'color': 'red'}),
+                         1, 1)
+        figure.add_trace(go.Scattergl(x=time, y=cal_data.accel_bias_percent_complete, name='Accel Bias Completion',
+                                      text=text, mode='lines', line={'color': 'green'}),
+                         1, 1)
+        figure.add_trace(go.Scattergl(x=time, y=cal_data.mounting_angle_percent_complete,
+                                      name='Mounting Angle Completion', text=text,
+                                      mode='lines', line={'color': 'blue'}),
+                         1, 1)
+
+        figure.add_trace(go.Scattergl(x=time, y=calibration_stage, name='Stage', text=text,
+                                      mode='lines', line={'color': 'black', 'dash': 'dash'}),
+                         1, 1, secondary_y=True)
+
+        # Plot mounting angles.
+        figure.add_trace(go.Scattergl(x=time, y=cal_data.ypr_deg[0, :], name='Yaw', legendgroup='y', text=text,
+                                      mode='lines', line={'color': 'red'}),
+                         2, 1)
+        figure.add_trace(go.Scattergl(x=time, y=cal_data.ypr_deg[1, :], name='Pitch', legendgroup='p', text=text,
+                                      mode='lines', line={'color': 'green'}),
+                         2, 1)
+        figure.add_trace(go.Scattergl(x=time, y=cal_data.ypr_deg[2, :], name='Roll', legendgroup='r', text=text,
+                                      mode='lines', line={'color': 'blue'}),
+                         2, 1)
+
+        figure.add_trace(go.Scattergl(x=time, y=cal_data.ypr_std_dev_deg[0, :], name='Yaw Std Dev', legendgroup='y',
+                                      text=text, mode='lines', line={'color': 'red'}),
+                         3, 1)
+        figure.add_trace(go.Scattergl(x=time, y=cal_data.ypr_std_dev_deg[1, :], name='Pitch Std Dev', legendgroup='p',
+                                      text=text, mode='lines', line={'color': 'green'}),
+                         3, 1)
+        figure.add_trace(go.Scattergl(x=time, y=cal_data.ypr_std_dev_deg[2, :], name='Roll Std Dev', legendgroup='r',
+                                      text=text, mode='lines', line={'color': 'blue'}),
+                         3, 1)
+
+        thresh_time = time[np.array((0, -1))]
+        figure.add_trace(go.Scattergl(x=thresh_time, y=[cal_data.mounting_angle_max_std_dev_deg[0]] * 2,
+                                      name='Max Yaw Std Dev', legendgroup='y',
+                                      mode='lines', line={'color': 'red', 'dash': 'dash'}),
+                         3, 1)
+        figure.add_trace(go.Scattergl(x=thresh_time, y=[cal_data.mounting_angle_max_std_dev_deg[1]] * 2,
+                                      name='Max Pitch Std Dev', legendgroup='p',
+                                      text=text, mode='lines', line={'color': 'green', 'dash': 'dash'}),
+                         3, 1)
+        figure.add_trace(go.Scattergl(x=thresh_time, y=[cal_data.mounting_angle_max_std_dev_deg[2]] * 2,
+                                      name='Max Roll Std Dev', legendgroup='r',
+                                      text=text, mode='lines', line={'color': 'blue', 'dash': 'dash'}),
+                         3, 1)
+
+        # Plot travel distance.
+        figure.add_trace(go.Scattergl(x=time, y=cal_data.travel_distance_m, name='Travel Distance', text=text,
+                                      mode='lines', line={'color': 'blue'}),
+                         4, 1)
+        figure.add_trace(go.Scattergl(x=thresh_time, y=[cal_data.min_travel_distance_m] * 2,
+                                      name='Min Travel Distance', text=text,
+                                      mode='lines', line={'color': 'black', 'dash': 'dash'}),
+                         4, 1)
+
+        self._add_figure(name="calibration", figure=figure, title="Calibration Status")
 
     def plot_solution_type(self):
         """!
@@ -365,6 +468,7 @@ class Analyzer(object):
         mapbox_token = self.get_mapbox_token(mapbox_token)
         if mapbox_token is None:
             self.logger.info('*' * 80 + '\n\nMapbox token not specified. Skipping map display.\n\n' + '*' * 80)
+            self._mapbox_token_missing = True
             return
 
         # Read the pose data.
@@ -937,7 +1041,7 @@ class Analyzer(object):
 <pre>{table_html}</pre>
 """
 
-        self._add_page('Event Log', body_html)
+        self._add_page(name='event_log', html_body=body_html, title="Event Log")
 
     def generate_index(self, auto_open=True):
         """!
@@ -949,6 +1053,11 @@ class Analyzer(object):
             self.logger.warning('No plots generated. Index will contain summary only.')
 
         self._set_data_summary()
+
+        if self._mapbox_token_missing:
+            self.summary += '\n\n<p style="color: red">Warning: Mapbox token not specified. ' \
+                            'Could not generate a trajectory map. Please specify --mapbox-token or set the ' \
+                            'MAPBOX_ACCESS_TOKEN environment variable.</p>\n'
 
         links = ''
         title_to_name = {e['title']: n for n, e in self.plots.items()}
@@ -1055,7 +1164,10 @@ class Analyzer(object):
 %(message_table)s
 """ % args
 
-    def _add_page(self, name, html_body):
+    def _add_page(self, name, html_body, title=None):
+        if title is None:
+            title = name
+
         if name in self.plots:
             raise ValueError('Plot "%s" already exists.' % name)
         elif name == 'index':
@@ -1065,14 +1177,14 @@ class Analyzer(object):
         self.logger.info('Creating %s...' % path)
 
         table_html = _page_template % {
-            'title': name,
+            'title': title,
             'body': html_body
         }
 
         with open(path, 'w') as fd:
             fd.write(table_html)
 
-        self.plots[name] = {'title': name, 'path': path}
+        self.plots[name] = {'title': title, 'path': path}
 
     def _add_figure(self, name, figure, title=None):
         if title is None:
@@ -1226,6 +1338,7 @@ Load and display information stored in a FusionEngine binary file.
     analyzer.plot_solution_type()
     analyzer.plot_pose()
     analyzer.plot_map(mapbox_token=options.mapbox_token)
+    analyzer.plot_calibration()
 
     if options.imu:
         analyzer.plot_imu()

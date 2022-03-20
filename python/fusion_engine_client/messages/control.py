@@ -1,6 +1,6 @@
 from enum import IntEnum
 
-from construct import (Struct, Int64ul, Int16ul, Int8ul, Padding, this, Bytes)
+from construct import (Struct, Int64ul, Int16ul, Int8ul, Padding, this, Bytes, PaddedString)
 
 from ..utils.construct_utils import AutoEnum
 from .defs import *
@@ -13,8 +13,7 @@ class CommandResponseMessage(MessagePayload):
     MESSAGE_TYPE = MessageType.COMMAND_RESPONSE
     MESSAGE_VERSION = 0
 
-    _FORMAT = '<IB3x'
-    _SIZE: int = struct.calcsize(_FORMAT)
+    _STRUCT = struct.Struct('<IB3x')
 
     def __init__(self):
         self.source_sequence_num = 0
@@ -26,9 +25,8 @@ class CommandResponseMessage(MessagePayload):
 
         initial_offset = offset
 
-        struct.pack_into(CommandResponseMessage._FORMAT, buffer, offset,
-                         self.source_sequence_num, self.response)
-        offset = CommandResponseMessage._SIZE
+        self._STRUCT.pack_into(buffer, offset, self.source_sequence_num, self.response)
+        offset = self._STRUCT.size
 
         if return_buffer:
             return buffer
@@ -39,8 +37,8 @@ class CommandResponseMessage(MessagePayload):
         initial_offset = offset
 
         (self.source_sequence_num, self.response) = \
-            struct.unpack_from(CommandResponseMessage._FORMAT, buffer=buffer, offset=offset)
-        offset = CommandResponseMessage._SIZE
+            self._STRUCT.unpack_from(buffer=buffer, offset=offset)
+        offset = self._STRUCT.size
 
         try:
             self.response = Response(self.response)
@@ -51,7 +49,7 @@ class CommandResponseMessage(MessagePayload):
 
     @classmethod
     def calcsize(cls) -> int:
-        return CommandResponseMessage._SIZE
+        return cls._STRUCT.size
 
     def __str__(self):
         string = f'Command Response\n'
@@ -70,8 +68,7 @@ class MessageRequest(MessagePayload):
     MESSAGE_TYPE = MessageType.MESSAGE_REQUEST
     MESSAGE_VERSION = 0
 
-    _FORMAT = '<H2x'
-    _SIZE: int = struct.calcsize(_FORMAT)
+    _STRUCT = struct.Struct('<H2x')
 
     def __init__(self, message_type: MessageType = MessageType.INVALID):
         self.message_type: MessageType = message_type
@@ -82,8 +79,8 @@ class MessageRequest(MessagePayload):
 
         initial_offset = offset
 
-        struct.pack_into(MessageRequest._FORMAT, buffer, offset, self.message_type.value)
-        offset += MessageRequest._SIZE
+        self._STRUCT.pack_into(buffer, offset, self.message_type.value)
+        offset += self._STRUCT.size
 
         if return_buffer:
             return buffer
@@ -93,8 +90,8 @@ class MessageRequest(MessagePayload):
     def unpack(self, buffer: bytes, offset: int = 0) -> int:
         initial_offset = offset
 
-        message_type = struct.unpack_from(MessageRequest._FORMAT, buffer=buffer, offset=offset)[0]
-        offset += MessageRequest._SIZE
+        (message_type,) = self._STRUCT.unpack_from(buffer=buffer, offset=offset)
+        offset += self._STRUCT._SIZE
 
         self.message_type = MessageType(message_type)
 
@@ -108,7 +105,7 @@ class MessageRequest(MessagePayload):
 
     @classmethod
     def calcsize(cls) -> int:
-        return MessageRequest._SIZE
+        return cls._STRUCT.size
 
 
 class ResetRequest(MessagePayload):
@@ -124,7 +121,7 @@ class ResetRequest(MessagePayload):
     ## Restart the navigation engine, but do not clear its position estimate.
     RESTART_NAVIGATION_ENGINE = 0x00000001
     ## Delete all GNSS corrections information.
-    RESET_CORRECTIONS = 0x00000002
+    RESET_GNSS_CORRECTIONS = 0x00000002
     ## @}
 
     ##
@@ -134,20 +131,24 @@ class ResetRequest(MessagePayload):
     RESET_POSITION_DATA = 0x00000100
     ## Delete all saved satellite ephemeris.
     RESET_EPHEMERIS = 0x00000200
+    ## Reset bias estimates, and other IMU corrections that are typically estimated quickly.
+    RESET_FAST_IMU_CORRECTIONS = 0x00000400
     ## @}
 
     ##
     # @name Clear Long Lived Data
     # @{
-    ## Reset all stored navigation engine data, including position, velocity, and orientation state, as well as training
-    ## data.
+    ##
+    # Reset all stored navigation engine data, including position, velocity, and orientation state, as well as all IMU
+    # corrections (fast and slow) and other training data.
     RESET_NAVIGATION_ENGINE_DATA = 0x00001000
 
-    ## Reset the device calibration data.
     ##
-    ## @note
-    ## This does _not_ reset any existing navigation engine state. It is recommended that you set @ref
-    ## RESET_NAVIGATION_ENGINE_DATA as well under normal circumstances.
+    # Reset the device calibration data.
+    #
+    # @note
+    # This does _not_ reset any existing navigation engine state. It is recommended that you set @ref
+    # RESET_NAVIGATION_ENGINE_DATA as well under normal circumstances.
     RESET_CALIBRATION_DATA = 0x00002000
     ## @}
 
@@ -162,36 +163,73 @@ class ResetRequest(MessagePayload):
     # @name Device Reset Bitmasks
     # @{
 
-    ## Perform a device hot start: reload the navigation engine and clear all runtime data (GNSS corrections, etc.), but
-    ## do not reset any saved state data (position, orientation, training parameters, calibration, etc.).
     ##
-    ## A hot start is typically used to restart the navigation engine in a deterministic state, particularly for logging
-    ## purposes.
+    # Perform a device hot start.
+    #
+    # A hot start is typically used to restart the navigation engine in a
+    # deterministic state, particularly for logging purposes.
+    #
+    # To be reset:
+    # - The navigation engine (@ref RESTART_NAVIGATION_ENGINE)
+    # - All runtime data (GNSS corrections (@ref RESET_GNSS_CORRECTIONS), etc.)
+    #
+    # Not reset:
+    # - Position, velocity, orientation (@ref RESET_POSITION_DATA)
+    # - Calibration data (@ref RESET_CALIBRATION_DATA)
+    # - User configuration settings (@ref RESET_CONFIG)
     HOT_START = 0x000000FF
 
-    ## Perform a device warm start: reload the navigation engine, resetting the saved position, velocity, and
-    ## orientation, but do not reset training parameters or calibration data.
     ##
-    ## A warm start is typically used to reset the device's position estimate in case of error.
+    # Perform a device warm start.
+    #
+    # A warm start is typically used to reset the device's estimate of position
+    # and kinematic state in case of error.
+    #
+    # To be reset:
+    # - The navigation engine (@ref RESTART_NAVIGATION_ENGINE)
+    # - All runtime data (GNSS corrections (@ref RESET_GNSS_CORRECTIONS), etc.)
+    # - Position, velocity, orientation (@ref RESET_POSITION_DATA)
+    #
+    # Not reset:
+    # - Fast IMU corrections (@ref RESET_FAST_IMU_CORRECTIONS)
+    # - Training parameters (slowly estimated IMU corrections, temperature
+    #   compensation, etc.; @ref RESET_NAVIGATION_ENGINE_DATA)
+    # - Calibration data (@ref RESET_CALIBRATION_DATA)
+    # - User configuration settings (@ref RESET_CONFIG)
     WARM_START = 0x000001FF
 
-    ## Perform a device cold start: reset the navigation engine including saved position, velocity, and orientation
-    ## state, but do not reset training data, calibration data, or user configuration parameters.
     ##
-    ## @note
-    ## To reset training or calibration data as well, set the @ref RESET_NAVIGATION_ENGINE_DATA and @ref
-    ## RESET_CALIBRATION_DATA bits.
+    # Perform a device cold start.
+    #
+    # A cold start is typically used to reset the device's state estimate in the
+    # case of error that cannot be resolved by a @ref WARM_START.
+    #
+    # To be reset:
+    # - The navigation engine (@ref RESTART_NAVIGATION_ENGINE)
+    # - All runtime data (GNSS corrections (@ref RESET_GNSS_CORRECTIONS), etc.)
+    # - Position, velocity, orientation (@ref RESET_POSITION_DATA)
+    # - Fast IMU corrections (@ref RESET_FAST_IMU_CORRECTIONS)
+    #
+    # Not reset:
+    # - Training parameters (slowly estimated IMU corrections, temperature
+    #   compensation, etc.; @ref RESET_NAVIGATION_ENGINE_DATA)
+    # - Calibration data (@ref RESET_CALIBRATION_DATA)
+    # - User configuration settings (@ref RESET_CONFIG)
+    #
+    # @note
+    # To reset training or calibration data as well, set the @ref
+    # RESET_NAVIGATION_ENGINE_DATA and @ref RESET_CALIBRATION_DATA bits.
     COLD_START = 0x00000FFF
 
-    ## Restart mask to set all persistent data, including calibration and user configuration, back to factory defaults.
     ##
-    ## Note: Upper 8 bits reserved for future use (e.g., hardware reset).
+    # Restart mask to set all persistent data, including calibration and user configuration, back to factory defaults.
+    #
+    # Note: Upper 8 bits reserved for future use (e.g., hardware reset).
     FACTORY_RESET = 0x00FFFFFF
 
     ## @}
 
-    _FORMAT = '<I'
-    _SIZE: int = struct.calcsize(_FORMAT)
+    _STRUCT = struct.Struct('<I')
 
     def __init__(self, reset_mask: int = 0):
         self.reset_mask = reset_mask
@@ -200,7 +238,7 @@ class ResetRequest(MessagePayload):
         if buffer is None:
             buffer = bytearray(self.calcsize())
 
-        struct.pack_into(ResetRequest._FORMAT, buffer, offset, self.reset_mask)
+        self._STRUCT.pack_into(buffer, offset, self.reset_mask)
 
         if return_buffer:
             return buffer
@@ -211,14 +249,14 @@ class ResetRequest(MessagePayload):
         initial_offset = offset
 
         (self.reset_mask,) = \
-            struct.unpack_from(ResetRequest._FORMAT, buffer=buffer, offset=offset)
+            self._STRUCT.unpack_from(buffer=buffer, offset=offset)
         offset += ResetRequest._SIZE
 
         return offset - initial_offset
 
     @classmethod
     def calcsize(cls) -> int:
-        return ResetRequest._SIZE
+        return cls._STRUCT.size
 
     def __str__(self):
         return 'Reset Request [mask=0x%08x]' % self.reset_mask
@@ -238,10 +276,10 @@ class VersionInfoMessage(MessagePayload):
         "hw_version_length" / Int8ul,
         "rx_version_length" / Int8ul,
         Padding(4),
-        "fw_version_str" / Bytes(this.fw_version_length),
-        "engine_version_str" / Bytes(this.engine_version_length),
-        "hw_version_str" / Bytes(this.hw_version_length),
-        "rx_version_str" / Bytes(this.rx_version_length),
+        "fw_version_str" / PaddedString(this.fw_version_length, 'utf8'),
+        "engine_version_str" / PaddedString(this.engine_version_length, 'utf8'),
+        "hw_version_str" / PaddedString(this.hw_version_length, 'utf8'),
+        "rx_version_str" / PaddedString(this.rx_version_length, 'utf8'),
     )
 
     def __init__(self):

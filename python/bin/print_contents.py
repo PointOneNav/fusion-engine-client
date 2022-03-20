@@ -115,7 +115,12 @@ other types of data.
         index_path = FileIndex.get_path(input_path)
         if os.path.exists(index_path):
             print("Reading index file '%s'." % index_path)
-            index_file = FileIndex(index_path=index_path)
+            try:
+                index_file = FileIndex(index_path=index_path, data_path=input_path, delete_on_error=True)
+            except ValueError as e:
+                print(str(e))
+
+        if index_file is not None:
             time_range.p1_t0 = index_file.t0
 
             # Limit to the user-specified time range.

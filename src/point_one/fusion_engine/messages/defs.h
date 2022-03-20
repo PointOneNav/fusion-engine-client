@@ -162,6 +162,7 @@ enum class MessageType : uint16_t {
   GNSS_INFO = 10001, ///< @ref GNSSInfoMessage
   GNSS_SATELLITE = 10002, ///< @ref GNSSSatelliteMessage
   POSE_AUX = 10003, ///< @ref PoseAuxMessage
+  CALIBRATION_STATUS = 10004, ///< @ref CalibrationStatusMessage
 
   // Sensor measurement messages.
   IMU_MEASUREMENT = 11000, ///< @ref IMUMeasurement
@@ -359,6 +360,9 @@ inline const char* to_string(MessageType type) {
 
     case MessageType::POSE_AUX:
       return "Pose Auxiliary";
+
+    case MessageType::CALIBRATION_STATUS:
+      return "Calibration Status";
 
     // Sensor measurement messages.
     case MessageType::IMU_MEASUREMENT:

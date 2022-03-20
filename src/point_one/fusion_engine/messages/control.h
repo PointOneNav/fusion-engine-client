@@ -104,7 +104,7 @@ struct alignas(4) ResetRequest : public MessagePayload {
   /** Restart the navigation engine, but do not clear its position estimate. */
   static constexpr uint32_t RESTART_NAVIGATION_ENGINE = 0x00000001;
   /** Delete all GNSS corrections information. */
-  static constexpr uint32_t RESET_CORRECTIONS = 0x00000002;
+  static constexpr uint32_t RESET_GNSS_CORRECTIONS = 0x00000002;
   /** @} */
 
   /**
@@ -118,6 +118,11 @@ struct alignas(4) ResetRequest : public MessagePayload {
   static constexpr uint32_t RESET_POSITION_DATA = 0x00000100;
   /** Delete all saved satellite ephemeris. */
   static constexpr uint32_t RESET_EPHEMERIS = 0x00000200;
+  /**
+   * Reset bias estimates, and other IMU corrections that are typically
+   * estimated quickly.
+   */
+  static constexpr uint32_t RESET_FAST_IMU_CORRECTIONS = 0x00000400;
   /** @} */
 
   /**
@@ -126,7 +131,8 @@ struct alignas(4) ResetRequest : public MessagePayload {
    */
   /**
    * Reset all stored navigation engine data, including position, velocity, and
-   * orientation state, as well as training data.
+   * orientation state, as well as all IMU corrections (fast and slow) and
+   * other training data.
    */
   static constexpr uint32_t RESET_NAVIGATION_ENGINE_DATA = 0x00001000;
   /**
@@ -153,29 +159,62 @@ struct alignas(4) ResetRequest : public MessagePayload {
    * @{
    */
   /**
-   * Perform a device hot start: reload the navigation engine and clear all
-   * runtime data (GNSS corrections, etc.), but do not reset any saved state
-   * data (position, orientation, training parameters, calibration, etc.).
+   * Perform a device hot start.
    *
    * A hot start is typically used to restart the navigation engine in a
    * deterministic state, particularly for logging purposes.
+   *
+   * To be reset:
+   * - The navigation engine (@ref RESTART_NAVIGATION_ENGINE)
+   * - All runtime data (GNSS corrections (@ref RESET_GNSS_CORRECTIONS), etc.)
+   *
+   * Not reset:
+   * - Position, velocity, orientation (@ref RESET_POSITION_DATA)
+   * - Fast IMU corrections (@ref RESET_FAST_IMU_CORRECTIONS)
+   * - Training parameters (slowly estimated IMU corrections, temperature
+   *   compensation, etc.; @ref RESET_NAVIGATION_ENGINE_DATA)
+   * - Calibration data (@ref RESET_CALIBRATION_DATA)
+   * - User configuration settings (@ref RESET_CONFIG)
    */
   static constexpr uint32_t HOT_START = 0x000000FF;
 
   /**
-   * Perform a device warm start: reload the navigation engine, resetting the
-   * saved position, velocity, and orientation, but do not reset training
-   * parameters or calibration data.
+   * Perform a device warm start.
    *
-   * A warm start is typically used to reset the device's position estimate in
-   * case of error.
+   * A warm start is typically used to reset the device's estimate of position
+   * and kinematic state in case of error.
+   *
+   * To be reset:
+   * - The navigation engine (@ref RESTART_NAVIGATION_ENGINE)
+   * - All runtime data (GNSS corrections (@ref RESET_GNSS_CORRECTIONS), etc.)
+   * - Position, velocity, orientation (@ref RESET_POSITION_DATA)
+   *
+   * Not reset:
+   * - Fast IMU corrections (@ref RESET_FAST_IMU_CORRECTIONS)
+   * - Training parameters (slowly estimated IMU corrections, temperature
+   *   compensation, etc.; @ref RESET_NAVIGATION_ENGINE_DATA)
+   * - Calibration data (@ref RESET_CALIBRATION_DATA)
+   * - User configuration settings (@ref RESET_CONFIG)
    */
   static constexpr uint32_t WARM_START = 0x000001FF;
 
   /**
-   * Perform a device cold start: reset the navigation engine including saved
-   * position, velocity, and orientation state, but do not reset training data,
-   * calibration data, or user configuration parameters.
+   * Perform a device cold start.
+   *
+   * A cold start is typically used to reset the device's state estimate in the
+   * case of error that cannot be resolved by a @ref WARM_START.
+   *
+   * To be reset:
+   * - The navigation engine (@ref RESTART_NAVIGATION_ENGINE)
+   * - All runtime data (GNSS corrections (@ref RESET_GNSS_CORRECTIONS), etc.)
+   * - Position, velocity, orientation (@ref RESET_POSITION_DATA)
+   * - Fast IMU corrections (@ref RESET_FAST_IMU_CORRECTIONS)
+   *
+   * Not reset:
+   * - Training parameters (slowly estimated IMU corrections, temperature
+   *   compensation, etc.; @ref RESET_NAVIGATION_ENGINE_DATA)
+   * - Calibration data (@ref RESET_CALIBRATION_DATA)
+   * - User configuration settings (@ref RESET_CONFIG)
    *
    * @note
    * To reset training or calibration data as well, set the @ref

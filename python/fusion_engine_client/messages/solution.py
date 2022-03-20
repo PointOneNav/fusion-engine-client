@@ -1,5 +1,6 @@
+from enum import IntEnum
 import struct
-from typing import List
+from typing import List, Sequence
 
 import numpy as np
 
@@ -15,8 +16,7 @@ class PoseMessage(MessagePayload):
 
     INVALID_UNDULATION = -32768
 
-    _FORMAT = '<Bx h ddd fff ddd fff ddd fff fff'
-    _SIZE: int = struct.calcsize(_FORMAT)
+    _STRUCT = struct.Struct('<Bx h ddd fff ddd fff ddd fff fff')
 
     def __init__(self):
         self.p1_time = Timestamp()
@@ -54,19 +54,20 @@ class PoseMessage(MessagePayload):
         else:
             undulation_cm = int(np.round(self.undulation_m * 1e2))
 
-        struct.pack_into(PoseMessage._FORMAT, buffer, offset,
-                         int(self.solution_type),
-                         undulation_cm,
-                         self.lla_deg[0], self.lla_deg[1], self.lla_deg[2],
-                         self.position_std_enu_m[0], self.position_std_enu_m[1], self.position_std_enu_m[2],
-                         self.ypr_deg[0], self.ypr_deg[1], self.ypr_deg[2],
-                         self.ypr_std_deg[0], self.ypr_std_deg[1], self.ypr_std_deg[2],
-                         self.velocity_body_mps[0], self.velocity_body_mps[1], self.velocity_body_mps[2],
-                         self.velocity_std_body_mps[0], self.velocity_std_body_mps[1], self.velocity_std_body_mps[2],
-                         self.aggregate_protection_level_m,
-                         self.horizontal_protection_level_m,
-                         self.vertical_protection_level_m)
-        offset += PoseMessage._SIZE
+        self._STRUCT.pack_into(
+            buffer, offset,
+            int(self.solution_type),
+            undulation_cm,
+            self.lla_deg[0], self.lla_deg[1], self.lla_deg[2],
+            self.position_std_enu_m[0], self.position_std_enu_m[1], self.position_std_enu_m[2],
+            self.ypr_deg[0], self.ypr_deg[1], self.ypr_deg[2],
+            self.ypr_std_deg[0], self.ypr_std_deg[1], self.ypr_std_deg[2],
+            self.velocity_body_mps[0], self.velocity_body_mps[1], self.velocity_body_mps[2],
+            self.velocity_std_body_mps[0], self.velocity_std_body_mps[1], self.velocity_std_body_mps[2],
+            self.aggregate_protection_level_m,
+            self.horizontal_protection_level_m,
+            self.vertical_protection_level_m)
+        offset += self._STRUCT.size
 
         if return_buffer:
             return buffer
@@ -90,8 +91,8 @@ class PoseMessage(MessagePayload):
          self.aggregate_protection_level_m,
          self.horizontal_protection_level_m,
          self.vertical_protection_level_m) = \
-            struct.unpack_from(PoseMessage._FORMAT, buffer=buffer, offset=offset)
-        offset += PoseMessage._SIZE
+            self._STRUCT.unpack_from(buffer=buffer, offset=offset)
+        offset += self._STRUCT.size
 
         if undulation_cm == PoseMessage.INVALID_UNDULATION:
             self.undulation_m = np.nan
@@ -124,7 +125,7 @@ class PoseMessage(MessagePayload):
 
     @classmethod
     def calcsize(cls) -> int:
-        return 2 * Timestamp.calcsize() + PoseMessage._SIZE
+        return 2 * Timestamp.calcsize() + cls._STRUCT.size
 
     @classmethod
     def to_numpy(cls, messages):
@@ -153,8 +154,7 @@ class PoseAuxMessage(MessagePayload):
     MESSAGE_TYPE = MessageType.POSE_AUX
     MESSAGE_VERSION = 0
 
-    _FORMAT = '<3f 9d 4d 3d 3f'
-    _SIZE: int = struct.calcsize(_FORMAT)
+    _STRUCT = struct.Struct('<3f 9d 4d 3d 3f')
 
     def __init__(self):
         self.p1_time = Timestamp()
@@ -175,13 +175,13 @@ class PoseAuxMessage(MessagePayload):
 
         offset += self.p1_time.pack(buffer, offset, return_buffer=False)
 
-        struct.pack_into(PoseAuxMessage._FORMAT, buffer, offset,
-                         *self.position_std_body_m,
-                         *self.position_cov_enu_m2.flat,
-                         *self.attitude_quaternion,
-                         *self.velocity_enu_mps,
-                         *self.velocity_std_enu_mps)
-        offset += PoseAuxMessage._SIZE
+        offset += self.pack_values(
+            self._STRUCT, buffer, offset,
+            self.position_std_body_m,
+            self.position_cov_enu_m2,
+            self.attitude_quaternion,
+            self.velocity_enu_mps,
+            self.velocity_std_enu_mps)
 
         if return_buffer:
             return buffer
@@ -193,13 +193,13 @@ class PoseAuxMessage(MessagePayload):
 
         offset += self.p1_time.unpack(buffer, offset)
 
-        MessageHeader.unpack_values(PoseAuxMessage._FORMAT, buffer, offset,
-                                    self.position_std_body_m,
-                                    self.position_cov_enu_m2,
-                                    self.attitude_quaternion,
-                                    self.velocity_enu_mps,
-                                    self.velocity_std_enu_mps)
-        offset += PoseAuxMessage._SIZE
+        offset += self.unpack_values(
+            self._STRUCT, buffer, offset,
+            self.position_std_body_m,
+            self.position_cov_enu_m2,
+            self.attitude_quaternion,
+            self.velocity_enu_mps,
+            self.velocity_std_enu_mps)
 
         return offset - initial_offset
 
@@ -211,7 +211,7 @@ class PoseAuxMessage(MessagePayload):
 
     @classmethod
     def calcsize(cls) -> int:
-        return Timestamp.calcsize() + PoseAuxMessage._SIZE
+        return Timestamp.calcsize() + cls._STRUCT.size
 
     @classmethod
     def to_numpy(cls, messages):
@@ -236,8 +236,7 @@ class GNSSInfoMessage(MessagePayload):
 
     INVALID_REFERENCE_STATION = 0xFFFFFFFF
 
-    _FORMAT = '<Ifffff'
-    _SIZE: int = struct.calcsize(_FORMAT)
+    _STRUCT = struct.Struct('<Ifffff')
 
     def __init__(self):
         self.p1_time = Timestamp()
@@ -265,14 +264,12 @@ class GNSSInfoMessage(MessagePayload):
 
         offset += self.last_differential_time.pack(buffer, offset, return_buffer=False)
 
-        struct.pack_into(GNSSInfoMessage._FORMAT, buffer, offset,
-                         self.reference_station_id,
-                         self.gdop, self.pdop, self.hdop, self.vdop,
-                         self.gps_time_std_sec)
-        offset += GNSSInfoMessage._SIZE
-
-        for sv in self.svs:
-            offset += sv.pack(buffer, offset, return_buffer=False)
+        self._STRUCT.pack_into(
+            buffer, offset,
+            self.reference_station_id,
+            self.gdop, self.pdop, self.hdop, self.vdop,
+            self.gps_time_std_sec)
+        offset += self._STRUCT.size
 
         if return_buffer:
             return buffer
@@ -290,8 +287,8 @@ class GNSSInfoMessage(MessagePayload):
         (self.reference_station_id,
          self.gdop, self.pdop, self.hdop, self.vdop,
          self.gps_time_std_sec) = \
-            struct.unpack_from(GNSSInfoMessage._FORMAT, buffer=buffer, offset=offset)
-        offset += GNSSInfoMessage._SIZE
+            self._STRUCT.unpack_from(buffer=buffer, offset=offset)
+        offset += self._STRUCT.size
 
         return offset - initial_offset
 
@@ -311,7 +308,7 @@ class GNSSInfoMessage(MessagePayload):
         return string
 
     def calcsize(self) -> int:
-        return 3 * Timestamp.calcsize() + GNSSInfoMessage._SIZE
+        return 3 * Timestamp.calcsize() + self._STRUCT.size
 
 
 class SatelliteInfo:
@@ -322,8 +319,7 @@ class SatelliteInfo:
 
     INVALID_CN0 = 0
 
-    _FORMAT = '<BBBBff'
-    _SIZE: int = struct.calcsize(_FORMAT)
+    _STRUCT = struct.Struct('<BBBBff')
 
     def __init__(self):
         self.system = SatelliteType.UNKNOWN
@@ -335,6 +331,9 @@ class SatelliteInfo:
         self.cn0_dbhz = np.nan
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        if buffer is None:
+            buffer = bytearray(self.calcsize())
+
         if np.isnan(self.cn0_dbhz):
             cn0_int = SatelliteInfo.INVALID_CN0
         else:
@@ -344,11 +343,9 @@ class SatelliteInfo:
             elif cn0_int < 1:
                 cn0_int = 1
 
-        args = (int(self.system), self.prn, self.usage, cn0_int, self.azimuth_deg, self.elevation_deg)
-        if buffer is None:
-            buffer = struct.pack(SatelliteInfo._FORMAT, *args)
-        else:
-            struct.pack_into(SatelliteInfo._FORMAT, buffer, offset, *args)
+        self._STRUCT.pack_into(
+            buffer, offset,
+            int(self.system), self.prn, self.usage, cn0_int, self.azimuth_deg, self.elevation_deg)
 
         if return_buffer:
             return buffer
@@ -357,7 +354,7 @@ class SatelliteInfo:
 
     def unpack(self, buffer: bytes, offset: int = 0) -> int:
         (system_int, self.prn, self.usage, cn0_int, self.azimuth_deg, self.elevation_deg) = \
-            struct.unpack_from(SatelliteInfo._FORMAT, buffer=buffer, offset=offset)
+            self._STRUCT.unpack_from(buffer=buffer, offset=offset)
 
         self.system = SatelliteType(system_int)
 
@@ -374,7 +371,7 @@ class SatelliteInfo:
 
     @classmethod
     def calcsize(cls) -> int:
-        return SatelliteInfo._SIZE
+        return cls._STRUCT.size
 
 
 class GNSSSatelliteMessage(MessagePayload):
@@ -384,8 +381,7 @@ class GNSSSatelliteMessage(MessagePayload):
     MESSAGE_TYPE = MessageType.GNSS_SATELLITE
     MESSAGE_VERSION = 0
 
-    _FORMAT = '<H2x'
-    _SIZE: int = struct.calcsize(_FORMAT)
+    _STRUCT = struct.Struct('<H2x')
 
     def __init__(self):
         self.p1_time = Timestamp()
@@ -402,8 +398,8 @@ class GNSSSatelliteMessage(MessagePayload):
         offset += self.p1_time.pack(buffer, offset, return_buffer=False)
         offset += self.gps_time.pack(buffer, offset, return_buffer=False)
 
-        struct.pack_into(GNSSSatelliteMessage._FORMAT, buffer, offset, len(self.svs))
-        offset += GNSSSatelliteMessage._SIZE
+        self._STRUCT.pack_into(buffer, offset, len(self.svs))
+        offset += self._STRUCT.size
 
         for sv in self.svs:
             offset += sv.pack(buffer, offset, return_buffer=False)
@@ -419,8 +415,8 @@ class GNSSSatelliteMessage(MessagePayload):
         offset += self.p1_time.unpack(buffer, offset)
         offset += self.gps_time.unpack(buffer, offset)
 
-        (num_svs,) = struct.unpack_from(GNSSSatelliteMessage._FORMAT, buffer=buffer, offset=offset)
-        offset += GNSSSatelliteMessage._SIZE
+        (num_svs,) = self._STRUCT.unpack_from(buffer=buffer, offset=offset)
+        offset += self._STRUCT.size
 
         self.svs = []
         for i in range(num_svs):
@@ -458,3 +454,176 @@ class GNSSSatelliteMessage(MessagePayload):
             'num_svs': np.array([len(m.svs) for m in messages], dtype=int),
         }
         return
+
+
+class CalibrationStage(IntEnum):
+    """!
+    @brief The stages of the device calibration process.
+    """
+    UNKNOWN = 0, ##< Calibration stage not known.
+    MOUNTING_ANGLE = 1, ##< Estimating IMU mounting angles.
+    DONE = 255, ##< Calibration complete.
+
+    def __str__(self):
+        return super().__str__().replace(self.__class__.__name__ + '.', '')
+
+
+class CalibrationStatus(MessagePayload):
+    """!
+    @brief Device calibration status update.
+    """
+    MESSAGE_TYPE = MessageType.CALIBRATION_STATUS
+    MESSAGE_VERSION = 0
+
+    _STRUCT = struct.Struct('<B3x 3f3f f 24x ?3x BBB 5x f3f')
+
+    def __init__(self):
+        ## The most recent P1 time, if available.
+        self.p1_time = Timestamp()
+
+        ## @name Calibration State Data
+        ## @{
+
+        ## The current calibration stage.
+        self.calibration_stage = CalibrationStage.UNKNOWN
+
+        ## The IMU yaw, pitch, and roll mounting angle offsets (in degrees).
+        self.ypr_deg = np.full((3,), np.nan)
+
+        ## The IMU yaw, pitch, and roll mounting angle standard deviations (in degrees).
+        self.ypr_std_dev_deg = np.full((3,), np.nan)
+
+        ## The accumulated calibration travel distance (in meters).
+        self.travel_distance_m = np.nan
+
+        ## @}
+
+        ## @name Calibration Process Status
+        ## @{
+
+        ## Set to `True` once the navigation engine state is validated after initialization.
+        self.state_verified = False
+
+        ## The completion percentage for gyro bias estimation.
+        self.gyro_bias_percent_complete = 0.0
+
+        ## The completion percentage for accelerometer bias estimation.
+        self.accel_bias_percent_complete = 0.0
+
+        ## The completion percentage for IMU mounting angle estimation.
+        self.mounting_angle_percent_complete = 0.0
+
+        ## @}
+
+        ## @name Calibration Thresholds
+        ## @{
+
+        ## The minimum accumulated calibration travel distance needed to complete mounting angle calibration.
+        self.min_travel_distance_m = np.nan
+
+        ## The max threshold for each of the YPR mounting angle states (in degrees), above which calibration is
+        ##  incomplete.
+        self.mounting_angle_max_std_dev_deg = np.full((3,), np.nan)
+
+        ## @}
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        if buffer is None:
+            buffer = bytearray(self.calcsize())
+
+        initial_offset = offset
+
+        offset += self.p1_time.pack(buffer, offset, return_buffer=False)
+
+        self._STRUCT.pack_into(
+            buffer, offset,
+            self.calibration_stage,
+            self.ypr_deg[0], self.ypr_deg[2], self.ypr_deg[3],
+            self.ypr_std_dev_deg[0], self.ypr_std_dev_deg[2], self.ypr_std_dev_deg[3],
+            self.travel_distance_m,
+            self.state_verified,
+            self.gyro_bias_percent_complete * 2.0,
+            self.accel_bias_percent_complete * 2.0,
+            self.mounting_angle_percent_complete * 2.0,
+            self.min_travel_distance_m,
+            self.mounting_angle_max_std_dev_deg[0], self.mounting_angle_max_std_dev_deg[1],
+            self.mounting_angle_max_std_dev_deg[2])
+        offset += self._STRUCT.size
+
+        if return_buffer:
+            return buffer
+        else:
+            return offset - initial_offset
+
+    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+        initial_offset = offset
+
+        offset += self.p1_time.unpack(buffer, offset)
+
+        (self.calibration_stage,
+         self.ypr_deg[0], self.ypr_deg[1], self.ypr_deg[2],
+         self.ypr_std_dev_deg[0], self.ypr_std_dev_deg[1], self.ypr_std_dev_deg[2],
+         self.travel_distance_m,
+         self.state_verified,
+         self.gyro_bias_percent_complete,
+         self.accel_bias_percent_complete,
+         self.mounting_angle_percent_complete,
+         self.min_travel_distance_m,
+         self.mounting_angle_max_std_dev_deg[0], self.mounting_angle_max_std_dev_deg[1],
+         self.mounting_angle_max_std_dev_deg[2]) = \
+            self._STRUCT.unpack_from(buffer=buffer, offset=offset)
+        offset += self._STRUCT.size
+
+        self.calibration_stage = CalibrationStage(self.calibration_stage)
+
+        self.gyro_bias_percent_complete /= 2.0
+        self.accel_bias_percent_complete /= 2.0
+        self.mounting_angle_percent_complete /= 2.0
+
+        return offset - initial_offset
+
+    def __repr__(self):
+        return '%s @ %s [stage=%s, mounting_angle=%.1f%%]' % (self.MESSAGE_TYPE.name, self.p1_time,
+                                                              str(self.calibration_stage),
+                                                              self.mounting_angle_percent_complete)
+
+    def __str__(self):
+        string = 'Calibration Status Message @ %s\n' % str(self.p1_time)
+        string += '  Stage: %s\n' % str(self.calibration_stage)
+        string += '  Completion: gyro=%.1f%%, accel=%.1f%%, mounting angles=%.1f%%\n' % \
+                  (self.gyro_bias_percent_complete, self.accel_bias_percent_complete,
+                   self.mounting_angle_percent_complete)
+        string += '  Distance traveled: %.3f km (min: %.1f km)%s\n' % \
+                  (self.travel_distance_m, self.min_travel_distance_m,
+                   ' [OK]' if self.travel_distance_m < self.min_travel_distance_m else '')
+        string += '  Yaw: %.1f deg (std dev: %.1f deg, max: %.1f deg)%s\n' % \
+                  (self.ypr_deg[0], self.ypr_std_dev_deg[0], self.mounting_angle_max_std_dev_deg[0],
+                   ' [OK]' if self.ypr_std_dev_deg[0] < self.mounting_angle_max_std_dev_deg[0] else '')
+        string += '  Pitch: %.1f deg (std dev: %.1f deg, max: %.1f deg)%s\n' % \
+                  (self.ypr_deg[1], self.ypr_std_dev_deg[1], self.mounting_angle_max_std_dev_deg[1],
+                   ' [OK]' if self.ypr_std_dev_deg[1] < self.mounting_angle_max_std_dev_deg[1] else '')
+        string += '  Roll: %.1f deg (std dev: %.1f deg, max: %.1f deg)%s\n' % \
+                  (self.ypr_deg[2], self.ypr_std_dev_deg[2], self.mounting_angle_max_std_dev_deg[2],
+                   ' [OK]' if self.ypr_std_dev_deg[2] < self.mounting_angle_max_std_dev_deg[2] else '')
+        return string
+
+    def calcsize(self) -> int:
+        return Timestamp.calcsize() + self._STRUCT.size
+
+    @classmethod
+    def to_numpy(cls, messages: Sequence['CalibrationStatus']):
+        result = {
+            'p1_time': np.array([float(m.p1_time) for m in messages]),
+            'calibration_stage': np.array([int(m.calibration_stage) for m in messages], dtype=int),
+            'ypr_deg': np.array([m.ypr_deg for m in messages]).T,
+            'ypr_std_dev_deg': np.array([m.ypr_std_dev_deg for m in messages]).T,
+            'travel_distance_m': np.array([m.travel_distance_m for m in messages]),
+            'state_verified': np.array([m.state_verified for m in messages], dtype=bool),
+            'gyro_bias_percent_complete': np.array([m.gyro_bias_percent_complete for m in messages]),
+            'accel_bias_percent_complete': np.array([m.accel_bias_percent_complete for m in messages]),
+            'mounting_angle_percent_complete': np.array([m.mounting_angle_percent_complete for m in messages]),
+            'min_travel_distance_m': messages[0].min_travel_distance_m if len(messages) > 0 else np.nan,
+            'mounting_angle_max_std_dev_deg': (messages[0].mounting_angle_max_std_dev_deg
+                                               if len(messages) > 0 else np.full((3,), np.nan)),
+        }
+        return result
