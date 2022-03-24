@@ -12,7 +12,7 @@ _logger = logging.getLogger('point_one.fusion_engine.messages.defs')
 
 
 class SatelliteType(IntEnum):
-    UNKNOWN = 1
+    UNKNOWN = 0
     GPS = 1
     GLONASS = 2
     LEO = 3
