@@ -220,7 +220,7 @@ class Analyzer(object):
         pose_data = result[PoseMessage.MESSAGE_TYPE]
 
         if len(pose_data.p1_time) == 0:
-            self.logger.info('No pose data available.')
+            self.logger.info('No pose data available. Skipping pose vs time plot.')
             return
 
         time = pose_data.p1_time - float(self.t0)
@@ -330,7 +330,7 @@ class Analyzer(object):
         cal_data = result[CalibrationStatus.MESSAGE_TYPE]
 
         if len(cal_data.p1_time) == 0:
-            self.logger.info('No calibration data available.')
+            self.logger.info('No calibration data available. Skipping calibration plot.')
             return
 
         time = cal_data.p1_time - float(self.t0)
@@ -431,7 +431,7 @@ class Analyzer(object):
         pose_data = result[PoseMessage.MESSAGE_TYPE]
 
         if len(pose_data.p1_time) == 0:
-            self.logger.info('No pose data available.')
+            self.logger.info('No pose data available. Skipping solution type plot.')
             return
 
         # Setup the figure.
@@ -467,7 +467,7 @@ class Analyzer(object):
         pose_data = result[PoseMessage.MESSAGE_TYPE]
 
         if len(pose_data.p1_time) == 0:
-            self.logger.info('No pose data available.')
+            self.logger.info('No pose data available. Skipping map display.')
             return
 
         # Remove invalid solutions.
@@ -537,7 +537,7 @@ class Analyzer(object):
         data = result[IMUMeasurement.MESSAGE_TYPE]
 
         if len(data.p1_time) == 0:
-            self.logger.info('No IMU data available.')
+            self.logger.info('No IMU data available. Skipping plot.')
             return
 
         time = data.p1_time - float(self.t0)
