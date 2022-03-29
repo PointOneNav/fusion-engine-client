@@ -656,7 +656,7 @@ class Analyzer(object):
         data = result[ProfileSystemStatusMessage.MESSAGE_TYPE]
 
         if len(data.system_time) == 0:
-            self.logger.info('No system profiling data available.')
+            self.logger.info('No system profiling data available. Skipping plot.')
             return
 
         time = data.system_time - self.system_t0
@@ -711,7 +711,7 @@ class Analyzer(object):
         data = result[ProfileExecutionStatsMessage.MESSAGE_TYPE]
 
         if len(data.system_time_sec) == 0:
-            self.logger.info('No execution profiling stats data available.')
+            self.logger.info('No execution profiling stats data available. Skipping plot.')
             return
 
         # Read the last task name message to map IDs to names.
@@ -833,7 +833,7 @@ class Analyzer(object):
         data = result[ProfileCounterMessage.MESSAGE_TYPE]
 
         if len(data.system_time_sec) == 0:
-            self.logger.info('No counter profiling stats data available.')
+            self.logger.info('No counter profiling stats data available. Skipping execution stats plot.')
             return
 
         # Read the last task name message to map IDs to names.
@@ -921,7 +921,7 @@ class Analyzer(object):
         data = result[ProfileFreeRtosSystemStatusMessage.MESSAGE_TYPE]
 
         if len(data.system_time_sec) == 0:
-            self.logger.info('No FreeRTOS system profiling data available.')
+            self.logger.info('No FreeRTOS system profiling data available. Skipping plot.')
             return
 
         # Read the last task name message to map IDs to names.
@@ -983,7 +983,7 @@ class Analyzer(object):
         data = result[ProfilePipelineMessage.MESSAGE_TYPE]
 
         if len(data.system_time) == 0:
-            self.logger.info('No measurement profiling data available.')
+            self.logger.info('No measurement profiling data available. Skipping plot.')
             return
 
         # Read the last pipeline definition message to map IDs to names.
@@ -1024,7 +1024,7 @@ class Analyzer(object):
         data = result[ProfileExecutionMessage.MESSAGE_TYPE]
 
         if len(data.points) == 0:
-            self.logger.info('No execution profiling data available.')
+            self.logger.info('No execution profiling data available. Skipping code execution plot.')
             return
 
         # Read the last pipeline definition message to map IDs to names.
