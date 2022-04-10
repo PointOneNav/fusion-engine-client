@@ -220,7 +220,7 @@ class Analyzer(object):
         pose_data = result[PoseMessage.MESSAGE_TYPE]
 
         if len(pose_data.p1_time) == 0:
-            self.logger.info('No pose data available.')
+            self.logger.info('No pose data available. Skipping pose vs time plot.')
             return
 
         time = pose_data.p1_time - float(self.t0)
@@ -330,7 +330,7 @@ class Analyzer(object):
         cal_data = result[CalibrationStatus.MESSAGE_TYPE]
 
         if len(cal_data.p1_time) == 0:
-            self.logger.info('No calibration data available.')
+            self.logger.info('No calibration data available. Skipping calibration plot.')
             return
 
         time = cal_data.p1_time - float(self.t0)
@@ -431,7 +431,7 @@ class Analyzer(object):
         pose_data = result[PoseMessage.MESSAGE_TYPE]
 
         if len(pose_data.p1_time) == 0:
-            self.logger.info('No pose data available.')
+            self.logger.info('No pose data available. Skipping solution type plot.')
             return
 
         # Setup the figure.
@@ -448,6 +448,67 @@ class Analyzer(object):
         figure.add_trace(go.Scattergl(x=time, y=pose_data.solution_type, text=text, mode='markers'), 1, 1)
 
         self._add_figure(name="solution_type", figure=figure, title="Solution Type")
+
+    def plot_topocentric(self):
+        """!
+        @brief Generate a topocentric (top-down) plot of position displacement.
+        """
+        if self.output_dir is None:
+            return
+
+        # Read the pose data.
+        result = self.reader.read(message_types=[PoseMessage], **self.params)
+        pose_data = result[PoseMessage.MESSAGE_TYPE]
+
+        if len(pose_data.p1_time) == 0:
+            self.logger.info('No pose data available. Skipping topocentric plot.')
+            return
+
+        # Setup the figure.
+        figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=True, subplot_titles=['Displacement'])
+        figure['layout']['xaxis'].update(title="East (m)")
+        figure['layout']['xaxis'].update(title="North (m)")
+
+        # Remove invalid solutions.
+        valid_idx = np.logical_and(~np.isnan(pose_data.p1_time), pose_data.solution_type != SolutionType.Invalid)
+        if not np.any(valid_idx):
+            self.logger.info('No valid position solutions detected.')
+            return
+
+        time = pose_data.p1_time[valid_idx] - float(self.t0)
+        solution_type = pose_data.solution_type[valid_idx]
+        lla_deg = pose_data.lla_deg[:, valid_idx]
+        std_enu_m = pose_data.position_std_enu_m[:, valid_idx]
+
+        # Convert to ENU displacement with respect to the median position (we use median instead of centroid just in
+        # case there are one or two huge outliers).
+        position_ecef_m = np.array(geodetic2ecef(lat=lla_deg[0, :], lon=lla_deg[1, :], alt=lla_deg[0, :], deg=True))
+        center_ecef_m = np.median(position_ecef_m, axis=1)
+        displacement_ecef_m = position_ecef_m - center_ecef_m.reshape(3, 1)
+        c_enu_ecef = get_enu_rotation_matrix(*lla_deg[0:2, 0], deg=True)
+        displacement_enu_m = c_enu_ecef.dot(displacement_ecef_m)
+
+        # Plot the data.
+        def _plot_data(name, idx, marker_style=None):
+            style = {'mode': 'markers', 'marker': {'size': 8}, 'showlegend': True}
+            if marker_style is not None:
+                style['marker'].update(marker_style)
+
+            if np.any(idx):
+                text = ["Time: %.3f sec (%.3f sec)<br>Delta (ENU): (%.2f, %.2f, %.2f) m" \
+                        "<br>Std (ENU): (%.2f, %.2f, %.2f) m" %
+                        (t, t + float(self.t0), *delta, *std)
+                        for t, delta, std in zip(time[idx], displacement_enu_m[:, idx].T, std_enu_m[:, idx].T)]
+                figure.add_trace(go.Scattergl(x=displacement_enu_m[0, idx], y=displacement_enu_m[1, idx], name=name,
+                                              text=text, **style), 1, 1)
+            else:
+                # If there's no data, draw a dummy trace so it shows up in the legend anyway.
+                figure.add_trace(go.Scattergl(x=[np.nan], y=[np.nan], name=name, visible='legendonly', **style), 1, 1)
+
+        for type, info in _SOLUTION_TYPE_MAP.items():
+            _plot_data(info.name, solution_type == type, marker_style=info.style)
+
+        self._add_figure(name="top_down", figure=figure, title="Top-Down Displacement (Topocentric)")
 
     def plot_map(self, mapbox_token):
         """!
@@ -467,7 +528,7 @@ class Analyzer(object):
         pose_data = result[PoseMessage.MESSAGE_TYPE]
 
         if len(pose_data.p1_time) == 0:
-            self.logger.info('No pose data available.')
+            self.logger.info('No pose data available. Skipping map display.')
             return
 
         # Remove invalid solutions.
@@ -537,7 +598,7 @@ class Analyzer(object):
         data = result[IMUMeasurement.MESSAGE_TYPE]
 
         if len(data.p1_time) == 0:
-            self.logger.info('No IMU data available.')
+            self.logger.info('No IMU data available. Skipping plot.')
             return
 
         time = data.p1_time - float(self.t0)
@@ -894,6 +955,7 @@ Load and display information stored in a FusionEngine binary file.
     analyzer.plot_time_scale()
     analyzer.plot_solution_type()
     analyzer.plot_pose()
+    analyzer.plot_topocentric()
     analyzer.plot_map(mapbox_token=options.mapbox_token)
     analyzer.plot_calibration()
 
