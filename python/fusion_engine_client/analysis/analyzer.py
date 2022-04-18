@@ -239,9 +239,8 @@ class Analyzer(object):
                                                'Attitude Std', 'ENU Position Std', 'Velocity Std'])
 
         figure['layout'].update(showlegend=True)
-        figure['layout']['xaxis'].update(title="Time (sec)")
         for i in range(6):
-            figure['layout']['xaxis%d' % (i + 1)].update(showticklabels=True)
+            figure['layout']['xaxis%d' % (i + 1)].update(title="Time (sec)", showticklabels=True)
         figure['layout']['yaxis1'].update(title="Degrees")
         figure['layout']['yaxis2'].update(title="Meters")
         figure['layout']['yaxis3'].update(title="Meters/Second")
@@ -347,9 +346,8 @@ class Analyzer(object):
                                specs=[[{"secondary_y": True}], [{}], [{}], [{}]])
 
         figure['layout'].update(showlegend=True)
-        figure['layout']['xaxis'].update(title="Time (sec)")
         for i in range(4):
-            figure['layout']['xaxis%d' % (i + 1)].update(showticklabels=True)
+            figure['layout']['xaxis%d' % (i + 1)].update(title="Time (sec)", showticklabels=True)
         figure['layout']['yaxis1'].update(title="Percent Complete", range=[0, 100])
         figure['layout']['yaxis2'].update(ticktext=['%s' % e.name for e in CalibrationStage],
                                           tickvals=list(range(len(stage_map))))
@@ -607,9 +605,8 @@ class Analyzer(object):
                                subplot_titles=['Acceleration', 'Gyro'])
 
         figure['layout'].update(showlegend=True)
-        figure['layout']['xaxis'].update(title="Time (sec)")
-        figure['layout']['xaxis1'].update(showticklabels=True)
-        figure['layout']['xaxis2'].update(showticklabels=True)
+        figure['layout']['xaxis1'].update(title="Time (sec)", showticklabels=True)
+        figure['layout']['xaxis2'].update(title="Time (sec)", showticklabels=True)
         figure['layout']['yaxis1'].update(title="Acceleration (m/s^2)")
         figure['layout']['yaxis1'].update(title="Rotation Rate (rad/s)")
 
