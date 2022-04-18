@@ -713,9 +713,8 @@ class Analyzer(object):
                                subplot_titles=['CPU Usage', 'Memory Usage', 'Queue Depth'])
 
         figure['layout'].update(showlegend=True)
-        figure['layout']['xaxis'].update(title="System Time (sec)")
         for i in range(3):
-            figure['layout']['xaxis%d' % (i + 1)].update(showticklabels=True)
+            figure['layout']['xaxis%d' % (i + 1)].update(title="System Time (sec)", showticklabels=True)
         figure['layout']['yaxis1'].update(title="CPU (%)", range=[0, 100])
         figure['layout']['yaxis2'].update(title="Memory (MB)")
         figure['layout']['yaxis3'].update(title="# Entries", rangemode="tozero")
@@ -781,9 +780,8 @@ class Analyzer(object):
                                                'Number of Executions Per Update'])
 
         figure['layout'].update(showlegend=True)
-        figure['layout']['xaxis'].update(title="System Time (sec)")
         for i in range(3):
-            figure['layout']['xaxis%d' % (i + 1)].update(showticklabels=True)
+            figure['layout']['xaxis%d' % (i + 1)].update(title="System Time (sec)", showticklabels=True)
         figure['layout']['yaxis1'].update(title="Processing Time (ms)")
         figure['layout']['yaxis2'].update(title="Processing Time (ms)")
         figure['layout']['yaxis3'].update(title="Number of Executions", rangemode="nonnegative")
@@ -833,9 +831,8 @@ class Analyzer(object):
                                                'Serial Write Rates'])
 
         figure['layout'].update(showlegend=True)
-        figure['layout']['xaxis'].update(title="System Time (sec)")
         for i in range(2):
-            figure['layout']['xaxis%d' % (i + 1)].update(showticklabels=True)
+            figure['layout']['xaxis%d' % (i + 1)].update(title="System Time (sec)", showticklabels=True)
         figure['layout']['yaxis1'].update(title="Error Count", rangemode="nonnegative")
         figure['layout']['yaxis2'].update(title="Buffer Free (kB)", rangemode="tozero")
         figure['layout']['yaxis3'].update(title="Message Rate (bps)", rangemode="nonnegative")
@@ -919,9 +916,8 @@ class Analyzer(object):
                                                'Message Buffer Free Space', 'Measurement Rates'])
 
         figure['layout'].update(showlegend=True)
-        figure['layout']['xaxis'].update(title="System Time (sec)")
         for i in range(2):
-            figure['layout']['xaxis%d' % (i + 1)].update(showticklabels=True)
+            figure['layout']['xaxis%d' % (i + 1)].update(title="System Time (sec)", showticklabels=True)
         figure['layout']['yaxis1'].update(title="Queue Depth (measurements)", rangemode="nonnegative")
         figure['layout']['yaxis2'].update(title="Queue Age (ms)", rangemode="nonnegative")
         figure['layout']['yaxis3'].update(title="Buffer Free (bytes)", rangemode="tozero")
@@ -990,9 +986,8 @@ class Analyzer(object):
                                subplot_titles=['CPU Usage', 'Stack High Water Marks', 'Dynamic Memory Free'])
 
         figure['layout'].update(showlegend=True)
-        figure['layout']['xaxis'].update(title="System Time (sec)")
         for i in range(3):
-            figure['layout']['xaxis%d' % (i + 1)].update(showticklabels=True)
+            figure['layout']['xaxis%d' % (i + 1)].update(title="System Time (sec)", showticklabels=True)
         figure['layout']['yaxis1'].update(title="CPU (%)", range=[0, 100])
         figure['layout']['yaxis2'].update(title="Memory Free (B)", rangemode="tozero")
         figure['layout']['yaxis3'].update(title="Memory Free (KB)", rangemode="tozero")
