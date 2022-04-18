@@ -467,7 +467,7 @@ class Analyzer(object):
         # Setup the figure.
         figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=True, subplot_titles=['Displacement'])
         figure['layout']['xaxis'].update(title="East (m)")
-        figure['layout']['xaxis'].update(title="North (m)")
+        figure['layout']['yaxis'].update(title="North (m)")
 
         # Remove invalid solutions.
         valid_idx = np.logical_and(~np.isnan(pose_data.p1_time), pose_data.solution_type != SolutionType.Invalid)
