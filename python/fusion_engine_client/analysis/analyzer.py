@@ -498,6 +498,31 @@ class Analyzer(object):
         c_enu_ecef = get_enu_rotation_matrix(*lla_deg[0:2, 0], deg=True)
         displacement_enu_m = c_enu_ecef.dot(displacement_ecef_m)
 
+        # Add statistics to the figure title.
+        format = 'Mean: %(mean).2f m, Median: %(median).2f m, Min: %(min).2f m, Max: %(max).2f m, Std Dev: %(std).2f m'
+        displacement_3d_m = np.linalg.norm(displacement_enu_m, axis=0)
+        extra_text = '[All] ' + format % {
+            'mean': np.mean(displacement_3d_m),
+            'median': np.median(displacement_3d_m),
+            'min': np.min(displacement_3d_m),
+            'max': np.max(displacement_3d_m),
+            'std': np.std(displacement_3d_m),
+        }
+
+        idx = solution_type == SolutionType.RTKFixed
+        if np.any(idx):
+            displacement_3d_m = np.linalg.norm(displacement_enu_m[:, idx], axis=0)
+            extra_text += '<br>[Fixed] ' + format % {
+                'mean': np.mean(displacement_3d_m),
+                'median': np.median(displacement_3d_m),
+                'min': np.min(displacement_3d_m),
+                'max': np.max(displacement_3d_m),
+                'std': np.std(displacement_3d_m),
+            }
+
+        topo_figure.update_layout(title_text=extra_text)
+        time_figure.update_layout(title_text=extra_text)
+
         # Plot the data.
         def _plot_data(name, idx, marker_style=None):
             style = {'mode': 'markers', 'marker': {'size': 8}, 'showlegend': True, 'legendgroup': name}
