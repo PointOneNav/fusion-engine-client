@@ -729,13 +729,16 @@ class Analyzer(object):
                             'Could not generate a trajectory map. Please specify --mapbox-token or set the ' \
                             'MAPBOX_ACCESS_TOKEN environment variable.</p>\n'
 
+        index_path = os.path.join(self.output_dir, self.prefix + 'index.html')
+        index_dir = os.path.dirname(index_path)
+
         links = ''
         title_to_name = {e['title']: n for n, e in self.plots.items()}
         titles = sorted(title_to_name.keys())
         for title in titles:
             name = title_to_name[title]
             entry = self.plots[name]
-            link = '<br><a href="%s" target="_blank">%s</a>' % (os.path.relpath(entry['path'], self.output_dir), title)
+            link = '<br><a href="%s" target="_blank">%s</a>' % (os.path.relpath(entry['path'], index_dir), title)
             links += link
 
         index_html = _page_template % {
@@ -743,7 +746,6 @@ class Analyzer(object):
             'body': links + '\n<pre>' + self.summary.replace('\n', '<br>') + '</pre>'
         }
 
-        index_path = os.path.join(self.output_dir, self.prefix + 'index.html')
         with open(index_path, 'w') as f:
             self.logger.info('Creating %s...' % index_path)
             f.write(index_html)
