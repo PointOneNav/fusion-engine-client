@@ -556,8 +556,8 @@ class Analyzer(object):
         for type, info in _SOLUTION_TYPE_MAP.items():
             _plot_data(info.name, solution_type == type, marker_style=info.style)
 
-        self._add_figure(name="top_down", figure=topo_figure, title="Top-Down Displacement (Topocentric)")
-        self._add_figure(name="displacement", figure=time_figure, title="Displacement vs. Time")
+        self._add_figure(name="top_down", figure=topo_figure, title="Displacement: Top-Down (Topocentric)")
+        self._add_figure(name="displacement", figure=time_figure, title="Displacement: vs. Time")
 
     def plot_map(self, mapbox_token):
         """!
