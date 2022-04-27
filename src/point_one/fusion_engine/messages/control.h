@@ -155,6 +155,14 @@ struct alignas(4) ResetRequest : public MessagePayload {
   /** @} */
 
   /**
+   * @name Restart Hardware Modules
+   * @{
+   */
+  /** Restart the GNSS measurement engine. */
+  static constexpr uint32_t RESTART_GNSS_MEASUREMENT_ENGINE = 0x01000000;
+  /** @} */
+
+  /**
    * @name Device Reset Bitmasks
    * @{
    */
@@ -175,6 +183,7 @@ struct alignas(4) ResetRequest : public MessagePayload {
    *   compensation, etc.; @ref RESET_NAVIGATION_ENGINE_DATA)
    * - Calibration data (@ref RESET_CALIBRATION_DATA)
    * - User configuration settings (@ref RESET_CONFIG)
+   * - GNSS Measurement engine hardware (@ref RESTART_GNSS_MEASUREMENT_ENGINE)
    */
   static constexpr uint32_t HOT_START = 0x000000FF;
 
@@ -195,6 +204,7 @@ struct alignas(4) ResetRequest : public MessagePayload {
    *   compensation, etc.; @ref RESET_NAVIGATION_ENGINE_DATA)
    * - Calibration data (@ref RESET_CALIBRATION_DATA)
    * - User configuration settings (@ref RESET_CONFIG)
+   * - GNSS Measurement engine hardware (@ref RESTART_GNSS_MEASUREMENT_ENGINE)
    */
   static constexpr uint32_t WARM_START = 0x000001FF;
 
@@ -209,6 +219,7 @@ struct alignas(4) ResetRequest : public MessagePayload {
    * - All runtime data (GNSS corrections (@ref RESET_GNSS_CORRECTIONS), etc.)
    * - Position, velocity, orientation (@ref RESET_POSITION_DATA)
    * - Fast IMU corrections (@ref RESET_FAST_IMU_CORRECTIONS)
+   * - GNSS Measurement engine hardware (@ref RESTART_GNSS_MEASUREMENT_ENGINE)
    *
    * Not reset:
    * - Training parameters (slowly estimated IMU corrections, temperature
@@ -220,7 +231,7 @@ struct alignas(4) ResetRequest : public MessagePayload {
    * To reset training or calibration data as well, set the @ref
    * RESET_NAVIGATION_ENGINE_DATA and @ref RESET_CALIBRATION_DATA bits.
    */
-  static constexpr uint32_t COLD_START = 0x00000FFF;
+  static constexpr uint32_t COLD_START = 0x01000FFF;
 
   /**
    * Restart mask to set all persistent data, including calibration and user
@@ -228,7 +239,7 @@ struct alignas(4) ResetRequest : public MessagePayload {
    *
    * Note: Upper 8 bits reserved for future use (e.g., hardware reset).
    */
-  static constexpr uint32_t FACTORY_RESET = 0x00FFFFFF;
+  static constexpr uint32_t FACTORY_RESET = 0x01FFFFFF;
   /** @} */
 
   /** Bit mask of functionality to reset. */
