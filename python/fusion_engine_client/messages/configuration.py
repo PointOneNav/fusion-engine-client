@@ -26,6 +26,8 @@ class ConfigType(IntEnum):
     DEVICE_COARSE_ORIENTATION = 17
     GNSS_LEVER_ARM = 18
     OUTPUT_LEVER_ARM = 19
+    VEHICLE_DETAILS = 20
+    WHEEL_CONFIG = 21
     UART0_BAUD = 256
     UART1_BAUD = 257
 
@@ -48,6 +50,73 @@ class Direction(IntEnum):
     DOWN = 5,
     ## Error value.
     INVALID = 255
+
+    def __str__(self):
+        return super().__str__().replace(self.__class__.__name__ + '.', '')
+
+class VehicleModel(IntEnum):
+    UNKNOWN_VEHICLE = 0,
+    DATASPEED_CD4 = 1,
+    ## In general, all J1939 vehicles support a subset of the J1939 standard and
+    ## may be set to vehicle model `J1939`. Their 29-bit CAN IDs may differ
+    ## based on how the platform assigns message priorities and source
+    ## addresses, but the underlying program group number (PGN) and message
+    ## contents will be consistent.
+    ##
+    ## For most vehicles, it is not necessary to specify and particular make and
+    ## model.
+    J1939 = 2,
+
+    LEXUS_CT200H = 20,
+
+    KIA_SORENTO = 40,
+    KIA_SPORTAGE = 41,
+
+    AUDI_Q7 = 60,
+    AUDI_A8L = 61,
+
+    TESLA_MODEL_X = 80,
+    TESLA_MODEL_3 = 81,
+
+    HYUNDAI_ELANTRA = 100,
+
+    PEUGEOT_206 = 120,
+
+    MAN_TGX = 140,
+
+    FACTION = 160,
+
+    LINCOLN_MKZ = 180,
+
+    BMW_7 = 200
+
+    def __str__(self):
+        return super().__str__().replace(self.__class__.__name__ + '.', '')
+
+class WheelSensorType(IntEnum):
+    NONE = 0,
+    TICK_RATE = 1,
+    TICKS = 2,
+    WHEEL_SPEED = 3,
+    VEHICLE_SPEED = 4
+
+    def __str__(self):
+        return super().__str__().replace(self.__class__.__name__ + '.', '')
+
+class AppliedSpeedType(IntEnum):
+    APPLIED_NONE = 0,
+    REAR_WHEELS = 1,
+    FRONT_WHEELS = 2,
+    FRONT_AND_REAR_WHEELS = 3,
+    VEHICLE_BODY = 4
+
+    def __str__(self):
+        return super().__str__().replace(self.__class__.__name__ + '.', '')
+
+class SteeringType(IntEnum):
+    UNKNOWN_STEERING = 0,
+    FRONT_STEERING = 1,
+    FRONT_AND_REAR_STEERING = 2
 
     def __str__(self):
         return super().__str__().replace(self.__class__.__name__ + '.', '')
@@ -179,6 +248,68 @@ class _ConfigClassGenerator:
         Padding(2),
     )
 
+    class VehicleDetails(NamedTuple):
+        """!
+        @brief Information including vehicle model and dimensions.
+        """
+        vehicle_model: VehicleModel = VehicleModel.UNKNOWN_VEHICLE
+        ## The distance between the front axle and rear axle (in meters).
+        wheelbase_m: float = 0
+        ## The distance between the two front wheels (in meters).
+        front_track_width_m: float = 0
+        ## The distance between the two rear wheels (in meters).
+        rear_track_width_m: float = 0
+
+    VehicleDetailsConstruct = Struct(
+        "vehicle_model" / AutoEnum(Int16ul, VehicleModel),
+        Padding(10),
+        "wheelbase_m" / Float32l,
+        "front_track_width_m" / Float32l,
+        "rear_track_width_m" / Float32l,
+    )
+
+    class WheelConfig(NamedTuple):
+        """!
+        Vehicle/wheel speed measurement configuration settings.
+        """
+        ## The type of vehicle/wheel speed measurements produced by the vehicle.
+        wheel_sensor_type: WheelSensorType = WheelSensorType.NONE
+        ## The type of vehicle/wheel speed measurements to be applied.
+        applied_speed_type: AppliedSpeedType = AppliedSpeedType.REAR_WHEELS
+        ## Indication of which of the vehicle's wheels are steered.
+        steering_type: SteeringType = SteeringType.UNKNOWN_STEERING
+        ## Measures how often wheel tick measurements are updated.
+        wheel_update_interval_sec: float = math.nan
+        ## Ratio between steering wheel angle and road wheel angle.
+        steering_ratio: float = math.nan
+        ## Wheel tick distance (in meters).
+        wheel_ticks_to_m: float = math.nan
+        ## The maximum value that wheel ticks will increment to before
+        # restarting to zero.
+        wheel_tick_max_value: int = 0
+        ## Determines whether wheel ticks are signed based on the direction
+        # the wheels are turning.
+        wheel_ticks_signed: bool = False
+        ## Determines if wheel tick value solely increases, regardless of the
+        # direction the wheels are turning. To be used in conjunction with
+        # wheel_ticks_signed.
+        wheel_ticks_always_increase: bool = True
+
+    WheelConfigConstruct = Struct(
+        "wheel_sensor_type" / AutoEnum(Int8ul, WheelSensorType),
+        "applied_speed_type" / AutoEnum(Int8ul, AppliedSpeedType),
+        "steering_type" / AutoEnum(Int8ul, SteeringType),
+        Padding(1),
+        "wheel_update_interval_sec" / Float32l,
+        "steering_ratio" / Float32l,
+        "wheel_ticks_to_m" / Float32l,
+        "wheel_tick_max_value" / Int32ul,
+        "wheel_ticks_signed" / Flag,
+        "wheel_ticks_always_increase" / Flag,
+        Padding(2),
+
+    )
+
     class Empty(NamedTuple):
         """!
         @brief Dummy specifier for empty config.
@@ -249,6 +380,19 @@ class DeviceCourseOrientationConfig(_conf_gen.CoarseOrientation):
     """
     pass
 
+@_conf_gen.create_config_class(ConfigType.VEHICLE_DETAILS, _conf_gen.VehicleDetailsConstruct)
+class VehicleDetailsConfig(_conf_gen.VehicleDetails):
+    """!
+    @brief Information including vehicle model and dimensions.
+    """
+    pass
+
+@_conf_gen.create_config_class(ConfigType.WHEEL_CONFIG, _conf_gen.WheelConfigConstruct)
+class WheelConfig(_conf_gen.WheelConfig):
+    """!
+    @brief Information pertaining to wheel speeds.
+    """
+    pass
 
 @_conf_gen.create_config_class(ConfigType.INVALID, _conf_gen.EmptyConstruct)
 class InvalidConfig(_conf_gen.Empty):
