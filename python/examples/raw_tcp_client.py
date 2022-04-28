@@ -15,21 +15,21 @@ from examples.raw_message_decode import decode_message
 
 if __name__ == "__main__":
     parser = ArgumentParser(description="""\
-Connect to an Atlas device over TCP and print out the incoming message
-contents.
+Connect to an Point One device over TCP and print out the incoming message
+contents and/or log the messages to disk.
 
 This example interprets the incoming data directly, and does not use the
 FusionEngineDecoder class. The incoming data stream must contain only
 FusionEngine messages. See also tcp_client.py.
 """)
     parser.add_argument('-p', '--port', type=int, default=30201,
-                        help="The FusionEngine TCP port on the Atlas device.")
-    parser.add_argument('ip_address',
-                        help="The IP address of the Atlas device.")
+                        help="The FusionEngine TCP port on the data source.")
+    parser.add_argument('hostname',
+                        help="The IP address or hostname of the data source.")
     options = parser.parse_args()
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.connect((options.ip_address, options.port))
+    sock.connect((socket.gethostbyname(options.hostname), options.port))
 
     received_data = b''
     current_header = None

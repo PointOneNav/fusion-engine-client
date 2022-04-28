@@ -16,7 +16,7 @@ from examples.message_decode import print_message
 
 if __name__ == "__main__":
     parser = ArgumentParser(description="""\
-Connect to an Atlas device over TCP and print out the incoming message
+Connect to an Point One device over TCP and print out the incoming message
 contents and/or log the messages to disk.
 """)
 
@@ -29,12 +29,12 @@ contents and/or log the messages to disk.
     parser.add_argument('-o', '--output', type=str,
                         help="The path to a file where incoming data will be stored.")
     parser.add_argument('-p', '--port', type=int, default=30201,
-                        help="The FusionEngine TCP port on the Atlas device.")
+                        help="The FusionEngine TCP port on the data source.")
     parser.add_argument('-q', '--quiet', dest='quiet', action='store_true',
                         help="Do not print anything to the console.")
 
-    parser.add_argument('ip_address',
-                        help="The IP address of the Atlas device.")
+    parser.add_argument('hostname',
+                        help="The IP address or hostname of the data source.")
     options = parser.parse_args()
 
     if options.quiet:
@@ -56,7 +56,7 @@ contents and/or log the messages to disk.
 
     # Connect to the device.
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.connect((options.ip_address, options.port))
+    sock.connect((socket.gethostbyname(options.hostname), options.port))
 
     # Listen for incoming data.
     decoder = FusionEngineDecoder(warn_on_unrecognized=not options.quiet, return_bytes=True)
