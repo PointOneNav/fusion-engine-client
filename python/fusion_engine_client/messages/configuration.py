@@ -313,6 +313,17 @@ class DeviceCourseOrientationConfig(_conf_gen.CoarseOrientation):
     """
     pass
 
+@_conf_gen.create_config_class(ConfigType.VEHICLE_MODEL, _conf_gen.VehicleModelConfigConstruct)
+class VehicleModelConfigPy(_conf_gen.VehicleModelConfig):
+    pass
+
+@_conf_gen.create_config_class(ConfigType.VEHICLE_DIMENSIONS, _conf_gen.VehicleDimensionsConstruct)
+class VehicleDimensionsConfig(_conf_gen.VehicleDimensions):
+    pass
+
+@_conf_gen.create_config_class(ConfigType.WHEEL_INFO, _conf_gen.WheelInfoConstruct)
+class WheelInfoConfig(_conf_gen.WheelInfo):
+    pass
 
 @_conf_gen.create_config_class(ConfigType.INVALID, _conf_gen.EmptyConstruct)
 class InvalidConfig(_conf_gen.Empty):
