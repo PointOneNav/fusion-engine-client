@@ -11,7 +11,7 @@ sys.path.append(root_dir)
 from fusion_engine_client.utils.argument_parser import ArgumentParser
 from fusion_engine_client.utils.dump_p1bin import dump_p1bin
 from fusion_engine_client.utils import trace
-from fusion_engine_client.utils.log import find_log_file
+from fusion_engine_client.utils.log import find_log_file, DEFAULT_LOG_BASE_DIR
 
 
 def main():
@@ -20,7 +20,7 @@ Dump contents of a .p1bin file to individual binary files, separated by message
 type.
 """)
 
-    parser.add_argument('--log-base-dir', metavar='DIR', default='/logs',
+    parser.add_argument('--log-base-dir', metavar='DIR', default=DEFAULT_LOG_BASE_DIR,
                         help="The base directory containing FusionEngine logs to be searched if a log pattern is"
                              "specified.")
     parser.add_argument('-o', '--output', type=str, metavar='DIR',
