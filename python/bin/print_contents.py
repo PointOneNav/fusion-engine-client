@@ -70,7 +70,7 @@ other types of data.
     log_parser.add_argument(
         'log',
         help="The log to be read. May be one of:\n"
-             "- The path to a .p1log file\n"
+             "- The path to a .p1log file or a file containing FusionEngine messages and other content\n"
              "- The path to a FusionEngine log directory\n"
              "- A pattern matching a FusionEngine log directory under the specified base directory "
              "(see find_fusion_engine_log() and --log-base-dir)")
