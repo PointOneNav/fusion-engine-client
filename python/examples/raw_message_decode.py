@@ -40,8 +40,8 @@ def decode_message(header, data, offset):
     elif header.message_type == GNSSSatelliteMessage.MESSAGE_TYPE:
         contents = GNSSSatelliteMessage()
         contents.unpack(buffer=data, offset=offset)
-    elif header.message_type == ros.PoseMessage.MESSAGE_TYPE:
-        contents = ros.PoseMessage()
+    elif header.message_type == ros.ROSPoseMessage.MESSAGE_TYPE:
+        contents = ros.ROSPoseMessage()
         contents.unpack(buffer=data, offset=offset)
     elif header.message_type == ros.ROSGPSFixMessage.MESSAGE_TYPE:
         contents = ros.ROSGPSFixMessage()
