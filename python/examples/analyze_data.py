@@ -45,15 +45,17 @@ Compute the average LLA position for the data contained in a *.p1log file.
         logger.info('Loading %s from log %s.' % (os.path.basename(input_path), log_id))
 
     # Read pose data from the file.
+    #
+    # Note that we explicitly ask the FileReader to return the data converted to numpy arrays so we can analyze it
+    # below.
     reader = FileReader(input_path)
-    result = reader.read(message_types=[PoseMessage], show_progress=True)
+    result = reader.read(message_types=[PoseMessage], show_progress=True, return_numpy=True)
 
     # Print out the messages that were read.
     pose_data = result[PoseMessage.MESSAGE_TYPE]
     for message in pose_data.messages:
         logger.info(str(message))
 
-    # Convert the data to numpy arrays for analysis, then compute and print the average LLA value.
-    pose_data.to_numpy()
+    # Compute and print the average LLA value.
     mean_lla_deg = np.mean(pose_data.lla_deg, axis=1)
     logger.info('Average position: %.6f, %.6f, %.3f' % tuple(mean_lla_deg))
