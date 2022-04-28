@@ -56,6 +56,7 @@ Compute the average LLA position for the data contained in a *.p1log file.
     for message in pose_data.messages:
         logger.info(str(message))
 
-    # Compute and print the average LLA value.
-    mean_lla_deg = np.mean(pose_data.lla_deg, axis=1)
+    # Compute and print the average LLA value. Limit only to valid solutions.
+    idx = pose_data.solution_type != SolutionType.Invalid
+    mean_lla_deg = np.mean(pose_data.lla_deg[:, idx], axis=1)
     logger.info('Average position: %.6f, %.6f, %.3f' % tuple(mean_lla_deg))
