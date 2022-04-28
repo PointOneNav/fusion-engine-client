@@ -13,8 +13,15 @@ MANIFEST_FILE_NAME = 'maniphest.json'
 
 CANDIDATE_MIXED_FILES = ['input.raw', 'input.bin', 'input.rtcm3']
 
+DEFAULT_LOG_BASE_DIR = os.getenv('P1_LOG_BASE_DIR')
+if DEFAULT_LOG_BASE_DIR is None:
+    if os.name == "nt":
+        DEFAULT_LOG_BASE_DIR = os.path.expandvars("%USERPROFILE%/Documents/logs")
+    else:
+        DEFAULT_LOG_BASE_DIR = os.path.expanduser("~/logs")
 
-def find_log_by_pattern(pattern, log_base_dir='/logs', allow_multiple=False,
+
+def find_log_by_pattern(pattern, log_base_dir=DEFAULT_LOG_BASE_DIR, allow_multiple=False,
                         log_test_filenames=(MANIFEST_FILE_NAME,), return_test_file=False):
     """!
     @brief Perform a pattern match to locate a log directory containing the specified files.
@@ -110,7 +117,8 @@ def find_log_by_pattern(pattern, log_base_dir='/logs', allow_multiple=False,
     return matches
 
 
-def find_log_file(input_path, candidate_files=None, return_output_dir=False, return_log_id=False, log_base_dir='/logs'):
+def find_log_file(input_path, candidate_files=None, return_output_dir=False, return_log_id=False,
+                  log_base_dir=DEFAULT_LOG_BASE_DIR):
     """!
     @brief Locate a log directory containing the specified file(s).
 
@@ -223,7 +231,7 @@ def find_log_file(input_path, candidate_files=None, return_output_dir=False, ret
         return tuple(result)
 
 
-def find_p1log_file(input_path, return_output_dir=False, return_log_id=False, log_base_dir='/logs'):
+def find_p1log_file(input_path, return_output_dir=False, return_log_id=False, log_base_dir=DEFAULT_LOG_BASE_DIR):
     """!
     @brief Locate a FusionEngine log directory containing a `*.p1log` file from a list of expected candidate paths.
 
@@ -366,7 +374,7 @@ def extract_fusion_engine_log(input_path, output_path=None, warn_on_gaps=True, r
         return valid_count
 
 
-def locate_log(input_path, log_base_dir='/logs', return_output_dir=False, return_log_id=False):
+def locate_log(input_path, log_base_dir=DEFAULT_LOG_BASE_DIR, return_output_dir=False, return_log_id=False):
     """!
     @brief Locate a FusionEngine `*.p1log` file, or a binary file containing a mixed stream of FusionEngine messages and
            other content.

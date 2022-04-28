@@ -10,7 +10,7 @@ sys.path.append(root_dir)
 
 from fusion_engine_client.analysis.file_reader import FileReader
 from fusion_engine_client.messages.core import *
-from fusion_engine_client.utils.log import find_p1log_file
+from fusion_engine_client.utils.log import find_p1log_file, DEFAULT_LOG_BASE_DIR
 
 if __name__ == "__main__":
     # Parse arguments.
@@ -20,7 +20,7 @@ Extract IMU accelerometer and gyroscope measurements.
 Note that the specified file must contain only FusionEngine messages. For logs
 containing mixed content, see separate_mixed_log.py.
 """)
-    parser.add_argument('--log-base-dir', metavar='DIR', default='/logs',
+    parser.add_argument('--log-base-dir', metavar='DIR', default=DEFAULT_LOG_BASE_DIR,
                         help="The base directory containing FusionEngine logs to be searched if a log pattern is "
                              "specified.")
     parser.add_argument('log',

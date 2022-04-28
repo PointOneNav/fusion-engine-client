@@ -26,7 +26,7 @@ from .attitude import get_enu_rotation_matrix
 from .file_reader import FileReader
 from ..utils import trace
 from ..utils.argument_parser import ArgumentParser
-from ..utils.log import locate_log
+from ..utils.log import locate_log, DEFAULT_LOG_BASE_DIR
 _logger = logging.getLogger('point_one.fusion_engine.analysis.analyzer')
 
 
@@ -935,7 +935,7 @@ Load and display information stored in a FusionEngine binary file.
     parser.add_argument('-v', '--verbose', action='count', default=0,
                         help="Print verbose/trace debugging messages.")
 
-    parser.add_argument('--log-base-dir', metavar='DIR', default='/logs',
+    parser.add_argument('--log-base-dir', metavar='DIR', default=DEFAULT_LOG_BASE_DIR,
                         help="The base directory containing FusionEngine logs to be searched if a log pattern is "
                              "specified.")
     parser.add_argument('log',

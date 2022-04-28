@@ -11,7 +11,8 @@ sys.path.append(root_dir)
 
 from fusion_engine_client.utils.argument_parser import ArgumentParser
 from fusion_engine_client.utils import trace
-from fusion_engine_client.utils.log import extract_fusion_engine_log, find_log_file, CANDIDATE_MIXED_FILES
+from fusion_engine_client.utils.log import extract_fusion_engine_log, find_log_file, CANDIDATE_MIXED_FILES, \
+    DEFAULT_LOG_BASE_DIR
 
 
 def main():
@@ -20,7 +21,7 @@ Extract FusionEngine message contents from a binary file containing mixed data
 (e.g., interleaved RTCM and FusionEngine messages).
 """)
 
-    parser.add_argument('--log-base-dir', metavar='DIR', default='/logs',
+    parser.add_argument('--log-base-dir', metavar='DIR', default=DEFAULT_LOG_BASE_DIR,
                         help="The base directory containing FusionEngine logs to be searched if a log pattern is"
                              "specified.")
     parser.add_argument('-c', '--candidate-files', type=str, metavar='DIR',

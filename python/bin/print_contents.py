@@ -14,7 +14,7 @@ from fusion_engine_client.analysis.file_index import FileIndex, FileIndexBuilder
 from fusion_engine_client.messages import MessageHeader, MessagePayload, message_type_to_class, message_type_by_name
 from fusion_engine_client.parsers import FusionEngineDecoder
 from fusion_engine_client.utils.argument_parser import ArgumentParser
-from fusion_engine_client.utils.log import locate_log
+from fusion_engine_client.utils.log import locate_log, DEFAULT_LOG_BASE_DIR
 from fusion_engine_client.utils.time_range import TimeRange
 
 
@@ -65,7 +65,7 @@ other types of data.
              "file does not exist, do not generate one. Otherwise, a .p1i file will be created automatically to "
              "improve data read speed in the future.")
     log_parser.add_argument(
-        '--log-base-dir', metavar='DIR', default='/logs',
+        '--log-base-dir', metavar='DIR', default=DEFAULT_LOG_BASE_DIR,
         help="The base directory containing FusionEngine logs to be searched if a log pattern is specified.")
     log_parser.add_argument(
         'log',
