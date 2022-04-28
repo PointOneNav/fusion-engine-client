@@ -69,6 +69,27 @@ enum class ConfigType : uint16_t {
   OUTPUT_LEVER_ARM = 19,
 
   /**
+   * The vehicle model.
+   *
+   * Payload format: @ref VehicleModelConfig
+   */
+  VEHICLE_MODEL = 20,
+
+  /**
+   * The outer dimensions of the vehicle.
+   *
+   * Payload format: @ref VehicleDimensions
+   */
+  VEHICLE_DIMENSIONS = 21,
+
+  /**
+   * Information pertaining to wheel measurements.
+   *
+   * Payload format: @ref WheelInfo
+   */
+  WHEEL_INFO = 22,
+
+  /**
    * Configure the UART0 serial baud rate (in bits/second).
    *
    * Payload format: `uint32_t`
@@ -107,6 +128,15 @@ inline const char* to_string(ConfigType type) {
 
     case ConfigType::OUTPUT_LEVER_ARM:
       return "Output Lever Arm";
+
+    case ConfigType::VEHICLE_MODEL:
+      return "Vehicle Model";
+
+    case ConfigType::VEHICLE_DIMENSIONS:
+      return "Vehicle Dimensions";
+
+    case ConfigType::WHEEL_INFO:
+      return "Wheel Info";
 
     case ConfigType::UART0_BAUD:
       return "UART0 Baud Rate";
