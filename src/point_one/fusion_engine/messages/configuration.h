@@ -432,6 +432,49 @@ struct alignas(4) CoarseOrientation {
   uint8_t reserved[2] = {0};
 };
 
+struct alignas(4) VehicleModelConfig {
+  enum class VehicleModel : uint16_t {
+    UNKNOWN_VEHICLE = 0,
+
+    LEXUS_CT200H = 100,
+
+    KIA_SORENTO = 200,
+    KIA_SPORTAGE = 201,
+
+    AUDI_Q7 = 300,
+    AUDI_A8L = 301,
+
+    TESLA_MODEL_X = 400,
+    TESLA_MODEL_3 = 401,
+
+    HYUNDAI_ELANTRA = 501
+  };
+
+  VehicleModel vehicle_model = VehicleModel::UNKNOWN_VEHICLE;
+  uint8_t reserved[10] = {0};
+};
+
+struct alignas(4) VehicleDimensions {
+  float wheelbase = NAN;
+  float rear_track = NAN;
+};
+
+struct alignas(4) WheelInfo {
+  enum class WheelSensorType : uint8_t {
+    NONE = 0,
+    TICK_RATE = 1,
+    TICKS = 2,
+    VEHICLE_SPEED = 3,
+  };
+
+  WheelSensorType wheel_sensor_type = WheelSensorType::NONE;
+  bool wheel_ticks_signed = false;
+  float wheel_ticks_to_m = NAN;
+  uint8_t reserved2[2] = {0};
+  uint32_t wheel_tick_max_value = 0;
+  float wheel_update_interval_sec = NAN;
+};
+
 /** @} */
 
 /**************************************************************************/ /**
