@@ -55,6 +55,34 @@ class Direction(IntEnum):
     def __str__(self):
         return super().__str__().replace(self.__class__.__name__ + '.', '')
 
+class VehicleModel(IntEnum):
+    UNKNOWN_VEHICLE = 0,
+
+    LEXUS_CT200H = 100,
+
+    KIA_SORENTO = 200,
+    KIA_SPORTAGE = 201,
+
+    AUDI_Q7 = 300,
+    AUDI_A8L = 301,
+
+    TESLA_MODEL_X = 400,
+    TESLA_MODEL_3 = 401,
+
+    HYUNDAI_ELANTRA = 501
+
+    def __str__(self):
+        return super().__str__().replace(self.__class__.__name__ + '.', '')
+
+class WheelSensorType(IntEnum):
+    NONE = 0,
+    TICK_RATE = 1,
+    TICKS = 2,
+    VEHICLE_SPEED = 3
+
+    def __str__(self):
+        return super().__str__().replace(self.__class__.__name__ + '.', '')
+
 
 class TransportType(IntEnum):
     INVALID = 0,
@@ -180,6 +208,39 @@ class _ConfigClassGenerator:
         "x_direction" / AutoEnum(Int8ul, Direction),
         "z_direction" / AutoEnum(Int8ul, Direction),
         Padding(2),
+    )
+
+    class VehicleModelConfig(NamedTuple):
+        vehicle_model: VehicleModel = VehicleModel.UNKNOWN_VEHICLE
+
+    VehicleModelConfigConstruct = Struct(
+        "vehicle_model" / AutoEnum(Int16ul, VehicleModel),
+        Padding(2),
+    )
+
+    class VehicleDimensions(NamedTuple):
+        wheelbase: float = 0
+        rear_track: float = 0
+
+    VehicleDimensionsConstruct = Struct(
+        "wheelbase" / Float32l,
+        "rear_track" / Float32l,
+    )
+
+    class WheelInfo(NamedTuple):
+        wheel_sensor_type: WheelSensorType = WheelSensorType.NONE
+        wheel_ticks_signed: bool = False
+        wheel_ticks_to_m: float = 0
+        wheel_ticks_max_value: int = 0
+        wheel_update_interval_sec: float = 0
+
+    WheelInfoConstruct = Struct(
+        "wheel_sensor_type" / AutoEnum(Int8ul, WheelSensorType),
+        "wheel_ticks_signed" / Flag,
+        "wheel_ticks_to_m" / Float32l,
+        Padding(2),
+        "wheel_tick_max_value" / Int32ul,
+        "wheel_update_interval_sec" / Float32l,
     )
 
     class Empty(NamedTuple):
