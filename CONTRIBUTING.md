@@ -5,6 +5,10 @@ We welcome code and documentation contributions from users!
 ### Table Of Contents:
   * [Reporting Issues](#reporting-issues)
   * [Submitting Changes](#submitting-changes)
+    * [Creating A Branch](#creating-a-branch)
+    * [Making Changes](#making-changes)
+    * [Submitting A Pull Request](#submitting-a-pull-request)
+    * [Updating To The Latest Changes (Rebasing)](#updating-to-the-latest-changes-rebasing)
 
 ## Reporting Issues
 
@@ -41,7 +45,7 @@ support@pointonenav.com.
 
 Note that you should _never_ work directly on the `master` branch.
 
-### Make The Change
+### Making Changes
 
 1. Make your code changes and test them.
    - Note that any new C++ files or applications must be added to both CMake (`CMakeLists.txt`) and Bazel (`BUILD`)
@@ -88,20 +92,27 @@ We encourage you to commit changes as you make them, and to use partial staging 
 changes together, or a Git GUI that supports partial staging such as [`git-cola`](https://git-cola.github.io/) or
 [Git Kraken](https://www.gitkraken.com/).
 
-### Submit A Pull Request
+### Submitting A Pull Request
 
 1. If you have not already, create a fork of the
    [fusion-engine-client](https://github.com/PointOneNav/fusion-engine-client) repository on Github and add it to your
    local repository:
    ```
-   git remote add my-fork git@github.com:username/fusion-engine-client.git
+   git remote add username git@github.com:username/fusion-engine-client.git
+   git fetch username
    ```
+   We assume here and below that your local repository was cloned from the Point One repository
+   (https://github.com/PointOneNav/fusion-engine-client) and `origin` refers to that repository. If instead you cloned
+   from your Github fork, `origin` will refer to your fork, and you should add the Point One repository as a
+   `git remote` and adjust the commands below accordingly.
+
+   Note that we set the name of the remote to `username` to match how it appears in Github. This is not required.
 2. Push your new branch to your fork.
    ```
-   git push my-fork my-feature
+   git push username my-feature
    ```
-3. Go to the Github page for your fork and create a new pull request from `username:my-feature` into
-   `PointOneNav:master`.
+3. Go to the Github page for your fork and create a new pull request from
+   `username/fusion-engine-client:my-feature` into `PointOneNav/fusion-engine-client:master`.
    - Your pull request summary must be a single sentence explaining the changes. For example:
      - Good: `Added a Linux TCP example C++ application.`
      - Bad: `Python changes`
@@ -123,10 +134,10 @@ changes together, or a Git GUI that supports partial staging such as [`git-cola`
 > TL;DR _Never_ use `git pull` or `git merge` when updating your code. Always use `git rebase`.
 >
 > ```
-> git fetch origin
 > git checkout my-feature
+> git fetch origin
 > git rebase origin/master
-> git push -f my-fork my-feature
+> git push -f username my-feature
 > ```
 
 In this repository, we make an effort to maintain a linear Git history at all times. This means that, instead of using
@@ -141,15 +152,22 @@ Having a linear history has a few advantages:
 - It makes it possible to test changes quickly and easily when searching for the first place a bug was introduced by
   searching one commit at a time.
   - You can use `git bisect` to do this automatically.
-  - This is the reason we request [small commits with a single functional change](#make-the-change): so that each
+  - This is the reason we request [small commits with a single functional change](#making-changes): so that each
     commit can be tested if needed to confirm that it does what it intends and doesn't cause problems.
 - Conflicts are easier to resolve on larger branches since they happen at an individual commit level, and you can simply
   correct that commit so that it does what it is supposed to with the new upstream `origin/master` changes.
   - By contrast, when you have a conflict with a `git merge`, the conflicting code might include several unrelated
     changes, and it can sometimes be hard to figure out the correct resolution.
 
-In general, rebasing is pretty simple. In order to update your code with the latest changes on `origin/master`, do the
-following:
+See https://www.atlassian.com/git/tutorials/rewriting-history/git-rebase for more information about rebasing.
+
+#### Updating Your Code With Rebase
+
+In general, rebasing is pretty simple. When you rebase your branch, Git recreates each of your commits, one at a time,
+as if you originally created them on top of the new version of `origin/master`. For each one, if your changes conflict
+with the new `master`, Git stops and asks you to resolve them, then it continues with the remaining commits.
+
+In order to update your code with the latest changes on `origin/master`, do  the following:
 
 1. Fetch the latest changes.
    ```
@@ -160,42 +178,64 @@ following:
    git checkout my-feature
    git rebase origin/master
    ```
-   This recreates your commits one at a time as if they were created on top of the new version of `origin/master`. If
-   you hit a conflict, simply fix that commit so that it does what it was originally intended to do, and then continue
-   (`git rebase --continue`).
+
+   You can read this rebase command as "recreate all of the commits on my branch as if they were written on top of the
+   new version of `origin/master`."
+   
+   This recreates your commits starting with the first commit after you branched off of `master` previously.
+
+   If you hit a conflict, simply fix the code so that it does what that commit was originally intended to do, stage the
+   file (`git add`), and then continue with the rebase (`git rebase --continue`).
 
    (Compare this with `git merge origin/master`, which you should _never_ do.)
-3. Update your fork using a force push.
+3. Finally, push the rebased changes to your fork on Github using a force push.
    ```
-   git push -f my-fork my-feature
+   git push -f username my-feature
    ```
 
-`git rebase` has a lot of other really useful features. Most notably, you can use `fixup!` commits to correct issues in
-existing commits. For example, say we forgot a semicolon in a commit and that commit does not compile. We could do the
-following:
+#### Modifying Your Commits With Interactive Rebase
+
+In addition to a normal `git rebase` above, git has a lot of other really useful features you can take advantage of by
+performing an _interactive_ rebase (`git rebase -i`).
+
+A standard rebase simply picks your commits up and puts them back down on a new version of the code -- it changes the
+_base_ of your branch, hence the name re-_base_. An interactive  rebase, on the other hand, is all about editing the
+commits within your branch to fix issues before you merge them.
+
+> Note that `git rebase` and `git rebase -i` should really be thought of as different operations. You should not use
+> `git rebase -i` when trying to update your code with the latest upstream changes.
+
+For example, say we forgot a semicolon in a commit and that commit does not compile. We could simply commit the
+semicolon later as follows:
 ```
 2231360 Added a new C++ example.
 ee2adc2 Fixed a serialization bug.
 113b2aa Fixed missing semicolon in new example.
 ```
-but that means that commit `2231360` can't be compiled and tested when looking for a bug. Instead, you can mark the
-commit as a `fixup!`:
+
+but that means that commit `2231360` can't be compiled and tested when you or someone else is looking for a bug in the
+future.
+
+Instead, you can mark the commit as a `fixup!` when setting its commit message like:
 ```
 pick 2231360 Added a new C++ example.
 pick ee2adc2 Fixed a serialization bug.
 pick 113b2aa fixup! Added a new C++ example.
 ```
-and then you can use an interactive rebase (`git rebase -i origin/master`) to squash them together before merging the
-changes:
+
+and then you can use an interactive rebase (`git rebase -i --autosquash origin/master`) to squash them together:
 ```
 pick 2231360 Added a new C++ example.
 fixup 113b2aa fixup! Added a new C++ example.
 pick ee2adc2 Fixed a serialization bug.
 ```
-The resulting commit is a combination of the original change and the semicolon fix:
+
+Here, you can read the rebase command as "do an interactive rebase and modify all commits starting after commit
+origin/master."
+
+The resulting commit is a combination of the original change and the semicolon fix. That way, if someone comes along
+later and tries to compile your commit, it works perfectly.
 ```
 pick aabd112 Added a new C++ example.
 pick ee2adc2 Fixed a serialization bug.
 ```
-
-See https://www.atlassian.com/git/tutorials/rewriting-history/git-rebase for more information about rebasing.
