@@ -15,10 +15,9 @@ from examples.raw_message_decode import decode_message
 
 if __name__ == "__main__":
     parser = ArgumentParser(description="""\
-Connect to an Atlas device over UDP and print out the incoming message contents.
+Connect to a Point One device over UDP and print out the incoming message contents.
 
-When using UDP, you must configure the Atlas device to send data to your
-machine.
+When using UDP, you must configure the device to send data to your machine.
 
 This application assumes that the UDP stream contains only FusionEngine
 messages.
