@@ -13,6 +13,13 @@ if not hasattr(logging, 'TRACE'):
         logging._nameToLevel['TRACE'] = logging.TRACE
         logging._levelToName[logging.TRACE] = 'TRACE'
 
-    def trace(self, msg, *args, **kwargs):
-        self.log(logging.TRACE, msg, *args, **kwargs)
+    def trace(self, msg, depth=1, *args, **kwargs):
+        # Trace messages increase in verbosity with increasing depth, starting from 1:
+        # - Depth 1 (Level == TRACE): Default
+        # - Depth 2 (Level == TRACE - 1): More verbose
+        # - etc.
+        if depth < 1:
+            depth = 1
+        self.log(logging.TRACE - (depth - 1), msg, *args, **kwargs)
+
     logging.Logger.trace = trace
