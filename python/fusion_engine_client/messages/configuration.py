@@ -248,18 +248,28 @@ class _ConfigClassGenerator:
 
     class WheelConfig(NamedTuple):
         wheel_sensor_type: WheelSensorType = WheelSensorType.NONE
-        wheel_ticks_signed: bool = False
+        applied_speed_type: AppliedSpeedType = AppliedSpeedType.REAR_WHEELS
+        steering_type: SteeringType = SteeringType.UNKNOWN_STEERING
+        wheel_update_interval_sec: float = 0
+        steering_ratio: float = 0
         wheel_ticks_to_m: float = 0
         wheel_ticks_max_value: int = 0
-        wheel_update_interval_sec: float = 0
+        wheel_ticks_signed: bool = False
+        wheel_ticks_always_increase: bool = True
 
     WheelConfigConstruct = Struct(
         "wheel_sensor_type" / AutoEnum(Int8ul, WheelSensorType),
-        "wheel_ticks_signed" / Flag,
-        "wheel_ticks_to_m" / Float32l,
-        Padding(2),
-        "wheel_tick_max_value" / Int32ul,
+        "applied_speed_type" / AutoEnum(Int8ul, AppliedSpeedType),
+        "steering_type" / AutoEnum(Int8ul, SteeringType),
+        Padding(1),
         "wheel_update_interval_sec" / Float32l,
+        "steering_ratio" / Float32l,
+        "wheel_ticks_to_m" / Float32l,
+        "wheel_tick_max_value" / Int32ul,
+        "wheel_ticks_signed" / Flag,
+        "wheel_ticks_always_increase" / Flag,
+        Padding(2),
+
     )
 
     class Empty(NamedTuple):
