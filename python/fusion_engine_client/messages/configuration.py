@@ -84,6 +84,24 @@ class WheelSensorType(IntEnum):
     def __str__(self):
         return super().__str__().replace(self.__class__.__name__ + '.', '')
 
+class AppliedSpeedType(IntEnum):
+    APPLIED_NONE = 0,
+    REAR_WHEELS = 1,
+    FRONT_WHEELS = 2,
+    FRONT_AND_REAR_WHEELS = 3,
+    VEHICLE_BODY = 4
+
+    def __str__(self):
+        return super().__str__().replace(self.__class__.__name__ + '.', '')
+
+class SteeringType(IntEnum):
+    UNKNOWN_STEERING = 0,
+    FRONT_STEERING = 1,
+    FRONT_AND_REAR_STEERING = 2
+
+    def __str__(self):
+        return super().__str__().replace(self.__class__.__name__ + '.', '')
+
 
 class TransportType(IntEnum):
     INVALID = 0,
