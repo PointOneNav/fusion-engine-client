@@ -2,7 +2,7 @@ import pytest
 
 
 from fusion_engine_client.messages.configuration import ConfigurationSource, DeviceCourseOrientationConfig, InterfaceID, TransportType, \
-                                                        VehicleModelConfigPy, VehicleDimensionsConfig
+                                                        VehicleModelConfig, VehicleDimensionsConfig, WheelConfig
 from fusion_engine_client.messages import (SetConfigMessage,
                                            Uart1BaudConfig,
                                            ConfigType,
@@ -27,7 +27,7 @@ def test_set_config():
     set_msg = SetConfigMessage(DeviceCourseOrientationConfig(Direction.BACKWARD, Direction.DOWN))
     assert len(set_msg.pack()) == BASE_SIZE + 4
 
-    set_msg = SetConfigMessage(VehicleModelConfigPy(VehicleModel.LEXUS_CT200H))
+    set_msg = SetConfigMessage(VehicleModelConfig(VehicleModel.LEXUS_CT200H))
     assert len(set_msg.pack()) == BASE_SIZE + 4
 
     set_msg = SetConfigMessage(VehicleDimensionsConfig(1, 2))
