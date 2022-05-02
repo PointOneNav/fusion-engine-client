@@ -483,11 +483,18 @@ struct alignas(4) WheelConfig {
   };
 
   WheelSensorType wheel_sensor_type = WheelSensorType::NONE;
-  bool wheel_ticks_signed = false;
-  float wheel_ticks_to_m = NAN;
-  uint8_t reserved2[2] = {0};
-  uint32_t wheel_tick_max_value = 0;
+  AppliedSpeedType applied_speed_type = AppliedSpeedType::REAR_WHEELS;
+  SteeringType steering_type = SteeringType::UNKNOWN_STEERING;
+  uint8_t reserved1[1] = {0};
+
   float wheel_update_interval_sec = NAN;
+  float steering_ratio = NAN;
+  float wheel_ticks_to_m = NAN;
+  uint32_t wheel_tick_max_value = 0;
+  bool wheel_ticks_signed = false;
+  bool wheel_ticks_always_increase = true;
+
+  uint8_t reserved2[2] = {0};
 };
 
 /** @} */
