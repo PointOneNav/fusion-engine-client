@@ -464,7 +464,9 @@ struct alignas(4) WheelConfig {
     NONE = 0,
     TICK_RATE = 1,
     TICKS = 2,
-    VEHICLE_SPEED = 3,
+    WHEEL_SPEED = 3,
+    VEHICLE_SPEED = 4,
+  };
   };
 
   WheelSensorType wheel_sensor_type = WheelSensorType::NONE;

@@ -78,7 +78,8 @@ class WheelSensorType(IntEnum):
     NONE = 0,
     TICK_RATE = 1,
     TICKS = 2,
-    VEHICLE_SPEED = 3
+    WHEEL_SPEED = 3,
+    VEHICLE_SPEED = 4
 
     def __str__(self):
         return super().__str__().replace(self.__class__.__name__ + '.', '')
