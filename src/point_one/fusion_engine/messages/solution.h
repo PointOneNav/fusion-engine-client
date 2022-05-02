@@ -323,7 +323,16 @@ struct alignas(4) SatelliteInfo {
  */
 enum class CalibrationStage : uint8_t {
   UNKNOWN = 0, ///< Calibration stage not known.
-  MOUNTING_ANGLE = 1, ///< Estimating IMU mounting angles.
+  /**
+   * Performing initial estimation of IMU mounting angles. Reported position
+   * solution may have reduced accuracy.
+   */
+  MOUNTING_ANGLE_INITIAL_CONVERGENCE = 20,
+  /**
+   * Performing final estimation of IMU mounting angles. Position solution
+   * reported with increased accuracy.
+   */
+  MOUNTING_ANGLE_FINAL_CONVERGENCE = 30,
   DONE = 255, ///< Calibration complete.
 };
 
@@ -339,8 +348,10 @@ inline const char* to_string(CalibrationStage val) {
   switch (val) {
     case CalibrationStage::UNKNOWN:
       return "Unknown";
-    case CalibrationStage::MOUNTING_ANGLE:
-      return "IMU Mounting Angles";
+    case CalibrationStage::MOUNTING_ANGLE_INITIAL_CONVERGENCE:
+      return "Initial IMU Mounting Angle Estimation";
+    case CalibrationStage::MOUNTING_ANGLE_FINAL_CONVERGENCE:
+      return "Final IMU Mounting Angle Estimation";
     case CalibrationStage::DONE:
       return "Done";
     default:
