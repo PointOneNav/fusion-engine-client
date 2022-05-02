@@ -85,9 +85,9 @@ enum class ConfigType : uint16_t {
   /**
    * Information pertaining to wheel measurements.
    *
-   * Payload format: @ref WheelInfo
+   * Payload format: @ref WheelConfig
    */
-  WHEEL_INFO = 22,
+  WHEEL_CONFIG = 22,
 
   /**
    * Configure the UART0 serial baud rate (in bits/second).
@@ -135,8 +135,8 @@ inline const char* to_string(ConfigType type) {
     case ConfigType::VEHICLE_DIMENSIONS:
       return "Vehicle Dimensions";
 
-    case ConfigType::WHEEL_INFO:
-      return "Wheel Info";
+    case ConfigType::WHEEL_CONFIG:
+      return "Wheel Config";
 
     case ConfigType::UART0_BAUD:
       return "UART0 Baud Rate";
@@ -459,7 +459,7 @@ struct alignas(4) VehicleDimensions {
   float rear_track = NAN;
 };
 
-struct alignas(4) WheelInfo {
+struct alignas(4) WheelConfig {
   enum class WheelSensorType : uint8_t {
     NONE = 0,
     TICK_RATE = 1,

@@ -28,7 +28,7 @@ class ConfigType(IntEnum):
     OUTPUT_LEVER_ARM = 19
     VEHICLE_MODEL = 20
     VEHICLE_DIMENSIONS = 21
-    WHEEL_INFO = 22
+    WHEEL_CONFIG = 22
     UART0_BAUD = 256
     UART1_BAUD = 257
 
@@ -227,14 +227,14 @@ class _ConfigClassGenerator:
         "rear_track" / Float32l,
     )
 
-    class WheelInfo(NamedTuple):
+    class WheelConfig(NamedTuple):
         wheel_sensor_type: WheelSensorType = WheelSensorType.NONE
         wheel_ticks_signed: bool = False
         wheel_ticks_to_m: float = 0
         wheel_ticks_max_value: int = 0
         wheel_update_interval_sec: float = 0
 
-    WheelInfoConstruct = Struct(
+    WheelConfigConstruct = Struct(
         "wheel_sensor_type" / AutoEnum(Int8ul, WheelSensorType),
         "wheel_ticks_signed" / Flag,
         "wheel_ticks_to_m" / Float32l,
@@ -314,15 +314,15 @@ class DeviceCourseOrientationConfig(_conf_gen.CoarseOrientation):
     pass
 
 @_conf_gen.create_config_class(ConfigType.VEHICLE_MODEL, _conf_gen.VehicleModelConfigConstruct)
-class VehicleModelConfigPy(_conf_gen.VehicleModelConfig):
+class VehicleModelConfig(_conf_gen.VehicleModelConfig):
     pass
 
 @_conf_gen.create_config_class(ConfigType.VEHICLE_DIMENSIONS, _conf_gen.VehicleDimensionsConstruct)
 class VehicleDimensionsConfig(_conf_gen.VehicleDimensions):
     pass
 
-@_conf_gen.create_config_class(ConfigType.WHEEL_INFO, _conf_gen.WheelInfoConstruct)
-class WheelInfoConfig(_conf_gen.WheelInfo):
+@_conf_gen.create_config_class(ConfigType.WHEEL_CONFIG, _conf_gen.WheelConfigConstruct)
+class WheelConfig(_conf_gen.WheelConfig):
     pass
 
 @_conf_gen.create_config_class(ConfigType.INVALID, _conf_gen.EmptyConstruct)
