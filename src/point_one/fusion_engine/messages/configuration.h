@@ -455,8 +455,8 @@ struct alignas(4) VehicleModelConfig {
 };
 
 struct alignas(4) VehicleDimensions {
-  float wheelbase = NAN;
-  float rear_track = NAN;
+  float wheelbase_m = NAN;
+  float rear_track_width_m = NAN;
 };
 
 struct alignas(4) WheelConfig {

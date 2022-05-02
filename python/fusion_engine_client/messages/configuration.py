@@ -220,12 +220,12 @@ class _ConfigClassGenerator:
     )
 
     class VehicleDimensions(NamedTuple):
-        wheelbase: float = 0
-        rear_track: float = 0
+        wheelbase_m: float = 0
+        rear_track_width_m: float = 0
 
     VehicleDimensionsConstruct = Struct(
-        "wheelbase" / Float32l,
-        "rear_track" / Float32l,
+        "wheelbase_m" / Float32l,
+        "rear_track_width_m" / Float32l,
     )
 
     class WheelConfig(NamedTuple):
