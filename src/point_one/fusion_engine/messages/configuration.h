@@ -467,6 +467,19 @@ struct alignas(4) WheelConfig {
     WHEEL_SPEED = 3,
     VEHICLE_SPEED = 4,
   };
+
+  enum class AppliedSpeedType : uint8_t {
+    APPLIED_NONE = 0,
+    REAR_WHEELS = 1,
+    FRONT_WHEELS = 2,
+    FRONT_AND_REAR_WHEELS = 3,
+    VEHICLE_BODY = 4,
+  };
+
+  enum class SteeringType : uint8_t {
+    UNKNOWN_STEERING = 0,
+    FRONT_STEERING = 1,
+    FRONT_AND_REAR_STEERING = 2,
   };
 
   WheelSensorType wheel_sensor_type = WheelSensorType::NONE;
