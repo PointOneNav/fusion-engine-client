@@ -432,6 +432,9 @@ struct alignas(4) CoarseOrientation {
   uint8_t reserved[2] = {0};
 };
 
+/**
+ * @brief The vehicle model.
+ */
 struct alignas(4) VehicleModelConfig {
   enum class VehicleModel : uint16_t {
     UNKNOWN_VEHICLE = 0,
@@ -454,28 +457,42 @@ struct alignas(4) VehicleModelConfig {
   uint8_t reserved[10] = {0};
 };
 
+/**
+ * @brief Outer dimensions of the vehicle in meters.
+ *
+ */
 struct alignas(4) VehicleDimensions {
+  /** The distance between the front axle and rear axle in meters. */
   float wheelbase_m = NAN;
+
+  /** The distance between the two rear wheels in meters. */
   float rear_track_width_m = NAN;
 };
 
+/**
+ * @brief Information pertaining to wheel speeds.
+ *
+ */
 struct alignas(4) WheelConfig {
+  /** Determines how speeds are measured. */
   enum class WheelSensorType : uint8_t {
-    NONE = 0,
-    TICK_RATE = 1,
-    TICKS = 2,
-    WHEEL_SPEED = 3,
-    VEHICLE_SPEED = 4,
+    NONE = 0,           ///< Speeds not to be used.
+    TICK_RATE = 1,      ///< Use differential wheel speeds.
+    TICKS = 2,          ///< Use physical wheel ticks.
+    WHEEL_SPEED = 3,    ///< Use differential wheel speeds.
+    VEHICLE_SPEED = 4,  ///< Use one uniform speed for the body of the vehicle.
   };
 
+  /** Determines how speeds are applied to system. */
   enum class AppliedSpeedType : uint8_t {
-    APPLIED_NONE = 0,
-    REAR_WHEELS = 1,
-    FRONT_WHEELS = 2,
-    FRONT_AND_REAR_WHEELS = 3,
-    VEHICLE_BODY = 4,
+    APPLIED_NONE = 0,           ///< Speeds not to be applied to system.
+    REAR_WHEELS = 1,            ///< Use rear wheel speeds only (recommended).
+    FRONT_WHEELS = 2,           ///< Use front wheel speeds only.
+    FRONT_AND_REAR_WHEELS = 3,  ///< Use front and rear wheel speeds.
+    VEHICLE_BODY = 4,           ///< Use one uniform speed for the vehicle.
   };
 
+  /** Determines which wheels of the vehicle are steered. */
   enum class SteeringType : uint8_t {
     UNKNOWN_STEERING = 0,
     FRONT_STEERING = 1,
@@ -487,11 +504,27 @@ struct alignas(4) WheelConfig {
   SteeringType steering_type = SteeringType::UNKNOWN_STEERING;
   uint8_t reserved1[1] = {0};
 
+  /** Measures how often wheel tick measurements are updated. */
   float wheel_update_interval_sec = NAN;
+
+  /** Ratio between steering wheel angle and road wheel angle.*/
   float steering_ratio = NAN;
+
+  /** Wheel tick distance in meters. */
   float wheel_ticks_to_m = NAN;
   uint32_t wheel_tick_max_value = 0;
+
+  /**
+   * Determines whether wheel ticks are signed based on the direction the
+   * wheels are turning.
+   */
   bool wheel_ticks_signed = false;
+
+  /**
+   * Determines if wheel tick value solely increases, regardless of the
+   * direction the wheels are turning. To be used in conjunction with @ref
+   * wheel_ticks_signed.
+   */
   bool wheel_ticks_always_increase = true;
 
   uint8_t reserved2[2] = {0};
