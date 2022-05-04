@@ -234,7 +234,7 @@ class _ConfigClassGenerator:
 
     VehicleModelConfigConstruct = Struct(
         "vehicle_model" / AutoEnum(Int16ul, VehicleModel),
-        Padding(2),
+        Padding(10),
     )
 
     class VehicleDimensions(NamedTuple):
@@ -253,7 +253,7 @@ class _ConfigClassGenerator:
         wheel_update_interval_sec: float = 0
         steering_ratio: float = 0
         wheel_ticks_to_m: float = 0
-        wheel_ticks_max_value: int = 0
+        wheel_tick_max_value: int = 0
         wheel_ticks_signed: bool = False
         wheel_ticks_always_increase: bool = True
 
