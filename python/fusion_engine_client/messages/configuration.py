@@ -230,6 +230,9 @@ class _ConfigClassGenerator:
     )
 
     class VehicleModelConfig(NamedTuple):
+        """!
+        @brief The vehicle model.
+        """
         vehicle_model: VehicleModel = VehicleModel.UNKNOWN_VEHICLE
 
     VehicleModelConfigConstruct = Struct(
@@ -237,8 +240,13 @@ class _ConfigClassGenerator:
         Padding(10),
     )
 
+    """!
+    Outer dimensions of the vehicle in meters.
+    """
     class VehicleDimensions(NamedTuple):
+        ## The distance between the front axle and rear axle in meters.
         wheelbase_m: float = 0
+        ## The distance between the two rear wheels in meters.
         rear_track_width_m: float = 0
 
     VehicleDimensionsConstruct = Struct(
@@ -246,15 +254,31 @@ class _ConfigClassGenerator:
         "rear_track_width_m" / Float32l,
     )
 
+    """!
+    Information pertaining to wheel speeds.
+    """
     class WheelConfig(NamedTuple):
+        ## Determines how speeds are measured.
         wheel_sensor_type: WheelSensorType = WheelSensorType.NONE
+        ## Determines how speeds are applied to system.
         applied_speed_type: AppliedSpeedType = AppliedSpeedType.REAR_WHEELS
+        ## Determines which wheels of the vehicle are steered.
         steering_type: SteeringType = SteeringType.UNKNOWN_STEERING
+        ## Measures how often wheel tick measurements are updated.
         wheel_update_interval_sec: float = 0
+        ## Ratio between steering wheel angle and road wheel angle.
         steering_ratio: float = 0
+        ## Wheel tick distance in meters.
         wheel_ticks_to_m: float = 0
+        ## The maximum value that wheel ticks will increment to before
+        # restarting to zero.
         wheel_tick_max_value: int = 0
+        ## Determines whether wheel ticks are signed based on the direction
+        # the wheels are turning.
         wheel_ticks_signed: bool = False
+        ## Determines if wheel tick value solely increases, regardless of the
+        # direction the wheels are turning. To be used in conjunction with
+        # wheel_ticks_signed.
         wheel_ticks_always_increase: bool = True
 
     WheelConfigConstruct = Struct(
@@ -344,14 +368,23 @@ class DeviceCourseOrientationConfig(_conf_gen.CoarseOrientation):
 
 @_conf_gen.create_config_class(ConfigType.VEHICLE_MODEL, _conf_gen.VehicleModelConfigConstruct)
 class VehicleModelConfig(_conf_gen.VehicleModelConfig):
+    """!
+    @brief The vehicle model.
+    """
     pass
 
 @_conf_gen.create_config_class(ConfigType.VEHICLE_DIMENSIONS, _conf_gen.VehicleDimensionsConstruct)
 class VehicleDimensionsConfig(_conf_gen.VehicleDimensions):
+    """!
+    @brief Outer dimensions of the vehicle in meters.
+    """
     pass
 
 @_conf_gen.create_config_class(ConfigType.WHEEL_CONFIG, _conf_gen.WheelConfigConstruct)
 class WheelConfig(_conf_gen.WheelConfig):
+    """!
+    @brief Information pertaining to wheel speeds.
+    """
     pass
 
 @_conf_gen.create_config_class(ConfigType.INVALID, _conf_gen.EmptyConstruct)

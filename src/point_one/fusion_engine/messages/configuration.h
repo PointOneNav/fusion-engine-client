@@ -507,11 +507,15 @@ struct alignas(4) WheelConfig {
   /** Measures how often wheel tick measurements are updated. */
   float wheel_update_interval_sec = NAN;
 
-  /** Ratio between steering wheel angle and road wheel angle.*/
+  /** Ratio between steering wheel angle and road wheel angle. */
   float steering_ratio = NAN;
 
   /** Wheel tick distance in meters. */
   float wheel_ticks_to_m = NAN;
+
+  /** The maximum value that wheel ticks will increment to before restarting to
+   *  zero.
+   */
   uint32_t wheel_tick_max_value = 0;
 
   /**
