@@ -13,12 +13,24 @@ MANIFEST_FILE_NAME = 'maniphest.json'
 
 CANDIDATE_MIXED_FILES = ['input.raw', 'input.bin', 'input.rtcm3']
 
+# Determine the default log base directory in the following order of priority:
+# - P1_LOG_BASE_DIR environment variable
+# - If Windows, set to `My Documents/logs`
+# - Otherwise (Linux/Mac):
+#   - Use `/logs` if it exists
+#   - Otherwise, use `~/logs`
+#
+# Note that this is the default value. It can still be overridden by setting `log_base_dir` in all functions below
+# (typically controlled by a --log-base-dir argument to an application).
 DEFAULT_LOG_BASE_DIR = os.getenv('P1_LOG_BASE_DIR')
 if DEFAULT_LOG_BASE_DIR is None:
     if os.name == "nt":
         DEFAULT_LOG_BASE_DIR = os.path.expandvars("%USERPROFILE%/Documents/logs")
     else:
-        DEFAULT_LOG_BASE_DIR = os.path.expanduser("~/logs")
+        if os.path.exists('/logs'):
+            DEFAULT_LOG_BASE_DIR = '/logs'
+        else:
+            DEFAULT_LOG_BASE_DIR = os.path.expanduser("~/logs")
 
 
 def find_log_by_pattern(pattern, log_base_dir=DEFAULT_LOG_BASE_DIR, allow_multiple=False,
