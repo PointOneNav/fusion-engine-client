@@ -69,25 +69,18 @@ enum class ConfigType : uint16_t {
   OUTPUT_LEVER_ARM = 19,
 
   /**
-   * The vehicle model.
+   * Information including vehicle model and dimensions.
    *
-   * Payload format: @ref VehicleModelConfig
+   * Payload format: @ref VehicleDetails
    */
-  VEHICLE_MODEL = 20,
-
-  /**
-   * The outer dimensions of the vehicle.
-   *
-   * Payload format: @ref VehicleDimensions
-   */
-  VEHICLE_DIMENSIONS = 21,
+  VEHICLE_DETAILS = 20,
 
   /**
    * Information pertaining to wheel measurements.
    *
    * Payload format: @ref WheelConfig
    */
-  WHEEL_CONFIG = 22,
+  WHEEL_CONFIG = 21,
 
   /**
    * Configure the UART0 serial baud rate (in bits/second).
@@ -129,11 +122,8 @@ inline const char* to_string(ConfigType type) {
     case ConfigType::OUTPUT_LEVER_ARM:
       return "Output Lever Arm";
 
-    case ConfigType::VEHICLE_MODEL:
-      return "Vehicle Model";
-
-    case ConfigType::VEHICLE_DIMENSIONS:
-      return "Vehicle Dimensions";
+    case ConfigType::VEHICLE_DETAILS:
+      return "Vehicle Details";
 
     case ConfigType::WHEEL_CONFIG:
       return "Wheel Config";
@@ -433,9 +423,9 @@ struct alignas(4) CoarseOrientation {
 };
 
 /**
- * @brief The vehicle model.
+ * @brief Information including vehicle model and dimensions.
  */
-struct alignas(4) VehicleModelConfig {
+struct alignas(4) VehicleDetails {
   enum class VehicleModel : uint16_t {
     UNKNOWN_VEHICLE = 0,
 
@@ -455,13 +445,7 @@ struct alignas(4) VehicleModelConfig {
 
   VehicleModel vehicle_model = VehicleModel::UNKNOWN_VEHICLE;
   uint8_t reserved[10] = {0};
-};
 
-/**
- * @brief Outer dimensions of the vehicle in meters.
- *
- */
-struct alignas(4) VehicleDimensions {
   /** The distance between the front axle and rear axle in meters. */
   float wheelbase_m = NAN;
 

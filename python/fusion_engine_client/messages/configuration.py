@@ -26,9 +26,8 @@ class ConfigType(IntEnum):
     DEVICE_COARSE_ORIENTATION = 17
     GNSS_LEVER_ARM = 18
     OUTPUT_LEVER_ARM = 19
-    VEHICLE_MODEL = 20
-    VEHICLE_DIMENSIONS = 21
-    WHEEL_CONFIG = 22
+    VEHICLE_DETAILS = 20
+    WHEEL_CONFIG = 21
     UART0_BAUD = 256
     UART1_BAUD = 257
 
@@ -229,21 +228,11 @@ class _ConfigClassGenerator:
         Padding(2),
     )
 
-    class VehicleModelConfig(NamedTuple):
+    class VehicleDetails(NamedTuple):
         """!
-        @brief The vehicle model.
+        @brief Information including vehicle model and dimensions.
         """
         vehicle_model: VehicleModel = VehicleModel.UNKNOWN_VEHICLE
-
-    VehicleModelConfigConstruct = Struct(
-        "vehicle_model" / AutoEnum(Int16ul, VehicleModel),
-        Padding(10),
-    )
-
-    """!
-    Outer dimensions of the vehicle in meters.
-    """
-    class VehicleDimensions(NamedTuple):
         ## The distance between the front axle and rear axle in meters.
         wheelbase_m: float = 0
         ## The distance between the two rear wheels in meters.
@@ -251,7 +240,9 @@ class _ConfigClassGenerator:
         ## The distance between the two front wheels in meters.
         front_track_width_m: float = 0
 
-    VehicleDimensionsConstruct = Struct(
+    VehicleDetailsConstruct = Struct(
+        "vehicle_model" / AutoEnum(Int16ul, VehicleModel),
+        Padding(6),
         "wheelbase_m" / Float32l,
         "rear_track_width_m" / Float32l,
         "front_track_width_m" / Float32l,
@@ -369,17 +360,10 @@ class DeviceCourseOrientationConfig(_conf_gen.CoarseOrientation):
     """
     pass
 
-@_conf_gen.create_config_class(ConfigType.VEHICLE_MODEL, _conf_gen.VehicleModelConfigConstruct)
-class VehicleModelConfig(_conf_gen.VehicleModelConfig):
+@_conf_gen.create_config_class(ConfigType.VEHICLE_DETAILS, _conf_gen.VehicleDetailsConstruct)
+class VehicleDetailsConfig(_conf_gen.VehicleDetails):
     """!
-    @brief The vehicle model.
-    """
-    pass
-
-@_conf_gen.create_config_class(ConfigType.VEHICLE_DIMENSIONS, _conf_gen.VehicleDimensionsConstruct)
-class VehicleDimensionsConfig(_conf_gen.VehicleDimensions):
-    """!
-    @brief Outer dimensions of the vehicle in meters.
+    @brief Information including vehicle model and dimensions.
     """
     pass
 
