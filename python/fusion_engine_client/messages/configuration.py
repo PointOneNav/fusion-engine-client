@@ -248,10 +248,13 @@ class _ConfigClassGenerator:
         wheelbase_m: float = 0
         ## The distance between the two rear wheels in meters.
         rear_track_width_m: float = 0
+        ## The distance between the two front wheels in meters.
+        front_track_width_m: float = 0
 
     VehicleDimensionsConstruct = Struct(
         "wheelbase_m" / Float32l,
         "rear_track_width_m" / Float32l,
+        "front_track_width_m" / Float32l,
     )
 
     """!

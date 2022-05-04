@@ -467,6 +467,9 @@ struct alignas(4) VehicleDimensions {
 
   /** The distance between the two rear wheels in meters. */
   float rear_track_width_m = NAN;
+
+  /** The distance between the two front wheels in meters. */
+  float front_track_width_m = NAN;
 };
 
 /**
