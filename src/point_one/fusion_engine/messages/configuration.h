@@ -242,7 +242,13 @@ struct alignas(4) SetConfigMessage : public MessagePayload {
   /** The type of parameter to be configured. */
   ConfigType config_type;
 
-  uint8_t reserved[2] = {0};
+  /** Flag to immediately save the config after applying this setting. */
+  static constexpr uint8_t FLAG_APPLY_AND_SAVE = 0x01;
+
+  /** Bitmask of additional flags to modify the command. */
+  uint8_t flags = 0;
+
+  uint8_t reserved[1] = {0};
 
   /** The size of the parameter value, @ref config_change_data (in bytes). */
   uint32_t config_length_bytes = 0;
