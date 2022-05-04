@@ -279,15 +279,20 @@ class SetConfigMessage(MessagePayload):
     MESSAGE_TYPE = MessageType.SET_CONFIG
     MESSAGE_VERSION = 0
 
+    # Flag to immediately save the config after applying this setting.
+    FLAG_APPLY_AND_SAVE = 0x01
+
     SetConfigMessageConstruct = Struct(
         "config_type" / AutoEnum(Int16ul, ConfigType),
-        Padding(2),
+        "flags" / Int8ul,
+        Padding(1),
         "config_change_length_bytes" / Int32ul,
         "config_change_data" / Bytes(this.config_change_length_bytes),
     )
 
-    def __init__(self, config_object: Optional[_conf_gen.ConfigClass] = None):
+    def __init__(self, config_object: Optional[_conf_gen.ConfigClass] = None, flags = 0):
         self.config_object = config_object
+        self.flags = flags
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if not isinstance(self.config_object, _conf_gen.ConfigClass):
@@ -298,6 +303,7 @@ class SetConfigMessage(MessagePayload):
         data = construct_obj.build(self.config_object)
         values = {
             'config_type': config_type,
+            'flags': self.flags,
             'config_change_data': data,
             'config_change_length_bytes': len(data)
         }
@@ -307,6 +313,7 @@ class SetConfigMessage(MessagePayload):
     def unpack(self, buffer: bytes, offset: int = 0) -> int:
         parsed = self.SetConfigMessageConstruct.parse(buffer[offset:])
         self.config_object = _conf_gen.CONFIG_MAP[parsed.config_type].parse(parsed.config_change_data)
+        self.flags = parsed.flags
         return parsed._io.tell()
 
     def __str__(self):
