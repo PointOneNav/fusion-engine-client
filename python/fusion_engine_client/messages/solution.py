@@ -602,7 +602,7 @@ class CalibrationStatus(MessagePayload):
         string += '  Pitch: %.1f deg (std dev: %.1f deg, max: %.1f deg)%s\n' % \
                   (self.ypr_deg[1], self.ypr_std_dev_deg[1], self.mounting_angle_max_std_dev_deg[1],
                    ' [OK]' if self.ypr_std_dev_deg[1] < self.mounting_angle_max_std_dev_deg[1] else '')
-        string += '  Roll: %.1f deg (std dev: %.1f deg, max: %.1f deg)%s\n' % \
+        string += '  Roll: %.1f deg (std dev: %.1f deg, max: %.1f deg)%s' % \
                   (self.ypr_deg[2], self.ypr_std_dev_deg[2], self.mounting_angle_max_std_dev_deg[2],
                    ' [OK]' if self.ypr_std_dev_deg[2] < self.mounting_angle_max_std_dev_deg[2] else '')
         return string
