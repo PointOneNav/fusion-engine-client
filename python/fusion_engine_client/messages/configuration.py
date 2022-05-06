@@ -56,6 +56,7 @@ class Direction(IntEnum):
 
 class VehicleModel(IntEnum):
     UNKNOWN_VEHICLE = 0,
+    DATASPEED_CD4 = 1,
     ## In general, all J1939 vehicles support a subset of the J1939 standard and
     ## may be set to vehicle model `J1939`. Their 29-bit CAN IDs may differ
     ## based on how the platform assigns message priorities and source
@@ -64,7 +65,7 @@ class VehicleModel(IntEnum):
     ##
     ## For most vehicles, it is not necessary to specify and particular make and
     ## model.
-    J1939 = 1,
+    J1939 = 2,
 
     LEXUS_CT200H = 20,
 
@@ -83,13 +84,11 @@ class VehicleModel(IntEnum):
 
     MAN_TGX = 140,
 
-    DATASPEED_CD4 = 160,
+    FACTION = 160,
 
-    FACTION = 180,
+    LINCOLN_MKZ = 180,
 
-    LINCOLN_MKZ = 200,
-
-    BMW_7 = 220
+    BMW_7 = 200
 
     def __str__(self):
         return super().__str__().replace(self.__class__.__name__ + '.', '')

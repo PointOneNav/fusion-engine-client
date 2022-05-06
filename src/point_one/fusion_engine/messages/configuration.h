@@ -428,6 +428,7 @@ struct alignas(4) CoarseOrientation {
  */
 enum class VehicleModel : uint16_t {
   UNKNOWN_VEHICLE = 0,
+  DATASPEED_CD4 = 1,
   // In general, all J1939 vehicles support a subset of the J1939 standard and
   // may be set to vehicle model `J1939`. Their 29-bit CAN IDs may differ
   // based on how the platform assigns message priorities and source
@@ -436,7 +437,7 @@ enum class VehicleModel : uint16_t {
   //
   // For most vehicles, it is not necessary to specify and particular make and
   // model.
-  J1939 = 1,
+  J1939 = 2,
 
   LEXUS_CT200H = 20,
 
@@ -455,13 +456,11 @@ enum class VehicleModel : uint16_t {
 
   MAN_TGX = 140,
 
-  DATASPEED_CD4 = 160,
+  FACTION = 160,
 
-  FACTION = 180,
+  LINCOLN_MKZ = 180,
 
-  LINCOLN_MKZ = 200,
-
-  BMW_7 = 220,
+  BMW_7 = 200,
 };
 
 /**
@@ -475,6 +474,7 @@ enum class VehicleModel : uint16_t {
 inline const char* to_string(VehicleModel vehicle_model) {
   switch (vehicle_model) {
     case VehicleModel::UNKNOWN_VEHICLE:
+    case VehicleModel::DATASPEED_CD4:
     case VehicleModel::J1939:
       return "UNKNOWN";
     case VehicleModel::LEXUS_CT200H:
@@ -497,8 +497,6 @@ inline const char* to_string(VehicleModel vehicle_model) {
       return "PEUGEOT_206";
     case VehicleModel::MAN_TGX:
       return "MAN_TGX";
-    case VehicleModel::DATASPEED_CD4:
-      return "DATASPEED_CD4";
     case VehicleModel::FACTION:
       return "FACTION";
     case VehicleModel::LINCOLN_MKZ:
