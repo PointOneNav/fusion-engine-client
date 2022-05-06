@@ -422,48 +422,49 @@ struct alignas(4) CoarseOrientation {
   uint8_t reserved[2] = {0};
 };
 
+/** @brief The make and model of the vehicle. */
+enum class VehicleModel : uint16_t {
+  UNKNOWN_VEHICLE = 0,
+  // In general, all J1939 vehicles support a subset of the J1939 standard and
+  // may be set to vehicle model `J1939`. Their 29-bit CAN IDs may differ
+  // based on how the platform assigns message priorities and source
+  // addresses, but the underlying program group number (PGN) and message
+  // contents will be consistent.
+  //
+  // For most vehicles, it is not necessary to specify and particular make and
+  // model.
+  J1939 = 1,
+
+  LEXUS_CT200H = 20,
+
+  KIA_SORENTO = 40,
+  KIA_SPORTAGE = 41,
+
+  AUDI_Q7 = 60,
+  AUDI_A8L = 61,
+
+  TESLA_MODEL_X = 80,
+  TESLA_MODEL_3 = 81,
+
+  HYUNDAI_ELANTRA = 100,
+
+  PEUGEOT_206 = 120,
+
+  MAN_TGX = 140,
+
+  DATASPEED_CD4 = 160,
+
+  FACTION = 180,
+
+  LINCOLN_MKZ = 200,
+
+  BMW_7 = 220,
+};
+
 /**
  * @brief Information including vehicle model and dimensions.
  */
 struct alignas(4) VehicleDetails {
-  enum class VehicleModel : uint16_t {
-    UNKNOWN_VEHICLE = 0,
-    // In general, all J1939 vehicles support a subset of the J1939 standard and
-    // may be set to vehicle model `J1939`. Their 29-bit CAN IDs may differ
-    // based on how the platform assigns message priorities and source
-    // addresses, but the underlying program group number (PGN) and message
-    // contents will be consistent.
-    //
-    // For most vehicles, it is not necessary to specify and particular make and
-    // model.
-    J1939 = 1,
-
-    LEXUS_CT200H = 20,
-
-    KIA_SORENTO = 40,
-    KIA_SPORTAGE = 41,
-
-    AUDI_Q7 = 60,
-    AUDI_A8L = 61,
-
-    TESLA_MODEL_X = 80,
-    TESLA_MODEL_3 = 81,
-
-    HYUNDAI_ELANTRA = 100,
-
-    PEUGEOT_206 = 120,
-
-    MAN_TGX = 140,
-
-    DATASPEED_CD4 = 160,
-
-    FACTION = 180,
-
-    LINCOLN_MKZ = 200,
-
-    BMW_7 = 220,
-  };
-
   VehicleModel vehicle_model = VehicleModel::UNKNOWN_VEHICLE;
   uint8_t reserved[10] = {0};
 
@@ -477,56 +478,57 @@ struct alignas(4) VehicleDetails {
   float rear_track_width_m = NAN;
 };
 
+/**
+ * @brief The format used by the vehicle to report vehicle/wheel speed
+ * measurement data.
+ */
+enum class WheelSensorType : uint8_t {
+  /** Wheel/vehicle speed data not available. */
+  NONE = 0,
+  /**
+   * Individual wheel rotation rates, reported as an encoder tick rate (in
+   * ticks/second). Will be scaled to meters/second using the specified scale
+   * factor.
+   */
+  TICK_RATE = 1,
+  /**
+   * Individual wheel rotational angles, reported as accumulated encoder
+   * ticks.
+   * */
+  TICKS = 2,
+  /** Individual wheel speeds, reported in meters/second. */
+  WHEEL_SPEED = 3,
+  /** A single value indicating the vehicle speed (in meters/second). */
+  VEHICLE_SPEED = 4,
+};
+
+/** @brief The type of vehicle/wheel speed measurements to be applied. */
+enum class AppliedSpeedType : uint8_t {
+  /** Speed data not applied to the system. */
+  APPLIED_NONE = 0,
+  /** Rear wheel speed data to be applied to the system (recommended). */
+  REAR_WHEELS = 1,
+  /** Front wheel speed data to be applied to the system. */
+  FRONT_WHEELS = 2,
+  /** Front and rear wheel speed data to be applied to the system. */
+  FRONT_AND_REAR_WHEELS = 3,
+  /** Individual vehicle speed to be applied to the system. */
+  VEHICLE_BODY = 4,
+};
+
+/** @brief The type of steering defined by which wheels are steered. */
+enum class SteeringType : uint8_t {
+  /** Steered wheels unknown. */
+  UNKNOWN_STEERING = 0,
+  /** Front wheels are steered. */
+  FRONT_STEERING = 1,
+  /** Front and rear wheels are steered. */
+  FRONT_AND_REAR_STEERING = 2,
+};
+
+
 /** @brief Vehicle/wheel speed measurement configuration settings. */
 struct alignas(4) WheelConfig {
-  /**
-   * @brief The format used by the vehicle to report vehicle/wheel speed
-   * measurement data.
-   */
-  enum class WheelSensorType : uint8_t {
-    /** Wheel/vehicle speed data not available. */
-    NONE = 0,
-    /**
-     * Individual wheel rotation rates, reported as an encoder tick rate (in
-     * ticks/second). Will be scaled to meters/second using the specified scale
-     * factor.
-     */
-    TICK_RATE = 1,
-    /**
-     * Individual wheel rotational angles, reported as accumulated encoder
-     * ticks.
-     * */
-    TICKS = 2,
-    /** Individual wheel speeds, reported in meters/second. */
-    WHEEL_SPEED = 3,
-    /** A single value indicating the vehicle speed (in meters/second). */
-    VEHICLE_SPEED = 4,
-  };
-
-  /** @brief The type of vehicle/wheel speed measurements to be applied. */
-  enum class AppliedSpeedType : uint8_t {
-    /** Speed data not applied to the system. */
-    APPLIED_NONE = 0,
-    /** Rear wheel speed data to be applied to the system (recommended). */
-    REAR_WHEELS = 1,
-    /** Front wheel speed data to be applied to the system. */
-    FRONT_WHEELS = 2,
-    /** Front and rear wheel speed data to be applied to the system. */
-    FRONT_AND_REAR_WHEELS = 3,
-    /** Individual vehicle speed to be applied to the system. */
-    VEHICLE_BODY = 4,
-  };
-
-  /** @brief The type of steering defined by which wheels are steered. */
-  enum class SteeringType : uint8_t {
-    /** Steered wheels unknown. */
-    UNKNOWN_STEERING = 0,
-    /** Front wheels are steered. */
-    FRONT_STEERING = 1,
-    /** Front and rear wheels are steered. */
-    FRONT_AND_REAR_STEERING = 2,
-  };
-
   /**
    * The format used by the vehicle to report vehicle/wheel speed measurement
    * data.
