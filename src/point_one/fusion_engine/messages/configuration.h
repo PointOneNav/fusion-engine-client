@@ -428,6 +428,15 @@ struct alignas(4) CoarseOrientation {
 struct alignas(4) VehicleDetails {
   enum class VehicleModel : uint16_t {
     UNKNOWN_VEHICLE = 0,
+    // In general, all J1939 vehicles support a subset of the J1939 standard and
+    // may be set to vehicle model `J1939`. Their 29-bit CAN IDs may differ
+    // based on how the platform assigns message priorities and source
+    // addresses, but the underlying program group number (PGN) and message
+    // contents will be consistent.
+    //
+    // For most vehicles, it is not necessary to specify and particular make and
+    // model.
+    J1939 = 1,
 
     LEXUS_CT200H = 100,
 
@@ -440,7 +449,19 @@ struct alignas(4) VehicleDetails {
     TESLA_MODEL_X = 400,
     TESLA_MODEL_3 = 401,
 
-    HYUNDAI_ELANTRA = 501
+    HYUNDAI_ELANTRA = 501,
+
+    PEUGEOT_206 = 600,
+
+    MAN_TGX = 700,
+
+    DATASPEED_CD4 = 800,
+
+    FACTION = 900,
+
+    LINCOLN_MKZ = 1000,
+
+    BMW_7 = 1100,
   };
 
   VehicleModel vehicle_model = VehicleModel::UNKNOWN_VEHICLE;
