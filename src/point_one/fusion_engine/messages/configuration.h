@@ -474,9 +474,11 @@ enum class VehicleModel : uint16_t {
 inline const char* to_string(VehicleModel vehicle_model) {
   switch (vehicle_model) {
     case VehicleModel::UNKNOWN_VEHICLE:
-    case VehicleModel::DATASPEED_CD4:
-    case VehicleModel::J1939:
       return "UNKNOWN";
+    case VehicleModel::DATASPEED_CD4:
+      return "DATASPEED_CD4";
+    case VehicleModel::J1939:
+      return "J1939";
     case VehicleModel::LEXUS_CT200H:
       return "LEXUS_CT200H";
     case VehicleModel::KIA_SORENTO:
@@ -512,7 +514,8 @@ inline const char* to_string(VehicleModel vehicle_model) {
  * @brief @ref VehicleModel stream operator.
  * @ingroup config_and_ctrl_messages
  */
-inline std::ostream& operator<<(std::ostream& stream, VehicleModel vehicle_model) {
+inline std::ostream& operator<<(std::ostream& stream,
+                                VehicleModel vehicle_model) {
   stream << to_string(vehicle_model) << " (" << (int)vehicle_model << ")";
   return stream;
 }
