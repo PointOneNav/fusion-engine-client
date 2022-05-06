@@ -256,17 +256,17 @@ class _ConfigClassGenerator:
         vehicle_model: VehicleModel = VehicleModel.UNKNOWN_VEHICLE
         ## The distance between the front axle and rear axle (in meters).
         wheelbase_m: float = 0
-        ## The distance between the two rear wheels (in meters).
-        rear_track_width_m: float = 0
         ## The distance between the two front wheels (in meters).
         front_track_width_m: float = 0
+        ## The distance between the two rear wheels (in meters).
+        rear_track_width_m: float = 0
 
     VehicleDetailsConstruct = Struct(
         "vehicle_model" / AutoEnum(Int16ul, VehicleModel),
         Padding(10),
         "wheelbase_m" / Float32l,
-        "rear_track_width_m" / Float32l,
         "front_track_width_m" / Float32l,
+        "rear_track_width_m" / Float32l,
     )
 
     class WheelConfig(NamedTuple):

@@ -470,11 +470,11 @@ struct alignas(4) VehicleDetails {
   /** The distance between the front axle and rear axle (in meters). */
   float wheelbase_m = NAN;
 
-  /** The distance between the two rear wheels (in meters). */
-  float rear_track_width_m = NAN;
-
   /** The distance between the two front wheels (in meters). */
   float front_track_width_m = NAN;
+
+  /** The distance between the two rear wheels (in meters). */
+  float rear_track_width_m = NAN;
 };
 
 /** @brief Vehicle/wheel speed measurement configuration settings. */
