@@ -438,30 +438,30 @@ struct alignas(4) VehicleDetails {
     // model.
     J1939 = 1,
 
-    LEXUS_CT200H = 100,
+    LEXUS_CT200H = 20,
 
-    KIA_SORENTO = 200,
-    KIA_SPORTAGE = 201,
+    KIA_SORENTO = 40,
+    KIA_SPORTAGE = 41,
 
-    AUDI_Q7 = 300,
-    AUDI_A8L = 301,
+    AUDI_Q7 = 60,
+    AUDI_A8L = 61,
 
-    TESLA_MODEL_X = 400,
-    TESLA_MODEL_3 = 401,
+    TESLA_MODEL_X = 80,
+    TESLA_MODEL_3 = 81,
 
-    HYUNDAI_ELANTRA = 501,
+    HYUNDAI_ELANTRA = 100,
 
-    PEUGEOT_206 = 600,
+    PEUGEOT_206 = 120,
 
-    MAN_TGX = 700,
+    MAN_TGX = 140,
 
-    DATASPEED_CD4 = 800,
+    DATASPEED_CD4 = 160,
 
-    FACTION = 900,
+    FACTION = 180,
 
-    LINCOLN_MKZ = 1000,
+    LINCOLN_MKZ = 200,
 
-    BMW_7 = 1100,
+    BMW_7 = 220,
   };
 
   VehicleModel vehicle_model = VehicleModel::UNKNOWN_VEHICLE;

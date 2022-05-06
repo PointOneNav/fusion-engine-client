@@ -56,19 +56,40 @@ class Direction(IntEnum):
 
 class VehicleModel(IntEnum):
     UNKNOWN_VEHICLE = 0,
+    ## In general, all J1939 vehicles support a subset of the J1939 standard and
+    ## may be set to vehicle model `J1939`. Their 29-bit CAN IDs may differ
+    ## based on how the platform assigns message priorities and source
+    ## addresses, but the underlying program group number (PGN) and message
+    ## contents will be consistent.
+    ##
+    ## For most vehicles, it is not necessary to specify and particular make and
+    ## model.
+    J1939 = 1,
 
-    LEXUS_CT200H = 100,
+    LEXUS_CT200H = 20,
 
-    KIA_SORENTO = 200,
-    KIA_SPORTAGE = 201,
+    KIA_SORENTO = 40,
+    KIA_SPORTAGE = 41,
 
-    AUDI_Q7 = 300,
-    AUDI_A8L = 301,
+    AUDI_Q7 = 60,
+    AUDI_A8L = 61,
 
-    TESLA_MODEL_X = 400,
-    TESLA_MODEL_3 = 401,
+    TESLA_MODEL_X = 80,
+    TESLA_MODEL_3 = 81,
 
-    HYUNDAI_ELANTRA = 501
+    HYUNDAI_ELANTRA = 100,
+
+    PEUGEOT_206 = 120,
+
+    MAN_TGX = 140,
+
+    DATASPEED_CD4 = 160,
+
+    FACTION = 180,
+
+    LINCOLN_MKZ = 200,
+
+    BMW_7 = 220
 
     def __str__(self):
         return super().__str__().replace(self.__class__.__name__ + '.', '')
