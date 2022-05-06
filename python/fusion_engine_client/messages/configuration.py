@@ -233,25 +233,25 @@ class _ConfigClassGenerator:
         @brief Information including vehicle model and dimensions.
         """
         vehicle_model: VehicleModel = VehicleModel.UNKNOWN_VEHICLE
-        ## The distance between the front axle and rear axle in meters.
+        ## The distance between the front axle and rear axle (in meters).
         wheelbase_m: float = 0
-        ## The distance between the two rear wheels in meters.
+        ## The distance between the two rear wheels (in meters).
         rear_track_width_m: float = 0
-        ## The distance between the two front wheels in meters.
+        ## The distance between the two front wheels (in meters).
         front_track_width_m: float = 0
 
     VehicleDetailsConstruct = Struct(
         "vehicle_model" / AutoEnum(Int16ul, VehicleModel),
-        Padding(6),
+        Padding(10),
         "wheelbase_m" / Float32l,
         "rear_track_width_m" / Float32l,
         "front_track_width_m" / Float32l,
     )
 
-    """!
-    Information pertaining to wheel speeds.
-    """
     class WheelConfig(NamedTuple):
+        """!
+        Vehicle/wheel speed measurement configuration settings.
+        """
         ## Determines how speeds are measured.
         wheel_sensor_type: WheelSensorType = WheelSensorType.NONE
         ## Determines how speeds are applied to system.
@@ -259,11 +259,11 @@ class _ConfigClassGenerator:
         ## Determines which wheels of the vehicle are steered.
         steering_type: SteeringType = SteeringType.UNKNOWN_STEERING
         ## Measures how often wheel tick measurements are updated.
-        wheel_update_interval_sec: float = 0
+        wheel_update_interval_sec: float = math.nan
         ## Ratio between steering wheel angle and road wheel angle.
-        steering_ratio: float = 0
-        ## Wheel tick distance in meters.
-        wheel_ticks_to_m: float = 0
+        steering_ratio: float = math.nan
+        ## Wheel tick distance (in meters).
+        wheel_ticks_to_m: float = math.nan
         ## The maximum value that wheel ticks will increment to before
         # restarting to zero.
         wheel_tick_max_value: int = 0

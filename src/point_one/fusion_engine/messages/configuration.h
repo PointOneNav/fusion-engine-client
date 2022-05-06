@@ -446,75 +446,125 @@ struct alignas(4) VehicleDetails {
   VehicleModel vehicle_model = VehicleModel::UNKNOWN_VEHICLE;
   uint8_t reserved[10] = {0};
 
-  /** The distance between the front axle and rear axle in meters. */
+  /** The distance between the front axle and rear axle (in meters). */
   float wheelbase_m = NAN;
 
-  /** The distance between the two rear wheels in meters. */
+  /** The distance between the two rear wheels (in meters). */
   float rear_track_width_m = NAN;
 
-  /** The distance between the two front wheels in meters. */
+  /** The distance between the two front wheels (in meters). */
   float front_track_width_m = NAN;
 };
 
-/**
- * @brief Information pertaining to wheel speeds.
- *
- */
+/** @brief Vehicle/wheel speed measurement configuration settings. */
 struct alignas(4) WheelConfig {
-  /** Determines how speeds are measured. */
+  /**
+   * @brief The format used by the vehicle to report vehicle/wheel speed
+   * measurement data.
+   */
   enum class WheelSensorType : uint8_t {
-    NONE = 0,           ///< Speeds not to be used.
-    TICK_RATE = 1,      ///< Use differential wheel speeds.
-    TICKS = 2,          ///< Use physical wheel ticks.
-    WHEEL_SPEED = 3,    ///< Use differential wheel speeds.
-    VEHICLE_SPEED = 4,  ///< Use one uniform speed for the body of the vehicle.
+    /** Wheel/vehicle speed data not available. */
+    NONE = 0,
+    /**
+     * Individual wheel rotation rates, reported as an encoder tick rate (in
+     * ticks/second). Will be scaled to meters/second using the specified scale
+     * factor.
+     */
+    TICK_RATE = 1,
+    /**
+     * Individual wheel rotational angles, reported as accumulated encoder
+     * ticks.
+     * */
+    TICKS = 2,
+    /** Individual wheel speeds, reported in meters/second. */
+    WHEEL_SPEED = 3,
+    /** A single value indicating the vehicle speed (in meters/second). */
+    VEHICLE_SPEED = 4,
   };
 
-  /** Determines how speeds are applied to system. */
+  /** @brief The type of vehicle/wheel speed measurements to be applied. */
   enum class AppliedSpeedType : uint8_t {
-    APPLIED_NONE = 0,           ///< Speeds not to be applied to system.
-    REAR_WHEELS = 1,            ///< Use rear wheel speeds only (recommended).
-    FRONT_WHEELS = 2,           ///< Use front wheel speeds only.
-    FRONT_AND_REAR_WHEELS = 3,  ///< Use front and rear wheel speeds.
-    VEHICLE_BODY = 4,           ///< Use one uniform speed for the vehicle.
+    /** Speed data not applied to the system. */
+    APPLIED_NONE = 0,
+    /** Rear wheel speed data to be applied to the system (recommended). */
+    REAR_WHEELS = 1,
+    /** Front wheel speed data to be applied to the system. */
+    FRONT_WHEELS = 2,
+    /** Front and rear wheel speed data to be applied to the system. */
+    FRONT_AND_REAR_WHEELS = 3,
+    /** Individual vehicle speed to be applied to the system. */
+    VEHICLE_BODY = 4,
   };
 
-  /** Determines which wheels of the vehicle are steered. */
+  /** @brief The type of steering defined by which wheels are steered. */
   enum class SteeringType : uint8_t {
+    /** Steered wheels unknown. */
     UNKNOWN_STEERING = 0,
+    /** Front wheels are steered. */
     FRONT_STEERING = 1,
+    /** Front and rear wheels are steered. */
     FRONT_AND_REAR_STEERING = 2,
   };
 
+  /**
+   * The format used by the vehicle to report vehicle/wheel speed measurement
+   * data.
+   */
   WheelSensorType wheel_sensor_type = WheelSensorType::NONE;
+
+  /** The type of vehicle/wheel speed measurements to be applied */
   AppliedSpeedType applied_speed_type = AppliedSpeedType::REAR_WHEELS;
+
+  /** The type of steering defined by which wheels are steered. */
   SteeringType steering_type = SteeringType::UNKNOWN_STEERING;
   uint8_t reserved1[1] = {0};
 
-  /** Measures how often wheel tick measurements are updated. */
+  /**
+   * The nominal rate at which wheel speed measurements will be provided (in
+   * seconds).
+   */
   float wheel_update_interval_sec = NAN;
 
-  /** Ratio between steering wheel angle and road wheel angle. */
+  /**
+   * Ratio between angle of the steering wheel and the angle of the wheels on
+   * the ground.
+   */
   float steering_ratio = NAN;
 
-  /** Wheel tick distance in meters. */
+  /**
+   * The scale factor to convert from wheel encoder ticks to distance (in
+   * meters/tick). Used for @ref WheelSensorType::TICKS and
+   * @ref WheelSensorType::TICK_RATE. */
   float wheel_ticks_to_m = NAN;
 
-  /** The maximum value that wheel ticks will increment to before restarting to
-   *  zero.
+  /**
+   * The maximum value (inclusive) before the wheel tick measurement will roll
+   * over.
+   *
+   * The rollover behavior depends on the value of @ref wheel_ticks_signed. For
+   * example,
+   * a maximum value of 10 will work as follows:
+   * - `wheel_ticks_signed == true`: [-11, 10]
+   * - `wheel_ticks_signed == false`: [0, 10]
+   *
+   * Signed values are assumed to be asymmetric, consistent with a typical 2's
+   * complement rollover.
    */
   uint32_t wheel_tick_max_value = 0;
 
   /**
-   * Determines whether wheel ticks are signed based on the direction the
-   * wheels are turning.
+   * `true` if the reported wheel tick measurements should be interpreted as
+   * signed integers, or `false` if they should be interpreted as unsigned
+   * integers.
+   *
+   * See @ref wheel_tick_max_value for details.
    */
   bool wheel_ticks_signed = false;
 
   /**
-   * Determines if wheel tick value solely increases, regardless of the
-   * direction the wheels are turning. To be used in conjunction with @ref
-   * wheel_ticks_signed.
+   * `true` if the wheel tick measurements increase by a positive amount when
+   * driving forward or backward. `false` if wheel tick measurements decrease
+   * when driving backward.
    */
   bool wheel_ticks_always_increase = true;
 
