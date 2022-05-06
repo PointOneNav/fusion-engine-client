@@ -273,11 +273,11 @@ class _ConfigClassGenerator:
         """!
         Vehicle/wheel speed measurement configuration settings.
         """
-        ## Determines how speeds are measured.
+        ## The type of vehicle/wheel speed measurements produced by the vehicle.
         wheel_sensor_type: WheelSensorType = WheelSensorType.NONE
-        ## Determines how speeds are applied to system.
+        ## The type of vehicle/wheel speed measurements to be applied.
         applied_speed_type: AppliedSpeedType = AppliedSpeedType.REAR_WHEELS
-        ## Determines which wheels of the vehicle are steered.
+        ## Indication of which of the vehicle's wheels are steered.
         steering_type: SteeringType = SteeringType.UNKNOWN_STEERING
         ## Measures how often wheel tick measurements are updated.
         wheel_update_interval_sec: float = math.nan

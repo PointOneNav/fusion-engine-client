@@ -422,7 +422,10 @@ struct alignas(4) CoarseOrientation {
   uint8_t reserved[2] = {0};
 };
 
-/** @brief The make and model of the vehicle. */
+/**
+ * @brief The make and model of the vehicle.
+ * @ingroup config_and_ctrl_messages
+ */
 enum class VehicleModel : uint16_t {
   UNKNOWN_VEHICLE = 0,
   // In general, all J1939 vehicles support a subset of the J1939 standard and
@@ -471,38 +474,44 @@ enum class VehicleModel : uint16_t {
  */
 inline const char* to_string(VehicleModel vehicle_model) {
   switch (vehicle_model) {
-    case VehicleModel::LEXUS_CT200H: {
-      return "Lexus CT200H";
-    }
-    case VehicleModel::KIA_SORENTO: {
-      return "Kia Sorento";
-    }
-    case VehicleModel::KIA_SPORTAGE: {
-      return "Kia Sportage";
-    }
-    case VehicleModel::AUDI_Q7: {
-      return "Audi Q7";
-    }
-    case VehicleModel::AUDI_A8L: {
-      return "Audi A8L";
-    }
-    case VehicleModel::TESLA_MODEL_X: {
-      return "Tesla Model X";
-    }
-    case VehicleModel::TESLA_MODEL_3: {
-      return "Tesla Model 3";
-    }
-    case VehicleModel::HYUNDAI_ELANTRA: {
-      return "Hyundai Elantra";
-    }
-    default: {
-      return "Unknown Vehicle";
-    }
+    case VehicleModel::UNKNOWN_VEHICLE:
+    case VehicleModel::J1939:
+      return "UNKNOWN";
+    case VehicleModel::LEXUS_CT200H:
+      return "LEXUS_CT200H";
+    case VehicleModel::KIA_SORENTO:
+      return "KIA_SORENTO";
+    case VehicleModel::KIA_SPORTAGE:
+      return "KIA_SPORTAGE";
+    case VehicleModel::AUDI_Q7:
+      return "AUDI_Q7";
+    case VehicleModel::AUDI_A8L:
+      return "AUDI_A8L";
+    case VehicleModel::TESLA_MODEL_X:
+      return "TESLA_MODEL_X";
+    case VehicleModel::TESLA_MODEL_3:
+      return "TESLA_MODEL_3";
+    case VehicleModel::HYUNDAI_ELANTRA:
+      return "HYUNDAI_ELANTRA";
+    case VehicleModel::PEUGEOT_206:
+      return "PEUGEOT_206";
+    case VehicleModel::MAN_TGX:
+      return "MAN_TGX";
+    case VehicleModel::DATASPEED_CD4:
+      return "DATASPEED_CD4";
+    case VehicleModel::FACTION:
+      return "FACTION";
+    case VehicleModel::LINCOLN_MKZ:
+      return "LINCOLN_MKZ";
+    case VehicleModel::BMW_7:
+      return "BMW_7";
+    default:
+      return "UNRECOGNIZED";
   }
 }
 
 /**
- * @brief @ref SaveAction stream operator.
+ * @brief @ref VehicleModel stream operator.
  * @ingroup config_and_ctrl_messages
  */
 inline std::ostream& operator<<(std::ostream& stream, VehicleModel vehicle_model) {
@@ -512,6 +521,7 @@ inline std::ostream& operator<<(std::ostream& stream, VehicleModel vehicle_model
 
 /**
  * @brief Information including vehicle model and dimensions.
+ * @ingroup config_and_ctrl_messages
  */
 struct alignas(4) VehicleDetails {
   VehicleModel vehicle_model = VehicleModel::UNKNOWN_VEHICLE;
@@ -528,8 +538,8 @@ struct alignas(4) VehicleDetails {
 };
 
 /**
- * @brief The format used by the vehicle to report vehicle/wheel speed
- * measurement data.
+ * @brief The type of vehicle/wheel speed measurements produced by the vehicle.
+ * @ingroup config_and_ctrl_messages
  */
 enum class WheelSensorType : uint8_t {
   /** Wheel/vehicle speed data not available. */
@@ -552,8 +562,8 @@ enum class WheelSensorType : uint8_t {
 };
 
 /**
- * @brief Get a human-friendly string name for the specified
- *  @ref WheelSensorType.
+ * @brief Get a human-friendly string name for the specified @ref
+ *        WheelSensorType.
  * @ingroup config_and_ctrl_messages
  *
  * @param wheel_sensor_type The desired wheel sensor type.
@@ -587,13 +597,17 @@ inline const char* to_string(WheelSensorType wheel_sensor_type) {
  * @brief @ref WheelSensorType stream operator.
  * @ingroup config_and_ctrl_messages
  */
-  inline std::ostream& operator<<(std::ostream& stream,
-                                  WheelSensorType wheel_sensor_type) {
-    stream << to_string(wheel_sensor_type) << " (" << (int)wheel_sensor_type << ")";
-    return stream;
-  }
+inline std::ostream& operator<<(std::ostream& stream,
+                                WheelSensorType wheel_sensor_type) {
+  stream << to_string(wheel_sensor_type) << " (" << (int)wheel_sensor_type
+         << ")";
+  return stream;
+}
 
-/** @brief The type of vehicle/wheel speed measurements to be applied. */
+/**
+ * @brief The type of vehicle/wheel speed measurements to be applied.
+ * @ingroup config_and_ctrl_messages
+ */
 enum class AppliedSpeedType : uint8_t {
   /** Speed data not applied to the system. */
   APPLIED_NONE = 0,
@@ -608,8 +622,8 @@ enum class AppliedSpeedType : uint8_t {
 };
 
 /**
- * @brief Get a human-friendly string name for the specified
- *  @ref AppliedSpeedType.
+ * @brief Get a human-friendly string name for the specified @ref
+ *        AppliedSpeedType.
  * @ingroup config_and_ctrl_messages
  *
  * @param applied_speed_type The desired applied speed type.
@@ -621,7 +635,7 @@ inline const char* to_string(AppliedSpeedType applied_speed_type) {
     case AppliedSpeedType::APPLIED_NONE: {
       return "Applied None";
     }
-    case AppliedSpeedtype::REAR_WHEELS: {
+    case AppliedSpeedType::REAR_WHEELS: {
       return "Rear Wheels";
     }
     case AppliedSpeedType::FRONT_WHEELS: {
@@ -640,7 +654,7 @@ inline const char* to_string(AppliedSpeedType applied_speed_type) {
 }
 
 /**
- * @brief @ref AppliedSpeedtype stream operator.
+ * @brief @ref AppliedSpeedType stream operator.
  * @ingroup config_and_ctrl_messages
  */
 inline std::ostream& operator<<(std::ostream& stream,
@@ -650,7 +664,10 @@ inline std::ostream& operator<<(std::ostream& stream,
   return stream;
 }
 
-/** @brief The type of steering defined by which wheels are steered. */
+/**
+ * @brief Indication of which of the vehicle's wheels are steered.
+ * @ingroup config_and_ctrl_messages
+ */
 enum class SteeringType : uint8_t {
   /** Steered wheels unknown. */
   UNKNOWN_STEERING = 0,
@@ -661,11 +678,10 @@ enum class SteeringType : uint8_t {
 };
 
 /**
- * @brief Get a human-friendly string name for the specified
- *  @ref SteeringType.
+ * @brief Get a human-friendly string name for the specified @ref SteeringType.
  * @ingroup config_and_ctrl_messages
  *
- * @param steering_type The desired applied speed type.
+ * @param steering_type The desired steering type.
  *
  * @return The corresponding string name.
  */
@@ -687,29 +703,31 @@ inline const char* to_string(SteeringType steering_type) {
 }
 
 /**
- * @brief @ref AppliedSpeedtype stream operator.
+ * @brief @ref SteeringType stream operator.
  * @ingroup config_and_ctrl_messages
  */
 inline std::ostream& operator<<(std::ostream& stream,
-                                AppliedSpeedType applied_speed_type) {
-  stream << to_string(applied_speed_type) << " (" << (int)applied_speed_type
-         << ")";
+                                SteeringType steering_type) {
+  stream << to_string(steering_type) << " (" << (int)steering_type << ")";
   return stream;
 }
 
-/** @brief Vehicle/wheel speed measurement configuration settings. */
+/**
+ * @brief Vehicle/wheel speed measurement configuration settings.
+ * @ingroup config_and_ctrl_messages
+ */
 struct alignas(4) WheelConfig {
   /**
-   * The format used by the vehicle to report vehicle/wheel speed measurement
-   * data.
+   * The type of vehicle/wheel speed measurements produced by the vehicle.
    */
   WheelSensorType wheel_sensor_type = WheelSensorType::NONE;
 
-  /** The type of vehicle/wheel speed measurements to be applied */
+  /** The type of vehicle/wheel speed measurements to be applied. */
   AppliedSpeedType applied_speed_type = AppliedSpeedType::REAR_WHEELS;
 
-  /** The type of steering defined by which wheels are steered. */
+  /** Indication of which of the vehicle's wheels are steered. */
   SteeringType steering_type = SteeringType::UNKNOWN_STEERING;
+
   uint8_t reserved1[1] = {0};
 
   /**
@@ -727,7 +745,8 @@ struct alignas(4) WheelConfig {
   /**
    * The scale factor to convert from wheel encoder ticks to distance (in
    * meters/tick). Used for @ref WheelSensorType::TICKS and
-   * @ref WheelSensorType::TICK_RATE. */
+   * @ref WheelSensorType::TICK_RATE.
+   */
   float wheel_ticks_to_m = NAN;
 
   /**
@@ -735,8 +754,7 @@ struct alignas(4) WheelConfig {
    * over.
    *
    * The rollover behavior depends on the value of @ref wheel_ticks_signed. For
-   * example,
-   * a maximum value of 10 will work as follows:
+   * example, a maximum value of 10 will work as follows:
    * - `wheel_ticks_signed == true`: [-11, 10]
    * - `wheel_ticks_signed == false`: [0, 10]
    *
@@ -762,26 +780,26 @@ struct alignas(4) WheelConfig {
   bool wheel_ticks_always_increase = true;
 
   uint8_t reserved2[2] = {0};
-  };
+};
 
-  /** @} */
+/** @} */
 
-  /**************************************************************************/ /**
+/**************************************************************************/ /**
  * @name Input/Output Stream Control
  * @{
  ******************************************************************************/
 
-  /**
+/**
  * @brief The framing protocol of a message.
  */
-  enum class ProtocolType : uint8_t {
-    INVALID = 0,
-    FUSION_ENGINE = 1,
-    NMEA = 2,
-    RTCM = 3,
-  };
+enum class ProtocolType : uint8_t {
+  INVALID = 0,
+  FUSION_ENGINE = 1,
+  NMEA = 2,
+  RTCM = 3,
+};
 
-  /**
+/**
  * @brief Get a human-friendly string name for the specified @ref
  *        ProtocolType.
  * @ingroup config_and_ctrl_messages
@@ -790,74 +808,74 @@ struct alignas(4) WheelConfig {
  *
  * @return The corresponding string name.
  */
-  inline const char* to_string(ProtocolType val) {
-    switch (val) {
-      case ProtocolType::INVALID:
-        return "Invalid";
-      case ProtocolType::FUSION_ENGINE:
-        return "FusionEngine";
-      case ProtocolType::NMEA:
-        return "NMEA";
-      case ProtocolType::RTCM:
-        return "RTCM";
-      default:
-        return "Unrecognized";
-    }
+inline const char* to_string(ProtocolType val) {
+  switch (val) {
+    case ProtocolType::INVALID:
+      return "Invalid";
+    case ProtocolType::FUSION_ENGINE:
+      return "FusionEngine";
+    case ProtocolType::NMEA:
+      return "NMEA";
+    case ProtocolType::RTCM:
+      return "RTCM";
+    default:
+      return "Unrecognized";
   }
+}
 
-  /**
+/**
  * @brief @ref ProtocolType stream operator.
  * @ingroup config_and_ctrl_messages
  */
-  inline std::ostream& operator<<(std::ostream& stream, ProtocolType val) {
-    stream << to_string(val) << " (" << (int)val << ")";
-    return stream;
-  }
+inline std::ostream& operator<<(std::ostream& stream, ProtocolType val) {
+  stream << to_string(val) << " (" << (int)val << ")";
+  return stream;
+}
 
-  /**
+/**
  * @brief Identifies a message type.
  */
-  struct alignas(4) MsgType {
-    ProtocolType protocol = ProtocolType::INVALID;
-    uint8_t reserved[1] = {0};
-    uint16_t msg_id = 0;
-  };
+struct alignas(4) MsgType {
+  ProtocolType protocol = ProtocolType::INVALID;
+  uint8_t reserved[1] = {0};
+  uint16_t msg_id = 0;
+};
 
-  /**
+/**
  * @brief An output rate for a message.
  */
-  struct alignas(4) MsgRate {
-    /**
+struct alignas(4) MsgRate {
+  /**
    * @brief Reserved value for @ref update_period_ms to indicate that the
    *        message should come out at its max rate.
    *
    * Also used for messages that output at a fixed rate.
    */
-    static constexpr uint16_t MAX_RATE = 0xFFFF;
+  static constexpr uint16_t MAX_RATE = 0xFFFF;
 
-    /** @brief The type of message to configure. */
-    MsgType type;
-    /** @brief The desired message update interval (in ms). */
-    uint16_t update_period_ms = 0;
-    uint8_t reserved[2] = {0};
-  };
+  /** @brief The type of message to configure. */
+  MsgType type;
+  /** @brief The desired message update interval (in ms). */
+  uint16_t update_period_ms = 0;
+  uint8_t reserved[2] = {0};
+};
 
-  /**
+/**
  * @brief Type of IO interface transport.
  */
-  enum class TransportType : uint8_t {
-    INVALID = 0,
-    SERIAL = 1,
-    FILE = 2,
-    TCP_CLIENT = 3,
-    TCP_SERVER = 4,
-    UDP_CLIENT = 5,
-    UDP_SERVER = 6,
-    /** This is used for requesting the configuration for all interfaces. */
-    ALL = 255,
-  };
+enum class TransportType : uint8_t {
+  INVALID = 0,
+  SERIAL = 1,
+  FILE = 2,
+  TCP_CLIENT = 3,
+  TCP_SERVER = 4,
+  UDP_CLIENT = 5,
+  UDP_SERVER = 6,
+  /** This is used for requesting the configuration for all interfaces. */
+  ALL = 255,
+};
 
-  /**
+/**
  * @brief Get a human-friendly string name for the specified @ref
  *        TransportType.
  * @ingroup config_and_ctrl_messages
@@ -866,82 +884,82 @@ struct alignas(4) WheelConfig {
  *
  * @return The corresponding string name.
  */
-  inline const char* to_string(TransportType val) {
-    switch (val) {
-      case TransportType::INVALID:
-        return "Invalid";
-      case TransportType::SERIAL:
-        return "Serial";
-      case TransportType::FILE:
-        return "File";
-      case TransportType::TCP_CLIENT:
-        return "TCP Client";
-      case TransportType::TCP_SERVER:
-        return "TCP Server";
-      case TransportType::UDP_CLIENT:
-        return "UDP Client";
-      case TransportType::UDP_SERVER:
-        return "UDP Server";
-      case TransportType::ALL:
-        return "All";
-      default:
-        return "Unrecognized";
-    }
+inline const char* to_string(TransportType val) {
+  switch (val) {
+    case TransportType::INVALID:
+      return "Invalid";
+    case TransportType::SERIAL:
+      return "Serial";
+    case TransportType::FILE:
+      return "File";
+    case TransportType::TCP_CLIENT:
+      return "TCP Client";
+    case TransportType::TCP_SERVER:
+      return "TCP Server";
+    case TransportType::UDP_CLIENT:
+      return "UDP Client";
+    case TransportType::UDP_SERVER:
+      return "UDP Server";
+    case TransportType::ALL:
+      return "All";
+    default:
+      return "Unrecognized";
   }
+}
 
-  /**
+/**
  * @brief @ref TransportType stream operator.
  * @ingroup config_and_ctrl_messages
  */
-  inline std::ostream& operator<<(std::ostream& stream, TransportType val) {
-    stream << to_string(val) << " (" << (int)val << ")";
-    return stream;
-  }
+inline std::ostream& operator<<(std::ostream& stream, TransportType val) {
+  stream << to_string(val) << " (" << (int)val << ")";
+  return stream;
+}
 
-  /**
+/**
  * @brief Identifies an IO interface.
  *
  * (e.g., serial port 0 or TCP server 2)
  */
-  struct alignas(4) InterfaceID {
-    /** The interface's transport type. **/
-    TransportType type = TransportType::INVALID;
-    /** An identifier for the instance of this transport. */
-    uint8_t index = 0;
-    uint8_t reserved[2] = {0};
+struct alignas(4) InterfaceID {
+  /** The interface's transport type. **/
+  TransportType type = TransportType::INVALID;
+  /** An identifier for the instance of this transport. */
+  uint8_t index = 0;
+  uint8_t reserved[2] = {0};
 
-    bool operator==(const InterfaceID& other) const {
-      return type == other.type && index == other.index;
-    }
+  bool operator==(const InterfaceID& other) const {
+    return type == other.type && index == other.index;
+  }
 
-    bool inline operator!=(const InterfaceID& other) const {
-      return !(*this == other);
-    }
-  };
+  bool inline operator!=(const InterfaceID& other) const {
+    return !(*this == other);
+  }
+};
 
-  /**
+/**
  * @brief @ref InterfaceID stream operator.
  * @ingroup config_and_ctrl_messages
  */
-  inline std::ostream& operator<<(std::ostream& stream, InterfaceID val) {
-    stream << "[type=" << to_string(val.type) << ", index=" << (int)val.index
-           << "]";
-    return stream;
-  }
+inline std::ostream& operator<<(std::ostream& stream, InterfaceID val) {
+  stream << "[type=" << to_string(val.type) << ", index=" << (int)val.index
+         << "]";
+  return stream;
+}
 
-  /**
+/**
  * @brief The ways that this configuration message can be applied to the
  *        previous list of values for that configuration type.
  */
-  enum class UpdateAction : uint8_t {
-    /**
+enum class UpdateAction : uint8_t {
+  /**
    * Replace the previous list of values with the set provided in
    * this configuration.
    */
-    REPLACE = 0
-  };
+  REPLACE = 0
+};
 
-  /**
+/**
  * @brief Get a human-friendly string name for the specified @ref
  *        UpdateAction.
  * @ingroup config_and_ctrl_messages
@@ -950,25 +968,25 @@ struct alignas(4) WheelConfig {
  *
  * @return The corresponding string name.
  */
-  inline const char* to_string(UpdateAction val) {
-    switch (val) {
-      case UpdateAction::REPLACE:
-        return "Replace";
-      default:
-        return "Unrecognized";
-    }
+inline const char* to_string(UpdateAction val) {
+  switch (val) {
+    case UpdateAction::REPLACE:
+      return "Replace";
+    default:
+      return "Unrecognized";
   }
+}
 
-  /**
+/**
  * @brief @ref UpdateAction stream operator.
  * @ingroup config_and_ctrl_messages
  */
-  inline std::ostream& operator<<(std::ostream& stream, UpdateAction val) {
-    stream << to_string(val) << " (" << (int)val << ")";
-    return stream;
-  }
+inline std::ostream& operator<<(std::ostream& stream, UpdateAction val) {
+  stream << to_string(val) << " (" << (int)val << ")";
+  return stream;
+}
 
-  /**
+/**
  * @brief Configure which stream(s) will be sent to an output interface.
  *
  * This message is followed by `N` @ref MsgRate objects, where `N`
@@ -979,21 +997,21 @@ struct alignas(4) WheelConfig {
  *  MsgRate, MsgRate,  ...}
  * ```
  */
-  struct alignas(4) OutputStreamMsgsConfig {
-    /** The stream this message configures. */
-    uint8_t stream_index = 0;
-    /**
+struct alignas(4) OutputStreamMsgsConfig {
+  /** The stream this message configures. */
+  uint8_t stream_index = 0;
+  /**
    * The type of action this configuration message applies to the
    * previous state of the output stream.
    */
-    UpdateAction update_action = UpdateAction::REPLACE;
-    /** The number of `msg_rates` entries this message contains. */
-    uint16_t num_msgs = 0;
-    /** Placeholder pointer for variable length set of messages. */
-    MsgRate msg_rates[0];
-  };
+  UpdateAction update_action = UpdateAction::REPLACE;
+  /** The number of `msg_rates` entries this message contains. */
+  uint16_t num_msgs = 0;
+  /** Placeholder pointer for variable length set of messages. */
+  MsgRate msg_rates[0];
+};
 
-  /**
+/**
  * @brief Configuration for the streams associated with a single output
  *        interface.
  *
@@ -1008,13 +1026,13 @@ struct alignas(4) WheelConfig {
  *  OutputInterfaceConfigEntry, uint8_t, uint8_t,  ...}
  * ```
  */
-  struct alignas(4) OutputInterfaceConfigEntry {
-    /** The output interface to configure. */
-    InterfaceID output_interface;
-    /** The number of `stream_indices` entries this message contains. */
-    uint8_t num_streams = 0;
-    uint8_t reserved[3] = {0};
-    /**
+struct alignas(4) OutputInterfaceConfigEntry {
+  /** The output interface to configure. */
+  InterfaceID output_interface;
+  /** The number of `stream_indices` entries this message contains. */
+  uint8_t num_streams = 0;
+  uint8_t reserved[3] = {0};
+  /**
    * Placeholder pointer for variable length set of indices.
    *
    * In the future these streams will be user defined, but for now they are:
@@ -1022,10 +1040,10 @@ struct alignas(4) WheelConfig {
    * - `1`: All NMEA messages.
    * - `2`: All RTCM messages.
    */
-    uint8_t stream_indices[0];
-  };
+  uint8_t stream_indices[0];
+};
 
-  /**
+/**
  * @brief Configure the set of output streams enabled for a given output
  *        interface (@ref MessageType::SET_OUTPUT_INTERFACE_CONFIG, version
  *        1.0).
@@ -1040,24 +1058,24 @@ struct alignas(4) WheelConfig {
  * their previous values on reset. To save configuration settings to persistent
  * storage, see @ref SaveConfigMessage.
  */
-  struct alignas(4) SetOutputInterfaceConfigMessage : public MessagePayload {
-    static constexpr MessageType MESSAGE_TYPE =
-        MessageType::SET_OUTPUT_INTERFACE_CONFIG;
-    static constexpr uint8_t MESSAGE_VERSION = 0;
-    /**
+struct alignas(4) SetOutputInterfaceConfigMessage : public MessagePayload {
+  static constexpr MessageType MESSAGE_TYPE =
+      MessageType::SET_OUTPUT_INTERFACE_CONFIG;
+  static constexpr uint8_t MESSAGE_VERSION = 0;
+  /**
    * The type of action this configuration message applies to the
    * previous list of streams.
    */
-    UpdateAction update_action = UpdateAction::REPLACE;
-    uint8_t reserved[3] = {0};
-
-    /**
-   * The new output interface configuration to be applied.
-   */
-    OutputInterfaceConfigEntry output_interface_data;
-  };
+  UpdateAction update_action = UpdateAction::REPLACE;
+  uint8_t reserved[3] = {0};
 
   /**
+   * The new output interface configuration to be applied.
+   */
+  OutputInterfaceConfigEntry output_interface_data;
+};
+
+/**
  * @brief Query the set of message streams configured to be output by the device
  *        on a specified interface. (@ref
  *        MessageType::GET_OUTPUT_INTERFACE_CONFIG, version 1.0).
@@ -1066,24 +1084,24 @@ struct alignas(4) WheelConfig {
  * The device will respond with a @ref OutputInterfaceConfigResponseMessage
  * containing the values.
  */
-  struct alignas(4) GetOutputInterfaceConfigMessage : public MessagePayload {
-    static constexpr MessageType MESSAGE_TYPE =
-        MessageType::GET_OUTPUT_INTERFACE_CONFIG;
-    static constexpr uint8_t MESSAGE_VERSION = 0;
+struct alignas(4) GetOutputInterfaceConfigMessage : public MessagePayload {
+  static constexpr MessageType MESSAGE_TYPE =
+      MessageType::GET_OUTPUT_INTERFACE_CONFIG;
+  static constexpr uint8_t MESSAGE_VERSION = 0;
 
-    /** The config source to request data from (active, saved, etc.). */
-    ConfigurationSource request_source = ConfigurationSource::ACTIVE;
+  /** The config source to request data from (active, saved, etc.). */
+  ConfigurationSource request_source = ConfigurationSource::ACTIVE;
 
-    uint8_t reserved[3] = {0};
+  uint8_t reserved[3] = {0};
 
-    /**
+  /**
    * The output interface to get the config for. If the `type` is @ref
    * TransportType::ALL then request the configuration for all interfaces.
    */
-    InterfaceID output_interface;
-  };
+  InterfaceID output_interface;
+};
 
-  /**
+/**
  * @brief Response to a @ref GetOutputInterfaceConfigMessage request (@ref
  *        MessageType::OUTPUT_INTERFACE_CONFIG_RESPONSE, version 1.0).
  * @ingroup config_and_ctrl_messages
@@ -1102,36 +1120,35 @@ struct alignas(4) WheelConfig {
  *  OutputInterfaceConfigEntry, uint8_t, uint8_t}
  * ```
  */
-  struct alignas(4) OutputInterfaceConfigResponseMessage
-      : public MessagePayload {
-    static constexpr MessageType MESSAGE_TYPE =
-        MessageType::OUTPUT_INTERFACE_CONFIG_RESPONSE;
-    static constexpr uint8_t MESSAGE_VERSION = 0;
+struct alignas(4) OutputInterfaceConfigResponseMessage : public MessagePayload {
+  static constexpr MessageType MESSAGE_TYPE =
+      MessageType::OUTPUT_INTERFACE_CONFIG_RESPONSE;
+  static constexpr uint8_t MESSAGE_VERSION = 0;
 
-    /** The source of the parameter value (active, saved, etc.). */
-    ConfigurationSource config_source = ConfigurationSource::ACTIVE;
+  /** The source of the parameter value (active, saved, etc.). */
+  ConfigurationSource config_source = ConfigurationSource::ACTIVE;
 
-    /** The response status (success, error, etc.). */
-    Response response = Response::OK;
+  /** The response status (success, error, etc.). */
+  Response response = Response::OK;
 
-    /**
+  /**
    * Set to `true` if the active configuration differs from the saved
    * configuration for this parameter.
    */
-    bool active_differs_from_saved = false;
+  bool active_differs_from_saved = false;
 
-    /** The number of output interfaces to follow. */
-    uint8_t number_of_interfaces = 0;
+  /** The number of output interfaces to follow. */
+  uint8_t number_of_interfaces = 0;
 
-    /**
+  /**
    * A pointer to the beginning of the interface data.
    */
-    // Note: This causes a compiler error on MSVC so it is not included:
-    //       https://docs.microsoft.com/en-us/cpp/error-messages/compiler-errors-1/compiler-error-c2233
-    // OutputInterfaceConfigEntry output_interface_data[0];
-  };
+  // Note: This causes a compiler error on MSVC so it is not included:
+  //       https://docs.microsoft.com/en-us/cpp/error-messages/compiler-errors-1/compiler-error-c2233
+  // OutputInterfaceConfigEntry output_interface_data[0];
+};
 
-  /** @} */
+/** @} */
 
 #pragma pack(pop)
 
