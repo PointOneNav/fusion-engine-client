@@ -1,8 +1,10 @@
 import pytest
 
 
-from fusion_engine_client.messages.configuration import ConfigurationSource, DeviceCourseOrientationConfig, InterfaceID, TransportType, \
-                                                        VehicleDetailsConfig, WheelConfig
+from fusion_engine_client.messages.configuration import (AppliedSpeedType, ConfigurationSource,
+                                                         DeviceCourseOrientationConfig, InterfaceID, SteeringType,
+                                                         TransportType,
+                                                         VehicleDetailsConfig, WheelConfig, WheelSensorType)
 from fusion_engine_client.messages import (SetConfigMessage,
                                            Uart1BaudConfig,
                                            ConfigType,
@@ -28,7 +30,11 @@ def test_set_config():
     assert len(set_msg.pack()) == BASE_SIZE + 4
 
     set_msg = SetConfigMessage(VehicleDetailsConfig(VehicleModel.LEXUS_CT200H, 1, 2, 3))
-    assert len(set_msg.pack()) == BASE_SIZE + 4
+    assert len(set_msg.pack()) == BASE_SIZE + 24
+
+    set_msg = SetConfigMessage(WheelConfig(WheelSensorType.NONE, AppliedSpeedType.APPLIED_NONE,
+                                           SteeringType.UNKNOWN_STEERING, 1., 2., 3., 1000, False, True))
+    assert len(set_msg.pack()) == BASE_SIZE + 24
 
     set_msg = SetConfigMessage(GnssLeverArmConfig(1, 2, 3))
     assert len(set_msg.pack()) == BASE_SIZE + 12
