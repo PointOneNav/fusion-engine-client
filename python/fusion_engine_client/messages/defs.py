@@ -23,6 +23,9 @@ class SatelliteType(IntEnum):
     SBAS = 8
     IRNSS = 9
 
+    def __str__(self):
+        return super().__str__().replace(self.__class__.__name__ + '.', '')
+
 
 class SolutionType(IntEnum):
     # Invalid, no position available.
@@ -41,6 +44,9 @@ class SolutionType(IntEnum):
     Visual = 9
     # GNSS precise point positioning (PPP) pseudorange/carrier phase solution.
     PPP = 10
+
+    def __str__(self):
+        return super().__str__().replace(self.__class__.__name__ + '.', '')
 
 
 class Response(IntEnum):
@@ -65,6 +71,9 @@ class Response(IntEnum):
     INCONSISTENT_PAYLOAD_LENGTH = 6
     ## Requested data was corrupted and not available.
     DATA_CORRUPTED = 7
+
+    def __str__(self):
+        return super().__str__().replace(self.__class__.__name__ + '.', '')
 
 
 class MessageType(IntEnum):
@@ -102,6 +111,9 @@ class MessageType(IntEnum):
     OUTPUT_INTERFACE_CONFIG_RESPONSE = 13202
 
     RESERVED = 20000
+
+    def __str__(self):
+        return super().__str__().replace(self.__class__.__name__ + '.', '')
 
     @classmethod
     def get_type_string(cls, type):
