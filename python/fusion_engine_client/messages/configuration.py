@@ -54,6 +54,7 @@ class Direction(IntEnum):
     def __str__(self):
         return super().__str__().replace(self.__class__.__name__ + '.', '')
 
+
 class VehicleModel(IntEnum):
     UNKNOWN_VEHICLE = 0,
     DATASPEED_CD4 = 1,
@@ -93,6 +94,7 @@ class VehicleModel(IntEnum):
     def __str__(self):
         return super().__str__().replace(self.__class__.__name__ + '.', '')
 
+
 class WheelSensorType(IntEnum):
     NONE = 0,
     TICK_RATE = 1,
@@ -103,6 +105,7 @@ class WheelSensorType(IntEnum):
     def __str__(self):
         return super().__str__().replace(self.__class__.__name__ + '.', '')
 
+
 class AppliedSpeedType(IntEnum):
     APPLIED_NONE = 0,
     REAR_WHEELS = 1,
@@ -112,6 +115,7 @@ class AppliedSpeedType(IntEnum):
 
     def __str__(self):
         return super().__str__().replace(self.__class__.__name__ + '.', '')
+
 
 class SteeringType(IntEnum):
     UNKNOWN_STEERING = 0,
@@ -434,7 +438,7 @@ class SetConfigMessage(MessagePayload):
         "config_change_data" / Bytes(this.config_change_length_bytes),
     )
 
-    def __init__(self, config_object: Optional[_conf_gen.ConfigClass] = None, flags = 0):
+    def __init__(self, config_object: Optional[_conf_gen.ConfigClass] = None, flags=0x0):
         self.config_object = config_object
         self.flags = flags
 

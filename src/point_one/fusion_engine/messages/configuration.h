@@ -259,11 +259,11 @@ struct alignas(4) SetConfigMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::SET_CONFIG;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
-  /** The type of parameter to be configured. */
-  ConfigType config_type;
-
   /** Flag to immediately save the config after applying this setting. */
   static constexpr uint8_t FLAG_APPLY_AND_SAVE = 0x01;
+
+  /** The type of parameter to be configured. */
+  ConfigType config_type;
 
   /** Bitmask of additional flags to modify the command. */
   uint8_t flags = 0;

@@ -184,7 +184,7 @@ class ResetRequest(MessagePayload):
     # - Position, velocity, orientation (@ref RESET_POSITION_DATA)
     # - Calibration data (@ref RESET_CALIBRATION_DATA)
     # - User configuration settings (@ref RESET_CONFIG)
-    # - GNSS Measurement engine hardware (@ref RESTART_GNSS_MEASUREMENT_ENGINE)
+    # - GNSS measurement engine (@ref RESTART_GNSS_MEASUREMENT_ENGINE)
     HOT_START = 0x000000FF
 
     ##
@@ -204,7 +204,7 @@ class ResetRequest(MessagePayload):
     #   compensation, etc.; @ref RESET_NAVIGATION_ENGINE_DATA)
     # - Calibration data (@ref RESET_CALIBRATION_DATA)
     # - User configuration settings (@ref RESET_CONFIG)
-    # - GNSS Measurement engine hardware (@ref RESTART_GNSS_MEASUREMENT_ENGINE)
+    # - GNSS measurement engine (@ref RESTART_GNSS_MEASUREMENT_ENGINE)
     WARM_START = 0x000001FF
 
     ##
@@ -218,7 +218,7 @@ class ResetRequest(MessagePayload):
     # - All runtime data (GNSS corrections (@ref RESET_GNSS_CORRECTIONS), etc.)
     # - Position, velocity, orientation (@ref RESET_POSITION_DATA)
     # - Fast IMU corrections (@ref RESET_FAST_IMU_CORRECTIONS)
-    # - GNSS Measurement engine hardware (@ref RESTART_GNSS_MEASUREMENT_ENGINE)
+    # - GNSS measurement engine (@ref RESTART_GNSS_MEASUREMENT_ENGINE)
     #
     # Not reset:
     # - Training parameters (slowly estimated IMU corrections, temperature

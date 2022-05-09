@@ -62,9 +62,9 @@ class Response(IntEnum):
     EXECUTION_FAILURE = 5
     ## The header `payload_size_bytes` is in conflict with the size of the message based on its type or type
     ## specific length fields.
-    INCONSISTENT_PAYLOAD_LENGTH = 6,
+    INCONSISTENT_PAYLOAD_LENGTH = 6
     ## Requested data was corrupted and not available.
-    DATA_CORRUPTED = 7,
+    DATA_CORRUPTED = 7
 
 
 class MessageType(IntEnum):
