@@ -61,7 +61,7 @@ enum class ConfigType : uint16_t {
   GNSS_LEVER_ARM = 18,
 
   /**
-   * The location of the desired output location with respect to the vehicle
+   * The offset of the desired output location with respect to the vehicle
    * body frame (in meters).
    *
    * Payload format: @ref Point3f
@@ -69,14 +69,14 @@ enum class ConfigType : uint16_t {
   OUTPUT_LEVER_ARM = 19,
 
   /**
-   * Information including vehicle model and dimensions.
+   * Information about the vehicle including model and dimensions.
    *
    * Payload format: @ref VehicleDetails
    */
   VEHICLE_DETAILS = 20,
 
   /**
-   * Information pertaining to wheel measurements.
+   * Information pertaining to wheel speed/rotation measurements.
    *
    * Payload format: @ref WheelConfig
    */
@@ -521,7 +521,7 @@ inline std::ostream& operator<<(std::ostream& stream,
 }
 
 /**
- * @brief Information including vehicle model and dimensions.
+ * @brief Information about the vehicle including model and dimensions.
  * @ingroup config_and_ctrl_messages
  */
 struct alignas(4) VehicleDetails {
@@ -723,7 +723,10 @@ struct alignas(4) WheelConfig {
    */
   WheelSensorType wheel_sensor_type = WheelSensorType::NONE;
 
-  /** The type of vehicle/wheel speed measurements to be applied. */
+  /**
+   * The type of vehicle/wheel speed measurements to be applied to the
+   * navigation solution.
+   */
   AppliedSpeedType applied_speed_type = AppliedSpeedType::REAR_WHEELS;
 
   /** Indication of which of the vehicle's wheels are steered. */
