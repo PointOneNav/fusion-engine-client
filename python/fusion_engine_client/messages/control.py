@@ -233,9 +233,7 @@ class ResetRequest(MessagePayload):
 
     ##
     # Restart mask to set all persistent data, including calibration and user configuration, back to factory defaults.
-    #
-    # Note: Upper 8 bits reserved for future use (e.g., hardware reset).
-    FACTORY_RESET = 0x01FFFFFF
+    FACTORY_RESET = 0xFFFFFFFF
 
     ## @}
 

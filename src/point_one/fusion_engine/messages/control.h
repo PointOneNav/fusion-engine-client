@@ -236,10 +236,8 @@ struct alignas(4) ResetRequest : public MessagePayload {
   /**
    * Restart mask to set all persistent data, including calibration and user
    * configuration, back to factory defaults.
-   *
-   * Note: Upper 8 bits reserved for future use (e.g., hardware reset).
    */
-  static constexpr uint32_t FACTORY_RESET = 0x01FFFFFF;
+  static constexpr uint32_t FACTORY_RESET = 0xFFFFFFFF;
   /** @} */
 
   /** Bit mask of functionality to reset. */
