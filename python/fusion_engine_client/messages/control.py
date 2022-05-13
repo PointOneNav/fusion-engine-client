@@ -1,8 +1,7 @@
-from enum import IntEnum
-
 from construct import (Struct, Int64ul, Int16ul, Int8ul, Padding, this, Bytes, PaddedString)
 
 from ..utils.construct_utils import AutoEnum
+from ..utils.enum_utils import IntEnum
 from .defs import *
 
 
@@ -334,9 +333,6 @@ class EventNotificationMessage(MessagePayload):
         LOG = 0
         RESET = 1
         CONFIG_CHANGE = 2
-
-        def __str__(self):
-            return super().__str__().replace(self.__class__.__name__ + '.', '')
 
     EventNotificationConstruct = Struct(
         "action" / AutoEnum(Int8ul, Action),

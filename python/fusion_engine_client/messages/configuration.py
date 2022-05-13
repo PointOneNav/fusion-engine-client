@@ -4,6 +4,7 @@ from typing import NamedTuple, Optional, List
 from construct import (Struct, Float32l, Int32ul, Int16ul, Int8ul, Padding, this, Flag, Bytes, Array, Adapter)
 
 from ..utils.construct_utils import NamedTupleAdapter, AutoEnum
+from ..utils.enum_utils import IntEnum
 from .defs import *
 
 
@@ -16,9 +17,6 @@ class ConfigurationSource(IntEnum):
     ACTIVE = 0
     SAVED = 1
 
-    def __str__(self):
-        return super().__str__().replace(self.__class__.__name__ + '.', '')
-
 
 class ConfigType(IntEnum):
     INVALID = 0
@@ -30,9 +28,6 @@ class ConfigType(IntEnum):
     WHEEL_CONFIG = 21
     UART0_BAUD = 256
     UART1_BAUD = 257
-
-    def __str__(self):
-        return super().__str__().replace(self.__class__.__name__ + '.', '')
 
 
 class Direction(IntEnum):
@@ -50,9 +45,6 @@ class Direction(IntEnum):
     DOWN = 5,
     ## Error value.
     INVALID = 255
-
-    def __str__(self):
-        return super().__str__().replace(self.__class__.__name__ + '.', '')
 
 
 class VehicleModel(IntEnum):
@@ -91,9 +83,6 @@ class VehicleModel(IntEnum):
 
     BMW_7 = 200
 
-    def __str__(self):
-        return super().__str__().replace(self.__class__.__name__ + '.', '')
-
 
 class WheelSensorType(IntEnum):
     NONE = 0,
@@ -101,9 +90,6 @@ class WheelSensorType(IntEnum):
     TICKS = 2,
     WHEEL_SPEED = 3,
     VEHICLE_SPEED = 4
-
-    def __str__(self):
-        return super().__str__().replace(self.__class__.__name__ + '.', '')
 
 
 class AppliedSpeedType(IntEnum):
@@ -113,17 +99,11 @@ class AppliedSpeedType(IntEnum):
     FRONT_AND_REAR_WHEELS = 3,
     VEHICLE_BODY = 4
 
-    def __str__(self):
-        return super().__str__().replace(self.__class__.__name__ + '.', '')
-
 
 class SteeringType(IntEnum):
     UNKNOWN_STEERING = 0,
     FRONT_STEERING = 1,
     FRONT_AND_REAR_STEERING = 2
-
-    def __str__(self):
-        return super().__str__().replace(self.__class__.__name__ + '.', '')
 
 
 class TransportType(IntEnum):
@@ -137,15 +117,9 @@ class TransportType(IntEnum):
     ## This is used for requesting the configuration for all interfaces.
     ALL = 255,
 
-    def __str__(self):
-        return super().__str__().replace(self.__class__.__name__ + '.', '')
-
 
 class UpdateAction(IntEnum):
     REPLACE = 0
-
-    def __str__(self):
-        return super().__str__().replace(self.__class__.__name__ + '.', '')
 
 
 class _ConfigClassGenerator:
@@ -522,9 +496,6 @@ class SaveAction(IntEnum):
     SAVE = 0
     REVERT_TO_SAVED = 1
     REVERT_TO_DEFAULT = 2
-
-    def __str__(self):
-        return super().__str__().replace(self.__class__.__name__ + '.', '')
 
 
 class SaveConfigMessage(MessagePayload):

@@ -2,6 +2,7 @@ import struct
 
 import numpy as np
 
+from ..utils.enum_utils import IntEnum
 from .defs import *
 
 
@@ -10,9 +11,6 @@ class CovarianceType(IntEnum):
     COVARIANCE_TYPE_APPROXIMATED = 1
     COVARIANCE_TYPE_DIAGONAL_KNOWN = 2
     COVARIANCE_TYPE_KNOWN = 3
-
-    def __str__(self):
-        return super().__str__().replace(self.__class__.__name__ + '.', '')
 
 
 class ROSPoseMessage(MessagePayload):
