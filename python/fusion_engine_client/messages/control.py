@@ -1,8 +1,7 @@
-from enum import IntEnum
-
 from construct import (Struct, Int64ul, Int16ul, Int8ul, Padding, this, Bytes, PaddedString)
 
 from ..utils.construct_utils import AutoEnum
+from ..utils.enum_utils import IntEnum
 from .defs import *
 
 
@@ -184,7 +183,7 @@ class ResetRequest(MessagePayload):
     # - Position, velocity, orientation (@ref RESET_POSITION_DATA)
     # - Calibration data (@ref RESET_CALIBRATION_DATA)
     # - User configuration settings (@ref RESET_CONFIG)
-    # - GNSS Measurement engine hardware (@ref RESTART_GNSS_MEASUREMENT_ENGINE)
+    # - GNSS measurement engine (@ref RESTART_GNSS_MEASUREMENT_ENGINE)
     HOT_START = 0x000000FF
 
     ##
@@ -204,7 +203,7 @@ class ResetRequest(MessagePayload):
     #   compensation, etc.; @ref RESET_NAVIGATION_ENGINE_DATA)
     # - Calibration data (@ref RESET_CALIBRATION_DATA)
     # - User configuration settings (@ref RESET_CONFIG)
-    # - GNSS Measurement engine hardware (@ref RESTART_GNSS_MEASUREMENT_ENGINE)
+    # - GNSS measurement engine (@ref RESTART_GNSS_MEASUREMENT_ENGINE)
     WARM_START = 0x000001FF
 
     ##
@@ -218,7 +217,7 @@ class ResetRequest(MessagePayload):
     # - All runtime data (GNSS corrections (@ref RESET_GNSS_CORRECTIONS), etc.)
     # - Position, velocity, orientation (@ref RESET_POSITION_DATA)
     # - Fast IMU corrections (@ref RESET_FAST_IMU_CORRECTIONS)
-    # - GNSS Measurement engine hardware (@ref RESTART_GNSS_MEASUREMENT_ENGINE)
+    # - GNSS measurement engine (@ref RESTART_GNSS_MEASUREMENT_ENGINE)
     #
     # Not reset:
     # - Training parameters (slowly estimated IMU corrections, temperature
@@ -233,9 +232,7 @@ class ResetRequest(MessagePayload):
 
     ##
     # Restart mask to set all persistent data, including calibration and user configuration, back to factory defaults.
-    #
-    # Note: Upper 8 bits reserved for future use (e.g., hardware reset).
-    FACTORY_RESET = 0x01FFFFFF
+    FACTORY_RESET = 0xFFFFFFFF
 
     ## @}
 
@@ -336,9 +333,6 @@ class EventNotificationMessage(MessagePayload):
         LOG = 0
         RESET = 1
         CONFIG_CHANGE = 2
-
-        def __str__(self):
-            return super().__str__().replace(self.__class__.__name__ + '.', '')
 
     EventNotificationConstruct = Struct(
         "action" / AutoEnum(Int8ul, Action),

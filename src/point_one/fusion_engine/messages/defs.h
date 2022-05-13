@@ -125,7 +125,7 @@ inline std::ostream& operator<<(std::ostream& stream, Response val) {
 enum class SolutionType : uint8_t {
   /** Invalid, no position available. */
   Invalid = 0,
-  /** Standalone GNSS fix, no correction data used. */
+  /** Standalone GNSS fix, no GNSS corrections data used. */
   AutonomousGPS = 1,
   /**
    * Differential GNSS pseudorange solution using a local RTK base station or
