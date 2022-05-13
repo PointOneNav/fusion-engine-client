@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta, timezone
-from enum import IntEnum
 import logging
 import math
 import struct
@@ -7,6 +6,8 @@ from typing import Union
 from zlib import crc32
 
 import numpy as np
+
+from ..utils.enum_utils import IntEnum
 
 _logger = logging.getLogger('point_one.fusion_engine.messages.defs')
 
@@ -62,9 +63,9 @@ class Response(IntEnum):
     EXECUTION_FAILURE = 5
     ## The header `payload_size_bytes` is in conflict with the size of the message based on its type or type
     ## specific length fields.
-    INCONSISTENT_PAYLOAD_LENGTH = 6,
+    INCONSISTENT_PAYLOAD_LENGTH = 6
     ## Requested data was corrupted and not available.
-    DATA_CORRUPTED = 7,
+    DATA_CORRUPTED = 7
 
 
 class MessageType(IntEnum):

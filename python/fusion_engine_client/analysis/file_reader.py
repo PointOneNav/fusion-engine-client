@@ -3,7 +3,6 @@ from typing import Dict, Tuple, Union
 from collections import deque
 import copy
 from datetime import datetime
-from enum import IntEnum
 import io
 import logging
 import os
@@ -12,6 +11,7 @@ import numpy as np
 
 from ..messages import *
 from ..utils import trace
+from ..utils.enum_utils import IntEnum
 from .file_index import FileIndex, FileIndexBuilder
 
 

@@ -1,9 +1,9 @@
-from enum import IntEnum
 import struct
 from typing import List, Sequence
 
 import numpy as np
 
+from ..utils.enum_utils import IntEnum
 from .defs import *
 
 
@@ -463,9 +463,6 @@ class CalibrationStage(IntEnum):
     UNKNOWN = 0, ##< Calibration stage not known.
     MOUNTING_ANGLE = 1, ##< Estimating IMU mounting angles.
     DONE = 255, ##< Calibration complete.
-
-    def __str__(self):
-        return super().__str__().replace(self.__class__.__name__ + '.', '')
 
 
 class CalibrationStatus(MessagePayload):
