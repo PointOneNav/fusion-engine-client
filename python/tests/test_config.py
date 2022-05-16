@@ -32,8 +32,8 @@ def test_set_config():
     set_msg = SetConfigMessage(VehicleDetailsConfig(VehicleModel.LEXUS_CT200H, 1, 2, 3))
     assert len(set_msg.pack()) == BASE_SIZE + 24
 
-    set_msg = SetConfigMessage(WheelConfig(WheelSensorType.NONE, AppliedSpeedType.APPLIED_NONE,
-                                           SteeringType.UNKNOWN_STEERING, 1., 2., 3., 1000, False, True))
+    set_msg = SetConfigMessage(WheelConfig(WheelSensorType.NONE, AppliedSpeedType.NONE,
+                                           SteeringType.UNKNOWN, 1., 2., 3., 1000, False, True))
     assert len(set_msg.pack()) == BASE_SIZE + 24
 
     set_msg = SetConfigMessage(GnssLeverArmConfig(1, 2, 3))

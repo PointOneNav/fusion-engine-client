@@ -611,7 +611,7 @@ inline std::ostream& operator<<(std::ostream& stream,
  */
 enum class AppliedSpeedType : uint8_t {
   /** Speed data not applied to the system. */
-  APPLIED_NONE = 0,
+  NONE = 0,
   /** Rear wheel speed data to be applied to the system (recommended). */
   REAR_WHEELS = 1,
   /** Front wheel speed data to be applied to the system. */
@@ -633,8 +633,8 @@ enum class AppliedSpeedType : uint8_t {
  */
 inline const char* to_string(AppliedSpeedType applied_speed_type) {
   switch (applied_speed_type) {
-    case AppliedSpeedType::APPLIED_NONE: {
-      return "Applied None";
+    case AppliedSpeedType::NONE: {
+      return "None";
     }
     case AppliedSpeedType::REAR_WHEELS: {
       return "Rear Wheels";
@@ -671,11 +671,11 @@ inline std::ostream& operator<<(std::ostream& stream,
  */
 enum class SteeringType : uint8_t {
   /** Steered wheels unknown. */
-  UNKNOWN_STEERING = 0,
+  UNKNOWN = 0,
   /** Front wheels are steered. */
-  FRONT_STEERING = 1,
+  FRONT = 1,
   /** Front and rear wheels are steered. */
-  FRONT_AND_REAR_STEERING = 2,
+  FRONT_AND_REAR = 2,
 };
 
 /**
@@ -688,13 +688,13 @@ enum class SteeringType : uint8_t {
  */
 inline const char* to_string(SteeringType steering_type) {
   switch (steering_type) {
-    case SteeringType::UNKNOWN_STEERING: {
+    case SteeringType::UNKNOWN: {
       return "Unknown Steering";
     }
-    case SteeringType::FRONT_STEERING: {
+    case SteeringType::FRONT: {
       return "Front Steering";
     }
-    case SteeringType::FRONT_AND_REAR_STEERING: {
+    case SteeringType::FRONT_AND_REAR: {
       return "Front and Rear Steering";
     }
     default: {
@@ -730,7 +730,7 @@ struct alignas(4) WheelConfig {
   AppliedSpeedType applied_speed_type = AppliedSpeedType::REAR_WHEELS;
 
   /** Indication of which of the vehicle's wheels are steered. */
-  SteeringType steering_type = SteeringType::UNKNOWN_STEERING;
+  SteeringType steering_type = SteeringType::UNKNOWN;
 
   uint8_t reserved1[1] = {0};
 
