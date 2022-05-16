@@ -93,7 +93,7 @@ class WheelSensorType(IntEnum):
 
 
 class AppliedSpeedType(IntEnum):
-    APPLIED_NONE = 0,
+    NONE = 0,
     REAR_WHEELS = 1,
     FRONT_WHEELS = 2,
     FRONT_AND_REAR_WHEELS = 3,
@@ -101,9 +101,9 @@ class AppliedSpeedType(IntEnum):
 
 
 class SteeringType(IntEnum):
-    UNKNOWN_STEERING = 0,
-    FRONT_STEERING = 1,
-    FRONT_AND_REAR_STEERING = 2
+    UNKNOWN = 0,
+    FRONT = 1,
+    FRONT_AND_REAR = 2
 
 
 class TransportType(IntEnum):
@@ -255,7 +255,7 @@ class _ConfigClassGenerator:
         ## The type of vehicle/wheel speed measurements to be applied.
         applied_speed_type: AppliedSpeedType = AppliedSpeedType.REAR_WHEELS
         ## Indication of which of the vehicle's wheels are steered.
-        steering_type: SteeringType = SteeringType.UNKNOWN_STEERING
+        steering_type: SteeringType = SteeringType.UNKNOWN
         ## Measures how often wheel tick measurements are updated.
         wheel_update_interval_sec: float = math.nan
         ## Ratio between steering wheel angle and road wheel angle.
