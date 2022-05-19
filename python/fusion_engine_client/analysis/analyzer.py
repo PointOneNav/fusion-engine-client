@@ -804,17 +804,18 @@ class Analyzer(object):
 
         self._add_figure(name="profile_execution_stats", figure=figure, title="Profiling: Execution Stats")
 
-    def plot_serial_tx_profiling(self, id_to_name, data):
+    def plot_serial_profiling(self, id_to_name, data):
         tx_buffer_free_maps = []
         tx_error_counts_maps = []
         tx_sent_counts_maps = []
+        rx_received_counts_maps = []
         name_map = {
             'corr': 'NMEA',
             'user': 'Sensors/FusionEngine',
         }
         for k, v in id_to_name.items():
             if v.startswith('tx_'):
-                serial_name = v.split('_')[-1]
+                serial_name = 'tx_' + v.split('_')[-1]
                 serial_name = name_map.get(serial_name, serial_name)
                 if v.startswith('tx_errs'):
                     tx_error_counts_maps.append((k, serial_name))
@@ -822,6 +823,10 @@ class Analyzer(object):
                     tx_buffer_free_maps.append((k, serial_name))
                 else:
                     tx_sent_counts_maps.append((k, serial_name))
+            elif v.startswith('rx_'):
+                serial_name = v
+                serial_name = name_map.get(serial_name, serial_name)
+                rx_received_counts_maps.append((k, serial_name))
 
         time = data.system_time_sec - self.system_t0
 
@@ -843,7 +848,7 @@ class Analyzer(object):
                 plotly.colors.DEFAULT_PLOTLY_COLORS)]
             idx, serial_name = tx_error_counts_maps[i]
             figure.add_trace(go.Scattergl(x=time, y=data.counters[idx], name=f'{serial_name}',
-                                          mode='lines', legendgroup=serial_name, line={'color': color}),
+                                          mode='lines', showlegend=False, legendgroup=serial_name, line={'color': color}),
                              1, 1)
 
         for i in range(len(tx_buffer_free_maps)):
@@ -860,11 +865,19 @@ class Analyzer(object):
                 plotly.colors.DEFAULT_PLOTLY_COLORS)]
             idx, serial_name = tx_sent_counts_maps[i]
             figure.add_trace(go.Scattergl(x=time, y=np.diff(data.counters[idx]) * 8 / np.diff(time),
-                                          name=f'{serial_name}', showlegend=False,
+                                          name=f'{serial_name}',
+                                          legendgroup=serial_name, mode='lines', line={'color': color}),
+                             3, 1)
+        for i in range(len(rx_received_counts_maps)):
+            color = plotly.colors.DEFAULT_PLOTLY_COLORS[(i + len(tx_sent_counts_maps)) % len(
+                plotly.colors.DEFAULT_PLOTLY_COLORS)]
+            idx, serial_name = rx_received_counts_maps[i]
+            figure.add_trace(go.Scattergl(x=time, y=np.diff(data.counters[idx]) * 8 / np.diff(time),
+                                          name=f'{serial_name}',
                                           legendgroup=serial_name, mode='lines', line={'color': color}),
                              3, 1)
 
-        self._add_figure(name="profile_serial_tx", figure=figure, title="Profiling: Serial Output")
+        self._add_figure(name="profile_serial", figure=figure, title="Profiling: Serial Output")
 
     def plot_counter_profiling(self):
         """!
@@ -893,7 +906,7 @@ class Analyzer(object):
             self.logger.warning('No execution profiling stats names received.')
             id_to_name = {}
 
-        self.plot_serial_tx_profiling(id_to_name, data)
+        self.plot_serial_profiling(id_to_name, data)
 
         delay_queue_count_idx = None
         delay_queue_ns_idx = None
