@@ -256,8 +256,10 @@ class _ConfigClassGenerator:
         applied_speed_type: AppliedSpeedType = AppliedSpeedType.REAR_WHEELS
         ## Indication of which of the vehicle's wheels are steered.
         steering_type: SteeringType = SteeringType.UNKNOWN
-        ## Measures how often wheel tick measurements are updated.
+        ## Measures how often wheel speed measurements are updated.
         wheel_update_interval_sec: float = math.nan
+        ## Measures how often wheel tick measurements are updated.
+        wheel_tick_output_interval_sec: float = math.nan
         ## Ratio between steering wheel angle and road wheel angle.
         steering_ratio: float = math.nan
         ## Wheel tick distance (in meters).
@@ -279,6 +281,7 @@ class _ConfigClassGenerator:
         "steering_type" / AutoEnum(Int8ul, SteeringType),
         Padding(1),
         "wheel_update_interval_sec" / Float32l,
+        "wheel_tick_output_interval_sec" / Float32l,
         "steering_ratio" / Float32l,
         "wheel_ticks_to_m" / Float32l,
         "wheel_tick_max_value" / Int32ul,

@@ -33,8 +33,8 @@ def test_set_config():
     assert len(set_msg.pack()) == BASE_SIZE + 24
 
     set_msg = SetConfigMessage(WheelConfig(WheelSensorType.NONE, AppliedSpeedType.NONE,
-                                           SteeringType.UNKNOWN, 1., 2., 3., 1000, False, True))
-    assert len(set_msg.pack()) == BASE_SIZE + 24
+                                           SteeringType.UNKNOWN, 1., 2., 3., 4., 1000, False, True))
+    assert len(set_msg.pack()) == BASE_SIZE + 28
 
     set_msg = SetConfigMessage(GnssLeverArmConfig(1, 2, 3))
     assert len(set_msg.pack()) == BASE_SIZE + 12
