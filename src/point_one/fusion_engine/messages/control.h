@@ -160,6 +160,8 @@ struct alignas(4) ResetRequest : public MessagePayload {
    */
   /** Restart the GNSS measurement engine. */
   static constexpr uint32_t RESTART_GNSS_MEASUREMENT_ENGINE = 0x01000000;
+  /** Reboot the FusionEngine processor. */
+  static constexpr uint32_t REBOOT_NAVIGATION_PROCESSOR = 0x02000000;
   /** @} */
 
   /**
@@ -184,6 +186,7 @@ struct alignas(4) ResetRequest : public MessagePayload {
    * - Calibration data (@ref RESET_CALIBRATION_DATA)
    * - User configuration settings (@ref RESET_CONFIG)
    * - GNSS measurement engine (@ref RESTART_GNSS_MEASUREMENT_ENGINE)
+   * - Reboot FusionEngine processor (@ref REBOOT_NAVIGATION_PROCESSOR)
    */
   static constexpr uint32_t HOT_START = 0x000000FF;
 
@@ -205,6 +208,7 @@ struct alignas(4) ResetRequest : public MessagePayload {
    * - Calibration data (@ref RESET_CALIBRATION_DATA)
    * - User configuration settings (@ref RESET_CONFIG)
    * - GNSS measurement engine (@ref RESTART_GNSS_MEASUREMENT_ENGINE)
+   * - Reboot FusionEngine processor (@ref REBOOT_NAVIGATION_PROCESSOR)
    */
   static constexpr uint32_t WARM_START = 0x000001FF;
 
@@ -226,6 +230,7 @@ struct alignas(4) ResetRequest : public MessagePayload {
    *   compensation, etc.; @ref RESET_NAVIGATION_ENGINE_DATA)
    * - Calibration data (@ref RESET_CALIBRATION_DATA)
    * - User configuration settings (@ref RESET_CONFIG)
+   * - Reboot FusionEngine processor (@ref REBOOT_NAVIGATION_PROCESSOR)
    *
    * @note
    * To reset training or calibration data as well, set the @ref
