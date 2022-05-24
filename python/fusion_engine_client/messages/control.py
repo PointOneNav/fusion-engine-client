@@ -163,6 +163,8 @@ class ResetRequest(MessagePayload):
     # @{
     ## Restart the GNSS measurement engine.
     RESTART_GNSS_MEASUREMENT_ENGINE = 0x01000000
+    ## Reboot the navigation processor.
+    REBOOT_NAVIGATION_PROCESSOR = 0x02000000
     ## @}
 
     ##
@@ -184,6 +186,7 @@ class ResetRequest(MessagePayload):
     # - Calibration data (@ref RESET_CALIBRATION_DATA)
     # - User configuration settings (@ref RESET_CONFIG)
     # - GNSS measurement engine (@ref RESTART_GNSS_MEASUREMENT_ENGINE)
+    # - Reboot navigation processor (@ref REBOOT_NAVIGATION_PROCESSOR)
     HOT_START = 0x000000FF
 
     ##
@@ -204,6 +207,7 @@ class ResetRequest(MessagePayload):
     # - Calibration data (@ref RESET_CALIBRATION_DATA)
     # - User configuration settings (@ref RESET_CONFIG)
     # - GNSS measurement engine (@ref RESTART_GNSS_MEASUREMENT_ENGINE)
+    # - Reboot navigation processor (@ref REBOOT_NAVIGATION_PROCESSOR)
     WARM_START = 0x000001FF
 
     ##
@@ -224,6 +228,7 @@ class ResetRequest(MessagePayload):
     #   compensation, etc.; @ref RESET_NAVIGATION_ENGINE_DATA)
     # - Calibration data (@ref RESET_CALIBRATION_DATA)
     # - User configuration settings (@ref RESET_CONFIG)
+    # - Reboot navigation processor (@ref REBOOT_NAVIGATION_PROCESSOR)
     #
     # @note
     # To reset training or calibration data as well, set the @ref
