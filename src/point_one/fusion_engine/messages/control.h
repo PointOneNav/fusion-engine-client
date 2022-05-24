@@ -362,6 +362,19 @@ struct alignas(4) EventNotificationMessage : public MessagePayload {
   char* event_description[0];
 };
 
+/**
+ * @brief Perform a device shutdown (@ref
+ *        MessageType::SHUTDOWN_REQUEST, version 1.0).
+ * @ingroup config_and_ctrl_messages
+ */
+struct alignas(4) ShutdownRequest : public MessagePayload {
+  static constexpr MessageType MESSAGE_TYPE = MessageType::SHUTDOWN_REQUEST;
+  static constexpr uint8_t MESSAGE_VERSION = 0;
+  /** A bitmask of flags associated with the event. */
+  uint64_t shutdown_flags = 0;
+  uint8_t reserved1[8] = {0};
+};
+
 #pragma pack(pop)
 
 } // namespace messages
