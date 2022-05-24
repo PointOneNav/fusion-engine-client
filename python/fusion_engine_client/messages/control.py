@@ -376,3 +376,35 @@ class EventNotificationMessage(MessagePayload):
 
     def calcsize(self) -> int:
         return len(self.pack())
+
+
+class ShutdownRequest(MessagePayload):
+    """!
+    @brief Perform a device shutdown.
+    """
+    MESSAGE_TYPE = MessageType.SHUTDOWN_REQUEST
+    MESSAGE_VERSION = 0
+
+    ShutdownRequestConstruct = Struct(
+        "shutdown_flags" / Int64ul,
+        Padding(8),
+    )
+
+    def __init__(self, shutdown_flags = 0):
+        self.shutdown_flags = shutdown_flags
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        values = vars(self)
+        packed_data = self.ShutdownRequestConstruct.build(values)
+        return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
+
+    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+        parsed = self.ShutdownRequestConstruct.parse(buffer[offset:])
+        self.__dict__.update(parsed)
+        return parsed._io.tell()
+
+    def __str__(self):
+        return 'Shutdown Request [flags=0x%016x]' % self.shutdown_flags
+
+    def calcsize(self) -> int:
+        return self.ShutdownRequestConstruct.sizeof()
