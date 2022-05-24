@@ -741,6 +741,12 @@ struct alignas(4) WheelConfig {
   float wheel_update_interval_sec = NAN;
 
   /**
+   * The nominal rate at which wheel tick measurements will be provided (in
+   * seconds).
+   */
+  float wheel_tick_output_interval_sec = NAN;
+
+  /**
    * Ratio between angle of the steering wheel and the angle of the wheels on
    * the ground.
    */

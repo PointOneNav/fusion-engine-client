@@ -252,25 +252,25 @@ class _ConfigClassGenerator:
         """
         ## The type of vehicle/wheel speed measurements produced by the vehicle.
         wheel_sensor_type: WheelSensorType = WheelSensorType.NONE
-        ## The type of vehicle/wheel speed measurements to be applied.
+        ## The type of vehicle/wheel speed measurements to be applied to the navigation solution.
         applied_speed_type: AppliedSpeedType = AppliedSpeedType.REAR_WHEELS
         ## Indication of which of the vehicle's wheels are steered.
         steering_type: SteeringType = SteeringType.UNKNOWN
-        ## Measures how often wheel tick measurements are updated.
+        ## The nominal rate at which wheel speed measurements will be provided (in seconds).
         wheel_update_interval_sec: float = math.nan
-        ## Ratio between steering wheel angle and road wheel angle.
+        ## The nominal rate at which wheel tick measurements will be provided (in seconds).
+        wheel_tick_output_interval_sec: float = math.nan
+        ## Ratio between angle of the steering wheel and the angle of the wheels on the ground.
         steering_ratio: float = math.nan
-        ## Wheel tick distance (in meters).
+        ## The scale factor to convert from wheel encoder ticks to distance (in meters/tick).
         wheel_ticks_to_m: float = math.nan
-        ## The maximum value that wheel ticks will increment to before
-        # restarting to zero.
+        ## The maximum value (inclusive) before the wheel tick measurement will roll over.
         wheel_tick_max_value: int = 0
-        ## Determines whether wheel ticks are signed based on the direction
-        # the wheels are turning.
+        ## `True` if the reported wheel tick measurements should be interpreted as signed integers, or `False` if they
+        ## should be interpreted as unsigned integers.
         wheel_ticks_signed: bool = False
-        ## Determines if wheel tick value solely increases, regardless of the
-        # direction the wheels are turning. To be used in conjunction with
-        # wheel_ticks_signed.
+        ## `True` if the wheel tick measurements increase by a positive amount when driving forward or backward.
+        ## `False` if wheel tick measurements decrease when driving backward.
         wheel_ticks_always_increase: bool = True
 
     WheelConfigConstruct = Struct(
@@ -279,6 +279,7 @@ class _ConfigClassGenerator:
         "steering_type" / AutoEnum(Int8ul, SteeringType),
         Padding(1),
         "wheel_update_interval_sec" / Float32l,
+        "wheel_tick_output_interval_sec" / Float32l,
         "steering_ratio" / Float32l,
         "wheel_ticks_to_m" / Float32l,
         "wheel_tick_max_value" / Int32ul,
