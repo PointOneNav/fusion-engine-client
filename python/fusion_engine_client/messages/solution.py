@@ -652,7 +652,7 @@ class RelativeENUPositionMessage(MessagePayload):
         # The type of this position solution.
         "solution_type" / AutoEnum(Int8ul, SolutionType),
         Padding(3),
-        "reference_station_id" / Int32ul(),
+        "reference_station_id" / Int32ul,
         # The relative position (in meters), resolved in the local ENU frame.
         #
         # @note

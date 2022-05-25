@@ -466,6 +466,8 @@ struct alignas(4) RelativeENUPositionMessage : public MessagePayload {
       MessageType::RELATIVE_ENU_POSITION;
   static constexpr uint8_t MESSAGE_VERSION = 1;
 
+  static constexpr uint32_t INVALID_REFERENCE_STATION = 0xFFFFFFFF;
+
   /** The time of the message, in P1 time (beginning at power-on). */
   Timestamp p1_time;
 
