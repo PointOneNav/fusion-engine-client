@@ -644,6 +644,8 @@ class RelativeENUPositionMessage(MessagePayload):
     MESSAGE_TYPE = MessageType.RELATIVE_ENU_POSITION
     MESSAGE_VERSION = 0
 
+    INVALID_REFERENCE_STATION = 0xFFFFFFFF
+
     GetConfigMessageConstruct = Struct(
         # The time of the message, in P1 time (beginning at power-on).
         "p1_time" / TimestampConstruct,
@@ -672,7 +674,7 @@ class RelativeENUPositionMessage(MessagePayload):
         self.p1_time = Timestamp()
         self.gps_time = Timestamp()
         self.solution_type = SolutionType.Invalid
-        self.reference_station_id = GNSSInfoMessage.INVALID_REFERENCE_STATION
+        self.reference_station_id = RelativeENUPositionMessage.INVALID_REFERENCE_STATION
         self.relative_position_enu_m = np.full((3,), np.nan)
         self.position_std_enu_m = np.full((3,), np.nan)
 
