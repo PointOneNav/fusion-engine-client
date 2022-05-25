@@ -647,37 +647,41 @@ class RelativeENUPositionMessage(MessagePayload):
     INVALID_REFERENCE_STATION = 0xFFFFFFFF
 
     GetConfigMessageConstruct = Struct(
-        # The time of the message, in P1 time (beginning at power-on).
         "p1_time" / TimestampConstruct,
-        # The GPS time of the message, if available, referenced to 1980/1/6.
         "gps_time" / TimestampConstruct,
-        # The type of this position solution.
         "solution_type" / AutoEnum(Int8ul, SolutionType),
         Padding(3),
         "reference_station_id" / Int32ul,
+        "relative_position_enu_m" / Array(3, Float64l),
+        "position_std_enu_m" / Array(3, Float32l),
+    )
+
+    def __init__(self):
+        # The time of the message, in P1 time (beginning at power-on).
+        self.p1_time = Timestamp()
+        # The GPS time of the message, if available, referenced to 1980/1/6.
+        self.gps_time = Timestamp()
+        # The type of this position solution.
+        self.solution_type = SolutionType.Invalid
+        # The ID of the differential base station, if used.
+        self.reference_station_id = RelativeENUPositionMessage.INVALID_REFERENCE_STATION
+        ##
         # The relative position (in meters), resolved in the local ENU frame.
         #
         # @note
         # If a differential solution to the base station is not available, these
         # values will be `NAN`.
-        "relative_position_enu_m" / Array(3, Float64l),
+        ##
+        self.relative_position_enu_m = np.full((3,), np.nan)
+        ##
         # The position standard deviation (in meters), resolved with respect to the
         # local ENU tangent plane: east, north, up.
         #
         # @note
         # If a differential solution to the base station is not available, these
         # values will be `NAN`.
-        "position_std_enu_m" / Array(3, Float32l),
-    )
-
-    def __init__(self):
-        self.p1_time = Timestamp()
-        self.gps_time = Timestamp()
-        self.solution_type = SolutionType.Invalid
-        self.reference_station_id = RelativeENUPositionMessage.INVALID_REFERENCE_STATION
-        self.relative_position_enu_m = np.full((3,), np.nan)
+        ##
         self.position_std_enu_m = np.full((3,), np.nan)
-
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         values = dict(self.__dict__)
