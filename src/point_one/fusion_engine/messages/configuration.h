@@ -83,6 +83,14 @@ enum class ConfigType : uint16_t {
   WHEEL_CONFIG = 21,
 
   /**
+   * Indicates the mode and direction used when capturing vehicle wheel tick
+   * data from a voltage pulse on an I/O pin.
+   *
+   * Payload format: @ref HardwareTickConfig
+   */
+  HARDWARE_TICK_CONFIG = 22,
+
+  /**
    * Configure the UART0 serial baud rate (in bits/second).
    *
    * Payload format: `uint32_t`
@@ -127,6 +135,9 @@ inline const char* to_string(ConfigType type) {
 
     case ConfigType::WHEEL_CONFIG:
       return "Wheel Config";
+
+    case ConfigType::HARDWARE_TICK_CONFIG:
+      return "Hardware Tick Config";
 
     case ConfigType::UART0_BAUD:
       return "UART0 Baud Rate";
@@ -560,6 +571,8 @@ enum class WheelSensorType : uint8_t {
   WHEEL_SPEED = 3,
   /** A single value indicating the vehicle speed (in meters/second). */
   VEHICLE_SPEED = 4,
+  /** A single wheel rotational angle, reported as accumulated encoder ticks. */
+  VEHICLE_TICKS = 5,
 };
 
 /**
@@ -587,6 +600,9 @@ inline const char* to_string(WheelSensorType wheel_sensor_type) {
     }
     case WheelSensorType::VEHICLE_SPEED: {
       return "Vehicle Speed";
+    }
+    case WheelSensorType::VEHICLE_TICKS: {
+      return "Vehicle Ticks";
     }
     default: {
       return "None";
@@ -790,6 +806,121 @@ struct alignas(4) WheelConfig {
   bool wheel_ticks_always_increase = true;
 
   uint8_t reserved2[2] = {0};
+};
+
+/**
+ * @brief The signal edge to use when capturing a wheel tick voltage signal.
+ * @ingroup config_and_ctrl_messages
+ */
+enum class TickMode : uint8_t {
+  /** Wheel tick capture disabled. */
+  OFF = 0,
+  /** Capture a wheel tick on the rising edge of the incoming pulse. */
+  RISING_EDGE = 1,
+  /** Capture a wheel tick on the falling edge of the incoming pulse. */
+  FALLING_EDGE = 2,
+};
+
+inline const char* to_string(TickMode tick_mode) {
+  switch (tick_mode) {
+    case TickMode::OFF:
+      return "OFF";
+    case TickMode::RISING_EDGE:
+      return "RISING_EDGE";
+    case TickMode::FALLING_EDGE:
+      return "FALLING_EDGE";
+    default:
+      return "UNRECOGNIZED";
+  }
+}
+
+/**
+ * @brief @ref TickMode stream operator.
+ * @ingroup config_and_ctrl_messages
+ */
+inline std::ostream& operator<<(std::ostream& stream, TickMode tick_mode) {
+  stream << to_string(tick_mode) << " (" << (int)tick_mode << ")";
+  return stream;
+}
+
+/**
+ * @brief The way to interpret an incoming voltage signal, used to indicate
+ *        direction of a hardware wheel tick pulse, if available.
+ * @ingroup config_and_ctrl_messages
+ */
+enum class TickDirection : uint8_t {
+  /** Wheel tick direction not provided. */
+  OFF = 0,
+  /**
+   * Assume vehicle is moving forward when direction signal voltage is high, and
+   * backward when direction signal is low.
+   */
+  FORWARD_ACTIVE_HIGH = 1,
+  /**
+   * Assume vehicle is moving forward when direction signal voltage is low, and
+   * backward when direction signal is high.
+   */
+  FORWARD_ACTIVE_LOW = 2,
+};
+
+inline const char* to_string(TickDirection tick_direction) {
+  switch (tick_direction) {
+    case TickDirection::OFF:
+      return "OFF";
+    case TickDirection::FORWARD_ACTIVE_HIGH:
+      return "FORWARD_ACTIVE_HIGH";
+    case TickDirection::FORWARD_ACTIVE_LOW:
+      return "FORWARD_ACTIVE_LOW";
+    default:
+      return "UNRECOGNIZED";
+  }
+}
+
+/**
+ * @brief @ref TickDirection stream operator.
+ * @ingroup config_and_ctrl_messages
+ */
+inline std::ostream& operator<<(std::ostream& stream,
+                                TickDirection tick_direction) {
+  stream << to_string(tick_direction) << " (" << (int)tick_direction << ")";
+  return stream;
+}
+
+/**
+ * @brief Hardware tick configuration settings.
+ * @ingroup config_and_ctrl_messages
+ */
+struct alignas(4) HardwareTickConfig {
+  /**
+   * If enabled -- tick mode is not @ref TickMode::OFF -- the device will
+   * accumulate ticks received on the I/O pin, and use them as an indication of
+   * vehicle speed. If enabled, you must also specify @ref wheel_ticks_to_m to
+   * indicate the mapping of wheel tick encoder angle to tire circumference. All
+   * other wheel tick-related parameters such as tick capture rate, rollover
+   * value, etc. will be set internally.
+   *
+   * @warning
+   * Do not enable this feature if a wheel tick voltage signal is not present.
+   */
+  TickMode tick_mode = TickMode::OFF;
+
+  /**
+   * When direction is @ref TickDirection::OFF, the incoming ticks will be
+   * treated as unsigned, meaning the tick count will continue to increase in
+   * either direction of travel. If direction is not @ref TickDirection::OFF,
+   * a second direction I/O pin will be used to indicate the direction of
+   * travel and the accumulated tick count will increase/decrease accordingly.
+   */
+  TickDirection tick_direction = TickDirection::OFF;
+
+  uint8_t reserved1[2] = {0};
+
+  /**
+   * The scale factor to convert from wheel encoder ticks to distance (in
+   * meters/tick). Used for @ref WheelSensorType::TICKS and
+   * @ref WheelSensorType::TICK_RATE.
+   */
+  float wheel_ticks_to_m = NAN;
 };
 
 /** @} */
