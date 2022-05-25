@@ -1,8 +1,10 @@
 import struct
 from typing import List, Sequence
 
+from construct import (Struct, Float64l, Float32l, Int32ul, Int8ul, Padding, Array)
 import numpy as np
 
+from ..utils.construct_utils import AutoEnum
 from ..utils.enum_utils import IntEnum
 from .defs import *
 
@@ -630,6 +632,88 @@ class CalibrationStatus(MessagePayload):
             'min_travel_distance_m': messages[0].min_travel_distance_m if len(messages) > 0 else np.nan,
             'mounting_angle_max_std_dev_deg': (messages[0].mounting_angle_max_std_dev_deg
                                                if len(messages) > 0 else np.full((3,), np.nan)),
+        }
+
+        return result
+
+
+class RelativeENUPositionMessage(MessagePayload):
+    """!
+    @brief Relative ENU position to base station.
+    """
+    MESSAGE_TYPE = MessageType.RELATIVE_ENU_POSITION
+    MESSAGE_VERSION = 0
+
+    INVALID_REFERENCE_STATION = 0xFFFFFFFF
+
+    GetConfigMessageConstruct = Struct(
+        "p1_time" / TimestampConstruct,
+        "gps_time" / TimestampConstruct,
+        "solution_type" / AutoEnum(Int8ul, SolutionType),
+        Padding(3),
+        "reference_station_id" / Int32ul,
+        "relative_position_enu_m" / Array(3, Float64l),
+        "position_std_enu_m" / Array(3, Float32l),
+    )
+
+    def __init__(self):
+        # The time of the message, in P1 time (beginning at power-on).
+        self.p1_time = Timestamp()
+        # The GPS time of the message, if available, referenced to 1980/1/6.
+        self.gps_time = Timestamp()
+        # The type of this position solution.
+        self.solution_type = SolutionType.Invalid
+        # The ID of the differential base station, if used.
+        self.reference_station_id = RelativeENUPositionMessage.INVALID_REFERENCE_STATION
+        ##
+        # The relative position (in meters), resolved in the local ENU frame.
+        #
+        # @note
+        # If a differential solution to the base station is not available, these
+        # values will be `NAN`.
+        ##
+        self.relative_position_enu_m = np.full((3,), np.nan)
+        ##
+        # The position standard deviation (in meters), resolved with respect to the
+        # local ENU tangent plane: east, north, up.
+        #
+        # @note
+        # If a differential solution to the base station is not available, these
+        # values will be `NAN`.
+        ##
+        self.position_std_enu_m = np.full((3,), np.nan)
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        values = dict(self.__dict__)
+        packed_data = self.GetConfigMessageConstruct.build(values)
+        return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
+
+    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+        parsed = self.GetConfigMessageConstruct.parse(buffer[offset:])
+        self.__dict__.update(parsed)
+        return parsed._io.tell()
+
+    def __str__(self):
+        fields = ['gps_time', 'solution_type', 'reference_station_id', 'relative_position_enu_m', 'position_std_enu_m']
+        string = f'RelativeENUPosition @ {self.p1_time}\n'
+        for field in fields:
+            val = str(self.__dict__[field]).replace('Container:', '')
+            string += f'  {field}: {val}\n'
+        return string.rstrip()
+
+    @classmethod
+    def calcsize(cls) -> int:
+        return cls.GetConfigMessageConstruct.sizeof()
+
+    @classmethod
+    def to_numpy(cls, messages: Sequence['RelativeENUPositionMessage']):
+        result = {
+            'p1_time': np.array([float(m.p1_time) for m in messages]),
+            'gps_time': np.array([float(m.gps_time) for m in messages]),
+            'solution_type': np.array([int(m.solution_type) for m in messages], dtype=int),
+            'reference_station_id': np.array([m.reference_station_id for m in messages]),
+            'relative_position_enu_m': np.array([m.relative_position_enu_m for m in messages]).T,
+            'position_std_enu_m': np.array([m.position_std_enu_m for m in messages]).T,
         }
 
         return result

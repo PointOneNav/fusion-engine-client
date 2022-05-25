@@ -163,6 +163,7 @@ enum class MessageType : uint16_t {
   GNSS_SATELLITE = 10002, ///< @ref GNSSSatelliteMessage
   POSE_AUX = 10003, ///< @ref PoseAuxMessage
   CALIBRATION_STATUS = 10004, ///< @ref CalibrationStatusMessage
+  RELATIVE_ENU_POSITION = 10005, ///< @ref RelativeENUPositionMessage
 
   // Sensor measurement messages.
   IMU_MEASUREMENT = 11000, ///< @ref IMUMeasurement

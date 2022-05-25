@@ -447,20 +447,12 @@ class Analyzer(object):
 
         self._add_figure(name="solution_type", figure=figure, title="Solution Type")
 
-    def plot_displacement(self):
+    def plot_displacement(self, source, time, solution_type, displacement_enu_m, std_enu_m):
         """!
         @brief Generate a topocentric (top-down) plot of position displacement, as well as plot of displacement over
                time.
         """
         if self.output_dir is None:
-            return
-
-        # Read the pose data.
-        result = self.reader.read(message_types=[PoseMessage], **self.params)
-        pose_data = result[PoseMessage.MESSAGE_TYPE]
-
-        if len(pose_data.p1_time) == 0:
-            self.logger.info('No pose data available. Skipping displacement plots.')
             return
 
         # Setup the figure.
@@ -480,23 +472,10 @@ class Analyzer(object):
         time_figure['layout']['yaxis4'].update(title="Displacement (m)")
 
         # Remove invalid solutions.
-        valid_idx = np.logical_and(~np.isnan(pose_data.p1_time), pose_data.solution_type != SolutionType.Invalid)
+        valid_idx = np.logical_and(~np.isnan(time), solution_type != SolutionType.Invalid)
         if not np.any(valid_idx):
             self.logger.info('No valid position solutions detected. Skipping displacement plots.')
             return
-
-        time = pose_data.p1_time[valid_idx] - float(self.t0)
-        solution_type = pose_data.solution_type[valid_idx]
-        lla_deg = pose_data.lla_deg[:, valid_idx]
-        std_enu_m = pose_data.position_std_enu_m[:, valid_idx]
-
-        # Convert to ENU displacement with respect to the median position (we use median instead of centroid just in
-        # case there are one or two huge outliers).
-        position_ecef_m = np.array(geodetic2ecef(lat=lla_deg[0, :], lon=lla_deg[1, :], alt=lla_deg[0, :], deg=True))
-        center_ecef_m = np.median(position_ecef_m, axis=1)
-        displacement_ecef_m = position_ecef_m - center_ecef_m.reshape(3, 1)
-        c_enu_ecef = get_enu_rotation_matrix(*lla_deg[0:2, 0], deg=True)
-        displacement_enu_m = c_enu_ecef.dot(displacement_ecef_m)
 
         # Add statistics to the figure title.
         format = 'Mean: %(mean).2f m, Median: %(median).2f m, Min: %(min).2f m, Max: %(max).2f m, Std Dev: %(std).2f m'
@@ -556,8 +535,76 @@ class Analyzer(object):
         for type, info in _SOLUTION_TYPE_MAP.items():
             _plot_data(info.name, solution_type == type, marker_style=info.style)
 
-        self._add_figure(name="top_down", figure=topo_figure, title="Displacement: Top-Down (Topocentric)")
-        self._add_figure(name="displacement", figure=time_figure, title="Displacement: vs. Time")
+        name = source.replace(' ', '_').lower()
+        self._add_figure(name=f"{name}_top_down", figure=topo_figure, title=f"{source} Displacement: Top-Down (Topocentric)")
+        self._add_figure(name=f"{name}_displacement", figure=time_figure, title=f"{source} Displacement: vs. Time")
+
+    def plot_pose_displacement(self):
+        """!
+        @brief Generate a topocentric (top-down) plot of position displacement, as well as plot of displacement over
+               time.
+        """
+        if self.output_dir is None:
+            return
+
+        # Read the pose data.
+        result = self.reader.read(message_types=[PoseMessage], **self.params)
+        pose_data = result[PoseMessage.MESSAGE_TYPE]
+
+        if len(pose_data.p1_time) == 0:
+            self.logger.info('No pose data available. Skipping displacement plots.')
+            return
+
+        # Remove invalid solutions.
+        valid_idx = np.logical_and(~np.isnan(pose_data.p1_time), pose_data.solution_type != SolutionType.Invalid)
+        if not np.any(valid_idx):
+            self.logger.info('No valid position solutions detected. Skipping displacement plots.')
+            return
+
+        time = pose_data.p1_time[valid_idx] - float(self.t0)
+        solution_type = pose_data.solution_type[valid_idx]
+        lla_deg = pose_data.lla_deg[:, valid_idx]
+        std_enu_m = pose_data.position_std_enu_m[:, valid_idx]
+
+        # Convert to ENU displacement with respect to the median position (we use median instead of centroid just in
+        # case there are one or two huge outliers).
+        position_ecef_m = np.array(geodetic2ecef(lat=lla_deg[0, :], lon=lla_deg[1, :], alt=lla_deg[0, :], deg=True))
+        center_ecef_m = np.median(position_ecef_m, axis=1)
+        displacement_ecef_m = position_ecef_m - center_ecef_m.reshape(3, 1)
+        c_enu_ecef = get_enu_rotation_matrix(*lla_deg[0:2, 0], deg=True)
+        displacement_enu_m = c_enu_ecef.dot(displacement_ecef_m)
+
+        self.plot_displacement('Pose', time, solution_type, displacement_enu_m, std_enu_m)
+
+    def plot_base_station_displacement(self):
+        """!
+        @brief Generate a topocentric (top-down) plot of base station displacement, as well as plot of displacement over
+               time.
+        """
+        if self.output_dir is None:
+            return
+
+        # Read the pose data.
+        result = self.reader.read(message_types=[RelativeENUPositionMessage], **self.params)
+        relative_position_data = result[RelativeENUPositionMessage.MESSAGE_TYPE]
+
+        if len(relative_position_data.p1_time) == 0:
+            self.logger.info('No relative enu data available. Skipping displacement plots.')
+            return
+
+        # Remove invalid solutions.
+        valid_idx = np.logical_and(~np.isnan(relative_position_data.p1_time),
+                                   relative_position_data.solution_type != SolutionType.Invalid)
+        if not np.any(valid_idx):
+            self.logger.info('No valid position solutions detected. Skipping displacement plots.')
+            return
+
+        time = relative_position_data.p1_time[valid_idx] - float(self.t0)
+        solution_type = relative_position_data.solution_type[valid_idx]
+        displacement_enu_m = relative_position_data.relative_position_enu_m[:, valid_idx]
+        std_enu_m = relative_position_data.position_std_enu_m[:, valid_idx]
+
+        self.plot_displacement('Base Station', time, solution_type, displacement_enu_m, std_enu_m)
 
     def plot_map(self, mapbox_token):
         """!
@@ -1005,7 +1052,8 @@ Load and display information stored in a FusionEngine binary file.
     analyzer.plot_time_scale()
     analyzer.plot_solution_type()
     analyzer.plot_pose()
-    analyzer.plot_displacement()
+    analyzer.plot_pose_displacement()
+    analyzer.plot_base_station_displacement()
     analyzer.plot_map(mapbox_token=options.mapbox_token)
     analyzer.plot_calibration()
 
