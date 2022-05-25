@@ -462,7 +462,8 @@ struct alignas(4) CalibrationStatusMessage : public MessagePayload {
  * their @ref p1_time values.
  */
 struct alignas(4) RelativeENUPositionMessage : public MessagePayload {
-  static constexpr MessageType MESSAGE_TYPE = MessageType::RELATIVE_ENU_POSITION;
+  static constexpr MessageType MESSAGE_TYPE =
+      MessageType::RELATIVE_ENU_POSITION;
   static constexpr uint8_t MESSAGE_VERSION = 1;
 
   /** The time of the message, in P1 time (beginning at power-on). */
