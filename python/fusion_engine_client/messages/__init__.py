@@ -8,6 +8,7 @@ message_type_to_class = {
     GNSSInfoMessage.MESSAGE_TYPE: GNSSInfoMessage,
     GNSSSatelliteMessage.MESSAGE_TYPE: GNSSSatelliteMessage,
     CalibrationStatus.MESSAGE_TYPE: CalibrationStatus,
+    RelativeENUPositionMessage.MESSAGE_TYPE: RelativeENUPositionMessage,
 
     # Sensor measurement messages.
     IMUMeasurement.MESSAGE_TYPE: IMUMeasurement,
