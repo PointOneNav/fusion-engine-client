@@ -83,6 +83,12 @@ enum class ConfigType : uint16_t {
   WHEEL_CONFIG = 21,
 
   /**
+   * Indicates the mode and direction used when capturing vehicle wheel tick
+   * data from a voltage pulse on an I/O pin.
+   */
+  HARDWARE_TICK_CONFIG = 22,
+
+  /**
    * Configure the UART0 serial baud rate (in bits/second).
    *
    * Payload format: `uint32_t`
@@ -790,6 +796,73 @@ struct alignas(4) WheelConfig {
   bool wheel_ticks_always_increase = true;
 
   uint8_t reserved2[2] = {0};
+};
+
+enum class TickMode : uint8_t {
+  OFF = 0,
+  RISING_EDGE = 1,
+  FALLING_EDGE = 2,
+};
+
+inline const char* to_string(TickMode tick_mode) {
+  switch (tick_mode) {
+    case TickMode::OFF:
+      return "OFF";
+    case TickMode::RISING_EDGE:
+      return "RISING_EDGE";
+    case TickMode::FALLING_EDGE:
+      return "FALLING_EDGE";
+    default:
+      return "UNRECOGNIZED";
+  }
+}
+
+/**
+ * @brief @ref TickMode stream operator.
+ * @ingroup config_and_ctrl_messages
+ */
+inline std::ostream& operator<<(std::ostream& stream, TickMode tick_mode) {
+  stream << to_string(tick_mode) << " (" << (int)tick_mode << ")";
+  return stream;
+}
+
+enum class TickDirection : uint8_t {
+  OFF = 0,
+  FORWARD_ACTIVE_HIGH = 1,
+  FORWARD_ACTIVE_LOW = 2,
+};
+
+inline const char* to_string(TickDirection tick_direction) {
+  switch (tick_direction) {
+    case TickDirection::OFF:
+      return "OFF";
+    case TickDirection::FORWARD_ACTIVE_HIGH:
+      return "FORWARD_ACTIVE_HIGH";
+    case TickDirection::FORWARD_ACTIVE_LOW:
+      return "FORWARD_ACTIVE_LOW";
+    default:
+      return "UNRECOGNIZED";
+  }
+}
+
+/**
+ * @brief @ref TickMode stream operator.
+ * @ingroup config_and_ctrl_messages
+ */
+inline std::ostream& operator<<(std::ostream& stream,
+                                TickDirection tick_direction) {
+  stream << to_string(tick_direction) << " (" << (int)tick_direction << ")";
+  return stream;
+}
+
+/**
+ * @brief Hardware tick configuration settings.
+ * @ingroup config_and_ctrl_messages
+ */
+struct alignas(4) HardwareTickConfig {
+  TickMode tick_mode = TickMode::OFF;
+  TickDirection tick_direction = TickDirection::OFF;
+  uint8_t reserved1[2]{0};
 };
 
 /** @} */

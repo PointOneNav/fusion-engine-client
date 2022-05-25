@@ -26,6 +26,7 @@ class ConfigType(IntEnum):
     OUTPUT_LEVER_ARM = 19
     VEHICLE_DETAILS = 20
     WHEEL_CONFIG = 21
+    HARDWARE_TICK_CONFIG = 22
     UART0_BAUD = 256
     UART1_BAUD = 257
 
@@ -105,6 +106,15 @@ class SteeringType(IntEnum):
     FRONT = 1,
     FRONT_AND_REAR = 2
 
+class TickMode(IntEnum):
+    OFF = 0,
+    RISING_EDGE = 1,
+    FALLING_EDGE = 2
+
+class TickDirection(IntEnum):
+    OFF = 0,
+    FORWARD_ACTIVE_HIGH = 1,
+    FORWARD_ACTIVE_LOW = 2
 
 class TransportType(IntEnum):
     INVALID = 0,
@@ -286,7 +296,19 @@ class _ConfigClassGenerator:
         "wheel_ticks_signed" / Flag,
         "wheel_ticks_always_increase" / Flag,
         Padding(2),
+    )
 
+    class HardwareTickConfig(NamedTuple):
+        """!
+        Tick configuration settings.
+        """
+        tick_mode: TickMode = TickMode.OFF
+        tick_direction: TickDirection = TickDirection.OFF
+
+    HardwareTickConfigConstruct = Struct(
+        "tick_mode" / AutoEnum(Int8ul, TickMode),
+        "tick_direction" / AutoEnum(Int8ul, TickDirection),
+        Padding(2),
     )
 
     class Empty(NamedTuple):
@@ -370,6 +392,13 @@ class VehicleDetailsConfig(_conf_gen.VehicleDetails):
 class WheelConfig(_conf_gen.WheelConfig):
     """!
     @brief Information pertaining to wheel speeds.
+    """
+    pass
+
+@_conf_gen.create_config_class(ConfigType.HARDWARE_TICK_CONFIG, _conf_gen.HardwareTickConfigConstruct)
+class HardwareTickConfig(_conf_gen.HardwareTickConfig):
+    """!
+    @brief Tick configuration settings.
     """
     pass
 
