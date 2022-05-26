@@ -302,8 +302,19 @@ class _ConfigClassGenerator:
         """!
         Tick configuration settings.
         """
+        ##
+        # If enabled -- tick mode is not OFF -- the device will accumulate ticks received on the I/O pin, and use them
+        # as an indication of vehicle speed. If enabled, you must also specify @ref wheel_ticks_to_m to indicate the
+        # mapping of wheel tick encoder angle to tire circumference. All other wheel tick-related parameters such as
+        # tick capture rate, rollover value, etc. will be set internally.
         tick_mode: TickMode = TickMode.OFF
+
+        ##
+        # When direction is OFF, the incoming ticks will be treated as unsigned, meaning the tick count will continue
+        # to increase in either direction of travel. If direction is not OFF, a second direction I/O pin will be used
+        # to indicate the direction of travel and the accumulated tick count will increase/decrease accordingly.
         tick_direction: TickDirection = TickDirection.OFF
+
         ## The scale factor to convert from wheel encoder ticks to distance (in meters/tick).
         wheel_ticks_to_m: float = math.nan
 
