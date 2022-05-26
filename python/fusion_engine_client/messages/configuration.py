@@ -304,11 +304,14 @@ class _ConfigClassGenerator:
         """
         tick_mode: TickMode = TickMode.OFF
         tick_direction: TickDirection = TickDirection.OFF
+        ## The scale factor to convert from wheel encoder ticks to distance (in meters/tick).
+        wheel_ticks_to_m: float = math.nan
 
     HardwareTickConfigConstruct = Struct(
         "tick_mode" / AutoEnum(Int8ul, TickMode),
         "tick_direction" / AutoEnum(Int8ul, TickDirection),
         Padding(2),
+        "wheel_ticks_to_m" / Float32l,
     )
 
     class Empty(NamedTuple):

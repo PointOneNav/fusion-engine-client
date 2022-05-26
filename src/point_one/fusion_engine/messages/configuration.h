@@ -85,6 +85,8 @@ enum class ConfigType : uint16_t {
   /**
    * Indicates the mode and direction used when capturing vehicle wheel tick
    * data from a voltage pulse on an I/O pin.
+   *
+   * Payload format: @ref HardwareTickConfig
    */
   HARDWARE_TICK_CONFIG = 22,
 
@@ -133,6 +135,9 @@ inline const char* to_string(ConfigType type) {
 
     case ConfigType::WHEEL_CONFIG:
       return "Wheel Config";
+
+    case ConfigType::HARDWARE_TICK_CONFIG:
+      return "Hardware Tick Config";
 
     case ConfigType::UART0_BAUD:
       return "UART0 Baud Rate";
@@ -862,7 +867,15 @@ inline std::ostream& operator<<(std::ostream& stream,
 struct alignas(4) HardwareTickConfig {
   TickMode tick_mode = TickMode::OFF;
   TickDirection tick_direction = TickDirection::OFF;
-  uint8_t reserved1[2]{0};
+
+  uint8_t reserved1[2] = {0};
+
+  /**
+   * The scale factor to convert from wheel encoder ticks to distance (in
+   * meters/tick). Used for @ref WheelSensorType::TICKS and
+   * @ref WheelSensorType::TICK_RATE.
+   */
+  float wheel_ticks_to_m = NAN;
 };
 
 /** @} */
