@@ -456,7 +456,7 @@ class Analyzer(object):
 
         self._add_figure(name="solution_type", figure=figure, title="Solution Type")
 
-    def plot_displacement(self, source, time, solution_type, displacement_enu_m, std_enu_m):
+    def _plot_displacement(self, source, time, solution_type, displacement_enu_m, std_enu_m):
         """!
         @brief Generate a topocentric (top-down) plot of position displacement, as well as plot of displacement over
                time.
@@ -545,8 +545,8 @@ class Analyzer(object):
             _plot_data(info.name, solution_type == type, marker_style=info.style)
 
         name = source.replace(' ', '_').lower()
-        self._add_figure(name=f"{name}_top_down", figure=topo_figure, title=f"{source} Displacement: Top-Down (Topocentric)")
-        self._add_figure(name=f"{name}_displacement", figure=time_figure, title=f"{source} Displacement: vs. Time")
+        self._add_figure(name=f"{name}_top_down", figure=topo_figure, title=f"{source}: Top-Down (Topocentric)")
+        self._add_figure(name=f"{name}_displacement", figure=time_figure, title=f"{source}: vs. Time")
 
     def plot_pose_displacement(self):
         """!
@@ -583,12 +583,12 @@ class Analyzer(object):
         c_enu_ecef = get_enu_rotation_matrix(*lla_deg[0:2, 0], deg=True)
         displacement_enu_m = c_enu_ecef.dot(displacement_ecef_m)
 
-        self.plot_displacement('Pose', time, solution_type, displacement_enu_m, std_enu_m)
+        self._plot_displacement('Pose Displacement', time, solution_type, displacement_enu_m, std_enu_m)
 
-    def plot_base_station_displacement(self):
+    def plot_relative_position_to_base_station(self):
         """!
-        @brief Generate a topocentric (top-down) plot of base station displacement, as well as plot of displacement over
-               time.
+        @brief Generate a topocentric (top-down) plot of relative position vs base station, as well as plot of relative
+               position over time.
         """
         if self.output_dir is None:
             return
@@ -598,14 +598,14 @@ class Analyzer(object):
         relative_position_data = result[RelativeENUPositionMessage.MESSAGE_TYPE]
 
         if len(relative_position_data.p1_time) == 0:
-            self.logger.info('No relative enu data available. Skipping displacement plots.')
+            self.logger.info('No relative ENU data available. Skipping relative position vs base station plots.')
             return
 
         # Remove invalid solutions.
         valid_idx = np.logical_and(~np.isnan(relative_position_data.p1_time),
                                    relative_position_data.solution_type != SolutionType.Invalid)
         if not np.any(valid_idx):
-            self.logger.info('No valid position solutions detected. Skipping displacement plots.')
+            self.logger.info('No valid position solutions detected. Skipping relative position vs base station plots.')
             return
 
         time = relative_position_data.p1_time[valid_idx] - float(self.t0)
@@ -613,7 +613,7 @@ class Analyzer(object):
         displacement_enu_m = relative_position_data.relative_position_enu_m[:, valid_idx]
         std_enu_m = relative_position_data.position_std_enu_m[:, valid_idx]
 
-        self.plot_displacement('Base Station', time, solution_type, displacement_enu_m, std_enu_m)
+        self._plot_displacement('Relative Position vs Base Station', time, solution_type, displacement_enu_m, std_enu_m)
 
     def plot_map(self, mapbox_token):
         """!
@@ -1504,7 +1504,7 @@ Load and display information stored in a FusionEngine binary file.
     analyzer.plot_solution_type()
     analyzer.plot_pose()
     analyzer.plot_pose_displacement()
-    analyzer.plot_base_station_displacement()
+    analyzer.plot_relative_position_to_base_station()
     analyzer.plot_map(mapbox_token=options.mapbox_token)
     analyzer.plot_calibration()
 
