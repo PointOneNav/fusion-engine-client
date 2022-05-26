@@ -5,6 +5,7 @@ import struct
 from typing import Union
 from zlib import crc32
 
+from construct import Adapter, Struct, Int32ul
 import numpy as np
 
 from ..utils.enum_utils import IntEnum
@@ -77,6 +78,7 @@ class MessageType(IntEnum):
     GNSS_SATELLITE = 10002
     POSE_AUX = 10003
     CALIBRATION_STATUS = 10004
+    RELATIVE_ENU_POSITION = 10005
 
     # Sensor measurement messages.
     IMU_MEASUREMENT = 11000
@@ -502,3 +504,39 @@ def PackedDataToBuffer(packed_data: bytes, buffer: bytes = None, offset: int = 0
         return buffer
     else:
         return len(packed_data)
+
+
+TimestampRawConstruct = Struct(
+    "int_part" / Int32ul,
+    "frac_part_ns" / Int32ul,
+)
+
+
+class TimestampAdapter(Adapter):
+    """!
+    @brief Adapter for automatically converting between construct streams and
+           Timestamp.
+    """
+
+    def __init__(self, *args):
+        super().__init__(*args)
+
+    def _decode(self, obj, context, path):
+        # skip _io member
+        if obj.int_part == Timestamp._INVALID or obj.frac_part_ns == Timestamp._INVALID:
+           seconds = math.nan
+        else:
+            seconds = obj.int_part + (obj.frac_part_ns * 1e-9)
+        return Timestamp(seconds)
+
+    def _encode(self, obj, context, path):
+        if math.isnan(obj.seconds):
+            int_part = Timestamp._INVALID
+            frac_part_ns = Timestamp._INVALID
+        else:
+            int_part = int(obj.seconds)
+            frac_part_ns = int((obj.seconds - int_part) * 1e9)
+        return {'int_part': int_part, 'frac_part_ns': frac_part_ns}
+
+
+TimestampConstruct = TimestampAdapter(TimestampRawConstruct)
