@@ -90,7 +90,8 @@ class WheelSensorType(IntEnum):
     TICK_RATE = 1,
     TICKS = 2,
     WHEEL_SPEED = 3,
-    VEHICLE_SPEED = 4
+    VEHICLE_SPEED = 4,
+    VEHICLE_TICKS = 5
 
 
 class AppliedSpeedType(IntEnum):
