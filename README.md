@@ -9,7 +9,9 @@
 This library provides message definitions and support functionality for interacting with Point One FusionEngine in real
 time, as well as processing recorded output data. Both C++ and Python are supported.
 
-See http://docs.pointonenav.com/fusion-engine/ for the latest API documentation.
+[Click here](http://docs.pointonenav.com/Point%20One%20FusionEngine%20Message%20Specification%200.3.pdf) to download the latest protocol specification.
+
+See http://docs.pointonenav.com/fusion-engine/ for the latest C++ API documentation.
 
 This library is released under the [MIT license agreement](LICENSE). We welcome code and documentation contributions
 from users. See [Contributing](CONTRIBUTING.md) for instructions on how to report issues and develop, test, and submit
