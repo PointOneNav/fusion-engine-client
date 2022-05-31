@@ -568,7 +568,7 @@ class Analyzer(object):
 
         # Convert to ENU displacement with respect to the median position (we use median instead of centroid just in
         # case there are one or two huge outliers).
-        position_ecef_m = np.array(geodetic2ecef(lat=lla_deg[0, :], lon=lla_deg[1, :], alt=lla_deg[0, :], deg=True))
+        position_ecef_m = np.array(geodetic2ecef(lat=lla_deg[0, :], lon=lla_deg[1, :], alt=lla_deg[2, :], deg=True))
         center_ecef_m = np.median(position_ecef_m, axis=1)
         displacement_ecef_m = position_ecef_m - center_ecef_m.reshape(3, 1)
         c_enu_ecef = get_enu_rotation_matrix(*lla_deg[0:2, 0], deg=True)
@@ -593,8 +593,8 @@ class Analyzer(object):
             return
 
         # Remove invalid solutions.
-        valid_idx = np.logical_and(~np.isnan(relative_position_data.p1_time),
-                                   relative_position_data.solution_type != SolutionType.Invalid)
+        valid_idx = ~np.isnan(relative_position_data.relative_position_enu_m[0, :])
+
         if not np.any(valid_idx):
             self.logger.info('No valid position solutions detected. Skipping relative position vs base station plots.')
             return
