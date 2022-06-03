@@ -26,6 +26,7 @@ class ConfigType(IntEnum):
     OUTPUT_LEVER_ARM = 19
     VEHICLE_DETAILS = 20
     WHEEL_CONFIG = 21
+    HARDWARE_TICK_CONFIG = 22
     UART0_BAUD = 256
     UART1_BAUD = 257
 
@@ -89,7 +90,8 @@ class WheelSensorType(IntEnum):
     TICK_RATE = 1,
     TICKS = 2,
     WHEEL_SPEED = 3,
-    VEHICLE_SPEED = 4
+    VEHICLE_SPEED = 4,
+    VEHICLE_TICKS = 5
 
 
 class AppliedSpeedType(IntEnum):
@@ -105,6 +107,15 @@ class SteeringType(IntEnum):
     FRONT = 1,
     FRONT_AND_REAR = 2
 
+class TickMode(IntEnum):
+    OFF = 0,
+    RISING_EDGE = 1,
+    FALLING_EDGE = 2
+
+class TickDirection(IntEnum):
+    OFF = 0,
+    FORWARD_ACTIVE_HIGH = 1,
+    FORWARD_ACTIVE_LOW = 2
 
 class TransportType(IntEnum):
     INVALID = 0,
@@ -252,25 +263,25 @@ class _ConfigClassGenerator:
         """
         ## The type of vehicle/wheel speed measurements produced by the vehicle.
         wheel_sensor_type: WheelSensorType = WheelSensorType.NONE
-        ## The type of vehicle/wheel speed measurements to be applied.
+        ## The type of vehicle/wheel speed measurements to be applied to the navigation solution.
         applied_speed_type: AppliedSpeedType = AppliedSpeedType.REAR_WHEELS
         ## Indication of which of the vehicle's wheels are steered.
         steering_type: SteeringType = SteeringType.UNKNOWN
-        ## Measures how often wheel tick measurements are updated.
+        ## The nominal rate at which wheel speed measurements will be provided (in seconds).
         wheel_update_interval_sec: float = math.nan
-        ## Ratio between steering wheel angle and road wheel angle.
+        ## The nominal rate at which wheel tick measurements will be provided (in seconds).
+        wheel_tick_output_interval_sec: float = math.nan
+        ## Ratio between angle of the steering wheel and the angle of the wheels on the ground.
         steering_ratio: float = math.nan
-        ## Wheel tick distance (in meters).
+        ## The scale factor to convert from wheel encoder ticks to distance (in meters/tick).
         wheel_ticks_to_m: float = math.nan
-        ## The maximum value that wheel ticks will increment to before
-        # restarting to zero.
+        ## The maximum value (inclusive) before the wheel tick measurement will roll over.
         wheel_tick_max_value: int = 0
-        ## Determines whether wheel ticks are signed based on the direction
-        # the wheels are turning.
+        ## `True` if the reported wheel tick measurements should be interpreted as signed integers, or `False` if they
+        ## should be interpreted as unsigned integers.
         wheel_ticks_signed: bool = False
-        ## Determines if wheel tick value solely increases, regardless of the
-        # direction the wheels are turning. To be used in conjunction with
-        # wheel_ticks_signed.
+        ## `True` if the wheel tick measurements increase by a positive amount when driving forward or backward.
+        ## `False` if wheel tick measurements decrease when driving backward.
         wheel_ticks_always_increase: bool = True
 
     WheelConfigConstruct = Struct(
@@ -279,13 +290,40 @@ class _ConfigClassGenerator:
         "steering_type" / AutoEnum(Int8ul, SteeringType),
         Padding(1),
         "wheel_update_interval_sec" / Float32l,
+        "wheel_tick_output_interval_sec" / Float32l,
         "steering_ratio" / Float32l,
         "wheel_ticks_to_m" / Float32l,
         "wheel_tick_max_value" / Int32ul,
         "wheel_ticks_signed" / Flag,
         "wheel_ticks_always_increase" / Flag,
         Padding(2),
+    )
 
+    class HardwareTickConfig(NamedTuple):
+        """!
+        Tick configuration settings.
+        """
+        ##
+        # If enabled -- tick mode is not OFF -- the device will accumulate ticks received on the I/O pin, and use them
+        # as an indication of vehicle speed. If enabled, you must also specify @ref wheel_ticks_to_m to indicate the
+        # mapping of wheel tick encoder angle to tire circumference. All other wheel tick-related parameters such as
+        # tick capture rate, rollover value, etc. will be set internally.
+        tick_mode: TickMode = TickMode.OFF
+
+        ##
+        # When direction is OFF, the incoming ticks will be treated as unsigned, meaning the tick count will continue
+        # to increase in either direction of travel. If direction is not OFF, a second direction I/O pin will be used
+        # to indicate the direction of travel and the accumulated tick count will increase/decrease accordingly.
+        tick_direction: TickDirection = TickDirection.OFF
+
+        ## The scale factor to convert from wheel encoder ticks to distance (in meters/tick).
+        wheel_ticks_to_m: float = math.nan
+
+    HardwareTickConfigConstruct = Struct(
+        "tick_mode" / AutoEnum(Int8ul, TickMode),
+        "tick_direction" / AutoEnum(Int8ul, TickDirection),
+        Padding(2),
+        "wheel_ticks_to_m" / Float32l,
     )
 
     class Empty(NamedTuple):
@@ -369,6 +407,13 @@ class VehicleDetailsConfig(_conf_gen.VehicleDetails):
 class WheelConfig(_conf_gen.WheelConfig):
     """!
     @brief Information pertaining to wheel speeds.
+    """
+    pass
+
+@_conf_gen.create_config_class(ConfigType.HARDWARE_TICK_CONFIG, _conf_gen.HardwareTickConfigConstruct)
+class HardwareTickConfig(_conf_gen.HardwareTickConfig):
+    """!
+    @brief Tick configuration settings.
     """
     pass
 
