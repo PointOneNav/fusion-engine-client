@@ -366,10 +366,11 @@ uint32_t FusionEngineFramer::Resync() {
     // SYNC0 we found was a valid message and got dispatched, or B) was not the
     // start of a valid message.
     //
-    // In (A), valid_message == true, so we know we can just keep going.
+    // In (A), message_size > 0 indicating there was a valid message, so we know
+    // we can just keep going with the rest of the data in the buffer.
     //
-    // In (B), valid_message == false. In that case we'll go back to the next
-    // byte after we located the sync and see if there's another one.
+    // In (B), message_size == 0. In that case we'll rewind back to the byte
+    // just after we located the SYNC0 and see if there's another one.
     //
     // Note that next_byte_index_ always points to the next open slot, i.e.,
     // one byte _after_ the current byte.
@@ -389,7 +390,6 @@ uint32_t FusionEngineFramer::Resync() {
             << (available_bytes - message_size - 1)
             << " candidate bytes remaining]";
       } else {
-        --available_bytes;
         size_t prev_offset = offset;
         offset = 0;
         VLOG(1) << "Candidate message rejected after " << prev_offset
