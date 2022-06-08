@@ -390,7 +390,6 @@ uint32_t FusionEngineFramer::Resync() {
             << (available_bytes - message_size - 1)
             << " candidate bytes remaining]";
       } else {
-        --available_bytes;
         size_t prev_offset = offset;
         offset = 0;
         VLOG(1) << "Candidate message rejected after " << prev_offset
