@@ -337,6 +337,10 @@ def extract_fusion_engine_log(input_path, output_path=None, warn_on_gaps=True, r
 
                 data = in_fd.read(MessageHeader.calcsize())
                 read_len = len(data)
+                if read_len < MessageHeader.calcsize():
+                    # End of file.
+                    break
+
                 try:
                     header.unpack(data, warn_on_unrecognized=False)
                     if header.payload_size_bytes > MessageHeader._MAX_EXPECTED_SIZE_BYTES:
