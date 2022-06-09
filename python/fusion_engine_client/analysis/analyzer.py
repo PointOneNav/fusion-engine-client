@@ -838,7 +838,10 @@ class Analyzer(object):
 
         types = list(solution_type_count.keys())
         counts = ['%d' % c for c in solution_type_count.values()]
-        percents = ['%.1f%%' % (float(c) / num_pose_messages * 100.0) for c in solution_type_count.values()]
+        if num_pose_messages == 0:
+            percents = ['N/A' for c in solution_type_count.values()]
+        else:
+            percents = ['%.1f%%' % (float(c) / num_pose_messages * 100.0) for c in solution_type_count.values()]
 
         types.append(None)
         counts.append(None)
