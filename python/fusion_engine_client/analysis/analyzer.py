@@ -134,12 +134,17 @@ class Analyzer(object):
         if self.output_dir is None:
             return
 
-        figure = go.Figure()
-        figure['layout'].update(title='Device Time vs Relative Time', showlegend=False)
-        figure['layout']['xaxis1'].update(title="Relative Time (sec)")
+        # Setup the figure.
+        figure = make_subplots(rows=2, cols=1, print_grid=False, shared_xaxes=True,
+                               subplot_titles=['Device Time vs Relative Time', 'Delta-Time'])
+
+        figure['layout'].update(showlegend=False)
+        for i in range(2):
+            figure['layout']['xaxis%d' % (i + 1)].update(title="Relative Time (sec)", showticklabels=True)
         figure['layout']['yaxis1'].update(title="Absolute Time",
                                           ticktext=['P1/GPS Time', 'System Time'],
                                           tickvals=[1, 2])
+        figure['layout']['yaxis2'].update(title="Delta-Time (sec)", rangemode="tozero")
 
         # Read the pose data to get P1 and GPS timestamps.
         result = self.reader.read(message_types=[PoseMessage], **self.params)
@@ -147,6 +152,9 @@ class Analyzer(object):
 
         if len(pose_data.p1_time) > 0:
             time = pose_data.p1_time - float(self.t0)
+
+            dp1_time = np.diff(time, prepend=np.nan)
+            dp1_time = np.round(dp1_time * 1e3) * 1e-3
 
             # plotly starts to struggle with > 2 hours of data and won't display mouseover text, so decimate if
             # necessary.
@@ -158,9 +166,10 @@ class Analyzer(object):
 
                 time = time[idx]
                 p1_time = pose_data.p1_time[idx]
+                dp1_time = dp1_time[idx]
                 gps_time = pose_data.gps_time[idx]
 
-                figure['layout'].update(title=figure.layout.title.text + "<br>Decimated %dx" % step)
+                figure.layout.annotations[0].text += "<br>Decimated %dx" % step
             else:
                 p1_time = pose_data.p1_time
                 gps_time = pose_data.gps_time
@@ -178,7 +187,12 @@ class Analyzer(object):
 
             text = ['P1: %.3f sec<br>%s' % (p, gps_sec_to_string(g)) for p, g in zip(p1_time, gps_time)]
             figure.add_trace(go.Scattergl(x=time, y=np.full_like(time, 1), name='P1/GPS Time', text=text,
-                                          mode='markers'))
+                                          mode='markers'),
+                             1, 1)
+
+            figure.add_trace(go.Scattergl(x=time, y=dp1_time, name='P1/GPS Time', text=text,
+                                          mode='markers'),
+                             2, 1)
 
         # Read system timestamps from event notifications, if present.
         result = self.reader.read(message_types=[EventNotificationMessage], **self.params)
@@ -204,7 +218,8 @@ class Analyzer(object):
 
             text = ['System: %.3f sec' % t for t in system_time_sec]
             figure.add_trace(go.Scattergl(x=time, y=np.full_like(time, 2), name='System Time', text=text,
-                                          mode='markers'))
+                                          mode='markers'),
+                             1, 1)
 
         self._add_figure(name="time_scale", figure=figure, title="Time Scale")
 
