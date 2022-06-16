@@ -870,9 +870,11 @@ class Analyzer(object):
     def plot_eigen_profiling(self, id_to_name, data):
         eigen_min_maps = []
         eigen_overflow_maps = []
+        eigen_low_maps = []
         eigen_buffer_maps = []
         re_min = re.compile(r'e[0-9]min')
         re_ovr = re.compile(r'e[0-9]ovr')
+        re_low = re.compile(r'e[0-9]low')
         re_buf = re.compile(r'e[0-9]buf')
         for k, v in id_to_name.items():
             if len(v) < 2:
@@ -885,6 +887,8 @@ class Analyzer(object):
                 eigen_overflow_maps.append((k, serial_name))
             elif re_buf.match(v):
                 eigen_buffer_maps.append((k, serial_name))
+            elif re_low.match(v):
+                eigen_low_maps.append((k, serial_name))
 
         if len(eigen_min_maps) == 0 and len(eigen_overflow_maps) == 0:
             self.logger.warning('No Eigen profiling stats names received.')
@@ -892,10 +896,11 @@ class Analyzer(object):
 
         time = data.system_time_sec - self.system_t0
 
-        figure = make_subplots(rows=3, cols=1, print_grid=False, shared_xaxes=True,
+        figure = make_subplots(rows=4, cols=1, print_grid=False, shared_xaxes=True,
                                subplot_titles=['Eigen Pool Minimums',
                                                'Eigen Pool Overflows',
-                                               'Eigen Pool Free'])
+                                               'Eigen Pool Free After Update',
+                                               'Eigen Pool Interval Low Point'])
 
         figure['layout'].update(showlegend=True)
         for i in range(3):
@@ -903,6 +908,7 @@ class Analyzer(object):
         figure['layout']['yaxis1'].update(title="Lowest Pool Capacity", rangemode="tozero")
         figure['layout']['yaxis2'].update(title="Number of Pool Overflows", rangemode="tozero")
         figure['layout']['yaxis3'].update(title="Number of Free Slots", rangemode="tozero")
+        figure['layout']['yaxis4'].update(title="Number of Free Slots", rangemode="tozero")
         figure.update_layout(legend_title_text="Eigen Pools")
 
         for i in range(len(eigen_min_maps)):
@@ -926,10 +932,25 @@ class Analyzer(object):
             color = plotly.colors.DEFAULT_PLOTLY_COLORS[i % len(
                 plotly.colors.DEFAULT_PLOTLY_COLORS)]
             idx, pool_name = eigen_buffer_maps[i]
-            figure.add_trace(go.Scattergl(x=time, y=data.counters[idx], name=f'{pool_name}',
+            pool_data = data.counters[idx]
+            # If no allocations occured during an interval the counter reports 0xFFFFFFFF. Skip these values.
+            updated_points = pool_data != 0xFFFFFFFF
+            figure.add_trace(go.Scattergl(x=time[updated_points], y=pool_data[updated_points], name=f'{pool_name}',
                                           mode='lines', showlegend=False, legendgroup=pool_name,
                                           line={'color': color}),
                              3, 1)
+
+        for i in range(len(eigen_buffer_maps)):
+            color = plotly.colors.DEFAULT_PLOTLY_COLORS[i % len(
+                plotly.colors.DEFAULT_PLOTLY_COLORS)]
+            idx, pool_name = eigen_low_maps[i]
+            pool_data = data.counters[idx]
+            # If no allocations occured during an interval the counter reports 0xFFFFFFFF. Skip these values.
+            updated_points = pool_data != 0xFFFFFFFF
+            figure.add_trace(go.Scattergl(x=time[updated_points], y=pool_data[updated_points], name=f'{pool_name}',
+                                          mode='lines', showlegend=False, legendgroup=pool_name,
+                                          line={'color': color}),
+                             4, 1)
 
         self._add_figure(name="profile_eigen", figure=figure, title="Profiling: Eigen Pools")
 
