@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-from cmath import nan
 from typing import Tuple, Union, List, Any
 
 from collections import namedtuple
