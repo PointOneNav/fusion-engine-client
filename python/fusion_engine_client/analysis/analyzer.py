@@ -915,17 +915,7 @@ class Analyzer(object):
             color = plotly.colors.DEFAULT_PLOTLY_COLORS[i % len(
                 plotly.colors.DEFAULT_PLOTLY_COLORS)]
             idx, pool_name = eigen_min_maps[i]
-            pool_data = data.counters[idx]
-
-            # On startup counters report 0 until first allocation.
-            # Don't plot data during this period.
-            if np.max(pool_data) > 0 and pool_data[0] == 0:
-                first_valid = np.argmax(pool_data > 0)
-                valid_idx = range(first_valid, len(pool_data))
-            else:
-                valid_idx = range(len(pool_data))
-
-            figure.add_trace(go.Scattergl(x=time[valid_idx], y=pool_data[valid_idx], name=f'{pool_name}',
+            figure.add_trace(go.Scattergl(x=time, y=data.counters[idx], name=f'{pool_name}',
                                           mode='lines', showlegend=True, legendgroup=pool_name, line={'color': color}),
                              1, 1)
 
