@@ -1162,15 +1162,16 @@ class Analyzer(object):
 
         time = data.system_time_sec - self.system_t0
 
-        figure = make_subplots(rows=3, cols=1, print_grid=False, shared_xaxes=True,
-                               subplot_titles=['CPU Usage', 'Stack High Water Marks', 'Dynamic Memory Free'])
+        figure = make_subplots(rows=4, cols=1, print_grid=False, shared_xaxes=True,
+                               subplot_titles=['CPU Usage', 'Stack High Water Marks', 'Dynamic Memory Free', 'Missed Task Switches'])
 
         figure['layout'].update(showlegend=True)
-        for i in range(3):
+        for i in range(4):
             figure['layout']['xaxis%d' % (i + 1)].update(title="System Time (sec)", showticklabels=True)
         figure['layout']['yaxis1'].update(title="CPU (%)", range=[0, 100])
         figure['layout']['yaxis2'].update(title="Memory Free (B)", rangemode="tozero")
         figure['layout']['yaxis3'].update(title="Memory Free (KB)", rangemode="tozero")
+        figure['layout']['yaxis4'].update(title="Count of Missed Switches", rangemode="tozero")
 
         for i in range(len(data.task_cpu_usage_percent)):
             color = plotly.colors.DEFAULT_PLOTLY_COLORS[i % len(plotly.colors.DEFAULT_PLOTLY_COLORS)]
@@ -1190,6 +1191,10 @@ class Analyzer(object):
         figure.add_trace(go.Scattergl(x=time, y=data.sbrk_free_bytes / 1024.0, name='SBRK',
                                       mode='lines', line={'color': 'blue'}),
                          3, 1)
+
+        figure.add_trace(go.Scattergl(x=time, y=data.missed_task_switches, name='Missed Switches',
+                                      mode='lines', line={'color': 'blue'}),
+                         4, 1)
 
         self._add_figure(name="profile_freertos_system_status", figure=figure,
                          title="Profiling: FreeRTOS System Status")

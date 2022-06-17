@@ -537,7 +537,8 @@ class ProfileFreeRtosSystemStatusMessage(MessagePayload):
         "system_time_ns" / Int64ul,
         "heap_free_bytes" / Int32ul,
         "sbrk_free_bytes" / Int32ul,
-        Padding(3),
+        "missed_task_switches" / Int8ul,
+        Padding(2),
         "num_tasks" / Int8ul,
         "task_entries" / Array(this.num_tasks, ProfileFreeRtosTaskStatusEntryConstruct),
     )
@@ -546,6 +547,7 @@ class ProfileFreeRtosSystemStatusMessage(MessagePayload):
         self.system_time_ns = 0,
         self.heap_free_bytes = 0,
         self.sbrk_free_bytes = 0,
+        self.missed_task_switches = 0,
         self.task_entries = []
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
@@ -583,6 +585,7 @@ class ProfileFreeRtosSystemStatusMessage(MessagePayload):
         string = f'FreeRTOS System Profiling @ %s\n' % system_time_to_str(self.system_time_ns)
         string += f'\theap_free_bytes: {self.heap_free_bytes}\n'
         string += f'\tsbrk_free_bytes: {self.sbrk_free_bytes}\n'
+        string += f'\missed_task_switches: {self.missed_task_switches}\n'
         for i, task in enumerate(self.task_entries):
             string += f'\tTask[{i}]:\n'
             string += f'\t\tcpu_usage: {task.cpu_usage}%\n'
@@ -598,6 +601,7 @@ class ProfileFreeRtosSystemStatusMessage(MessagePayload):
             'system_time_sec': np.array([m.system_time_ns * 1e-9 for m in messages]),
             'heap_free_bytes': np.array([m.heap_free_bytes for m in messages]),
             'sbrk_free_bytes': np.array([m.sbrk_free_bytes for m in messages]),
+            'missed_task_switches': np.array([m.missed_task_switches for m in messages]),
             'task_cpu_usage_percent': [],
             'task_min_stack_free_bytes': [],
         }
