@@ -880,15 +880,15 @@ class Analyzer(object):
             if len(v) < 2:
                 continue
 
-            serial_name = 'Pool ' + v[1]
+            pool_name = 'Pool ' + v[1]
             if re_min.match(v):
-                eigen_min_maps.append((k, serial_name))
+                eigen_min_maps.append((k, pool_name))
             elif re_ovr.match(v):
-                eigen_overflow_maps.append((k, serial_name))
+                eigen_overflow_maps.append((k, pool_name))
             elif re_buf.match(v):
-                eigen_buffer_maps.append((k, serial_name))
+                eigen_buffer_maps.append((k, pool_name))
             elif re_low.match(v):
-                eigen_low_maps.append((k, serial_name))
+                eigen_low_maps.append((k, pool_name))
 
         if len(eigen_min_maps) == 0 and len(eigen_overflow_maps) == 0:
             self.logger.warning('No Eigen profiling stats names received.')
@@ -953,6 +953,74 @@ class Analyzer(object):
                              4, 1)
 
         self._add_figure(name="profile_eigen", figure=figure, title="Profiling: Eigen Pools")
+
+    def plot_host_side_serial_dropouts(self, input_path, id_to_name, data):
+        HOST_SERIAL_INTERFACE = 'tx_uart1'
+        log_dir = os.path.dirname(input_path)
+        offset_path = os.path.join(log_dir, "extracted_fe_messages.offsets")
+
+        if not os.path.exists(offset_path):
+            self.logger.info("No mixed data offsets file %s, can't check for host serial dropouts." % offset_path)
+            return
+
+        connected_port_idx = None
+        for k, val in id_to_name.items():
+            if HOST_SERIAL_INTERFACE == val:
+                connected_port_idx = k
+
+        if connected_port_idx is None:
+            self.logger.info("Host serial interface %s not found in profiling counters, can't check for host serial dropouts." % HOST_SERIAL_INTERFACE)
+            return
+
+        serial_tx_counts = data.counters[connected_port_idx]
+
+        if not self.reader.index:
+            self.logger.info("Index file not found. Can't check for host serial dropouts.")
+            return
+
+        mixed_offsets = np.fromfile(offset_path, dtype=np.uint32).reshape((-1, 2))
+
+        time = data.system_time_sec - self.system_t0
+
+        idx = self.reader.index.type == ProfileCounterMessage.MESSAGE_TYPE.value
+        counter_p1log_offsets = self.reader.index.offset[idx]
+
+        idx = []
+        for offset in counter_p1log_offsets:
+            if len(idx) == 0:
+                last = 0
+            else:
+                last = idx[-1]
+            match = next((i for i, val in np.ndenumerate(mixed_offsets[last:, 1]) if val==offset))
+            idx.append(match[0] + last)
+
+        counter_mixed_offsets = mixed_offsets[idx, 0]
+
+        start_offset = serial_tx_counts[0]  - counter_mixed_offsets[0]
+        dropped_data = serial_tx_counts  - counter_mixed_offsets - start_offset
+
+        if np.max(dropped_data) <= 0:
+            self.logger.info('No host side serial drops.')
+            return
+
+        good_idx = [0]
+        for i in range(1, len(dropped_data)):
+            if dropped_data[i] >= dropped_data[i-1]:
+                good_idx.append(i)
+
+        dropped_data_diff = np.diff(dropped_data[good_idx])
+
+        self.logger.warning('Host serial connection dropped %dB.' % np.sum(dropped_data_diff))
+
+        # Setup the figure.
+        figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=True, subplot_titles=['Host Serial Dropouts'])
+
+        figure['layout']['xaxis'].update(title="Time (sec)")
+        figure['layout']['yaxis1'].update(title="Dropped Data (Bytes)")
+
+        figure.add_trace(go.Scattergl(x=time[good_idx][1:], y=dropped_data_diff, mode='markers'), 1, 1)
+
+        self._add_figure(name="host_dropped_data", figure=figure, title="HOST DROPPED SERIAL DATA!!!")
 
     def plot_serial_profiling(self, id_to_name, data):
         tx_buffer_free_maps = []
@@ -1044,7 +1112,7 @@ class Analyzer(object):
 
         self._add_figure(name="profile_serial", figure=figure, title="Profiling: Serial Output")
 
-    def plot_counter_profiling(self):
+    def plot_counter_profiling(self, input_path):
         """!
         @brief Plot execution profiling stats.
         """
@@ -1072,6 +1140,8 @@ class Analyzer(object):
             id_to_name = {}
 
         self.plot_serial_profiling(id_to_name, data)
+
+        self.plot_host_side_serial_dropouts(input_path, id_to_name, data)
 
         self.plot_eigen_profiling(id_to_name, data)
 
@@ -1646,7 +1716,7 @@ Load and display information stored in a FusionEngine binary file.
     analyzer.plot_measurement_pipeline_profiling()
     analyzer.plot_execution_profiling()
     analyzer.plot_execution_stats_profiling()
-    analyzer.plot_counter_profiling()
+    analyzer.plot_counter_profiling(input_path)
 
     analyzer.generate_index(auto_open=not options.no_index)
 

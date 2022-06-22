@@ -2,6 +2,7 @@ import fnmatch
 import os
 
 import logging
+import struct
 
 from .dump_p1bin import dump_p1bin
 from ..messages import MessageHeader, MessageType
@@ -315,7 +316,7 @@ def find_p1log_file(input_path, return_output_dir=False, return_log_id=False, lo
         raise FileExistsError('Specified file is not a .p1log file.')
 
 
-def extract_fusion_engine_log(input_path, output_path=None, warn_on_gaps=True, return_counts=False):
+def extract_fusion_engine_log(input_path, output_path=None, warn_on_gaps=True, return_counts=False, message_offsets=None):
     """!
     @brief Extract FusionEngine data from a file containing mixed binary data.
 
@@ -324,6 +325,7 @@ def extract_fusion_engine_log(input_path, output_path=None, warn_on_gaps=True, r
            `input_path` is `<prefix>.<ext>`.
     @param warn_on_gaps If `True`, print a warning if gaps are detected in the data sequence numbers.
     @param return_counts If `True`, return the number of messages extracted for each message type.
+    @param message_offsets If not `None`, append a tuple of mapping between mixed file and p1log offsets of each FE message extracted.
 
     @return A tuple containing:
             - The number of decoded messages.
@@ -381,6 +383,9 @@ def extract_fusion_engine_log(input_path, output_path=None, warn_on_gaps=True, r
                     data += payload
                     header.validate_crc(data)
 
+                    if message_offsets is not None:
+                        message_offsets.append((offset, out_path.tell()))
+
                     if prev_sequence_number is not None and \
                        (header.sequence_number - prev_sequence_number) != 1 and \
                        not (header.sequence_number == 0 and prev_sequence_number == 0xFFFFFFFF):
@@ -418,7 +423,7 @@ def extract_fusion_engine_log(input_path, output_path=None, warn_on_gaps=True, r
 
 
 def locate_log(input_path, log_base_dir=DEFAULT_LOG_BASE_DIR, return_output_dir=False, return_log_id=False,
-               extract_fusion_engine_data=True, load_original=False):
+               extract_fusion_engine_data=True, load_original=False, write_offsets=True):
     """!
     @brief Locate a FusionEngine `*.p1log` file, or a binary file containing a mixed stream of FusionEngine messages and
            other content.
@@ -442,6 +447,8 @@ def locate_log(input_path, log_base_dir=DEFAULT_LOG_BASE_DIR, return_output_dir=
            and generate a new `*.p1log` file. Otherwise, return the path to the located mixed binary file.
     @param load_original If `True`, load the `.p1log` file originally recorded with the log. Otherwise, load the log
            playback output if it exists (default).
+    @param write_offsets If `True` and the data is loaded from a mixed binary log, write the mapping between mixed file
+           and p1log offsets to a `.offset` file.
 
     @return The path to the located file or a tuple of:
             - The path to the located (or extracted) `*.p1log` file
@@ -519,8 +526,16 @@ def locate_log(input_path, log_base_dir=DEFAULT_LOG_BASE_DIR, return_output_dir=
             fe_path = os.path.join(log_dir, "fusion_engine.p1log")
 
         _logger.info("Extracting FusionEngine content to '%s'." % fe_path)
-        num_messages = extract_fusion_engine_log(input_path=mixed_file_path, output_path=fe_path)
+        message_offsets = []
+        num_messages = extract_fusion_engine_log(input_path=mixed_file_path, output_path=fe_path, message_offsets=message_offsets)
         if num_messages > 0:
+            if write_offsets:
+                log_dir = os.path.dirname(mixed_file_path)
+                offset_path = os.path.join(log_dir, "extracted_fe_messages.offsets")
+                _logger.info("Writing FusionEngine offsets to '%s'." % offset_path)
+                with open(offset_path, 'wb') as offset_fd:
+                    for offset in message_offsets:
+                        offset_fd.write(struct.pack('II', offset[0], offset[1]))
             if isinstance(result, tuple):
                 result = list(result)
                 result[0] = fe_path
