@@ -325,7 +325,9 @@ def extract_fusion_engine_log(input_path, output_path=None, warn_on_gaps=True, r
            `input_path` is `<prefix>.<ext>`.
     @param warn_on_gaps If `True`, print a warning if gaps are detected in the data sequence numbers.
     @param return_counts If `True`, return the number of messages extracted for each message type.
-    @param message_offsets If not `None`, append a tuple of mapping between mixed file and p1log offsets of each FE message extracted.
+    @param message_offsets If not None, append a tuple for each FusionEngine found in the mixed binary file. Each tuple
+           is a mapping of the offset (in bytes) of the message location within the mixed binary file and the
+           corresponding location in the generated .p1log file.
 
     @return A tuple containing:
             - The number of decoded messages.
@@ -448,7 +450,7 @@ def locate_log(input_path, log_base_dir=DEFAULT_LOG_BASE_DIR, return_output_dir=
     @param load_original If `True`, load the `.p1log` file originally recorded with the log. Otherwise, load the log
            playback output if it exists (default).
     @param write_offsets If `True` and the data is loaded from a mixed binary log, write the mapping between mixed file
-           and p1log offsets to a `.offset` file.
+           and .p1log offsets to a `.offset` file.
 
     @return The path to the located file or a tuple of:
             - The path to the located (or extracted) `*.p1log` file
@@ -530,8 +532,7 @@ def locate_log(input_path, log_base_dir=DEFAULT_LOG_BASE_DIR, return_output_dir=
         num_messages = extract_fusion_engine_log(input_path=mixed_file_path, output_path=fe_path, message_offsets=message_offsets)
         if num_messages > 0:
             if write_offsets:
-                log_dir = os.path.dirname(mixed_file_path)
-                offset_path = os.path.join(log_dir, "extracted_fe_messages.offsets")
+                offset_path = os.path.splitext(fe_path)[0] + '.offsets'
                 _logger.info("Writing FusionEngine offsets to '%s'." % offset_path)
                 with open(offset_path, 'wb') as offset_fd:
                     for offset in message_offsets:
