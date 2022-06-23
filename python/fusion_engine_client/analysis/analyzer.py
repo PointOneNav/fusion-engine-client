@@ -880,15 +880,15 @@ class Analyzer(object):
             if len(v) < 2:
                 continue
 
-            serial_name = 'Pool ' + v[1]
+            pool_name = 'Pool ' + v[1]
             if re_min.match(v):
-                eigen_min_maps.append((k, serial_name))
+                eigen_min_maps.append((k, pool_name))
             elif re_ovr.match(v):
-                eigen_overflow_maps.append((k, serial_name))
+                eigen_overflow_maps.append((k, pool_name))
             elif re_buf.match(v):
-                eigen_buffer_maps.append((k, serial_name))
+                eigen_buffer_maps.append((k, pool_name))
             elif re_low.match(v):
-                eigen_low_maps.append((k, serial_name))
+                eigen_low_maps.append((k, pool_name))
 
         if len(eigen_min_maps) == 0 and len(eigen_overflow_maps) == 0:
             self.logger.warning('No Eigen profiling stats names received.')
@@ -953,6 +953,76 @@ class Analyzer(object):
                              4, 1)
 
         self._add_figure(name="profile_eigen", figure=figure, title="Profiling: Eigen Pools")
+
+    def plot_host_side_serial_dropouts(self, id_to_name, data, device_uart):
+        host_serial_interface = 'tx_' + device_uart
+        offset_path = offset_path = os.path.splitext(self.reader.file.name)[0] + '.offsets'
+
+        if not os.path.exists(offset_path):
+            self.logger.info("No mixed data offsets file %s, can't check for host serial dropouts." % offset_path)
+            return
+
+        # Get the ProfileCounterMessage that corrasponds to the interface the host was listening to.
+        connected_port_idx = None
+        for k, val in id_to_name.items():
+            if host_serial_interface == val:
+                connected_port_idx = k
+
+        if connected_port_idx is None:
+            self.logger.info("Device serial interface %s not found in profiling counters, can't check for host serial dropouts." % host_serial_interface)
+            return
+
+        # Get the profiling data for the amount of serial data transmitted to the host.
+        serial_tx_counts = data.counters[connected_port_idx]
+        # Get the system time for each of these messages.
+        time = data.system_time_sec - self.system_t0
+
+        # Figure out how much serial data the host had recieved at the time of each counter profiling message.
+        # This requires finding the data offset for these messages in the original mixed log.
+
+        # The index can be used to map the messages to the .p1log offset
+        if not self.reader.index:
+            self.logger.info("Index file not found. Can't check for host serial dropouts.")
+            return
+
+        idx = self.reader.index.type == ProfileCounterMessage.MESSAGE_TYPE.value
+        counter_p1log_offsets = self.reader.index.offset[idx]
+
+        # Load the map of the original mixed log offsets to .p1log.
+        mixed_offsets = np.fromfile(offset_path, dtype=np.uint32).reshape((-1, 2))
+
+        # Get the map of .p1bin offsets to the mixed file offsets for the ProfileCounterMessage messages.
+        idx = np.searchsorted(mixed_offsets[:, 1], counter_p1log_offsets)
+        counter_mixed_offsets = mixed_offsets[idx, 0]
+
+        start_offset = serial_tx_counts[0]  - counter_mixed_offsets[0]
+        dropped_data = serial_tx_counts  - counter_mixed_offsets - start_offset
+
+        if np.min(dropped_data) <= -10e6:
+            self.logger.warning('''Host serial diverges significantly from profiling data for %s.
+Make sure %s is the actual interface used for data collection or use --device-uart to set the correct port.''' % (device_uart, device_uart))
+
+        if np.max(dropped_data) <= 0:
+            self.logger.info('No host side serial drops.')
+            return
+
+        # Since the monitoring task can be preempted, other tasks can send additional data between the counter check
+        # and when the profiling message is transmitted. This can result in the recieved data can be greater than the
+        # ammount reported by profiling. However, this should happen rarely, and can be filtered out.
+        tmp_diff = np.diff(dropped_data)
+        good_idx = np.insert(tmp_diff >= 0, 0, True)
+        dropped_data_diff = np.diff(dropped_data[good_idx])
+
+        self.logger.warning('Host serial connection %s dropped %d bytes.\nMake sure %s is the actual interface used for data collection or use --device-uart to set the correct port.' % (device_uart, np.sum(dropped_data_diff), device_uart))
+        # Setup the figure.
+        figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=True, subplot_titles=[f'Host Serial Dropouts. Make sure {device_uart} is the actual interface used for data collection or use --device-uart to set the correct port.'])
+
+        figure['layout']['xaxis'].update(title="Time (sec)")
+        figure['layout']['yaxis1'].update(title="Dropped Data (Bytes)")
+
+        figure.add_trace(go.Scattergl(x=time[good_idx][1:], y=dropped_data_diff, mode='markers'), 1, 1)
+
+        self._add_figure(name="host_dropped_data", figure=figure, title="WARNING: Serial Data Dropped By Host")
 
     def plot_serial_profiling(self, id_to_name, data):
         tx_buffer_free_maps = []
@@ -1044,7 +1114,7 @@ class Analyzer(object):
 
         self._add_figure(name="profile_serial", figure=figure, title="Profiling: Serial Output")
 
-    def plot_counter_profiling(self):
+    def plot_counter_profiling(self, device_uart):
         """!
         @brief Plot execution profiling stats.
         """
@@ -1072,6 +1142,8 @@ class Analyzer(object):
             id_to_name = {}
 
         self.plot_serial_profiling(id_to_name, data)
+
+        self.plot_host_side_serial_dropouts(id_to_name, data, device_uart)
 
         self.plot_eigen_profiling(id_to_name, data)
 
@@ -1532,6 +1604,9 @@ Load and display information stored in a FusionEngine binary file.
     parser.add_argument('--absolute-time', '--abs', action='store_true',
                         help="Interpret the timestamps in --time as absolute P1 times. Otherwise, treat them as "
                              "relative to the first message in the file.")
+    parser.add_argument('--device-uart', choices=['uart0', 'uart1'], default='uart1',
+                        help="Which device UART interface was the data collected from. This is for checking the "
+                             "recieved bytes against the serial profiling from ProfileCounterMessage messages.")
     parser.add_argument('--ignore-index', action='store_true',
                         help="If set, do not load the .p1i index file corresponding with the .p1log data file. If "
                              "specified and a .p1i file does not exist, do not generate one. Otherwise, a .p1i file "
@@ -1646,7 +1721,7 @@ Load and display information stored in a FusionEngine binary file.
     analyzer.plot_measurement_pipeline_profiling()
     analyzer.plot_execution_profiling()
     analyzer.plot_execution_stats_profiling()
-    analyzer.plot_counter_profiling()
+    analyzer.plot_counter_profiling(options.device_uart)
 
     analyzer.generate_index(auto_open=not options.no_index)
 
