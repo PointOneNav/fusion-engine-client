@@ -248,6 +248,8 @@ class FileReader(object):
         """
         if message_types is None:
             message_types = []
+        elif isinstance(message_types, np.ndarray):
+            message_types = message_types.astype(MessageType).tolist()
         elif not isinstance(message_types, (list, tuple, set)):
             message_types = (message_types,)
 
