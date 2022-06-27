@@ -47,13 +47,13 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            compiler: g++
+            compiler: gcc
             version: 9
           - os: ubuntu-latest
-            compiler: g++
+            compiler: gcc
             version: 10
           - os: ubuntu-latest
-            compiler: clang++
+            compiler: clang
             version: 11
     steps:
     - uses: actions/checkout@v2
@@ -67,18 +67,21 @@ jobs:
     - name: Setup Environment (Linux)
       if: matrix.os == 'ubuntu-latest'
       run: |
-        if [[ "${{ matrix.compiler }}" == "g++" ]]; then
+        if [[ "${{ matrix.compiler }}" == "gcc" ]]; then
           sudo apt install gcc-${{ matrix.version }} g++-${{ matrix.version }}
           sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-${{ matrix.version }} 100 \
             --slave /usr/bin/g++ g++ /usr/bin/g++-${{ matrix.version }} \
             --slave /usr/bin/gcov gcov /usr/bin/gcov-${{ matrix.version }}
           sudo update-alternatives --set gcc /usr/bin/gcc-${{ matrix.version }}
+
+          echo "CC=/usr/bin/g++-${{ matrix.version }}" >> $GITHUB_ENV
         else
           sudo apt install clang-${{ matrix.version }}
           sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-${{ matrix.version }} 100
           sudo update-alternatives --set clang /usr/bin/clang-${{ matrix.version }}
+
+          echo "CC=/usr/bin/clang++-${{ matrix.version }}" >> $GITHUB_ENV
         fi
-        echo "CC=/usr/bin/${{ matrix.compiler }}" >> $GITHUB_ENV
 
     - name: Build Library
       run: |
@@ -116,13 +119,13 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            compiler: g++
+            compiler: gcc
             version: 9
           - os: ubuntu-latest
-            compiler: g++
+            compiler: gcc
             version: 10
           - os: ubuntu-latest
-            compiler: clang++
+            compiler: clang
             version: 11
           - os: windows-latest
             compiler: msvc
@@ -150,18 +153,24 @@ jobs:
     - name: Setup Environment (Linux)
       if: matrix.os == 'ubuntu-latest'
       run: |
-        if [[ "${{ matrix.compiler }}" == "g++" ]]; then
+        if [[ "${{ matrix.compiler }}" == "gcc" ]]; then
           sudo apt install gcc-${{ matrix.version }} g++-${{ matrix.version }}
           sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-${{ matrix.version }} 100 \
             --slave /usr/bin/g++ g++ /usr/bin/g++-${{ matrix.version }} \
             --slave /usr/bin/gcov gcov /usr/bin/gcov-${{ matrix.version }}
           sudo update-alternatives --set gcc /usr/bin/gcc-${{ matrix.version }}
+
+          echo "CC=/usr/bin/gcc-${{ matrix.version }}" >> $GITHUB_ENV
+          echo "CXX=/usr/bin/g++-${{ matrix.version }}" >> $GITHUB_ENV
         else
           sudo apt install clang-${{ matrix.version }}
           sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-${{ matrix.version }} 100
           sudo update-alternatives --set clang /usr/bin/clang-${{ matrix.version }}
+
+          echo "CC=/usr/bin/clang-${{ matrix.version }}" >> $GITHUB_ENV
+          echo "CXX=/usr/bin/clang++-${{ matrix.version }}" >> $GITHUB_ENV
         fi
-        echo "CXX=/usr/bin/${{ matrix.compiler }}" >> $GITHUB_ENV
+
         echo "EXT=" >> $GITHUB_ENV
 
     - name: Setup Build
