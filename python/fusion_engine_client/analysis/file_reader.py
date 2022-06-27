@@ -255,6 +255,14 @@ class FileReader(object):
             time_range = (None, None)
             time_range_specified = False
         else:
+            if isinstance(time_range, np.ndarray):
+                time_range = time_range.tolist()
+
+            if len(time_range) == 1:
+                time_range = [time_range[0], None]
+            elif len(time_range) != 2:
+                raise ValueError('Invalid time range specified.')
+
             time_range_specified = (time_range[0] is not None or time_range[1] is not None)
 
         if max_messages is None:
