@@ -50,6 +50,9 @@ jobs:
             compiler: g++
             version: 9
           - os: ubuntu-latest
+            compiler: g++
+            version: 10
+          - os: ubuntu-latest
             compiler: clang++
             version: 11
     steps:
@@ -115,6 +118,9 @@ jobs:
           - os: ubuntu-latest
             compiler: g++
             version: 9
+          - os: ubuntu-latest
+            compiler: g++
+            version: 10
           - os: ubuntu-latest
             compiler: clang++
             version: 11
