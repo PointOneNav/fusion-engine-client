@@ -808,6 +808,7 @@ class Analyzer(object):
             'body': links + '\n<pre>' + self.summary.replace('\n', '<br>') + '</pre>'
         }
 
+        os.makedirs(index_dir, exist_ok=True)
         with open(index_path, 'w') as f:
             self.logger.info('Creating %s...' % index_path)
             f.write(index_html)
@@ -917,6 +918,7 @@ class Analyzer(object):
             'body': html_body
         }
 
+        os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, 'w') as fd:
             fd.write(table_html)
 
@@ -934,6 +936,7 @@ class Analyzer(object):
         path = os.path.join(self.output_dir, self.prefix + name + '.html')
         self.logger.info('Creating %s...' % path)
 
+        os.makedirs(os.path.dirname(path), exist_ok=True)
         plotly.offline.plot(
             figure,
             output_type='file',
