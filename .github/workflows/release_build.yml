@@ -39,13 +39,22 @@ jobs:
         clang-format-version: '13'
         check-path: '.'
 
-  # Build the library and example applications (Bazel).
+  # Build the library and example applications (Bazel). Currently Linux only.
   build_bazel:
     name: Bazel Build
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        compiler: [g++, clang++]
+        include:
+          - os: ubuntu-latest
+            compiler: gcc
+            version: 9
+          - os: ubuntu-latest
+            compiler: gcc
+            version: 10
+          - os: ubuntu-latest
+            compiler: clang
+            version: 11
     steps:
     - uses: actions/checkout@v2
 
@@ -55,15 +64,30 @@ jobs:
       with:
         version: 4.2.2
 
+    - name: Setup Environment (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        if [[ "${{ matrix.compiler }}" == "gcc" ]]; then
+          sudo apt install gcc-${{ matrix.version }} g++-${{ matrix.version }}
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-${{ matrix.version }} 100 \
+            --slave /usr/bin/g++ g++ /usr/bin/g++-${{ matrix.version }} \
+            --slave /usr/bin/gcov gcov /usr/bin/gcov-${{ matrix.version }}
+          sudo update-alternatives --set gcc /usr/bin/gcc-${{ matrix.version }}
+
+          echo "CC=/usr/bin/g++-${{ matrix.version }}" >> $GITHUB_ENV
+        else
+          sudo apt install clang-${{ matrix.version }}
+          sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-${{ matrix.version }} 100
+          sudo update-alternatives --set clang /usr/bin/clang-${{ matrix.version }}
+
+          echo "CC=/usr/bin/clang++-${{ matrix.version }}" >> $GITHUB_ENV
+        fi
+
     - name: Build Library
-      env:
-        CC: /usr/bin/${{ matrix.compiler }}
       run: |
         bazel build -c opt //:*
 
     - name: Build Examples
-      env:
-        CC: /usr/bin/${{ matrix.compiler }}
       run: |
         cd examples &&
         bazel build -c opt //:*
@@ -93,9 +117,16 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest]
-        compiler: [g++, clang++]
         include:
+          - os: ubuntu-latest
+            compiler: gcc
+            version: 9
+          - os: ubuntu-latest
+            compiler: gcc
+            version: 10
+          - os: ubuntu-latest
+            compiler: clang
+            version: 11
           - os: windows-latest
             compiler: msvc
     defaults:
@@ -122,7 +153,24 @@ jobs:
     - name: Setup Environment (Linux)
       if: matrix.os == 'ubuntu-latest'
       run: |
-        echo "CXX=/usr/bin/${{ matrix.compiler }}" >> $GITHUB_ENV
+        if [[ "${{ matrix.compiler }}" == "gcc" ]]; then
+          sudo apt install gcc-${{ matrix.version }} g++-${{ matrix.version }}
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-${{ matrix.version }} 100 \
+            --slave /usr/bin/g++ g++ /usr/bin/g++-${{ matrix.version }} \
+            --slave /usr/bin/gcov gcov /usr/bin/gcov-${{ matrix.version }}
+          sudo update-alternatives --set gcc /usr/bin/gcc-${{ matrix.version }}
+
+          echo "CC=/usr/bin/gcc-${{ matrix.version }}" >> $GITHUB_ENV
+          echo "CXX=/usr/bin/g++-${{ matrix.version }}" >> $GITHUB_ENV
+        else
+          sudo apt install clang-${{ matrix.version }}
+          sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-${{ matrix.version }} 100
+          sudo update-alternatives --set clang /usr/bin/clang-${{ matrix.version }}
+
+          echo "CC=/usr/bin/clang-${{ matrix.version }}" >> $GITHUB_ENV
+          echo "CXX=/usr/bin/clang++-${{ matrix.version }}" >> $GITHUB_ENV
+        fi
+
         echo "EXT=" >> $GITHUB_ENV
 
     - name: Setup Build
