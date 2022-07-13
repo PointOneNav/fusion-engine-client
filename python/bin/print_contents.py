@@ -53,14 +53,14 @@ other types of data.
         '-s', '--summary', action='store_true',
         help="Print a summary of the messages in the file.")
     parser.add_argument(
-        '--time', type=str, metavar='[START][:END]',
+        '-m', '--message-type', type=str, action='append',
+        help="An optional list of class names corresponding with the message types to be displayed. "
+             "Supported types:\n%s" % '\n'.join(['- %s' % c for c in message_type_by_name.keys()]))
+    parser.add_argument(
+        '-t', '--time', type=str, metavar='[START][:END]',
         help="The desired time range to be analyzed. Both start and end may be omitted to read from beginning or to "
              "the end of the file. By default, timestamps are treated as relative to the first message in the file. "
              "See --absolute-time.")
-    parser.add_argument(
-        '-t', '--type', type=str, action='append',
-        help="An optional list of class names corresponding with the message types to be displayed. "
-             "Supported types:\n%s" % '\n'.join(['- %s' % c for c in message_type_by_name.keys()]))
 
     log_parser = parser.add_argument_group('Log Control')
     log_parser.add_argument(
@@ -96,10 +96,10 @@ other types of data.
     # If the user specified a set of message names, lookup their type values. Below, we will limit the printout to only
     # those message types.
     message_types = []
-    if options.type is not None:
+    if options.message_type is not None:
         # Convert to lowercase to perform case-insensitive search.
         type_by_name = {k.lower(): v for k, v in message_type_by_name.items()}
-        for name in options.type:
+        for name in options.message_type:
             lower_name = name.lower()
             message_type = type_by_name.get(lower_name, None)
             if message_type is None:
