@@ -106,6 +106,18 @@ other types of data.
                 message_types.append(message_type)
         message_types = set(message_types)
 
+        # Check if any of the requested message types do _not_ have P1 time (e.g., profiling messages). The index file
+        # does not currently contain non-P1 time messages, so if we use it to search for messages we will end up
+        # skipping all of these ones. Instead, we disable the index and revert to full file search.
+        if not options.ignore_index:
+            for message_type in message_types:
+                cls = message_type_to_class[message_type]
+                message = cls()
+                if not hasattr(message, 'p1_time'):
+                    print('Non-P1 time messages detected. Disabling index file.')
+                    options.ignore_index = True
+                    break
+
     # Try to open the index file for faster data access. If no index exists, create one unless --ignore-index is
     # specified.
     index_file = None
@@ -164,6 +176,11 @@ other types of data.
 
         # Process all data in the file.
         still_working = True
+
+        if message_indices is not None and len(message_indices) == 0:
+            print('No messages found in index file.')
+            still_working = False
+
         while still_working:
             # If we have an index file, seek to the next message and read it.
             if index_file is not None:
