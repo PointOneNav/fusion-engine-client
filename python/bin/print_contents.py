@@ -100,10 +100,21 @@ other types of data.
         # Convert to lowercase to perform case-insensitive search.
         type_by_name = {k.lower(): v for k, v in message_type_by_name.items()}
         for name in options.type:
-            message_type = type_by_name.get(name.lower(), None)
+            lower_name = name.lower()
+            message_type = type_by_name.get(lower_name, None)
             if message_type is None:
-                print("Unrecognized message type '%s'." % name)
-                sys.exit(1)
+                # If we can't find an exact match for the key, try a partial match.
+                matches = {k: v for k, v in type_by_name.items() if k.startswith(lower_name)}
+                if len(matches) == 1:
+                    message_types.append(next(iter(matches.values())))
+                elif len(matches) > 1:
+                    types = [v for v in matches.values()]
+                    class_names = [message_type_to_class[t].__name__ for t in types]
+                    print("Found multiple types matching '%s':\n  %s" % (name, '\n  '.join(class_names)))
+                    sys.exit(1)
+                else:
+                    print("Unrecognized message type '%s'." % name)
+                    sys.exit(1)
             else:
                 message_types.append(message_type)
         message_types = set(message_types)
