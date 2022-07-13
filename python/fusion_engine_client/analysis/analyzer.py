@@ -1055,9 +1055,9 @@ Load and display information stored in a FusionEngine binary file.
         sys.exit(1)
 
     if log_id is None:
-        _logger.info('Loading %s.' % os.path.basename(input_path))
+        _logger.info('Loading %s.' % input_path)
     else:
-        _logger.info('Loading %s from log %s.' % (os.path.basename(input_path), log_id))
+        _logger.info('Loading %s (log ID: %s).' % (input_path, log_id))
 
     if options.output is None:
         if log_id is not None:
