@@ -4,6 +4,8 @@ import io
 import os
 import sys
 
+import numpy as np
+
 # Add the Python root directory (fusion-engine-client/python/) to the import search path to enable FusionEngine imports
 # if this application is being run directly out of the repository and is not installed as a pip package.
 root_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
