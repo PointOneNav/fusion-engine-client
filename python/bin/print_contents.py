@@ -164,7 +164,7 @@ other types of data.
 
     # If we have an index file and we're only interested in certain message types, locate them in the index.
     if index_file is not None and len(message_types) != 0:
-        message_indices = np.where(np.isin(index_file.type, message_types))[0]
+        message_indices = np.where(np.isin(index_file.type, list(message_types)))[0]
     else:
         message_indices = None
 
