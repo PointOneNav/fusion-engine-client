@@ -969,7 +969,8 @@ class Analyzer(object):
                 connected_port_idx = k
 
         if connected_port_idx is None:
-            self.logger.info("Device serial interface %s not found in profiling counters, can't check for host serial dropouts." % host_serial_interface)
+            self.logger.info("Device serial interface %s not found in profiling counters, can't check for host serial "
+                             "dropouts." % host_serial_interface)
             return
 
         # Get the profiling data for the amount of serial data transmitted to the host.
@@ -977,7 +978,7 @@ class Analyzer(object):
         # Get the system time for each of these messages.
         time = data.system_time_sec - self.system_t0
 
-        # Figure out how much serial data the host had recieved at the time of each counter profiling message.
+        # Figure out how much serial data the host had received at the time of each counter profiling message.
         # This requires finding the data offset for these messages in the original mixed log.
 
         # The index can be used to map the messages to the .p1log offset
@@ -999,8 +1000,10 @@ class Analyzer(object):
         dropped_data = serial_tx_counts  - counter_mixed_offsets - start_offset
 
         if np.min(dropped_data) <= -10e6:
-            self.logger.warning('''Host serial diverges significantly from profiling data for %s.
-Make sure %s is the actual interface used for data collection or use --device-uart to set the correct port.''' % (device_uart, device_uart))
+            self.logger.warning('Host serial diverges significantly from profiling data for %s. Make sure %s is the '
+                                'actual interface used for data collection or use --device-uart to set the correct '
+                                'port.' %
+                                (device_uart, device_uart))
 
         if np.max(dropped_data) <= 0:
             self.logger.info('No host side serial drops.')
@@ -1013,9 +1016,14 @@ Make sure %s is the actual interface used for data collection or use --device-ua
         good_idx = np.insert(tmp_diff >= 0, 0, True)
         dropped_data_diff = np.diff(dropped_data[good_idx])
 
-        self.logger.warning('Host serial connection %s dropped %d bytes.\nMake sure %s is the actual interface used for data collection or use --device-uart to set the correct port.' % (device_uart, np.sum(dropped_data_diff), device_uart))
+        self.logger.warning('Host serial connection %s dropped %d bytes.\nMake sure %s is the actual interface used '
+                            'for data collection or use --device-uart to set the correct port.' %
+                            (device_uart, np.sum(dropped_data_diff), device_uart))
         # Setup the figure.
-        figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=True, subplot_titles=[f'Host Serial Dropouts. Make sure {device_uart} is the actual interface used for data collection or use --device-uart to set the correct port.'])
+        figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=True,
+                               subplot_titles=[f'Host Serial Dropouts. Make sure {device_uart} is the actual interface '
+                                               f'used for data collection or use --device-uart to set the correct '
+                                               f'port.'])
 
         figure['layout']['xaxis'].update(title="Time (sec)")
         figure['layout']['yaxis1'].update(title="Dropped Data (Bytes)")
