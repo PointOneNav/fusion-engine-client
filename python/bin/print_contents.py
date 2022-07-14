@@ -54,7 +54,8 @@ other types of data.
         help="Print a summary of the messages in the file.")
     parser.add_argument(
         '-m', '--message-type', type=str, action='append',
-        help="An optional list of class names corresponding with the message types to be displayed. "
+        help="An optional list of class names corresponding with the message types to be displayed. May be specified "
+             "multiple times (-m Type 1 -m Type 2), or as a comma-separated list (-m Type1,Type2). "
              "Supported types:\n%s" % '\n'.join(['- %s' % c for c in message_type_by_name.keys()]))
     parser.add_argument(
         '-t', '--time', type=str, metavar='[START][:END]',
@@ -99,7 +100,15 @@ other types of data.
     if options.message_type is not None:
         # Convert to lowercase to perform case-insensitive search.
         type_by_name = {k.lower(): v for k, v in message_type_by_name.items()}
+
+        # Split comma-separated names. That way the user can specify multiple -m entries or comma-separated names (or
+        # a mix of the two):
+        #   -m Type1,Type2 -m Type 3
+        requested_types = []
         for name in options.message_type:
+            requested_types.extend(name.split(','))
+
+        for name in requested_types:
             lower_name = name.lower()
             message_type = type_by_name.get(lower_name, None)
             if message_type is None:
