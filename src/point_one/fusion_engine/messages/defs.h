@@ -26,6 +26,148 @@ namespace messages {
  */
 
 /**
+ * @brief Identifiers for the defined output message types.
+ * @ingroup messages
+ */
+enum class MessageType : uint16_t {
+  INVALID = 0, ///< Invalid message type
+
+  // Navigation solution messages.
+  POSE = 10000, ///< @ref PoseMessage
+  GNSS_INFO = 10001, ///< @ref GNSSInfoMessage
+  GNSS_SATELLITE = 10002, ///< @ref GNSSSatelliteMessage
+  POSE_AUX = 10003, ///< @ref PoseAuxMessage
+  CALIBRATION_STATUS = 10004, ///< @ref CalibrationStatusMessage
+  RELATIVE_ENU_POSITION = 10005, ///< @ref RelativeENUPositionMessage
+
+  // Sensor measurement messages.
+  IMU_MEASUREMENT = 11000, ///< @ref IMUMeasurement
+
+  // ROS messages.
+  ROS_POSE = 12000, ///< @ref ros::PoseMessage
+  ROS_GPS_FIX = 12010, ///< @ref ros::GPSFixMessage
+  ROS_IMU = 12011, ///< @ref ros::IMUMessage
+
+  // Command and control messages.
+  COMMAND_RESPONSE = 13000, ///< @ref CommandResponseMessage
+  MESSAGE_REQUEST = 13001, ///< @ref MessageRequest
+  RESET_REQUEST = 13002, ///< @ref ResetRequest
+  VERSION_INFO = 13003, ///< @ref VersionInfoMessage
+  EVENT_NOTIFICATION = 13004, ///< @ref EventNotificationMessage
+  SHUTDOWN_REQUEST = 13005, ///< @ref ShutdownRequest
+
+  SET_CONFIG = 13100, ///< @ref SetConfigMessage
+  GET_CONFIG = 13101, ///< @ref GetConfigMessage
+  SAVE_CONFIG = 13102, ///< @ref SaveConfigMessage
+  CONFIG_RESPONSE = 13103, ///< @ref ConfigResponseMessage
+
+  SET_OUTPUT_INTERFACE_CONFIG = 13200, ///< @ref SetOutputInterfaceConfigMessage
+  GET_OUTPUT_INTERFACE_CONFIG = 13201, ///< @ref GetOutputInterfaceConfigMessage
+  OUTPUT_INTERFACE_CONFIG_RESPONSE =
+      13202, ///< @ref OutputInterfaceConfigResponseMessage
+
+  /// The maximum defined @ref MessageType enum value.
+  MAX_VALUE = OUTPUT_INTERFACE_CONFIG_RESPONSE,
+};
+
+/**
+ * @brief Get a human-friendly string name for the specified @ref MessageType.
+ * @ingroup enum_definitions
+ *
+ * @param type The desired message type.
+ *
+ * @return The corresponding string name.
+ */
+inline const char* to_string(MessageType type) {
+  switch (type) {
+    case MessageType::INVALID:
+      return "Invalid";
+
+    // Navigation solution messages.
+    case MessageType::POSE:
+      return "Pose";
+
+    case MessageType::GNSS_INFO:
+      return "GNSS Info";
+
+    case MessageType::GNSS_SATELLITE:
+      return "GNSS Satellite";
+
+    case MessageType::POSE_AUX:
+      return "Pose Auxiliary";
+
+    case MessageType::CALIBRATION_STATUS:
+      return "Calibration Status";
+
+    // Sensor measurement messages.
+    case MessageType::IMU_MEASUREMENT:
+      return "IMU Measurement";
+
+    // ROS messages.
+    case MessageType::ROS_POSE:
+      return "ROS Pose";
+
+    case MessageType::ROS_GPS_FIX:
+      return "ROS GPSFix";
+
+    case MessageType::ROS_IMU:
+      return "ROS IMU";
+
+    // Command and control messages.
+    case MessageType::COMMAND_RESPONSE:
+      return "Command Response";
+
+    case MessageType::MESSAGE_REQUEST:
+      return "Message Transmission Request";
+
+    case MessageType::RESET_REQUEST:
+      return "Reset Request";
+
+    case MessageType::VERSION_INFO:
+      return "Version Information";
+
+    case MessageType::EVENT_NOTIFICATION:
+      return "Event Notification";
+
+    case MessageType::SHUTDOWN_REQUEST:
+      return "Shutdown Request";
+
+    case MessageType::SET_CONFIG:
+      return "Set Configuration Parameter";
+
+    case MessageType::GET_CONFIG:
+      return "Get Configuration Parameter";
+
+    case MessageType::SAVE_CONFIG:
+      return "Save Configuration";
+
+    case MessageType::CONFIG_RESPONSE:
+      return "Configuration Parameter Value";
+
+    case MessageType::SET_OUTPUT_INTERFACE_CONFIG:
+      return "Set Output Interface Config";
+
+    case MessageType::GET_OUTPUT_INTERFACE_CONFIG:
+      return "Get Output Interface Config";
+
+    case MessageType::OUTPUT_INTERFACE_CONFIG_RESPONSE:
+      return "Output Interface Config Response";
+
+    default:
+      return "Unrecognized Message";
+  }
+}
+
+/**
+ * @brief @ref MessageType stream operator.
+ * @ingroup enum_definitions
+ */
+inline std::ostream& operator<<(std::ostream& stream, MessageType type) {
+  stream << to_string(type) << " (" << (int)type << ")";
+  return stream;
+}
+
+/**
  * @brief System/constellation type definitions.
  */
 enum class SatelliteType : uint8_t {
@@ -41,6 +183,61 @@ enum class SatelliteType : uint8_t {
   IRNSS = 9,
   MAX_VALUE = IRNSS,
 };
+
+/**
+ * @brief Get a human-friendly string name for the specified @ref SatelliteType
+ *        (GNSS constellation).
+ * @ingroup enum_definitions
+ *
+ * @param type The desired satellite type.
+ *
+ * @return The corresponding string name.
+ */
+inline const char* to_string(SatelliteType type) {
+  switch (type) {
+    case SatelliteType::UNKNOWN:
+      return "Unknown";
+
+    case SatelliteType::GPS:
+      return "GPS";
+
+    case SatelliteType::GLONASS:
+      return "GLONASS";
+
+    case SatelliteType::LEO:
+      return "LEO";
+
+    case SatelliteType::GALILEO:
+      return "Galileo";
+
+    case SatelliteType::BEIDOU:
+      return "BeiDou";
+
+    case SatelliteType::QZSS:
+      return "QZSS";
+
+    case SatelliteType::MIXED:
+      return "Mixed";
+
+    case SatelliteType::SBAS:
+      return "SBAS";
+
+    case SatelliteType::IRNSS:
+      return "IRNSS";
+
+    default:
+      return "Invalid System";
+  }
+}
+
+/**
+ * @brief @ref SatelliteType stream operator.
+ * @ingroup enum_definitions
+ */
+inline std::ostream& operator<<(std::ostream& stream, SatelliteType type) {
+  stream << to_string(type) << " (" << (int)type << ")";
+  return stream;
+}
 
 /** @brief Command response status indicators. */
 enum class Response : uint8_t {
@@ -151,49 +348,52 @@ enum class SolutionType : uint8_t {
 };
 
 /**
- * @brief Identifiers for the defined output message types.
- * @ingroup messages
+ * @brief Get a human-friendly string name for the specified @ref SolutionType.
+ * @ingroup enum_definitions
+ *
+ * @param type The desired message type.
+ *
+ * @return The corresponding string name.
  */
-enum class MessageType : uint16_t {
-  INVALID = 0, ///< Invalid message type
+inline const char* to_string(SolutionType type) {
+  switch (type) {
+    case SolutionType::Invalid:
+      return "Invalid";
 
-  // Navigation solution messages.
-  POSE = 10000, ///< @ref PoseMessage
-  GNSS_INFO = 10001, ///< @ref GNSSInfoMessage
-  GNSS_SATELLITE = 10002, ///< @ref GNSSSatelliteMessage
-  POSE_AUX = 10003, ///< @ref PoseAuxMessage
-  CALIBRATION_STATUS = 10004, ///< @ref CalibrationStatusMessage
-  RELATIVE_ENU_POSITION = 10005, ///< @ref RelativeENUPositionMessage
+    case SolutionType::AutonomousGPS:
+      return "Stand Alone GNSS";
 
-  // Sensor measurement messages.
-  IMU_MEASUREMENT = 11000, ///< @ref IMUMeasurement
+    case SolutionType::DGPS:
+      return "Differential GNSS";
 
-  // ROS messages.
-  ROS_POSE = 12000, ///< @ref ros::PoseMessage
-  ROS_GPS_FIX = 12010, ///< @ref ros::GPSFixMessage
-  ROS_IMU = 12011, ///< @ref ros::IMUMessage
+    case SolutionType::RTKFixed:
+      return "Fixed RTK GNSS";
 
-  // Command and control messages.
-  COMMAND_RESPONSE = 13000, ///< @ref CommandResponseMessage
-  MESSAGE_REQUEST = 13001, ///< @ref MessageRequest
-  RESET_REQUEST = 13002, ///< @ref ResetRequest
-  VERSION_INFO = 13003, ///< @ref VersionInfoMessage
-  EVENT_NOTIFICATION = 13004, ///< @ref EventNotificationMessage
-  SHUTDOWN_REQUEST = 13005, ///< @ref ShutdownRequest
+    case SolutionType::RTKFloat:
+      return "Real-valued Ambiguity RTK GNSS";
 
-  SET_CONFIG = 13100, ///< @ref SetConfigMessage
-  GET_CONFIG = 13101, ///< @ref GetConfigMessage
-  SAVE_CONFIG = 13102, ///< @ref SaveConfigMessage
-  CONFIG_RESPONSE = 13103, ///< @ref ConfigResponseMessage
+    case SolutionType::Integrate:
+      return "Dead Reckoning";
 
-  SET_OUTPUT_INTERFACE_CONFIG = 13200, ///< @ref SetOutputInterfaceConfigMessage
-  GET_OUTPUT_INTERFACE_CONFIG = 13201, ///< @ref GetOutputInterfaceConfigMessage
-  OUTPUT_INTERFACE_CONFIG_RESPONSE =
-      13202, ///< @ref OutputInterfaceConfigResponseMessage
+    case SolutionType::Visual:
+      return "Visual Navigation";
 
-  /// The maximum defined @ref MessageType enum value.
-  MAX_VALUE = OUTPUT_INTERFACE_CONFIG_RESPONSE,
-};
+    case SolutionType::PPP:
+      return "PPP GNSS";
+
+    default:
+      return "Unrecognized Solution Type";
+  }
+}
+
+/**
+ * @brief @ref SolutionType stream operator.
+ * @ingroup enum_definitions
+ */
+inline std::ostream& operator<<(std::ostream& stream, SolutionType type) {
+  stream << to_string(type) << " (" << (int)type << ")";
+  return stream;
+}
 
 /** @} */
 
@@ -281,206 +481,6 @@ struct MessagePayload {
 };
 
 #pragma pack(pop)
-
-/**
- * @brief Get a human-friendly string name for the specified @ref SatelliteType
- *        (GNSS constellation).
- * @ingroup enum_definitions
- *
- * @param type The desired satellite type.
- *
- * @return The corresponding string name.
- */
-inline const char* to_string(SatelliteType type) {
-  switch (type) {
-    case SatelliteType::UNKNOWN:
-      return "Unknown";
-
-    case SatelliteType::GPS:
-      return "GPS";
-
-    case SatelliteType::GLONASS:
-      return "GLONASS";
-
-    case SatelliteType::LEO:
-      return "LEO";
-
-    case SatelliteType::GALILEO:
-      return "Galileo";
-
-    case SatelliteType::BEIDOU:
-      return "BeiDou";
-
-    case SatelliteType::QZSS:
-      return "QZSS";
-
-    case SatelliteType::MIXED:
-      return "Mixed";
-
-    case SatelliteType::SBAS:
-      return "SBAS";
-
-    case SatelliteType::IRNSS:
-      return "IRNSS";
-
-    default:
-      return "Invalid System";
-  }
-}
-
-/**
- * @brief @ref SatelliteType stream operator.
- * @ingroup enum_definitions
- */
-inline std::ostream& operator<<(std::ostream& stream, SatelliteType type) {
-  stream << to_string(type) << " (" << (int)type << ")";
-  return stream;
-}
-
-/**
- * @brief Get a human-friendly string name for the specified @ref MessageType.
- * @ingroup enum_definitions
- *
- * @param type The desired message type.
- *
- * @return The corresponding string name.
- */
-inline const char* to_string(MessageType type) {
-  switch (type) {
-    case MessageType::INVALID:
-      return "Invalid";
-
-    // Navigation solution messages.
-    case MessageType::POSE:
-      return "Pose";
-
-    case MessageType::GNSS_INFO:
-      return "GNSS Info";
-
-    case MessageType::GNSS_SATELLITE:
-      return "GNSS Satellite";
-
-    case MessageType::POSE_AUX:
-      return "Pose Auxiliary";
-
-    case MessageType::CALIBRATION_STATUS:
-      return "Calibration Status";
-
-    // Sensor measurement messages.
-    case MessageType::IMU_MEASUREMENT:
-      return "IMU Measurement";
-
-    // ROS messages.
-    case MessageType::ROS_POSE:
-      return "ROS Pose";
-
-    case MessageType::ROS_GPS_FIX:
-      return "ROS GPSFix";
-
-    case MessageType::ROS_IMU:
-      return "ROS IMU";
-
-    // Command and control messages.
-    case MessageType::COMMAND_RESPONSE:
-      return "Command Response";
-
-    case MessageType::MESSAGE_REQUEST:
-      return "Message Transmission Request";
-
-    case MessageType::RESET_REQUEST:
-      return "Reset Request";
-
-    case MessageType::VERSION_INFO:
-      return "Version Information";
-
-    case MessageType::EVENT_NOTIFICATION:
-      return "Event Notification";
-
-    case MessageType::SHUTDOWN_REQUEST:
-      return "Shutdown Request";
-
-    case MessageType::SET_CONFIG:
-      return "Set Configuration Parameter";
-
-    case MessageType::GET_CONFIG:
-      return "Get Configuration Parameter";
-
-    case MessageType::SAVE_CONFIG:
-      return "Save Configuration";
-
-    case MessageType::CONFIG_RESPONSE:
-      return "Configuration Parameter Value";
-
-    case MessageType::SET_OUTPUT_INTERFACE_CONFIG:
-      return "Set Output Interface Config";
-
-    case MessageType::GET_OUTPUT_INTERFACE_CONFIG:
-      return "Get Output Interface Config";
-
-    case MessageType::OUTPUT_INTERFACE_CONFIG_RESPONSE:
-      return "Output Interface Config Response";
-
-    default:
-      return "Unrecognized Message";
-  }
-}
-
-/**
- * @brief @ref MessageType stream operator.
- * @ingroup enum_definitions
- */
-inline std::ostream& operator<<(std::ostream& stream, MessageType type) {
-  stream << to_string(type) << " (" << (int)type << ")";
-  return stream;
-}
-
-/**
- * @brief Get a human-friendly string name for the specified @ref SolutionType.
- * @ingroup enum_definitions
- *
- * @param type The desired message type.
- *
- * @return The corresponding string name.
- */
-inline const char* to_string(SolutionType type) {
-  switch (type) {
-    case SolutionType::Invalid:
-      return "Invalid";
-
-    case SolutionType::AutonomousGPS:
-      return "Stand Alone GNSS";
-
-    case SolutionType::DGPS:
-      return "Differential GNSS";
-
-    case SolutionType::RTKFixed:
-      return "Fixed RTK GNSS";
-
-    case SolutionType::RTKFloat:
-      return "Real-valued Ambiguity RTK GNSS";
-
-    case SolutionType::Integrate:
-      return "Dead Reckoning";
-
-    case SolutionType::Visual:
-      return "Visual Navigation";
-
-    case SolutionType::PPP:
-      return "PPP GNSS";
-
-    default:
-      return "Unrecognized Solution Type";
-  }
-}
-
-/**
- * @brief @ref SolutionType stream operator.
- * @ingroup enum_definitions
- */
-inline std::ostream& operator<<(std::ostream& stream, SolutionType type) {
-  stream << to_string(type) << " (" << (int)type << ")";
-  return stream;
-}
 
 /**
  * @defgroup messages Message Definitions
