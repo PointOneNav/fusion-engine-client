@@ -82,6 +82,9 @@ class MessageType(IntEnum):
 
     # Sensor measurement messages.
     IMU_MEASUREMENT = 11000
+    WHEEL_SPEED_MEASUREMENT = 11001
+    VEHICLE_SPEED_MEASUREMENT = 11002
+    WHEEL_TICK_MEASUREMENT = 11003
 
     # ROS messages.
     ROS_POSE = 12000

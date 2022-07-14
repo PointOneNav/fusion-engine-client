@@ -1,3 +1,5 @@
+import struct
+
 from construct import (Struct, Int64ul, Int16ul, Int8ul, Padding, this, Bytes, PaddedString)
 
 from ..utils.construct_utils import AutoEnum
