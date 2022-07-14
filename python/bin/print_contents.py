@@ -4,6 +4,8 @@ import io
 import os
 import sys
 
+import numpy as np
+
 # Add the Python root directory (fusion-engine-client/python/) to the import search path to enable FusionEngine imports
 # if this application is being run directly out of the repository and is not installed as a pip package.
 root_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
@@ -51,14 +53,15 @@ other types of data.
         '-s', '--summary', action='store_true',
         help="Print a summary of the messages in the file.")
     parser.add_argument(
-        '--time', type=str, metavar='[START][:END]',
+        '-m', '--message-type', type=str, action='append',
+        help="An optional list of class names corresponding with the message types to be displayed. May be specified "
+             "multiple times (-m Type 1 -m Type 2), or as a comma-separated list (-m Type1,Type2). "
+             "Supported types:\n%s" % '\n'.join(['- %s' % c for c in message_type_by_name.keys()]))
+    parser.add_argument(
+        '-t', '--time', type=str, metavar='[START][:END]',
         help="The desired time range to be analyzed. Both start and end may be omitted to read from beginning or to "
              "the end of the file. By default, timestamps are treated as relative to the first message in the file. "
              "See --absolute-time.")
-    parser.add_argument(
-        '-t', '--type', type=str, action='append',
-        help="An optional list of class names corresponding with the message types to be displayed. "
-             "Supported types:\n%s" % '\n'.join(['- %s' % c for c in message_type_by_name.keys()]))
 
     log_parser = parser.add_argument_group('Log Control')
     log_parser.add_argument(
@@ -98,17 +101,48 @@ other types of data.
     # If the user specified a set of message names, lookup their type values. Below, we will limit the printout to only
     # those message types.
     message_types = []
-    if options.type is not None:
+    if options.message_type is not None:
         # Convert to lowercase to perform case-insensitive search.
         type_by_name = {k.lower(): v for k, v in message_type_by_name.items()}
-        for name in options.type:
-            message_type = type_by_name.get(name.lower(), None)
+
+        # Split comma-separated names. That way the user can specify multiple -m entries or comma-separated names (or
+        # a mix of the two):
+        #   -m Type1,Type2 -m Type 3
+        requested_types = []
+        for name in options.message_type:
+            requested_types.extend(name.split(','))
+
+        for name in requested_types:
+            lower_name = name.lower()
+            message_type = type_by_name.get(lower_name, None)
             if message_type is None:
-                print("Unrecognized message type '%s'." % name)
-                sys.exit(1)
+                # If we can't find an exact match for the key, try a partial match.
+                matches = {k: v for k, v in type_by_name.items() if k.startswith(lower_name)}
+                if len(matches) == 1:
+                    message_types.append(next(iter(matches.values())))
+                elif len(matches) > 1:
+                    types = [v for v in matches.values()]
+                    class_names = [message_type_to_class[t].__name__ for t in types]
+                    print("Found multiple types matching '%s':\n  %s" % (name, '\n  '.join(class_names)))
+                    sys.exit(1)
+                else:
+                    print("Unrecognized message type '%s'." % name)
+                    sys.exit(1)
             else:
                 message_types.append(message_type)
         message_types = set(message_types)
+
+        # Check if any of the requested message types do _not_ have P1 time (e.g., profiling messages). The index file
+        # does not currently contain non-P1 time messages, so if we use it to search for messages we will end up
+        # skipping all of these ones. Instead, we disable the index and revert to full file search.
+        if not options.ignore_index:
+            for message_type in message_types:
+                cls = message_type_to_class[message_type]
+                message = cls()
+                if not hasattr(message, 'p1_time'):
+                    print('Non-P1 time messages detected. Disabling index file.')
+                    options.ignore_index = True
+                    break
 
     # Try to open the index file for faster data access. If no index exists, create one unless --ignore-index is
     # specified.
@@ -143,7 +177,7 @@ other types of data.
 
     # If we have an index file and we're only interested in certain message types, locate them in the index.
     if index_file is not None and len(message_types) != 0:
-        message_indices = np.where(np.isin(index_file.type, message_types))[0]
+        message_indices = np.where(np.isin(index_file.type, list(message_types)))[0]
     else:
         message_indices = None
 
@@ -168,6 +202,11 @@ other types of data.
 
         # Process all data in the file.
         still_working = True
+
+        if message_indices is not None and len(message_indices) == 0:
+            print('No messages found in index file.')
+            still_working = False
+
         while still_working:
             # If we have an index file, seek to the next message and read it.
             if index_file is not None:

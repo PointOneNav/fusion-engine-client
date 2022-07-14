@@ -225,7 +225,7 @@ class FileReader(object):
         @param require_system_time If `True`, omit messages that do not contain valid system timestamps.
         @param return_numpy If `True`, convert the results to numpy arrays for analysis.
         @param keep_messages If `return_numpy == True` and `keep_messages == False`, the raw data in the `messages`
-               field will be cleared for each @ref MessageData object for which numpy conversion is supported.
+               field will be cleared for each @ref MessagePayload object for which numpy conversion is supported.
         @param remove_nan_times If `True`, remove messages whose P1 timestamps are `NaN` when converting to numpy.
                Ignored if `return_numpy == False`.
         @param time_align The type of alignment to be performed (for data with P1 timestamps):
@@ -742,8 +742,8 @@ class FileReader(object):
         See @ref MessageData.to_numpy().
 
         @param data A data `dict` as returned by @ref read().
-        @param keep_messages If `False`, the raw data in the `messages` field will be cleared for each @ref MessageData
-               object for which numpy conversion is supported.
+        @param keep_messages If `False`, the raw data in the `messages` field will be cleared for each @ref
+               MessagePayload object for which numpy conversion is supported.
         @param remove_nan_times If `True`, remove entries whose P1 timestamps are `NaN` (if P1 time is available for
                this message type).
         """
