@@ -1,6 +1,7 @@
 # Generated files.
 *.pyc
 *.html
+*.egg-info
 
 # Bazel output directories.
 bazel-*
