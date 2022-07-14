@@ -42,6 +42,9 @@ enum class MessageType : uint16_t {
 
   // Sensor measurement messages.
   IMU_MEASUREMENT = 11000, ///< @ref IMUMeasurement
+  WHEEL_SPEED_MEASUREMENT = 11001, ///< @ref WheelSpeedMeasurement
+  VEHICLE_SPEED_MEASUREMENT = 11002, ///< @ref VehicleSpeedMeasurement
+  WHEEL_TICK_MEASUREMENT = 11003, ///< @ref WheelTickMeasurement
 
   // ROS messages.
   ROS_POSE = 12000, ///< @ref ros::PoseMessage
@@ -102,6 +105,15 @@ inline const char* to_string(MessageType type) {
     // Sensor measurement messages.
     case MessageType::IMU_MEASUREMENT:
       return "IMU Measurement";
+
+    case MessageType::WHEEL_SPEED_MEASUREMENT:
+      return "Wheel Speed Measurement";
+
+    case MessageType::VEHICLE_SPEED_MEASUREMENT:
+      return "Vehicle Speed Measurement";
+
+    case MessageType::WHEEL_TICK_MEASUREMENT:
+      return "Wheel Tick Measurement";
 
     // ROS messages.
     case MessageType::ROS_POSE:
