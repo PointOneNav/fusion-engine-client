@@ -969,7 +969,8 @@ class Analyzer(object):
                 connected_port_idx = k
 
         if connected_port_idx is None:
-            self.logger.info("Device serial interface %s not found in profiling counters, can't check for host serial dropouts." % host_serial_interface)
+            self.logger.info("Device serial interface %s not found in profiling counters, can't check for host serial "
+                             "dropouts." % host_serial_interface)
             return
 
         # Get the profiling data for the amount of serial data transmitted to the host.
@@ -977,7 +978,7 @@ class Analyzer(object):
         # Get the system time for each of these messages.
         time = data.system_time_sec - self.system_t0
 
-        # Figure out how much serial data the host had recieved at the time of each counter profiling message.
+        # Figure out how much serial data the host had received at the time of each counter profiling message.
         # This requires finding the data offset for these messages in the original mixed log.
 
         # The index can be used to map the messages to the .p1log offset
@@ -988,6 +989,15 @@ class Analyzer(object):
         idx = self.reader.index.type == ProfileCounterMessage.MESSAGE_TYPE.value
         counter_p1log_offsets = self.reader.index.offset[idx]
 
+        # The index is stored only by P1 time, not system time, but counter messages are logged in system time. If the
+        # user specifies a time range instead of plotting the whole log, we don't have an easy way of determining which
+        # index entries correspond with the messages that actually got read and stored in data above.
+        #
+        # For now, if we detect a time range, we'll just skip this plot. We may address this better in the future.
+        if len(counter_p1log_offsets) != len(time):
+            self.logger.warning('Serial dropout profiling cannot be plotted for a restricted time range.')
+            return
+
         # Load the map of the original mixed log offsets to .p1log.
         mixed_offsets = np.fromfile(offset_path, dtype=np.uint32).reshape((-1, 2))
 
@@ -995,12 +1005,14 @@ class Analyzer(object):
         idx = np.searchsorted(mixed_offsets[:, 1], counter_p1log_offsets)
         counter_mixed_offsets = mixed_offsets[idx, 0]
 
-        start_offset = serial_tx_counts[0]  - counter_mixed_offsets[0]
-        dropped_data = serial_tx_counts  - counter_mixed_offsets - start_offset
+        start_offset = serial_tx_counts[0] - counter_mixed_offsets[0]
+        dropped_data = serial_tx_counts - counter_mixed_offsets - start_offset
 
         if np.min(dropped_data) <= -10e6:
-            self.logger.warning('''Host serial diverges significantly from profiling data for %s.
-Make sure %s is the actual interface used for data collection or use --device-uart to set the correct port.''' % (device_uart, device_uart))
+            self.logger.warning('Host serial diverges significantly from profiling data for %s. Make sure %s is the '
+                                'actual interface used for data collection or use --device-uart to set the correct '
+                                'port.' %
+                                (device_uart, device_uart))
 
         if np.max(dropped_data) <= 0:
             self.logger.info('No host side serial drops.')
@@ -1013,9 +1025,14 @@ Make sure %s is the actual interface used for data collection or use --device-ua
         good_idx = np.insert(tmp_diff >= 0, 0, True)
         dropped_data_diff = np.diff(dropped_data[good_idx])
 
-        self.logger.warning('Host serial connection %s dropped %d bytes.\nMake sure %s is the actual interface used for data collection or use --device-uart to set the correct port.' % (device_uart, np.sum(dropped_data_diff), device_uart))
+        self.logger.warning('Host serial connection %s dropped %d bytes.\nMake sure %s is the actual interface used '
+                            'for data collection or use --device-uart to set the correct port.' %
+                            (device_uart, np.sum(dropped_data_diff), device_uart))
         # Setup the figure.
-        figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=True, subplot_titles=[f'Host Serial Dropouts. Make sure {device_uart} is the actual interface used for data collection or use --device-uart to set the correct port.'])
+        figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=True,
+                               subplot_titles=[f'Host Serial Dropouts. Make sure {device_uart} is the actual interface '
+                                               f'used for data collection or use --device-uart to set the correct '
+                                               f'port.'])
 
         figure['layout']['xaxis'].update(title="Time (sec)")
         figure['layout']['yaxis1'].update(title="Dropped Data (Bytes)")

@@ -529,7 +529,8 @@ def locate_log(input_path, log_base_dir=DEFAULT_LOG_BASE_DIR, return_output_dir=
 
         _logger.info("Extracting FusionEngine content to '%s'." % fe_path)
         message_offsets = []
-        num_messages = extract_fusion_engine_log(input_path=mixed_file_path, output_path=fe_path, message_offsets=message_offsets)
+        num_messages = extract_fusion_engine_log(input_path=mixed_file_path, output_path=fe_path,
+                                                 message_offsets=message_offsets)
         if num_messages > 0:
             if write_offsets:
                 offset_path = os.path.splitext(fe_path)[0] + '.offsets'
