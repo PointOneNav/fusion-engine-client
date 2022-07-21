@@ -243,7 +243,7 @@ inline std::ostream& operator<<(std::ostream& stream, GearType val) {
  * This message may be used to convey the speed of each individual wheel on the
  * vehicle. The number and type of wheels expected varies by vehicle. To use
  * wheel speed data, you must first configure the device by issuing a @ref
- * SetConfig message containing a @ref WheelConfig payload describing the
+ * SetConfigMessage message containing a @ref WheelConfig payload describing the
  * vehicle sensor configuration.
  *
  * Some platforms may support an additional, optional voltage signal used to
@@ -290,8 +290,8 @@ struct alignas(4) WheelSpeedMeasurement : public MessagePayload {
  *
  * This message may be used to convey the along-track speed of the vehicle
  * (forward/backward). To use vehicle speed data, you must first configure the
- * device by issuing a @ref SetConfig message containing a @ref WheelConfig
- * payload describing the vehicle sensor configuration.
+ * device by issuing a @ref SetConfigMessage message containing a @ref
+ * WheelConfig payload describing the vehicle sensor configuration.
  *
  * Some platforms may support an additional, optional voltage signal used to
  * indicate direction of motion. Alternatively, when receiving CAN data from a
@@ -330,9 +330,9 @@ struct alignas(4) VehicleSpeedMeasurement : public MessagePayload {
  * received either by software (e.g., vehicle CAN bus), or captured in hardware
  * from external voltage pulses. The number and type of wheels expected, and the
  * interpretation of the tick count values, varies by vehicle. To use wheel
- * encoder data, you ust first configure the device by issuing a @ref SetConfig
- * message containing a @ref WheelConfig payload describing the vehicle sensor
- * configuration.
+ * encoder data, you ust first configure the device by issuing a @ref
+ * SetConfigMessage message containing a @ref WheelConfig payload describing the
+ * vehicle sensor configuration.
  *
  * Some platforms may support an additional, optional voltage signal used to
  * indicate direction of motion. Alternatively, when receiving CAN data from a
@@ -393,8 +393,9 @@ struct alignas(4) WheelTickMeasurement : public MessagePayload {
  * voltage pulse, which represents the along-track speed of the vehicle
  * (forward/backward). The interpretation of the tick count values varies by
  * vehicle. To use wheel encoder data, you ust first configure the device by
- * issuing a @ref SetConfig message containing either a @ref WheelConfig or @ref
- * HardwareTickConfig payload describing the vehicle sensor configuration.
+ * issuing a @ref SetConfigMessage message containing either a @ref WheelConfig
+ * or @ref HardwareTickConfig payload describing the vehicle sensor
+ * configuration.
  *
  * Some platforms may support an additional, optional voltage signal used to
  * indicate direction of motion. Alternatively, when receiving CAN data from a
