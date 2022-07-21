@@ -239,6 +239,17 @@ inline std::ostream& operator<<(std::ostream& stream, GearType val) {
  * @brief Differential wheel speed measurement (@ref
  *        MessageType::WHEEL_SPEED_MEASUREMENT, version 1.0).
  * @ingroup measurement_messages
+ *
+ * This message may be used to convey the speed of each individual wheel on the
+ * vehicle. The number and type of wheels expected varies by vehicle. To use
+ * wheel speed data, you must first configure the device by issuing a @ref
+ * SetConfig message containing a @ref WheelConfig payload describing the
+ * vehicle sensor configuration.
+ *
+ * Some platforms may support an additional, optional voltage signal used to
+ * indicate direction of motion. Alternatively, when receiving CAN data from a
+ * vehicle, direction may be conveyed explicitly in a CAN message, or may be
+ * indicated based on the current transmission gear setting.
  */
 struct alignas(4) WheelSpeedMeasurement : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE =
@@ -260,7 +271,13 @@ struct alignas(4) WheelSpeedMeasurement : public MessagePayload {
   /** The rear right wheel speed (in m/s). Set to NAN if not available. */
   float rear_right_speed_mps = NAN;
 
-  /** The transmission gear currently in use (if available). */
+  /**
+   * The transmission gear currently in use, or direction of motion, if
+   * available.
+   *
+   * Set to @ref GearType::FORWARD or @ref GearType::REVERSE where vehicle
+   * direction information is available externally.
+   */
   GearType gear = GearType::UNKNOWN;
 
   uint8_t reserved[3] = {0};
@@ -270,6 +287,16 @@ struct alignas(4) WheelSpeedMeasurement : public MessagePayload {
  * @brief Vehicle body speed measurement (@ref
  *        MessageType::VEHICLE_SPEED_MEASUREMENT, version 1.0).
  * @ingroup measurement_messages
+ *
+ * This message may be used to convey the along-track speed of the vehicle
+ * (forward/backward). To use vehicle speed data, you must first configure the
+ * device by issuing a @ref SetConfig message containing a @ref WheelConfig
+ * payload describing the vehicle sensor configuration.
+ *
+ * Some platforms may support an additional, optional voltage signal used to
+ * indicate direction of motion. Alternatively, when receiving CAN data from a
+ * vehicle, direction may be conveyed explicitly in a CAN message, or may be
+ * indicated based on the current transmission gear setting.
  */
 struct alignas(4) VehicleSpeedMeasurement : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE =
@@ -282,7 +309,13 @@ struct alignas(4) VehicleSpeedMeasurement : public MessagePayload {
   /** The current vehicle speed estimate (in m/s). */
   float vehicle_speed_mps = NAN;
 
-  /** The transmission gear currently in use (if available). */
+  /**
+   * The transmission gear currently in use, or direction of motion, if
+   * available.
+   *
+   * Set to @ref GearType::FORWARD or @ref GearType::REVERSE where vehicle
+   * direction information is available externally.
+   */
   GearType gear = GearType::UNKNOWN;
 
   uint8_t reserved[3] = {0};
@@ -292,6 +325,19 @@ struct alignas(4) VehicleSpeedMeasurement : public MessagePayload {
  * @brief Differential wheel encoder tick measurement (@ref
  *        MessageType::WHEEL_TICK_MEASUREMENT, version 1.0).
  * @ingroup measurement_messages
+ *
+ * This message may be used to convey a one or more wheel encoder tick counts
+ * received either by software (e.g., vehicle CAN bus), or captured in hardware
+ * from external voltage pulses. The number and type of wheels expected, and the
+ * interpretation of the tick count values, varies by vehicle. To use wheel
+ * encoder data, you ust first configure the device by issuing a @ref SetConfig
+ * message containing a @ref WheelConfig payload describing the vehicle sensor
+ * configuration.
+ *
+ * Some platforms may support an additional, optional voltage signal used to
+ * indicate direction of motion. Alternatively, when receiving CAN data from a
+ * vehicle, direction may be conveyed explicitly in a CAN message, or may be
+ * indicated based on the current transmission gear setting.
  */
 struct alignas(4) WheelTickMeasurement : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE =
@@ -325,7 +371,13 @@ struct alignas(4) WheelTickMeasurement : public MessagePayload {
    */
   uint32_t rear_right_wheel_ticks = 0;
 
-  /** The transmission gear currently in use (if available). */
+  /**
+   * The transmission gear currently in use, or direction of motion, if
+   * available.
+   *
+   * Set to @ref GearType::FORWARD or @ref GearType::REVERSE where vehicle
+   * direction information is available externally.
+   */
   GearType gear = GearType::UNKNOWN;
 
   uint8_t reserved[3] = {0};

@@ -206,6 +206,17 @@ class GearType(IntEnum):
 class WheelSpeedMeasurement(MessagePayload):
     """!
     @brief Differential wheel speed measurement.
+
+    This message may be used to convey the speed of each individual wheel on the
+    vehicle. The number and type of wheels expected varies by vehicle. To use
+    wheel speed data, you must first configure the device by issuing a @ref
+    SetConfig message containing a @ref WheelConfig payload describing the
+    vehicle sensor configuration.
+
+    Some platforms may support an additional, optional voltage signal used to
+    indicate direction of motion. Alternatively, when receiving CAN data from a
+    vehicle, direction may be conveyed explicitly in a CAN message, or may be
+    indicated based on the current transmission gear setting.
     """
     MESSAGE_TYPE = MessageType.WHEEL_SPEED_MEASUREMENT
     MESSAGE_VERSION = 0
@@ -228,7 +239,11 @@ class WheelSpeedMeasurement(MessagePayload):
         ## The rear right wheel speed (in m/s). Set to NAN if not available.
         self.rear_right_speed_mps = np.nan
 
-        ## The transmission gear currently in use (if available).
+        ##
+        # The transmission gear currently in use, or direction of motion, if available.
+        #
+        # Set to @ref GearType::FORWARD or @ref GearType::REVERSE where vehicle direction information is available
+        # externally.
         self.gear = GearType.UNKNOWN
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
@@ -303,6 +318,16 @@ Wheel Speed Measurement @ {str(self.p1_time)}
 class VehicleSpeedMeasurement(MessagePayload):
     """!
     @brief Vehicle body speed measurement.
+
+    This message may be used to convey the along-track speed of the vehicle
+    (forward/backward). To use vehicle speed data, you must first configure the
+    device by issuing a @ref SetConfig message containing a @ref WheelConfig
+    payload describing the vehicle sensor configuration.
+
+    Some platforms may support an additional, optional voltage signal used to
+    indicate direction of motion. Alternatively, when receiving CAN data from a
+    vehicle, direction may be conveyed explicitly in a CAN message, or may be
+    indicated based on the current transmission gear setting.
     """
     MESSAGE_TYPE = MessageType.VEHICLE_SPEED_MEASUREMENT
     MESSAGE_VERSION = 0
@@ -316,7 +341,11 @@ class VehicleSpeedMeasurement(MessagePayload):
         ## The current vehicle speed estimate (in m/s).
         self.vehicle_speed_mps = np.nan
 
-        ## The transmission gear currently in use (if available).
+        ##
+        # The transmission gear currently in use, or direction of motion, if available.
+        #
+        # Set to @ref GearType::FORWARD or @ref GearType::REVERSE where vehicle direction information is available
+        # externally.
         self.gear = GearType.UNKNOWN
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
@@ -379,6 +408,19 @@ Vehicle Speed Measurement @ {str(self.p1_time)}
 class WheelTickMeasurement(MessagePayload):
     """!
     @brief Differential wheel encoder tick measurement.
+
+    This message may be used to convey a one or more wheel encoder tick counts
+    received either by software (e.g., vehicle CAN bus), or captured in hardware
+    from external voltage pulses. The number and type of wheels expected, and the
+    interpretation of the tick count values, varies by vehicle. To use wheel
+    encoder data, you ust first configure the device by issuing a @ref SetConfig
+    message containing a @ref WheelConfig payload describing the vehicle sensor
+    configuration.
+
+    Some platforms may support an additional, optional voltage signal used to
+    indicate direction of motion. Alternatively, when receiving CAN data from a
+    vehicle, direction may be conveyed explicitly in a CAN message, or may be
+    indicated based on the current transmission gear setting.
     """
     MESSAGE_TYPE = MessageType.WHEEL_TICK_MEASUREMENT
     MESSAGE_VERSION = 0
@@ -401,7 +443,11 @@ class WheelTickMeasurement(MessagePayload):
         ## The rear right wheel tick count.
         self.rear_right_wheel_ticks = 0
 
-        ## The transmission gear currently in use (if available).
+        ##
+        # The transmission gear currently in use, or direction of motion, if available.
+        #
+        # Set to @ref GearType::FORWARD or @ref GearType::REVERSE where vehicle direction information is available
+        # externally.
         self.gear = GearType.UNKNOWN
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
