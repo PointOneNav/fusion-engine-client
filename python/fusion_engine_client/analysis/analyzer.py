@@ -770,8 +770,9 @@ class Analyzer(object):
             else:
                 wheel_time_source = SystemTimeSource.P1_TIME
 
-            figure['layout']['annotations'][0]['text'] += 'Wheel %s time source: %s' % \
-                                                          (type,self._time_source_to_display_name(wheel_time_source))
+            figure['layout']['annotations'][0]['text'] += '<br>Wheel %s Time Source: %s' % \
+                                                          (type.title(),
+                                                           self._time_source_to_display_name(wheel_time_source))
 
         if vehicle_data is not None:
             if np.all(np.isnan(vehicle_data.p1_time)):
@@ -784,8 +785,9 @@ class Analyzer(object):
             else:
                 vehicle_time_source = SystemTimeSource.P1_TIME
 
-            figure['layout']['annotations'][0]['text'] += 'Vehicle %s time source: %s' % \
-                                                          (type, self._time_source_to_display_name(vehicle_time_source))
+            figure['layout']['annotations'][0]['text'] += '<br>Vehicle %s Time Source: %s' % \
+                                                          (type.title(),
+                                                           self._time_source_to_display_name(vehicle_time_source))
 
         if wheel_time_source is not None and vehicle_time_source is not None:
             if wheel_time_source != vehicle_time_source:
