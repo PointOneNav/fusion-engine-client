@@ -108,7 +108,7 @@ class MeasurementTimestamps(object):
 
         result = {
             'measurement_time': measurement_time,
-            'source': source,
+            'measurement_time_source': source,
             'p1_time': p1_time,
         }
 
