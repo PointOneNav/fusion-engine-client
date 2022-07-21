@@ -704,21 +704,28 @@ class Analyzer(object):
         if self.output_dir is None:
             return
 
-        self._plot_wheel_speeds()
-        self._plot_wheel_ticks()
+        self._plot_wheel_ticks_or_speeds(type='speed')
+        self._plot_wheel_ticks_or_speeds(type='tick')
 
-    def _plot_wheel_speeds(self):
+    def _plot_wheel_ticks_or_speeds(self, type):
         """!
-        @brief Plot wheel speed data.
+        @brief Plot wheel speed or tick data.
         """
         # Read the data.
-        result = self.reader.read(message_types=[WheelSpeedMeasurement, VehicleSpeedMeasurement], **self.params)
+        if type == 'tick':
+            wheel_measurement_type = WheelTickMeasurement
+            vehicle_measurement_type = VehicleTickMeasurement
+        else:
+            wheel_measurement_type = WheelSpeedMeasurement
+            vehicle_measurement_type = VehicleSpeedMeasurement
 
-        wheel_data = result[WheelSpeedMeasurement.MESSAGE_TYPE]
+        result = self.reader.read(message_types=[wheel_measurement_type, vehicle_measurement_type], **self.params)
+
+        wheel_data = result[wheel_measurement_type.MESSAGE_TYPE]
         if len(wheel_data.p1_time) == 0:
             wheel_data = None
 
-        vehicle_data = result[VehicleSpeedMeasurement.MESSAGE_TYPE]
+        vehicle_data = result[vehicle_measurement_type.MESSAGE_TYPE]
         if len(vehicle_data.p1_time) == 0:
             vehicle_data = None
 
@@ -727,16 +734,26 @@ class Analyzer(object):
             return
 
         # Setup the figure.
-        figure = make_subplots(rows=2, cols=1, print_grid=False, shared_xaxes=True,
-                               subplot_titles=['Speed', 'Gear/Direction'])
+        if type == 'tick':
+            titles = ['Tick Count', 'Tick Rate', 'Gear/Direction']
+        else:
+            titles = ['Speed', 'Gear/Direction']
+
+        figure = make_subplots(rows=len(titles), cols=1, print_grid=False, shared_xaxes=True, subplot_titles=titles)
 
         figure['layout'].update(showlegend=True, modebar_add=['v1hovermode', 'toggleSpikelines'])
-        figure['layout']['xaxis1'].update(title="Time (sec)", showticklabels=True)
-        figure['layout']['xaxis2'].update(title="Time (sec)", showticklabels=True)
-        figure['layout']['yaxis1'].update(title="Speed (m/s)")
-        figure['layout']['yaxis2'].update(title="Gear/Direction",
-                                          ticktext=['%s (%d)' % (e.name, e.value) for e in GearType],
-                                          tickvals=[e.value for e in GearType])
+        for i in range(len(titles)):
+            figure['layout']['xaxis%d' % (i + 1)].update(title="Time (sec)", showticklabels=True)
+
+        if type == 'tick':
+            figure['layout']['yaxis1'].update(title="Tick Count")
+            figure['layout']['yaxis2'].update(title="Tick Rate (ticks/s)")
+        else:
+            figure['layout']['yaxis1'].update(title="Speed (m/s)")
+
+        figure['layout']['yaxis%d' % (len(titles))].update(title="Gear/Direction",
+                                                           ticktext=['%s (%d)' % (e.name, e.value) for e in GearType],
+                                                           tickvals=[e.value for e in GearType])
 
         # Check if the data has P1 time available. If not, we'll plot in the original source time.
         wheel_time_source = None
@@ -745,42 +762,55 @@ class Analyzer(object):
         if wheel_data is not None:
             if np.all(np.isnan(wheel_data.p1_time)):
                 if np.any(np.diff(wheel_data.measurement_time_source) != 0):
-                    self.logger.warning('Detected multiple time source types in wheel speed data.')
+                    self.logger.warning('Detected multiple time source types in wheel %s data.' % type)
 
                 wheel_time_source = SystemTimeSource(wheel_data.measurement_time_source[0])
-                self.logger.warning('Wheel speed data does not have P1 time available. Plotting in %s time.' %
-                                    self._time_source_to_display_name(wheel_time_source))
+                self.logger.warning('Wheel %s data does not have P1 time available. Plotting in %s time.' %
+                                    (type, self._time_source_to_display_name(wheel_time_source)))
             else:
                 wheel_time_source = SystemTimeSource.P1_TIME
 
-            figure['layout']['annotations'][0]['text'] += 'Wheel speed time source: %s' % \
-                                                          self._time_source_to_display_name(wheel_time_source)
+            figure['layout']['annotations'][0]['text'] += 'Wheel %s time source: %s' % \
+                                                          (type,self._time_source_to_display_name(wheel_time_source))
 
         if vehicle_data is not None:
             if np.all(np.isnan(vehicle_data.p1_time)):
                 if np.any(np.diff(vehicle_data.measurement_time_source) != 0):
-                    self.logger.warning('Detected multiple time source types in vehicle speed data.')
+                    self.logger.warning('Detected multiple time source types in vehicle %s data.' % type)
 
                 vehicle_time_source = SystemTimeSource(vehicle_data.measurement_time_source[0])
-                self.logger.warning('Vehicle speed data does not have P1 time available. Plotting in %s time.' %
-                                    self._time_source_to_display_name(vehicle_time_source))
+                self.logger.warning('Vehicle %s data does not have P1 time available. Plotting in %s time.' %
+                                    (type, self._time_source_to_display_name(vehicle_time_source)))
             else:
                 vehicle_time_source = SystemTimeSource.P1_TIME
 
-            figure['layout']['annotations'][0]['text'] += 'Vehicle speed time source: %s' % \
-                                                          self._time_source_to_display_name(vehicle_time_source)
+            figure['layout']['annotations'][0]['text'] += 'Vehicle %s time source: %s' % \
+                                                          (type, self._time_source_to_display_name(vehicle_time_source))
 
         if wheel_time_source is not None and vehicle_time_source is not None:
             if wheel_time_source != vehicle_time_source:
-                self.logger.warning('Both wheel and vehicle speed data present, but timestamped with different '
+                self.logger.warning('Both wheel and vehicle %s data present, but timestamped with different '
                                     'sources. Plotted data may not align in time.')
 
         # Plot the data.
         def _plot_trace(time, data, name, color, text):
-            figure.add_trace(go.Scattergl(x=time, y=data, text=text,
-                                          name=name, legendgroup=name,
-                                          mode='markers', marker={'color': color}),
-                             1, 1)
+            if type == 'tick':
+                figure.add_trace(go.Scattergl(x=time, y=data, text=text,
+                                              name=name, legendgroup=name,
+                                              mode='markers', marker={'color': color}),
+                                 1, 1)
+
+                dt_sec = np.diff(time)
+                ticks_per_sec = np.diff(data) / dt_sec
+                figure.add_trace(go.Scattergl(x=time[:1], y=ticks_per_sec, text=text,
+                                              name=name, legendgroup=name, showlegend=False,
+                                              mode='markers', marker={'color': color}),
+                                 2, 1)
+            else:
+                figure.add_trace(go.Scattergl(x=time, y=data, text=text,
+                                              name=name, legendgroup=name,
+                                              mode='markers', marker={'color': color}),
+                                 1, 1)
 
         if wheel_data is not None:
             abs_time_sec = self._get_measurement_time(wheel_data)
@@ -789,13 +819,18 @@ class Analyzer(object):
             time_name = self._time_source_to_display_name(wheel_time_source)
             text = ["%s Time: %.3f sec" % (time_name, t) for t in abs_time_sec]
 
-            _plot_trace(time=time, data=wheel_data.front_left_speed_mps, text=text,
+            if type == 'tick':
+                suffix = 'wheel_ticks'
+            else:
+                suffix = 'speed_mps'
+
+            _plot_trace(time=time, data=getattr(wheel_data, 'front_left_' + suffix), text=text,
                         name='Front Left Wheel', color='red')
-            _plot_trace(time=time, data=wheel_data.front_right_speed_mps, text=text,
+            _plot_trace(time=time, data=getattr(wheel_data, 'front_right_' + suffix), text=text,
                         name='Front Right Wheel', color='green')
-            _plot_trace(time=time, data=wheel_data.rear_left_speed_mps, text=text,
+            _plot_trace(time=time, data=getattr(wheel_data, 'rear_left_' + suffix), text=text,
                         name='Rear Left Wheel', color='blue')
-            _plot_trace(time=time, data=wheel_data.rear_right_speed_mps, text=text,
+            _plot_trace(time=time, data=getattr(wheel_data, 'rear_right_' + suffix), text=text,
                         name='Rear Right Wheel', color='purple')
 
             figure.add_trace(go.Scattergl(x=time, y=wheel_data.gear, text=text,
@@ -810,137 +845,23 @@ class Analyzer(object):
             time_name = self._time_source_to_display_name(vehicle_time_source)
             text = ["%s Time: %.3f sec" % (time_name, t) for t in abs_time_sec]
 
-            _plot_trace(time=time, data=vehicle_data.vehicle_speed_mps, text=text,
-                        name='Vehicle Speed', color='orange')
+            if type == 'tick':
+                attr = 'tick_count'
+            else:
+                attr = 'vehicle_speed_mps'
+
+            _plot_trace(time=time, data=getattr(vehicle_data, attr), text=text,
+                        name='Vehicle Data', color='orange')
 
             figure.add_trace(go.Scattergl(x=time, y=vehicle_data.gear, text=text,
                                           name='Gear (Vehicle Data)',
                                           mode='markers', marker={'color': 'orange'}),
                              3, 1)
 
-        self._add_figure(name="wheel_speed", figure=figure, title="Wheel Speed")
-
-    def _plot_wheel_ticks(self):
-        """!
-        @brief Plot wheel tick data.
-        """
-        # Read the data.
-        result = self.reader.read(message_types=[WheelTickMeasurement, VehicleTickMeasurement], **self.params)
-
-        wheel_data = result[WheelTickMeasurement.MESSAGE_TYPE]
-        if len(wheel_data.p1_time) == 0:
-            wheel_data = None
-
-        vehicle_data = result[VehicleTickMeasurement.MESSAGE_TYPE]
-        if len(vehicle_data.p1_time) == 0:
-            vehicle_data = None
-
-        if wheel_data is None and vehicle_data is None:
-            self.logger.info('No wheel tick data available. Skipping plot.')
-            return
-
-        # Setup the figure.
-        figure = make_subplots(rows=3, cols=1, print_grid=False, shared_xaxes=True,
-                               subplot_titles=['Tick Count', 'Tick Rate', 'Gear/Direction'])
-
-        figure['layout'].update(showlegend=True, modebar_add=['v1hovermode', 'toggleSpikelines'])
-        figure['layout']['xaxis1'].update(title="Time (sec)", showticklabels=True)
-        figure['layout']['xaxis2'].update(title="Time (sec)", showticklabels=True)
-        figure['layout']['xaxis3'].update(title="Time (sec)", showticklabels=True)
-        figure['layout']['yaxis1'].update(title="Tick Count")
-        figure['layout']['yaxis2'].update(title="Tick Rate (ticks/s)")
-        figure['layout']['yaxis3'].update(title="Gear/Direction",
-                                          ticktext=['%s (%d)' % (e.name, e.value) for e in GearType],
-                                          tickvals=[e.value for e in GearType])
-
-        # Check if the data has P1 time available. If not, we'll plot in the original source time.
-        wheel_time_source = None
-        vehicle_time_source = None
-
-        if wheel_data is not None:
-            if np.all(np.isnan(wheel_data.p1_time)):
-                if np.any(np.diff(wheel_data.measurement_time_source) != 0):
-                    self.logger.warning('Detected multiple time source types in wheel tick data.')
-
-                wheel_time_source = SystemTimeSource(wheel_data.measurement_time_source[0])
-                self.logger.warning('Wheel tick data does not have P1 time available. Plotting in %s time.' %
-                                    self._time_source_to_display_name(wheel_time_source))
-            else:
-                wheel_time_source = SystemTimeSource.P1_TIME
-
-            figure['layout']['annotations'][0]['text'] += 'Wheel tick time source: %s' % \
-                                                          self._time_source_to_display_name(wheel_time_source)
-
-        if vehicle_data is not None:
-            if np.all(np.isnan(vehicle_data.p1_time)):
-                if np.any(np.diff(vehicle_data.measurement_time_source) != 0):
-                    self.logger.warning('Detected multiple time source types in vehicle tick data.')
-
-                vehicle_time_source = SystemTimeSource(vehicle_data.measurement_time_source[0])
-                self.logger.warning('Vehicle tick data does not have P1 time available. Plotting in %s time.' %
-                                    self._time_source_to_display_name(vehicle_time_source))
-            else:
-                vehicle_time_source = SystemTimeSource.P1_TIME
-
-            figure['layout']['annotations'][0]['text'] += 'Vehicle tick time source: %s' % \
-                                                          self._time_source_to_display_name(vehicle_time_source)
-
-        if wheel_time_source is not None and vehicle_time_source is not None:
-            if wheel_time_source != vehicle_time_source:
-                self.logger.warning('Both wheel and vehicle tick data present, but timestamped with different sources. '
-                                    'Plotted data may not align in time.')
-
-        # Plot the data.
-        def _plot_trace(time, data, name, color, text):
-            figure.add_trace(go.Scattergl(x=time, y=data, text=text,
-                                          name=name, legendgroup=name,
-                                          mode='markers', marker={'color': color}),
-                             1, 1)
-
-            dt_sec = np.diff(time)
-            ticks_per_sec = np.diff(data) / dt_sec
-            figure.add_trace(go.Scattergl(x=time[:1], y=ticks_per_sec, text=text,
-                                          name=name, legendgroup=name, showlegend=False,
-                                          mode='markers', marker={'color': color}),
-                             2, 1)
-
-        if wheel_data is not None:
-            abs_time_sec = self._get_measurement_time(wheel_data)
-            t0 = self._get_t0_for_time_source(wheel_time_source)
-            time = abs_time_sec - t0
-            time_name = self._time_source_to_display_name(wheel_time_source)
-            text = ["%s Time: %.3f sec" % (time_name, t) for t in abs_time_sec]
-
-            _plot_trace(time=time, data=wheel_data.front_left_wheel_ticks, text=text,
-                        name='Front Left Wheel', color='red')
-            _plot_trace(time=time, data=wheel_data.front_right_wheel_ticks, text=text,
-                        name='Front Right Wheel', color='green')
-            _plot_trace(time=time, data=wheel_data.rear_left_wheel_ticks, text=text,
-                        name='Rear Left Wheel', color='blue')
-            _plot_trace(time=time, data=wheel_data.rear_right_wheel_ticks, text=text,
-                        name='Rear Right Wheel', color='purple')
-
-            figure.add_trace(go.Scattergl(x=time, y=wheel_data.gear, text=text,
-                                          name='Gear (Wheel Data)',
-                                          mode='markers', marker={'color': 'red'}),
-                             3, 1)
-
-        if vehicle_data is not None:
-            abs_time_sec = self._get_measurement_time(vehicle_data)
-            t0 = self._get_t0_for_time_source(vehicle_time_source)
-            time = abs_time_sec - t0
-            time_name = self._time_source_to_display_name(vehicle_time_source)
-            text = ["%s Time: %.3f sec" % (time_name, t) for t in abs_time_sec]
-
-            _plot_trace(time=time, data=vehicle_data.tick_count, text=text,
-                        name='Vehicle Ticks', color='orange')
-
-            figure.add_trace(go.Scattergl(x=time, y=vehicle_data.gear, text=text,
-                                          name='Gear (Vehicle Data)',
-                                          mode='markers', marker={'color': 'orange'}),
-                             3, 1)
-
-        self._add_figure(name="wheel_ticks", figure=figure, title="Wheel Encoder Ticks")
+        if type == 'tick':
+            self._add_figure(name="wheel_ticks", figure=figure, title="Wheel Encoder Ticks")
+        else:
+            self._add_figure(name="wheel_speed", figure=figure, title="Wheel Speed")
 
     def plot_imu(self):
         """!
