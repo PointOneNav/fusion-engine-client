@@ -737,6 +737,7 @@ inline std::ostream& operator<<(std::ostream& stream,
  * - @ref WheelSpeedMeasurement
  * - @ref VehicleSpeedMeasurement
  * - @ref WheelTickMeasurement
+ * - @ref VehicleTickMeasurement
  */
 struct alignas(4) WheelConfig {
   /**
@@ -894,6 +895,8 @@ inline std::ostream& operator<<(std::ostream& stream,
 /**
  * @brief Hardware wheel encoder configuration settings.
  * @ingroup config_and_ctrl_messages
+ *
+ * See @ref VehicleTickMeasurement.
  */
 struct alignas(4) HardwareTickConfig {
   /**

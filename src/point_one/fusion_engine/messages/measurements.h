@@ -383,6 +383,50 @@ struct alignas(4) WheelTickMeasurement : public MessagePayload {
   uint8_t reserved[3] = {0};
 };
 
+/**
+ * @brief Singular wheel encoder tick measurement, representing vehicle body
+ *        speed (@ref MessageType::VEHICLE_TICK_MEASUREMENT, version 1.0).
+ * @ingroup measurement_messages
+ *
+ * This message may be used to convey a single encoder tick count received by
+ * software (e.g., vehicle CAN bus), or captured in hardware from an external
+ * voltage pulse, which represents the along-track speed of the vehicle
+ * (forward/backward). The interpretation of the tick count values varies by
+ * vehicle. To use wheel encoder data, you ust first configure the device by
+ * issuing a @ref SetConfig message containing either a @ref WheelConfig or @ref
+ * HardwareTickConfig payload describing the vehicle sensor configuration.
+ *
+ * Some platforms may support an additional, optional voltage signal used to
+ * indicate direction of motion. Alternatively, when receiving CAN data from a
+ * vehicle, direction may be conveyed explicitly in a CAN message, or may be
+ * indicated based on the current transmission gear setting.
+ */
+struct alignas(4) VehicleTickMeasurement : public MessagePayload {
+  static constexpr MessageType MESSAGE_TYPE =
+      MessageType::VEHICLE_TICK_MEASUREMENT;
+  static constexpr uint8_t MESSAGE_VERSION = 0;
+
+  /** Measurement timestamps, if available. See @ref measurement_messages. */
+  MeasurementTimestamps timestamps;
+
+  /**
+   * The current encoder tick count. The interpretation of these ticks is
+   * defined outside of this message.
+   */
+  uint32_t tick_count = 0;
+
+  /**
+   * The transmission gear currently in use, or direction of motion, if
+   * available.
+   *
+   * Set to @ref GearType::FORWARD or @ref GearType::REVERSE where vehicle
+   * direction information is available externally.
+   */
+  GearType gear = GearType::UNKNOWN;
+
+  uint8_t reserved[3] = {0};
+};
+
 #pragma pack(pop)
 
 } // namespace messages

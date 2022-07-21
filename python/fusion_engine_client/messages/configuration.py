@@ -265,6 +265,7 @@ class _ConfigClassGenerator:
         - @ref WheelSpeedMeasurement
         - @ref VehicleSpeedMeasurement
         - @ref WheelTickMeasurement
+        - @ref VehicleTickMeasurement
         """
         ## The type of vehicle/wheel speed measurements produced by the vehicle.
         wheel_sensor_type: WheelSensorType = WheelSensorType.NONE
@@ -307,6 +308,8 @@ class _ConfigClassGenerator:
     class HardwareTickConfig(NamedTuple):
         """!
         @brief Hardware wheel encoder configuration settings.
+
+        See @ref VehicleTickMeasurement.
         """
         ##
         # If enabled -- tick mode is not OFF -- the device will accumulate ticks received on the I/O pin, and use them

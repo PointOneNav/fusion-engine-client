@@ -45,6 +45,7 @@ enum class MessageType : uint16_t {
   WHEEL_SPEED_MEASUREMENT = 11001, ///< @ref WheelSpeedMeasurement
   VEHICLE_SPEED_MEASUREMENT = 11002, ///< @ref VehicleSpeedMeasurement
   WHEEL_TICK_MEASUREMENT = 11003, ///< @ref WheelTickMeasurement
+  VEHICLE_TICK_MEASUREMENT = 11004, ///< @ref VehicleTickMeasurement
 
   // ROS messages.
   ROS_POSE = 12000, ///< @ref ros::PoseMessage

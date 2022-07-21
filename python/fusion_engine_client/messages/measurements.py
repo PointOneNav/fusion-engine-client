@@ -517,3 +517,96 @@ Wheel Tick Measurement @ {str(self.p1_time)}
         }
         result.update(MeasurementTimestamps.to_numpy([m.timestamps for m in messages]))
         return result
+
+
+class VehicleTickMeasurement(MessagePayload):
+    """!
+    @brief Singular wheel encoder tick measurement, representing vehicle body speed.
+
+    This message may be used to convey a one or more wheel encoder tick counts
+    received either by software (e.g., vehicle CAN bus), or captured in hardware
+    from external voltage pulses. The number and type of wheels expected, and the
+    interpretation of the tick count values, varies by vehicle. To use wheel
+    encoder data, you ust first configure the device by issuing a @ref SetConfig
+    message containing a @ref WheelConfig payload describing the vehicle sensor
+    configuration.
+
+    Some platforms may support an additional, optional voltage signal used to
+    indicate direction of motion. Alternatively, when receiving CAN data from a
+    vehicle, direction may be conveyed explicitly in a CAN message, or may be
+    indicated based on the current transmission gear setting.
+    """
+    MESSAGE_TYPE = MessageType.VEHICLE_TICK_MEASUREMENT
+    MESSAGE_VERSION = 0
+
+    _STRUCT = struct.Struct('<I B 3x')
+
+    def __init__(self):
+        ## Measurement timestamps, if available. See @ref measurement_messages.
+        self.timestamps = MeasurementTimestamps()
+
+        ## The current encoder tick count. The interpretation of these ticks is defined outside of this message.
+        self.tick_count = 0
+
+        ##
+        # The transmission gear currently in use, or direction of motion, if available.
+        #
+        # Set to @ref GearType::FORWARD or @ref GearType::REVERSE where vehicle direction information is available
+        # externally.
+        self.gear = GearType.UNKNOWN
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        if buffer is None:
+            buffer = bytearray(self.calcsize())
+
+        initial_offset = offset
+
+        offset += self.timestamps.pack(buffer, offset, return_buffer=False)
+
+        offset += self.pack_values(
+            self._STRUCT, buffer, offset,
+            self.tick_count,
+            int(self.gear))
+
+        if return_buffer:
+            return buffer
+        else:
+            return offset - initial_offset
+
+    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+        initial_offset = offset
+
+        offset += self.timestamps.unpack(buffer, offset)
+
+        (self.tick_count,
+         gear_int) = \
+            self._STRUCT.unpack_from(buffer=buffer, offset=offset)
+        offset += self._STRUCT.size
+
+        self.gear = GearType(gear_int)
+
+        return offset - initial_offset
+
+    @classmethod
+    def calcsize(cls) -> int:
+        return MeasurementTimestamps.calcsize() + cls._STRUCT.size
+
+    def __repr__(self):
+        return '%s @ %s' % (self.MESSAGE_TYPE.name, self.p1_time)
+
+    def __str__(self):
+        newline = '\n'
+        return f"""\
+Vehicle Tick Measurement @ {str(self.p1_time)}
+  {str(self.timestamps).replace(newline, '  ' + newline)}
+  Gear: {str(self.gear)}
+  Ticks: {self.tick_count}"""
+
+    @classmethod
+    def to_numpy(cls, messages):
+        result = {
+            'tick_count': np.array([m.tick_count for m in messages], dtype=int),
+            'gear': np.array([m.gear for m in messages], dtype=int),
+        }
+        result.update(MeasurementTimestamps.to_numpy([m.timestamps for m in messages]))
+        return result
