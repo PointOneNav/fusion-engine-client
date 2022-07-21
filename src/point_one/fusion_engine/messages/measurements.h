@@ -45,6 +45,10 @@ enum class SystemTimeSource : uint8_t {
    * system.
    */
   SENDER_SYSTEM_TIME = 3,
+  /**
+   * Message timestamped in GPS time, referenced to 1980/1/6.
+   */
+  GPS_TIME = 4,
 };
 
 /**
@@ -60,11 +64,13 @@ inline const char* to_string(SystemTimeSource val) {
     case SystemTimeSource::INVALID:
       return "Invalid";
     case SystemTimeSource::P1_TIME:
-      return "P1Time";
+      return "P1 Time";
     case SystemTimeSource::TIMESTAMPED_ON_RECEPTION:
       return "Timestamped on Reception";
     case SystemTimeSource::SENDER_SYSTEM_TIME:
       return "Sender System Time";
+    case SystemTimeSource::GPS_TIME:
+      return "GPS Time";
     default:
       return "Unrecognized";
   }
@@ -82,15 +88,39 @@ inline std::ostream& operator<<(std::ostream& stream, SystemTimeSource val) {
  * @brief The time of applicability for an incoming sensor measurement.
  *
  * By convention this will be the first member of any measurement definition
- * intended to be externally sent by the user to the device. On most platforms,
- * incoming sensor measurements are timestamped by the device when they arrive.
- * On some platforms, incoming sensor measurements may be timestamped externally
- * by the user prior to arrival.
+ * intended to be externally sent by the user to the device.
+ *
+ * The @ref measurement_time field stores time of applicability/reception for
+ * the measurement data, expressed in one of the available source time bases
+ * (see @ref SystemTimeSource). The timestamp will be converted to P1 time
+ * automatically by FusionEngine using an internal model of P1 vs source time.
+ * The converted value will be assigned to @ref p1_time for usage and logging
+ * purposes.
+ *
+ * On most platforms, incoming sensor measurements are timestamped automatically
+ * by FusionEngine when they arrive. To request timestamp on arrival, set @ref
+ * measurement_time to invalid, and set the @ref measurement_time_source to
+ * @ref SystemTimeSource::INVALID.
+ *
+ * On some platforms, incoming sensor measurements may be timestamped
+ * externally by the user prior to arrival, either in GPS time (@ref
+ * SystemTimeSource::GPS_TIME), or using a monotonic clock controlled by the
+ * user system (@ref SystemTimeSource::SENDER_SYSTEM_TIME).
+ *
+ * @note
+ * Use of an external monotonic clock requires additional coordination with the
+ * target FusionEngine device.
+ *
+ * Measurements may only be timestamped externally using P1 time (@ref
+ * SystemTimeSource::P1_TIME) if the external system supports remote
+ * synchronization of the P1 time clock model.
  */
 struct alignas(4) MeasurementTimestamps {
   /**
-   * The time of the message, if available. The source of this value is
-   * specified in @ref measurement_time_source.
+   * The measurement time of applicability, if available, in a user-specified
+   * time base. The source of this value is specified in @ref
+   * measurement_time_source. The timestamp will be converted to P1 time
+   * automatically before use.
    */
   Timestamp measurement_time;
 
@@ -101,8 +131,18 @@ struct alignas(4) MeasurementTimestamps {
 
   uint8_t reserved[3] = {0};
 
-  /** The GPS time of the message, if available, referenced to 1980/1/6. */
-  Timestamp gps_time;
+  /**
+   * The P1 time corresponding with the measurement time of applicability, if
+   * available.
+   *
+   * @note
+   * Do not modify this field when sending measurements to FusionEngine. It will
+   * be populated automatically on arrival. Any previously specified value will
+   * be overwritten. To specify a known P1 time, specify the value in @ref
+   * measurement_time and set @ref measurement_time_source to @ref
+   * SystemTimeSource::P1_TIME.
+   */
+  Timestamp p1_time;
 };
 
 /**
@@ -199,6 +239,17 @@ inline std::ostream& operator<<(std::ostream& stream, GearType val) {
  * @brief Differential wheel speed measurement (@ref
  *        MessageType::WHEEL_SPEED_MEASUREMENT, version 1.0).
  * @ingroup measurement_messages
+ *
+ * This message may be used to convey the speed of each individual wheel on the
+ * vehicle. The number and type of wheels expected varies by vehicle. To use
+ * wheel speed data, you must first configure the device by issuing a @ref
+ * SetConfigMessage message containing a @ref WheelConfig payload describing the
+ * vehicle sensor configuration.
+ *
+ * Some platforms may support an additional, optional voltage signal used to
+ * indicate direction of motion. Alternatively, when receiving CAN data from a
+ * vehicle, direction may be conveyed explicitly in a CAN message, or may be
+ * indicated based on the current transmission gear setting.
  */
 struct alignas(4) WheelSpeedMeasurement : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE =
@@ -220,7 +271,13 @@ struct alignas(4) WheelSpeedMeasurement : public MessagePayload {
   /** The rear right wheel speed (in m/s). Set to NAN if not available. */
   float rear_right_speed_mps = NAN;
 
-  /** The transmission gear currently in use (if available). */
+  /**
+   * The transmission gear currently in use, or direction of motion, if
+   * available.
+   *
+   * Set to @ref GearType::FORWARD or @ref GearType::REVERSE where vehicle
+   * direction information is available externally.
+   */
   GearType gear = GearType::UNKNOWN;
 
   uint8_t reserved[3] = {0};
@@ -230,6 +287,16 @@ struct alignas(4) WheelSpeedMeasurement : public MessagePayload {
  * @brief Vehicle body speed measurement (@ref
  *        MessageType::VEHICLE_SPEED_MEASUREMENT, version 1.0).
  * @ingroup measurement_messages
+ *
+ * This message may be used to convey the along-track speed of the vehicle
+ * (forward/backward). To use vehicle speed data, you must first configure the
+ * device by issuing a @ref SetConfigMessage message containing a @ref
+ * WheelConfig payload describing the vehicle sensor configuration.
+ *
+ * Some platforms may support an additional, optional voltage signal used to
+ * indicate direction of motion. Alternatively, when receiving CAN data from a
+ * vehicle, direction may be conveyed explicitly in a CAN message, or may be
+ * indicated based on the current transmission gear setting.
  */
 struct alignas(4) VehicleSpeedMeasurement : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE =
@@ -242,7 +309,13 @@ struct alignas(4) VehicleSpeedMeasurement : public MessagePayload {
   /** The current vehicle speed estimate (in m/s). */
   float vehicle_speed_mps = NAN;
 
-  /** The transmission gear currently in use (if available). */
+  /**
+   * The transmission gear currently in use, or direction of motion, if
+   * available.
+   *
+   * Set to @ref GearType::FORWARD or @ref GearType::REVERSE where vehicle
+   * direction information is available externally.
+   */
   GearType gear = GearType::UNKNOWN;
 
   uint8_t reserved[3] = {0};
@@ -252,6 +325,19 @@ struct alignas(4) VehicleSpeedMeasurement : public MessagePayload {
  * @brief Differential wheel encoder tick measurement (@ref
  *        MessageType::WHEEL_TICK_MEASUREMENT, version 1.0).
  * @ingroup measurement_messages
+ *
+ * This message may be used to convey a one or more wheel encoder tick counts
+ * received either by software (e.g., vehicle CAN bus), or captured in hardware
+ * from external voltage pulses. The number and type of wheels expected, and the
+ * interpretation of the tick count values, varies by vehicle. To use wheel
+ * encoder data, you ust first configure the device by issuing a @ref
+ * SetConfigMessage message containing a @ref WheelConfig payload describing the
+ * vehicle sensor configuration.
+ *
+ * Some platforms may support an additional, optional voltage signal used to
+ * indicate direction of motion. Alternatively, when receiving CAN data from a
+ * vehicle, direction may be conveyed explicitly in a CAN message, or may be
+ * indicated based on the current transmission gear setting.
  */
 struct alignas(4) WheelTickMeasurement : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE =
@@ -285,7 +371,58 @@ struct alignas(4) WheelTickMeasurement : public MessagePayload {
    */
   uint32_t rear_right_wheel_ticks = 0;
 
-  /** The transmission gear currently in use (if available). */
+  /**
+   * The transmission gear currently in use, or direction of motion, if
+   * available.
+   *
+   * Set to @ref GearType::FORWARD or @ref GearType::REVERSE where vehicle
+   * direction information is available externally.
+   */
+  GearType gear = GearType::UNKNOWN;
+
+  uint8_t reserved[3] = {0};
+};
+
+/**
+ * @brief Singular wheel encoder tick measurement, representing vehicle body
+ *        speed (@ref MessageType::VEHICLE_TICK_MEASUREMENT, version 1.0).
+ * @ingroup measurement_messages
+ *
+ * This message may be used to convey a single encoder tick count received by
+ * software (e.g., vehicle CAN bus), or captured in hardware from an external
+ * voltage pulse, which represents the along-track speed of the vehicle
+ * (forward/backward). The interpretation of the tick count values varies by
+ * vehicle. To use wheel encoder data, you ust first configure the device by
+ * issuing a @ref SetConfigMessage message containing either a @ref WheelConfig
+ * or @ref HardwareTickConfig payload describing the vehicle sensor
+ * configuration.
+ *
+ * Some platforms may support an additional, optional voltage signal used to
+ * indicate direction of motion. Alternatively, when receiving CAN data from a
+ * vehicle, direction may be conveyed explicitly in a CAN message, or may be
+ * indicated based on the current transmission gear setting.
+ */
+struct alignas(4) VehicleTickMeasurement : public MessagePayload {
+  static constexpr MessageType MESSAGE_TYPE =
+      MessageType::VEHICLE_TICK_MEASUREMENT;
+  static constexpr uint8_t MESSAGE_VERSION = 0;
+
+  /** Measurement timestamps, if available. See @ref measurement_messages. */
+  MeasurementTimestamps timestamps;
+
+  /**
+   * The current encoder tick count. The interpretation of these ticks is
+   * defined outside of this message.
+   */
+  uint32_t tick_count = 0;
+
+  /**
+   * The transmission gear currently in use, or direction of motion, if
+   * available.
+   *
+   * Set to @ref GearType::FORWARD or @ref GearType::REVERSE where vehicle
+   * direction information is available externally.
+   */
   GearType gear = GearType::UNKNOWN;
 
   uint8_t reserved[3] = {0};
