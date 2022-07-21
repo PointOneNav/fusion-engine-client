@@ -805,7 +805,7 @@ class Analyzer(object):
 
                 dt_sec = np.diff(time)
                 ticks_per_sec = np.diff(data) / dt_sec
-                figure.add_trace(go.Scattergl(x=time[:1], y=ticks_per_sec, text=text,
+                figure.add_trace(go.Scattergl(x=time[1:], y=ticks_per_sec, text=text,
                                               name=name, legendgroup=name, showlegend=False,
                                               mode='markers', marker={'color': color}),
                                  2, 1)
