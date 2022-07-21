@@ -76,7 +76,7 @@ class MeasurementTimestamps(object):
     @classmethod
     def to_numpy(cls, messages):
         source = np.array([int(m.measurement_time_source) for m in messages], dtype=int)
-        measurement_time = np.array([float(m.p1_time) for m in messages])
+        measurement_time = np.array([float(m.measurement_time) for m in messages])
 
         result = {
             'source': source,
