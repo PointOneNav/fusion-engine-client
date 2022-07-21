@@ -719,7 +719,8 @@ class Analyzer(object):
             wheel_measurement_type = WheelSpeedMeasurement
             vehicle_measurement_type = VehicleSpeedMeasurement
 
-        result = self.reader.read(message_types=[wheel_measurement_type, vehicle_measurement_type], **self.params)
+        result = self.reader.read(message_types=[wheel_measurement_type, vehicle_measurement_type],
+                                  remove_nan_times=False, **self.params)
 
         wheel_data = result[wheel_measurement_type.MESSAGE_TYPE]
         if len(wheel_data.p1_time) == 0:
@@ -815,7 +816,10 @@ class Analyzer(object):
                                  1, 1)
 
         if wheel_data is not None:
-            abs_time_sec = self._get_measurement_time(wheel_data)
+            abs_time_sec = self._get_measurement_time(wheel_data, wheel_time_source)
+            idx = ~np.isnan(abs_time_sec)
+            abs_time_sec = abs_time_sec[idx]
+
             t0 = self._get_t0_for_time_source(wheel_time_source)
             time = abs_time_sec - t0
             time_name = self._time_source_to_display_name(wheel_time_source)
@@ -826,22 +830,25 @@ class Analyzer(object):
             else:
                 suffix = 'speed_mps'
 
-            _plot_trace(time=time, data=getattr(wheel_data, 'front_left_' + suffix), text=text,
+            _plot_trace(time=time, data=getattr(wheel_data, 'front_left_' + suffix)[idx], text=text,
                         name='Front Left Wheel', color='red')
-            _plot_trace(time=time, data=getattr(wheel_data, 'front_right_' + suffix), text=text,
+            _plot_trace(time=time, data=getattr(wheel_data, 'front_right_' + suffix)[idx], text=text,
                         name='Front Right Wheel', color='green')
-            _plot_trace(time=time, data=getattr(wheel_data, 'rear_left_' + suffix), text=text,
+            _plot_trace(time=time, data=getattr(wheel_data, 'rear_left_' + suffix)[idx], text=text,
                         name='Rear Left Wheel', color='blue')
-            _plot_trace(time=time, data=getattr(wheel_data, 'rear_right_' + suffix), text=text,
+            _plot_trace(time=time, data=getattr(wheel_data, 'rear_right_' + suffix)[idx], text=text,
                         name='Rear Right Wheel', color='purple')
 
-            figure.add_trace(go.Scattergl(x=time, y=wheel_data.gear, text=text,
+            figure.add_trace(go.Scattergl(x=time, y=wheel_data.gear[idx], text=text,
                                           name='Gear (Wheel Data)',
                                           mode='markers', marker={'color': 'red'}),
                              3, 1)
 
         if vehicle_data is not None:
-            abs_time_sec = self._get_measurement_time(vehicle_data)
+            abs_time_sec = self._get_measurement_time(vehicle_data, vehicle_time_source)
+            idx = ~np.isnan(abs_time_sec)
+            abs_time_sec = abs_time_sec[idx]
+
             t0 = self._get_t0_for_time_source(vehicle_time_source)
             time = abs_time_sec - t0
             time_name = self._time_source_to_display_name(vehicle_time_source)
@@ -852,10 +859,10 @@ class Analyzer(object):
             else:
                 attr = 'vehicle_speed_mps'
 
-            _plot_trace(time=time, data=getattr(vehicle_data, attr), text=text,
+            _plot_trace(time=time, data=getattr(vehicle_data, attr)[idx], text=text,
                         name='Vehicle Data', color='orange')
 
-            figure.add_trace(go.Scattergl(x=time, y=vehicle_data.gear, text=text,
+            figure.add_trace(go.Scattergl(x=time, y=vehicle_data.gear[idx], text=text,
                                           name='Gear (Vehicle Data)',
                                           mode='markers', marker={'color': 'orange'}),
                              3, 1)
