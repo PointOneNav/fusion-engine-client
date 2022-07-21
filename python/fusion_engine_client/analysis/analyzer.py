@@ -721,7 +721,7 @@ class Analyzer(object):
         figure['layout']['xaxis1'].update(title="Time (sec)", showticklabels=True)
         figure['layout']['xaxis2'].update(title="Time (sec)", showticklabels=True)
         figure['layout']['yaxis1'].update(title="Acceleration (m/s^2)")
-        figure['layout']['yaxis1'].update(title="Rotation Rate (rad/s)")
+        figure['layout']['yaxis2'].update(title="Rotation Rate (rad/s)")
 
         figure.add_trace(go.Scattergl(x=time, y=data.accel_mps2[0, :], name='X', legendgroup='x',
                                       mode='lines', line={'color': 'red'}),
