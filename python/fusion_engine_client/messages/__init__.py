@@ -15,6 +15,7 @@ message_type_to_class = {
     WheelSpeedMeasurement.MESSAGE_TYPE: WheelSpeedMeasurement,
     VehicleSpeedMeasurement.MESSAGE_TYPE: VehicleSpeedMeasurement,
     WheelTickMeasurement.MESSAGE_TYPE: WheelTickMeasurement,
+    VehicleTickMeasurement.MESSAGE_TYPE: VehicleTickMeasurement,
 
     # ROS messages.
     ros.ROSPoseMessage.MESSAGE_TYPE: ros.ROSPoseMessage,
