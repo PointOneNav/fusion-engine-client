@@ -221,7 +221,7 @@ class WheelSpeedMeasurement(MessagePayload):
     MESSAGE_TYPE = MessageType.WHEEL_SPEED_MEASUREMENT
     MESSAGE_VERSION = 0
 
-    _STRUCT = struct.Struct('<4f B 3x')
+    _STRUCT = struct.Struct('<4f B ? 2x')
 
     def __init__(self):
         ## Measurement timestamps, if available. See @ref measurement_messages.
@@ -246,6 +246,11 @@ class WheelSpeedMeasurement(MessagePayload):
         # externally.
         self.gear = GearType.UNKNOWN
 
+        ##
+        # `true` if the wheel speeds are signed (positive forward, negative reverse), or `false` if the values are
+        # unsigned (positive in both directions).
+        self.is_signed = True
+
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
             buffer = bytearray(self.calcsize())
@@ -260,7 +265,8 @@ class WheelSpeedMeasurement(MessagePayload):
             self.front_right_speed_mps,
             self.rear_left_speed_mps,
             self.rear_right_speed_mps,
-            int(self.gear))
+            int(self.gear),
+            self.is_signed)
 
         if return_buffer:
             return buffer
@@ -276,7 +282,8 @@ class WheelSpeedMeasurement(MessagePayload):
          self.front_right_speed_mps,
          self.rear_left_speed_mps,
          self.rear_right_speed_mps,
-         gear_int) = \
+         gear_int,
+         self.is_signed) = \
             self._STRUCT.unpack_from(buffer=buffer, offset=offset)
         offset += self._STRUCT.size
 
@@ -332,7 +339,7 @@ class VehicleSpeedMeasurement(MessagePayload):
     MESSAGE_TYPE = MessageType.VEHICLE_SPEED_MEASUREMENT
     MESSAGE_VERSION = 0
 
-    _STRUCT = struct.Struct('<f B 3x')
+    _STRUCT = struct.Struct('<f B ? 2x')
 
     def __init__(self):
         ## Measurement timestamps, if available. See @ref measurement_messages.
@@ -348,6 +355,11 @@ class VehicleSpeedMeasurement(MessagePayload):
         # externally.
         self.gear = GearType.UNKNOWN
 
+        ##
+        # `true` if the wheel speeds are signed (positive forward, negative reverse), or `false` if the values are
+        # unsigned (positive in both directions).
+        self.is_signed = True
+
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
             buffer = bytearray(self.calcsize())
@@ -359,7 +371,8 @@ class VehicleSpeedMeasurement(MessagePayload):
         offset += self.pack_values(
             self._STRUCT, buffer, offset,
             self.vehicle_speed_mps,
-            int(self.gear))
+            int(self.gear),
+            self.is_signed)
 
         if return_buffer:
             return buffer
@@ -372,7 +385,8 @@ class VehicleSpeedMeasurement(MessagePayload):
         offset += self.timestamps.unpack(buffer, offset)
 
         (self.vehicle_speed_mps,
-         gear_int) = \
+         gear_int,
+         self.is_signed) = \
             self._STRUCT.unpack_from(buffer=buffer, offset=offset)
         offset += self._STRUCT.size
 
