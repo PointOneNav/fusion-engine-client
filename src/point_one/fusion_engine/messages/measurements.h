@@ -280,7 +280,13 @@ struct alignas(4) WheelSpeedMeasurement : public MessagePayload {
    */
   GearType gear = GearType::UNKNOWN;
 
-  uint8_t reserved[3] = {0};
+  /**
+   * `true` if the wheel speeds are signed (positive forward, negative reverse),
+   * or `false` if the values are unsigned (positive in both directions).
+   */
+  bool is_signed = true;
+
+  uint8_t reserved[2] = {0};
 };
 
 /**
@@ -318,7 +324,13 @@ struct alignas(4) VehicleSpeedMeasurement : public MessagePayload {
    */
   GearType gear = GearType::UNKNOWN;
 
-  uint8_t reserved[3] = {0};
+  /**
+   * `true` if the wheel speeds are signed (positive forward, negative reverse),
+   * or `false` if the values are unsigned (positive in both directions).
+   */
+  bool is_signed = true;
+
+  uint8_t reserved[2] = {0};
 };
 
 /**
