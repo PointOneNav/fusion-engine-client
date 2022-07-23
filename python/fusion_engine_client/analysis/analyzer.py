@@ -741,7 +741,7 @@ class Analyzer(object):
             vehicle_data = None
 
         if wheel_data is None and vehicle_data is None:
-            self.logger.info('No wheel speed data available. Skipping plot.')
+            self.logger.info('No wheel %s data available. Skipping plot.' % type)
             return
 
         # Setup the figure.
