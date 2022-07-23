@@ -91,18 +91,32 @@ enum class ConfigType : uint16_t {
   HARDWARE_TICK_CONFIG = 22,
 
   /**
-   * Configure the UART0 serial baud rate (in bits/second).
-   *
-   * Payload format: `uint32_t`
-   */
-  UART0_BAUD = 256,
-
-  /**
    * Configure the UART1 serial baud rate (in bits/second).
    *
    * Payload format: `uint32_t`
    */
-  UART1_BAUD = 257,
+  UART1_BAUD = 256,
+
+  /**
+   * Configure the UART2 serial baud rate (in bits/second).
+   *
+   * Payload format: `uint32_t`
+   */
+  UART2_BAUD = 257,
+
+  /**
+   * Force output the diagnostic message set on UART1.
+   *
+   * Payload format: `bool`
+   */
+  UART1_OUTPUT_DIAGNOSTICS_MESSAGES = 258,
+
+  /**
+   * Force output the diagnostic message set on UART2.
+   *
+   * Payload format: `bool`
+   */
+  UART2_OUTPUT_DIAGNOSTICS_MESSAGES = 259,
 };
 
 /**
@@ -139,11 +153,17 @@ inline const char* to_string(ConfigType type) {
     case ConfigType::HARDWARE_TICK_CONFIG:
       return "Hardware Tick Config";
 
-    case ConfigType::UART0_BAUD:
-      return "UART0 Baud Rate";
-
     case ConfigType::UART1_BAUD:
       return "UART1 Baud Rate";
+
+    case ConfigType::UART2_BAUD:
+      return "UART2 Baud Rate";
+
+    case ConfigType::UART1_OUTPUT_DIAGNOSTICS_MESSAGES:
+      return "UART1 Diagnostic Messages Enabled";
+
+    case ConfigType::UART2_OUTPUT_DIAGNOSTICS_MESSAGES:
+      return "UART2 Diagnostic Messages Enabled";
 
     default:
       return "Unrecognized Configuration";
@@ -339,7 +359,7 @@ struct alignas(4) SaveConfigMessage : public MessagePayload {
  *
  * This message is followed by `N` bytes, where `N` is equal to @ref
  * config_length_bytes that make up the data associated with @ref config_type.
- * For example if the @ref config_type is @ref ConfigType::UART0_BAUD, the
+ * For example if the @ref config_type is @ref ConfigType::UART1_BAUD, the
  * payload will include a single 32-bit unsigned integer:
  *
  * ```
@@ -1295,6 +1315,299 @@ struct alignas(4) OutputInterfaceConfigResponseMessage : public MessagePayload {
   // Note: This causes a compiler error on MSVC so it is not included:
   //       https://docs.microsoft.com/en-us/cpp/error-messages/compiler-errors-1/compiler-error-c2233
   // OutputInterfaceConfigEntry output_interface_data[0];
+};
+
+/**
+ * @brief Integer ID for NMEA messages.
+ */
+enum class NmeaMessageType : uint16_t {
+  INVALID = 0,
+
+  /**
+   * @name Standard NMEA Messages
+   * @{
+   */
+  GGA = 1,
+  GLL = 2,
+  GSA = 3,
+  GSV = 4,
+  RMC = 5,
+  VTG = 6,
+  /** @} */
+
+  /**
+   * @name Point One Proprietary Messages
+   * @{
+   */
+  P1CALSTATUS = 1000,
+  P1MSG = 1001,
+  /** @} */
+
+  /**
+   * @name Quectel Proprietary Messages
+   * @{
+   */
+  PQTMVERNO = 1200,
+  PQTMVER = 1201,
+  PQTMGNSS = 1202,
+  /** @} */
+};
+
+/**
+ * @brief Get a human-friendly string name for the specified @ref
+ *        NmeaMessageType.
+ * @ingroup config_and_ctrl_messages
+ *
+ * @param value The enum to get the string name for.
+ *
+ * @return The corresponding string name.
+ */
+inline const char* to_string(NmeaMessageType value) {
+  switch (value) {
+    case NmeaMessageType::INVALID:
+      return "INVALID";
+      break;
+    case NmeaMessageType::GGA:
+      return "GGA";
+      break;
+    case NmeaMessageType::GLL:
+      return "GLL";
+      break;
+    case NmeaMessageType::GSA:
+      return "GSA";
+      break;
+    case NmeaMessageType::GSV:
+      return "GSV";
+      break;
+    case NmeaMessageType::RMC:
+      return "RMC";
+      break;
+    case NmeaMessageType::VTG:
+      return "VTG";
+      break;
+    case NmeaMessageType::P1CALSTATUS:
+      return "P1CALSTATUS";
+      break;
+    case NmeaMessageType::P1MSG:
+      return "P1MSG";
+      break;
+    case NmeaMessageType::PQTMVERNO:
+      return "PQTMVERNO";
+      break;
+    case NmeaMessageType::PQTMVER:
+      return "PQTMVER";
+      break;
+    case NmeaMessageType::PQTMGNSS:
+      return "PQTMGNSS";
+      break;
+    default:
+      return "Unrecognized";
+  }
+}
+
+/**
+ * @brief @ref NmeaMessageType stream operator.
+ * @ingroup config_and_ctrl_messages
+ */
+inline std::ostream& operator<<(std::ostream& stream, NmeaMessageType val) {
+  stream << to_string(val) << " (" << (int)val << ")";
+  return stream;
+}
+
+/**
+ * @brief The output rate for a message type on an interface.
+ */
+enum class MessageRate : uint8_t {
+  /**
+   * Disable output of this message.
+   */
+  OFF = 0,
+  /**
+   * Output this message each time a new value is available.
+   */
+  ON_CHANGE = 1,
+  /**
+   * Output this message at this interval. Not supported for all messages or
+   * platforms.
+   */
+  INTERVAL_10_MS = 2,
+  /**
+   * Output this message at this interval. Not supported for all messages or
+   * platforms.
+   */
+  INTERVAL_20_MS = 3,
+  /**
+   * Output this message at this interval. Not supported for all messages or
+   * platforms.
+   */
+  INTERVAL_40_MS = 4,
+  /**
+   * Output this message at this interval. Not supported for all messages or
+   * platforms.
+   */
+  INTERVAL_50_MS = 5,
+  /**
+   * Output this message at this interval. Not supported for all messages or
+   * platforms.
+   */
+  INTERVAL_100_MS = 6,
+  /**
+   * Output this message at this interval. Not supported for all messages or
+   * platforms.
+   */
+  INTERVAL_200_MS = 7,
+  /**
+   * Output this message at this interval. Not supported for all messages or
+   * platforms.
+   */
+  INTERVAL_500_MS = 8,
+  /**
+   * Output this message at this interval. Not supported for all messages or
+   * platforms.
+   */
+  INTERVAL_1_S = 9,
+  /**
+   * Output this message at this interval. Not supported for all messages or
+   * platforms.
+   */
+  INTERVAL_2_S = 10,
+  /**
+   * Output this message at this interval. Not supported for all messages or
+   * platforms.
+   */
+  INTERVAL_5_S = 11,
+  /**
+   * Output this message at this interval. Not supported for all messages or
+   * platforms.
+   */
+  INTERVAL_10_S = 12
+};
+
+/**
+ * @brief Get a human-friendly string name for the specified @ref
+ *        MessageRate.
+ * @ingroup config_and_ctrl_messages
+ *
+ * @param value The enum to get the string name for.
+ *
+ * @return The corresponding string name.
+ */
+inline const char* to_string(MessageRate value) {
+  switch (value) {
+    case MessageRate::OFF:
+      return "OFF";
+      break;
+    case MessageRate::ON_CHANGE:
+      return "ON_CHANGE";
+      break;
+    case MessageRate::INTERVAL_10_MS:
+      return "INTERVAL_10_MS";
+      break;
+    case MessageRate::INTERVAL_20_MS:
+      return "INTERVAL_20_MS";
+      break;
+    case MessageRate::INTERVAL_40_MS:
+      return "INTERVAL_40_MS";
+      break;
+    case MessageRate::INTERVAL_50_MS:
+      return "INTERVAL_50_MS";
+      break;
+    case MessageRate::INTERVAL_100_MS:
+      return "INTERVAL_100_MS";
+      break;
+    case MessageRate::INTERVAL_200_MS:
+      return "INTERVAL_200_MS";
+      break;
+    case MessageRate::INTERVAL_500_MS:
+      return "INTERVAL_500_MS";
+      break;
+    case MessageRate::INTERVAL_1_S:
+      return "INTERVAL_1_S";
+      break;
+    case MessageRate::INTERVAL_2_S:
+      return "INTERVAL_2_S";
+      break;
+    case MessageRate::INTERVAL_5_S:
+      return "INTERVAL_5_S";
+      break;
+    case MessageRate::INTERVAL_10_S:
+      return "INTERVAL_10_S";
+      break;
+    default:
+      return "Unrecognized";
+  }
+}
+
+/**
+ * @brief @ref MessageRate stream operator.
+ * @ingroup config_and_ctrl_messages
+ */
+inline std::ostream& operator<<(std::ostream& stream, MessageRate val) {
+  stream << to_string(val) << " (" << (int)val << ")";
+  return stream;
+}
+
+/**
+ * @brief Set the output rate for the requested message type on the specified
+ *        interface.
+ * @ingroup config_and_ctrl_messages
+ */
+struct alignas(4) SetMessageOutputRate : public MessagePayload {
+  static constexpr MessageType MESSAGE_TYPE =
+      MessageType::SET_OUTPUT_MESSAGE_RATE;
+  static constexpr uint8_t MESSAGE_VERSION = 0;
+  InterfaceID output_interface = {};
+  ProtocolType protocol = ProtocolType::INVALID;
+  uint8_t reserved1[1] = {0};
+  uint16_t message_id = 0;
+  MessageRate rate = MessageRate::OFF;
+  uint8_t reserved2[3] = {0};
+};
+
+/**
+ * @brief Get the configured output rate for the he requested message type on
+ *        the specified interface
+ * @ingroup config_and_ctrl_messages
+ *
+ * The device will respond with a @ref MessageOutputRateResponse
+ * containing the values.
+ */
+struct alignas(4) GetMessageOutputRate : public MessagePayload {
+  static constexpr MessageType MESSAGE_TYPE =
+      MessageType::GET_OUTPUT_MESSAGE_RATE;
+  static constexpr uint8_t MESSAGE_VERSION = 0;
+  InterfaceID output_interface = {};
+  ProtocolType protocol = ProtocolType::INVALID;
+  /** The source of the parameter value (active, saved, etc.). */
+  ConfigurationSource request_source = ConfigurationSource::ACTIVE;
+  uint16_t message_id = 0;
+};
+
+/**
+ * @brief The requested output rate.
+ * @ingroup config_and_ctrl_messages
+ */
+struct alignas(4) MessageOutputRateResponse : public MessagePayload {
+  static constexpr MessageType MESSAGE_TYPE =
+      MessageType::OUTPUT_MESSAGE_RATE_RESPONSE;
+  static constexpr uint8_t MESSAGE_VERSION = 0;
+  /** The source of the parameter value (active, saved, etc.). */
+  ConfigurationSource config_source = ConfigurationSource::ACTIVE;
+  /**
+   * Set to `true` if the active configuration differs from the saved
+   * configuration for this parameter.
+   */
+  bool active_differs_from_saved = false;
+  /** The response status (success, error, etc.). */
+  Response response = Response::OK;
+
+  uint8_t reserved1[1] = {0};
+  InterfaceID output_interface = {};
+  ProtocolType protocol = ProtocolType::INVALID;
+  uint8_t reserved2[1] = {0};
+  uint16_t message_id = 0;
+  MessageRate rate = MessageRate::OFF;
+  uint8_t reserved3[3] = {0};
 };
 
 /** @} */
