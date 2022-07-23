@@ -42,10 +42,12 @@ enum class MessageType : uint16_t {
 
   // Sensor measurement messages.
   IMU_MEASUREMENT = 11000, ///< @ref IMUMeasurement
-  WHEEL_SPEED_MEASUREMENT = 11001, ///< @ref WheelSpeedMeasurement
-  VEHICLE_SPEED_MEASUREMENT = 11002, ///< @ref VehicleSpeedMeasurement
-  WHEEL_TICK_MEASUREMENT = 11003, ///< @ref WheelTickMeasurement
-  VEHICLE_TICK_MEASUREMENT = 11004, ///< @ref VehicleTickMeasurement
+
+  // Vehicle measurement messages.
+  WHEEL_SPEED_MEASUREMENT = 11101, ///< @ref WheelSpeedMeasurement
+  VEHICLE_SPEED_MEASUREMENT = 11102, ///< @ref VehicleSpeedMeasurement
+  WHEEL_TICK_MEASUREMENT = 11103, ///< @ref WheelTickMeasurement
+  VEHICLE_TICK_MEASUREMENT = 11104, ///< @ref VehicleTickMeasurement
 
   // ROS messages.
   ROS_POSE = 12000, ///< @ref ros::PoseMessage
