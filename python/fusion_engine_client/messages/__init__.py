@@ -12,6 +12,8 @@ message_type_to_class = {
 
     # Sensor measurement messages.
     IMUMeasurement.MESSAGE_TYPE: IMUMeasurement,
+
+    # Vehicle measurement messages.
     WheelSpeedMeasurement.MESSAGE_TYPE: WheelSpeedMeasurement,
     VehicleSpeedMeasurement.MESSAGE_TYPE: VehicleSpeedMeasurement,
     WheelTickMeasurement.MESSAGE_TYPE: WheelTickMeasurement,
