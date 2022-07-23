@@ -27,8 +27,10 @@ class ConfigType(IntEnum):
     VEHICLE_DETAILS = 20
     WHEEL_CONFIG = 21
     HARDWARE_TICK_CONFIG = 22
-    UART0_BAUD = 256
-    UART1_BAUD = 257
+    UART1_BAUD = 256
+    UART2_BAUD = 257
+    UART1_OUTPUT_DIAGNOSTICS_MESSAGES = 258
+    UART2_OUTPUT_DIAGNOSTICS_MESSAGES = 259
 
 
 class Direction(IntEnum):
@@ -107,15 +109,18 @@ class SteeringType(IntEnum):
     FRONT = 1,
     FRONT_AND_REAR = 2
 
+
 class TickMode(IntEnum):
     OFF = 0,
     RISING_EDGE = 1,
     FALLING_EDGE = 2
 
+
 class TickDirection(IntEnum):
     OFF = 0,
     FORWARD_ACTIVE_HIGH = 1,
     FORWARD_ACTIVE_LOW = 2
+
 
 class TransportType(IntEnum):
     INVALID = 0,
@@ -131,6 +136,46 @@ class TransportType(IntEnum):
 
 class UpdateAction(IntEnum):
     REPLACE = 0
+
+
+class ProtocolType(IntEnum):
+    INVALID = 0
+    FUSION_ENGINE = 1
+    NMEA = 2
+    RTCM = 3
+
+
+class MessageRate(IntEnum):
+    OFF = 0
+    ON_CHANGE = 1
+    INTERVAL_10_MS = 2
+    INTERVAL_20_MS = 3
+    INTERVAL_40_MS = 4
+    INTERVAL_50_MS = 5
+    INTERVAL_100_MS = 6
+    INTERVAL_200_MS = 7
+    INTERVAL_500_MS = 8
+    INTERVAL_1_S = 9
+    INTERVAL_2_S = 10
+    INTERVAL_5_S = 11
+    INTERVAL_10_S = 12
+
+class NmeaMessageType(IntEnum):
+  INVALID = 0
+
+  GGA = 1
+  GLL = 2
+  GSA = 3
+  GSV = 4
+  RMC = 5
+  VTG = 6
+
+  P1CALSTATUS = 1000
+  P1MSG = 1001
+
+  PQTMVERNO = 1200
+  PQTMVER = 1201
+  PQTMGNSS = 1202
 
 
 class _ConfigClassGenerator:
@@ -220,6 +265,17 @@ class _ConfigClassGenerator:
     # Construct to serialize 32 bit IntegerVal types.
     UInt32Construct = Struct(
         "value" / Int32ul,
+    )
+
+    class BoolVal(NamedTuple):
+        """!
+        @brief Bool value specifier.
+        """
+        value: bool
+
+    # Construct to serialize 8 bit boolean types.
+    BoolConstruct = Struct(
+        "value" / Flag,
     )
 
     class CoarseOrientation(NamedTuple):
@@ -371,18 +427,34 @@ class OutputLeverArmConfig(_conf_gen.Point3F):
     pass
 
 
-@_conf_gen.create_config_class(ConfigType.UART0_BAUD, _conf_gen.UInt32Construct)
-class Uart0BaudConfig(_conf_gen.IntegerVal):
-    """!
-    @brief The UART0 serial baud rate (in bits/second).
-    """
-    pass
-
-
 @_conf_gen.create_config_class(ConfigType.UART1_BAUD, _conf_gen.UInt32Construct)
 class Uart1BaudConfig(_conf_gen.IntegerVal):
     """!
     @brief The UART1 serial baud rate (in bits/second).
+    """
+    pass
+
+
+@_conf_gen.create_config_class(ConfigType.UART2_BAUD, _conf_gen.UInt32Construct)
+class Uart2BaudConfig(_conf_gen.IntegerVal):
+    """!
+    @brief The UART2 serial baud rate (in bits/second).
+    """
+    pass
+
+
+@_conf_gen.create_config_class(ConfigType.UART1_OUTPUT_DIAGNOSTICS_MESSAGES, _conf_gen.BoolConstruct)
+class Uart1DiagnosticMessagesEnabled(_conf_gen.BoolVal):
+    """!
+    @brief Whether to output the diagnostic message set on UART1.
+    """
+    pass
+
+
+@_conf_gen.create_config_class(ConfigType.UART2_OUTPUT_DIAGNOSTICS_MESSAGES, _conf_gen.BoolConstruct)
+class Uart2DiagnosticMessagesEnabled(_conf_gen.BoolVal):
+    """!
+    @brief Whether to output the diagnostic message set on UART2.
     """
     pass
 
@@ -404,12 +476,14 @@ class DeviceCourseOrientationConfig(_conf_gen.CoarseOrientation):
     """
     pass
 
+
 @_conf_gen.create_config_class(ConfigType.VEHICLE_DETAILS, _conf_gen.VehicleDetailsConstruct)
 class VehicleDetailsConfig(_conf_gen.VehicleDetails):
     """!
     @brief Information including vehicle model and dimensions.
     """
     pass
+
 
 @_conf_gen.create_config_class(ConfigType.WHEEL_CONFIG, _conf_gen.WheelConfigConstruct)
 class WheelConfig(_conf_gen.WheelConfig):
@@ -418,12 +492,14 @@ class WheelConfig(_conf_gen.WheelConfig):
     """
     pass
 
+
 @_conf_gen.create_config_class(ConfigType.HARDWARE_TICK_CONFIG, _conf_gen.HardwareTickConfigConstruct)
 class HardwareTickConfig(_conf_gen.HardwareTickConfig):
     """!
     @brief Tick configuration settings.
     """
     pass
+
 
 @_conf_gen.create_config_class(ConfigType.INVALID, _conf_gen.EmptyConstruct)
 class InvalidConfig(_conf_gen.Empty):
@@ -835,3 +911,157 @@ class OutputInterfaceConfigResponseMessage(MessagePayload):
 
     def calcsize(self) -> int:
         return len(self.pack())
+
+
+class SetMessageOutputRate(MessagePayload):
+    """!
+    @brief Set the output rate for the requested message type on the specified interface.
+    """
+    MESSAGE_TYPE = MessageType.SET_OUTPUT_MESSAGE_RATE
+    MESSAGE_VERSION = 0
+
+    SetMessageOutputRateConstruct = Struct(
+        "output_interface" / _InterfaceIDConstruct,
+        "protocol" / AutoEnum(Int8ul, ProtocolType),
+        Padding(1),
+        "message_id" / Int16ul,
+        "rate" / AutoEnum(Int8ul, MessageRate),
+        Padding(3),
+    )
+
+    def __init__(self,
+                 output_interface: InterfaceID = None,
+                 protocol: ProtocolType = ProtocolType.INVALID,
+                 message_id: int = 0,
+                 rate: MessageRate = MessageRate.OFF):
+        if output_interface is None:
+            self.output_interface = InterfaceID()
+        else:
+            self.output_interface = output_interface
+        self.protocol = protocol
+        self.message_id = message_id
+        self.rate = rate
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        packed_data = self.SetMessageOutputRateConstruct.build(self.__dict__)
+        return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
+
+    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+        parsed = self.SetMessageOutputRateConstruct.parse(buffer[offset:])
+        self.__dict__.update(parsed)
+        return parsed._io.tell()
+
+    def __str__(self):
+        fields = ['output_interface', 'protocol', 'message_id', 'rate']
+        string = f'Set Output Interface Streams Config Command\n'
+        for field in fields:
+            val = str(self.__dict__[field]).replace('Container:', '')
+            string += f'  {field}: {val}\n'
+        return string.rstrip()
+
+    @classmethod
+    def calcsize(cls) -> int:
+        return cls.SetMessageOutputRateConstruct.sizeof()
+
+
+class GetMessageOutputRate(MessagePayload):
+    """!
+    @brief Get the configured output rate for the he requested message type on  the specified interface.
+    """
+    MESSAGE_TYPE = MessageType.GET_OUTPUT_MESSAGE_RATE
+    MESSAGE_VERSION = 0
+
+    GetMessageOutputRateConstruct = Struct(
+        "output_interface" / _InterfaceIDConstruct,
+        "protocol" / AutoEnum(Int8ul, ProtocolType),
+        "request_source" / AutoEnum(Int8ul, ConfigurationSource),
+        "message_id" / Int16ul,
+    )
+
+    def __init__(self,
+                 output_interface: InterfaceID = None,
+                 protocol: ProtocolType = ProtocolType.INVALID,
+                 request_source = ConfigurationSource.ACTIVE,
+                 message_id: int = 0):
+        if output_interface is None:
+            self.output_interface = InterfaceID()
+        else:
+            self.output_interface = output_interface
+        self.protocol = protocol
+        self.request_source = request_source
+        self.message_id = message_id
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        packed_data = self.GetMessageOutputRateConstruct.build(self.__dict__)
+        return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
+
+    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+        parsed = self.GetMessageOutputRateConstruct.parse(buffer[offset:])
+        self.__dict__.update(parsed)
+        return parsed._io.tell()
+
+    def __str__(self):
+        fields = ['output_interface', 'protocol', 'request_source', 'message_id']
+        string = f'Get Output Interface Streams Config\n'
+        for field in fields:
+            val = str(self.__dict__[field]).replace('Container:', '')
+            string += f'  {field}: {val}\n'
+        return string.rstrip()
+
+    @classmethod
+    def calcsize(cls) -> int:
+        return cls.GetMessageOutputRateConstruct.sizeof()
+
+
+class MessageOutputRateResponse(MessagePayload):
+    """!
+    @brief Response to a @ref GetMessageOutputRate request.
+    """
+    MESSAGE_TYPE = MessageType.OUTPUT_MESSAGE_RATE_RESPONSE
+    MESSAGE_VERSION = 0
+
+    MessageOutputRateResponseConstruct = Struct(
+        "config_source" / AutoEnum(Int8ul, ConfigurationSource),
+        "active_differs_from_saved" / Flag,
+        "response" / AutoEnum(Int8ul, Response),
+        Padding(1),
+        "output_interface" / _InterfaceIDConstruct,
+        "protocol" / AutoEnum(Int8ul, ProtocolType),
+        Padding(1),
+        "message_id" / Int16ul,
+        "rate" / AutoEnum(Int8ul, MessageRate),
+        Padding(3),
+    )
+
+    def __init__(self):
+        self.config_source = ConfigurationSource.ACTIVE
+        self.active_differs_from_saved = False
+        self.response = Response.OK
+        self.output_interface = InterfaceID(TransportType.INVALID, 0)
+        self.protocol = ProtocolType.INVALID
+        self.message_id = 0
+        self.rate = MessageRate.OFF
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        values = dict(self.__dict__)
+        packed_data = self.MessageOutputRateResponseConstruct.build(values)
+        return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
+
+    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+        parsed = self.MessageOutputRateResponseConstruct.parse(buffer[offset:])
+        self.__dict__.update(parsed)
+        return parsed._io.tell()
+
+    def __str__(self):
+        fields = ['config_source', 'active_differs_from_saved', 'response', 'output_interface', 'protocol', 'message_id', 'rate']
+        string = f'Message Output Rate Response\n'
+        for field in fields:
+            val = str(self.__dict__[field]).replace('Container:', '')
+            val = re.sub(r'ListContainer\((.+)\)', r'\1', val)
+            val = re.sub(r'<TransportType\.(.+): [0-9]+>', r'\1', val)
+            string += f'  {field}: {val}\n'
+        return string.rstrip()
+
+    @classmethod
+    def calcsize(cls) -> int:
+        return cls.MessageOutputRateResponseConstruct.sizeof()

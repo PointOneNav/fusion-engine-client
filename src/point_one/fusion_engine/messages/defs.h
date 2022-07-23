@@ -72,8 +72,12 @@ enum class MessageType : uint16_t {
   OUTPUT_INTERFACE_CONFIG_RESPONSE =
       13202, ///< @ref OutputInterfaceConfigResponseMessage
 
+  SET_OUTPUT_MESSAGE_RATE = 13220, ///< @ref SetMessageOutputRate
+  GET_OUTPUT_MESSAGE_RATE = 13221, ///< @ref GetMessageOutputRate
+  OUTPUT_MESSAGE_RATE_RESPONSE = 13222, ///< @ref MessageOutputRateResponse
+
   /// The maximum defined @ref MessageType enum value.
-  MAX_VALUE = OUTPUT_INTERFACE_CONFIG_RESPONSE,
+  MAX_VALUE = OUTPUT_MESSAGE_RATE_RESPONSE,
 };
 
 /**
