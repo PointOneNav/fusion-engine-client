@@ -1,7 +1,12 @@
 # Copyright (C) Point One Navigation - All Rights Reserved
-project(p1_fusion_engine_client)
-
 cmake_minimum_required(VERSION 3.3.2)
+
+# Set toolchain parameters before calling project().
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED True)
+
+# Define the project and setup the compiler toolchain.
+project(p1_fusion_engine_client)
 
 # Option definitions.
 option(BUILD_SHARED_LIBS "Build shared libraries instead of static libraries."
@@ -9,10 +14,7 @@ option(BUILD_SHARED_LIBS "Build shared libraries instead of static libraries."
 
 option(BUILD_EXAMPLES "Build example applications." ON)
 
-# Set compilation flags.
-set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_CXX_STANDARD_REQUIRED True)
-
+# Set additional compilation flags.
 if (MSVC)
     add_compile_options(/W4 /WX)
 else()
