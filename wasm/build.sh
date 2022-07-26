@@ -65,7 +65,7 @@ while true ; do
     case "$1" in
     -D)
         shift
-        CMAKE_ARGS="${CMAKE_ARGS} $1"
+        CMAKE_ARGS="${CMAKE_ARGS} -D$1"
         ;;
     -h|--help)
         usage
