@@ -878,9 +878,9 @@ class Analyzer(object):
                              3, 1)
 
         if type == 'tick':
-            self._add_figure(name="wheel_ticks", figure=figure, title="Wheel Encoder Ticks")
+            self._add_figure(name="wheel_ticks", figure=figure, title="Measurements: Wheel Encoder Ticks")
         else:
-            self._add_figure(name="wheel_speed", figure=figure, title="Wheel Speed")
+            self._add_figure(name="wheel_speed", figure=figure, title="Measurements: Wheel Speed")
 
     def plot_imu(self):
         """!
@@ -928,7 +928,7 @@ class Analyzer(object):
                                       showlegend=False, mode='lines', line={'color': 'blue'}),
                          2, 1)
 
-        self._add_figure(name="imu", figure=figure, title="IMU Measurements")
+        self._add_figure(name="imu", figure=figure, title="Measurements: IMU")
 
     def plot_system_status_profiling(self):
         """!
