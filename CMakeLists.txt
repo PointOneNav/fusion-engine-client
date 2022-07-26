@@ -9,9 +9,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 project(p1_fusion_engine_client)
 
 # Option definitions.
-option(BUILD_SHARED_LIBS "Build shared libraries instead of static libraries."
-       ON)
-
 option(P1_FE_BUILD_EXAMPLES "Build example applications." ON)
 
 # Set additional compilation flags.
