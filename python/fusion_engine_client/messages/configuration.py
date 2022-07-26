@@ -31,6 +31,7 @@ class ConfigType(IntEnum):
     UART2_BAUD = 257
     UART1_OUTPUT_DIAGNOSTICS_MESSAGES = 258
     UART2_OUTPUT_DIAGNOSTICS_MESSAGES = 259
+    ENABLE_WATCHDOG_TIMER = 300
 
 
 class Direction(IntEnum):
@@ -455,6 +456,14 @@ class Uart1DiagnosticMessagesEnabled(_conf_gen.BoolVal):
 class Uart2DiagnosticMessagesEnabled(_conf_gen.BoolVal):
     """!
     @brief Whether to output the diagnostic message set on UART2.
+    """
+    pass
+
+
+@_conf_gen.create_config_class(ConfigType.ENABLE_WATCHDOG_TIMER, _conf_gen.BoolConstruct)
+class WatchdogTimerEnabled(_conf_gen.BoolVal):
+    """!
+    @brief Enable watchdog timer to restart device after fatal errors.
     """
     pass
 
