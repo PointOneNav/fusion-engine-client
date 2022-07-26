@@ -296,12 +296,12 @@ class WheelSpeedMeasurement(MessagePayload):
         return MeasurementTimestamps.calcsize() + cls._STRUCT.size
 
     def __repr__(self):
-        return '%s @ %s' % (self.MESSAGE_TYPE.name, self.p1_time)
+        return '%s @ %s' % (self.MESSAGE_TYPE.name, self.timestamps.p1_time)
 
     def __str__(self):
         newline = '\n'
         return f"""\
-Wheel Speed Measurement @ {str(self.p1_time)}
+Wheel Speed Measurement @ {str(self.timestamps.p1_time)}
   {str(self.timestamps).replace(newline, '  ' + newline)}
   Gear: {str(self.gear)}
   Front left: {self.front_left_speed_mps:.2f} m/s
@@ -399,12 +399,12 @@ class VehicleSpeedMeasurement(MessagePayload):
         return MeasurementTimestamps.calcsize() + cls._STRUCT.size
 
     def __repr__(self):
-        return '%s @ %s' % (self.MESSAGE_TYPE.name, self.p1_time)
+        return '%s @ %s' % (self.MESSAGE_TYPE.name, self.timestamps.p1_time)
 
     def __str__(self):
         newline = '\n'
         return f"""\
-Vehicle Speed Measurement @ {str(self.p1_time)}
+Vehicle Speed Measurement @ {str(self.timestamps.p1_time)}
   {str(self.timestamps).replace(newline, '  ' + newline)}
   Gear: {str(self.gear)}
   Speed: {self.vehicle_speed_mps:.2f} m/s"""
@@ -507,12 +507,12 @@ class WheelTickMeasurement(MessagePayload):
         return MeasurementTimestamps.calcsize() + cls._STRUCT.size
 
     def __repr__(self):
-        return '%s @ %s' % (self.MESSAGE_TYPE.name, self.p1_time)
+        return '%s @ %s' % (self.MESSAGE_TYPE.name, self.timestamps.p1_time)
 
     def __str__(self):
         newline = '\n'
         return f"""\
-Wheel Tick Measurement @ {str(self.p1_time)}
+Wheel Tick Measurement @ {str(self.timestamps.p1_time)}
   {str(self.timestamps).replace(newline, '  ' + newline)}
   Gear: {str(self.gear)}
   Front left: {self.front_left_wheel_ticks}
@@ -606,12 +606,12 @@ class VehicleTickMeasurement(MessagePayload):
         return MeasurementTimestamps.calcsize() + cls._STRUCT.size
 
     def __repr__(self):
-        return '%s @ %s' % (self.MESSAGE_TYPE.name, self.p1_time)
+        return '%s @ %s' % (self.MESSAGE_TYPE.name, self.timestamps.p1_time)
 
     def __str__(self):
         newline = '\n'
         return f"""\
-Vehicle Tick Measurement @ {str(self.p1_time)}
+Vehicle Tick Measurement @ {str(self.timestamps.p1_time)}
   {str(self.timestamps).replace(newline, '  ' + newline)}
   Gear: {str(self.gear)}
   Ticks: {self.tick_count}"""
