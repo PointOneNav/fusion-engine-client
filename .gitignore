@@ -3,6 +3,9 @@
 *.html
 *.egg-info
 
+# WASM/Emscripten files.
+emsdk/
+
 # Bazel output directories.
 bazel-*
 
