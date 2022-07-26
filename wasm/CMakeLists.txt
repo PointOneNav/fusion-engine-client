@@ -18,6 +18,7 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/..
 
 # Define the WASM binding library.
 add_executable(fusion_engine_client_wasm
+               defs_binding.cc
                fusion_engine_framer_binding.cc)
 target_link_libraries(fusion_engine_client_wasm PUBLIC fusion_engine_client)
 set(CMAKE_EXECUTABLE_SUFFIX ".js")
