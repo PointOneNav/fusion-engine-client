@@ -17,6 +17,10 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/..
                  EXCLUDE_FROM_ALL)
 
 # Define the WASM binding library.
-add_library(fusion_engine_client_wasm STATIC
+add_executable(fusion_engine_client_wasm
             fusion_engine_framer_binding.cc)
 target_link_libraries(fusion_engine_client_wasm PUBLIC fusion_engine_client)
+set(CMAKE_EXECUTABLE_SUFFIX ".js")
+set_target_properties(fusion_engine_client_wasm PROPERTIES
+    LINK_FLAGS
+    "-s WASM=1 -s NO_EXIT_RUNTIME=1 -sMODULARIZE -s EXPORT_ES6=1 -lembind")

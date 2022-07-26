@@ -109,12 +109,3 @@ mkdir -p "${BUILD_DIR}"
 cd "${BUILD_DIR}"
 emcmake cmake ${CMAKE_ARGS} ${SCRIPT_DIR}
 emmake make ${MAKE_ARGS} "${MAKE_TARGETS[@]}"
-
-for MAKE_TARGET in "${MAKE_TARGETS[@]}"; do
-    emcc -o ${MAKE_TARGET}.js \
-         -Wl,--whole-archive lib${MAKE_TARGET}.a -Wl,--no-whole-archive \
-         -O2 \
-         -s NO_EXIT_RUNTIME=1 \
-         -sMODULARIZE -s EXPORT_ES6=1 \
-         -lembind
-done
