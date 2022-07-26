@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='fusion-engine-client',
-    version='v1.9.0',
+    version='v1.11.1',
     packages=find_packages(where='.'),
     install_requires=[
         'gpstime @ https://github.com/PointOneNav/gpstime/archive/f9e2ab58a8beeeafee992d87a0eafc50887ba849.zip#egg=gpstime',
