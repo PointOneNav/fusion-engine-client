@@ -46,7 +46,7 @@ static size_t OnData(FusionEngineFramer& framer, const emscripten::val& buffer,
 }
 
 /******************************************************************************/
-EMSCRIPTEN_BINDINGS(bindings) {
+EMSCRIPTEN_BINDINGS(framer) {
   class_<FusionEngineFramer>("FusionEngineFramer")
     .constructor<size_t>()
     .function("WarnOnError", &FusionEngineFramer::WarnOnError)
