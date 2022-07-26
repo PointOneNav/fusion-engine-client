@@ -12,7 +12,7 @@ project(p1_fusion_engine_client)
 option(BUILD_SHARED_LIBS "Build shared libraries instead of static libraries."
        ON)
 
-option(BUILD_EXAMPLES "Build example applications." ON)
+option(P1_FE_BUILD_EXAMPLES "Build example applications." ON)
 
 # Set additional compilation flags.
 if (MSVC)
@@ -46,6 +46,6 @@ install(DIRECTORY src/point_one DESTINATION include
 # Example Applications
 ################################################################################
 
-if (BUILD_EXAMPLES)
+if (P1_FE_BUILD_EXAMPLES)
     add_subdirectory(examples)
 endif()
