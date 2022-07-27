@@ -104,6 +104,15 @@ EMSCRIPTEN_BINDINGS(defs) {
       .class_property("INVALID", &Timestamp_INVALID)
       .property("seconds", &Timestamp::seconds)
       .property("fraction_ns", &Timestamp::fraction_ns)
+      .function("GetValue", select_overload<double(const Timestamp&)>(
+                                [](const Timestamp& timestamp) -> double {
+                                  if (timestamp.seconds == Timestamp::INVALID) {
+                                    return NAN;
+                                  } else {
+                                    return timestamp.seconds +
+                                           timestamp.fraction_ns * 1e-9;
+                                  }
+                                }))
       .PARSE_FUNCTION(Timestamp);
 
   static auto MessageHeader_SYNC0 = MessageHeader::SYNC0;
