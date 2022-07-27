@@ -13,6 +13,24 @@
         object.member + (sizeof(object.member) / sizeof(*object.member))); \
   })
 
+#define CHLID_ACCESSOR_WITH_OFFSET(name, cls, max_field, child_cls, \
+                                   offset_bytes)                    \
+  function(name,                                                    \
+           select_overload<child_cls*(cls&, size_t)>(               \
+               [](cls& message, size_t index) -> child_cls* {       \
+                 if (index >= message.max_field) {                  \
+                   return nullptr;                                  \
+                 } else {                                           \
+                   return &reinterpret_cast<child_cls*>(            \
+                       reinterpret_cast<uint8_t*>(&message + 1) +   \
+                       offset_bytes)[index];                        \
+                 }                                                  \
+               }),                                                  \
+           allow_raw_pointer<child_cls*>())
+
+#define CHLID_ACCESSOR(name, cls, max_field, child_cls) \
+  CHLID_ACCESSOR_WITH_OFFSET(name, cls, max_field, child_cls, 0)
+
 #define PARSE_FUNCTION(type)                                              \
   class_function(                                                         \
       "Parse"#type,                                                      \
