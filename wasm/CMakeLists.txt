@@ -20,6 +20,8 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/..
 add_executable(fusion_engine_client_wasm
                defs_binding.cc
                fusion_engine_framer_binding.cc)
+target_include_directories(fusion_engine_client_wasm PUBLIC
+                           ${CMAKE_CURRENT_SOURCE_DIR}})
 target_link_libraries(fusion_engine_client_wasm PUBLIC fusion_engine_client)
 set(CMAKE_EXECUTABLE_SUFFIX ".js")
 set_target_properties(fusion_engine_client_wasm PROPERTIES

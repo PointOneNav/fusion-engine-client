@@ -7,27 +7,13 @@
 
 #include <point_one/fusion_engine/messages/core.h>
 
+#include "binding_utils.h"
+
 using namespace emscripten;
 using namespace point_one::fusion_engine::messages;
 
-#define ARRAY_PROPERTY(cls, member)                                        \
-  property<emscripten::val>(#member, [](const cls& object) {               \
-    return emscripten::val::array(                                         \
-        object.member,                                                     \
-        object.member + (sizeof(object.member) / sizeof(*object.member))); \
-  })
-
-#define PARSE_FUNCTION(type)                                                   \
-  static const type* Parse##type(const emscripten::val& buffer, size_t size) { \
-    if (size < sizeof(type)) {                                                 \
-      return nullptr;                                                          \
-    } else {                                                                   \
-      return reinterpret_cast<const type*>(buffer.as<size_t>());               \
-    }                                                                          \
-  }
-
-PARSE_FUNCTION(Timestamp);
-PARSE_FUNCTION(MessageHeader);
+DEFINE_PARSE_FUNCTION(Timestamp);
+DEFINE_PARSE_FUNCTION(MessageHeader);
 
 /******************************************************************************/
 EMSCRIPTEN_BINDINGS(defs) {
@@ -121,8 +107,7 @@ EMSCRIPTEN_BINDINGS(defs) {
       .class_property("INVALID", &Timestamp_INVALID)
       .property("seconds", &Timestamp::seconds)
       .property("fraction_ns", &Timestamp::fraction_ns)
-      .class_function("Parse", &ParseTimestamp,
-                      allow_raw_pointer<Timestamp*>());
+      .PARSE_FUNCTION(Timestamp);
 
   static auto MessageHeader_SYNC0 = MessageHeader::SYNC0;
   static auto MessageHeader_SYNC1 = MessageHeader::SYNC1;
@@ -142,6 +127,5 @@ EMSCRIPTEN_BINDINGS(defs) {
       .property("sequence_number", &MessageHeader::sequence_number)
       .property("payload_size_bytes", &MessageHeader::payload_size_bytes)
       .property("source_identifier", &MessageHeader::source_identifier)
-      .class_function("Parse", &ParseMessageHeader,
-                      allow_raw_pointer<MessageHeader*>());
+      .PARSE_FUNCTION(MessageHeader);
 }
