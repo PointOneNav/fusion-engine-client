@@ -14,9 +14,9 @@ using namespace point_one::fusion_engine::parsers;
 /******************************************************************************/
 static void RegisterCallback(FusionEngineFramer& framer,
                              const emscripten::val& callback) {
-  // Note: We are intentionally capturing 'func' by value here so that the
+  // Note: We are intentionally capturing 'callback' by value here so that the
   // lambda keeps a reference to the caller's function. Otherwise it'll get
-  // destroyed as soon as this function returns..
+  // destroyed as soon as this function returns.
   framer.SetMessageCallback(
       [callback](const MessageHeader& header, const void* payload) {
         // Create a memory view (i.e., JS Uint8Array) on top of the FusionEngine
