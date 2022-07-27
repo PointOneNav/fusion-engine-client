@@ -20,14 +20,24 @@ static void RegisterCallback(FusionEngineFramer& framer,
   framer.SetMessageCallback(
       [callback](const MessageHeader& header, const void* payload) {
         // Create a memory view (i.e., JS Uint8Array) on top of the FusionEngine
-        // message header + payload. In JS, the callback will be called with a
-        // Uint8Array:
-        //   function Callback(buffer) {
+        // message header + payload. In JS, the callback will be called with the
+        // following arguments:
+        // 1. A reference to the MessageHeader struct
+        // 2. A Uint8Array containing the message payload
+        // 3. A Uint8Array containing the complete message (header + payload)
+        //
+        // For example:
+        //   function Callback(header, payload, buffer) {
+        //     // header is a FusionEngine.MessageHeader object
+        //     // ArrayBuffer.isView(payload) returns true
         //     // ArrayBuffer.isView(buffer) returns true
         //   }
-        callback(val(
+        val full_message_view(
             typed_memory_view(sizeof(MessageHeader) + header.payload_size_bytes,
-                              reinterpret_cast<const uint8_t*>(&header))));
+                              reinterpret_cast<const uint8_t*>(&header)));
+        val payload_view(typed_memory_view(
+            header.payload_size_bytes, static_cast<const uint8_t*>(payload)));
+        callback(header, payload_view, full_message_view);
       });
 }
 
