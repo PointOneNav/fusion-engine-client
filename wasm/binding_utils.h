@@ -33,7 +33,7 @@
 
 #define PARSE_FUNCTION(type)                                              \
   class_function(                                                         \
-      "Parse"#type,                                                      \
+      "Parse",                                                            \
       select_overload<type*(const emscripten::val&, size_t)>(             \
           [](const emscripten::val& buffer, size_t size_bytes) -> type* { \
             if (size_bytes < sizeof(type)) {                              \
