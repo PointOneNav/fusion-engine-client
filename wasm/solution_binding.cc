@@ -44,4 +44,52 @@ EMSCRIPTEN_BINDINGS(solution) {
       .ARRAY_PROPERTY(PoseAuxMessage, velocity_enu_mps)
       .ARRAY_PROPERTY(PoseAuxMessage, velocity_std_enu_mps)
       .PARSE_FUNCTION(PoseAuxMessage);
+
+  static auto GNSSInfoMessage_MESSAGE_TYPE = GNSSInfoMessage::MESSAGE_TYPE;
+  static auto GNSSInfoMessage_MESSAGE_VERSION =
+      GNSSInfoMessage::MESSAGE_VERSION;
+  class_<GNSSInfoMessage>("GNSSInfoMessage")
+      .constructor<>()
+      .class_property("MESSAGE_TYPE", &GNSSInfoMessage_MESSAGE_TYPE)
+      .class_property("MESSAGE_VERSION", &GNSSInfoMessage_MESSAGE_VERSION)
+      .property("p1_time", &GNSSInfoMessage::p1_time)
+      .property("gps_time", &GNSSInfoMessage::gps_time)
+      .property("last_differential_time",
+                &GNSSInfoMessage::last_differential_time)
+      .property("reference_station_id", &GNSSInfoMessage::reference_station_id)
+      .property("gdop", &GNSSInfoMessage::gdop)
+      .property("pdop", &GNSSInfoMessage::pdop)
+      .property("hdop", &GNSSInfoMessage::hdop)
+      .property("vdop", &GNSSInfoMessage::vdop)
+      .property("gps_time_std_sec", &GNSSInfoMessage::gps_time_std_sec)
+      .PARSE_FUNCTION(GNSSInfoMessage);
+
+  static auto SatelliteInfo_SATELLITE_USED = SatelliteInfo::SATELLITE_USED;
+  static auto SatelliteInfo_INVALID_CN0 = SatelliteInfo::INVALID_CN0;
+  class_<SatelliteInfo>("SatelliteInfo")
+      .constructor<>()
+      .class_property("SATELLITE_USED", &SatelliteInfo_SATELLITE_USED)
+      .class_property("INVALID_CN0", &SatelliteInfo_INVALID_CN0)
+      .property("system", &SatelliteInfo::system)
+      .property("prn", &SatelliteInfo::prn)
+      .property("usage", &SatelliteInfo::usage)
+      .property("cn0", &SatelliteInfo::cn0)
+      .property("azimuth_deg", &SatelliteInfo::azimuth_deg)
+      .property("elevation_deg", &SatelliteInfo::elevation_deg);
+
+  static auto GNSSSatelliteMessage_MESSAGE_TYPE =
+      GNSSSatelliteMessage::MESSAGE_TYPE;
+  static auto GNSSSatelliteMessage_MESSAGE_VERSION =
+      GNSSSatelliteMessage::MESSAGE_VERSION;
+  class_<GNSSSatelliteMessage>("GNSSSatelliteMessage")
+      .constructor<>()
+      .class_property("MESSAGE_TYPE", &GNSSSatelliteMessage_MESSAGE_TYPE)
+      .class_property("MESSAGE_VERSION", &GNSSSatelliteMessage_MESSAGE_VERSION)
+      .property("p1_time", &GNSSSatelliteMessage::p1_time)
+      .property("gps_time", &GNSSSatelliteMessage::gps_time)
+      .property("num_satellites", &GNSSSatelliteMessage::num_satellites)
+      .ARRAY_PROPERTY(GNSSSatelliteMessage, reserved)
+      .CHLID_ACCESSOR("GetSatelliteInfo", GNSSSatelliteMessage, num_satellites,
+                      SatelliteInfo)
+      .PARSE_FUNCTION(GNSSSatelliteMessage);
 }
