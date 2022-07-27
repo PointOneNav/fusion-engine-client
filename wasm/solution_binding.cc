@@ -92,4 +92,61 @@ EMSCRIPTEN_BINDINGS(solution) {
       .CHLID_ACCESSOR("GetSatelliteInfo", GNSSSatelliteMessage, num_satellites,
                       SatelliteInfo)
       .PARSE_FUNCTION(GNSSSatelliteMessage);
+
+  enum_<CalibrationStage>("CalibrationStage")
+      .value("UNKNOWN", CalibrationStage::UNKNOWN)
+      .value("MOUNTING_ANGLE", CalibrationStage::MOUNTING_ANGLE)
+      .value("DONE", CalibrationStage::DONE);
+
+  static auto CalibrationStatusMessage_MESSAGE_TYPE =
+      CalibrationStatusMessage::MESSAGE_TYPE;
+  static auto CalibrationStatusMessage_MESSAGE_VERSION =
+      CalibrationStatusMessage::MESSAGE_VERSION;
+  class_<CalibrationStatusMessage>("CalibrationStatusMessage")
+      .constructor<>()
+      .class_property("MESSAGE_TYPE", &CalibrationStatusMessage_MESSAGE_TYPE)
+      .class_property("MESSAGE_VERSION",
+                      &CalibrationStatusMessage_MESSAGE_VERSION)
+      .property("p1_time", &CalibrationStatusMessage::p1_time)
+      .ARRAY_PROPERTY(CalibrationStatusMessage, reserved1)
+      .ARRAY_PROPERTY(CalibrationStatusMessage, ypr_deg)
+      .ARRAY_PROPERTY(CalibrationStatusMessage, ypr_std_dev_deg)
+      .property("travel_distance_m",
+                &CalibrationStatusMessage::travel_distance_m)
+      .ARRAY_PROPERTY(CalibrationStatusMessage, reserved2)
+      .property("state_verified", &CalibrationStatusMessage::state_verified)
+      .ARRAY_PROPERTY(CalibrationStatusMessage, reserved3)
+      .property("gyro_bias_percent_complete",
+                &CalibrationStatusMessage::gyro_bias_percent_complete)
+      .property("accel_bias_percent_complete",
+                &CalibrationStatusMessage::accel_bias_percent_complete)
+      .property("mounting_angle_percent_complete",
+                &CalibrationStatusMessage::mounting_angle_percent_complete)
+      .ARRAY_PROPERTY(CalibrationStatusMessage, reserved4)
+      .property("min_travel_distance_m",
+                &CalibrationStatusMessage::min_travel_distance_m)
+      .ARRAY_PROPERTY(CalibrationStatusMessage, mounting_angle_max_std_dev_deg);
+
+  static auto RelativeENUPositionMessage_MESSAGE_TYPE =
+      RelativeENUPositionMessage::MESSAGE_TYPE;
+  static auto RelativeENUPositionMessage_MESSAGE_VERSION =
+      RelativeENUPositionMessage::MESSAGE_VERSION;
+  static auto RelativeENUPositionMessage_INVALID_REFERENCE_STATION =
+      RelativeENUPositionMessage::INVALID_REFERENCE_STATION;
+  class_<RelativeENUPositionMessage>("RelativeENUPositionMessage")
+      .constructor<>()
+      .class_property("MESSAGE_TYPE", &RelativeENUPositionMessage_MESSAGE_TYPE)
+      .class_property("MESSAGE_VERSION",
+                      &RelativeENUPositionMessage_MESSAGE_VERSION)
+      .class_property("INVALID_REFERENCE_STATION",
+                      &RelativeENUPositionMessage_INVALID_REFERENCE_STATION)
+      .property("p1_time", &RelativeENUPositionMessage::p1_time)
+      .property("gps_time", &RelativeENUPositionMessage::gps_time)
+      .property("solution_type", &RelativeENUPositionMessage::solution_type)
+      .ARRAY_PROPERTY(RelativeENUPositionMessage, reserved)
+      .property("reference_station_id",
+                &RelativeENUPositionMessage::reference_station_id)
+      .ARRAY_PROPERTY(RelativeENUPositionMessage, relative_position_enu_m)
+      .ARRAY_PROPERTY(RelativeENUPositionMessage, position_std_enu_m)
+      .PARSE_FUNCTION(RelativeENUPositionMessage);
 }
