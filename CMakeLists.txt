@@ -11,6 +11,12 @@ project(p1_fusion_engine_client)
 # Option definitions.
 option(P1_FE_BUILD_EXAMPLES "Build example applications." ON)
 
+if (NOT DEFINED BUILD_SHARED_LIBS)
+    option(BUILD_SHARED_LIBS
+           "Build shared libraries instead of static libraries."
+           ON)
+endif()
+
 # Set additional compilation flags.
 if (MSVC)
     add_compile_options(/W4 /WX)
