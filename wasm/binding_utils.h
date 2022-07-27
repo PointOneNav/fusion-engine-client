@@ -13,14 +13,15 @@
         object.member + (sizeof(object.member) / sizeof(*object.member))); \
   })
 
-#define DEFINE_PARSE_FUNCTION(type)                                                   \
-  static const type* Parse##type(const emscripten::val& buffer, size_t size) { \
-    if (size < sizeof(type)) {                                                 \
-      return nullptr;                                                          \
-    } else {                                                                   \
-      return reinterpret_cast<const type*>(buffer.as<size_t>());               \
-    }                                                                          \
-  }
-
-#define PARSE_FUNCTION(type) \
-  class_function("Parse", &Parse##type, allow_raw_pointer<type*>())
+#define PARSE_FUNCTION(type)                                              \
+  class_function(                                                         \
+      "Parse"#type,                                                      \
+      select_overload<type*(const emscripten::val&, size_t)>(             \
+          [](const emscripten::val& buffer, size_t size_bytes) -> type* { \
+            if (size_bytes < sizeof(type)) {                              \
+              return nullptr;                                             \
+            } else {                                                      \
+              return reinterpret_cast<type*>(buffer.as<size_t>());        \
+            }                                                             \
+          }),                                                             \
+      allow_raw_pointer<type*>())

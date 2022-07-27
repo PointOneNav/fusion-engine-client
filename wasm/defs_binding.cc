@@ -12,9 +12,6 @@
 using namespace emscripten;
 using namespace point_one::fusion_engine::messages;
 
-DEFINE_PARSE_FUNCTION(Timestamp);
-DEFINE_PARSE_FUNCTION(MessageHeader);
-
 /******************************************************************************/
 EMSCRIPTEN_BINDINGS(defs) {
   enum_<MessageType>("MessageType")

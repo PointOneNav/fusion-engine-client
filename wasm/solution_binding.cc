@@ -12,9 +12,6 @@
 using namespace emscripten;
 using namespace point_one::fusion_engine::messages;
 
-DEFINE_PARSE_FUNCTION(PoseMessage);
-DEFINE_PARSE_FUNCTION(PoseAuxMessage);
-
 /******************************************************************************/
 EMSCRIPTEN_BINDINGS(solution) {
   static auto PoseMessage_MESSAGE_TYPE = PoseMessage::MESSAGE_TYPE;
