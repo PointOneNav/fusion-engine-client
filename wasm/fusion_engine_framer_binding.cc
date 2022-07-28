@@ -40,7 +40,16 @@ static void RegisterCallback(FusionEngineFramer& framer,
                             reinterpret_cast<const uint8_t*>(&header)));
       val payload_view(typed_memory_view(header.payload_size_bytes,
                                          static_cast<const uint8_t*>(payload)));
-      callback(header, payload_view, full_message_view);
+      // Note: Trying to pass `&header` to the callback directly results in a
+      // compiler error about implicitly binding raw pointers. In theory,
+      // passing the allow_raw_pointer<MessageHeader*>() policy to the callback
+      // should fix that, but it doesn't. For some reason, explicitly declaring
+      // a separate pointer seems to work without issue, and the object is a
+      // proper reference on the JS side, not a copy.
+      //
+      // Reference: https://github.com/emscripten-core/emscripten/issues/7084
+      auto header_ptr = &header;
+      callback(header_ptr, payload_view, full_message_view);
     });
   }
 }
