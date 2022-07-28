@@ -75,7 +75,8 @@ EMSCRIPTEN_BINDINGS(solution) {
       .property("usage", &SatelliteInfo::usage)
       .property("cn0", &SatelliteInfo::cn0)
       .property("azimuth_deg", &SatelliteInfo::azimuth_deg)
-      .property("elevation_deg", &SatelliteInfo::elevation_deg);
+      .property("elevation_deg", &SatelliteInfo::elevation_deg)
+      .PARSE_FUNCTION(SatelliteInfo);
 
   static auto GNSSSatelliteMessage_MESSAGE_TYPE =
       GNSSSatelliteMessage::MESSAGE_TYPE;
@@ -125,7 +126,8 @@ EMSCRIPTEN_BINDINGS(solution) {
       .ARRAY_PROPERTY(CalibrationStatusMessage, reserved4)
       .property("min_travel_distance_m",
                 &CalibrationStatusMessage::min_travel_distance_m)
-      .ARRAY_PROPERTY(CalibrationStatusMessage, mounting_angle_max_std_dev_deg);
+      .ARRAY_PROPERTY(CalibrationStatusMessage, mounting_angle_max_std_dev_deg)
+      .PARSE_FUNCTION(CalibrationStatusMessage);
 
   static auto RelativeENUPositionMessage_MESSAGE_TYPE =
       RelativeENUPositionMessage::MESSAGE_TYPE;
