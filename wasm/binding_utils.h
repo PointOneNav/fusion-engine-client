@@ -31,6 +31,10 @@
 #define CHLID_ACCESSOR(name, cls, max_field, child_cls) \
   CHLID_ACCESSOR_WITH_OFFSET(name, cls, max_field, child_cls, 0)
 
+#define CLEAR_FUNCTION(type) \
+  function("Clear",          \
+           select_overload<void(type & obj)>([](type& obj) { obj = type(); }))
+
 #define PARSE_FUNCTION(type)                                              \
   class_function(                                                         \
       "Parse",                                                            \
@@ -47,3 +51,6 @@
 #define SIZEOF_FUNCTION(type) \
   class_function("SizeOf",    \
                  select_overload<size_t()>([]() { return sizeof(type); }))
+
+#define STRUCT_FUNCTIONS(type) \
+  CLEAR_FUNCTION(type).SIZEOF_FUNCTION(type).PARSE_FUNCTION(type)

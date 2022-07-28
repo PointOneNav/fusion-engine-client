@@ -126,8 +126,7 @@ EMSCRIPTEN_BINDINGS(defs) {
                                            timestamp.fraction_ns * 1e-9;
                                   }
                                 }))
-      .SIZEOF_FUNCTION(Timestamp)
-      .PARSE_FUNCTION(Timestamp);
+      .STRUCT_FUNCTIONS(Timestamp);
 
   static auto MessageHeader_SYNC0 = MessageHeader::SYNC0;
   static auto MessageHeader_SYNC1 = MessageHeader::SYNC1;
@@ -147,8 +146,7 @@ EMSCRIPTEN_BINDINGS(defs) {
       .property("sequence_number", &MessageHeader::sequence_number)
       .property("payload_size_bytes", &MessageHeader::payload_size_bytes)
       .property("source_identifier", &MessageHeader::source_identifier)
-      .SIZEOF_FUNCTION(MessageHeader)
-      .PARSE_FUNCTION(MessageHeader);
+      .STRUCT_FUNCTIONS(MessageHeader);
 
   function("SetCRC", &SetMessageCRC);
   function("CalculateCRC", &SetMessageCRC);

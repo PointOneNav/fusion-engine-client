@@ -29,8 +29,7 @@ EMSCRIPTEN_BINDINGS(solution) {
       .property("undulation_cm", &PoseMessage::undulation_cm)
       .ARRAY_PROPERTY(PoseMessage, lla_deg)
       .ARRAY_PROPERTY(PoseMessage, position_std_enu_m)
-      .SIZEOF_FUNCTION(PoseMessage)
-      .PARSE_FUNCTION(PoseMessage);
+      .STRUCT_FUNCTIONS(PoseMessage);
 
   static auto PoseAuxMessage_MESSAGE_TYPE = PoseAuxMessage::MESSAGE_TYPE;
   static auto PoseAuxMessage_MESSAGE_VERSION = PoseAuxMessage::MESSAGE_VERSION;
@@ -44,8 +43,7 @@ EMSCRIPTEN_BINDINGS(solution) {
       .ARRAY_PROPERTY(PoseAuxMessage, attitude_quaternion)
       .ARRAY_PROPERTY(PoseAuxMessage, velocity_enu_mps)
       .ARRAY_PROPERTY(PoseAuxMessage, velocity_std_enu_mps)
-      .SIZEOF_FUNCTION(PoseAuxMessage)
-      .PARSE_FUNCTION(PoseAuxMessage);
+      .STRUCT_FUNCTIONS(PoseAuxMessage);
 
   static auto GNSSInfoMessage_MESSAGE_TYPE = GNSSInfoMessage::MESSAGE_TYPE;
   static auto GNSSInfoMessage_MESSAGE_VERSION =
@@ -64,8 +62,7 @@ EMSCRIPTEN_BINDINGS(solution) {
       .property("hdop", &GNSSInfoMessage::hdop)
       .property("vdop", &GNSSInfoMessage::vdop)
       .property("gps_time_std_sec", &GNSSInfoMessage::gps_time_std_sec)
-      .SIZEOF_FUNCTION(GNSSInfoMessage)
-      .PARSE_FUNCTION(GNSSInfoMessage);
+      .STRUCT_FUNCTIONS(GNSSInfoMessage);
 
   static auto SatelliteInfo_SATELLITE_USED = SatelliteInfo::SATELLITE_USED;
   static auto SatelliteInfo_INVALID_CN0 = SatelliteInfo::INVALID_CN0;
@@ -79,8 +76,7 @@ EMSCRIPTEN_BINDINGS(solution) {
       .property("cn0", &SatelliteInfo::cn0)
       .property("azimuth_deg", &SatelliteInfo::azimuth_deg)
       .property("elevation_deg", &SatelliteInfo::elevation_deg)
-      .SIZEOF_FUNCTION(SatelliteInfo)
-      .PARSE_FUNCTION(SatelliteInfo);
+      .STRUCT_FUNCTIONS(SatelliteInfo);
 
   static auto GNSSSatelliteMessage_MESSAGE_TYPE =
       GNSSSatelliteMessage::MESSAGE_TYPE;
@@ -96,8 +92,7 @@ EMSCRIPTEN_BINDINGS(solution) {
       .ARRAY_PROPERTY(GNSSSatelliteMessage, reserved)
       .CHLID_ACCESSOR("GetSatelliteInfo", GNSSSatelliteMessage, num_satellites,
                       SatelliteInfo)
-      .SIZEOF_FUNCTION(GNSSSatelliteMessage)
-      .PARSE_FUNCTION(GNSSSatelliteMessage);
+      .STRUCT_FUNCTIONS(GNSSSatelliteMessage);
 
   enum_<CalibrationStage>("CalibrationStage")
       .value("UNKNOWN", CalibrationStage::UNKNOWN)
@@ -132,8 +127,7 @@ EMSCRIPTEN_BINDINGS(solution) {
       .property("min_travel_distance_m",
                 &CalibrationStatusMessage::min_travel_distance_m)
       .ARRAY_PROPERTY(CalibrationStatusMessage, mounting_angle_max_std_dev_deg)
-      .SIZEOF_FUNCTION(CalibrationStatusMessage)
-      .PARSE_FUNCTION(CalibrationStatusMessage);
+      .STRUCT_FUNCTIONS(CalibrationStatusMessage);
 
   static auto RelativeENUPositionMessage_MESSAGE_TYPE =
       RelativeENUPositionMessage::MESSAGE_TYPE;
@@ -156,6 +150,5 @@ EMSCRIPTEN_BINDINGS(solution) {
                 &RelativeENUPositionMessage::reference_station_id)
       .ARRAY_PROPERTY(RelativeENUPositionMessage, relative_position_enu_m)
       .ARRAY_PROPERTY(RelativeENUPositionMessage, position_std_enu_m)
-      .SIZEOF_FUNCTION(RelativeENUPositionMessage)
-      .PARSE_FUNCTION(RelativeENUPositionMessage);
+      .STRUCT_FUNCTIONS(RelativeENUPositionMessage);
 }
