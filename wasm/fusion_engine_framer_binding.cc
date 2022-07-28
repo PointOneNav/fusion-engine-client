@@ -31,9 +31,9 @@ static void RegisterCallback(FusionEngineFramer& framer,
       //
       // For example:
       //   function Callback(header, payload, buffer) {
-      //     // header is a FusionEngine.MessageHeader object
-      //     // ArrayBuffer.isView(payload) returns true
-      //     // ArrayBuffer.isView(buffer) returns true
+      //     // (header instanceof FusionEngine.MessageHeader) == true
+      //     // (payload instanceof Uint8Array) == true
+      //     // (buffer instanceof Uint8Array) == true
       //   }
       val full_message_view(
           typed_memory_view(sizeof(MessageHeader) + header.payload_size_bytes,
