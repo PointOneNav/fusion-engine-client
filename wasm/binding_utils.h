@@ -43,3 +43,7 @@
             }                                                             \
           }),                                                             \
       allow_raw_pointer<type*>())
+
+#define SIZEOF_FUNCTION(type) \
+  class_function("SizeOf",    \
+                 select_overload<size_t()>([]() { return sizeof(type); }))
