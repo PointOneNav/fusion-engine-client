@@ -126,6 +126,17 @@ EMSCRIPTEN_BINDINGS(defs) {
                                            timestamp.fraction_ns * 1e-9;
                                   }
                                 }))
+      .function("SetValue", select_overload<void(Timestamp&, double)>(
+                                [](Timestamp& timestamp, double value_sec) {
+                                  if (std::isnan(value_sec)) {
+                                    timestamp.seconds = Timestamp::INVALID;
+                                    timestamp.fraction_ns = Timestamp::INVALID;
+                                  } else {
+                                    timestamp.seconds = std::floor(value_sec);
+                                    timestamp.fraction_ns = std::lround(
+                                        (value_sec - timestamp.seconds) * 1e9);
+                                  }
+                                }))
       .STRUCT_FUNCTIONS(Timestamp);
 
   static auto MessageHeader_SYNC0 = MessageHeader::SYNC0;
