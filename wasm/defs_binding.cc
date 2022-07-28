@@ -6,11 +6,24 @@
 #include <emscripten/emscripten.h>
 
 #include <point_one/fusion_engine/messages/core.h>
+#include <point_one/fusion_engine/messages/crc.h>
 
 #include "binding_utils.h"
 
 using namespace emscripten;
 using namespace point_one::fusion_engine::messages;
+
+/******************************************************************************/
+static void SetMessageCRC(const emscripten::val& buffer) {
+  auto header = reinterpret_cast<MessageHeader*>(buffer.as<size_t>());
+  header->crc = CalculateCRC(header);
+}
+
+/******************************************************************************/
+static uint32_t CalculateMessageCRC(const emscripten::val& buffer) {
+  auto header = reinterpret_cast<const MessageHeader*>(buffer.as<size_t>());
+  return CalculateCRC(header);
+}
 
 /******************************************************************************/
 EMSCRIPTEN_BINDINGS(defs) {
@@ -136,4 +149,7 @@ EMSCRIPTEN_BINDINGS(defs) {
       .property("source_identifier", &MessageHeader::source_identifier)
       .SIZEOF_FUNCTION(MessageHeader)
       .PARSE_FUNCTION(MessageHeader);
+
+  function("SetCRC", &SetMessageCRC);
+  function("CalculateCRC", &SetMessageCRC);
 }
