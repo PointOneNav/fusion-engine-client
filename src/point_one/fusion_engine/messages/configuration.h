@@ -117,6 +117,13 @@ enum class ConfigType : uint16_t {
    * Payload format: `bool`
    */
   UART2_OUTPUT_DIAGNOSTICS_MESSAGES = 259,
+
+  /**
+   * Enable watchdog timer to restart device after fatal errors.
+   *
+   * Payload format: `bool`
+   */
+  ENABLE_WATCHDOG_TIMER = 300,
 };
 
 /**
@@ -164,6 +171,9 @@ inline const char* to_string(ConfigType type) {
 
     case ConfigType::UART2_OUTPUT_DIAGNOSTICS_MESSAGES:
       return "UART2 Diagnostic Messages Enabled";
+
+    case ConfigType::ENABLE_WATCHDOG_TIMER:
+      return "Watchdog Timer Enabled";
 
     default:
       return "Unrecognized Configuration";
