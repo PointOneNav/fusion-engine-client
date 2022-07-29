@@ -90,7 +90,7 @@ EMSCRIPTEN_BINDINGS(solution) {
       .property("gps_time", &GNSSSatelliteMessage::gps_time)
       .property("num_satellites", &GNSSSatelliteMessage::num_satellites)
       .ARRAY_PROPERTY(GNSSSatelliteMessage, reserved)
-      .CHLID_ACCESSOR("GetSatelliteInfo", GNSSSatelliteMessage, num_satellites,
+      .CHILD_ACCESSOR("GetSatelliteInfo", GNSSSatelliteMessage, num_satellites,
                       SatelliteInfo)
       .STRUCT_FUNCTIONS(GNSSSatelliteMessage);
 

@@ -13,7 +13,7 @@
         object.member + (sizeof(object.member) / sizeof(*object.member))); \
   })
 
-#define CHLID_ACCESSOR_WITH_OFFSET(name, cls, max_field, child_cls, \
+#define CHILD_ACCESSOR_WITH_OFFSET(name, cls, max_field, child_cls, \
                                    offset_bytes)                    \
   function(name,                                                    \
            select_overload<child_cls*(cls&, size_t)>(               \
@@ -28,8 +28,8 @@
                }),                                                  \
            allow_raw_pointer<child_cls*>())
 
-#define CHLID_ACCESSOR(name, cls, max_field, child_cls) \
-  CHLID_ACCESSOR_WITH_OFFSET(name, cls, max_field, child_cls, 0)
+#define CHILD_ACCESSOR(name, cls, max_field, child_cls) \
+  CHILD_ACCESSOR_WITH_OFFSET(name, cls, max_field, child_cls, 0)
 
 #define CLEAR_FUNCTION(type) \
   function("Clear",          \
