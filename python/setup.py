@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='fusion-engine-client',
-    version='v1.11.1',
+    version='v1.11.2',
     packages=find_packages(where='.'),
     install_requires=[
         'wheel>=0.36.2',
