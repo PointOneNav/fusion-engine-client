@@ -37,6 +37,9 @@
           let input_buffer = FE.HEAPU8.subarray(input_storage, input_storage + 1024);
 
           // Send a pose message.
+          console.log("********************************************************************************");
+          console.log("-- Decode an incoming binary message.");
+
           input_buffer[0] = 0x2E;
           input_buffer[1] = 0x31;
           input_buffer[2] = 0x00;
@@ -201,6 +204,46 @@
           input_buffer[161] = 0x99;
           input_buffer[162] = 0x99;
           input_buffer[163] = 0x3E;
+
+          framer.OnData(input_buffer.byteOffset, input_buffer.length);
+
+          // Now we'll try encoding a message to be sent to a device. We'll reuse the input buffer, but overwrite its
+          // contents. First, we'll set it to all 0xFF, just to demonstrate that Clear() will reset the memory to a
+          // default-constructed struct value.
+          console.log("********************************************************************************");
+          console.log("-- Encode a message to be sent.");
+
+          input_buffer.fill(0xFF);
+
+          let header = FE.MessageHeader.Parse(input_buffer.byteOffset, input_buffer.length);
+          let payload_offset = FE.MessageHeader.SizeOf();
+          let pose = FE.PoseMessage.Parse(input_buffer.byteOffset + payload_offset,
+                                          input_buffer.length - payload_offset);
+
+          header.Clear();
+          header.message_type = FE.MessageType.POSE;
+          header.payload_size_bytes = FE.PoseMessage.SizeOf();
+          header.source_identifier = 111;
+
+          pose.Clear();
+
+          // Note: There is currently an issue in Embind that causes it to make duplicate copies of non-primitive struct
+          // members whenever you access them, rather than accessing them by reference. That means that if you do:
+          //   pose.p1_time.SetValue(654.321)
+          // Embind will actually create a _copy_ of p1_time. It will not modify the actual contents of pose or the
+          // underlying byte buffer.
+          //
+          // In fact, even reading the object's primitive fields like:
+          //   let seconds = pose.p1_time.seconds
+          // will _still_ make a duplicate copy of p1_time. In this case, since you're just reading you won't get an
+          // unexpected result, but it will be less efficient since it has to make an unnecessary copy.
+          //
+          // To work around this, all non-primitive member variables have a RefTo_*() function you can call to get an
+          // actual reference to that member. Then you can use that reference as expected.
+          let p1_time = pose.RefTo_p1_time();
+          p1_time.SetValue(654.321);
+
+          FE.SetCRC(input_buffer.byteOffset);
 
           framer.OnData(input_buffer.byteOffset, input_buffer.length);
 
