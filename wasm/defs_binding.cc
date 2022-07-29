@@ -157,7 +157,12 @@ EMSCRIPTEN_BINDINGS(defs) {
       .property("sequence_number", &MessageHeader::sequence_number)
       .property("payload_size_bytes", &MessageHeader::payload_size_bytes)
       .property("source_identifier", &MessageHeader::source_identifier)
-      .STRUCT_FUNCTIONS(MessageHeader);
+      .STRUCT_FUNCTIONS(MessageHeader)
+      .function("GetMessageSize", select_overload<size_t(const MessageHeader&)>(
+                                      [](const MessageHeader& message) {
+                                        return sizeof(MessageHeader) +
+                                               message.payload_size_bytes;
+                                      }));
 
   function("SetCRC", &SetMessageCRC);
   function("CalculateCRC", &SetMessageCRC);
