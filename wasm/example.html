@@ -23,8 +23,12 @@
             console.log("Got " + header.message_type.value + " message (" + full_message.length + " bytes).");
             if (header.message_type == FE.MessageType.POSE) {
               let pose = FE.PoseMessage.Parse(payload.byteOffset, payload.length);
-              console.log("P1 time: " + pose.p1_time.GetValue());
-              console.log("GPS time: " + pose.gps_time.GetValue());
+
+              // See the note below about efficiency for accessing timestamps non-primitive struct members.
+              //console.log("P1 time: " + pose.p1_time.GetValue());
+              console.log("P1 time: " + pose.RefTo_p1_time().GetValue());
+              //console.log("GPS time: " + pose.gps_time.GetValue());
+              console.log("GPS time: " + pose.RefTo_gps_time().GetValue());
             }
           });
 

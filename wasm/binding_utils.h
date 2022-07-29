@@ -31,6 +31,16 @@
 #define CHILD_ACCESSOR(name, cls, max_field, child_cls) \
   CHILD_ACCESSOR_WITH_OFFSET(name, cls, max_field, child_cls, 0)
 
+#define REF_TO(cls, member)                                                    \
+  function(                                                                    \
+      "RefTo_" #member,                                                        \
+      select_overload<decltype(cls::member)*(cls&)>(                           \
+          [](cls& message) -> decltype(cls::member)* {                         \
+            return reinterpret_cast<decltype(cls::member)*>(                   \
+                reinterpret_cast<uint8_t*>(&message) + offsetof(cls, member)); \
+          }),                                                                  \
+      allow_raw_pointer<decltype(cls::member)*>())
+
 #define CLEAR_FUNCTION(type) \
   function("Clear",          \
            select_overload<void(type & obj)>([](type& obj) { obj = type(); }))

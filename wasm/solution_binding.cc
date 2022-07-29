@@ -23,7 +23,9 @@ EMSCRIPTEN_BINDINGS(solution) {
       .class_property("MESSAGE_VERSION", &PoseMessage_MESSAGE_VERSION)
       .class_property("INVALID_UNDULATION", &PoseMessage_INVALID_UNDULATION)
       .property("p1_time", &PoseMessage::p1_time)
+      .REF_TO(PoseMessage, p1_time)
       .property("gps_time", &PoseMessage::gps_time)
+      .REF_TO(PoseMessage, gps_time)
       .property("solution_type", &PoseMessage::solution_type)
       .property("reserved", &PoseMessage::reserved)
       .property("undulation_cm", &PoseMessage::undulation_cm)
@@ -38,6 +40,7 @@ EMSCRIPTEN_BINDINGS(solution) {
       .class_property("MESSAGE_TYPE", &PoseAuxMessage_MESSAGE_TYPE)
       .class_property("MESSAGE_VERSION", &PoseAuxMessage_MESSAGE_VERSION)
       .property("p1_time", &PoseAuxMessage::p1_time)
+      .REF_TO(PoseAuxMessage, p1_time)
       .ARRAY_PROPERTY(PoseAuxMessage, position_std_body_m)
       .ARRAY_PROPERTY(PoseAuxMessage, position_cov_enu_m2)
       .ARRAY_PROPERTY(PoseAuxMessage, attitude_quaternion)
@@ -53,9 +56,12 @@ EMSCRIPTEN_BINDINGS(solution) {
       .class_property("MESSAGE_TYPE", &GNSSInfoMessage_MESSAGE_TYPE)
       .class_property("MESSAGE_VERSION", &GNSSInfoMessage_MESSAGE_VERSION)
       .property("p1_time", &GNSSInfoMessage::p1_time)
+      .REF_TO(GNSSInfoMessage, p1_time)
       .property("gps_time", &GNSSInfoMessage::gps_time)
+      .REF_TO(GNSSInfoMessage, gps_time)
       .property("last_differential_time",
                 &GNSSInfoMessage::last_differential_time)
+      .REF_TO(GNSSInfoMessage, last_differential_time)
       .property("reference_station_id", &GNSSInfoMessage::reference_station_id)
       .property("gdop", &GNSSInfoMessage::gdop)
       .property("pdop", &GNSSInfoMessage::pdop)
@@ -87,7 +93,9 @@ EMSCRIPTEN_BINDINGS(solution) {
       .class_property("MESSAGE_TYPE", &GNSSSatelliteMessage_MESSAGE_TYPE)
       .class_property("MESSAGE_VERSION", &GNSSSatelliteMessage_MESSAGE_VERSION)
       .property("p1_time", &GNSSSatelliteMessage::p1_time)
+      .REF_TO(GNSSSatelliteMessage, p1_time)
       .property("gps_time", &GNSSSatelliteMessage::gps_time)
+      .REF_TO(GNSSSatelliteMessage, gps_time)
       .property("num_satellites", &GNSSSatelliteMessage::num_satellites)
       .ARRAY_PROPERTY(GNSSSatelliteMessage, reserved)
       .CHILD_ACCESSOR("GetSatelliteInfo", GNSSSatelliteMessage, num_satellites,
@@ -109,6 +117,7 @@ EMSCRIPTEN_BINDINGS(solution) {
       .class_property("MESSAGE_VERSION",
                       &CalibrationStatusMessage_MESSAGE_VERSION)
       .property("p1_time", &CalibrationStatusMessage::p1_time)
+      .REF_TO(CalibrationStatusMessage, p1_time)
       .ARRAY_PROPERTY(CalibrationStatusMessage, reserved1)
       .ARRAY_PROPERTY(CalibrationStatusMessage, ypr_deg)
       .ARRAY_PROPERTY(CalibrationStatusMessage, ypr_std_dev_deg)
@@ -143,7 +152,9 @@ EMSCRIPTEN_BINDINGS(solution) {
       .class_property("INVALID_REFERENCE_STATION",
                       &RelativeENUPositionMessage_INVALID_REFERENCE_STATION)
       .property("p1_time", &RelativeENUPositionMessage::p1_time)
+      .REF_TO(RelativeENUPositionMessage, p1_time)
       .property("gps_time", &RelativeENUPositionMessage::gps_time)
+      .REF_TO(RelativeENUPositionMessage, gps_time)
       .property("solution_type", &RelativeENUPositionMessage::solution_type)
       .ARRAY_PROPERTY(RelativeENUPositionMessage, reserved)
       .property("reference_station_id",
