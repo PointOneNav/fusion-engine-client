@@ -205,7 +205,21 @@
           input_buffer[162] = 0x99;
           input_buffer[163] = 0x3E;
 
-          framer.OnData(input_buffer.byteOffset, input_buffer.length);
+          let message_length = 164;
+
+          // We'll insert some junk before and after the message to demonstrate the framer's role in locating and
+          // validating the message.
+          for (let i = message_length - 1; i >= 0; --i) {
+            input_buffer[i + 24] = input_buffer[i];
+          }
+
+          input_buffer.subarray(0, 24).fill(0xAA);
+          message_length += 24;
+
+          input_buffer.subarray(message_length, message_length + 16).fill(0xBB);
+          message_length += 16;
+
+          framer.OnData(input_buffer.byteOffset, message_length);
 
           // Now we'll try encoding a message to be sent to a device. We'll reuse the input buffer, but overwrite its
           // contents. First, we'll set it to all 0xFF, just to demonstrate that Clear() will reset the memory to a
