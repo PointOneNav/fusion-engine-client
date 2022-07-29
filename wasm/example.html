@@ -15,6 +15,10 @@
 
     <script type='text/javascript'>
       FE = {
+        print: function () {
+          text = Array.prototype.slice.call(arguments).join(' ');
+          console.log('GOT ' + text);
+        },
         onRuntimeInitialized: function() {
           // Create a framer and register for framed message callbacks.
           let framer = new FE.FusionEngineFramer(1024);
@@ -259,7 +263,10 @@
 
           FE.SetCRC(input_buffer.byteOffset);
 
-          framer.OnData(input_buffer.byteOffset, input_buffer.length);
+          // input_buffer now contains a valid FusionEngine message ready to be sent to a device. Pass it to the framer
+          // and decode it to verify.
+          message_length = header.GetMessageSize();
+          framer.OnData(input_buffer.byteOffset, message_length);
 
           // Cleanup.
           FE._free(input_storage);
