@@ -1,8 +1,10 @@
 from collections import defaultdict
 import logging
+import textwrap
 from typing import List, Dict, Callable, Optional, Tuple, Union
 
 from ..messages import MessageHeader, MessageType, MessagePayload, message_type_to_class
+from ..utils import trace
 
 _logger = logging.getLogger('point_one.fusion_engine.parsers.decoder')
 
@@ -103,6 +105,10 @@ class FusionEngineDecoder:
         if len(data) == 0:
             return []
 
+        _logger.trace('Received %d bytes. [total_received=%d B, stream_offset=%d B (0x%x)]' %
+                      (len(data), self._bytes_processed + len(data), self._bytes_processed, self._bytes_processed))
+        if _logger.isEnabledFor(logging.TRACE - 1):
+            _logger.trace(self._get_byte_string(data), depth=2)
         # Append the new data to the buffer.
         self._buffer += data
 
@@ -128,6 +134,14 @@ class FusionEngineDecoder:
                 # Possible header found. Decode it and wait for the payload.
                 self._header = MessageHeader()
                 self._header.unpack(self._buffer, warn_on_unrecognized=False)
+
+                _logger.trace('Found candidate header. [type=%s, sequence=%d, payload_size=%d B, '
+                              'stream_offset=%d B (0x%x)]' %
+                              (self._header.get_type_string(), self._header.sequence_number,
+                               self._header.payload_size_bytes, self._bytes_processed, self._bytes_processed))
+                if _logger.isEnabledFor(logging.TRACE):
+                    _logger.trace(self._get_byte_string(self._buffer[:MessageHeader.calcsize()]))
+
                 self._msg_len = self._header.payload_size_bytes + MessageHeader.calcsize()
                 if self._header.payload_size_bytes > self._max_payload_len_bytes:
                     print_func = _logger.warning if self._warn_on_error else _logger.debug
@@ -149,6 +163,8 @@ class FusionEngineDecoder:
             except Exception as e:
                 print_func = _logger.warning if self._warn_on_error else _logger.debug
                 print_func(e)
+                if _logger.isEnabledFor(logging.TRACE):
+                    _logger.trace(self._get_byte_string(self._buffer[:self._msg_len]))
                 self._header = None
                 self._msg_len = 0
                 self._buffer.pop(0)
@@ -219,3 +235,7 @@ class FusionEngineDecoder:
 
         # Return the list of decoded messages.
         return decoded_messages
+
+    @classmethod
+    def _get_byte_string(cls, buffer, bytes_per_line=32):
+        return '\n'.join(textwrap.wrap(' '.join(['%02X' % b for b in buffer]), (3 * bytes_per_line - 1)))
