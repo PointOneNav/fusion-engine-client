@@ -206,12 +206,24 @@ class FusionEngineDecoder:
                 continue
 
             # Check for sequence number gaps.
-            if self._last_sequence_number is not None and self._warn_on_seq_skip:
+            if self._last_sequence_number is not None:
+                # If we got this far, the message is valid and the CRC passed, so we expect the sequence number to go
+                # forward. If it goes backward, treat this as unexpected and warn if errors for "likely" messages are
+                # enabled.
                 expected_sequence_number = (self._last_sequence_number + 1) % 2**32
-                if self._header.sequence_number != expected_sequence_number:
-                    _logger.warning("Gap detected in FusionEngine message sequence numbers. [expected=%d, "
-                                    "received=%d].",
-                                    expected_sequence_number, self._header.sequence_number)
+                if (self._header.sequence_number < self._last_sequence_number and
+                    self._warn_on_error >= self.WarnOnError.LIKELY):
+                    _logger.warning("Sequence number went backwards on %s message. [expected=%d, "
+                                    "received=%d, payload_size=%d B].",
+                                    self._header.get_type_string(), expected_sequence_number,
+                                    self._header.sequence_number, self._header.payload_size_bytes)
+                # Otherwise, if there is a gap in the sequence numbers in either direction, report it only if the user
+                # specifically requested gap reporting.
+                elif self._warn_on_seq_skip:
+                    if self._header.sequence_number != expected_sequence_number:
+                        _logger.warning("Gap detected in FusionEngine message sequence numbers. [expected=%d, "
+                                        "received=%d].",
+                                        expected_sequence_number, self._header.sequence_number)
             self._last_sequence_number = self._header.sequence_number
 
             # Get the class for the received message type and deserialize the message payload. If cls is not None, it is
