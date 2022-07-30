@@ -155,6 +155,8 @@ class FusionEngineDecoder:
                 break
 
             # Message complete.
+            _logger.trace('Collected complete message. [message_size=%d B, payload_size=%d B]' %
+                          (self._header.get_message_size(), self._header.payload_size_bytes))
             self._trace_buffer(self._buffer[:self._msg_len])
 
             # Validate the CRC. This will raise an exception on CRC failure.
