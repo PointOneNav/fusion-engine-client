@@ -107,8 +107,7 @@ class FusionEngineDecoder:
 
         _logger.trace('Received %d bytes. [total_received=%d B, stream_offset=%d B (0x%x)]' %
                       (len(data), self._bytes_processed + len(data), self._bytes_processed, self._bytes_processed))
-        if _logger.isEnabledFor(logging.TRACE - 1):
-            _logger.trace(self._get_byte_string(data), depth=2)
+        self._trace_buffer(data, depth=2)
         # Append the new data to the buffer.
         self._buffer += data
 
@@ -139,8 +138,7 @@ class FusionEngineDecoder:
                               'stream_offset=%d B (0x%x)]' %
                               (self._header.get_type_string(), self._header.sequence_number,
                                self._header.payload_size_bytes, self._bytes_processed, self._bytes_processed))
-                if _logger.isEnabledFor(logging.TRACE):
-                    _logger.trace(self._get_byte_string(self._buffer[:MessageHeader.calcsize()]))
+                self._trace_buffer(self._buffer[:MessageHeader.calcsize()])
 
                 self._msg_len = self._header.payload_size_bytes + MessageHeader.calcsize()
                 if self._header.payload_size_bytes > self._max_payload_len_bytes:
@@ -156,6 +154,9 @@ class FusionEngineDecoder:
             if len(self._buffer) < self._msg_len:
                 break
 
+            # Message complete.
+            self._trace_buffer(self._buffer[:self._msg_len])
+
             # Validate the CRC. This will raise an exception on CRC failure.
             try:
                 self._header.validate_crc(self._buffer)
@@ -163,8 +164,6 @@ class FusionEngineDecoder:
             except Exception as e:
                 print_func = _logger.warning if self._warn_on_error else _logger.debug
                 print_func(e)
-                if _logger.isEnabledFor(logging.TRACE):
-                    _logger.trace(self._get_byte_string(self._buffer[:self._msg_len]))
                 self._header = None
                 self._msg_len = 0
                 self._buffer.pop(0)
@@ -235,6 +234,11 @@ class FusionEngineDecoder:
 
         # Return the list of decoded messages.
         return decoded_messages
+
+    @classmethod
+    def _trace_buffer(cls, buffer, depth=1, bytes_per_line=32):
+        if _logger.isEnabledFor(logging.TRACE, depth=depth):
+            _logger.trace('\n' + cls._get_byte_string(buffer, bytes_per_line=bytes_per_line), depth=depth)
 
     @classmethod
     def _get_byte_string(cls, buffer, bytes_per_line=32):
