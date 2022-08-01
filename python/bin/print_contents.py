@@ -65,6 +65,8 @@ other types of data.
         help="The desired time range to be analyzed. Both start and end may be omitted to read from beginning or to "
              "the end of the file. By default, timestamps are treated as relative to the first message in the file. "
              "See --absolute-time.")
+    parser.add_argument('-v', '--verbose', action='count', default=0,
+                        help="Print verbose/trace debugging messages.")
 
     log_parser = parser.add_argument_group('Log Control')
     log_parser.add_argument(
@@ -86,7 +88,15 @@ other types of data.
     options = parser.parse_args()
 
     # Configure logging.
-    logging.basicConfig(level=logging.INFO, format='%(message)s')
+    if options.verbose >= 1:
+        logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(name)s:%(lineno)d - %(message)s')
+        if options.verbose == 1:
+            logging.getLogger('point_one.fusion_engine.parsers.decoder').setLevel(logging.DEBUG)
+        else:
+            logging.getLogger('point_one.fusion_engine.parsers.decoder').setLevel(logging.TRACE,
+                                                                                  depth=options.verbose - 1)
+    else:
+        logging.basicConfig(level=logging.INFO, format='%(message)s')
 
     # Locate the input file and set the output directory.
     input_path, log_id = locate_log(input_path=options.log, log_base_dir=options.log_base_dir, return_log_id=True,
