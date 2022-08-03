@@ -89,14 +89,15 @@ other types of data.
 
     # Configure logging.
     if options.verbose >= 1:
-        logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(name)s:%(lineno)d - %(message)s')
+        logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(name)s:%(lineno)d - %(message)s',
+                            stream=sys.stdout)
         if options.verbose == 1:
             logging.getLogger('point_one.fusion_engine.parsers.decoder').setLevel(logging.DEBUG)
         else:
             logging.getLogger('point_one.fusion_engine.parsers.decoder').setLevel(logging.TRACE,
                                                                                   depth=options.verbose - 1)
     else:
-        logging.basicConfig(level=logging.INFO, format='%(message)s')
+        logging.basicConfig(level=logging.INFO, format='%(message)s', stream=sys.stdout)
 
     # Locate the input file and set the output directory.
     input_path, log_id = locate_log(input_path=options.log, log_base_dir=options.log_base_dir, return_log_id=True,

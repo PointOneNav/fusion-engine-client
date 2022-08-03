@@ -1219,13 +1219,14 @@ Load and display information stored in a FusionEngine binary file.
 
     # Configure logging.
     if options.verbose >= 1:
-        logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(name)s:%(lineno)d - %(message)s')
+        logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(name)s:%(lineno)d - %(message)s',
+                            stream=sys.stdout)
         if options.verbose == 1:
             logging.getLogger('point_one.fusion_engine').setLevel(logging.DEBUG)
         else:
             logging.getLogger('point_one.fusion_engine').setLevel(logging.TRACE)
     else:
-        logging.basicConfig(level=logging.INFO, format='%(message)s')
+        logging.basicConfig(level=logging.INFO, format='%(message)s', stream=sys.stdout)
 
     # Parse the time range.
     if options.time is not None:
