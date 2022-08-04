@@ -9,6 +9,7 @@ import os
 import re
 import sys
 import webbrowser
+from aenum import Enum
 
 from gpstime import gpstime
 import plotly
@@ -1637,6 +1638,27 @@ class Analyzer(object):
         if auto_open:
             self._open_browser(index_path)
 
+    def _parse_crash_log(self, storage_messages: List[PlatformStorageDataMessage]):
+        class CrashType(IntEnum):
+            CRASH_TYPE_NONE = 0,
+            CRASH_TYPE_HARD_FAULT = 1,
+            CRASH_TYPE_MALLOC_FAIL = 2,
+            CRASH_TYPE_STACK_OVERFLOW = 3,
+            CRASH_TYPE_ABORT = 4
+
+        crash_info_format = '<BI'
+        format_len = struct.calcsize(crash_info_format)
+
+        for msg in storage_messages:
+            if msg.data_type == DataType.CRASH_LOG:
+                if len(msg.data) < format_len:
+                    self.logger.warn('Crashlog with unexpectedly short %d bytes of data.' % len(msg.data))
+                else:
+                    crash_type, crash_count = struct.unpack(crash_info_format, msg.data[:format_len])
+                    return CrashType(crash_type), crash_count
+
+        return (CrashType.CRASH_TYPE_NONE, 0)
+
     def _set_data_summary(self):
         # Generate an index file, which we need to calculate the log duration, in case it wasn't created earlier (i.e.,
         # we didn't read anything to plot).
@@ -1703,19 +1725,26 @@ class Analyzer(object):
         else:
             version_table = 'No version information.'
 
+        # Check the last CrashLog
+        result = self.reader.read(message_types=[PlatformStorageDataMessage], remove_nan_times=False, **self.params)
+        crash_type, crash_count = self._parse_crash_log(result[PlatformStorageDataMessage.MESSAGE_TYPE].messages)
+        crash_table = _data_to_table(['Last Crash Type', 'Crash Count'], [[crash_type.name], [crash_count]])
+
         # Now populate the summary.
         if self.summary != '':
             self.summary += '\n\n'
 
         args = {
-            'duration_sec': duration_sec,
             'message_table': message_table,
             'version_table': version_table,
             'solution_type_table': solution_type_table,
+            'crash_table': crash_table,
         }
 
         self.summary += """
 %(version_table)s
+
+%(crash_table)s
 
 %(solution_type_table)s
 

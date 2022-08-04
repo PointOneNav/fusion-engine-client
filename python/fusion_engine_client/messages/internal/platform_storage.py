@@ -60,7 +60,7 @@ class PlatformStorageDataMessage(MessagePayload):
 
     def __init__(self, user_config=None):
         self.data_version = ConfigVersion(0, 0)
-        self.data_type = 255
+        self.data_type = DataType.CALIBRATION_STATE
         self.data_validity = 0
         self.data = bytes()
 
