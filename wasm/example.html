@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>FusionEngine Emscripten Binding Test</title>
+  </head>
+  <body>
+    <!--
+      Important: If opening this file on your local computer, your browser may
+      refuse to load the WASM script below because of its CORS policy. The
+      easiest solution is to run Apache or another web server locally, and then
+      access the files through that.
+    -->
+
+    <script type='text/javascript'>
+      FE = {
+        print: function () {
+          text = Array.prototype.slice.call(arguments).join(' ');
+          console.log('GOT ' + text);
+        },
+        onRuntimeInitialized: function() {
+          // Create a framer and register for framed message callbacks.
+          let framer = new FE.FusionEngineFramer(1024);
+
+          framer.SetMessageCallback(function(header, payload, full_message) {
+            console.log("Got " + header.message_type.value + " message (" + full_message.length + " bytes).");
+            if (header.message_type == FE.MessageType.POSE) {
+              let pose = FE.PoseMessage.Parse(payload.byteOffset, payload.length);
+
+              // See the note below about efficiency for accessing timestamps non-primitive struct members.
+              //console.log("P1 time: " + pose.p1_time.GetValue());
+              console.log("P1 time: " + pose.RefTo_p1_time().GetValue());
+              //console.log("GPS time: " + pose.gps_time.GetValue());
+              console.log("GPS time: " + pose.RefTo_gps_time().GetValue());
+            }
+          });
+
+          // Allocate a buffer we'll use to pass data into the framer.
+          let input_storage = FE._malloc(1024);
+          let input_buffer = FE.HEAPU8.subarray(input_storage, input_storage + 1024);
+
+          // Send a pose message.
+          console.log("********************************************************************************");
+          console.log("-- Decode an incoming binary message.");
+
+          input_buffer[0] = 0x2E;
+          input_buffer[1] = 0x31;
+          input_buffer[2] = 0x00;
+          input_buffer[3] = 0x00;
+          input_buffer[4] = 0x32;
+          input_buffer[5] = 0x99;
+          input_buffer[6] = 0x9B;
+          input_buffer[7] = 0x69;
+          input_buffer[8] = 0x02;
+          input_buffer[9] = 0x00;
+          input_buffer[10] = 0x10;
+          input_buffer[11] = 0x27;
+          input_buffer[12] = 0x00;
+          input_buffer[13] = 0x00;
+          input_buffer[14] = 0x00;
+          input_buffer[15] = 0x00;
+          input_buffer[16] = 0x8C;
+          input_buffer[17] = 0x00;
+          input_buffer[18] = 0x00;
+          input_buffer[19] = 0x00;
+          input_buffer[20] = 0xFF;
+          input_buffer[21] = 0xFF;
+          input_buffer[22] = 0xFF;
+          input_buffer[23] = 0xFF;
+          input_buffer[24] = 0x7B;
+          input_buffer[25] = 0x00;
+          input_buffer[26] = 0x00;
+          input_buffer[27] = 0x00;
+          input_buffer[28] = 0x00;
+          input_buffer[29] = 0x02;
+          input_buffer[30] = 0x2E;
+          input_buffer[31] = 0x1B;
+          input_buffer[32] = 0xDF;
+          input_buffer[33] = 0x1B;
+          input_buffer[34] = 0x74;
+          input_buffer[35] = 0x4C;
+          input_buffer[36] = 0x00;
+          input_buffer[37] = 0xC2;
+          input_buffer[38] = 0xEB;
+          input_buffer[39] = 0x0B;
+          input_buffer[40] = 0x04;
+          input_buffer[41] = 0x00;
+          input_buffer[42] = 0x00;
+          input_buffer[43] = 0x00;
+          input_buffer[44] = 0x76;
+          input_buffer[45] = 0x6B;
+          input_buffer[46] = 0x99;
+          input_buffer[47] = 0x0C;
+          input_buffer[48] = 0xC7;
+          input_buffer[49] = 0xE5;
+          input_buffer[50] = 0x42;
+          input_buffer[51] = 0x40;
+          input_buffer[52] = 0x53;
+          input_buffer[53] = 0x95;
+          input_buffer[54] = 0xB6;
+          input_buffer[55] = 0xB8;
+          input_buffer[56] = 0xC6;
+          input_buffer[57] = 0x99;
+          input_buffer[58] = 0x5E;
+          input_buffer[59] = 0xC0;
+          input_buffer[60] = 0x66;
+          input_buffer[61] = 0x66;
+          input_buffer[62] = 0x66;
+          input_buffer[63] = 0x66;
+          input_buffer[64] = 0x66;
+          input_buffer[65] = 0x66;
+          input_buffer[66] = 0x44;
+          input_buffer[67] = 0x40;
+          input_buffer[68] = 0xCD;
+          input_buffer[69] = 0xCC;
+          input_buffer[70] = 0xCC;
+          input_buffer[71] = 0x3D;
+          input_buffer[72] = 0xCD;
+          input_buffer[73] = 0xCC;
+          input_buffer[74] = 0xCC;
+          input_buffer[75] = 0x3D;
+          input_buffer[76] = 0xCD;
+          input_buffer[77] = 0xCC;
+          input_buffer[78] = 0xCC;
+          input_buffer[79] = 0x3D;
+          input_buffer[80] = 0x00;
+          input_buffer[81] = 0x00;
+          input_buffer[82] = 0x00;
+          input_buffer[83] = 0x00;
+          input_buffer[84] = 0x00;
+          input_buffer[85] = 0xC0;
+          input_buffer[86] = 0x67;
+          input_buffer[87] = 0x40;
+          input_buffer[88] = 0xCD;
+          input_buffer[89] = 0xCC;
+          input_buffer[90] = 0xCC;
+          input_buffer[91] = 0xCC;
+          input_buffer[92] = 0xCC;
+          input_buffer[93] = 0xCC;
+          input_buffer[94] = 0x00;
+          input_buffer[95] = 0x40;
+          input_buffer[96] = 0x9A;
+          input_buffer[97] = 0x99;
+          input_buffer[98] = 0x99;
+          input_buffer[99] = 0x99;
+          input_buffer[100] = 0x99;
+          input_buffer[101] = 0x99;
+          input_buffer[102] = 0xB9;
+          input_buffer[103] = 0x3F;
+          input_buffer[104] = 0xCD;
+          input_buffer[105] = 0xCC;
+          input_buffer[106] = 0x4C;
+          input_buffer[107] = 0x3E;
+          input_buffer[108] = 0xCD;
+          input_buffer[109] = 0xCC;
+          input_buffer[110] = 0x4C;
+          input_buffer[111] = 0x3E;
+          input_buffer[112] = 0xCD;
+          input_buffer[113] = 0xCC;
+          input_buffer[114] = 0x4C;
+          input_buffer[115] = 0x3E;
+          input_buffer[116] = 0x66;
+          input_buffer[117] = 0x66;
+          input_buffer[118] = 0x66;
+          input_buffer[119] = 0x66;
+          input_buffer[120] = 0x66;
+          input_buffer[121] = 0x66;
+          input_buffer[122] = 0x02;
+          input_buffer[123] = 0xC0;
+          input_buffer[124] = 0x7B;
+          input_buffer[125] = 0x14;
+          input_buffer[126] = 0xAE;
+          input_buffer[127] = 0x47;
+          input_buffer[128] = 0xE1;
+          input_buffer[129] = 0x7A;
+          input_buffer[130] = 0x84;
+          input_buffer[131] = 0xBF;
+          input_buffer[132] = 0x33;
+          input_buffer[133] = 0x33;
+          input_buffer[134] = 0x33;
+          input_buffer[135] = 0x33;
+          input_buffer[136] = 0x33;
+          input_buffer[137] = 0x33;
+          input_buffer[138] = 0xD3;
+          input_buffer[139] = 0x3F;
+          input_buffer[140] = 0x9A;
+          input_buffer[141] = 0x99;
+          input_buffer[142] = 0x99;
+          input_buffer[143] = 0x3E;
+          input_buffer[144] = 0x9A;
+          input_buffer[145] = 0x99;
+          input_buffer[146] = 0x99;
+          input_buffer[147] = 0x3E;
+          input_buffer[148] = 0x9A;
+          input_buffer[149] = 0x99;
+          input_buffer[150] = 0x99;
+          input_buffer[151] = 0x3E;
+          input_buffer[152] = 0xCD;
+          input_buffer[153] = 0xCC;
+          input_buffer[154] = 0xCC;
+          input_buffer[155] = 0x3E;
+          input_buffer[156] = 0xCD;
+          input_buffer[157] = 0xCC;
+          input_buffer[158] = 0x4C;
+          input_buffer[159] = 0x3E;
+          input_buffer[160] = 0x9A;
+          input_buffer[161] = 0x99;
+          input_buffer[162] = 0x99;
+          input_buffer[163] = 0x3E;
+
+          let message_length = 164;
+
+          // We'll insert some junk before and after the message to demonstrate the framer's role in locating and
+          // validating the message.
+          for (let i = message_length - 1; i >= 0; --i) {
+            input_buffer[i + 24] = input_buffer[i];
+          }
+
+          input_buffer.subarray(0, 24).fill(0xAA);
+          message_length += 24;
+
+          input_buffer.subarray(message_length, message_length + 16).fill(0xBB);
+          message_length += 16;
+
+          framer.OnData(input_buffer.byteOffset, message_length);
+
+          // Now we'll try encoding a message to be sent to a device. We'll reuse the input buffer, but overwrite its
+          // contents. First, we'll set it to all 0xFF, just to demonstrate that Clear() will reset the memory to a
+          // default-constructed struct value.
+          console.log("********************************************************************************");
+          console.log("-- Encode a message to be sent.");
+
+          input_buffer.fill(0xFF);
+
+          let header = FE.MessageHeader.Parse(input_buffer.byteOffset, input_buffer.length);
+          let payload_offset = FE.MessageHeader.SizeOf();
+          let pose = FE.PoseMessage.Parse(input_buffer.byteOffset + payload_offset,
+                                          input_buffer.length - payload_offset);
+
+          header.Clear();
+          header.message_type = FE.MessageType.POSE;
+          header.payload_size_bytes = FE.PoseMessage.SizeOf();
+          header.source_identifier = 111;
+
+          pose.Clear();
+
+          // Note: There is currently an issue in Embind that causes it to make duplicate copies of non-primitive struct
+          // members whenever you access them, rather than accessing them by reference. That means that if you do:
+          //   pose.p1_time.SetValue(654.321)
+          // Embind will actually create a _copy_ of p1_time. It will not modify the actual contents of pose or the
+          // underlying byte buffer.
+          //
+          // In fact, even reading the object's primitive fields like:
+          //   let seconds = pose.p1_time.seconds
+          // will _still_ make a duplicate copy of p1_time. In this case, since you're just reading you won't get an
+          // unexpected result, but it will be less efficient since it has to make an unnecessary copy.
+          //
+          // To work around this, all non-primitive member variables have a RefTo_*() function you can call to get an
+          // actual reference to that member. Then you can use that reference as expected.
+          let p1_time = pose.RefTo_p1_time();
+          p1_time.SetValue(654.321);
+
+          FE.SetCRC(input_buffer.byteOffset);
+
+          // input_buffer now contains a valid FusionEngine message ready to be sent to a device. Pass it to the framer
+          // and decode it to verify.
+          message_length = header.GetMessageSize();
+          framer.OnData(input_buffer.byteOffset, message_length);
+
+          // Cleanup.
+          FE._free(input_storage);
+        }
+      }
+    </script>
+
+    <script type='module'>
+      // Import and initialize the WASM module.
+      import { default as Init } from './build/fusion_engine_client_wasm.js';
+      Init(FE);
+    </script>
+  </body>
+</html>

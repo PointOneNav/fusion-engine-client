@@ -48,7 +48,7 @@ struct alignas(4) PoseMessage : public MessagePayload {
   Timestamp gps_time;
 
   /** The type of this position solution. */
-  SolutionType solution_type;
+  SolutionType solution_type = SolutionType::Invalid;
 
   uint8_t reserved = 0;
 
