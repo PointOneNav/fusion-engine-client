@@ -9,7 +9,6 @@ import os
 import re
 import sys
 import webbrowser
-from aenum import Enum
 
 from gpstime import gpstime
 import plotly
