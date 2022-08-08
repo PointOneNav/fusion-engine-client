@@ -266,9 +266,14 @@ def find_p1log_file(input_path, return_output_dir=False, return_log_id=False, lo
             - The log ID string, or `None` if the requested file is not part of a FusionEngine log. Only provided if
               `return_log_id` is `True`.
     """
-    candidate_files = ['fusion_engine.p1log',
-                       # Legacy path, maintained for backwards compatibility.
-                       'filter/output/fe_service/output.p1bin']
+    # The following files are listed order of priority. The first located file will be returned.
+    candidate_files = [
+        # v- Typically captured at the time the log is recorded, or embedded in a mixed-binary log file and extracted
+        # by extract_fusion_engine_log().
+        'fusion_engine.p1log',
+        # Legacy path, maintained for backwards compatibility.
+        'filter/output/fe_service/output.p1bin',
+    ]
     result = find_log_file(input_path, candidate_files=candidate_files, return_output_dir=return_output_dir,
                            return_log_id=return_log_id, log_base_dir=log_base_dir)
     if isinstance(result, tuple):
