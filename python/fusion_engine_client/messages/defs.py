@@ -272,7 +272,8 @@ class MessageHeader:
         message_size_bytes = MessageHeader._SIZE + self.payload_size_bytes
         crc = crc32(buffer[(offset + 8):(offset + message_size_bytes)])
         if crc != self.crc:
-            raise ValueError('CRC mismatch. [expected=0x%08x, computed=0x%08x]' % (self.crc, crc))
+            raise ValueError('CRC mismatch. [type=%s, payload_size=%d B, expected=0x%08x, computed=0x%08x]' %
+                             (self.get_type_string(), self.payload_size_bytes, self.crc, crc))
 
     def pack(self, buffer: bytes = None, offset: int = 0, payload: bytes = None, return_buffer: bool = True) ->\
             (bytes, int):
