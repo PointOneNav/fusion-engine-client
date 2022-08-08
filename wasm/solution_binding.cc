@@ -30,6 +30,10 @@ EMSCRIPTEN_BINDINGS(solution) {
       .property("reserved", &PoseMessage::reserved)
       .property("undulation_cm", &PoseMessage::undulation_cm)
       .ARRAY_PROPERTY(PoseMessage, lla_deg)
+      .ARRAY_PROPERTY(PoseMessage, ypr_deg)
+      .ARRAY_PROPERTY(PoseMessage, ypr_std_deg)
+      .ARRAY_PROPERTY(PoseMessage, velocity_body_mps)
+      .ARRAY_PROPERTY(PoseMessage, velocity_std_body_mps)
       .ARRAY_PROPERTY(PoseMessage, position_std_enu_m)
       .STRUCT_FUNCTIONS(PoseMessage);
 
