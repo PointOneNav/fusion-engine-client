@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import io
+import logging
 import os
 import sys
 
@@ -21,18 +22,20 @@ from fusion_engine_client.utils.argument_parser import ArgumentParser
 from fusion_engine_client.utils.log import locate_log, DEFAULT_LOG_BASE_DIR
 from fusion_engine_client.utils.time_range import TimeRange
 
+_logger = logging.getLogger('point_one.fusion_engine.applications.print_contents')
+
 
 def print_message(header, contents, one_line=False):
     if isinstance(contents, MessagePayload):
         parts = str(contents).split('\n')
         parts[0] += ' [sequence=%d, size=%d B]' % (header.sequence_number, header.get_message_size())
         if one_line:
-            print(parts[0])
+            _logger.info(parts[0])
         else:
-            print('\n'.join(parts))
+            _logger.info('\n'.join(parts))
     else:
-        print('Decoded %s message [sequence=%d, size=%d B]' %
-              (header.get_type_string(), header.sequence_number, header.get_message_size()))
+        _logger.info('Decoded %s message [sequence=%d, size=%d B]' %
+                     (header.get_type_string(), header.sequence_number, header.get_message_size()))
 
 
 if __name__ == "__main__":
@@ -62,6 +65,8 @@ other types of data.
         help="The desired time range to be analyzed. Both start and end may be omitted to read from beginning or to "
              "the end of the file. By default, timestamps are treated as relative to the first message in the file. "
              "See --absolute-time.")
+    parser.add_argument('-v', '--verbose', action='count', default=0,
+                        help="Print verbose/trace debugging messages.")
 
     log_parser = parser.add_argument_group('Log Control')
     log_parser.add_argument(
@@ -85,6 +90,18 @@ other types of data.
 
     options = parser.parse_args()
 
+    # Configure logging.
+    if options.verbose >= 1:
+        logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(name)s:%(lineno)d - %(message)s',
+                            stream=sys.stdout)
+        if options.verbose == 1:
+            logging.getLogger('point_one.fusion_engine.parsers.decoder').setLevel(logging.DEBUG)
+        else:
+            logging.getLogger('point_one.fusion_engine.parsers.decoder').setLevel(logging.TRACE,
+                                                                                  depth=options.verbose - 1)
+    else:
+        logging.basicConfig(level=logging.INFO, format='%(message)s', stream=sys.stdout)
+
     # Locate the input file and set the output directory.
     input_path, log_id = locate_log(input_path=options.log, log_base_dir=options.log_base_dir, return_log_id=True,
                                     load_original=options.original,
@@ -93,7 +110,7 @@ other types of data.
         # locate_log() will log an error.
         sys.exit(1)
 
-    print("Processing input file '%s'." % input_path)
+    _logger.info("Processing input file '%s'." % input_path)
 
     # Parse the time range.
     time_range = TimeRange.parse(options.time, absolute=options.absolute_time)
@@ -123,10 +140,10 @@ other types of data.
                 elif len(matches) > 1:
                     types = [v for v in matches.values()]
                     class_names = [message_type_to_class[t].__name__ for t in types]
-                    print("Found multiple types matching '%s':\n  %s" % (name, '\n  '.join(class_names)))
+                    _logger.info("Found multiple types matching '%s':\n  %s" % (name, '\n  '.join(class_names)))
                     sys.exit(1)
                 else:
-                    print("Unrecognized message type '%s'." % name)
+                    _logger.info("Unrecognized message type '%s'." % name)
                     sys.exit(1)
             else:
                 message_types.append(message_type)
@@ -140,7 +157,7 @@ other types of data.
                 cls = message_type_to_class[message_type]
                 message = cls()
                 if not hasattr(message, 'p1_time'):
-                    print('Non-P1 time messages detected. Disabling index file.')
+                    _logger.info('Non-P1 time messages detected. Disabling index file.')
                     options.ignore_index = True
                     break
 
@@ -151,11 +168,11 @@ other types of data.
     if not options.ignore_index:
         index_path = FileIndex.get_path(input_path)
         if os.path.exists(index_path):
-            print("Reading index file '%s'." % index_path)
+            _logger.info("Reading index file '%s'." % index_path)
             try:
                 index_file = FileIndex(index_path=index_path, data_path=input_path, delete_on_error=True)
             except ValueError as e:
-                print(str(e))
+                _logger.warning(str(e))
 
         if index_file is not None:
             time_range.p1_t0 = index_file.t0
@@ -163,7 +180,7 @@ other types of data.
             # Limit to the user-specified time range.
             start_idx = np.argmax(index_file.time >= time_range.start) if time_range.start is not None else 0
             if start_idx < 0:
-                print("No data in requested time range.")
+                _logger.info("No data in requested time range.")
                 sys.exit(2)
 
             end_idx = np.argmax(index_file.time > time_range.end) if time_range.end is not None else len(index_file)
@@ -172,7 +189,7 @@ other types of data.
 
             index_file = index_file[start_idx:end_idx]
         else:
-            print("Generating index file '%s'." % index_path)
+            _logger.info("Generating index file '%s'." % index_path)
             index_builder = FileIndexBuilder()
 
     # If we have an index file and we're only interested in certain message types, locate them in the index.
@@ -204,7 +221,7 @@ other types of data.
         still_working = True
 
         if message_indices is not None and len(message_indices) == 0:
-            print('No messages found in index file.')
+            _logger.info('No messages found in index file.')
             still_working = False
 
         while still_working:
@@ -298,20 +315,20 @@ other types of data.
 
     # Print the data summary.
     if options.summary:
-        print('Input file: %s' % input_path)
-        print('Log ID: %s' % log_id)
+        _logger.info('Input file: %s' % input_path)
+        _logger.info('Log ID: %s' % log_id)
         if first_p1_time_sec is not None:
-            print('Duration: %d seconds' % (last_p1_time_sec - first_p1_time_sec))
+            _logger.info('Duration: %d seconds' % (last_p1_time_sec - first_p1_time_sec))
         elif first_system_time_sec is not None:
-            print('Duration: %d seconds' % (last_system_time_sec - first_system_time_sec))
-        print('Total data read: %d B' % bytes_read)
-        print('Selected data size: %d B' % bytes_decoded)
-        print('')
+            _logger.info('Duration: %d seconds' % (last_system_time_sec - first_system_time_sec))
+        _logger.info('Total data read: %d B' % bytes_read)
+        _logger.info('Selected data size: %d B' % bytes_decoded)
+        _logger.info('')
 
         format_string = '| {:<50} | {:>8} |'
-        print(format_string.format('Message Type', 'Count'))
-        print(format_string.format('-' * 50, '-' * 8))
+        _logger.info(format_string.format('Message Type', 'Count'))
+        _logger.info(format_string.format('-' * 50, '-' * 8))
         for type, info in message_stats.items():
-            print(format_string.format(message_type_to_class[type].__name__, info['count']))
-        print(format_string.format('-' * 50, '-' * 8))
-        print(format_string.format('Total', total_messages))
+            _logger.info(format_string.format(message_type_to_class[type].__name__, info['count']))
+        _logger.info(format_string.format('-' * 50, '-' * 8))
+        _logger.info(format_string.format('Total', total_messages))

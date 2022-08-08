@@ -109,8 +109,15 @@ def test_callbacks():
     assert counters[3] == 5
 
 
-def test_seq_skip_warning(caplog):
+def test_seq_backwards_warning(caplog):
     test_bytes = P1_POSE_MESSAGE1 + P1_POSE_MESSAGE2 + P1_POSE_MESSAGE1
+    decoder = FusionEngineDecoder(warn_on_error=True)
+    decoder.on_data(test_bytes)
+    assert "Sequence number went backwards on POSE (10000) message." in caplog.text
+
+
+def test_seq_skip_warning(caplog):
+    test_bytes = P1_POSE_MESSAGE1 + P1_POSE_AUX_MESSAGE3
     decoder = FusionEngineDecoder(warn_on_gap=True)
     decoder.on_data(test_bytes)
-    assert "Gap detected in FusionEngine message sequence numbers. [expected=2, received=0]." in caplog.text
+    assert "Gap detected in FusionEngine message sequence numbers. [expected=1, received=2]." in caplog.text

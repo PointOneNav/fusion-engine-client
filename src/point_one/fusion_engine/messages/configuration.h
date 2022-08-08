@@ -1376,40 +1376,28 @@ inline const char* to_string(NmeaMessageType value) {
   switch (value) {
     case NmeaMessageType::INVALID:
       return "INVALID";
-      break;
     case NmeaMessageType::GGA:
       return "GGA";
-      break;
     case NmeaMessageType::GLL:
       return "GLL";
-      break;
     case NmeaMessageType::GSA:
       return "GSA";
-      break;
     case NmeaMessageType::GSV:
       return "GSV";
-      break;
     case NmeaMessageType::RMC:
       return "RMC";
-      break;
     case NmeaMessageType::VTG:
       return "VTG";
-      break;
     case NmeaMessageType::P1CALSTATUS:
       return "P1CALSTATUS";
-      break;
     case NmeaMessageType::P1MSG:
       return "P1MSG";
-      break;
     case NmeaMessageType::PQTMVERNO:
       return "PQTMVERNO";
-      break;
     case NmeaMessageType::PQTMVER:
       return "PQTMVER";
-      break;
     case NmeaMessageType::PQTMGNSS:
       return "PQTMGNSS";
-      break;
     default:
       return "Unrecognized";
   }
