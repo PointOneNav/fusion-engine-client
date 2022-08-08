@@ -1651,7 +1651,7 @@ class Analyzer(object):
         for msg in storage_messages:
             if msg.data_type == DataType.CRASH_LOG:
                 if len(msg.data) < format_len:
-                    self.logger.warn('Crashlog with unexpectedly short %d bytes of data.' % len(msg.data))
+                    self.logger.warning('Crash log with unexpectedly short %d bytes of data.' % len(msg.data))
                 else:
                     crash_type, crash_count = struct.unpack(crash_info_format, msg.data[:format_len])
                     return CrashType(crash_type), crash_count
