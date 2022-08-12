@@ -45,13 +45,14 @@ type.
     # Configure logging.
     logger = logging.getLogger('point_one.fusion_engine')
     if options.verbose >= 1:
-        logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(name)s:%(lineno)d - %(message)s')
+        logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(name)s:%(lineno)d - %(message)s',
+                            stream=sys.stdout)
         if options.verbose == 1:
             logger.setLevel(logging.DEBUG)
         elif options.verbose > 1:
             logger.setLevel(logging.TRACE)
     else:
-        logging.basicConfig(level=logging.INFO, format='%(message)s')
+        logging.basicConfig(level=logging.INFO, format='%(message)s', stream=sys.stdout)
 
     # Locate the input file and set the output directory.
     try:
