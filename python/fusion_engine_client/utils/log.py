@@ -363,8 +363,9 @@ def extract_fusion_engine_log(input_path, output_path=None, warn_on_gaps=True, r
                        (header.sequence_number - prev_sequence_number) != 1 and \
                        not (header.sequence_number == 0 and prev_sequence_number == 0xFFFFFFFF):
                         func = _logger.warning if warn_on_gaps else _logger.debug
-                        func('Data gap detected @ %d (0x%x). [sequence=%d, prev_sequence=%d, # messages=%d]' %
-                             (offset, offset, header.sequence_number, prev_sequence_number, valid_count + 1))
+                        func('Data gap detected @ %d (0x%x). [sequence=%d, gap_size=%d, total_messages=%d]' %
+                             (offset, offset, header.sequence_number, header.sequence_number - prev_sequence_number,
+                              valid_count + 1))
                     prev_sequence_number = header.sequence_number
 
                     _logger.debug('Read %s message @ %d (0x%x). [length=%d B, sequence=%d, # messages=%d]' %
