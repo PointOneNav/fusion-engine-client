@@ -66,7 +66,12 @@ class MessageData(object):
                             if (key not in ('message_type', 'message_class', 'params', 'messages') and
                                     isinstance(value, np.ndarray)):
                                 if len(value.shape) == 1:
-                                    self.__dict__[key] = value[keep_idx]
+                                    if len(value) == len(keep_idx):
+                                        self.__dict__[key] = value[keep_idx]
+                                    else:
+                                        # Field has a different length than the time vector. It is likely a
+                                        # non-time-varying element (e.g., a position std dev threshold).
+                                        pass
                                 elif len(value.shape) == 2:
                                     if value.shape[0] == len(is_nan):
                                         # Assuming first dimension is time.

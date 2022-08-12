@@ -48,7 +48,7 @@ Extract FusionEngine message contents from a binary file containing mixed data
     options = parser.parse_args()
 
     # Configure logging.
-    logging.basicConfig(level=logging.INFO, format='%(message)s')
+    logging.basicConfig(level=logging.INFO, format='%(message)s', stream=sys.stdout)
     logger = logging.getLogger('point_one.fusion_engine')
     if options.verbose == 1:
         logger.setLevel(logging.DEBUG)
