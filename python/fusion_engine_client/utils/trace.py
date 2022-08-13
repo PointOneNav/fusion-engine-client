@@ -24,11 +24,11 @@ if not hasattr(logging, 'TRACE'):
     logging.Logger.trace = trace
 
     def setLevel(self, level, depth=1, *args, **kwargs):
-        return self.real_setLevel(level - (depth - 1), *args, **kwargs)
+        return self.real_setLevel(logging._checkLevel(level) - (depth - 1), *args, **kwargs)
     logging.Logger.real_setLevel = logging.Logger.setLevel
     logging.Logger.setLevel = setLevel
 
     def isEnabledFor(self, level, depth=1, *args, **kwargs):
-        return self.real_isEnabledFor(level - (depth - 1), *args, **kwargs)
+        return self.real_isEnabledFor(logging._checkLevel(level) - (depth - 1), *args, **kwargs)
     logging.Logger.real_isEnabledFor = logging.Logger.isEnabledFor
     logging.Logger.isEnabledFor = isEnabledFor
