@@ -486,8 +486,8 @@ class FileReader(object):
             # If this isn't one of the requested messages, skip it. If we don't know t0 yet or we need the message's P1
             # time to generate an index, continue to unpack.
             if (not message_needed and
-                self.t0 is not None and
-                (not system_time_messages_requested or self.system_t0 is not None) and
+                    self.t0 is not None and
+                    (self.system_t0 is not None or not system_time_messages_requested) and
                     not generate_index):
                 continue
 
