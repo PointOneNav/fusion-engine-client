@@ -1034,7 +1034,16 @@ class Analyzer(object):
         solution_type_table = _data_to_table(['Position Type', 'Count', 'Percent'], [types, counts, percents])
 
         # Create a table with the types and counts of each FusionEngine message type in the log.
-        message_types, message_counts = np.unique(self.reader.index['type'], return_counts=True)
+        if self.params['absolute_time']:
+            start_time, end_time = self.params['time_range']
+        else:
+            time_range = self.params['time_range']
+            start_time = None if time_range[0] is None else (time_range[0] + float(self.t0))
+            end_time = None if time_range[1] is None else (time_range[1] + float(self.t0))
+
+        index = self.reader.index[start_time:end_time]
+
+        message_types, message_counts = np.unique(index['type'], return_counts=True)
         message_types = [MessageType.get_type_string(t) for t in message_types]
 
         message_counts = message_counts.tolist()
