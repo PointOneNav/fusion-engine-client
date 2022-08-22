@@ -271,8 +271,8 @@ class FileIndex(object):
             idx = self._data['type'] == key
             return FileIndex(data=self._data[idx], t0=self.t0)
         # Return entries for a list of message types.
-        elif isinstance(key, (set, list, tuple)) and len(key) > 0 and isinstance(key[0], MessageType):
-            idx = np.isin(self._data['type'], key)
+        elif isinstance(key, (set, list, tuple)) and len(key) > 0 and isinstance(next(iter(key)), MessageType):
+            idx = np.isin(self._data['type'], [int(k) for k in key])
             return FileIndex(data=self._data[idx], t0=self.t0)
         # Return a single element by index.
         elif isinstance(key, int):
