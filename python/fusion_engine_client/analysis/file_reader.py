@@ -349,32 +349,21 @@ class FileReader(object):
 
         # If there's an index file, use it to determine the offsets to all the messages we're interested in.
         if self.index is not None and not ignore_index:
-            type_idx = np.full_like(self.index.time, False, dtype=bool)
-            for type in needed_message_types:
-                type_idx = np.logical_or(type_idx, self.index.type == type)
+            data_index = self.index[needed_message_types]
 
             # If t0 has never been set, this is probably the "first message" read done in open() to set t0. Ignore the
             # time range.
             if time_range_specified and self.t0 is not None:
-                time_idx = np.full_like(self.index.time, True, dtype=bool)
-                limit_time = self.index.time - p1_reference_time_sec
-                if time_range[0] is not None:
-                    # Note: The index stores only the integer part of the timestamp.
-                    time_idx = np.logical_and(time_idx, limit_time >= np.floor(time_range[0]))
-                if time_range[1] is not None:
-                    time_idx = np.logical_and(time_idx, limit_time <= time_range[1])
+                start_time = None if time_range[0] is None else (time_range[0] + p1_reference_time_sec)
+                end_time = None if time_range[1] is None else (time_range[1] + p1_reference_time_sec)
 
-                # Messages with system time may have NAN timestamps in the index file since they can occur in a log
-                # before P1 time is established. We'll allow any NAN times to pass this check, and we will decode and
-                # filter them later based on their system timestamps.
-                if system_time_messages_requested:
-                    time_idx = np.logical_or(time_idx, np.isnan(self.index.time))
+                # Messages with system time may have NAN timestamps in the index file since A) they can occur in a log
+                # before P1 time is established, and B) there's not necessarily a directy way to convert between system
+                # and P1 time. We'll allow _all_ NAN times to pass this check, even ones that may fall outside the P1
+                # time range, and we will decode and filter them later based on their system timestamps.
+                hint = 'all_nans' if system_time_messages_requested else None
 
-                idx = np.logical_and(type_idx, time_idx)
-            else:
-                idx = type_idx
-
-            data_index = self.index[idx]
+                data_index = data_index[start_time:end_time:hint]
 
             if not ignore_index_max_messages:
                 if max_messages > 0:
