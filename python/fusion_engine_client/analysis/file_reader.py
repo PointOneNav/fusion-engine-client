@@ -295,16 +295,19 @@ class FileReader(object):
         needed_message_types = set(needed_message_types)
 
         # Make cache entries for the messages to be read.
+        supported_message_types = set()
         message_class = {}
         for type in needed_message_types:
             self.data[type] = MessageData(message_type=type, params=params)
 
-            message_class[type] = message_type_to_class.get(type, None)
-            if message_class[type] is None:
+            cls = message_type_to_class.get(type, None)
+            if cls is None:
                 self.logger.warning('Decode not supported for message type %s. Omitting from output.' %
                                     MessageType.get_type_string(type))
+            else:
+                supported_message_types.add(type)
 
-        needed_message_types = [t for t in needed_message_types if message_class[t] is not None]
+        needed_message_types = supported_message_types
 
         system_time_messages_requested = any([t in messages_with_system_time for t in needed_message_types])
 
@@ -491,7 +494,7 @@ class FileReader(object):
             # Now decode the payload.
             try:
                 # Get the message class for this type and unpack the payload.
-                cls = message_class.get(header.message_type, None)
+                cls = message_type_to_class.get(header.message_type, None)
                 if cls is None:
                     is_reserved = int(header.message_type) >= int(MessageType.RESERVED)
                     self.logger.log(logging.DEBUG,
