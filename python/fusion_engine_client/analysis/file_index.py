@@ -280,13 +280,39 @@ class FileIndex(object):
         # Key is a slice in time. Return a subset of the data.
         elif isinstance(key, slice) and (isinstance(key.start, (Timestamp, float)) or
                                          isinstance(key.stop, (Timestamp, float))):
-            # Time is continuous, so step sizes are not supported.
-            if key.step is not None:
+            if len(self._data) == 0:
+                # No data available. Skip time indexing (argmax will fail on an empty vector).
+                return FileIndex(data=self._data, t0=self.t0)
+            # Time is continuous, so step sizes are not supported. However, the user can specify a string which will be
+            # interpreted as a special behavior hint:
+            # - 'all_nans' - Return _all_ elements with nan timestamps in addition to entries within the time range,
+            #   including nan elements outside the time range
+            # - 'include_nans' - Include nan elements within the requested time range (default)
+            # - 'remove_nans' - Do not return nan elements; remove elements falling within the requested time range
+            elif key.step is not None and not isinstance(key.step, str):
                 raise ValueError('Step size not supported for time ranges.')
             else:
-                start_idx = np.argmax(self._data['time'] >= key.start) if key.start is not None else 0
+                hint = 'include_nans' if key.step is None else key.step
+
+                # Note: The index stores only the integer part of the timestamp.
+                start_idx = np.argmax(self._data['time'] >= np.floor(key.start)) if key.start is not None else 0
                 end_idx = np.argmax(self._data['time'] >= key.stop) if key.stop is not None else len(self._data)
-                return FileIndex(data=self._data[start_idx:end_idx], t0=self.t0)
+
+                if hint == 'include_nans':
+                    return FileIndex(data=self._data[start_idx:end_idx], t0=self.t0)
+                else:
+                    idx = np.full_like(self._data['time'], False, dtype=bool)
+                    idx[start_idx:end_idx] = True
+
+                    nan_idx = np.isnan(self._data['time'])
+                    if hint == 'all_nans':
+                        idx[nan_idx] = True
+                    elif hint == 'remove_nans':
+                        idx[nan_idx] = False
+                    else:
+                        raise ValueError('Unrecognized control hint.')
+
+                return FileIndex(data=self._data[idx], t0=self.t0)
         # Key is an index slice or a list of individual element indices. Return a subset of the data.
         else:
             if isinstance(key, (set, list, tuple)):
