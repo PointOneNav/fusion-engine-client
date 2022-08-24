@@ -1663,13 +1663,31 @@ class Analyzer(object):
         # we didn't read anything to plot).
         self.reader.generate_index()
 
-        # Calculate the log duration.
-        idx = ~np.isnan(self.reader.index['time'])
-        time = self.reader.index['time'][idx]
-        if len(time) >= 2:
-            duration_sec = time[-1] - time[0]
+        # Restrict the index to the user-requested time range.
+        if self.params['absolute_time']:
+            start_time, end_time = self.params['time_range']
         else:
-            duration_sec = np.nan
+            time_range = self.params['time_range']
+            start_time = None if time_range[0] is None else (time_range[0] + float(self.t0))
+            end_time = None if time_range[1] is None else (time_range[1] + float(self.t0))
+
+        full_index = self.reader.index
+        reduced_index = full_index[start_time:end_time]
+
+        # Calculate the log duration.
+        idx = ~np.isnan(full_index['time'])
+        time = full_index['time'][idx]
+        if len(time) >= 2:
+            log_duration_sec = time[-1] - time[0]
+        else:
+            log_duration_sec = np.nan
+
+        idx = ~np.isnan(reduced_index['time'])
+        time = reduced_index['time'][idx]
+        if len(time) >= 2:
+            processing_duration_sec = time[-1] - time[0]
+        else:
+            processing_duration_sec = np.nan
 
         # Create a table with position solution type statistics.
         result = self.reader.read(message_types=[PoseMessage], **self.params)
@@ -1694,14 +1712,18 @@ class Analyzer(object):
         counts.append('%d' % num_pose_messages)
         percents.append('')
 
-        types.append('Log Duration')
-        counts.append('%.1f seconds' % duration_sec)
+        types.append('Processed Duration')
+        counts.append('%.1f seconds' % processing_duration_sec)
+        percents.append('')
+
+        types.append('Total Log Duration')
+        counts.append('%.1f seconds' % log_duration_sec)
         percents.append('')
 
         solution_type_table = _data_to_table(['Position Type', 'Count', 'Percent'], [types, counts, percents])
 
         # Create a table with the types and counts of each FusionEngine message type in the log.
-        message_types, message_counts = np.unique(self.reader.index['type'], return_counts=True)
+        message_types, message_counts = np.unique(reduced_index['type'], return_counts=True)
         message_types = [MessageType.get_type_string(t) for t in message_types]
 
         message_counts = message_counts.tolist()
