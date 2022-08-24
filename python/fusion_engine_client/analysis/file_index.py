@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Union
 
 from collections import namedtuple
@@ -243,6 +245,46 @@ class FileIndex(object):
                 os.remove(index_path)
             raw_data.tofile(index_path)
 
+    def get_time_range(self, start: Union[Timestamp, float] = None, stop: Union[Timestamp, float] = None,
+                       hint: str = None) -> FileIndex:
+        """!
+        @brief Get a subset of the contents for a specified time range.
+
+        @param start The P1 time at the start of the desired time range.
+        @param stop The P1 time at the end of the desired time range.
+        @param hint A hint indicating how to handle entries that do not have P1 time (`nan` timestamps):
+               - `all_nans` - Return _all_ elements with nan timestamps in addition to entries within the time range,
+                 including nan elements outside the time range
+               - `include_nans` - Include nan elements within the requested time range (default)
+               - `remove_nans` - Do not return nan elements; remove elements falling within the requested time range
+        """
+        if hint is None:
+            hint = 'include_nans'
+
+        # No data available. Skip time indexing (argmax will fail on an empty vector).
+        if len(self._data) == 0:
+            return FileIndex(data=self._data, t0=self.t0)
+        else:
+            # Note: The index stores only the integer part of the timestamp.
+            start_idx = np.argmax(self._data['time'] >= np.floor(start)) if start is not None else 0
+            end_idx = np.argmax(self._data['time'] >= stop) if stop is not None else len(self._data)
+
+            if hint == 'include_nans':
+                return FileIndex(data=self._data[start_idx:end_idx], t0=self.t0)
+            else:
+                idx = np.full_like(self._data['time'], False, dtype=bool)
+                idx[start_idx:end_idx] = True
+
+                nan_idx = np.isnan(self._data['time'])
+                if hint == 'all_nans':
+                    idx[nan_idx] = True
+                elif hint == 'remove_nans':
+                    idx[nan_idx] = False
+                else:
+                    raise ValueError('Unrecognized control hint.')
+
+            return FileIndex(data=self._data[idx], t0=self.t0)
+
     def __len__(self):
         if self._data is None:
             return 0
@@ -278,41 +320,16 @@ class FileIndex(object):
         elif isinstance(key, int):
             return FileIndex(data=self._data[key:(key + 1)], t0=self.t0)
         # Key is a slice in time. Return a subset of the data.
+        #
+        # For convenience, the user may optionally include a hint string in the `step` portion of the slicing range. For
+        # example:
+        #   my_index[10:12:'remove_nans']
         elif isinstance(key, slice) and (isinstance(key.start, (Timestamp, float)) or
                                          isinstance(key.stop, (Timestamp, float))):
-            if len(self._data) == 0:
-                # No data available. Skip time indexing (argmax will fail on an empty vector).
-                return FileIndex(data=self._data, t0=self.t0)
-            # Time is continuous, so step sizes are not supported. However, the user can specify a string which will be
-            # interpreted as a special behavior hint:
-            # - 'all_nans' - Return _all_ elements with nan timestamps in addition to entries within the time range,
-            #   including nan elements outside the time range
-            # - 'include_nans' - Include nan elements within the requested time range (default)
-            # - 'remove_nans' - Do not return nan elements; remove elements falling within the requested time range
-            elif key.step is not None and not isinstance(key.step, str):
-                raise ValueError('Step size not supported for time ranges.')
-            else:
-                hint = 'include_nans' if key.step is None else key.step
-
-                # Note: The index stores only the integer part of the timestamp.
-                start_idx = np.argmax(self._data['time'] >= np.floor(key.start)) if key.start is not None else 0
-                end_idx = np.argmax(self._data['time'] >= key.stop) if key.stop is not None else len(self._data)
-
-                if hint == 'include_nans':
-                    return FileIndex(data=self._data[start_idx:end_idx], t0=self.t0)
-                else:
-                    idx = np.full_like(self._data['time'], False, dtype=bool)
-                    idx[start_idx:end_idx] = True
-
-                    nan_idx = np.isnan(self._data['time'])
-                    if hint == 'all_nans':
-                        idx[nan_idx] = True
-                    elif hint == 'remove_nans':
-                        idx[nan_idx] = False
-                    else:
-                        raise ValueError('Unrecognized control hint.')
-
-                return FileIndex(data=self._data[idx], t0=self.t0)
+            hint = key.step
+            if hint is not None and not isinstance(hint, str):
+                raise ValueError('Step size not supported for time range slicing.')
+            return self.get_time_range(key.start, key.stop, hint)
         # Key is an index slice or a list of individual element indices. Return a subset of the data.
         else:
             if isinstance(key, (set, list, tuple)):
