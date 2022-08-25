@@ -25,17 +25,19 @@ from fusion_engine_client.utils.time_range import TimeRange
 _logger = logging.getLogger('point_one.fusion_engine.applications.print_contents')
 
 
-def print_message(header, contents, one_line=False):
+def print_message(header, contents, offset_bytes, one_line=False):
     if isinstance(contents, MessagePayload):
         parts = str(contents).split('\n')
-        parts[0] += ' [sequence=%d, size=%d B]' % (header.sequence_number, header.get_message_size())
+        parts[0] += ' [sequence=%d, size=%d B, offset=%d B (0x%x)]' %\
+                    (header.sequence_number, header.get_message_size(), offset_bytes, offset_bytes)
         if one_line:
             _logger.info(parts[0])
         else:
             _logger.info('\n'.join(parts))
     else:
-        _logger.info('Decoded %s message [sequence=%d, size=%d B]' %
-                     (header.get_type_string(), header.sequence_number, header.get_message_size()))
+        _logger.info('Decoded %s message [sequence=%d, size=%d B, offset=%d B (0x%x)]' %
+                     (header.get_type_string(), header.sequence_number, header.get_message_size(),
+                      offset_bytes, offset_bytes))
 
 
 if __name__ == "__main__":
@@ -301,7 +303,7 @@ other types of data.
                             entry = message_stats[header.message_type]
                             entry['count'] += 1
                     else:
-                        print_message(header, message, one_line=options.format == 'oneline')
+                        print_message(header, message, offset_bytes, one_line=options.format == 'oneline')
 
     # If we are creating an index file, save it now.
     if index_builder is not None:
