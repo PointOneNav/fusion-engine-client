@@ -50,7 +50,7 @@ class ArgumentParser(argparse.ArgumentParser):
 
         if overwrite_help:
             self.add_argument('-h', '--help', action='help', default=argparse.SUPPRESS,
-                              help = 'Show this help message and exit.')
+                              help='Show this help message and exit.')
 
     def find_argument(self, option_string):
         return self._option_string_actions.get(option_string, None)
