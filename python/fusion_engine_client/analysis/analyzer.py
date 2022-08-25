@@ -111,7 +111,7 @@ class Analyzer(object):
         self.prefix = prefix
 
         self.params = {
-            'time_range': time_range,
+            'time_range': time_range if time_range is not None else (None, None),
             'absolute_time': absolute_time,
             'max_messages': max_messages,
             'show_progress': True,
