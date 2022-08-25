@@ -67,6 +67,10 @@ decode_message.expected_sequence_number = 0
 if __name__ == "__main__":
     parser = ArgumentParser(description="""\
 Manually decode and print the contents of messages contained in a *.p1log file.
+
+This example application is similar to message_decode.py, but here we
+demonstrate manually decoding message headers and payloads, similar to what you
+might do for an incoming FusionEngine binary data stream.
 """)
     parser.add_argument('--log-base-dir', metavar='DIR', default=DEFAULT_LOG_BASE_DIR,
                         help="The base directory containing FusionEngine logs to be searched if a log pattern is "
