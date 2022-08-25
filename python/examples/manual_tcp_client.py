@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-from argparse import ArgumentParser
 import os
 import socket
 import sys
@@ -11,6 +10,7 @@ root_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, root_dir)
 
 from fusion_engine_client.messages.core import *
+from fusion_engine_client.utils.argument_parser import ArgumentParser
 
 from examples.raw_message_decode import decode_message
 

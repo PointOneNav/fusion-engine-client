@@ -10,9 +10,9 @@ sys.path.insert(0, root_dir)
 
 from fusion_engine_client.messages.core import *
 from fusion_engine_client.parsers import FusionEngineEncoder
+from fusion_engine_client.utils.argument_parser import ArgumentParser
 
 if __name__ == "__main__":
-    from argparse import ArgumentParser
     parser = ArgumentParser(description="""\
 Generate a .p1log file containing a few fixed FusionEngine messages as an
 example of using the FusionEngineEncoder class to serialize data. Serialized

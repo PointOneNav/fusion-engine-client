@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-from argparse import ArgumentParser
 import logging
 import os
 import sys
@@ -12,6 +11,7 @@ sys.path.insert(0, root_dir)
 
 from fusion_engine_client.messages.core import MessagePayload
 from fusion_engine_client.parsers import FusionEngineDecoder
+from fusion_engine_client.utils.argument_parser import ArgumentParser
 from fusion_engine_client.utils.log import locate_log, DEFAULT_LOG_BASE_DIR
 
 
