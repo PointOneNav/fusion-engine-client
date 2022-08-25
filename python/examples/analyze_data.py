@@ -29,7 +29,7 @@ Compute the average LLA position for the data contained in a *.p1log file.
                              "(see find_fusion_engine_log() and --log-base-dir)")
     options = parser.parse_args()
 
-    logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s:%(lineno)d - %(message)s')
+    logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s:%(lineno)d - %(message)s', stream=sys.stdout)
     logger = logging.getLogger('point_one.fusion_engine')
     logger.setLevel(logging.INFO)
 

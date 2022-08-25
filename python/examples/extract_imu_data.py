@@ -32,7 +32,7 @@ Extract IMU accelerometer and gyroscope measurements.
     options = parser.parse_args()
 
     # Configure logging.
-    logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s:%(lineno)d - %(message)s')
+    logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s:%(lineno)d - %(message)s', stream=sys.stdout)
     logger = logging.getLogger('point_one.fusion_engine')
     logger.setLevel(logging.INFO)
 

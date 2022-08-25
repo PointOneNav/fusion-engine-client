@@ -17,6 +17,9 @@ from fusion_engine_client.utils.log import locate_log, DEFAULT_LOG_BASE_DIR
 from examples.message_decode import print_message
 
 
+logger = logging.getLogger('point_one.fusion_engine')
+
+
 def decode_message(header, data, offset):
     # Validate the message length and CRC.
     if len(data) != header.calcsize() + header.payload_size_bytes:
@@ -26,8 +29,8 @@ def decode_message(header, data, offset):
 
     # Check that the sequence number increments as expected.
     if header.sequence_number != decode_message.expected_sequence_number:
-        print('Warning: unexpected sequence number. [expected=%d, received=%d]' %
-              (decode_message.expected_sequence_number, header.sequence_number))
+        logger.info('Warning: unexpected sequence number. [expected=%d, received=%d]' %
+                    (decode_message.expected_sequence_number, header.sequence_number))
 
     decode_message.expected_sequence_number = header.sequence_number + 1
 
@@ -85,8 +88,7 @@ might do for an incoming FusionEngine binary data stream.
     options = parser.parse_args()
 
     # Configure logging.
-    logging.basicConfig(format='%(message)s')
-    logger = logging.getLogger('point_one.fusion_engine')
+    logging.basicConfig(format='%(message)s', stream=sys.stdout)
     logger.setLevel(logging.INFO)
 
     # Locate the input file and set the output directory.
@@ -119,7 +121,7 @@ might do for an incoming FusionEngine binary data stream.
             header = MessageHeader()
             offset = header.unpack(buffer=data)
         except Exception as e:
-            print('Decode error: %s' % str(e))
+            logger.error('Decode error: %s' % str(e))
             break
 
         # Read the message payload and append it to the header.
