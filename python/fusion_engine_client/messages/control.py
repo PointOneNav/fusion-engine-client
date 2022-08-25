@@ -54,7 +54,7 @@ class CommandResponseMessage(MessagePayload):
 
     def __str__(self):
         string = f'Command Response\n'
-        string += f'  Sequence number: {self.source_sequence_num}\n'
+        string += f'  Sequence #: {self.source_sequence_num}\n'
         if isinstance(self.response, Response):
             string += f'  Response: {str(self.response)} ({int(self.response)})'
         else:
