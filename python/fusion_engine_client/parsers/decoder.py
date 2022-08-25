@@ -155,13 +155,15 @@ class FusionEngineDecoder:
                 self._header = MessageHeader()
                 self._header.unpack(self._buffer, warn_on_unrecognized=False)
 
-                _logger.trace('Found candidate header. [type=%s, sequence=%d, payload_size=%d B, '
+                self._msg_len = self._header.payload_size_bytes + MessageHeader.calcsize()
+
+                _logger.trace('Found candidate header. [type=%s, sequence=%d, payload_size=%d B (total_size=%d B), '
                               'stream_offset=%d B (0x%x)]' %
                               (self._header.get_type_string(), self._header.sequence_number,
-                               self._header.payload_size_bytes, self._bytes_processed, self._bytes_processed))
+                               self._header.payload_size_bytes, self._msg_len,
+                               self._bytes_processed, self._bytes_processed))
                 self._trace_buffer(self._buffer[:MessageHeader.calcsize()])
 
-                self._msg_len = self._header.payload_size_bytes + MessageHeader.calcsize()
                 if self._header.payload_size_bytes > self._max_payload_len_bytes:
                     print_func = _logger.warning if self._warn_on_error == self.WarnOnError.ALL else _logger.debug
                     print_func('Message payload too big. [payload_size=%d B, max=%d B]',
