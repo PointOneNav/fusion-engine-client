@@ -92,7 +92,7 @@ class MessageRequest(MessagePayload):
         initial_offset = offset
 
         (message_type,) = self._STRUCT.unpack_from(buffer=buffer, offset=offset)
-        offset += self._STRUCT._SIZE
+        offset += self._STRUCT.size
 
         self.message_type = MessageType(message_type)
 
@@ -264,7 +264,7 @@ class ResetRequest(MessagePayload):
 
         (self.reset_mask,) = \
             self._STRUCT.unpack_from(buffer=buffer, offset=offset)
-        offset += ResetRequest._SIZE
+        offset += self._STRUCT.size
 
         return offset - initial_offset
 
