@@ -1502,13 +1502,17 @@ struct alignas(4) SetMessageOutputRate : public MessagePayload {
       MessageType::SET_OUTPUT_MESSAGE_RATE;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
+  /** Flag to immediately save the config after applying this setting. */
+  static constexpr uint8_t FLAG_APPLY_AND_SAVE = 0x01;
+
   /** The output interface to configure. */
   InterfaceID output_interface = {};
 
   /** The message protocol being configured. */
   ProtocolType protocol = ProtocolType::INVALID;
 
-  uint8_t reserved1[1] = {0};
+  /** Bitmask of additional flags to modify the command. */
+  uint8_t flags = 0;
 
   /**
    * The ID of the desired message type (e.g., 10000 for FusionEngine

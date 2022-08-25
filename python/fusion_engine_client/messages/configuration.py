@@ -929,10 +929,13 @@ class SetMessageOutputRate(MessagePayload):
     MESSAGE_TYPE = MessageType.SET_OUTPUT_MESSAGE_RATE
     MESSAGE_VERSION = 0
 
+    # Flag to immediately save the config after applying this setting.
+    FLAG_APPLY_AND_SAVE = 0x01
+
     SetMessageOutputRateConstruct = Struct(
         "output_interface" / _InterfaceIDConstruct,
         "protocol" / AutoEnum(Int8ul, ProtocolType),
-        Padding(1),
+        "flags" / Int8ul,
         "message_id" / Int16ul,
         "rate" / AutoEnum(Int8ul, MessageRate),
         Padding(3),
@@ -942,7 +945,8 @@ class SetMessageOutputRate(MessagePayload):
                  output_interface: InterfaceID = None,
                  protocol: ProtocolType = ProtocolType.INVALID,
                  message_id: int = 0,
-                 rate: MessageRate = MessageRate.OFF):
+                 rate: MessageRate = MessageRate.OFF,
+                 flags: int = 0x0):
         if output_interface is None:
             self.output_interface = InterfaceID()
         else:
@@ -950,6 +954,7 @@ class SetMessageOutputRate(MessagePayload):
         self.protocol = protocol
         self.message_id = message_id
         self.rate = rate
+        self.flags = flags
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         packed_data = self.SetMessageOutputRateConstruct.build(self.__dict__)
@@ -961,7 +966,7 @@ class SetMessageOutputRate(MessagePayload):
         return parsed._io.tell()
 
     def __str__(self):
-        fields = ['output_interface', 'protocol', 'message_id', 'rate']
+        fields = ['output_interface', 'protocol', 'message_id', 'rate', 'flags']
         string = f'Set Message Output Rate Command\n'
         for field in fields:
             val = str(self.__dict__[field]).replace('Container:', '')
