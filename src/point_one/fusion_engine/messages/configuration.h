@@ -1441,43 +1441,30 @@ inline const char* to_string(MessageRate value) {
   switch (value) {
     case MessageRate::OFF:
       return "OFF";
-      break;
     case MessageRate::ON_CHANGE:
       return "ON_CHANGE";
-      break;
     case MessageRate::INTERVAL_10_MS:
       return "INTERVAL_10_MS";
-      break;
     case MessageRate::INTERVAL_20_MS:
       return "INTERVAL_20_MS";
-      break;
     case MessageRate::INTERVAL_40_MS:
       return "INTERVAL_40_MS";
-      break;
     case MessageRate::INTERVAL_50_MS:
       return "INTERVAL_50_MS";
-      break;
     case MessageRate::INTERVAL_100_MS:
       return "INTERVAL_100_MS";
-      break;
     case MessageRate::INTERVAL_200_MS:
       return "INTERVAL_200_MS";
-      break;
     case MessageRate::INTERVAL_500_MS:
       return "INTERVAL_500_MS";
-      break;
     case MessageRate::INTERVAL_1_S:
       return "INTERVAL_1_S";
-      break;
     case MessageRate::INTERVAL_2_S:
       return "INTERVAL_2_S";
-      break;
     case MessageRate::INTERVAL_5_S:
       return "INTERVAL_5_S";
-      break;
     case MessageRate::INTERVAL_10_S:
       return "INTERVAL_10_S";
-      break;
     default:
       return "Unrecognized";
   }
