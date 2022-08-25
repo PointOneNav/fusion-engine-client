@@ -962,7 +962,7 @@ class SetMessageOutputRate(MessagePayload):
 
     def __str__(self):
         fields = ['output_interface', 'protocol', 'message_id', 'rate']
-        string = f'Set Output Interface Streams Config Command\n'
+        string = f'Set Message Output Rate Command\n'
         for field in fields:
             val = str(self.__dict__[field]).replace('Container:', '')
             string += f'  {field}: {val}\n'
@@ -1011,7 +1011,7 @@ class GetMessageOutputRate(MessagePayload):
 
     def __str__(self):
         fields = ['output_interface', 'protocol', 'request_source', 'message_id']
-        string = f'Get Output Interface Streams Config\n'
+        string = f'Get Message Output Rate Command\n'
         for field in fields:
             val = str(self.__dict__[field]).replace('Container:', '')
             string += f'  {field}: {val}\n'
