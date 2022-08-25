@@ -1501,11 +1501,25 @@ struct alignas(4) SetMessageOutputRate : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE =
       MessageType::SET_OUTPUT_MESSAGE_RATE;
   static constexpr uint8_t MESSAGE_VERSION = 0;
+
+  /** The output interface to configure. */
   InterfaceID output_interface = {};
+
+  /** The message protocol being configured. */
   ProtocolType protocol = ProtocolType::INVALID;
+
   uint8_t reserved1[1] = {0};
+
+  /**
+   * The ID of the desired message type (e.g., 10000 for FusionEngine
+   * @ref MessageType::POSE messages). See @ref NmeaMessageType for NMEA-0183
+   * messages.
+   */
   uint16_t message_id = 0;
+
+  /** The desired message rate. */
   MessageRate rate = MessageRate::OFF;
+
   uint8_t reserved2[3] = {0};
 };
 
@@ -1521,37 +1535,65 @@ struct alignas(4) GetMessageOutputRate : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE =
       MessageType::GET_OUTPUT_MESSAGE_RATE;
   static constexpr uint8_t MESSAGE_VERSION = 0;
+
+  /** The output interface to be queried. */
   InterfaceID output_interface = {};
+
+  /** The desired message protocol. */
   ProtocolType protocol = ProtocolType::INVALID;
+
   /** The source of the parameter value (active, saved, etc.). */
   ConfigurationSource request_source = ConfigurationSource::ACTIVE;
+
+  /**
+   * The ID of the desired message type (e.g., 10000 for FusionEngine
+   * @ref MessageType::POSE messages). See @ref NmeaMessageType for NMEA-0183
+   * messages.
+   */
   uint16_t message_id = 0;
 };
 
 /**
- * @brief The requested output rate.
+ * @brief Response to a @ref GetMessageOutputRate request.
  * @ingroup config_and_ctrl_messages
  */
 struct alignas(4) MessageOutputRateResponse : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE =
       MessageType::OUTPUT_MESSAGE_RATE_RESPONSE;
   static constexpr uint8_t MESSAGE_VERSION = 0;
+
   /** The source of the parameter value (active, saved, etc.). */
   ConfigurationSource config_source = ConfigurationSource::ACTIVE;
+
   /**
    * Set to `true` if the active configuration differs from the saved
    * configuration for this parameter.
    */
   bool active_differs_from_saved = false;
+
   /** The response status (success, error, etc.). */
   Response response = Response::OK;
 
   uint8_t reserved1[1] = {0};
+
+  /** The output interface corresponding with this response. */
   InterfaceID output_interface = {};
+
+  /** The protocol of the message being returned. */
   ProtocolType protocol = ProtocolType::INVALID;
+
   uint8_t reserved2[1] = {0};
+
+  /**
+   * The ID of the returned message type (e.g., 10000 for FusionEngine
+   * @ref MessageType::POSE messages). See @ref NmeaMessageType for NMEA-0183
+   * messages.
+   */
   uint16_t message_id = 0;
+
+  /** The current configuration for this message. */
   MessageRate rate = MessageRate::OFF;
+
   uint8_t reserved3[3] = {0};
 };
 
