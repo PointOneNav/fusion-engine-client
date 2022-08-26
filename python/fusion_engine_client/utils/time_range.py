@@ -103,15 +103,15 @@ class TimeRange(object):
 
         # Extract P1 and system timestamps, where applicable.
         if isinstance(message, MessagePayload):
-            p1_time = message.__dict__.get('p1_time', None)
+            p1_time = message.get_p1_time()
+            system_time_ns = message.get_system_time_ns()
+            system_time_sec = system_time_ns * 1e-9 if system_time_ns is not None else None
+
             if p1_time is not None and p1_time:
                 if self.p1_t0 is None:
                     self.p1_t0 = p1_time
 
-            system_time_ns = message.__dict__.get('system_time_ns', None)
-            system_time_sec = None
-            if system_time_ns is not None:
-                system_time_sec = system_time_ns * 1e-9
+            if system_time_sec is not None:
                 if self.system_t0 is None:
                     self.system_t0 = system_time_sec
         else:
