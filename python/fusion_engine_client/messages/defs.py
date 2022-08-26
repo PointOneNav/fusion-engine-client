@@ -6,7 +6,6 @@ from zlib import crc32
 
 import numpy as np
 
-from . import measurements  # Intentional (safe) circular import for MeasurementTimestamps.
 from .timestamp import *
 from ..utils.enum_utils import IntEnum
 
@@ -325,15 +324,15 @@ class MessagePayload:
 
     def get_p1_time(self) -> Timestamp:
         measurement_timestamps = getattr(self, 'timestamps', None)
-        if isinstance(measurement_timestamps, measurements.MeasurementTimestamps):
+        if isinstance(measurement_timestamps, MeasurementTimestamps):
             return measurement_timestamps.p1_time
         else:
             return getattr(self, 'p1_time', None)
 
     def get_system_time_ns(self) -> float:
         measurement_timestamps = getattr(self, 'timestamps', None)
-        if isinstance(measurement_timestamps, measurements.MeasurementTimestamps):
-            if measurement_timestamps.measurement_time_source == measurements.SystemTimeSource.TIMESTAMPED_ON_RECEPTION:
+        if isinstance(measurement_timestamps, MeasurementTimestamps):
+            if measurement_timestamps.measurement_time_source == SystemTimeSource.TIMESTAMPED_ON_RECEPTION:
                 return float(measurement_timestamps.measurement_time)
             else:
                 return np.nan
