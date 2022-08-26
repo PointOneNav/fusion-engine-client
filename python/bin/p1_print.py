@@ -15,8 +15,7 @@ sys.path.insert(0, root_dir)
 root_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(root_dir)
 
-from fusion_engine_client.messages import MessagePayload, message_type_to_class, message_type_by_name, \
-                                          system_time_to_str
+from fusion_engine_client.messages import *
 from fusion_engine_client.parsers import MixedLogReader
 from fusion_engine_client.utils.argument_parser import ArgumentParser
 from fusion_engine_client.utils.log import locate_log, DEFAULT_LOG_BASE_DIR
@@ -149,17 +148,30 @@ other types of data.
                 message_types.append(message_type)
         message_types = set(message_types)
 
-        # Check if any of the requested message types do _not_ have P1 time (e.g., profiling messages). The index file
-        # does not currently contain non-P1 time messages, so if we use it to search for messages we will end up
-        # skipping all of these ones. Instead, we disable the index and revert to full file search.
-        if read_index:
+    # Check if any of the requested message types do _not_ have P1 time (e.g., profiling messages). The index file
+    # does not currently contain non-P1 time messages, so if we use it to search for messages we will end up
+    # skipping all of these ones. Instead, we disable the index and revert to full file search.
+    if read_index:
+        if len(message_types) == 0:
+            need_system_time = True
+        else:
+            need_system_time = False
             for message_type in message_types:
                 cls = message_type_to_class[message_type]
                 message = cls()
-                if not hasattr(message, 'p1_time'):
-                    _logger.info('Non-P1 time messages detected. Disabling index file.')
-                    read_index = False
-                    break
+                if hasattr(message, 'p1_time'):
+                    continue
+                else:
+                    timestamps = getattr(message, 'timestamps', None)
+                    if isinstance(timestamps, MeasurementTimestamps):
+                        continue
+                    else:
+                        need_system_time = True
+                        break
+
+        if need_system_time and options.time is not None:
+            _logger.info('Non-P1 time messages requested and time range specified. Disabling index file.')
+            read_index = False
 
     # Process all data in the file.
     reader = MixedLogReader(input_path, return_bytes=True, return_offset=True,
