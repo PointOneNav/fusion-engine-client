@@ -371,8 +371,8 @@ class FileIndex(object):
                 end = key.end
             else:
                 p1_t0 = key.p1_t0 if key.p1_t0 is not None else self.t0
-                start = key.start + p1_t0
-                end = key.end + p1_t0
+                start = key.start + p1_t0 if key.start is not None else None
+                end = key.end + p1_t0 if key.end is not None else None
             return self.get_time_range(start, end, 'include_nans')
         # Key is an index slice or a list of individual element indices. Return a subset of the data.
         else:
