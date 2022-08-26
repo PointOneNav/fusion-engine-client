@@ -127,5 +127,9 @@ might do for an incoming FusionEngine binary data stream.
         # Read the message payload and append it to the header.
         data += f.read(header.payload_size_bytes)
 
-        if not decode_message(header, data, offset):
+        try:
+            if not decode_message(header, data, offset):
+                break
+        except Exception as e:
+            logger.error('Decode error: %s' % str(e))
             break
