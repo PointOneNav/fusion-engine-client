@@ -172,14 +172,14 @@ class MixedLogReader(object):
 
                 # Now, if this message is not in the user-specified filter criteria, skip it.
                 if self.message_types is not None and header.message_type not in self.message_types:
-                    self.logger.debug("Message type not requested. Skipping.")
+                    self.logger.trace("Message type not requested. Skipping.", depth=1)
                     continue
                 elif self.time_range is not None and not self.time_range.is_in_range(payload):
                     if self.time_range.in_range_started() and self.index_builder is None:
                         self.logger.debug("End of time range reached. Finished processing.")
                         break
                     else:
-                        self.logger.debug("Message not in time range. Skipping.")
+                        self.logger.trace("Message not in time range. Skipping.", depth=1)
                         continue
 
                 # Construct the result. If we're returning the payload, deserialize the payload.
@@ -204,6 +204,7 @@ class MixedLogReader(object):
 
         # If we are creating an index file, save it now.
         if self.index_builder is not None:
+            self.logger.debug("Saving index file as '%s'." % self.index_path)
             index = self.index_builder.to_index()
             index.save(self.index_path)
 
