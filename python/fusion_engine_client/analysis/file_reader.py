@@ -626,7 +626,7 @@ class FileReader(object):
             index_path = FileIndex.get_path(self.file.name)
             self.logger.debug("Saving index file '%s' with %d entries." % (index_path, len(index_builder)))
             self.index = index_builder.to_index()
-            self.index.save(index_path)
+            self.index.save(index_path, self.file.name)
 
         # Time-align the data if requested.
         FileReader.time_align_data(result, mode=time_align, message_types=aligned_message_types)

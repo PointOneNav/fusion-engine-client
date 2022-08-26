@@ -212,8 +212,7 @@ class MixedLogReader(object):
         # If we are creating an index file, save it now.
         if self.index_builder is not None:
             self.logger.debug("Saving index file as '%s'." % self.index_path)
-            index = self.index_builder.to_index()
-            index.save(self.index_path)
+            self.index_builder.save(self.index_path, self.input_file.name)
 
         # Finished iterating.
         raise StopIteration()
