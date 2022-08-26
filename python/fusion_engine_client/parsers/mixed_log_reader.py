@@ -64,11 +64,14 @@ class MixedLogReader(object):
         self.index_path = file_index.FileIndex.get_path(input_path)
         self.next_index_elem = 0
         if ignore_index:
+            if os.path.exists(self.index_path):
+                self.logger.debug("Ignoring index file @ '%s'." % self.index_path)
             self.index = None
             self.index_builder = file_index.FileIndexBuilder() if generate_index else None
         else:
             if os.path.exists(self.index_path):
                 try:
+                    self.logger.debug("Loading index file '%s'." % self.index_path)
                     self.index = file_index.FileIndex(index_path=self.index_path, data_path=input_path,
                                                       delete_on_error=generate_index)
                     self.index = self.index[self.message_types][self.time_range]
@@ -77,6 +80,10 @@ class MixedLogReader(object):
                     self.logger.error("Error loading index file: %s" % str(e))
                     self.index = None
                     self.index_builder = file_index.FileIndexBuilder() if generate_index else None
+            else:
+                self.logger.debug("No index file found @ '%s'." % self.index_path)
+                self.index = None
+                self.index_builder = file_index.FileIndexBuilder() if generate_index else None
 
         if self.index_builder is not None:
             self.logger.debug("Generating index file '%s'." % self.index_path)
