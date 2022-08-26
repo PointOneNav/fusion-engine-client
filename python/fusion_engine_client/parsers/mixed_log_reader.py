@@ -49,7 +49,9 @@ class MixedLogReader(object):
         self.return_offset = return_offset
 
         self.time_range = time_range
-        if isinstance(message_types, MessageType):
+        if message_types is None:
+            self.message_types = None
+        elif isinstance(message_types, MessageType):
             self.message_types = set((message_types,))
         elif MessagePayload.is_subclass(message_types):
             self.message_types = set((message_types.get_type(),))
