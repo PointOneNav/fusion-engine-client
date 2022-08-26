@@ -1,3 +1,4 @@
+from datetime import datetime
 import logging
 import os
 
@@ -14,7 +15,7 @@ class MixedLogReader(object):
     """
     logger = logging.getLogger('point_one.fusion_engine.parsers.mixed_log_reader')
 
-    def __init__(self, input_file, warn_on_gaps: bool = False,
+    def __init__(self, input_file, warn_on_gaps: bool = False, show_progress: bool = False,
                  generate_index: bool = True, ignore_index: bool = False,
                  time_range: TimeRange = None, message_types: set = None,
                  return_header: bool = True, return_payload: bool = True,
@@ -28,6 +29,7 @@ class MixedLogReader(object):
         @param input_file The path to an input file (`.p1log` or mixed-content binary file), or an open file-like
                object.
         @param warn_on_gaps If `True`, print warnings if gaps are detected in the FusionEngine message sequence numbers.
+        @param show_progress If `True`, print file read progress to the console periodically.
         @param generate_index If `True`, generate an index file if one does not exist for faster reading in the future.
                See @ref FileIndex for details.
         @param ignore_index If `True`, ignore the existing index file and read from the binary file directly. If
@@ -53,14 +55,20 @@ class MixedLogReader(object):
         self.prev_sequence_number = None
         self.total_bytes_read = 0
 
+        self.show_progress = show_progress
+        self.last_print_bytes = 0
+        self.start_time = datetime.now()
+
         # Open the file to be read.
         if isinstance(input_file, str):
             self.input_file = open(input_file, 'rb')
         else:
             self.input_file = input_file
 
-        # Open the companion index file if one exists.
         input_path = self.input_file.name
+        self.file_size_bytes = os.stat(input_path).st_size
+
+        # Open the companion index file if one exists.
         self.index_path = file_index.FileIndex.get_path(input_path)
         self.next_index_elem = 0
         if ignore_index:
@@ -110,6 +118,17 @@ class MixedLogReader(object):
 
             offset_bytes = self.input_file.tell()
             self.total_bytes_read = offset_bytes
+            self._print_progress()
+
+            if self.total_bytes_read - self.last_print_bytes > 10e6:
+                elapsed_sec = (datetime.now() - self.start_time).total_seconds()
+                self.logger.log(logging.INFO if self.show_progress else logging.DEBUG,
+                                'Processed %d/%d bytes (%.1f%%). [elapsed=%.1f sec, rate=%.1f MB/s]' %
+                                (self.total_bytes_read, self.file_size_bytes,
+                                 100.0 * float(self.total_bytes_read) / self.file_size_bytes,
+                                 elapsed_sec, self.total_bytes_read / elapsed_sec / 1e6))
+                self.last_print_bytes = self.total_bytes_read
+
             self.logger.trace('Reading candidate message @ %d (0x%x).' % (offset_bytes, offset_bytes), depth=2)
 
             # Read the next message header.
@@ -207,6 +226,7 @@ class MixedLogReader(object):
                 self.input_file.seek(offset_bytes, os.SEEK_SET)
 
         # Out of the loop - EOF reached.
+        self._print_progress(self.total_bytes_read)
         self.logger.debug("Read %d bytes total." % self.total_bytes_read)
 
         # If we are creating an index file, save it now.
@@ -241,6 +261,19 @@ class MixedLogReader(object):
                 self.next_index_elem += 1
                 self.input_file.seek(offset_bytes, os.SEEK_SET)
                 return True
+
+    def _print_progress(self, file_size=None):
+        if file_size is None:
+            file_size = self.file_size_bytes
+
+        if self.total_bytes_read - self.last_print_bytes > 10e6 or self.total_bytes_read == file_size:
+            elapsed_sec = (datetime.now() - self.start_time).total_seconds()
+            self.logger.log(logging.INFO if self.show_progress else logging.DEBUG,
+                            'Processed %d/%d bytes (%.1f%%). [elapsed=%.1f sec, rate=%.1f MB/s]' %
+                            (self.total_bytes_read, file_size,
+                             100.0 * float(self.total_bytes_read) / file_size,
+                             elapsed_sec, self.total_bytes_read / elapsed_sec / 1e6))
+            self.last_print_bytes = self.total_bytes_read
 
     def __iter__(self):
         return self

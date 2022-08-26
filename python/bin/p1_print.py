@@ -79,6 +79,9 @@ other types of data.
         '--log-base-dir', metavar='DIR', default=DEFAULT_LOG_BASE_DIR,
         help="The base directory containing FusionEngine logs to be searched if a log pattern is specified.")
     log_parser.add_argument(
+        '--progress', action='store_true',
+        help="Print file read progress to the console periodically.")
+    log_parser.add_argument(
         'log',
         help="The log to be read. May be one of:\n"
              "- The path to a .p1log file or a file containing FusionEngine messages and other content\n"
@@ -174,7 +177,7 @@ other types of data.
             read_index = False
 
     # Process all data in the file.
-    reader = MixedLogReader(input_path, return_bytes=True, return_offset=True,
+    reader = MixedLogReader(input_path, return_bytes=True, return_offset=True, show_progress=options.progress,
                             ignore_index=not read_index, generate_index=generate_index,
                             message_types=message_types, time_range=time_range)
 
