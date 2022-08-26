@@ -26,6 +26,13 @@ class ArgumentDefaultsHelpFormatter(argparse.HelpFormatter):
         return help
 
 
+class FlexiFormatterNoDescription(FlexiFormatter):
+    def _format_text(self, text):
+        if '%(prog)' in text:
+            text = text % dict(prog=self._prog)
+        return text + '\n\n'
+
+
 class CapitalisedHelpFormatter(FlexiFormatter, ArgumentDefaultsHelpFormatter):
     def add_usage(self, usage, actions, groups, prefix=None):
         if prefix is None:
@@ -33,10 +40,17 @@ class CapitalisedHelpFormatter(FlexiFormatter, ArgumentDefaultsHelpFormatter):
         return super(CapitalisedHelpFormatter, self).add_usage(usage, actions, groups, prefix)
 
 
+class CapitalisedHelpFormatterNoDescription(FlexiFormatterNoDescription, ArgumentDefaultsHelpFormatter):
+    def add_usage(self, usage, actions, groups, prefix=None):
+        if prefix is None:
+            prefix = 'Usage: '
+        return super(CapitalisedHelpFormatterNoDescription, self).add_usage(usage, actions, groups, prefix)
+
+
 class ArgumentParser(argparse.ArgumentParser):
     def __init__(self, *args, **kwargs):
         if 'formatter_class' not in kwargs:
-            kwargs['formatter_class'] = CapitalisedHelpFormatter
+            kwargs['formatter_class'] = CapitalisedHelpFormatterNoDescription
         if 'add_help' not in kwargs:
             overwrite_help = True
             kwargs['add_help'] = False
@@ -50,7 +64,7 @@ class ArgumentParser(argparse.ArgumentParser):
 
         if overwrite_help:
             self.add_argument('-h', '--help', action='help', default=argparse.SUPPRESS,
-                              help = 'Show this help message and exit.')
+                              help='Show this help message and exit.')
 
     def find_argument(self, option_string):
         return self._option_string_actions.get(option_string, None)

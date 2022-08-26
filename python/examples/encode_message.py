@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-from argparse import ArgumentParser
 import os
 import sys
 
@@ -11,6 +10,7 @@ sys.path.insert(0, root_dir)
 
 from fusion_engine_client.messages import *
 from fusion_engine_client.parsers import FusionEngineEncoder
+from fusion_engine_client.utils.argument_parser import ArgumentParser
 
 if __name__ == "__main__":
     parser = ArgumentParser(description="""\

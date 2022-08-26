@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-from argparse import ArgumentParser
 import logging
 import os
 import sys
@@ -10,6 +9,7 @@ sys.path.append(root_dir)
 
 from fusion_engine_client.analysis.file_reader import FileReader
 from fusion_engine_client.messages.core import *
+from fusion_engine_client.utils.argument_parser import ArgumentParser
 from fusion_engine_client.utils.log import locate_log, DEFAULT_LOG_BASE_DIR
 
 
@@ -29,7 +29,7 @@ Compute the average LLA position for the data contained in a *.p1log file.
                              "(see find_fusion_engine_log() and --log-base-dir)")
     options = parser.parse_args()
 
-    logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s:%(lineno)d - %(message)s')
+    logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s:%(lineno)d - %(message)s', stream=sys.stdout)
     logger = logging.getLogger('point_one.fusion_engine')
     logger.setLevel(logging.INFO)
 
