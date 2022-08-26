@@ -1,3 +1,4 @@
+import inspect
 import logging
 import math
 import struct
@@ -315,6 +316,14 @@ class MessagePayload:
     @classmethod
     def get_version(cls) -> int:
         return cls.MESSAGE_VERSION
+
+    @classmethod
+    def is_instance(cls, obj) -> bool:
+        return isinstance(obj, MessagePayload)
+
+    @classmethod
+    def is_subclass(cls, obj) -> bool:
+        return inspect.isclass(obj) and issubclass(obj, MessagePayload)
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         raise NotImplementedError('pack() not implemented.')
