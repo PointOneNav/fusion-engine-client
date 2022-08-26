@@ -87,16 +87,18 @@ class MixedLogReader(object):
         while True:
             if not self._advance_to_next_sync():
                 # End of file.
+                self.logger.debug('EOF reached.')
                 break
 
             offset_bytes = self.input_file.tell()
-            self.logger.trace('Reading candidate message @ %d (0x%x).' % (offset_bytes, offset_bytes))
+            self.logger.trace('Reading candidate message @ %d (0x%x).' % (offset_bytes, offset_bytes), depth=2)
 
             # Read the next message header.
             data = self.input_file.read(MessageHeader.calcsize())
             read_len = len(data)
             if read_len < MessageHeader.calcsize():
                 # End of file.
+                self.logger.debug('EOF reached.')
                 break
 
             try:
@@ -116,10 +118,11 @@ class MixedLogReader(object):
                 data += payload
                 header.validate_crc(data)
 
-                self.logger.debug('Read %s message @ %d (0x%x). [length=%d B, sequence=%d, # messages=%d]' %
+                self.logger.trace('Read %s message @ %d (0x%x). [length=%d B, sequence=%d, # messages=%d]' %
                                   (header.get_type_string(), offset_bytes, offset_bytes,
                                    MessageHeader.calcsize() + header.payload_size_bytes, header.sequence_number,
-                                   self.valid_count + 1))
+                                   self.valid_count + 1),
+                                  depth=1)
 
                 self.valid_count += 1
                 self.message_counts.setdefault(header.message_type, 0)
@@ -166,7 +169,8 @@ class MixedLogReader(object):
                 return result
             except ValueError as e:
                 offset_bytes += 1
-                self.logger.trace('%s Rewinding to offset %d (0x%x).' % (str(e), offset_bytes, offset_bytes))
+                self.logger.trace('%s Rewinding to offset %d (0x%x).' % (str(e), offset_bytes, offset_bytes),
+                                  depth=2)
                 self.input_file.seek(offset_bytes, os.SEEK_SET)
 
         # Out of the loop - EOF reached. If we are creating an index file, save it now.
