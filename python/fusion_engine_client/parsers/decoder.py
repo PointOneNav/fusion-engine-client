@@ -23,6 +23,9 @@ class FusionEngineDecoder:
     This class performs message framing and validation operations on an incoming stream of bytes to decode any
     FusionEngine messages found within the stream. If an error is detected (CRC failure, invalid message length, etc.),
     the stream will resynchronize automatically.
+
+    @note
+    For reading from a pre-recorded data file, see the more efficient @ref MixedLogReader class.
     """
     class WarnOnError(IntEnum):
         NONE = 0
