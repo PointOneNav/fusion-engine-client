@@ -121,12 +121,12 @@ class MixedLogReader(object):
                     raise ValueError('Payload size (%d) too large.' % header.payload_size_bytes)
 
                 # Read and validate the payload.
-                payload = self.input_file.read(header.payload_size_bytes)
-                read_len += len(payload)
-                if len(payload) != header.payload_size_bytes:
+                payload_bytes = self.input_file.read(header.payload_size_bytes)
+                read_len += len(payload_bytes)
+                if len(payload_bytes) != header.payload_size_bytes:
                     raise ValueError('Not enough data - likely not a valid FusionEngine header.')
 
-                data += payload
+                data += payload_bytes
                 header.validate_crc(data)
 
                 self.logger.trace('Read %s message @ %d (0x%x). [length=%d B, sequence=%d, # messages=%d]' %
@@ -156,6 +156,7 @@ class MixedLogReader(object):
                     if cls is not None:
                         try:
                             payload = cls()
+                            payload.unpack(buffer=payload_bytes, offset=0)
                         except Exception as e:
                             self.logger.error("Error parsing %s message: %s" % (header.get_type_string(), str(e)))
                             payload = None
