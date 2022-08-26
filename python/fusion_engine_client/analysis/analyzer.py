@@ -1650,7 +1650,7 @@ class Analyzer(object):
         format_len = struct.calcsize(crash_info_format)
 
         for msg in storage_messages:
-            if msg.data_type == DataType.CRASH_LOG:
+            if msg.data_type == DataType.CRASH_LOG and msg.data_validity == DataValidity.DATA_VALID:
                 if len(msg.data) < format_len:
                     self.logger.warning('Crash log with unexpectedly short %d bytes of data.' % len(msg.data))
                 else:
