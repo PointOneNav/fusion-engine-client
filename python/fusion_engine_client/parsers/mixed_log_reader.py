@@ -51,6 +51,7 @@ class MixedLogReader(object):
         self.valid_count = 0
         self.message_counts = {}
         self.prev_sequence_number = None
+        self.total_bytes_read = 0
 
         # Open the file to be read.
         if isinstance(input_file, str):
@@ -89,6 +90,9 @@ class MixedLogReader(object):
     def generating_index(self):
         return self.index_builder is not None
 
+    def get_bytes_read(self):
+        return self.total_bytes_read
+
     def next(self):
         while True:
             if not self._advance_to_next_sync():
@@ -97,6 +101,7 @@ class MixedLogReader(object):
                 break
 
             offset_bytes = self.input_file.tell()
+            self.total_bytes_read = offset_bytes
             self.logger.trace('Reading candidate message @ %d (0x%x).' % (offset_bytes, offset_bytes), depth=2)
 
             # Read the next message header.
@@ -198,6 +203,8 @@ class MixedLogReader(object):
             index.save(self.index_path)
 
         # Finished iterating.
+        self.input_file.seek(0, os.SEEK_END)
+        self.total_bytes_read = self.input_file.tell()
         raise StopIteration()
 
     def _advance_to_next_sync(self):
