@@ -10,7 +10,6 @@ import os
 import numpy as np
 
 from ..messages import MessageHeader, MessageType, Timestamp
-from ..parsers import MixedLogReader
 from ..utils.time_range import TimeRange
 
 
@@ -402,6 +401,7 @@ class FileIndexBuilder(object):
 
         @return The generated @ref FileIndex instance.
         """
+        from ..parsers import MixedLogReader
         reader = MixedLogReader(data_path, return_offset=True)
         for header, message, offset_bytes in reader:
             p1_time = message.__dict__.get('p1_time', None)
