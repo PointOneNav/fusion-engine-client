@@ -10,6 +10,7 @@ import numpy as np
 
 from ..messages import MessageHeader, MessageType, Timestamp
 from ..parsers import MixedLogReader
+from ..utils.time_range import TimeRange
 
 
 FileIndexEntry = namedtuple('Element', ['time', 'type', 'offset'])
@@ -330,6 +331,17 @@ class FileIndex(object):
             if hint is not None and not isinstance(hint, str):
                 raise ValueError('Step size not supported for time range slicing.')
             return self.get_time_range(key.start, key.stop, hint)
+        # Key is a TimeRange object. Return a subset of the data. All nan elements (messages without P1 time) will be
+        # included in the results.
+        elif isinstance(key, TimeRange):
+            if key.absolute:
+                start = key.start
+                end = key.end
+            else:
+                p1_t0 = key.p1_t0 if key.p1_t0 is not None else self.t0
+                start = key.start + p1_t0
+                end = key.end + p1_t0
+            return self.get_time_range(start, end, 'include_nans')
         # Key is an index slice or a list of individual element indices. Return a subset of the data.
         else:
             if isinstance(key, (set, list, tuple)):

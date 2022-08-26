@@ -77,6 +77,9 @@ class MixedLogReader(object):
     def have_index(self):
         return self.index is not None
 
+    def get_index(self):
+        return self.index
+
     def generating_index(self):
         return self.index_builder is not None
 
