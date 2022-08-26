@@ -2,7 +2,8 @@ import logging
 import os
 
 from ..analysis import file_index
-from ..messages import MessageHeader, MessagePayload, message_type_to_class
+from ..messages import MessageType, MessageHeader, Timestamp, message_type_to_class
+from ..utils.time_range import TimeRange
 
 
 class MixedLogReader(object):
@@ -15,6 +16,7 @@ class MixedLogReader(object):
 
     def __init__(self, input_file, warn_on_gaps: bool = False,
                  generate_index: bool = True, ignore_index: bool = False,
+                 time_range: TimeRange = None, message_types: set = None,
                  return_header: bool = True, return_payload: bool = True,
                  return_bytes: bool = False, return_offset: bool = False):
         """!
@@ -31,7 +33,7 @@ class MixedLogReader(object):
         @param ignore_index If `True`, ignore the existing index file and read from the binary file directly. If
                `generate_index == True`, this will delete the existing file and create a new one.
         @param return_header If `True`, return the decoded @ref MessageHeader for each message.
-        @param return_payload If `True`, parse and return the payload for each for each message as a subclass of @ref
+        @param return_payload If `True`, parse and return the payload for each message as a subclass of @ref
                MessagePayload. Will return `None` if the payload cannot be parsed.
         @param return_bytes If `True`, return a `bytes` object containing the serialized message header and payload.
         @param return_offset If `True`, return the offset into the file (in bytes) at which the message began.
@@ -42,6 +44,9 @@ class MixedLogReader(object):
         self.return_payload = return_payload
         self.return_bytes = return_bytes
         self.return_offset = return_offset
+
+        self.time_range = time_range
+        self.message_types = message_types
 
         self.valid_count = 0
         self.message_counts = {}
@@ -65,6 +70,7 @@ class MixedLogReader(object):
                 try:
                     self.index = file_index.FileIndex(index_path=self.index_path, data_path=input_path,
                                                       delete_on_error=generate_index)
+                    self.index = self.index[self.message_types][self.time_range]
                     self.index_builder = None
                 except ValueError as e:
                     self.logger.error("Error loading index file: %s" % str(e))
@@ -139,7 +145,8 @@ class MixedLogReader(object):
                 self.prev_sequence_number = header.sequence_number
 
                 # Deserialize the payload if we need it.
-                if self.return_payload or self.index_builder is not None:
+                need_payload = self.return_payload or self.index_builder is not None or self.time_range is not None
+                if need_payload:
                     cls = message_type_to_class.get(header.message_type, None)
                     if cls is not None:
                         try:
@@ -155,6 +162,18 @@ class MixedLogReader(object):
                     p1_time = payload.get_p1_time() if payload is not None else None
                     self.index_builder.append(message_type=header.message_type, offset_bytes=offset_bytes,
                                               p1_time=p1_time)
+
+                # Now, if this message is not in the user-specified filter criteria, skip it.
+                if self.message_types is not None and header.message_type not in self.message_types:
+                    self.logger.debug("Message type not requested. Skipping.")
+                    continue
+                elif self.time_range is not None and not self.time_range.is_in_range(payload):
+                    if self.time_range.in_range_started() and self.index_builder is None:
+                        self.logger.debug("End of time range reached. Finished processing.")
+                        break
+                    else:
+                        self.logger.debug("Message not in time range. Skipping.")
+                        continue
 
                 # Construct the result. If we're returning the payload, deserialize the payload.
                 result = []
@@ -211,3 +230,48 @@ class MixedLogReader(object):
 
     def __next__(self):
         return self.next()
+
+    def __getitem__(self, key):
+        """!
+        @brief Limit the returned messages by type or time.
+
+        @warning
+        This operator modifies this class in-place.
+
+        @param key One of the following:
+               - An individual @ref MessageType to be returned
+               - An iterable listing one or more @ref MessageType%s to be returned
+               - A `slice` specifying the start/end of the desired absolute (P1) or relative time range
+               - A @ref TimeRange object
+        """
+        # No key specified (convenience case).
+        if key is None:
+            pass
+        # If we have an index file available, reduce the index to the requested criteria.
+        elif self.index is not None:
+            self.index = self.index[key]
+        # Otherwise, store the criteria and apply them while reading.
+        else:
+            # Return entries for a specific message type.
+            if isinstance(key, MessageType):
+                self.message_types = set((key,))
+            # Return entries for a list of message types.
+            elif isinstance(key, (set, list, tuple)) and len(key) > 0 and isinstance(next(iter(key)), MessageType):
+                current_types = set(self.message_types) if self.message_types is not None else set()
+                self.message_types = current_types & set(key)
+            # Key is a slice in time. Return a subset of the data.
+            elif isinstance(key, slice) and (isinstance(key.start, (Timestamp, float)) or
+                                             isinstance(key.stop, (Timestamp, float))):
+                time_range = TimeRange(start=key.start, end=key.stop, absolute=isinstance(key.start, Timestamp))
+                if self.time_range is None:
+                    self.time_range = time_range
+                else:
+                    self.time_range.intersect(time_range, in_place=True)
+            # Key is a TimeRange object. Return a subset of the data. All nan elements (messages without P1 time) will
+            # be included in the results.
+            elif isinstance(key, TimeRange):
+                if self.time_range is None:
+                    self.time_range = key
+                else:
+                    self.time_range.intersect(key, in_place=True)
+        return self
