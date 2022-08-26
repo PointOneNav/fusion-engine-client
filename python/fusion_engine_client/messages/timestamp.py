@@ -84,8 +84,12 @@ class Timestamp:
         return 'P1 time %.3f sec' % self.seconds
 
 
-def system_time_to_str(system_time_ns):
-    system_time_sec = system_time_ns * 1e-9
+def system_time_to_str(system_time, is_seconds=False):
+    if is_seconds:
+        system_time_sec = system_time
+    else:
+        system_time_sec = system_time * 1e-9
+
     if system_time_sec >= 946684800: # 2000/1/1 00:00:00
         return 'POSIX time %s (%.3f sec)' % \
                (datetime.utcfromtimestamp(system_time_sec).replace(tzinfo=timezone.utc), system_time_sec)

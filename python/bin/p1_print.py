@@ -15,8 +15,8 @@ sys.path.insert(0, root_dir)
 root_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(root_dir)
 
-from fusion_engine_client.analysis.file_index import FileIndex, FileIndexBuilder
-from fusion_engine_client.messages import MessageHeader, MessagePayload, message_type_to_class, message_type_by_name
+from fusion_engine_client.messages import MessagePayload, message_type_to_class, message_type_by_name, \
+                                          system_time_to_str
 from fusion_engine_client.parsers import MixedLogReader
 from fusion_engine_client.utils.argument_parser import ArgumentParser
 from fusion_engine_client.utils.log import locate_log, DEFAULT_LOG_BASE_DIR
@@ -165,10 +165,15 @@ other types of data.
     reader = MixedLogReader(input_path, return_bytes=True, return_offset=True,
                             ignore_index=not read_index, generate_index=generate_index,
                             message_types=message_types, time_range=time_range)
+
     first_p1_time_sec = None
     last_p1_time_sec = None
+    newest_p1_time = None
+
     first_system_time_sec = None
     last_system_time_sec = None
+    newest_system_time_sec = None
+
     total_messages = 0
     bytes_decoded = 0
     message_stats = {}
@@ -181,13 +186,26 @@ other types of data.
             if p1_time is not None:
                 if first_p1_time_sec is None:
                     first_p1_time_sec = float(p1_time)
-                last_p1_time_sec = float(p1_time)
+                    last_p1_time_sec = float(p1_time)
+                    newest_p1_time = p1_time
+                else:
+                    if p1_time < newest_p1_time:
+                        _logger.warning('P1 time restart detected after %s.' % str(newest_p1_time))
+                    last_p1_time_sec = max(last_p1_time_sec, float(p1_time))
+                    newest_p1_time = p1_time
 
             system_time_sec = message.get_system_time_sec()
             if system_time_sec is not None:
                 if first_system_time_sec is None:
                     first_system_time_sec = system_time_sec
-                last_system_time_sec = system_time_sec
+                    last_system_time_sec = system_time_sec
+                    newest_system_time_sec = system_time_sec
+                else:
+                    if system_time_sec < newest_system_time_sec:
+                        _logger.warning('System time restart detected after %s.' %
+                                        system_time_to_str(newest_system_time_sec, is_seconds=True))
+                    last_system_time_sec = max(last_system_time_sec, system_time_sec)
+                    newest_system_time_sec = system_time_sec
 
             total_messages += 1
             if header.message_type not in message_stats:
@@ -205,9 +223,13 @@ other types of data.
         _logger.info('Input file: %s' % input_path)
         _logger.info('Log ID: %s' % log_id)
         if first_p1_time_sec is not None:
-            _logger.info('Duration: %d seconds' % (last_p1_time_sec - first_p1_time_sec))
-        elif first_system_time_sec is not None:
-            _logger.info('Duration: %d seconds' % (last_system_time_sec - first_system_time_sec))
+            _logger.info('Duration (P1): %d seconds' % (last_p1_time_sec - first_p1_time_sec))
+        else:
+            _logger.info('Duration (P1): unknown')
+        if first_system_time_sec is not None:
+            _logger.info('Duration (system): %d seconds' % (last_system_time_sec - first_system_time_sec))
+        else:
+            _logger.info('Duration (system): unknown')
         _logger.info('Total data read: %d B' % reader.get_bytes_read())
         _logger.info('Selected data size: %d B' % bytes_decoded)
         _logger.info('')
