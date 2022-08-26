@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Union
 
 from collections import namedtuple
+import copy
 import io
 import os
 
@@ -303,8 +304,11 @@ class FileIndex(object):
             raise AttributeError
 
     def __getitem__(self, key):
+        # No key specified (convenience case).
+        if key is None:
+            return copy.copy(self)
         # No data available.
-        if self._data is None:
+        elif self._data is None:
             return FileIndex()
         # Key is a string (e.g., index['type']), defer to getattr() (e.g., index.type).
         elif isinstance(key, str):
