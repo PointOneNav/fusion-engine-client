@@ -1,6 +1,7 @@
 from datetime import datetime
 import logging
 import os
+from typing import Union
 
 from ..analysis import file_index
 from ..messages import MessageType, MessageHeader, Timestamp, message_type_to_class
@@ -17,7 +18,7 @@ class MixedLogReader(object):
 
     def __init__(self, input_file, warn_on_gaps: bool = False, show_progress: bool = False,
                  generate_index: bool = True, ignore_index: bool = False,
-                 time_range: TimeRange = None, message_types: set = None,
+                 time_range: TimeRange = None, message_types: Union[set, MessageType] = None,
                  return_header: bool = True, return_payload: bool = True,
                  return_bytes: bool = False, return_offset: bool = False):
         """!
@@ -48,7 +49,10 @@ class MixedLogReader(object):
         self.return_offset = return_offset
 
         self.time_range = time_range
-        self.message_types = message_types
+        if isinstance(message_types, MessageType):
+            self.message_types = set((message_types,))
+        else:
+            self.message_types = message_types
 
         self.valid_count = 0
         self.message_counts = {}
