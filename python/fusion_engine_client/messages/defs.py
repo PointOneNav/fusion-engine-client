@@ -8,6 +8,7 @@ from zlib import crc32
 from construct import Adapter, Struct, Int32ul
 import numpy as np
 
+from . import measurements  # Intentional (safe) circular import for MeasurementTimestamps.
 from ..utils.enum_utils import IntEnum
 
 _logger = logging.getLogger('point_one.fusion_engine.messages.defs')
@@ -407,6 +408,30 @@ class MessagePayload:
 
     def unpack(self, buffer: bytes, offset: int = 0) -> int:
         raise NotImplementedError('unpack() not implemented.')
+
+    def get_p1_time(self) -> Timestamp:
+        measurement_timestamps = getattr(self, 'timestamps', None)
+        if isinstance(measurement_timestamps, measurements.MeasurementTimestamps):
+            return measurement_timestamps.p1_time
+        else:
+            return getattr(self, 'p1_time', None)
+
+    def get_system_time_ns(self) -> float:
+        measurement_timestamps = getattr(self, 'timestamps', None)
+        if isinstance(measurement_timestamps, measurements.MeasurementTimestamps):
+            if measurement_timestamps.measurement_time_source == measurements.SystemTimeSource.TIMESTAMPED_ON_RECEPTION:
+                return float(measurement_timestamps.measurement_time)
+            else:
+                return np.nan
+        else:
+            return getattr(self, 'system_time_ns', None)
+
+    def get_system_time_sec(self) -> float:
+        system_time_ns = self.get_system_time_ns()
+        if system_time_ns is None:
+            return None
+        else:
+            return system_time_ns * 1e-9
 
     def __repr__(self):
         try:

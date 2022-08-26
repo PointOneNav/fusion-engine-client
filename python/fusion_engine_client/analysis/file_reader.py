@@ -497,22 +497,9 @@ class FileReader(object):
                     contents.unpack(buffer=buffer, offset=HEADER_SIZE)
 
                     # Extract P1 and system times from this message, if applicable.
-                    measurement_timestamps = contents.__dict__.get('timestamps', None)
-                    if isinstance(measurement_timestamps, MeasurementTimestamps):
-                        p1_time = measurement_timestamps.p1_time
-                        if measurement_timestamps.measurement_time_source == SystemTimeSource.TIMESTAMPED_ON_RECEPTION:
-                            system_time_sec = float(measurement_timestamps.measurement_time)
-                            system_time_ns = system_time_sec * 1e9
-                        else:
-                            system_time_sec = None
-                            system_time_ns = None
-                    else:
-                        p1_time = contents.__dict__.get('p1_time', None)
-                        system_time_ns = contents.__dict__.get('system_time_ns', None)
-                        if system_time_ns is not None:
-                            system_time_sec = system_time_ns * 1e-9
-                        else:
-                            system_time_sec = None
+                    p1_time = contents.get_p1_time()
+                    system_time_ns = contents.get_system_time_ns()
+                    system_time_sec = None if system_time_ns is None else (system_time_ns * 1e-9)
 
                 # If we're building up an index file, add an entry for this message. If this is an unrecognized message
                 # type, we won't have P1 time so we'll just insert a nan.
