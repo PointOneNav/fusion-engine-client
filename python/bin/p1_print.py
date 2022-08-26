@@ -178,6 +178,9 @@ other types of data.
                             ignore_index=not read_index, generate_index=generate_index,
                             message_types=message_types, time_range=time_range)
 
+    if reader.generating_index() and (len(message_types) > 0 or options.time is not None):
+        _logger.info('Generating index file - processing complete file. This may take some time.')
+
     first_p1_time_sec = None
     last_p1_time_sec = None
     newest_p1_time = None
