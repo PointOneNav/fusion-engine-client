@@ -9,7 +9,7 @@ import os
 
 import numpy as np
 
-from ..messages import MessageHeader, MessageType, Timestamp
+from ..messages import MessageHeader, MessagePayload, MessageType, Timestamp
 from ..utils.time_range import TimeRange
 
 
@@ -345,9 +345,15 @@ class FileIndex(object):
         elif isinstance(key, MessageType):
             idx = self._data['type'] == key
             return FileIndex(data=self._data[idx], t0=self.t0)
+        elif MessagePayload.is_subclass(key):
+            idx = self._data['type'] == key.get_type()
+            return FileIndex(data=self._data[idx], t0=self.t0)
         # Return entries for a list of message types.
         elif isinstance(key, (set, list, tuple)) and len(key) > 0 and isinstance(next(iter(key)), MessageType):
             idx = np.isin(self._data['type'], [int(k) for k in key])
+            return FileIndex(data=self._data[idx], t0=self.t0)
+        elif isinstance(key, (set, list, tuple)) and len(key) > 0 and MessagePayload.is_subclass(next(iter(key))):
+            idx = np.isin(self._data['type'], [int(k.get_type()) for k in key])
             return FileIndex(data=self._data[idx], t0=self.t0)
         # Return a single element by index.
         elif isinstance(key, int):

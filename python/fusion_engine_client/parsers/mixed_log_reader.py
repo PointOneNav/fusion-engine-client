@@ -4,7 +4,7 @@ import os
 from typing import Union
 
 from ..analysis import file_index
-from ..messages import MessageType, MessageHeader, Timestamp, message_type_to_class
+from ..messages import MessageType, MessageHeader, MessagePayload, Timestamp, message_type_to_class
 from ..utils.time_range import TimeRange
 
 
@@ -51,8 +51,10 @@ class MixedLogReader(object):
         self.time_range = time_range
         if isinstance(message_types, MessageType):
             self.message_types = set((message_types,))
+        elif MessagePayload.is_subclass(message_types):
+            self.message_types = set((message_types.get_type(),))
         else:
-            self.message_types = message_types
+            self.message_types = set([(t.get_type() if MessagePayload.is_subclass(t) else t) for t in message_types])
 
         self.valid_count = 0
         self.message_counts = {}
@@ -309,10 +311,17 @@ class MixedLogReader(object):
             # Return entries for a specific message type.
             if isinstance(key, MessageType):
                 self.message_types = set((key,))
+            elif MessagePayload.is_subclass(key):
+                self.message_types = set((key.get_type(),))
             # Return entries for a list of message types.
             elif isinstance(key, (set, list, tuple)) and len(key) > 0 and isinstance(next(iter(key)), MessageType):
                 current_types = set(self.message_types) if self.message_types is not None else set()
-                self.message_types = current_types & set(key)
+                new_message_types = set(key)
+                self.message_types = current_types & new_message_types
+            elif isinstance(key, (set, list, tuple)) and len(key) > 0 and MessagePayload.is_subclass(next(iter(key))):
+                current_types = set(self.message_types) if self.message_types is not None else set()
+                new_message_types = set([t.get_type() for t in key])
+                self.message_types = current_types & new_message_types
             # Key is a slice in time. Return a subset of the data.
             elif isinstance(key, slice) and (isinstance(key.start, (Timestamp, float)) or
                                              isinstance(key.stop, (Timestamp, float))):
