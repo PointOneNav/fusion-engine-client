@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-from argparse import ArgumentParser
 import logging
 import os
 import sys
@@ -12,6 +11,7 @@ sys.path.insert(0, root_dir)
 
 from fusion_engine_client.analysis.file_reader import FileReader
 from fusion_engine_client.messages.core import *
+from fusion_engine_client.utils.argument_parser import ArgumentParser
 from fusion_engine_client.utils.log import locate_log, DEFAULT_LOG_BASE_DIR
 
 if __name__ == "__main__":
@@ -32,7 +32,7 @@ Extract satellite azimuth, elevation, and L1 signal C/N0 data to a CSV file.
     options = parser.parse_args()
 
     # Configure logging.
-    logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s:%(lineno)d - %(message)s')
+    logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s:%(lineno)d - %(message)s', stream=sys.stdout)
     logger = logging.getLogger('point_one.fusion_engine')
     logger.setLevel(logging.INFO)
 

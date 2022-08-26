@@ -54,7 +54,7 @@ class CommandResponseMessage(MessagePayload):
 
     def __str__(self):
         string = f'Command Response\n'
-        string += f'  Sequence number: {self.source_sequence_num}\n'
+        string += f'  Sequence #: {self.source_sequence_num}\n'
         if isinstance(self.response, Response):
             string += f'  Response: {str(self.response)} ({int(self.response)})'
         else:
@@ -92,7 +92,7 @@ class MessageRequest(MessagePayload):
         initial_offset = offset
 
         (message_type,) = self._STRUCT.unpack_from(buffer=buffer, offset=offset)
-        offset += self._STRUCT._SIZE
+        offset += self._STRUCT.size
 
         self.message_type = MessageType(message_type)
 
@@ -264,7 +264,7 @@ class ResetRequest(MessagePayload):
 
         (self.reset_mask,) = \
             self._STRUCT.unpack_from(buffer=buffer, offset=offset)
-        offset += ResetRequest._SIZE
+        offset += self._STRUCT.size
 
         return offset - initial_offset
 

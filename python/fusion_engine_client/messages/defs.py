@@ -369,6 +369,18 @@ class MessageHeader:
         """
         return MessageHeader._SIZE
 
+    def __str__(self):
+        return f"""\
+{self.get_type_string()} Message (version {self.message_version}):
+  Sequence #: {self.sequence_number}
+  Payload: {self.payload_size_bytes} B
+  Source: {self.source_identifier}
+  CRC: 0x{self.crc:08x}"""
+
+    def __repr__(self):
+        return f"[type={self.get_type_string()}, seq={self.sequence_number}, payload={self.payload_size_bytes} B, " \
+               f"crc=0x{self.crc:08x}]"
+
 
 class MessagePayload:
     """!

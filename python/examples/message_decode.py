@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-from argparse import ArgumentParser
 import logging
 import os
 import sys
@@ -12,17 +11,21 @@ sys.path.insert(0, root_dir)
 
 from fusion_engine_client.messages.core import MessagePayload
 from fusion_engine_client.parsers import FusionEngineDecoder
+from fusion_engine_client.utils.argument_parser import ArgumentParser
 from fusion_engine_client.utils.log import locate_log, DEFAULT_LOG_BASE_DIR
+
+
+logger = logging.getLogger('point_one.fusion_engine')
 
 
 def print_message(header, contents):
     if isinstance(contents, MessagePayload):
         parts = str(contents).split('\n')
         parts[0] += ' [sequence=%d, size=%d B]' % (header.sequence_number, header.get_message_size())
-        print('\n'.join(parts))
+        logger.info('\n'.join(parts))
     else:
-        print('Decoded %s message [sequence=%d, size=%d B]' %
-              (header.get_type_string(), header.sequence_number, header.get_message_size()))
+        logger.info('Decoded %s message [sequence=%d, size=%d B]' %
+                    (header.get_type_string(), header.sequence_number, header.get_message_size()))
 
 
 if __name__ == "__main__":
@@ -44,8 +47,7 @@ other types of data.
     options = parser.parse_args()
 
     # Configure logging.
-    logging.basicConfig(format='%(message)s')
-    logger = logging.getLogger('point_one.fusion_engine')
+    logging.basicConfig(format='%(message)s', stream=sys.stdout)
     logger.setLevel(logging.INFO)
 
     # Locate the input file and set the output directory.
