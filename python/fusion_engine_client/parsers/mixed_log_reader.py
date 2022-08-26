@@ -97,6 +97,7 @@ class MixedLogReader(object):
         while True:
             if not self._advance_to_next_sync():
                 # End of file.
+                self.total_bytes_read = self.input_file.tell()
                 self.logger.debug('EOF reached.')
                 break
 
@@ -198,14 +199,15 @@ class MixedLogReader(object):
                                   depth=2)
                 self.input_file.seek(offset_bytes, os.SEEK_SET)
 
-        # Out of the loop - EOF reached. If we are creating an index file, save it now.
+        # Out of the loop - EOF reached.
+        self.logger.debug("Read %d bytes total." % self.total_bytes_read)
+
+        # If we are creating an index file, save it now.
         if self.index_builder is not None:
             index = self.index_builder.to_index()
             index.save(self.index_path)
 
         # Finished iterating.
-        self.input_file.seek(0, os.SEEK_END)
-        self.total_bytes_read = self.input_file.tell()
         raise StopIteration()
 
     def _advance_to_next_sync(self):
