@@ -1481,7 +1481,7 @@ inline std::ostream& operator<<(std::ostream& stream, MessageRate val) {
 
 /**
  * @brief Set the output rate for the requested message type on the specified
- *        interface.
+ *        interface (@ref MessageType::SET_OUTPUT_MESSAGE_RATE, version 1.0).
  * @ingroup config_and_ctrl_messages
  */
 struct alignas(4) SetMessageOutputRate : public MessagePayload {
@@ -1516,7 +1516,8 @@ struct alignas(4) SetMessageOutputRate : public MessagePayload {
 
 /**
  * @brief Get the configured output rate for the he requested message type on
- *        the specified interface
+ *        the specified interface (@ref MessageType::GET_OUTPUT_MESSAGE_RATE,
+ *        version 1.0).
  * @ingroup config_and_ctrl_messages
  *
  * The device will respond with a @ref MessageOutputRateResponse
@@ -1545,7 +1546,8 @@ struct alignas(4) GetMessageOutputRate : public MessagePayload {
 };
 
 /**
- * @brief Response to a @ref GetMessageOutputRate request.
+ * @brief Response to a @ref GetMessageOutputRate request (@ref
+ *        MessageType::OUTPUT_MESSAGE_RATE_RESPONSE, version 1.0).
  * @ingroup config_and_ctrl_messages
  */
 struct alignas(4) MessageOutputRateResponse : public MessagePayload {
