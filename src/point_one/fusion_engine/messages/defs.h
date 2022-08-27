@@ -72,12 +72,12 @@ enum class MessageType : uint16_t {
   OUTPUT_INTERFACE_CONFIG_RESPONSE =
       13202, ///< @ref OutputInterfaceConfigResponseMessage
 
-  SET_OUTPUT_MESSAGE_RATE = 13220, ///< @ref SetMessageOutputRate
-  GET_OUTPUT_MESSAGE_RATE = 13221, ///< @ref GetMessageOutputRate
-  OUTPUT_MESSAGE_RATE_RESPONSE = 13222, ///< @ref MessageOutputRateResponse
+  SET_MESSAGE_OUTPUT_RATE = 13220, ///< @ref SetMessageOutputRate
+  GET_MESSAGE_OUTPUT_RATE = 13221, ///< @ref GetMessageOutputRate
+  MESSAGE_OUTPUT_RATE_RESPONSE = 13222, ///< @ref MessageOutputRateResponse
 
   /// The maximum defined @ref MessageType enum value.
-  MAX_VALUE = OUTPUT_MESSAGE_RATE_RESPONSE,
+  MAX_VALUE = MESSAGE_OUTPUT_RATE_RESPONSE,
 };
 
 /**
@@ -178,13 +178,13 @@ inline const char* to_string(MessageType type) {
     case MessageType::OUTPUT_INTERFACE_CONFIG_RESPONSE:
       return "Output Interface Config Response";
 
-    case MessageType::SET_OUTPUT_MESSAGE_RATE:
+    case MessageType::SET_MESSAGE_OUTPUT_RATE:
       return "Set Message Rate";
 
-    case MessageType::GET_OUTPUT_MESSAGE_RATE:
+    case MessageType::GET_MESSAGE_OUTPUT_RATE:
       return "Get Message Rate";
 
-    case MessageType::OUTPUT_MESSAGE_RATE_RESPONSE:
+    case MessageType::MESSAGE_OUTPUT_RATE_RESPONSE:
       return "Message Rate Response";
 
     default:

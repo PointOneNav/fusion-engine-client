@@ -926,7 +926,7 @@ class SetMessageOutputRate(MessagePayload):
     """!
     @brief Set the output rate for the requested message type on the specified interface.
     """
-    MESSAGE_TYPE = MessageType.SET_OUTPUT_MESSAGE_RATE
+    MESSAGE_TYPE = MessageType.SET_MESSAGE_OUTPUT_RATE
     MESSAGE_VERSION = 0
 
     # Flag to immediately save the config after applying this setting.
@@ -982,7 +982,7 @@ class GetMessageOutputRate(MessagePayload):
     """!
     @brief Get the configured output rate for the he requested message type on  the specified interface.
     """
-    MESSAGE_TYPE = MessageType.GET_OUTPUT_MESSAGE_RATE
+    MESSAGE_TYPE = MessageType.GET_MESSAGE_OUTPUT_RATE
     MESSAGE_VERSION = 0
 
     GetMessageOutputRateConstruct = Struct(
@@ -1031,7 +1031,7 @@ class MessageOutputRateResponse(MessagePayload):
     """!
     @brief Response to a @ref GetMessageOutputRate request.
     """
-    MESSAGE_TYPE = MessageType.OUTPUT_MESSAGE_RATE_RESPONSE
+    MESSAGE_TYPE = MessageType.MESSAGE_OUTPUT_RATE_RESPONSE
     MESSAGE_VERSION = 0
 
     MessageOutputRateResponseConstruct = Struct(
