@@ -109,6 +109,9 @@ inline const char* to_string(MessageType type) {
     case MessageType::CALIBRATION_STATUS:
       return "Calibration Status";
 
+    case MessageType::RELATIVE_ENU_POSITION:
+      return "Relative ENU Position";
+
     // Sensor measurement messages.
     case MessageType::IMU_MEASUREMENT:
       return "IMU Measurement";
@@ -121,6 +124,9 @@ inline const char* to_string(MessageType type) {
 
     case MessageType::WHEEL_TICK_MEASUREMENT:
       return "Wheel Tick Measurement";
+
+    case MessageType::VEHICLE_TICK_MEASUREMENT:
+      return "Vehicle Tick Measurement";
 
     // ROS messages.
     case MessageType::ROS_POSE:
@@ -171,6 +177,15 @@ inline const char* to_string(MessageType type) {
 
     case MessageType::OUTPUT_INTERFACE_CONFIG_RESPONSE:
       return "Output Interface Config Response";
+
+    case MessageType::SET_OUTPUT_MESSAGE_RATE:
+      return "Set Message Rate";
+
+    case MessageType::GET_OUTPUT_MESSAGE_RATE:
+      return "Get Message Rate";
+
+    case MessageType::OUTPUT_MESSAGE_RATE_RESPONSE:
+      return "Message Rate Response";
 
     default:
       return "Unrecognized Message";
