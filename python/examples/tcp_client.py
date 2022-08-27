@@ -64,7 +64,8 @@ contents and/or log the messages to disk.
     decoder = FusionEngineDecoder(warn_on_unrecognized=not options.quiet, return_bytes=True)
     bytes_received = 0
     messages_received = 0
-    last_print_time = None
+    start_time = datetime.now()
+    last_print_time = start_time
     while True:
         # Read some data.
         try:
@@ -73,10 +74,9 @@ contents and/or log the messages to disk.
 
             if not options.quiet:
                 now = datetime.now()
-                elapsed_sec = (now - last_print_time).total_seconds() if last_print_time else 0.0
-                if last_print_time is None or elapsed_sec > 5.0:
+                if (now - last_print_time).total_seconds() > 5.0:
                     print('Status: [bytes_received=%d, messages_received=%d elapsed_time=%d sec]' %
-                          (bytes_received, messages_received, elapsed_sec))
+                          (bytes_received, messages_received, (now - start_time).total_seconds()))
                     last_print_time = now
         except KeyboardInterrupt:
             break
