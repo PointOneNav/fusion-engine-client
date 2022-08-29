@@ -318,11 +318,38 @@ class MessagePayload:
         return cls.MESSAGE_VERSION
 
     @classmethod
-    def is_instance(cls, obj) -> bool:
-        return isinstance(obj, MessagePayload)
-
-    @classmethod
     def is_subclass(cls, obj) -> bool:
+        """!
+        @brief Check if an object is a _class_, which is derived from @ref MessagePayload.
+
+        This function calls the built-in `issubclass()` operator to check if a specified object is a class derived from
+        @ref MessagePayload. Unlike the operator, which raises a `TypeError` if the object is not a class (e.g., if you
+        pass in a `None`, or any other object), this function accepts any type for its argument:
+        ```py
+        issubclass(None, MessagePayload)        # TypeError
+        issubclass(float, MessagePayload)       # False
+        issubclass(dict, MessagePayload)        # False
+        issubclass(PoseMessage, MessagePayload) # True
+
+        MessagePayload.is_subclass(None)        # False
+        MessagePayload.is_subclass(float)       # False
+        MessagePayload.is_subclass(dict)        # False
+        MessagePayload.is_subclass(PoseMessage) # True
+        ```
+
+        Note that this function is specifically meant to check classes, not class _instances_. To test if an object is
+        an instance of a class derived from @ref MessagePayload, use the `isinstance()` operator instead:
+        ```py
+        isinstance(None, MessagePayload)          # False
+        isinstance(3.6, MessagePayload)           # False
+        isinstance(dict(), MessagePayload)        # False
+        isinstance(PoseMessage(), MessagePayload) # True
+        ```
+
+        @param obj The object to be tested.
+
+        @return `True` if obj is a class type that is derived from @ref MessagePayload.
+        """
         return inspect.isclass(obj) and issubclass(obj, MessagePayload)
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
