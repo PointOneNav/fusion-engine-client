@@ -1085,7 +1085,6 @@ class Analyzer(object):
             self.summary += '\n\n'
 
         args = {
-            'duration_sec': duration_sec,
             'message_table': message_table,
             'version_table': version_table,
             'solution_type_table': solution_type_table,
