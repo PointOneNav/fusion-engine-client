@@ -1481,12 +1481,11 @@ inline std::ostream& operator<<(std::ostream& stream, MessageRate val) {
 
 /**
  * @brief Set the output rate for the requested message type on the specified
- *        interface (@ref MessageType::SET_MESSAGE_OUTPUT_RATE, version 1.0).
+ *        interface (@ref MessageType::SET_MESSAGE_RATE, version 1.0).
  * @ingroup config_and_ctrl_messages
  */
-struct alignas(4) SetMessageOutputRate : public MessagePayload {
-  static constexpr MessageType MESSAGE_TYPE =
-      MessageType::SET_MESSAGE_OUTPUT_RATE;
+struct alignas(4) SetMessageRate : public MessagePayload {
+  static constexpr MessageType MESSAGE_TYPE = MessageType::SET_MESSAGE_RATE;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
   /** Flag to immediately save the config after applying this setting. */
@@ -1516,16 +1515,15 @@ struct alignas(4) SetMessageOutputRate : public MessagePayload {
 
 /**
  * @brief Get the configured output rate for the he requested message type on
- *        the specified interface (@ref MessageType::GET_MESSAGE_OUTPUT_RATE,
+ *        the specified interface (@ref MessageType::GET_MESSAGE_RATE,
  *        version 1.0).
  * @ingroup config_and_ctrl_messages
  *
- * The device will respond with a @ref MessageOutputRateResponse
+ * The device will respond with a @ref MessageRateResponse
  * containing the values.
  */
-struct alignas(4) GetMessageOutputRate : public MessagePayload {
-  static constexpr MessageType MESSAGE_TYPE =
-      MessageType::GET_MESSAGE_OUTPUT_RATE;
+struct alignas(4) GetMessageRate : public MessagePayload {
+  static constexpr MessageType MESSAGE_TYPE = MessageType::GET_MESSAGE_RATE;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
   /** The output interface to be queried. */
@@ -1546,13 +1544,13 @@ struct alignas(4) GetMessageOutputRate : public MessagePayload {
 };
 
 /**
- * @brief Response to a @ref GetMessageOutputRate request (@ref
- *        MessageType::MESSAGE_OUTPUT_RATE_RESPONSE, version 1.0).
+ * @brief Response to a @ref GetMessageRate request (@ref
+ *        MessageType::MESSAGE_RATE_RESPONSE, version 1.0).
  * @ingroup config_and_ctrl_messages
  */
-struct alignas(4) MessageOutputRateResponse : public MessagePayload {
+struct alignas(4) MessageRateResponse : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE =
-      MessageType::MESSAGE_OUTPUT_RATE_RESPONSE;
+      MessageType::MESSAGE_RATE_RESPONSE;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
   /** The source of the parameter value (active, saved, etc.). */
