@@ -128,15 +128,6 @@ class MixedLogReader(object):
             self.total_bytes_read = offset_bytes
             self._print_progress()
 
-            if self.total_bytes_read - self.last_print_bytes > 10e6:
-                elapsed_sec = (datetime.now() - self.start_time).total_seconds()
-                self.logger.log(logging.INFO if self.show_progress else logging.DEBUG,
-                                'Processed %d/%d bytes (%.1f%%). [elapsed=%.1f sec, rate=%.1f MB/s]' %
-                                (self.total_bytes_read, self.file_size_bytes,
-                                 100.0 * float(self.total_bytes_read) / self.file_size_bytes,
-                                 elapsed_sec, self.total_bytes_read / elapsed_sec / 1e6))
-                self.last_print_bytes = self.total_bytes_read
-
             self.logger.trace('Reading candidate message @ %d (0x%x).' % (offset_bytes, offset_bytes), depth=2)
 
             # Read the next message header.
