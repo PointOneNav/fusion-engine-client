@@ -142,11 +142,24 @@ class MixedLogReader(object):
                 header = MessageHeader()
                 header.unpack(data, warn_on_unrecognized=False)
 
-                # Check if the payload is too big.
+                # Check if the payload is too big. If so, we most likely found an invalid header -- message sync bytes
+                # occurring randomly in non-FusionEngine binary data in the file.
                 if header.payload_size_bytes > MessageHeader._MAX_EXPECTED_SIZE_BYTES:
                     raise ValueError('Payload size (%d) too large.' % header.payload_size_bytes)
 
                 # Read and validate the payload.
+                #
+                # Note here that we can read < payload_size_bytes under 2 circumstances:
+                # 1. We reached EOF unexpectedly: we found a valid message header but the file doesn't contain the
+                #    complete message.
+                # 2. We found an invalid header but its (bogus) payload length, while not large enough to trigger the
+                #    "too big" check above, extends past the end of the file.
+                #
+                # In either case, we will skip past this header and see if there any further candidate headers later in
+                # the file.
+                #
+                # If the CRC fails, either because we found an invalid header or because a valid message got corrupted,
+                # validate_crc() will raise a ValueError and we will skip forward in the same manner.
                 payload_bytes = self.input_file.read(header.payload_size_bytes)
                 read_len += len(payload_bytes)
                 if len(payload_bytes) != header.payload_size_bytes:
