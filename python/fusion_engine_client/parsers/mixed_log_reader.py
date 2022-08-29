@@ -287,13 +287,7 @@ class MixedLogReader(object):
                              elapsed_sec, self.total_bytes_read / elapsed_sec / 1e6))
             self.last_print_bytes = self.total_bytes_read
 
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        return self.next()
-
-    def __getitem__(self, key):
+    def filter_inplace(self, key):
         """!
         @brief Limit the returned messages by type or time.
 
@@ -344,3 +338,9 @@ class MixedLogReader(object):
                 else:
                     self.time_range.intersect(key, in_place=True)
         return self
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        return self.next()
