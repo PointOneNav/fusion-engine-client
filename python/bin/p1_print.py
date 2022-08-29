@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from collections import defaultdict
 import io
 import logging
 import os
@@ -15,9 +16,8 @@ sys.path.insert(0, root_dir)
 root_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(root_dir)
 
-from fusion_engine_client.analysis.file_index import FileIndex, FileIndexBuilder
-from fusion_engine_client.messages import MessageHeader, MessagePayload, message_type_to_class, message_type_by_name
-from fusion_engine_client.parsers import FusionEngineDecoder
+from fusion_engine_client.messages import *
+from fusion_engine_client.parsers import MixedLogReader
 from fusion_engine_client.utils.argument_parser import ArgumentParser
 from fusion_engine_client.utils.log import locate_log, DEFAULT_LOG_BASE_DIR
 from fusion_engine_client.utils.time_range import TimeRange
@@ -25,17 +25,19 @@ from fusion_engine_client.utils.time_range import TimeRange
 _logger = logging.getLogger('point_one.fusion_engine.applications.print_contents')
 
 
-def print_message(header, contents, one_line=False):
+def print_message(header, contents, offset_bytes, one_line=False):
     if isinstance(contents, MessagePayload):
         parts = str(contents).split('\n')
-        parts[0] += ' [sequence=%d, size=%d B]' % (header.sequence_number, header.get_message_size())
+        parts[0] += ' [sequence=%d, size=%d B, offset=%d B (0x%x)]' %\
+                    (header.sequence_number, header.get_message_size(), offset_bytes, offset_bytes)
         if one_line:
             _logger.info(parts[0])
         else:
             _logger.info('\n'.join(parts))
     else:
-        _logger.info('Decoded %s message [sequence=%d, size=%d B]' %
-                     (header.get_type_string(), header.sequence_number, header.get_message_size()))
+        _logger.info('Decoded %s message [sequence=%d, size=%d B, offset=%d B (0x%x)]' %
+                     (header.get_type_string(), header.sequence_number, header.get_message_size(),
+                      offset_bytes, offset_bytes))
 
 
 if __name__ == "__main__":
@@ -78,6 +80,9 @@ other types of data.
         '--log-base-dir', metavar='DIR', default=DEFAULT_LOG_BASE_DIR,
         help="The base directory containing FusionEngine logs to be searched if a log pattern is specified.")
     log_parser.add_argument(
+        '--progress', action='store_true',
+        help="Print file read progress to the console periodically.")
+    log_parser.add_argument(
         'log',
         help="The log to be read. May be one of:\n"
              "- The path to a .p1log file or a file containing FusionEngine messages and other content\n"
@@ -87,15 +92,17 @@ other types of data.
 
     options = parser.parse_args()
 
+    read_index = not options.ignore_index
+    generate_index = not options.ignore_index
+
     # Configure logging.
     if options.verbose >= 1:
         logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(name)s:%(lineno)d - %(message)s',
                             stream=sys.stdout)
         if options.verbose == 1:
-            logging.getLogger('point_one.fusion_engine.parsers.decoder').setLevel(logging.DEBUG)
+            logging.getLogger('point_one.fusion_engine.parsers').setLevel(logging.DEBUG)
         else:
-            logging.getLogger('point_one.fusion_engine.parsers.decoder').setLevel(logging.TRACE,
-                                                                                  depth=options.verbose - 1)
+            logging.getLogger('point_one.fusion_engine.parsers').setLevel(logging.TRACE, depth=options.verbose - 1)
     else:
         logging.basicConfig(level=logging.INFO, format='%(message)s', stream=sys.stdout)
 
@@ -145,179 +152,101 @@ other types of data.
                 message_types.append(message_type)
         message_types = set(message_types)
 
-        # Check if any of the requested message types do _not_ have P1 time (e.g., profiling messages). The index file
-        # does not currently contain non-P1 time messages, so if we use it to search for messages we will end up
-        # skipping all of these ones. Instead, we disable the index and revert to full file search.
-        if not options.ignore_index:
+    # Check if any of the requested message types do _not_ have P1 time (e.g., profiling messages). The index file
+    # does not currently contain non-P1 time messages, so if we use it to search for messages we will end up
+    # skipping all of these ones. Instead, we disable the index and revert to full file search.
+    if read_index:
+        if len(message_types) == 0:
+            need_system_time = True
+        else:
+            need_system_time = False
             for message_type in message_types:
                 cls = message_type_to_class[message_type]
                 message = cls()
-                if not hasattr(message, 'p1_time'):
-                    _logger.info('Non-P1 time messages detected. Disabling index file.')
-                    options.ignore_index = True
-                    break
+                if hasattr(message, 'p1_time'):
+                    continue
+                else:
+                    timestamps = getattr(message, 'timestamps', None)
+                    if isinstance(timestamps, MeasurementTimestamps):
+                        continue
+                    else:
+                        need_system_time = True
+                        break
 
-    # Try to open the index file for faster data access. If no index exists, create one unless --ignore-index is
-    # specified.
-    index_file = None
-    index_builder = None
-    if not options.ignore_index:
-        index_path = FileIndex.get_path(input_path)
-        if os.path.exists(index_path):
-            _logger.info("Reading index file '%s'." % index_path)
-            try:
-                index_file = FileIndex(index_path=index_path, data_path=input_path, delete_on_error=True)
-            except ValueError as e:
-                _logger.warning(str(e))
-
-        if index_file is not None:
-            time_range.p1_t0 = index_file.t0
-
-            # Limit to the user-specified time range.
-            start_idx = np.argmax(index_file.time >= time_range.start) if time_range.start is not None else 0
-            if start_idx < 0:
-                _logger.info("No data in requested time range.")
-                sys.exit(2)
-
-            end_idx = np.argmax(index_file.time > time_range.end) if time_range.end is not None else len(index_file)
-            if end_idx < 0:
-                end_idx = len(index_file)
-
-            index_file = index_file[start_idx:end_idx]
-        else:
-            _logger.info("Generating index file '%s'." % index_path)
-            index_builder = FileIndexBuilder()
-
-    # If we have an index file and we're only interested in certain message types, locate them in the index.
-    if index_file is not None and len(message_types) != 0:
-        message_indices = np.where(np.isin(index_file.type, list(message_types)))[0]
-    else:
-        message_indices = None
+        if need_system_time and options.time is not None:
+            _logger.info('Non-P1 time messages requested and time range specified. Disabling index file.')
+            read_index = False
 
     # Process all data in the file.
-    decoder = FusionEngineDecoder(return_bytes=True, return_offset=True)
+    reader = MixedLogReader(input_path, return_bytes=True, return_offset=True, show_progress=options.progress,
+                            ignore_index=not read_index, generate_index=generate_index,
+                            message_types=message_types, time_range=time_range)
 
-    next_message_count = 0
+    if reader.generating_index() and (len(message_types) > 0 or options.time is not None):
+        _logger.info('Generating index file - processing complete file. This may take some time.')
 
     first_p1_time_sec = None
     last_p1_time_sec = None
+    newest_p1_time = None
+
     first_system_time_sec = None
     last_system_time_sec = None
+    newest_system_time_sec = None
+
     total_messages = 0
-    bytes_read = 0
     bytes_decoded = 0
-    message_stats = {}
-    with open(input_path, 'rb') as f:
-        # Calculate the binary file size.
-        f.seek(0, io.SEEK_END)
-        input_file_size = f.tell()
-        f.seek(0, 0)
 
-        # Process all data in the file.
-        still_working = True
+    def create_stats_entry(): return {'count': 1}
+    message_stats = defaultdict(create_stats_entry)
+    for header, message, data, offset_bytes in reader:
+        bytes_decoded += len(data)
 
-        if message_indices is not None and len(message_indices) == 0:
-            _logger.info('No messages found in index file.')
-            still_working = False
-
-        while still_working:
-            # If we have an index file, seek to the next message and read it.
-            if index_file is not None:
-                if next_message_count == len(index_file):
-                    break
-
-                # If we're reading all messages, read the next index entry. Otherwise, read the entry for the next
-                # message we're interested in.
-                if message_indices is None:
-                    message_index = next_message_count
+        # Update the data summary in summary mode, or print the message contents otherwise.
+        if options.summary:
+            p1_time = message.get_p1_time()
+            if p1_time is not None:
+                if first_p1_time_sec is None:
+                    first_p1_time_sec = float(p1_time)
+                    last_p1_time_sec = float(p1_time)
+                    newest_p1_time = p1_time
                 else:
-                    message_index = message_indices[next_message_count]
-                next_message_count += 1
+                    if p1_time < newest_p1_time:
+                        _logger.warning('P1 time restart detected after %s.' % str(newest_p1_time))
+                    last_p1_time_sec = max(last_p1_time_sec, float(p1_time))
+                    newest_p1_time = p1_time
 
-                # Determine the offset to the message of interest. The index file doesn't store message sizes, so we
-                # just deserialize the message header to figure out how much to read.
-                offset_bytes = index_file.offset[message_index]
+            system_time_sec = message.get_system_time_sec()
+            if system_time_sec is not None:
+                if first_system_time_sec is None:
+                    first_system_time_sec = system_time_sec
+                    last_system_time_sec = system_time_sec
+                    newest_system_time_sec = system_time_sec
+                else:
+                    if system_time_sec < newest_system_time_sec:
+                        _logger.warning('System time restart detected after %s.' %
+                                        system_time_to_str(newest_system_time_sec, is_seconds=True))
+                    last_system_time_sec = max(last_system_time_sec, system_time_sec)
+                    newest_system_time_sec = system_time_sec
 
-                f.seek(offset_bytes, io.SEEK_SET)
-                header_data = f.read(MessageHeader.calcsize())
-                header = MessageHeader()
-                header.unpack(buffer=header_data, warn_on_unrecognized=False)
-
-                payload_data = f.read(header.payload_size_bytes)
-                data = header_data + payload_data
-                bytes_read = f.tell()
-            # Otherwise, if we do not have an index file, read the next chunk of data and process all of it.
-            else:
-                data = f.read(1024)
-                bytes_read += len(data)
-
-            # No data left in the file. Finished processing.
-            if len(data) == 0:
-                break
-
-            # Decode the incoming data and print the contents of any complete messages.
-            messages = decoder.on_data(data)
-            for (header, message, message_raw, offset_bytes) in messages:
-                # Extract message timestamps and check if the message is in the user-specified time range (if
-                # applicable).
-                in_range, p1_time, system_time_ns = time_range.is_in_range(message, return_timestamps=True)
-
-                # Add this message to the index file.
-                if index_builder is not None:
-                    index_builder.append(message_type=header.message_type, offset_bytes=offset_bytes, p1_time=p1_time)
-
-                # If this message type is in the user-specified list of types, include it. Otherwise, skip it.
-                if len(message_types) == 0 or header.message_type in message_types:
-                    # Limit to the user-specified time range if applicable.
-                    if not in_range:
-                        # If we're building an index file, process all messages. Otherwise, if we previously entered the
-                        # valid time range and have now gone past it, we're done processing.
-                        if index_builder is None and time_range.in_range_started():
-                            still_working = False
-                            break
-                        else:
-                            continue
-
-                    bytes_decoded += len(message_raw)
-
-                    # Update the data summary in summary mode, or print the message contents otherwise.
-                    if options.summary:
-                        if p1_time is not None:
-                            if first_p1_time_sec is None:
-                                first_p1_time_sec = float(p1_time)
-                            last_p1_time_sec = float(p1_time)
-
-                        if system_time_ns is not None:
-                            if first_system_time_sec is None:
-                                first_system_time_sec = system_time_ns * 1e-9
-                            last_system_time_sec = system_time_ns * 1e-9
-
-                        total_messages += 1
-                        if header.message_type not in message_stats:
-                            message_stats[header.message_type] = {
-                                'count': 1
-                            }
-                        else:
-                            entry = message_stats[header.message_type]
-                            entry['count'] += 1
-                    else:
-                        print_message(header, message, one_line=options.format == 'oneline')
-
-    # If we are creating an index file, save it now.
-    if index_builder is not None:
-        index_path = FileIndex.get_path(input_path)
-        index = index_builder.to_index()
-        index.save(index_path)
+            total_messages += 1
+            entry = message_stats[header.message_type]
+            entry['count'] += 1
+        else:
+            print_message(header, message, offset_bytes, one_line=options.format == 'oneline')
 
     # Print the data summary.
     if options.summary:
         _logger.info('Input file: %s' % input_path)
         _logger.info('Log ID: %s' % log_id)
         if first_p1_time_sec is not None:
-            _logger.info('Duration: %d seconds' % (last_p1_time_sec - first_p1_time_sec))
-        elif first_system_time_sec is not None:
-            _logger.info('Duration: %d seconds' % (last_system_time_sec - first_system_time_sec))
-        _logger.info('Total data read: %d B' % bytes_read)
+            _logger.info('Duration (P1): %d seconds' % (last_p1_time_sec - first_p1_time_sec))
+        else:
+            _logger.info('Duration (P1): unknown')
+        if first_system_time_sec is not None:
+            _logger.info('Duration (system): %d seconds' % (last_system_time_sec - first_system_time_sec))
+        else:
+            _logger.info('Duration (system): unknown')
+        _logger.info('Total data read: %d B' % reader.get_bytes_read())
         _logger.info('Selected data size: %d B' % bytes_decoded)
         _logger.info('')
 

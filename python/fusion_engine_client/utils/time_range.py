@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+import copy
 import math
 from typing import Tuple, Union
 
@@ -40,6 +43,54 @@ class TimeRange(object):
         self._in_range_started = False
         self._in_range_ended = False
 
+    def make_absolute(self, p1_t0: Timestamp = None, in_place: bool = True) -> TimeRange:
+        if not in_place:
+            return copy.copy(self).make_absolute(p1_t0=p1_t0)
+
+        if self.p1_t0 is None:
+            self.p1_t0 = p1_t0
+
+        if not self.absolute:
+            if p1_t0 is None:
+                raise ValueError("T0 not specified. Cannot convert to absolute time range.")
+
+            if self.start is not None:
+                self.start += float(self.p1_t0)
+            if self.end is not None:
+                self.end += float(self.p1_t0)
+
+        return self
+
+    def intersect(self, other: TimeRange, in_place: bool = True) -> TimeRange:
+        if not in_place:
+            return copy.copy(self).intersect(other)
+
+        # If either range is absolute, enforce that both ranges are absolute before intersecting.
+        if self.absolute and not other.absolute:
+            other = other.make_absolute(self.p1_t0, in_place=False)
+        elif not self.absolute and other.absolute:
+            self.make_absolute(other.p1_t0)
+
+        # Intersect the start/end times.
+        if self.start is None:
+            self.start = other.start
+        elif other.start is not None:
+            self.start = max(self.start, other.start)
+
+        if self.end is None:
+            self.end = other.end
+        elif other.end is not None:
+            self.end = min(self.end, other.end)
+
+        # Update metadata.
+        self._range_specified = self.start is not None or self.end is not None
+        if self.p1_t0 is None:
+            self.p1_t0 = other.p1_t0
+        if self.system_t0 is None:
+            self.system_t0 = other.system_t0
+
+        return self
+
     def in_range_started(self) -> bool:
         return self._in_range_started
 
@@ -52,15 +103,15 @@ class TimeRange(object):
 
         # Extract P1 and system timestamps, where applicable.
         if isinstance(message, MessagePayload):
-            p1_time = message.__dict__.get('p1_time', None)
+            p1_time = message.get_p1_time()
+            system_time_ns = message.get_system_time_ns()
+            system_time_sec = system_time_ns * 1e-9 if system_time_ns is not None else None
+
             if p1_time is not None and p1_time:
                 if self.p1_t0 is None:
                     self.p1_t0 = p1_time
 
-            system_time_ns = message.__dict__.get('system_time_ns', None)
-            system_time_sec = None
-            if system_time_ns is not None:
-                system_time_sec = system_time_ns * 1e-9
+            if system_time_sec is not None:
                 if self.system_t0 is None:
                     self.system_t0 = system_time_sec
         else:

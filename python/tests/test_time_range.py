@@ -144,3 +144,51 @@ def test_defer_no_timestamp():
     timed_message.p1_time = Timestamp(5.1)
     assert not time_range.is_in_range(timed_message)
     assert not time_range.is_in_range(untimed_message)
+
+
+def test_make_absolute():
+    time_range = TimeRange.parse('1:2', absolute=False)
+    assert not time_range.absolute
+
+    time_range.make_absolute(p1_t0=Timestamp(4.5))
+    assert time_range.start == 5.5
+    assert time_range.end == 6.5
+
+
+def test_intersect_in_place():
+    a = TimeRange.parse('1:10', absolute=False)
+    b = TimeRange.parse('2:6', absolute=False)
+    a.intersect(b)
+    assert a.start == 2
+    assert a.end == 6
+
+    a = TimeRange.parse('1:10', absolute=False)
+    b = TimeRange.parse('2:12', absolute=False)
+    a.intersect(b)
+    assert a.start == 2
+    assert a.end == 10
+
+    a = TimeRange.parse('3:10', absolute=False)
+    b = TimeRange.parse('1:12', absolute=False)
+    a.intersect(b)
+    assert a.start == 3
+    assert a.end == 10
+
+
+def test_intersect_copy():
+    a = TimeRange.parse('1:10', absolute=False)
+    b = TimeRange.parse('2:6', absolute=False)
+    result = a.intersect(b, in_place=False)
+    assert a.start == 1
+    assert a.end == 10
+    assert result.start == 2
+    assert result.end == 6
+
+
+def test_intersect_abs_rel():
+    a = TimeRange.parse('4:10', absolute=True)
+    a.make_absolute(Timestamp(3.0))
+    b = TimeRange.parse('2:6', absolute=False)
+    a.intersect(b)
+    assert a.start == 5
+    assert a.end == 9

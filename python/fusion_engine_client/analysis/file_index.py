@@ -3,13 +3,14 @@ from __future__ import annotations
 from typing import Union
 
 from collections import namedtuple
+import copy
 import io
 import os
 
 import numpy as np
 
-from ..messages import MessageHeader, MessageType, Timestamp
-from ..parsers import FusionEngineDecoder
+from ..messages import MessageHeader, MessagePayload, MessageType, Timestamp
+from ..utils.time_range import TimeRange
 
 
 FileIndexEntry = namedtuple('Element', ['time', 'type', 'offset'])
@@ -187,6 +188,8 @@ class FileIndex(object):
             if not os.path.exists(data_path):
                 # If the user didn't explicitly set data_path and the default file doesn't exist, it is not considered
                 # an error.
+                if self._data['type'][-1] == MessageType.INVALID:
+                    self._data = self._data[:-1]
                 return
         elif not os.path.exists(data_path):
             raise ValueError("Specified data file '%s' not found." % data_path)
@@ -207,7 +210,26 @@ class FileIndex(object):
                     os.remove(index_path)
                 raise ValueError("Index file empty but data file not 0 length. [size=%d B]" % data_file_size)
 
-            # See if the index is larger than the data file.
+            # Get the last entry in the index. If its message type is INVALID, it's a special marker at the end of the
+            # index file indicating the size of the binary data file when the index was created. If it exists, we can
+            # use it to check if the data file size has changed.
+            if self.type[-1] == MessageType.INVALID:
+                expected_data_file_size = self.offset[-1]
+                self._data = self._data[:-1]
+
+                if data_file_size == expected_data_file_size:
+                    # If this check passes, we don't need to continue with the other checks below.
+                    return
+                else:
+                    raise ValueError("Size expected by index file does not match binary file. [size=%d B, "
+                                     "expected=%d B]" %
+                                     (data_file_size, expected_data_file_size))
+
+            # If the index file didn't have a marker entry, try to determine the expected file size based on the index
+            # entries. Note that this may fail if the binary file has non-FusionEngine content after the last complete
+            # FusionEngine message.
+
+            # See if the last entry in the index is past the end of the data file.
             last_offset = self.offset[-1]
             if last_offset > data_file_size - MessageHeader.calcsize():
                 if delete_on_error:
@@ -225,21 +247,29 @@ class FileIndex(object):
             header.unpack(buffer=buffer, warn_on_unrecognized=False)
             message_size_bytes = MessageHeader.calcsize() + header.payload_size_bytes
 
-            index_size = last_offset + message_size_bytes
-            if index_size != data_file_size:
+            expected_data_file_size = last_offset + message_size_bytes
+            if expected_data_file_size != data_file_size:
                 if delete_on_error:
                     os.remove(index_path)
                 raise ValueError("Size expected by index file does not match binary file. [size=%d B, expected=%d B]" %
-                                 (data_file_size, index_size))
+                                 (data_file_size, expected_data_file_size))
 
-    def save(self, index_path):
+    def save(self, index_path: str, data_path: str):
         """!
         @brief Save the contents of this index as a `.p1i` file.
 
         @param index_path The path to the file to be written.
+        @param data_path The path to the `.p1log` file.
         """
         if self._data is not None:
-            raw_data = FileIndex._to_raw(self._data)
+            # Append an EOF marker at the end of the data if data_path is specified.
+            data = self._data
+            if data['type'][-1] != MessageType.INVALID and data_path is not None:
+                file_size_bytes = os.stat(data_path).st_size
+                data = np.append(data, np.array((np.nan, int(MessageType.INVALID), file_size_bytes),
+                                                dtype=FileIndex._DTYPE))
+
+            raw_data = FileIndex._to_raw(data)
 
             if os.path.exists(index_path):
                 os.remove(index_path)
@@ -302,8 +332,11 @@ class FileIndex(object):
             raise AttributeError
 
     def __getitem__(self, key):
+        # No key specified (convenience case).
+        if key is None:
+            return copy.copy(self)
         # No data available.
-        if self._data is None:
+        elif self._data is None:
             return FileIndex()
         # Key is a string (e.g., index['type']), defer to getattr() (e.g., index.type).
         elif isinstance(key, str):
@@ -312,9 +345,15 @@ class FileIndex(object):
         elif isinstance(key, MessageType):
             idx = self._data['type'] == key
             return FileIndex(data=self._data[idx], t0=self.t0)
+        elif MessagePayload.is_subclass(key):
+            idx = self._data['type'] == key.get_type()
+            return FileIndex(data=self._data[idx], t0=self.t0)
         # Return entries for a list of message types.
         elif isinstance(key, (set, list, tuple)) and len(key) > 0 and isinstance(next(iter(key)), MessageType):
             idx = np.isin(self._data['type'], [int(k) for k in key])
+            return FileIndex(data=self._data[idx], t0=self.t0)
+        elif isinstance(key, (set, list, tuple)) and len(key) > 0 and MessagePayload.is_subclass(next(iter(key))):
+            idx = np.isin(self._data['type'], [int(k.get_type()) for k in key])
             return FileIndex(data=self._data[idx], t0=self.t0)
         # Return a single element by index.
         elif isinstance(key, int):
@@ -330,6 +369,17 @@ class FileIndex(object):
             if hint is not None and not isinstance(hint, str):
                 raise ValueError('Step size not supported for time range slicing.')
             return self.get_time_range(key.start, key.stop, hint)
+        # Key is a TimeRange object. Return a subset of the data. All nan elements (messages without P1 time) will be
+        # included in the results.
+        elif isinstance(key, TimeRange):
+            if key.absolute:
+                start = key.start
+                end = key.end
+            else:
+                p1_t0 = key.p1_t0 if key.p1_t0 is not None else self.t0
+                start = key.start + p1_t0 if key.start is not None else None
+                end = key.end + p1_t0 if key.end is not None else None
+            return self.get_time_range(start, end, 'include_nans')
         # Key is an index slice or a list of individual element indices. Return a subset of the data.
         else:
             if isinstance(key, (set, list, tuple)):
@@ -386,14 +436,11 @@ class FileIndexBuilder(object):
 
         @return The generated @ref FileIndex instance.
         """
-        decoder = FusionEngineDecoder(return_offset=True)
-        with open(data_path, 'rb') as f:
-            # Read a chunk of data and process all messages found in it.
-            data = f.read(65536)
-            messages = decoder.on_data(data)
-            for (header, message, offset_bytes) in messages:
-                p1_time = message.__dict__.get('p1_time', None)
-                self.append(message_type=header.message_type, offset_bytes=offset_bytes, p1_time=p1_time)
+        from ..parsers import MixedLogReader
+        reader = MixedLogReader(data_path, ignore_index=True, return_offset=True)
+        for header, message, offset_bytes in reader:
+            p1_time = message.get_p1_time()
+            self.append(message_type=header.message_type, offset_bytes=offset_bytes, p1_time=p1_time)
         return self.to_index()
 
     def append(self, message_type: MessageType, offset_bytes: int, p1_time: Timestamp = None):
@@ -411,14 +458,15 @@ class FileIndexBuilder(object):
 
         self.raw_data.append((time_sec, int(message_type), offset_bytes))
 
-    def save(self, index_path):
+    def save(self, index_path: str, data_path: str):
         """!
         @brief Save the contents of the generated index as a `.p1i` file.
 
         @param index_path The path to the file to be written.
+        @param data_path The path to the `.p1log` file.
         """
         index = self.to_index()
-        index.save(index_path)
+        index.save(index_path, data_path)
         return index
 
     def to_index(self):

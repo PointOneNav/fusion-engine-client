@@ -143,7 +143,7 @@ def test_builder(tmpdir):
     assert len(index) == len(RAW_DATA)
 
     index_path = tmpdir.join('index.p1i')
-    index.save(index_path)
+    index.save(index_path, None)
     assert os.path.exists(index_path)
     assert os.path.getsize(index_path) > 0
 
@@ -169,7 +169,7 @@ def data_path(tmpdir):
                 message.p1_time = entry[0]
             f.write(encoder.encode_message(message))
 
-    builder.save(index_path)
+    builder.save(index_path, data_path)
 
     return data_path
 
