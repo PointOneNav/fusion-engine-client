@@ -5,7 +5,8 @@ import logging
 import struct
 
 from .dump_p1bin import dump_p1bin
-from ..messages import MessageHeader, MessageType
+from ..messages import MessageType
+from ..parsers.mixed_log_reader import MixedLogReader
 from ..utils import trace
 
 _logger = logging.getLogger('point_one.utils.log')
@@ -320,7 +321,8 @@ def find_p1log_file(input_path, return_output_dir=False, return_log_id=False, lo
         raise FileExistsError('Specified file is not a .p1log file.')
 
 
-def extract_fusion_engine_log(input_path, output_path=None, warn_on_gaps=True, return_counts=False, message_offsets=None):
+def extract_fusion_engine_log(input_path, output_path=None, warn_on_gaps=True, return_counts=False,
+                              message_offsets=None):
     """!
     @brief Extract FusionEngine data from a file containing mixed binary data.
 
@@ -338,95 +340,30 @@ def extract_fusion_engine_log(input_path, output_path=None, warn_on_gaps=True, r
             - A `dict` containing the number of messages extracted for each message type. Only provided if
               `return_counts` is `True`.
     """
-    def _advance_to_next_sync(in_fd):
-        try:
-            while True:
-                byte0 = in_fd.read(1)[0]
-                while True:
-                    if byte0 == MessageHeader._SYNC0:
-                        byte1 = in_fd.read(1)[0]
-                        if byte1 == MessageHeader._SYNC1:
-                            in_fd.seek(-2, os.SEEK_CUR)
-                            return True
-                        byte0 = byte1
-                    else:
-                        break
-        except IndexError:
-            return False
 
     if output_path is None:
         output_path = os.path.splitext(input_path)[0] + '.p1log'
 
-    header = MessageHeader()
-    valid_count = 0
-    message_counts = {}
-    with open(input_path, 'rb') as in_fd:
-        with open(output_path, 'wb') as out_path:
-            prev_sequence_number = None
-            while True:
-                if not _advance_to_next_sync(in_fd):
-                    break
+    with open(input_path, 'rb') as in_fd, open(output_path, 'wb') as out_path:
+        reader = MixedLogReader(in_fd, warn_on_gaps=warn_on_gaps,
+                                return_header=False, return_payload=False, return_bytes=True, return_offset=True)
+        for data, offset in reader:
+            if message_offsets is not None:
+                message_offsets.append((offset, out_path.tell()))
+            out_path.write(data)
 
-                offset = in_fd.tell()
-                _logger.trace('Reading candidate message @ %d (0x%x).' % (offset, offset))
-
-                data = in_fd.read(MessageHeader.calcsize())
-                read_len = len(data)
-                if read_len < MessageHeader.calcsize():
-                    # End of file.
-                    break
-
-                try:
-                    header.unpack(data, warn_on_unrecognized=False)
-                    if header.payload_size_bytes > MessageHeader._MAX_EXPECTED_SIZE_BYTES:
-                        raise ValueError('Payload size (%d) too large.' % header.payload_size_bytes)
-
-                    payload = in_fd.read(header.payload_size_bytes)
-                    read_len += len(payload)
-                    if len(payload) != header.payload_size_bytes:
-                        raise ValueError('Not enough data - likely not a valid FusionEngine header.')
-
-                    data += payload
-                    header.validate_crc(data)
-
-                    if message_offsets is not None:
-                        message_offsets.append((offset, out_path.tell()))
-
-                    if prev_sequence_number is not None and \
-                       (header.sequence_number - prev_sequence_number) != 1 and \
-                       not (header.sequence_number == 0 and prev_sequence_number == 0xFFFFFFFF):
-                        func = _logger.warning if warn_on_gaps else _logger.debug
-                        func('Data gap detected @ %d (0x%x). [sequence=%d, gap_size=%d, total_messages=%d]' %
-                             (offset, offset, header.sequence_number, header.sequence_number - prev_sequence_number,
-                              valid_count + 1))
-                    prev_sequence_number = header.sequence_number
-
-                    _logger.debug('Read %s message @ %d (0x%x). [length=%d B, sequence=%d, # messages=%d]' %
-                                  (header.get_type_string(), offset, offset,
-                                   MessageHeader.calcsize() + header.payload_size_bytes, header.sequence_number,
-                                   valid_count + 1))
-
-                    out_path.write(data)
-                    valid_count += 1
-                    message_counts.setdefault(header.message_type, 0)
-                    message_counts[header.message_type] += 1
-                except ValueError as e:
-                    offset += 1
-                    _logger.trace('%s Rewinding to offset %d (0x%x).' % (str(e), offset, offset))
-                    in_fd.seek(offset, os.SEEK_SET)
-
-        if valid_count > 0:
-            _logger.debug('Found %d valid FusionEngine messages.' % valid_count)
-            for type, count in message_counts.items():
+        if reader.valid_count > 0:
+            _logger.debug('Found %d valid FusionEngine messages.' % reader.valid_count)
+            for type, count in reader.message_counts.items():
                 _logger.debug('  %s: %d' % (MessageType.get_type_string(type), count))
         else:
             _logger.debug('No FusionEngine messages found.')
             os.remove(output_path)
 
     if return_counts:
-        return valid_count, message_counts
+        return reader.valid_count, reader.message_counts
     else:
-        return valid_count
+        return reader.valid_count
 
 
 def locate_log(input_path, log_base_dir=DEFAULT_LOG_BASE_DIR, return_output_dir=False, return_log_id=False,

@@ -1,13 +1,13 @@
-from datetime import datetime, timedelta, timezone
+import inspect
 import logging
 import math
 import struct
 from typing import Union
 from zlib import crc32
 
-from construct import Adapter, Struct, Int32ul
 import numpy as np
 
+from .timestamp import *
 from ..utils.enum_utils import IntEnum
 
 _logger = logging.getLogger('point_one.fusion_engine.messages.defs')
@@ -111,9 +111,9 @@ class MessageType(IntEnum):
     GET_OUTPUT_INTERFACE_CONFIG = 13201
     OUTPUT_INTERFACE_CONFIG_RESPONSE = 13202
 
-    SET_OUTPUT_MESSAGE_RATE = 13220
-    GET_OUTPUT_MESSAGE_RATE = 13221
-    OUTPUT_MESSAGE_RATE_RESPONSE = 13222
+    SET_MESSAGE_RATE = 13220
+    GET_MESSAGE_RATE = 13221
+    MESSAGE_RATE_RESPONSE = 13222
 
     RESERVED = 20000
 
@@ -136,91 +136,6 @@ class MessageType(IntEnum):
                 pass
 
             return 'UNKNOWN (%s)' % str(type)
-
-
-class Timestamp:
-    _INVALID = 0xFFFFFFFF
-
-    _FORMAT = '<II'
-    _SIZE: int = struct.calcsize(_FORMAT)
-
-    _GPS_EPOCH = datetime(1980, 1, 6, tzinfo=timezone.utc)
-
-    def __init__(self, time_sec=math.nan):
-        self.seconds = float(time_sec)
-
-    def as_gps(self) -> datetime:
-        if math.isnan(self.seconds):
-            return None
-        else:
-            return Timestamp._GPS_EPOCH + timedelta(seconds=self.seconds)
-
-    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = False) -> (bytes, int):
-        if math.isnan(self.seconds):
-            int_part = Timestamp._INVALID
-            frac_part_ns = Timestamp._INVALID
-        else:
-            int_part = int(self.seconds)
-            frac_part_ns = int((self.seconds - int_part) * 1e9)
-
-        if buffer is None:
-            buffer = struct.pack(Timestamp._FORMAT, int_part, frac_part_ns)
-        else:
-            args = (int_part, frac_part_ns)
-            struct.pack_into(Timestamp._FORMAT, buffer, offset, *args)
-
-        if return_buffer:
-            return buffer
-        else:
-            return self.calcsize()
-
-    def unpack(self, buffer: bytes, offset: int = 0) -> int:
-        (int_part, frac_part_ns) = struct.unpack_from(Timestamp._FORMAT, buffer, offset)
-        if int_part == Timestamp._INVALID or frac_part_ns == Timestamp._INVALID:
-            self.seconds = math.nan
-        else:
-            self.seconds = int_part + (frac_part_ns * 1e-9)
-        return Timestamp._SIZE
-
-    @classmethod
-    def calcsize(cls) -> int:
-        return Timestamp._SIZE
-
-    def __eq__(self, other):
-        return self.seconds == float(other)
-
-    def __ne__(self, other):
-        return self.seconds != float(other)
-
-    def __lt__(self, other):
-        return self.seconds < float(other)
-
-    def __le__(self, other):
-        return self.seconds <= float(other)
-
-    def __gt__(self, other):
-        return self.seconds > float(other)
-
-    def __ge__(self, other):
-        return self.seconds >= float(other)
-
-    def __bool__(self):
-        return not math.isnan(self.seconds)
-
-    def __float__(self):
-        return self.seconds
-
-    def __str__(self):
-        return 'P1 time %.3f sec' % self.seconds
-
-
-def system_time_to_str(system_time_ns):
-    system_time_sec = system_time_ns * 1e-9
-    if system_time_sec >= 946684800: # 2000/1/1 00:00:00
-        return 'POSIX time %s (%.3f sec)' % \
-               (datetime.utcfromtimestamp(system_time_sec).replace(tzinfo=timezone.utc), system_time_sec)
-    else:
-        return 'System time %.3f sec' % system_time_sec
 
 
 class MessageHeader:
@@ -402,11 +317,70 @@ class MessagePayload:
     def get_version(cls) -> int:
         return cls.MESSAGE_VERSION
 
+    @classmethod
+    def is_subclass(cls, obj) -> bool:
+        """!
+        @brief Check if an object is a _class_, which is derived from @ref MessagePayload.
+
+        This function calls the built-in `issubclass()` operator to check if a specified object is a class derived from
+        @ref MessagePayload. Unlike the operator, which raises a `TypeError` if the object is not a class (e.g., if you
+        pass in a `None`, or any other object), this function accepts any type for its argument:
+        ```py
+        issubclass(None, MessagePayload)        # TypeError
+        issubclass(float, MessagePayload)       # False
+        issubclass(dict, MessagePayload)        # False
+        issubclass(PoseMessage, MessagePayload) # True
+
+        MessagePayload.is_subclass(None)        # False
+        MessagePayload.is_subclass(float)       # False
+        MessagePayload.is_subclass(dict)        # False
+        MessagePayload.is_subclass(PoseMessage) # True
+        ```
+
+        Note that this function is specifically meant to check classes, not class _instances_. To test if an object is
+        an instance of a class derived from @ref MessagePayload, use the `isinstance()` operator instead:
+        ```py
+        isinstance(None, MessagePayload)          # False
+        isinstance(3.6, MessagePayload)           # False
+        isinstance(dict(), MessagePayload)        # False
+        isinstance(PoseMessage(), MessagePayload) # True
+        ```
+
+        @param obj The object to be tested.
+
+        @return `True` if obj is a class type that is derived from @ref MessagePayload.
+        """
+        return inspect.isclass(obj) and issubclass(obj, MessagePayload)
+
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         raise NotImplementedError('pack() not implemented.')
 
     def unpack(self, buffer: bytes, offset: int = 0) -> int:
         raise NotImplementedError('unpack() not implemented.')
+
+    def get_p1_time(self) -> Timestamp:
+        measurement_timestamps = getattr(self, 'timestamps', None)
+        if isinstance(measurement_timestamps, MeasurementTimestamps):
+            return measurement_timestamps.p1_time
+        else:
+            return getattr(self, 'p1_time', None)
+
+    def get_system_time_ns(self) -> float:
+        measurement_timestamps = getattr(self, 'timestamps', None)
+        if isinstance(measurement_timestamps, MeasurementTimestamps):
+            if measurement_timestamps.measurement_time_source == SystemTimeSource.TIMESTAMPED_ON_RECEPTION:
+                return float(measurement_timestamps.measurement_time)
+            else:
+                return np.nan
+        else:
+            return getattr(self, 'system_time_ns', None)
+
+    def get_system_time_sec(self) -> float:
+        system_time_ns = self.get_system_time_ns()
+        if system_time_ns is None:
+            return None
+        else:
+            return system_time_ns * 1e-9
 
     def __repr__(self):
         try:
@@ -527,39 +501,3 @@ def PackedDataToBuffer(packed_data: bytes, buffer: bytes = None, offset: int = 0
         return buffer
     else:
         return len(packed_data)
-
-
-TimestampRawConstruct = Struct(
-    "int_part" / Int32ul,
-    "frac_part_ns" / Int32ul,
-)
-
-
-class TimestampAdapter(Adapter):
-    """!
-    @brief Adapter for automatically converting between construct streams and
-           Timestamp.
-    """
-
-    def __init__(self, *args):
-        super().__init__(*args)
-
-    def _decode(self, obj, context, path):
-        # skip _io member
-        if obj.int_part == Timestamp._INVALID or obj.frac_part_ns == Timestamp._INVALID:
-           seconds = math.nan
-        else:
-            seconds = obj.int_part + (obj.frac_part_ns * 1e-9)
-        return Timestamp(seconds)
-
-    def _encode(self, obj, context, path):
-        if math.isnan(obj.seconds):
-            int_part = Timestamp._INVALID
-            frac_part_ns = Timestamp._INVALID
-        else:
-            int_part = int(obj.seconds)
-            frac_part_ns = int((obj.seconds - int_part) * 1e9)
-        return {'int_part': int_part, 'frac_part_ns': frac_part_ns}
-
-
-TimestampConstruct = TimestampAdapter(TimestampRawConstruct)

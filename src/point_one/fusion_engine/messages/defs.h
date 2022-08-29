@@ -72,12 +72,12 @@ enum class MessageType : uint16_t {
   OUTPUT_INTERFACE_CONFIG_RESPONSE =
       13202, ///< @ref OutputInterfaceConfigResponseMessage
 
-  SET_OUTPUT_MESSAGE_RATE = 13220, ///< @ref SetMessageOutputRate
-  GET_OUTPUT_MESSAGE_RATE = 13221, ///< @ref GetMessageOutputRate
-  OUTPUT_MESSAGE_RATE_RESPONSE = 13222, ///< @ref MessageOutputRateResponse
+  SET_MESSAGE_RATE = 13220, ///< @ref SetMessageRate
+  GET_MESSAGE_RATE = 13221, ///< @ref GetMessageRate
+  MESSAGE_RATE_RESPONSE = 13222, ///< @ref MessageRateResponse
 
   /// The maximum defined @ref MessageType enum value.
-  MAX_VALUE = OUTPUT_MESSAGE_RATE_RESPONSE,
+  MAX_VALUE = MESSAGE_RATE_RESPONSE,
 };
 
 /**
@@ -109,6 +109,9 @@ inline const char* to_string(MessageType type) {
     case MessageType::CALIBRATION_STATUS:
       return "Calibration Status";
 
+    case MessageType::RELATIVE_ENU_POSITION:
+      return "Relative ENU Position";
+
     // Sensor measurement messages.
     case MessageType::IMU_MEASUREMENT:
       return "IMU Measurement";
@@ -121,6 +124,9 @@ inline const char* to_string(MessageType type) {
 
     case MessageType::WHEEL_TICK_MEASUREMENT:
       return "Wheel Tick Measurement";
+
+    case MessageType::VEHICLE_TICK_MEASUREMENT:
+      return "Vehicle Tick Measurement";
 
     // ROS messages.
     case MessageType::ROS_POSE:
@@ -171,6 +177,15 @@ inline const char* to_string(MessageType type) {
 
     case MessageType::OUTPUT_INTERFACE_CONFIG_RESPONSE:
       return "Output Interface Config Response";
+
+    case MessageType::SET_MESSAGE_RATE:
+      return "Set Message Rate";
+
+    case MessageType::GET_MESSAGE_RATE:
+      return "Get Message Rate";
+
+    case MessageType::MESSAGE_RATE_RESPONSE:
+      return "Message Rate Response";
 
     default:
       return "Unrecognized Message";

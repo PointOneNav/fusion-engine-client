@@ -40,9 +40,9 @@ message_type_to_class = {
     GetOutputInterfaceConfigMessage.MESSAGE_TYPE: GetOutputInterfaceConfigMessage,
     OutputInterfaceConfigResponseMessage.MESSAGE_TYPE: OutputInterfaceConfigResponseMessage,
 
-    SetMessageOutputRate.MESSAGE_TYPE: SetMessageOutputRate,
-    GetMessageOutputRate.MESSAGE_TYPE: GetMessageOutputRate,
-    MessageOutputRateResponse.MESSAGE_TYPE: MessageOutputRateResponse,
+    SetMessageRate.MESSAGE_TYPE: SetMessageRate,
+    GetMessageRate.MESSAGE_TYPE: GetMessageRate,
+    MessageRateResponse.MESSAGE_TYPE: MessageRateResponse,
 }
 
 # Note: This must be imported after message_type_to_class is defined, but before messages_with_system_time is defined.

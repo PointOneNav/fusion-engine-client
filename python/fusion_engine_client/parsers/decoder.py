@@ -23,6 +23,9 @@ class FusionEngineDecoder:
     This class performs message framing and validation operations on an incoming stream of bytes to decode any
     FusionEngine messages found within the stream. If an error is detected (CRC failure, invalid message length, etc.),
     the stream will resynchronize automatically.
+
+    @note
+    For reading from a pre-recorded data file, see the more efficient @ref MixedLogReader class.
     """
     class WarnOnError(IntEnum):
         NONE = 0
@@ -216,9 +219,10 @@ class FusionEngineDecoder:
                 if (self._header.sequence_number < self._last_sequence_number and
                     self._warn_on_error >= self.WarnOnError.LIKELY):
                     _logger.warning("Sequence number went backwards on %s message. [expected=%d, "
-                                    "received=%d, payload_size=%d B].",
+                                    "received=%d, payload_size=%d B, stream_offset=%d B (0x%x)].",
                                     self._header.get_type_string(), expected_sequence_number,
-                                    self._header.sequence_number, self._header.payload_size_bytes)
+                                    self._header.sequence_number, self._header.payload_size_bytes,
+                                    self._bytes_processed, self._bytes_processed)
                 # Otherwise, if there is a gap in the sequence numbers in either direction, report it only if the user
                 # specifically requested gap reporting.
                 elif self._warn_on_seq_skip:

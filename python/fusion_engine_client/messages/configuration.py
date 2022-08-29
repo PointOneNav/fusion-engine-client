@@ -922,17 +922,17 @@ class OutputInterfaceConfigResponseMessage(MessagePayload):
         return len(self.pack())
 
 
-class SetMessageOutputRate(MessagePayload):
+class SetMessageRate(MessagePayload):
     """!
     @brief Set the output rate for the requested message type on the specified interface.
     """
-    MESSAGE_TYPE = MessageType.SET_OUTPUT_MESSAGE_RATE
+    MESSAGE_TYPE = MessageType.SET_MESSAGE_RATE
     MESSAGE_VERSION = 0
 
     # Flag to immediately save the config after applying this setting.
     FLAG_APPLY_AND_SAVE = 0x01
 
-    SetMessageOutputRateConstruct = Struct(
+    SetMessageRateConstruct = Struct(
         "output_interface" / _InterfaceIDConstruct,
         "protocol" / AutoEnum(Int8ul, ProtocolType),
         "flags" / Int8ul,
@@ -957,11 +957,11 @@ class SetMessageOutputRate(MessagePayload):
         self.flags = flags
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
-        packed_data = self.SetMessageOutputRateConstruct.build(self.__dict__)
+        packed_data = self.SetMessageRateConstruct.build(self.__dict__)
         return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
 
     def unpack(self, buffer: bytes, offset: int = 0) -> int:
-        parsed = self.SetMessageOutputRateConstruct.parse(buffer[offset:])
+        parsed = self.SetMessageRateConstruct.parse(buffer[offset:])
         self.__dict__.update(parsed)
         return parsed._io.tell()
 
@@ -975,17 +975,17 @@ class SetMessageOutputRate(MessagePayload):
 
     @classmethod
     def calcsize(cls) -> int:
-        return cls.SetMessageOutputRateConstruct.sizeof()
+        return cls.SetMessageRateConstruct.sizeof()
 
 
-class GetMessageOutputRate(MessagePayload):
+class GetMessageRate(MessagePayload):
     """!
     @brief Get the configured output rate for the he requested message type on  the specified interface.
     """
-    MESSAGE_TYPE = MessageType.GET_OUTPUT_MESSAGE_RATE
+    MESSAGE_TYPE = MessageType.GET_MESSAGE_RATE
     MESSAGE_VERSION = 0
 
-    GetMessageOutputRateConstruct = Struct(
+    GetMessageRateConstruct = Struct(
         "output_interface" / _InterfaceIDConstruct,
         "protocol" / AutoEnum(Int8ul, ProtocolType),
         "request_source" / AutoEnum(Int8ul, ConfigurationSource),
@@ -1006,11 +1006,11 @@ class GetMessageOutputRate(MessagePayload):
         self.message_id = message_id
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
-        packed_data = self.GetMessageOutputRateConstruct.build(self.__dict__)
+        packed_data = self.GetMessageRateConstruct.build(self.__dict__)
         return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
 
     def unpack(self, buffer: bytes, offset: int = 0) -> int:
-        parsed = self.GetMessageOutputRateConstruct.parse(buffer[offset:])
+        parsed = self.GetMessageRateConstruct.parse(buffer[offset:])
         self.__dict__.update(parsed)
         return parsed._io.tell()
 
@@ -1024,17 +1024,17 @@ class GetMessageOutputRate(MessagePayload):
 
     @classmethod
     def calcsize(cls) -> int:
-        return cls.GetMessageOutputRateConstruct.sizeof()
+        return cls.GetMessageRateConstruct.sizeof()
 
 
-class MessageOutputRateResponse(MessagePayload):
+class MessageRateResponse(MessagePayload):
     """!
-    @brief Response to a @ref GetMessageOutputRate request.
+    @brief Response to a @ref GetMessageRate request.
     """
-    MESSAGE_TYPE = MessageType.OUTPUT_MESSAGE_RATE_RESPONSE
+    MESSAGE_TYPE = MessageType.MESSAGE_RATE_RESPONSE
     MESSAGE_VERSION = 0
 
-    MessageOutputRateResponseConstruct = Struct(
+    MessageRateResponseConstruct = Struct(
         "config_source" / AutoEnum(Int8ul, ConfigurationSource),
         "active_differs_from_saved" / Flag,
         "response" / AutoEnum(Int8ul, Response),
@@ -1058,11 +1058,11 @@ class MessageOutputRateResponse(MessagePayload):
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         values = dict(self.__dict__)
-        packed_data = self.MessageOutputRateResponseConstruct.build(values)
+        packed_data = self.MessageRateResponseConstruct.build(values)
         return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
 
     def unpack(self, buffer: bytes, offset: int = 0) -> int:
-        parsed = self.MessageOutputRateResponseConstruct.parse(buffer[offset:])
+        parsed = self.MessageRateResponseConstruct.parse(buffer[offset:])
         self.__dict__.update(parsed)
         return parsed._io.tell()
 
@@ -1078,4 +1078,4 @@ class MessageOutputRateResponse(MessagePayload):
 
     @classmethod
     def calcsize(cls) -> int:
-        return cls.MessageOutputRateResponseConstruct.sizeof()
+        return cls.MessageRateResponseConstruct.sizeof()
