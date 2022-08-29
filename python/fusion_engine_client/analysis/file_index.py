@@ -439,7 +439,7 @@ class FileIndexBuilder(object):
         from ..parsers import MixedLogReader
         reader = MixedLogReader(data_path, ignore_index=True, return_offset=True)
         for header, message, offset_bytes in reader:
-            p1_time = message.__dict__.get('p1_time', None)
+            p1_time = message.get_p1_time()
             self.append(message_type=header.message_type, offset_bytes=offset_bytes, p1_time=p1_time)
         return self.to_index()
 
