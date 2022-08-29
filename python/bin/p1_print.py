@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from collections import defaultdict
 import io
 import logging
 import os
@@ -194,7 +195,9 @@ other types of data.
 
     total_messages = 0
     bytes_decoded = 0
-    message_stats = {}
+
+    def create_stats_entry(): return {'count': 1}
+    message_stats = defaultdict(create_stats_entry)
     for header, message, data, offset_bytes in reader:
         bytes_decoded += len(data)
 
@@ -226,13 +229,8 @@ other types of data.
                     newest_system_time_sec = system_time_sec
 
             total_messages += 1
-            if header.message_type not in message_stats:
-                message_stats[header.message_type] = {
-                    'count': 1
-                }
-            else:
-                entry = message_stats[header.message_type]
-                entry['count'] += 1
+            entry = message_stats[header.message_type]
+            entry['count'] += 1
         else:
             print_message(header, message, offset_bytes, one_line=options.format == 'oneline')
 
