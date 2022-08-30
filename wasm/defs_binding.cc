@@ -75,8 +75,7 @@ EMSCRIPTEN_BINDINGS(defs) {
 
       .value("SET_MESSAGE_RATE", MessageType::SET_MESSAGE_RATE)
       .value("GET_MESSAGE_RATE", MessageType::GET_MESSAGE_RATE)
-      .value("MESSAGE_RATE_RESPONSE",
-             MessageType::MESSAGE_RATE_RESPONSE);
+      .value("MESSAGE_RATE_RESPONSE", MessageType::MESSAGE_RATE_RESPONSE);
 
   enum_<SatelliteType>("SatelliteType")
       .value("UNKNOWN", SatelliteType::UNKNOWN)
