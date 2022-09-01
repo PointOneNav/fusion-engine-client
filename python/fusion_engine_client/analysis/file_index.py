@@ -381,10 +381,16 @@ class FileIndex(object):
                 end = key.end + p1_t0 if key.end is not None else None
             return self.get_time_range(start, end, 'include_nans')
         # Key is an index slice or a list of individual element indices. Return a subset of the data.
-        else:
-            if isinstance(key, (set, list, tuple)):
-                key = np.array(key)
+        elif isinstance(key, slice):
             return FileIndex(data=self._data[key], t0=self.t0)
+        elif isinstance(key, (set, list, tuple)):
+            if len(key) > 0:
+                key = np.array(key)
+                return FileIndex(data=self._data[key], t0=self.t0)
+            else:
+                return FileIndex(data=[], t0=self.t0)
+        else:
+            raise ValueError('Unsupported key type.')
 
     def __iter__(self):
         if self._data is None:

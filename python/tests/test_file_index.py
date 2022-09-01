@@ -94,6 +94,12 @@ def test_index_slice():
     assert _test_time(sliced_index.time, raw)
     assert (sliced_index.offset == [e[2] for e in raw]).all()
 
+    # Pass empty set -- remove all elements.
+    sliced_index = index[set()]
+    raw = []
+    assert _test_time(sliced_index.time, raw)
+    assert (sliced_index.offset == [e[2] for e in raw]).all()
+
 
 def test_time_slice():
     def _lower_bound(time):
