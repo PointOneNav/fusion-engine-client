@@ -57,6 +57,8 @@ class MixedLogReader(object):
             self.message_types = set((message_types.get_type(),))
         else:
             self.message_types = set([(t.get_type() if MessagePayload.is_subclass(t) else t) for t in message_types])
+            if len(self.message_types) == 0:
+                self.message_types = None
 
         self.valid_count = 0
         self.message_counts = {}
