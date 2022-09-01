@@ -74,13 +74,15 @@ Whenever possible, we strongly encourage the use of a Python [virtual environmen
 
 ### Analyzing A Recorded Log And Plotting Results
 
-> Note: In order to generate a map, you must provide a Mapbox access token using the `--mapbox-token` argument, or by
-> setting either the `MAPBOX_ACCESS_TOKEN` or `MapboxAccessToken` environment variables.
+> Note: `p1_display.py` will generate a map showing the vehicle trajectory. By default, the map will be displayed using
+> freely available Open Street Map street data. In order to display satellite imagery, please request a free access
+> token from https://account.mapbox.com/access-tokens, then provide that token by specifying the `--mapbox-token`
+> argument, or by setting either the `MAPBOX_ACCESS_TOKEN` or `MapboxAccessToken` environment variables.
 
 The following will generate plots for a log with ID `c25445f4e60d441dbf4af8a3571352fa`.
 
 ```bash
-> python3 bin/p1_display.py /path/to/c25445f4e60d441dbf4af8a3571352fa
+> python3 bin/p1_display.py --mapbox-token MY_MAPBOX_TOKEN /path/to/c25445f4e60d441dbf4af8a3571352fa
 ```
 
 Alternatively, you can search for a log by entering the first few characters of the ID. By default, logs are assumed to

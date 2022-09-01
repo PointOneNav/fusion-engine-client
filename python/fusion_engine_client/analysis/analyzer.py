@@ -629,10 +629,14 @@ class Analyzer(object):
             return
 
         mapbox_token = self.get_mapbox_token(mapbox_token)
-        if mapbox_token is None:
-            self.logger.info('*' * 80 + '\n\nMapbox token not specified. Skipping map display.\n\n' + '*' * 80)
+        if mapbox_token is None or mapbox_token == "":
+            self.logger.info('*' * 80 + '\n\n' +
+                             'Mapbox token not specified. Disabling satellite imagery. For satellite imagery,\n'
+                             'please provide a Mapbox token using --mapbox-token or by setting the\n'
+                             'MAPBOX_ACCESS_TOKEN environment variable.' +
+                             '\n\n' + '*' * 80)
             self._mapbox_token_missing = True
-            return
+            mapbox_token = None
 
         # Read the pose data.
         result = self.reader.read(message_types=[PoseMessage], **self.params)
@@ -675,10 +679,15 @@ class Analyzer(object):
             _plot_data(info.name, solution_type == type, marker_style=info.style)
 
         # Create the map.
+        title = 'Vehicle Trajectory'
+        if mapbox_token is None:
+            title += '<br>For satellite imagery, please provide a Mapbox token using --mapbox-token or by setting ' \
+                     'MAPBOX_ACCESS_TOKEN.'
+
         layout = go.Layout(
             autosize=True,
             hovermode='closest',
-            title='Vehicle Trajectory',
+            title=title,
             mapbox=dict(
                 accesstoken=mapbox_token,
                 bearing=0,
@@ -688,8 +697,8 @@ class Analyzer(object):
                 ),
                 pitch=0,
                 zoom=18,
-                style='satellite-streets'
-            )
+                style='open-street-map' if mapbox_token is None else 'satellite-streets',
+            ),
         )
 
         figure = go.Figure(data=map_data, layout=layout)
@@ -963,9 +972,15 @@ class Analyzer(object):
         self._set_data_summary()
 
         if self._mapbox_token_missing:
-            self.summary += '\n\n<p style="color: red">Warning: Mapbox token not specified. ' \
-                            'Could not generate a trajectory map. Please specify --mapbox-token or set the ' \
-                            'MAPBOX_ACCESS_TOKEN environment variable.</p>\n'
+            self.summary += """\n
+<p style="color: red">
+  Warning: Mapbox token not specified. Generated map using Open Street Maps
+  street data. For satellite imagery, please request a free access token from
+  https://account.mapbox.com/access-tokens, then provide the token by
+  specifying --mapbox-token or setting the MAPBOX_ACCESS_TOKEN environment
+  variable.
+</p>
+"""
 
         index_path = os.path.join(self.output_dir, self.prefix + 'index.html')
         index_dir = os.path.dirname(index_path)
