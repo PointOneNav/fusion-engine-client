@@ -36,10 +36,6 @@ message_type_to_class = {
     SaveConfigMessage.MESSAGE_TYPE: SaveConfigMessage,
     ConfigResponseMessage.MESSAGE_TYPE: ConfigResponseMessage,
 
-    SetOutputInterfaceConfigMessage.MESSAGE_TYPE: SetOutputInterfaceConfigMessage,
-    GetOutputInterfaceConfigMessage.MESSAGE_TYPE: GetOutputInterfaceConfigMessage,
-    OutputInterfaceConfigResponseMessage.MESSAGE_TYPE: OutputInterfaceConfigResponseMessage,
-
     SetMessageRate.MESSAGE_TYPE: SetMessageRate,
     GetMessageRate.MESSAGE_TYPE: GetMessageRate,
     MessageRateResponse.MESSAGE_TYPE: MessageRateResponse,

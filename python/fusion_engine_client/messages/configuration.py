@@ -1,7 +1,7 @@
 import re
 from typing import NamedTuple, Optional, List
 
-from construct import (Struct, Float32l, Int32ul, Int16ul, Int8ul, Padding, this, Flag, Bytes, Array, Adapter)
+from construct import (Struct, Float32l, Int32ul, Int16ul, Int8ul, Padding, this, Flag, Bytes, Array)
 
 from ..utils.construct_utils import NamedTupleAdapter, AutoEnum
 from ..utils.enum_utils import IntEnum
@@ -144,11 +144,13 @@ class ProtocolType(IntEnum):
     FUSION_ENGINE = 1
     NMEA = 2
     RTCM = 3
+    ALL = 255
 
 
 class MessageRate(IntEnum):
     OFF = 0
     ON_CHANGE = 1
+    MAX_RATE = 1
     INTERVAL_10_MS = 2
     INTERVAL_20_MS = 3
     INTERVAL_40_MS = 4
@@ -160,23 +162,28 @@ class MessageRate(IntEnum):
     INTERVAL_2_S = 10
     INTERVAL_5_S = 11
     INTERVAL_10_S = 12
+    DEFAULT = 255
+
+
+ALL_MESSAGES_ID = 0xFFFF
+
 
 class NmeaMessageType(IntEnum):
-  INVALID = 0
+    INVALID = 0
 
-  GGA = 1
-  GLL = 2
-  GSA = 3
-  GSV = 4
-  RMC = 5
-  VTG = 6
+    GGA = 1
+    GLL = 2
+    GSA = 3
+    GSV = 4
+    RMC = 5
+    VTG = 6
 
-  P1CALSTATUS = 1000
-  P1MSG = 1001
+    P1CALSTATUS = 1000
+    P1MSG = 1001
 
-  PQTMVERNO = 1200
-  PQTMVER = 1201
-  PQTMGNSS = 1202
+    PQTMVERNO = 1200
+    PQTMVER = 1201
+    PQTMGNSS = 1202
 
 
 class _ConfigClassGenerator:
@@ -680,9 +687,13 @@ class ConfigResponseMessage(MessagePayload):
     MESSAGE_TYPE = MessageType.CONFIG_RESPONSE
     MESSAGE_VERSION = 0
 
+    # Flag to indicate the active value for this configuration parameter differs from the value saved to persistent
+    # memory.
+    FLAG_ACTIVE_DIFFERS_FROM_SAVED = 0x1
+
     ConfigResponseMessageConstruct = Struct(
         "config_source" / AutoEnum(Int8ul, ConfigurationSource),
-        "active_differs_from_saved" / Flag,
+        "flags" / Int8ul,
         "config_type" / AutoEnum(Int16ul, ConfigType),
         "response" / AutoEnum(Int8ul, Response),
         Padding(3),
@@ -693,7 +704,7 @@ class ConfigResponseMessage(MessagePayload):
     def __init__(self):
         self.config_source = ConfigurationSource.ACTIVE
         self.response = Response.OK
-        self.active_differs_from_saved = False
+        self.flags = 0
         self.config_object: _conf_gen.ConfigClass = None
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
@@ -719,7 +730,7 @@ class ConfigResponseMessage(MessagePayload):
         return parsed._io.tell()
 
     def __str__(self):
-        fields = ['active_differs_from_saved', 'config_source', 'response', 'config_object']
+        fields = ['flags', 'config_source', 'response', 'config_object']
         string = f'Config Data\n'
         for field in fields:
             val = str(self.__dict__[field]).replace('Container:', '')
@@ -740,186 +751,12 @@ class InterfaceID(NamedTuple):
     index: int = 0
 
 
-class OutputInterfaceConfig(NamedTuple):
-    output_interface: InterfaceID = InterfaceID()
-    stream_indices: List[int] = []
-
-
 _InterfaceIDConstructRaw = Struct(
     "type" / AutoEnum(Int8ul, TransportType),
     "index" / Int8ul,
     Padding(2)
 )
 _InterfaceIDConstruct = NamedTupleAdapter(InterfaceID, _InterfaceIDConstructRaw)
-
-
-class _OutputInterfaceConfigConstruct(Adapter):
-    """!
-    Adapter to handle setting `num_streams` implicitly.
-    """
-
-    def __init__(self):
-        super().__init__(Struct(
-            "output_interface" / _InterfaceIDConstruct,
-            "num_streams" / Int8ul,
-            Padding(3),
-            "stream_indices" / Array(this.num_streams, Int8ul),
-        ))
-
-    def _decode(self, obj, context, path):
-        return OutputInterfaceConfig(obj.output_interface, obj.stream_indices)
-
-    def _encode(self, obj, context, path):
-        return {
-            "output_interface": obj.output_interface,
-            "num_streams": len(obj.stream_indices),
-            "stream_indices": obj.stream_indices
-        }
-
-
-class SetOutputInterfaceConfigMessage(MessagePayload):
-    """!
-    @brief Configure the set of output streams enabled for a given output interface.
-
-    An example usage:
-    ```{.py}
-    # Set the device Serial 0 to output stream 1 and 2 messages.
-    set_out_streams = SetOutputInterfaceConfigMessage()
-    set_out_streams.output_interface_config =
-        OutputInterfaceConfig(InterfaceID(TransportType.SERIAL, 0), [1, 2])
-    message = fe_encoder.encode_message(set_out_streams)
-    serial_out.write(message)
-    ```
-    """
-    MESSAGE_TYPE = MessageType.SET_OUTPUT_INTERFACE_CONFIG
-    MESSAGE_VERSION = 0
-
-    SetOutputInterfaceConfigMessageConstruct = Struct(
-        "update_action" / AutoEnum(Int8ul, UpdateAction),
-        Padding(3),
-        "output_interface_config" / _OutputInterfaceConfigConstruct(),
-    )
-
-    def __init__(self,
-                 output_interface_config: OutputInterfaceConfig = None,
-                 update_action: UpdateAction = UpdateAction.REPLACE):
-        self.update_action = UpdateAction.REPLACE
-        if output_interface_config is None:
-            self.output_interface_config = OutputInterfaceConfig()
-        else:
-            self.output_interface_config = output_interface_config
-
-    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
-        packed_data = self.SetOutputInterfaceConfigMessageConstruct.build(self.__dict__)
-        return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
-
-    def unpack(self, buffer: bytes, offset: int = 0) -> int:
-        parsed = self.SetOutputInterfaceConfigMessageConstruct.parse(buffer[offset:])
-        self.__dict__.update(parsed)
-        return parsed._io.tell()
-
-    def __str__(self):
-        fields = ['update_action', 'output_interface_config']
-        string = f'Set Output Interface Streams Config Command\n'
-        for field in fields:
-            val = str(self.__dict__[field]).replace('Container:', '')
-            string += f'  {field}: {val}\n'
-        return string.rstrip()
-
-    def calcsize(self) -> int:
-        return len(self.pack())
-
-
-class GetOutputInterfaceConfigMessage(MessagePayload):
-    """!
-    @brief Query the set of message streams configured to be output by the device on a specified interface.
-
-    If the `type in `output_interface` is @ref TransportType.ALL then request the configuration for all interfaces.
-    """
-    MESSAGE_TYPE = MessageType.GET_OUTPUT_INTERFACE_CONFIG
-    MESSAGE_VERSION = 0
-
-    GetOutputInterfaceConfigMessageConstruct = Struct(
-        "request_source" / AutoEnum(Int8ul, ConfigurationSource),
-        Padding(3),
-        "output_interface" / _InterfaceIDConstruct,
-    )
-
-    def __init__(self,
-                 output_interface: InterfaceID = None,
-                 request_source: ConfigurationSource = ConfigurationSource.ACTIVE):
-        self.request_source = request_source
-        if output_interface is None:
-            self.output_interface = InterfaceID(TransportType.ALL, 0)
-        else:
-            self.output_interface = output_interface
-
-    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
-        packed_data = self.GetOutputInterfaceConfigMessageConstruct.build(self.__dict__)
-        return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
-
-    def unpack(self, buffer: bytes, offset: int = 0) -> int:
-        parsed = self.GetOutputInterfaceConfigMessageConstruct.parse(buffer[offset:])
-        self.__dict__.update(parsed)
-        return parsed._io.tell()
-
-    def __str__(self):
-        fields = ['request_source', 'output_interface']
-        string = f'Get Output Interface Streams Config\n'
-        for field in fields:
-            val = str(self.__dict__[field]).replace('Container:', '')
-            string += f'  {field}: {val}\n'
-        return string.rstrip()
-
-    @classmethod
-    def calcsize(cls) -> int:
-        return cls.GetOutputInterfaceConfigMessageConstruct.sizeof()
-
-
-class OutputInterfaceConfigResponseMessage(MessagePayload):
-    """!
-    @brief Response to a @ref GetOutputInterfaceConfigMessage request.
-    """
-    MESSAGE_TYPE = MessageType.OUTPUT_INTERFACE_CONFIG_RESPONSE
-    MESSAGE_VERSION = 0
-
-    OutputInterfaceConfigResponseMessageConstruct = Struct(
-        "config_source" / AutoEnum(Int8ul, ConfigurationSource),
-        "response" / AutoEnum(Int8ul, Response),
-        "active_differs_from_saved" / Flag,
-        "number_of_interfaces" / Int8ul,
-        "output_interface_data" / Array(this.number_of_interfaces, _OutputInterfaceConfigConstruct()),
-    )
-
-    def __init__(self):
-        self.config_source = ConfigurationSource.ACTIVE
-        self.response = Response.OK
-        self.active_differs_from_saved = False
-        self.output_interface_data: List[OutputInterfaceConfig] = []
-
-    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
-        values = dict(self.__dict__)
-        values['number_of_interfaces'] = len(self.output_interface_data)
-        packed_data = self.OutputInterfaceConfigResponseMessageConstruct.build(values)
-        return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
-
-    def unpack(self, buffer: bytes, offset: int = 0) -> int:
-        parsed = self.OutputInterfaceConfigResponseMessageConstruct.parse(buffer[offset:])
-        self.__dict__.update(parsed)
-        return parsed._io.tell()
-
-    def __str__(self):
-        fields = ['active_differs_from_saved', 'config_source', 'response', 'output_interface_data']
-        string = f'Output Interface Streams Config Response\n'
-        for field in fields:
-            val = str(self.__dict__[field]).replace('Container:', '')
-            val = re.sub(r'ListContainer\((.+)\)', r'\1', val)
-            val = re.sub(r'<TransportType\.(.+): [0-9]+>', r'\1', val)
-            string += f'  {field}: {val}\n'
-        return string.rstrip()
-
-    def calcsize(self) -> int:
-        return len(self.pack())
 
 
 class SetMessageRate(MessagePayload):
@@ -931,6 +768,8 @@ class SetMessageRate(MessagePayload):
 
     # Flag to immediately save the config after applying this setting.
     FLAG_APPLY_AND_SAVE = 0x01
+    # Flag to apply bulk interval changes to all messages instead of just enabled messages.
+    FLAG_INCLUDE_DISABLED_MESSAGES = 0x02
 
     SetMessageRateConstruct = Struct(
         "output_interface" / _InterfaceIDConstruct,
@@ -944,7 +783,7 @@ class SetMessageRate(MessagePayload):
     def __init__(self,
                  output_interface: InterfaceID = None,
                  protocol: ProtocolType = ProtocolType.INVALID,
-                 message_id: int = 0,
+                 message_id: int = ALL_MESSAGES_ID,
                  rate: MessageRate = MessageRate.OFF,
                  flags: int = 0x0):
         if output_interface is None:
@@ -996,7 +835,7 @@ class GetMessageRate(MessagePayload):
                  output_interface: InterfaceID = None,
                  protocol: ProtocolType = ProtocolType.INVALID,
                  request_source = ConfigurationSource.ACTIVE,
-                 message_id: int = 0):
+                 message_id: int = ALL_MESSAGES_ID):
         if output_interface is None:
             self.output_interface = InterfaceID()
         else:
@@ -1027,37 +866,53 @@ class GetMessageRate(MessagePayload):
         return cls.GetMessageRateConstruct.sizeof()
 
 
+class RateResponseEntry(NamedTuple):
+    protocol: ProtocolType = ProtocolType.INVALID
+    flags: int = 0
+    message_id: int = 0
+    configured_rate: MessageRate = MessageRate.OFF
+    effective_rate: MessageRate = MessageRate.OFF
+
+
+_RateResponseEntryConstructRaw = Struct(
+    "protocol" / AutoEnum(Int8ul, ProtocolType),
+    "flags" / Int8ul,
+    "message_id" / Int16ul,
+    "configured_rate" / AutoEnum(Int8ul, MessageRate),
+    "effective_rate" / AutoEnum(Int8ul, MessageRate),
+    Padding(2)
+)
+_RateResponseEntryConstruct = NamedTupleAdapter(RateResponseEntry, _RateResponseEntryConstructRaw)
+
+
 class MessageRateResponse(MessagePayload):
     """!
     @brief Response to a @ref GetMessageRate request.
     """
     MESSAGE_TYPE = MessageType.MESSAGE_RATE_RESPONSE
-    MESSAGE_VERSION = 0
+    MESSAGE_VERSION = 1
+
+    # Flag to indicate the active value for a message rate differs from the value saved to persistent memory.
+    FLAG_ACTIVE_DIFFERS_FROM_SAVED = 0x1
 
     MessageRateResponseConstruct = Struct(
         "config_source" / AutoEnum(Int8ul, ConfigurationSource),
-        "active_differs_from_saved" / Flag,
         "response" / AutoEnum(Int8ul, Response),
-        Padding(1),
+        "num_rates" / Int16ul,
         "output_interface" / _InterfaceIDConstruct,
-        "protocol" / AutoEnum(Int8ul, ProtocolType),
-        Padding(1),
-        "message_id" / Int16ul,
-        "rate" / AutoEnum(Int8ul, MessageRate),
-        Padding(3),
+        "rates" / Array(this.num_rates, _RateResponseEntryConstruct),
     )
 
     def __init__(self):
         self.config_source = ConfigurationSource.ACTIVE
-        self.active_differs_from_saved = False
         self.response = Response.OK
         self.output_interface = InterfaceID(TransportType.INVALID, 0)
         self.protocol = ProtocolType.INVALID
-        self.message_id = 0
-        self.rate = MessageRate.OFF
+        self.rates: List[RateResponseEntry] = []
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         values = dict(self.__dict__)
+        values['num_rates'] = len(self.rates)
         packed_data = self.MessageRateResponseConstruct.build(values)
         return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
 
@@ -1067,7 +922,12 @@ class MessageRateResponse(MessagePayload):
         return parsed._io.tell()
 
     def __str__(self):
-        fields = ['config_source', 'active_differs_from_saved', 'response', 'output_interface', 'protocol', 'message_id', 'rate']
+        fields = [
+            'config_source',
+            'response',
+            'output_interface',
+            'num_rates',
+            'rates']
         string = f'Message Output Rate Response\n'
         for field in fields:
             val = str(self.__dict__[field]).replace('Container:', '')
@@ -1076,6 +936,5 @@ class MessageRateResponse(MessagePayload):
             string += f'  {field}: {val}\n'
         return string.rstrip()
 
-    @classmethod
-    def calcsize(cls) -> int:
-        return cls.MessageRateResponseConstruct.sizeof()
+    def calcsize(self) -> int:
+        return len(self.pack())

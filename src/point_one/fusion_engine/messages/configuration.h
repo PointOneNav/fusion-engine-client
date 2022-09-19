@@ -387,14 +387,17 @@ struct alignas(4) ConfigResponseMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::CONFIG_RESPONSE;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
+  /**
+   * Flag to indicate the active value for this configuration differs from the
+   * value saved to persistent memory.
+   */
+  static constexpr uint8_t FLAG_ACTIVE_DIFFERS_FROM_SAVED = 0x1;
+
   /** The source of the parameter value (active, saved, etc.). */
   ConfigurationSource config_source = ConfigurationSource::ACTIVE;
 
-  /**
-   * Set to `true` if the active configuration differs from the saved
-   * configuration for this parameter.
-   */
-  bool active_differs_from_saved = false;
+  /** Flags that describe the configuration parameter. */
+  uint8_t flags = 0;
 
   /** The type of configuration parameter contained in this message. */
   ConfigType config_type = ConfigType::INVALID;
@@ -976,7 +979,12 @@ enum class ProtocolType : uint8_t {
   FUSION_ENGINE = 1,
   NMEA = 2,
   RTCM = 3,
+  /** This is used for requesting the configuration for all protocols. */
+  ALL = 0xFF,
 };
+
+/** Setting message_id to this value acts as a wild card. */
+constexpr uint16_t ALL_MESSAGES_ID = 0xFFFF;
 
 /**
  * @brief Get a human-friendly string name for the specified @ref
@@ -997,6 +1005,8 @@ inline const char* to_string(ProtocolType val) {
       return "NMEA";
     case ProtocolType::RTCM:
       return "RTCM";
+    case ProtocolType::ALL:
+      return "ALL";
     default:
       return "Unrecognized";
   }
@@ -1127,207 +1137,6 @@ inline std::ostream& operator<<(std::ostream& stream, InterfaceID val) {
 }
 
 /**
- * @brief The ways that this configuration message can be applied to the
- *        previous list of values for that configuration type.
- */
-enum class UpdateAction : uint8_t {
-  /**
-   * Replace the previous list of values with the set provided in
-   * this configuration.
-   */
-  REPLACE = 0
-};
-
-/**
- * @brief Get a human-friendly string name for the specified @ref
- *        UpdateAction.
- * @ingroup config_and_ctrl_messages
- *
- * @param val The enum to get the string name for.
- *
- * @return The corresponding string name.
- */
-inline const char* to_string(UpdateAction val) {
-  switch (val) {
-    case UpdateAction::REPLACE:
-      return "Replace";
-    default:
-      return "Unrecognized";
-  }
-}
-
-/**
- * @brief @ref UpdateAction stream operator.
- * @ingroup config_and_ctrl_messages
- */
-inline std::ostream& operator<<(std::ostream& stream, UpdateAction val) {
-  stream << to_string(val) << " (" << (int)val << ")";
-  return stream;
-}
-
-/**
- * @brief Configure which stream(s) will be sent to an output interface.
- *
- * This message is followed by `N` @ref MsgRate objects, where `N`
- * is equal to @ref num_msgs. For example:
- *
- * ```
- * {MessageHeader, SetConfigMessage, OutputStreamMsgsConfig,
- *  MsgRate, MsgRate,  ...}
- * ```
- */
-struct alignas(4) OutputStreamMsgsConfig {
-  /** The stream this message configures. */
-  uint8_t stream_index = 0;
-  /**
-   * The type of action this configuration message applies to the
-   * previous state of the output stream.
-   */
-  UpdateAction update_action = UpdateAction::REPLACE;
-  /** The number of `msg_rates` entries this message contains. */
-  uint16_t num_msgs = 0;
-  /** Placeholder pointer for variable length set of messages. */
-  MsgRate msg_rates[0];
-};
-
-/**
- * @brief Configuration for the streams associated with a single output
- *        interface.
- *
- * This object is used in the payload of the @ref
- * SetOutputInterfaceConfigMessage and @ref
- * OutputInterfaceConfigResponseMessage messages. The declared contents are
- * followed by `N` `uint8_t` stream indices, where `N` is equal to @ref
- * num_streams. For example:
- *
- * ```
- * {MessageHeader, SetOutputInterfaceConfigMessage,
- *  OutputInterfaceConfigEntry, uint8_t, uint8_t,  ...}
- * ```
- */
-struct alignas(4) OutputInterfaceConfigEntry {
-  /** The output interface to configure. */
-  InterfaceID output_interface;
-  /** The number of `stream_indices` entries this message contains. */
-  uint8_t num_streams = 0;
-  uint8_t reserved[3] = {0};
-  /**
-   * Placeholder pointer for variable length set of indices.
-   *
-   * In the future these streams will be user defined, but for now they are:
-   * - `0`: All FusionEngine messages.
-   * - `1`: All NMEA messages.
-   * - `2`: All RTCM messages.
-   */
-  uint8_t stream_indices[0];
-};
-
-/**
- * @brief Configure the set of output streams enabled for a given output
- *        interface (@ref MessageType::SET_OUTPUT_INTERFACE_CONFIG, version
- *        1.0).
- * @ingroup config_and_ctrl_messages
-
- * The device will respond with a @ref CommandResponseMessage indicating whether
- * or not the request was accepted. Not all interfaces defined in @ref
- * InterfaceID are supported on all devices.
- *
- * Parameter changes are applied to the device's active configuration
- * immediately, but are not saved to persistent storage and will be restored to
- * their previous values on reset. To save configuration settings to persistent
- * storage, see @ref SaveConfigMessage.
- */
-struct alignas(4) SetOutputInterfaceConfigMessage : public MessagePayload {
-  static constexpr MessageType MESSAGE_TYPE =
-      MessageType::SET_OUTPUT_INTERFACE_CONFIG;
-  static constexpr uint8_t MESSAGE_VERSION = 0;
-  /**
-   * The type of action this configuration message applies to the
-   * previous list of streams.
-   */
-  UpdateAction update_action = UpdateAction::REPLACE;
-  uint8_t reserved[3] = {0};
-
-  /**
-   * The new output interface configuration to be applied.
-   */
-  OutputInterfaceConfigEntry output_interface_data;
-};
-
-/**
- * @brief Query the set of message streams configured to be output by the device
- *        on a specified interface. (@ref
- *        MessageType::GET_OUTPUT_INTERFACE_CONFIG, version 1.0).
- * @ingroup config_and_ctrl_messages
- *
- * The device will respond with a @ref OutputInterfaceConfigResponseMessage
- * containing the values.
- */
-struct alignas(4) GetOutputInterfaceConfigMessage : public MessagePayload {
-  static constexpr MessageType MESSAGE_TYPE =
-      MessageType::GET_OUTPUT_INTERFACE_CONFIG;
-  static constexpr uint8_t MESSAGE_VERSION = 0;
-
-  /** The config source to request data from (active, saved, etc.). */
-  ConfigurationSource request_source = ConfigurationSource::ACTIVE;
-
-  uint8_t reserved[3] = {0};
-
-  /**
-   * The output interface to get the config for. If the `type` is @ref
-   * TransportType::ALL then request the configuration for all interfaces.
-   */
-  InterfaceID output_interface;
-};
-
-/**
- * @brief Response to a @ref GetOutputInterfaceConfigMessage request (@ref
- *        MessageType::OUTPUT_INTERFACE_CONFIG_RESPONSE, version 1.0).
- * @ingroup config_and_ctrl_messages
- *
- * This message is followed by `N` @ref OutputInterfaceConfigEntry objects,
- * where `N` is equal to @ref number_of_interfaces. Each of these interfaces is
- * variable size, and the sum of the objects should add up to the message size
- * from the header.
- *
- * For example if the @ref number_of_interfaces is 2 and both interfaces have
- * two streams the payload will look as follows:
- *
- * ```
- * {MessageHeader, OutputInterfaceConfigResponseMessage,
- *  OutputInterfaceConfigEntry, uint8_t, uint8_t,
- *  OutputInterfaceConfigEntry, uint8_t, uint8_t}
- * ```
- */
-struct alignas(4) OutputInterfaceConfigResponseMessage : public MessagePayload {
-  static constexpr MessageType MESSAGE_TYPE =
-      MessageType::OUTPUT_INTERFACE_CONFIG_RESPONSE;
-  static constexpr uint8_t MESSAGE_VERSION = 0;
-
-  /** The source of the parameter value (active, saved, etc.). */
-  ConfigurationSource config_source = ConfigurationSource::ACTIVE;
-
-  /** The response status (success, error, etc.). */
-  Response response = Response::OK;
-
-  /**
-   * Set to `true` if the active configuration differs from the saved
-   * configuration for this parameter.
-   */
-  bool active_differs_from_saved = false;
-
-  /** The number of output interfaces to follow. */
-  uint8_t number_of_interfaces = 0;
-
-  /**
-   * A pointer to the beginning of the interface data.
-   */
-  // Note: This causes a compiler error on MSVC so it is not included:
-  //       https://docs.microsoft.com/en-us/cpp/error-messages/compiler-errors-1/compiler-error-c2233
-  // OutputInterfaceConfigEntry output_interface_data[0];
-};
-
-/**
  * @brief Integer ID for NMEA messages.
  */
 enum class NmeaMessageType : uint16_t {
@@ -1424,6 +1233,8 @@ enum class MessageRate : uint8_t {
    * Output this message each time a new value is available.
    */
   ON_CHANGE = 1,
+  /** Alias for @ref MessageRate::ON_CHANGE. */
+  MAX_RATE = 1,
   /**
    * Output this message at this interval. Not supported for all messages or
    * platforms.
@@ -1478,7 +1289,11 @@ enum class MessageRate : uint8_t {
    * Output this message at this interval. Not supported for all messages or
    * platforms.
    */
-  INTERVAL_10_S = 12
+  INTERVAL_10_S = 12,
+  /**
+   * Restore this message's rate back to its default value.
+   */
+  DEFAULT = 255
 };
 
 /**
@@ -1518,6 +1333,8 @@ inline const char* to_string(MessageRate value) {
       return "INTERVAL_5_S";
     case MessageRate::INTERVAL_10_S:
       return "INTERVAL_10_S";
+    case MessageRate::DEFAULT:
+      return "DEFAULT";
     default:
       return "Unrecognized";
   }
@@ -1533,8 +1350,88 @@ inline std::ostream& operator<<(std::ostream& stream, MessageRate val) {
 }
 
 /**
- * @brief Set the output rate for the requested message type on the specified
- *        interface (@ref MessageType::SET_MESSAGE_RATE, version 1.0).
+ * @brief Set the output rate for the requested message types (@ref
+ *        MessageType::SET_MESSAGE_RATE, version 1.0).
+ *
+ * Multiple message rates can be configured with a single command if wild cards
+ * are used for the interface, protocol, or message ID. When multiple messages
+ * are specified, the following behaviors apply:
+ * - Messages that are currently @ref MessageRate::OFF will not be changed
+ *   unless the @ref FLAG_INCLUDE_DISABLED_MESSAGES bit is set in the @ref flags
+ *   or the new rate is @ref MessageRate::DEFAULT.
+ * - If the rate is an interval, it will only affect the messages that support
+ *   being rate controlled.
+ *
+ * Setting all the messages on an interface to @ref MessageRate::DEFAULT will
+ * also restore the default `*_OUTPUT_DIAGNOSTICS_MESSAGES` configuration option
+ * value for that interface. See @ref ConfigType.
+ *
+ * @section set_rate_examples Typical Use Cases
+ *
+ * @subsection set_rate_restore Restore Default Settings For All Messages
+ *
+ * To restore the default configuration on UART1 for all message types across all
+ * supported protocols, specify the following:
+ * - Interface transport type: @ref TransportType::SERIAL
+ * - Interface index: 1
+ * - Protocol: @ref ProtocolType::ALL
+ * - Message ID: @ref ALL_MESSAGES_ID
+ * - Rate: @ref MessageRate::DEFAULT
+ *
+ * @subsection set_rate_restore_nmea Restore Default Settings For All NMEA
+ *
+ * To restore the default configuration on UART1 for all NMEA message types,
+ * specify the following:
+ * - Interface transport type: @ref TransportType::SERIAL
+ * - Interface index: 1
+ * - Protocol: @ref ProtocolType::NMEA
+ * - Message ID: @ref ALL_MESSAGES_ID
+ * - Rate: @ref MessageRate::DEFAULT
+ *
+ * @subsection set_rate_change_enabled_rate Change UART1 Output Rate To 1 Hz:
+ *
+ * To change the rate of all rate-controlled messages (e.g., FusionEngine @ref
+ * PoseMessage, NMEA GGA) to 1 Hz on UART1, specify the following:
+ * - Interface transport type: @ref TransportType::SERIAL
+ * - Interface index: 1
+ * - Protocol: @ref ProtocolType::ALL
+ * - Message ID: @ref ALL_MESSAGES_ID
+ * - Rate: @ref MessageRate::INTERVAL_1_S
+ *
+ * @note
+ * Note that this will not affect any message types that are not rate controlled
+ * (e.g., @ref MessageType::EVENT_NOTIFICATION).
+ *
+ * @subsection set_rate_max_all Change The Uart1 Output Rates For All Messages To Their Max:
+ *
+ * To change the rate of all messages to their max rate on UART1, specify the
+ * following:
+ * - Interface transport type: @ref TransportType::SERIAL
+ * - Interface index: 1
+ * - Protocol: @ref ProtocolType::ALL
+ * - flags: @ref FLAG_INCLUDE_DISABLED_MESSAGES
+ * - Message ID: @ref ALL_MESSAGES_ID
+ * - Rate: @ref MessageRate::ON_CHANGE
+ *
+ * @note
+ * This will enabled every message regardless of whether it's @ref
+ * MessageRate::OFF or whether or not it's rate controlled.
+ *
+ * @subsection set_and_save_rate_max_all Change And Save The UART1 Output Rates For All Messages To Their Max:
+ *
+ * To change the rate of all messages to their max rate on UART1, specify the
+ * following:
+ * - Interface transport type: @ref TransportType::SERIAL
+ * - Interface index: 1
+ * - Protocol: @ref ProtocolType::ALL
+ * - flags: 0x03 (@ref FLAG_INCLUDE_DISABLED_MESSAGES | @ref FLAG_APPLY_AND_SAVE)
+ * - Message ID: @ref ALL_MESSAGES_ID
+ * - Rate: @ref MessageRate::ON_CHANGE
+ *
+ * @note
+ * Both of the bit flags are set for this message. This will cause the
+ * configuration to be saved to non-volatile memory.
+ *
  * @ingroup config_and_ctrl_messages
  */
 struct alignas(4) SetMessageRate : public MessagePayload {
@@ -1544,10 +1441,22 @@ struct alignas(4) SetMessageRate : public MessagePayload {
   /** Flag to immediately save the config after applying this setting. */
   static constexpr uint8_t FLAG_APPLY_AND_SAVE = 0x01;
 
-  /** The output interface to configure. */
+  /**
+   * Flag to apply bulk interval changes to all messages instead of just
+   * enabled messages.
+   */
+  static constexpr uint8_t FLAG_INCLUDE_DISABLED_MESSAGES = 0x02;
+
+  /**
+   * The output interface to configure. If @ref TransportType::ALL, set rates on
+   * all supported interfaces.
+   */
   InterfaceID output_interface = {};
 
-  /** The message protocol being configured. */
+  /**
+   * The message protocol being configured. If @ref ProtocolType::ALL, set rates
+   * on all supported protocols and @ref message_id is ignored.
+   */
   ProtocolType protocol = ProtocolType::INVALID;
 
   /** Bitmask of additional flags to modify the command. */
@@ -1556,9 +1465,10 @@ struct alignas(4) SetMessageRate : public MessagePayload {
   /**
    * The ID of the desired message type (e.g., 10000 for FusionEngine
    * @ref MessageType::POSE messages). See @ref NmeaMessageType for NMEA-0183
-   * messages.
+   * messages. If @ref ALL_MESSAGES_ID, set the rate for all messages on the
+   * selected interface and protocol.
    */
-  uint16_t message_id = 0;
+  uint16_t message_id = ALL_MESSAGES_ID;
 
   /** The desired message rate. */
   MessageRate rate = MessageRate::OFF;
@@ -1572,6 +1482,9 @@ struct alignas(4) SetMessageRate : public MessagePayload {
  *        version 1.0).
  * @ingroup config_and_ctrl_messages
  *
+ * Multiple message rates can be requested with a single command if wild cards
+ * are used for the protocol, or message ID.
+ *
  * The device will respond with a @ref MessageRateResponse
  * containing the values.
  */
@@ -1579,10 +1492,16 @@ struct alignas(4) GetMessageRate : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::GET_MESSAGE_RATE;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
-  /** The output interface to be queried. */
+  /**
+   * The output interface to be queried. @ref TransportType::ALL is not
+   * supported.
+   */
   InterfaceID output_interface = {};
 
-  /** The desired message protocol. */
+  /**
+   * The desired message protocol. If @ref ProtocolType::ALL, return the current
+   * settings for all supported protocols and @ref message_id is ignored.
+   */
   ProtocolType protocol = ProtocolType::INVALID;
 
   /** The source of the parameter value (active, saved, etc.). */
@@ -1591,42 +1510,28 @@ struct alignas(4) GetMessageRate : public MessagePayload {
   /**
    * The ID of the desired message type (e.g., 10000 for FusionEngine
    * @ref MessageType::POSE messages). See @ref NmeaMessageType for NMEA-0183
-   * messages.
+   * messages. If @ref ALL_MESSAGES_ID, return the current settings for all
+   * supported messages on the selected interface and protocol.
    */
-  uint16_t message_id = 0;
+  uint16_t message_id = ALL_MESSAGES_ID;
 };
 
 /**
- * @brief Response to a @ref GetMessageRate request (@ref
- *        MessageType::MESSAGE_RATE_RESPONSE, version 1.0).
+ * @brief An element of a @ref MessageRateResponse message.
  * @ingroup config_and_ctrl_messages
  */
-struct alignas(4) MessageRateResponse : public MessagePayload {
-  static constexpr MessageType MESSAGE_TYPE =
-      MessageType::MESSAGE_RATE_RESPONSE;
-  static constexpr uint8_t MESSAGE_VERSION = 0;
-
-  /** The source of the parameter value (active, saved, etc.). */
-  ConfigurationSource config_source = ConfigurationSource::ACTIVE;
-
+struct alignas(4) MessageRateResponseEntry {
   /**
-   * Set to `true` if the active configuration differs from the saved
-   * configuration for this parameter.
+   * Flag to indicate the active value for this configuration differs from the
+   * value saved to persistent memory.
    */
-  bool active_differs_from_saved = false;
-
-  /** The response status (success, error, etc.). */
-  Response response = Response::OK;
-
-  uint8_t reserved1[1] = {0};
-
-  /** The output interface corresponding with this response. */
-  InterfaceID output_interface = {};
+  static constexpr uint8_t FLAG_ACTIVE_DIFFERS_FROM_SAVED = 0x1;
 
   /** The protocol of the message being returned. */
   ProtocolType protocol = ProtocolType::INVALID;
 
-  uint8_t reserved2[1] = {0};
+  /** Flags that describe the entry. */
+  uint8_t flags = 0;
 
   /**
    * The ID of the returned message type (e.g., 10000 for FusionEngine
@@ -1636,9 +1541,42 @@ struct alignas(4) MessageRateResponse : public MessagePayload {
   uint16_t message_id = 0;
 
   /** The current configuration for this message. */
-  MessageRate rate = MessageRate::OFF;
+  MessageRate configured_rate = MessageRate::OFF;
 
-  uint8_t reserved3[3] = {0};
+  /**
+   * The currently active output rate for this message, factoring in effects of
+   * additional configuration settings that may override the configured rate
+   * such as enabling diagnostic output.
+   */
+  MessageRate effective_rate = MessageRate::OFF;
+
+  uint8_t reserved1[2] = {0};
+};
+
+/**
+ * @brief Response to a @ref GetMessageRate request (@ref
+ *        MessageType::MESSAGE_RATE_RESPONSE, version 1.1).
+ * @ingroup config_and_ctrl_messages
+ */
+struct alignas(4) MessageRateResponse : public MessagePayload {
+  static constexpr MessageType MESSAGE_TYPE =
+      MessageType::MESSAGE_RATE_RESPONSE;
+  static constexpr uint8_t MESSAGE_VERSION = 1;
+
+  /** The source of the parameter value (active, saved, etc.). */
+  ConfigurationSource config_source = ConfigurationSource::ACTIVE;
+
+  /** The response status (success, error, etc.). */
+  Response response = Response::OK;
+
+  /** The number of rates reported by this message. */
+  uint16_t num_rates = 0;
+
+  /** The output interface corresponding with this response. */
+  InterfaceID output_interface = {};
+
+  /* This in then followed by an array of num_rates MessageRateResponseEntry */
+  // MessageRateResponseEntry rates[num_rates]
 };
 
 /** @} */
