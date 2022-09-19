@@ -67,11 +67,6 @@ enum class MessageType : uint16_t {
   SAVE_CONFIG = 13102, ///< @ref SaveConfigMessage
   CONFIG_RESPONSE = 13103, ///< @ref ConfigResponseMessage
 
-  SET_OUTPUT_INTERFACE_CONFIG = 13200, ///< @ref SetOutputInterfaceConfigMessage
-  GET_OUTPUT_INTERFACE_CONFIG = 13201, ///< @ref GetOutputInterfaceConfigMessage
-  OUTPUT_INTERFACE_CONFIG_RESPONSE =
-      13202, ///< @ref OutputInterfaceConfigResponseMessage
-
   SET_MESSAGE_RATE = 13220, ///< @ref SetMessageRate
   GET_MESSAGE_RATE = 13221, ///< @ref GetMessageRate
   MESSAGE_RATE_RESPONSE = 13222, ///< @ref MessageRateResponse
@@ -168,15 +163,6 @@ inline const char* to_string(MessageType type) {
 
     case MessageType::CONFIG_RESPONSE:
       return "Configuration Parameter Value";
-
-    case MessageType::SET_OUTPUT_INTERFACE_CONFIG:
-      return "Set Output Interface Config";
-
-    case MessageType::GET_OUTPUT_INTERFACE_CONFIG:
-      return "Get Output Interface Config";
-
-    case MessageType::OUTPUT_INTERFACE_CONFIG_RESPONSE:
-      return "Output Interface Config Response";
 
     case MessageType::SET_MESSAGE_RATE:
       return "Set Message Rate";

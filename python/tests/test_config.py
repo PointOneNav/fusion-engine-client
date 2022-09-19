@@ -1,24 +1,17 @@
-import pytest
-
-
-from fusion_engine_client.messages.configuration import (AppliedSpeedType, ConfigurationSource,
-                                                         DeviceCourseOrientationConfig, HardwareTickConfig,
-                                                         InterfaceID, SteeringType, TickMode, TickDirection,
-                                                         TransportType, VehicleDetailsConfig, WheelConfig,
-                                                         WheelSensorType)
-from fusion_engine_client.messages import (SetConfigMessage,
-                                           Uart1BaudConfig,
-                                           ConfigType,
-                                           Direction,
-                                           VehicleModel,
-                                           ConfigResponseMessage,
-                                           GnssLeverArmConfig,
-                                           InvalidConfig,
-                                           OutputInterfaceConfigResponseMessage,
-                                           OutputInterfaceConfig)
-
-
 import logging
+
+import pytest
+from fusion_engine_client.messages import (ConfigResponseMessage, ConfigType,
+                                           Direction, GnssLeverArmConfig,
+                                           InvalidConfig, MessageRateResponse,
+                                           SetConfigMessage, Uart1BaudConfig,
+                                           VehicleModel)
+from fusion_engine_client.messages.configuration import (
+    AppliedSpeedType, ConfigurationSource, DeviceCourseOrientationConfig,
+    HardwareTickConfig, MessageRate, RateResponseEntry, SteeringType,
+    TickDirection, TickMode, VehicleDetailsConfig, WheelConfig,
+    WheelSensorType, _RateResponseEntryConstructRaw)
+
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logging.getLogger('point_one').setLevel(logging.DEBUG)
@@ -97,28 +90,22 @@ def test_config_data():
     assert data_msg.config_source == ConfigurationSource.SAVED
 
 
-def test_output_interface_data():
-    data_msg = OutputInterfaceConfigResponseMessage()
-    data_msg.output_interface_data = [
-        OutputInterfaceConfig(InterfaceID(TransportType.SERIAL, 0), [1, 2]),
+def test_msg_rate_data():
+    data_msg = MessageRateResponse()
+    data_msg.rates = [
+        RateResponseEntry()
     ]
     packed_data = data_msg.pack()
-    assert len(data_msg.pack()) == 4 + 4 + 4 + 2
+    assert len(packed_data) == 8 + _RateResponseEntryConstructRaw.sizeof()
 
-    data_msg = OutputInterfaceConfigResponseMessage()
-    data_msg.output_interface_data = [
-        OutputInterfaceConfig(InterfaceID(TransportType.SERIAL, 0), [1, 2]),
-        OutputInterfaceConfig(InterfaceID(TransportType.SERIAL, 1), [1])
+    data_msg = MessageRateResponse()
+    data_msg.rates = [
+        RateResponseEntry(),
+        RateResponseEntry(configured_rate=MessageRate.INTERVAL_1_S)
     ]
-    data_msg.config_source = ConfigurationSource.SAVED
     packed_data = data_msg.pack()
-    assert len(data_msg.pack()) == 4 + (4 + 4 + 2) + (4 + 4 + 1)
+    assert len(packed_data) == 8 + _RateResponseEntryConstructRaw.sizeof() * 2
 
-    data_msg = OutputInterfaceConfigResponseMessage()
+    data_msg = MessageRateResponse()
     data_msg.unpack(packed_data)
-    assert data_msg.config_source == ConfigurationSource.SAVED
-    assert len(data_msg.output_interface_data) == 2
-    assert data_msg.output_interface_data[0].output_interface == InterfaceID(TransportType.SERIAL, 0)
-    assert data_msg.output_interface_data[0].stream_indices == [1, 2]
-    assert data_msg.output_interface_data[1].output_interface == InterfaceID(TransportType.SERIAL, 1)
-    assert data_msg.output_interface_data[1].stream_indices == [1]
+    assert data_msg.rates[1].configured_rate == MessageRate.INTERVAL_1_S
