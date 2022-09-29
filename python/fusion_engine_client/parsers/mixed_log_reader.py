@@ -261,6 +261,9 @@ class MixedLogReader(object):
                             byte1 = self.input_file.read(1)[0]
                             if byte1 == MessageHeader._SYNC1:
                                 self.input_file.seek(-2, os.SEEK_CUR)
+                                offset_bytes = self.input_file.tell()
+                                self.logger.trace('Sync bytes found @ %d (0x%x).' % (offset_bytes, offset_bytes),
+                                                  depth=3)
                                 return True
                             byte0 = byte1
                         else:
