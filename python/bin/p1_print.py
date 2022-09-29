@@ -202,6 +202,7 @@ other types of data.
         bytes_decoded += len(data)
 
         # Update the data summary in summary mode, or print the message contents otherwise.
+        total_messages += 1
         if options.summary:
             p1_time = message.get_p1_time()
             if p1_time is not None:
@@ -228,7 +229,6 @@ other types of data.
                     last_system_time_sec = max(last_system_time_sec, system_time_sec)
                     newest_system_time_sec = system_time_sec
 
-            total_messages += 1
             entry = message_stats[header.message_type]
             entry['count'] += 1
         else:
@@ -257,3 +257,5 @@ other types of data.
             _logger.info(format_string.format(message_type_to_class[type].__name__, info['count']))
         _logger.info(format_string.format('-' * 50, '-' * 8))
         _logger.info(format_string.format('Total', total_messages))
+    elif total_messages == 0:
+        _logger.warning('No valid FusionEngine messages found.')
