@@ -21,7 +21,7 @@ if __name__ == "__main__":
 Decode and print the contents of one or more FusionEngine messages contained
 in a binary string. For example:
 
-> python3 raw_message_decode.py \\
+> python3 binary_message_decode.py \\
   2e31 0000 0acf ee8f 0200 ca32 0000 0000 0400 0000 0000 0000 ff0f 0001
 
 Successfully decoded 1 FusionEngine messages.
