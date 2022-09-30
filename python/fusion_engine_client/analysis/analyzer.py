@@ -265,7 +265,7 @@ class Analyzer(object):
 
         figure['layout'].update(showlegend=True)
         for i in range(6):
-            figure['layout']['xaxis%d' % (i + 1)].update(title="Time (sec)", showticklabels=True)
+            figure['layout']['xaxis%d' % (i + 1)].update(title="Time (sec)", showticklabels=True, matches='x')
         figure['layout']['yaxis1'].update(title="Degrees")
         figure['layout']['yaxis2'].update(title="Meters")
         figure['layout']['yaxis3'].update(title="Meters/Second")
