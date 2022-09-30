@@ -135,7 +135,7 @@ def test_time_slice():
 def test_empty_index():
     index = FileIndex()
     assert len(index) == 0
-    assert index.time is None
+    assert len(index.time) == 0
 
 
 def test_builder(tmpdir):

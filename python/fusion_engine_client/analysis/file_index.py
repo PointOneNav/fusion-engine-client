@@ -153,9 +153,12 @@ class FileIndex(object):
             else:
                 raise ValueError('Cannot specify both path and data.')
 
+        if self._data is None:
+            self._data = np.array([], dtype=FileIndex._DTYPE)
+
         if t0 is not None:
             self.t0 = t0
-        elif self._data is None:
+        elif len(self._data) == 0:
             self.t0 = None
         else:
             idx = np.argmax(~np.isnan(self._data['time']))
@@ -261,7 +264,7 @@ class FileIndex(object):
         @param index_path The path to the file to be written.
         @param data_path The path to the `.p1log` file.
         """
-        if self._data is not None:
+        if len(self._data) > 0:
             # Append an EOF marker at the end of the data if data_path is specified.
             data = self._data
             if data['type'][-1] != MessageType.INVALID and data_path is not None:
@@ -316,18 +319,15 @@ class FileIndex(object):
             return FileIndex(data=self._data[idx], t0=self.t0)
 
     def __len__(self):
-        if self._data is None:
-            return 0
-        else:
-            return len(self._data['time'])
+        return len(self._data['time'])
 
     def __getattr__(self, key):
         if key == 'time':
-            return self._data['time'] if self._data is not None else None
+            return self._data['time']
         elif key == 'type':
-            return self._data['type'] if self._data is not None else None
+            return self._data['type']
         elif key == 'offset':
-            return self._data['offset'] if self._data is not None else None
+            return self._data['offset']
         else:
             raise AttributeError
 
@@ -336,7 +336,7 @@ class FileIndex(object):
         if key is None:
             return copy.copy(self)
         # No data available.
-        elif self._data is None:
+        elif len(self._data) == 0:
             return FileIndex()
         # Key is a string (e.g., index['type']), defer to getattr() (e.g., index.type).
         elif isinstance(key, str):
@@ -393,7 +393,7 @@ class FileIndex(object):
             raise ValueError('Unsupported key type.')
 
     def __iter__(self):
-        if self._data is None:
+        if len(self._data) == 0:
             return FileIndexIterator(None)
         else:
             return FileIndexIterator(iter(self._data))

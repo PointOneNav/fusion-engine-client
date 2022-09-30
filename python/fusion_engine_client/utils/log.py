@@ -360,6 +360,8 @@ def locate_log(input_path, log_base_dir=DEFAULT_LOG_BASE_DIR, return_output_dir=
             - The log ID string, or `None` if the requested file is not part of a FusionEngine log. Only provided if
               `return_log_id` is `True`.
     """
+    input_path = os.path.expanduser(input_path)
+
     # Try to find the log normally (look for a directory containing a .p1log file).
     try:
         result = find_p1log_file(input_path, log_base_dir=log_base_dir,

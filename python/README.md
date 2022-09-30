@@ -24,20 +24,32 @@ for the latest API documentation.
         file containing mixed data (e.g., interleaved RTCM and FusionEngine messages) 
     - `examples/` - Python example applications
       - [analyze_data.py](examples/analyze_data.py) - Generate HTML plots of vehicle trajectory, INS filter state, etc.
+      - [binary_message_decode.py](examples/binary_message_decode.py) - Decode and print FusionEngine messages contained
+        in a hex byte string
       - [encode_data.py](examples/encode_data.py) - Construct and serialize FusionEngine messages, and save them in a
         `*.p1log` file that can be used with the other example utilities
+      - [encode_message.py](examples/encode_message.py) - Construct and serialize a single FusionEngine message, and
+        print the result to the console as a hex byte string
       - [extract_imu_data.py](examples/extract_imu_data.py) - Generate a CSV file containing recorded IMU measurements
       - [extract_position_data.py](examples/extract_position_data.py) - Generate CSV and KML files detailing the vehicle
         position over time
         - This script also includes an example of time-aligning multiple message types
       - [extract_satellite_info.py](examples/extract_satellite_info.py) - Generate a CSV file containing satellite 
         azimuth/elevation and C/N0 information over time
-      - [message_decode.py](examples/message_decode.py) - Read a `.p1log` binary file and decode the contents
-      - [raw_tcp_client.py](examples/raw_tcp_client.py) - Connect to a device over TCP and decode/display messages in
-        real time (decoding messages manually, without the using the `FusionEngineDecoder` helper class)
+      - [manual_message_decode.py](examples/manual_message_decode.py) - Read a `.p1log` binary file and decode the
+        message headers and payloads explicitly (without the using the `FusionEngineDecoder` helper class)
+      - [manual_tcp_client.py](examples/manual_tcp_client.py) - Connect to a device over TCP and decode/display messages
+        in real time, decoding message headers and payloads manually (without the using the `FusionEngineDecoder` helper
+        class)
+      - [message_decode.py](examples/message_decode.py) - Read a `.p1log` binary file containing FusionEngine messages,
+        optionally mixed with other binary data, and decode the contents using the `FusionEngineDecoder` helper class
+      - [serial_client.py](examples/serial_client.py) - Connect to a device over a local serial port and decode messages
+        in real time to be displayed and/or logged to disk using the `FusionEngineDecoder` helper class
       - [tcp_client.py](examples/tcp_client.py) - Connect to a device over TCP and decode messages in real time to be
         displayed and/or logged to disk using the `FusionEngineDecoder` helper class
       - [udp_client.py](examples/udp_client.py) - Connect to a device over UDP and decode/display messages in real time
+        - Unlike [tcp_client.py](examples/tcp_client.py), currently assumes all incoming UDP packets contain
+          FusionEngine messages and does not use the `FusionEngineDecoder` helper class
     - `fusion_engine_client` - Top Python package directory
       - `analysis`
         - [analyzer.py](analysis/analyzer.py) - `Analyzer` class, used to plot data from a recorded file of FusionEngine

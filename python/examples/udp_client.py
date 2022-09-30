@@ -11,7 +11,7 @@ sys.path.insert(0, root_dir)
 
 from fusion_engine_client.messages.core import *
 
-from examples.raw_message_decode import decode_message
+from examples.manual_message_decode import decode_message
 from fusion_engine_client.utils.argument_parser import ArgumentParser
 
 
