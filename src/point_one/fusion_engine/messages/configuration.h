@@ -16,6 +16,7 @@
 
 #include <ostream>
 
+#include "point_one/fusion_engine/messages/data_version.h"
 #include "point_one/fusion_engine/messages/defs.h"
 
 namespace point_one {
@@ -1577,6 +1578,143 @@ struct alignas(4) MessageRateResponse : public MessagePayload {
 
   /* This in then followed by an array of num_rates MessageRateResponseEntry */
   // MessageRateResponseEntry rates[num_rates]
+};
+
+/** Type of data stored on device. */
+enum class DataType : uint8_t {
+  CALIBRATION_STATE = 0,
+  CRASH_LOG = 1,
+  FILTER_STATE = 2,
+  USER_CONFIG = 3,
+  INVALID = 255
+};
+
+/**
+ * @brief Get a string representation of a @ref DataType.
+ *
+ * @param type The requested type.
+ *
+ * @return The corresponding string name.
+ */
+inline const char* to_string(DataType type) {
+  switch (type) {
+    case DataType::CALIBRATION_STATE:
+      return "CalibrationState";
+    case DataType::CRASH_LOG:
+      return "CrashLog";
+    case DataType::FILTER_STATE:
+      return "FilterState";
+    case DataType::USER_CONFIG:
+      return "UserConfig";
+    default:
+      return "Invalid";
+  }
+}
+
+/**
+ * @brief @ref DataType stream operator.
+ * @ingroup config_and_ctrl_messages
+ */
+inline std::ostream& operator<<(std::ostream& stream, DataType val) {
+  stream << to_string(val) << " (" << (int)val << ")";
+  return stream;
+}
+
+/**
+ * @brief Import data from the host to the device.
+ * @ingroup config_and_ctrl_messages
+ *
+ * The device will respond with a @ref CommandResponseMessage indicating if the
+ * message was accepted.
+ */
+struct alignas(4) ImportDataMessage {
+  static constexpr MessageType MESSAGE_TYPE = MessageType::IMPORT_DATA;
+  static constexpr uint8_t MESSAGE_VERSION = 0;
+  /**
+   * The type of data being imported.
+   */
+  DataType data_type = DataType::INVALID;
+  /**
+   * The location of the data to update (active, saved, etc.). For data that
+   * doesn't have separate active and saved copies, this parameter is ignored.
+   */
+  ConfigurationSource source = ConfigurationSource::ACTIVE;
+  uint8_t reserved1[2] = {0};
+  /** @brief Version of data contents. */
+  DataVersion data_version;
+  uint8_t reserved2[4] = {0};
+  /** @brief Number of bytes to update. */
+  uint32_t data_length_bytes = 0;
+
+  /**
+   * This in then followed by an array of data_length_bytes bytes for the data
+   * contents.
+   */
+  // uint8_t data[data_length_bytes]
+};
+
+/**
+ * @brief Export data from the device.
+ * @ingroup config_and_ctrl_messages
+ *
+ * The device will respond with a @ref PlatformStorageDataMessage.
+ */
+struct alignas(4) ExportDataMessage {
+  static constexpr MessageType MESSAGE_TYPE = MessageType::EXPORT_DATA;
+  static constexpr uint8_t MESSAGE_VERSION = 0;
+  /**
+   * The type of data to be exported.
+   */
+  DataType data_type = DataType::INVALID;
+  /**
+   * The source to copy this data from. If the data_type doesn't separate active
+   * and saved data, this will be ignored.
+   */
+  ConfigurationSource source = ConfigurationSource::ACTIVE;
+  uint8_t reserved[2] = {0};
+};
+
+/**
+ * @brief Message for reporting platform storage data.
+ * @ingroup config_and_ctrl_messages
+ *
+ * See also @ref ExportDataMessage.
+ *
+ * Changes:
+ * - Version 1: Added data_validity field.
+ * - Version 2: Changed data_validity to a @ref Response enum and added
+ *              @ref source field.
+ */
+struct alignas(4) PlatformStorageDataMessage {
+  static constexpr MessageType MESSAGE_TYPE =
+      MessageType::PLATFORM_STORAGE_DATA;
+  static constexpr uint8_t MESSAGE_VERSION = 2;
+
+  /**
+   * They type of data contained in this message.
+   */
+  DataType data_type = DataType::INVALID;
+  /**
+   * The status of the specified data type on the device.
+   */
+  Response response = Response::OK;
+  /**
+   * The source this data was copied from. If the @ref data_type doesn't separate
+   * active and saved data, this will be set to @ref
+   * ConfigurationSource::ACTIVE.
+   */
+  ConfigurationSource source = ConfigurationSource::ACTIVE;
+  uint8_t reserved[1] = {0};
+  /** Version of data contents. */
+  DataVersion data_version;
+  /** Number of bytes in data contents. */
+  uint32_t data_length_bytes = 0;
+
+  /**
+   * This in then followed by an array of data_length_bytes bytes for the data
+   * contents.
+   */
+  // uint8_t data[data_length_bytes]
 };
 
 /** @} */

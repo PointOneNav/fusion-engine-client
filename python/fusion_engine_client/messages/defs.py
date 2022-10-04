@@ -113,6 +113,11 @@ class MessageType(IntEnum):
 
     RESERVED = 20000
 
+    IMPORT_DATA = 20102
+    EXPORT_DATA = 20104
+    PLATFORM_STORAGE_DATA = 20105
+
+
     @classmethod
     def get_type_string(cls, type):
         try:

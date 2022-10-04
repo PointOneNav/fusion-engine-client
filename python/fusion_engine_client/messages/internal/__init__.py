@@ -1,5 +1,4 @@
 from .. import message_type_to_class
-from .platform_storage import *
 from .internal_defs import InternalMessageType
 from .profiling import *
 
@@ -16,5 +15,4 @@ message_type_to_class.update({
     ProfileExecutionStatsMessage.DEFINITION_TYPE: ProfileDefinitionMessage,
     ProfileCounterMessage.MESSAGE_TYPE: ProfileCounterMessage,
     ProfileCounterMessage.DEFINITION_TYPE: ProfileDefinitionMessage,
-    PlatformStorageDataMessage.MESSAGE_TYPE: PlatformStorageDataMessage,
 })

@@ -32,6 +32,7 @@ endif()
 add_library(fusion_engine_client
             src/point_one/fusion_engine/common/logging.cc
             src/point_one/fusion_engine/messages/crc.cc
+            src/point_one/fusion_engine/messages/data_version.cc
             src/point_one/fusion_engine/parsers/fusion_engine_framer.cc)
 target_include_directories(fusion_engine_client PUBLIC ${PROJECT_SOURCE_DIR}/src)
 if (MSVC)
