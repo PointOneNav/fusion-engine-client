@@ -54,6 +54,7 @@ cc_library(
     ],
     deps = [
         ":common",
+        ":data_version"
     ],
 )
 
@@ -112,4 +113,16 @@ cc_library(
     deps = [
         ":core_headers",
     ],
+)
+
+# Data versioning support.
+cc_library(
+    name = "data_version",
+    srcs = [
+        "src/point_one/fusion_engine/messages/data_version.cc",
+    ],
+    hdrs = [
+        "src/point_one/fusion_engine/messages/data_version.h",
+    ],
+    includes = ["src"],
 )

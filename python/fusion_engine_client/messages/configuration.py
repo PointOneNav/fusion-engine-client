@@ -938,3 +938,165 @@ class MessageRateResponse(MessagePayload):
 
     def calcsize(self) -> int:
         return len(self.pack())
+
+
+class DataVersion(NamedTuple):
+    major: int
+    minor: int
+
+
+_DataVersionConstructRaw = Struct(
+    Padding(1),
+    "major" / Int8ul,
+    "minor" / Int16ul,
+)
+_DataVersionConstruct = NamedTupleAdapter(DataVersion, _DataVersionConstructRaw)
+
+
+class DataType(IntEnum):
+    CALIBRATION_STATE = 0
+    CRASH_LOG = 1
+    FILTER_STATE = 2
+    USER_CONFIG = 3
+    INVALID = 255
+
+
+class ImportDataMessage(MessagePayload):
+    """!
+    @brief Import data from the host to the device.
+    """
+    MESSAGE_TYPE = MessageType.IMPORT_DATA
+    MESSAGE_VERSION = 0
+
+    ImportDataMessageConstruct = Struct(
+        "data_type" / AutoEnum(Int8ul, DataType),
+        "source" / AutoEnum(Int8ul, ConfigurationSource),
+        Padding(2),
+        "data_version" / _DataVersionConstruct,
+        Padding(4),
+        "data_length_bytes" / Int32ul,
+        "data" / Bytes(this.data_length_bytes),
+    )
+
+    def __init__(
+            self,
+            data_type=DataType.INVALID,
+            data_version=DataVersion(0, 0),
+            data=None,
+            source=ConfigurationSource.ACTIVE):
+        self.data_version = data_version
+        self.data_type = data_type
+        self.source = source
+        self.data = bytes() if data is None else data
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        values = dict(self.__dict__)
+        values['data_length_bytes'] = len(self.data)
+        packed_data = self.ImportDataMessageConstruct.build(values)
+        return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
+
+    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+        parsed = self.ImportDataMessageConstruct.parse(buffer[offset:])
+        self.__dict__.update(parsed)
+        return parsed._io.tell()
+
+    def __str__(self):
+        fields = ['source', 'data_version']
+        string = f'Import Data Command ({str(self.data_type)}, {len(self.data)} B)\n'
+        for field in fields:
+            val = str(self.__dict__[field]).replace('Container:', '')
+            val = val.replace('  ', '\t')
+            string += f'\t{field}: {val}\n'
+        return string.rstrip()
+
+    def calcsize(self) -> int:
+        return len(self.pack())
+
+
+class ExportDataMessage(MessagePayload):
+    """!
+    @brief Export data from the device.
+    """
+    MESSAGE_TYPE = MessageType.EXPORT_DATA
+    MESSAGE_VERSION = 0
+
+    ExportDataMessageConstruct = Struct(
+        "data_type" / AutoEnum(Int8ul, DataType),
+        "source" / AutoEnum(Int8ul, ConfigurationSource),
+        Padding(3),
+    )
+
+    def __init__(self, data_type=DataType.INVALID, source=ConfigurationSource.ACTIVE):
+        self.data_type = data_type
+        self.source = source
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        values = dict(self.__dict__)
+        packed_data = self.ExportDataMessageConstruct.build(values)
+        return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
+
+    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+        parsed = self.ExportDataMessageConstruct.parse(buffer[offset:])
+        self.__dict__.update(parsed)
+        return parsed._io.tell()
+
+    def __str__(self):
+        fields = ['source']
+        string = f'Export data command ({str(self.data_type)})\n'
+        for field in fields:
+            val = str(self.__dict__[field]).replace('Container:', '')
+            val = val.replace('  ', '\t')
+            string += f'\t{field}: {val}\n'
+        return string.rstrip()
+
+    @classmethod
+    def calcsize(cls) -> int:
+        return ExportDataMessage.ExportDataMessageConstruct.sizeof()
+
+
+class PlatformStorageDataMessage(MessagePayload):
+    """!
+    @brief Device storage data response.
+    """
+    MESSAGE_TYPE = MessageType.PLATFORM_STORAGE_DATA
+    MESSAGE_VERSION = 2
+
+    PlatformStorageDataMessageConstruct = Struct(
+        "data_type" / AutoEnum(Int8ul, DataType),
+        "response" / AutoEnum(Int8ul, Response),
+        "source" / AutoEnum(Int8ul, ConfigurationSource),
+        Padding(1),
+        "data_version" / _DataVersionConstruct,
+        "data_length_bytes" / Int32ul,
+        "data" / Bytes(this.data_length_bytes),
+    )
+
+    def __init__(self):
+        self.data_version = DataVersion(0, 0)
+        self.data_type = DataType.INVALID
+        self.response = Response.DATA_CORRUPTED
+        self.source = ConfigurationSource.ACTIVE
+        self.data = bytes()
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        values = dict(self.__dict__)
+        values['data_length_bytes'] = len(self.data)
+        packed_data = self.PlatformStorageDataMessageConstruct.build(values)
+        return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
+
+    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+        parsed = self.PlatformStorageDataMessageConstruct.parse(buffer[offset:])
+        self.__dict__.update(parsed)
+        return parsed._io.tell()
+
+    def __str__(self):
+        fields = ['response', 'source', 'data_version']
+        string = f'Platform Storage Data ({str(self.data_type)}, {len(self.data)} B)\n'
+        for field in fields:
+            val = str(self.__dict__[field]).replace('Container:', '')
+            val = val.replace('  ', '\t')
+            string += f'\t{field}: {val}\n'
+        return string.rstrip()
+
+    def calcsize(self) -> int:
+        return len(self.pack())
