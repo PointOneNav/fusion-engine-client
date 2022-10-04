@@ -1593,49 +1593,6 @@ inline std::ostream& operator<<(std::ostream& stream, DataType val) {
 }
 
 /**
- * @brief Message for reporting platform storage data.
- * @ingroup config_and_ctrl_messages
- *
- * See also @ref ExportData.
- *
- * Changes:
- * - Version 1: Added data_validity field.
- * - Version 2: Changed data_validity to a @ref Response enum and added
- *              @ref source field.
- */
-struct alignas(4) PlatformStorageDataMessage {
-  static constexpr MessageType MESSAGE_TYPE =
-      MessageType::PLATFORM_STORAGE_DATA;
-  static constexpr uint8_t MESSAGE_VERSION = 2;
-
-  /**
-   * They type of data contained in this message.
-   */
-  DataType data_type = DataType::INVALID;
-  /**
-   * The status of the specified data type on the device.
-   */
-  Response response = Response::OK;
-  /**
-   * The source this data was copied from. If the @ref data_type doesn't separate
-   * active and saved data, this will be set to @ref
-   * ConfigurationSource::ACTIVE.
-   */
-  ConfigurationSource source = ConfigurationSource::ACTIVE;
-  uint8_t reserved[1] = {0};
-  /** Version of data contents. */
-  DataVersion data_version;
-  /** Number of bytes in data contents. */
-  uint32_t data_length_bytes = 0;
-
-  /**
-   * This in then followed by an array of data_length_bytes bytes for the data
-   * contents.
-   */
-  // uint8_t data[data_length_bytes]
-};
-
-/**
  * @brief Import data from the host to the device.
  * @ingroup config_and_ctrl_messages
  *
@@ -1687,6 +1644,49 @@ struct alignas(4) ExportDataMessage {
    */
   ConfigurationSource source = ConfigurationSource::ACTIVE;
   uint8_t reserved[2] = {0};
+};
+
+/**
+ * @brief Message for reporting platform storage data.
+ * @ingroup config_and_ctrl_messages
+ *
+ * See also @ref ExportDataMessage.
+ *
+ * Changes:
+ * - Version 1: Added data_validity field.
+ * - Version 2: Changed data_validity to a @ref Response enum and added
+ *              @ref source field.
+ */
+struct alignas(4) PlatformStorageDataMessage {
+  static constexpr MessageType MESSAGE_TYPE =
+      MessageType::PLATFORM_STORAGE_DATA;
+  static constexpr uint8_t MESSAGE_VERSION = 2;
+
+  /**
+   * They type of data contained in this message.
+   */
+  DataType data_type = DataType::INVALID;
+  /**
+   * The status of the specified data type on the device.
+   */
+  Response response = Response::OK;
+  /**
+   * The source this data was copied from. If the @ref data_type doesn't separate
+   * active and saved data, this will be set to @ref
+   * ConfigurationSource::ACTIVE.
+   */
+  ConfigurationSource source = ConfigurationSource::ACTIVE;
+  uint8_t reserved[1] = {0};
+  /** Version of data contents. */
+  DataVersion data_version;
+  /** Number of bytes in data contents. */
+  uint32_t data_length_bytes = 0;
+
+  /**
+   * This in then followed by an array of data_length_bytes bytes for the data
+   * contents.
+   */
+  // uint8_t data[data_length_bytes]
 };
 
 /** @} */
