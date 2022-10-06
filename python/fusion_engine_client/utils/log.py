@@ -3,6 +3,7 @@ import os
 
 import logging
 
+from ..analysis.file_index import FileIndexBuilder, FileIndex
 from ..messages import MessageType
 from ..parsers.mixed_log_reader import MixedLogReader
 from ..utils import trace
@@ -291,7 +292,7 @@ def find_p1log_file(input_path, return_output_dir=False, return_log_id=False, lo
         raise FileExistsError('Specified file is not a .p1log file.')
 
 
-def extract_fusion_engine_log(input_path, output_path=None, warn_on_gaps=True, return_counts=False):
+def extract_fusion_engine_log(input_path, output_path=None, warn_on_gaps=True, return_counts=False, generate_index=True):
     """!
     @brief Extract FusionEngine data from a file containing mixed binary data.
 
@@ -300,6 +301,8 @@ def extract_fusion_engine_log(input_path, output_path=None, warn_on_gaps=True, r
            `input_path` is `<prefix>.<ext>`.
     @param warn_on_gaps If `True`, print a warning if gaps are detected in the data sequence numbers.
     @param return_counts If `True`, return the number of messages extracted for each message type.
+    @param generate_index If `True`, generate an index file to go along with the output file for faster reading in the
+           future. See @ref FileIndex for details.
 
     @return A tuple containing:
             - The number of decoded messages.
@@ -310,10 +313,16 @@ def extract_fusion_engine_log(input_path, output_path=None, warn_on_gaps=True, r
     if output_path is None:
         output_path = os.path.splitext(input_path)[0] + '.p1log'
 
+    index_builder = FileIndexBuilder() if generate_index else None
+
     with open(input_path, 'rb') as in_fd, open(output_path, 'wb') as out_path:
-        reader = MixedLogReader(in_fd, warn_on_gaps=warn_on_gaps,
-                                return_header=False, return_payload=False, return_bytes=True, return_offset=True)
-        for data, offset in reader:
+        reader = MixedLogReader(in_fd, warn_on_gaps=warn_on_gaps, generate_index=False,
+                                return_header=True, return_payload=True, return_bytes=True, return_offset=False)
+        for header, payload, data in reader:
+            if index_builder is not None:
+                p1_time = payload.get_p1_time() if payload is not None else None
+                index_builder.append(message_type=header.message_type, offset_bytes=out_path.tell(),
+                                     p1_time=p1_time)
             out_path.write(data)
 
         if reader.valid_count > 0:
@@ -323,6 +332,11 @@ def extract_fusion_engine_log(input_path, output_path=None, warn_on_gaps=True, r
         else:
             _logger.debug('No FusionEngine messages found.')
             os.remove(output_path)
+
+    if index_builder is not None:
+        index_path = FileIndex.get_path(output_path)
+        _logger.debug("Saving index file as '%s'." % index_path)
+        index_builder.save(FileIndex.get_path(output_path), output_path)
 
     if return_counts:
         return reader.valid_count, reader.message_counts
