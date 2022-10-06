@@ -71,6 +71,11 @@ enum class MessageType : uint16_t {
   GET_MESSAGE_RATE = 13221, ///< @ref GetMessageRate
   MESSAGE_RATE_RESPONSE = 13222, ///< @ref MessageRateResponse
 
+  // Data management messages.
+  IMPORT_DATA = 20102, ///< @ref ImportDataMessage
+  EXPORT_DATA = 20104, ///< @ref ExportDataMessage
+  PLATFORM_STORAGE_DATA = 20105, ///< @ref PlatformStorageDataMessage
+
   /// The maximum defined @ref MessageType enum value.
   MAX_VALUE = MESSAGE_RATE_RESPONSE,
 };
@@ -172,6 +177,15 @@ inline const char* to_string(MessageType type) {
 
     case MessageType::MESSAGE_RATE_RESPONSE:
       return "Message Rate Response";
+
+    case MessageType::IMPORT_DATA:
+      return "Import Data To Device";
+
+    case MessageType::EXPORT_DATA:
+      return "Export Data From Device";
+
+    case MessageType::PLATFORM_STORAGE_DATA:
+      return "Platform Data Contents";
 
     default:
       return "Unrecognized Message";
