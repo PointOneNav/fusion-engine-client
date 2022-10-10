@@ -25,6 +25,7 @@ if __name__ == "__main__" and (__package__ is None or __package__ == ''):
 
 from ..messages import *
 from .attitude import get_enu_rotation_matrix
+from .file_index import FileIndex
 from .file_reader import FileReader
 from ..utils import trace
 from ..utils.argument_parser import ArgumentParser
@@ -1138,13 +1139,8 @@ class Analyzer(object):
 
         self._add_figure(name="profile_eigen", figure=figure, title="Profiling: Eigen Pools")
 
-    def plot_host_side_serial_dropouts(self, id_to_name, data, device_uart):
+    def plot_host_side_serial_dropouts(self, id_to_name, data, raw_file_index, device_uart):
         host_serial_interface = 'tx_' + device_uart
-        offset_path = offset_path = os.path.splitext(self.reader.file.name)[0] + '.offsets'
-
-        if not os.path.exists(offset_path):
-            self.logger.info("No mixed data offsets file %s, can't check for host serial dropouts." % offset_path)
-            return
 
         # Get the ProfileCounterMessage that corrasponds to the interface the host was listening to.
         connected_port_idx = None
@@ -1170,8 +1166,7 @@ class Analyzer(object):
             self.logger.info("Index file not found. Can't check for host serial dropouts.")
             return
 
-        idx = self.reader.index.type == ProfileCounterMessage.MESSAGE_TYPE.value
-        counter_p1log_offsets = self.reader.index.offset[idx]
+        counter_p1log_offsets = self.reader.index[ProfileCounterMessage.MESSAGE_TYPE].offset
 
         # The index is stored only by P1 time, not system time, but counter messages are logged in system time. If the
         # user specifies a time range instead of plotting the whole log, we don't have an easy way of determining which
@@ -1182,15 +1177,10 @@ class Analyzer(object):
             self.logger.warning('Serial dropout profiling cannot be plotted for a restricted time range.')
             return
 
-        # Load the map of the original mixed log offsets to .p1log.
-        mixed_offsets = np.fromfile(offset_path, dtype=np.uint32).reshape((-1, 2))
+        counter_raw_offsets = raw_file_index[ProfileCounterMessage.MESSAGE_TYPE].offset
 
-        # Get the map of .p1bin offsets to the mixed file offsets for the ProfileCounterMessage messages.
-        idx = np.searchsorted(mixed_offsets[:, 1], counter_p1log_offsets)
-        counter_mixed_offsets = mixed_offsets[idx, 0]
-
-        start_offset = serial_tx_counts[0] - counter_mixed_offsets[0]
-        dropped_data = serial_tx_counts - counter_mixed_offsets - start_offset
+        start_offset = serial_tx_counts[0] - counter_raw_offsets[0]
+        dropped_data = serial_tx_counts - counter_raw_offsets - start_offset
 
         if np.min(dropped_data) <= -10e6:
             self.logger.warning('Host serial diverges significantly from profiling data for %s. Make sure %s is the '
@@ -1344,7 +1334,13 @@ class Analyzer(object):
 
         self.plot_serial_profiling(id_to_name, data)
 
-        self.plot_host_side_serial_dropouts(id_to_name, data, device_uart)
+        raw_file_index_paths = ['input.66.p1i']
+        for path in raw_file_index_paths:
+            full_path = os.path.join(os.path.dirname(self.reader.file.name), path)
+            if os.path.exists(full_path):
+                raw_file_index = FileIndex(full_path)
+                self.plot_host_side_serial_dropouts(id_to_name, data, raw_file_index, device_uart)
+                break
 
         self.plot_eigen_profiling(id_to_name, data)
 
