@@ -22,18 +22,22 @@ std::string ToString(const DataVersion& ver) {
 
 DataVersion FromString(const char* str) {
   char* end_c = nullptr;
+  long tmp = 0;
   DataVersion version;
 
-  version.major = strtol(str, &end_c, 10);
-  if (end_c == str) {
+  tmp = strtol(str, &end_c, 10);
+  if (end_c == str || tmp > 0xFF || tmp < 0) {
     return INVALID_DATA_VERSION;
   }
+  version.major = (uint8_t)tmp;
 
   const char* minor_str = end_c + 1;
-  version.minor = strtol(minor_str, &end_c, 10);
-  if (end_c == minor_str) {
+
+  tmp = strtol(minor_str, &end_c, 10);
+  if (end_c == minor_str || tmp > 0xFFFF || tmp < 0) {
     return INVALID_DATA_VERSION;
   }
+  version.minor = (uint16_t)tmp;
 
   return version;
 }
