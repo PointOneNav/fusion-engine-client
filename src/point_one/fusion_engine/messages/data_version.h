@@ -38,6 +38,8 @@ struct alignas(4) DataVersion {
 
 #pragma pack(pop)
 
+constexpr DataVersion INVALID_DATA_VERSION;
+
 inline constexpr bool operator==(const DataVersion& a, const DataVersion& b) {
   return a.major == b.major && a.minor == b.minor;
 }
@@ -74,6 +76,8 @@ inline constexpr bool operator>=(const DataVersion& a, const DataVersion& b) {
 std::ostream& operator<<(std::ostream& stream, const DataVersion& ver);
 
 std::string ToString(const DataVersion& ver);
+
+DataVersion FromString(const char* str);
 
 } // namespace messages
 } // namespace fusion_engine

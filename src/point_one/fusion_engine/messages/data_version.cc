@@ -20,6 +20,24 @@ std::string ToString(const DataVersion& ver) {
   return ss.str();
 }
 
+DataVersion FromString(const char* str) {
+  char* end_c = nullptr;
+  DataVersion version;
+
+  version.major = strtol(str, &end_c, 10);
+  if (end_c == str) {
+    return INVALID_DATA_VERSION;
+  }
+
+  const char* minor_str = end_c + 1;
+  version.minor = strtol(minor_str, &end_c, 10);
+  if (end_c == minor_str) {
+    return INVALID_DATA_VERSION;
+  }
+
+  return version;
+}
+
 } // namespace messages
 } // namespace fusion_engine
 } // namespace point_one
