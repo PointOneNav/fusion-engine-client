@@ -369,7 +369,6 @@ class SatelliteInfo:
 
     def used_in_solution(self):
         return self.usage & SatelliteInfo.SATELLITE_USED
-        return string
 
     @classmethod
     def calcsize(cls) -> int:
@@ -454,6 +453,7 @@ class GNSSSatelliteMessage(MessagePayload):
             'p1_time': np.array([float(m.p1_time) for m in messages]),
             'gps_time': np.array([float(m.gps_time) for m in messages]),
             'num_svs': np.array([len(m.svs) for m in messages], dtype=int),
+            'num_used_svs': np.array([len([sv for sv in m.svs if sv.used_in_solution()]) for m in messages], dtype=int),
         }
 
 
