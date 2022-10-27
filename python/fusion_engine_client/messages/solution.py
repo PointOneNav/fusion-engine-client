@@ -454,7 +454,74 @@ class GNSSSatelliteMessage(MessagePayload):
             'gps_time': np.array([float(m.gps_time) for m in messages]),
             'num_svs': np.array([len(m.svs) for m in messages], dtype=int),
             'num_used_svs': np.array([len([sv for sv in m.svs if sv.used_in_solution()]) for m in messages], dtype=int),
+            'flattened_data': cls.flatten(messages),
         }
+
+    @classmethod
+    def group_by_sv(cls, input):
+        flattened_data = cls.flatten(input)
+
+        all_p1_time = flattened_data['p1_time']
+        all_gps_time = flattened_data['gps_time']
+        all_sv_ids = np.array([encode_signal_id(entry) for entry in flattened_data['data']], dtype=int)
+        all_azim_deg = np.array([entry.azimuth_deg for entry in flattened_data['data']])
+        all_elev_deg = np.array([entry.elevation_deg for entry in flattened_data['data']])
+        all_cn0_dbhz = np.array([entry.cn0_dbhz for entry in flattened_data['data']])
+        all_flags = np.array([entry.usage for entry in flattened_data['data']], dtype=int)
+
+        svs = np.unique(all_sv_ids)
+        results = {}
+        for sv in svs:
+            idx = all_sv_ids == sv
+            results[sv] = {
+                'p1_time': all_p1_time[idx],
+                'gps_time': all_gps_time[idx],
+                'azimuth_deg': all_azim_deg[idx],
+                'elevation_deg': all_elev_deg[idx],
+                'cn0_dbhz': all_cn0_dbhz[idx],
+                'flags': all_flags[idx],
+            }
+        return results
+
+    @classmethod
+    def group_by_time(cls, input):
+        flattened_data = cls.flatten(input)
+
+        all_p1_time = flattened_data['p1_time']
+        all_gps_time = flattened_data['gps_time']
+        all_sv_ids = np.array([encode_signal_id(entry) for entry in flattened_data['data']], dtype=int)
+        all_azim_deg = np.array([entry.azimuth_deg for entry in flattened_data['data']])
+        all_elev_deg = np.array([entry.elevation_deg for entry in flattened_data['data']])
+        all_cn0_dbhz = np.array([entry.cn0_dbhz for entry in flattened_data['data']])
+        all_flags = np.array([entry.usage for entry in flattened_data['data']], dtype=int)
+
+        p1_times = np.unique(flattened_data['p1_time'])
+        results = {}
+        for p1_time in p1_times:
+            idx = all_p1_time == p1_time
+            results[p1_time] = {
+                'gps_time': all_gps_time[idx][0] if np.any(idx) else np.nan,
+                'sv_id': all_sv_ids[idx],
+                'azimuth_deg': all_azim_deg[idx],
+                'elevation_deg': all_elev_deg[idx],
+                'cn0_dbhz': all_cn0_dbhz[idx],
+                'flags': all_flags[idx],
+            }
+        return results
+
+    @classmethod
+    def flatten(cls, input):
+        # Check if this object contains already-flattened data.
+        if isinstance(input, object) and hasattr(input, 'flattened_data'):
+            return input.flattened_data
+        elif isinstance(input, dict) and 'p1_time' in input and 'data' in input:
+            flattened_data = input['data']
+        else:
+            return {
+                'p1_time': np.array([float(m.p1_time) for m in input for _ in m.svs]),
+                'gps_time': np.array([float(m.gps_time) for m in input for _ in m.svs]),
+                'data': [entry for m in input for entry in m.svs]
+            }
 
 
 class CalibrationStage(IntEnum):
