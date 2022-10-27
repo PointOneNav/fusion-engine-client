@@ -450,12 +450,11 @@ class GNSSSatelliteMessage(MessagePayload):
 
     @classmethod
     def to_numpy(cls, messages):
-        result = {
+        return {
             'p1_time': np.array([float(m.p1_time) for m in messages]),
             'gps_time': np.array([float(m.gps_time) for m in messages]),
             'num_svs': np.array([len(m.svs) for m in messages], dtype=int),
         }
-        return
 
 
 class CalibrationStage(IntEnum):
