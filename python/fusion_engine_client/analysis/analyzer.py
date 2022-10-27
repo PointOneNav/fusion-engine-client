@@ -2,7 +2,7 @@
 
 from typing import Tuple, Union, List, Any
 
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 import logging
 import os
 import sys
@@ -709,6 +709,109 @@ class Analyzer(object):
 
         self._add_figure(name="map", figure=figure, title="Vehicle Trajectory (Map)")
 
+    def plot_signal_status(self):
+        # Read the satellite data.
+        result = self.reader.read(message_types=[GNSSSatelliteMessage], **self.params)
+        data = result[GNSSSatelliteMessage.MESSAGE_TYPE]
+
+        if len(data.p1_time) == 0:
+            self.logger.info('No satellite data available. Skipping signal usage plot.')
+            return
+
+        # Setup the figure.
+        colors = {'unused': 'black', 'pr': 'red', 'is_pivot': 'purple',
+                  'float': 'darkgoldenrod', 'not_fixed': 'green', 'fixed_skipped': 'blue', 'fixed': 'orange'}
+
+        figure = make_subplots(
+            rows=5, cols=1,  print_grid=False, shared_xaxes=True,
+            subplot_titles=['Signal Status<br>'
+                            'Black=Unused, Red=Pseudorange, Pink=Pseudorange (Differential), Purple=Pivot (Differential)<br>'
+                            'Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type), Orange=Integer (Fixed)',
+                            None, None, None,
+                            'Satellite Count'],
+            specs=[[{'rowspan': 4}],
+                   [None],
+                   [None],
+                   [None],
+                   [{}]])
+        figure['layout'].update(showlegend=False, modebar_add=['v1hovermode'])
+        figure['layout']['xaxis1'].update(title="Time (sec)")
+        figure['layout']['yaxis1'].update(title="Satellite")
+        figure['layout']['yaxis2'].update(title="# Satellites", rangemode='tozero')
+
+        # Plot the signal counts.
+        time = data.p1_time - float(self.t0)
+        text = ["P1: %.3f sec" % (t + float(self.t0)) for t in time]
+        figure.add_trace(go.Scattergl(x=time, y=data.num_svs, text=text,
+                                      name='# SVs', hoverlabel={'namelength': -1},
+                                      mode='lines', line={'color': 'black', 'dash': 'dash'}),
+                         5, 1)
+        figure.add_trace(go.Scattergl(x=time, y=data.num_used_svs, text=text,
+                                      name='# Used SVs', hoverlabel={'namelength': -1},
+                                      mode='lines', line={'color': 'green'}),
+                         5, 1)
+
+        num_count_traces = len(figure.data)
+
+        # Plot each satellite. Plot in reverse order so G01 is at the top of the Y axis.
+        data_by_sv = GNSSSatelliteMessage.group_by_sv(data)
+        svs = list(data_by_sv.keys())
+        indices_by_system = defaultdict(list)
+        for i, sv in enumerate(svs[::-1]):
+            sv = int(sv)
+            system = get_system(sv)
+            name = satellite_to_string(sv, short=True)
+
+            sv_data = data_by_sv[sv]
+            time = sv_data['p1_time'] - float(self.t0)
+            is_used = np.bitwise_and(sv_data['flags'], SatelliteInfo.SATELLITE_USED).astype(bool)
+
+            idx = is_used
+            if np.any(idx):
+                text = ["P1: %.3f sec" % (t + float(self.t0)) for t in time[idx]]
+                figure.add_trace(go.Scattergl(x=time[idx], y=[i] * np.sum(idx), text=text,
+                                              name=name, hoverlabel={'namelength': -1},
+                                              mode='markers',
+                                              marker={'color': colors['pr'], 'symbol': 'circle', 'size': 8}),
+                                 1, 1)
+                indices_by_system[system].append(len(figure.data) - 1)
+
+            idx = ~is_used
+            if np.any(idx):
+                text = ["P1: %.3f sec" % (t + float(self.t0)) for t in time[idx]]
+                figure.add_trace(go.Scattergl(x=time[idx], y=[i] * np.sum(idx), text=text,
+                                              name=name + ' (Unused)', hoverlabel={'namelength': -1},
+                                              mode='markers',
+                                              marker={'color': colors['unused'], 'symbol': 'x', 'size': 8}),
+                                 1, 1)
+                indices_by_system[system].append(len(figure.data) - 1)
+
+        tick_text = [satellite_to_string(s, short=True) for s in svs[::-1]]
+        figure['layout']['yaxis1'].update(tickmode='array', tickvals=np.arange(0, len(svs)),
+                                          ticktext=tick_text, automargin=True)
+
+        # Add signal type selection buttons.
+        num_traces = len(figure.data)
+        buttons = [dict(label='All', method='restyle', args=['visible', [True] * num_traces])]
+        for system, indices in sorted(indices_by_system.items()):
+            if len(indices) == 0:
+                continue
+            visible = np.full((num_traces,), False)
+            visible[:num_count_traces] = True
+            visible[indices] = True
+            buttons.append(dict(label=str(system), method='restyle', args=['visible', list(visible)]))
+        figure['layout']['updatemenus'] = [{
+            'type': 'buttons',
+            'direction': 'left',
+            'buttons': buttons,
+            'x': 0.0,
+            'xanchor': 'left',
+            'y': 1.1,
+            'yanchor': 'top'
+        }]
+
+        self._add_figure(name="signal_status", figure=figure, title="Signal Status")
+
     def plot_wheel_data(self):
         """!
         @brief Plot wheel tick/speed data.
@@ -1283,6 +1386,9 @@ Load and display information stored in a FusionEngine binary file.
     plot_group.add_argument(
         '-m', '--measurements', action=TriStateBooleanAction,
         help="Plot incoming measurement data (slow). Ignored if --plot is specified.")
+    plot_group.add_argument(
+        '-s', '--signals', action=TriStateBooleanAction,
+        help="Plot signal status details (slower).")
 
     plot_function_names = [n[5:] for n in dir(Analyzer) if n.startswith('plot_')]
     plot_group.add_argument(
@@ -1401,6 +1507,9 @@ Load and display information stored in a FusionEngine binary file.
         analyzer.plot_relative_position()
         analyzer.plot_map(mapbox_token=options.mapbox_token)
         analyzer.plot_calibration()
+
+        if options.signals:
+            analyzer.plot_signal_status()
 
         if options.measurements:
             analyzer.plot_imu()
