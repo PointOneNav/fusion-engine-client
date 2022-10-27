@@ -131,7 +131,7 @@ class TransportType(IntEnum):
     TCP_SERVER = 4,
     UDP_CLIENT = 5,
     UDP_SERVER = 6,
-    ## This is used for requesting the configuration for all interfaces.
+    ## Set/get the configuration for the all I/O interfaces.
     ALL = 255,
 
 

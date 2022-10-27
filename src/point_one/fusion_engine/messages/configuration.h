@@ -1023,7 +1023,7 @@ inline std::ostream& operator<<(std::ostream& stream, ProtocolType val) {
 }
 
 /**
- * @brief Type of IO interface transport.
+ * @brief Type of I/O interface transport.
  */
 enum class TransportType : uint8_t {
   INVALID = 0,
@@ -1033,7 +1033,7 @@ enum class TransportType : uint8_t {
   TCP_SERVER = 4,
   UDP_CLIENT = 5,
   UDP_SERVER = 6,
-  /** This is used for requesting the configuration for all interfaces. */
+  /** Set/get the configuration for the all I/O interfaces. */
   ALL = 255,
 };
 
@@ -1079,9 +1079,13 @@ inline std::ostream& operator<<(std::ostream& stream, TransportType val) {
 }
 
 /**
- * @brief Identifies an IO interface.
+ * @brief Identifies an I/O interface.
  *
- * (e.g., serial port 0 or TCP server 2)
+ * For example, serial port 1 or TCP server 2.
+ *
+ * @note
+ * On most devices, serial ports (UARTs) use 1-based numbering: the first serial
+ * port is typically index 1 (UART1).
  */
 struct alignas(4) InterfaceID {
   /** The interface's transport type. **/
@@ -1466,8 +1470,10 @@ struct alignas(4) GetMessageRate : public MessagePayload {
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
   /**
-   * The output interface to be queried. @ref TransportType::ALL is not
-   * supported.
+   * The output interface to be queried.
+   *
+   * @ref TransportType::ALL is not supported. To query for multiple transports,
+   * send separate requests.
    */
   InterfaceID output_interface = {};
 
