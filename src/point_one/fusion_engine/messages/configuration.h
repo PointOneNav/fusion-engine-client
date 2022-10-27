@@ -1593,7 +1593,8 @@ inline std::ostream& operator<<(std::ostream& stream, DataType val) {
 }
 
 /**
- * @brief Import data from the host to the device.
+ * @brief Import data from the host to the device (@ref
+ *        MessageType::IMPORT_DATA, version 1.0).
  * @ingroup config_and_ctrl_messages
  *
  * The device will respond with a @ref CommandResponseMessage indicating if the
@@ -1626,7 +1627,8 @@ struct alignas(4) ImportDataMessage {
 };
 
 /**
- * @brief Export data from the device.
+ * @brief Export data from the device (@ref
+ *        MessageType::EXPORT_DATA, version 1.0).
  * @ingroup config_and_ctrl_messages
  *
  * The device will respond with a @ref PlatformStorageDataMessage.
@@ -1647,7 +1649,8 @@ struct alignas(4) ExportDataMessage {
 };
 
 /**
- * @brief Message for reporting platform storage data.
+ * @brief Message for reporting platform storage data (@ref
+ *        MessageType::PLATFORM_STORAGE_DATA, version 1.0).
  * @ingroup config_and_ctrl_messages
  *
  * See also @ref ExportDataMessage.
