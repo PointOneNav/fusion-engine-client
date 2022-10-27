@@ -207,3 +207,85 @@ def rename_option(parser, input, dest=None, *args):
     # Update the destination if requested.
     if dest is not None:
         action.dest = dest.lstrip('-').replace('-', '_')
+
+
+class TriStateBooleanAction(argparse.Action):
+    """!
+    @brief Return a boolean argument taking a variety of values, that may be `None` if not specified.
+
+    This action is similar to `argparse.BooleanOptionalAction` (Python 3.9+), except that it adds two additional
+    features:
+    1. The user may specify an optional value string in addition to `--foo` and `--no-foo`. Supported values include:
+       `true, false, t, f, yes, no, y, n, on, off, 1, 0`
+    2. By default, the argument defaults to `None` if not specified, rather than `True` or `False. This allows the
+       application to explicitly detect if the argument was not specified and take an alternative action. `default` may
+       be set to `True` or `False` to disable this behavior.
+
+    Example usage:
+    ```
+                 # None (unless `default` is set)
+    --foo        # True
+    --foo=true   # True
+    --foo=false  # False
+    --no-foo     # False
+    ```
+    """
+    def __init__(self,
+                 option_strings,
+                 dest,
+                 default=None,
+                 type=None,
+                 choices=None,
+                 required=False,
+                 help=None,
+                 metavar=None):
+
+        _option_strings = []
+        for option_string in option_strings:
+            _option_strings.append(option_string)
+
+            if option_string.startswith('--'):
+                option_string = '--no-' + option_string[2:]
+                _option_strings.append(option_string)
+
+        if help is not None and default is not None and default is not SUPPRESS:
+            help += " (default: %(default)s)"
+
+        self.possible_values = ('true', 'false', 't', 'f', 'yes', 'no', 'y', 'n', 'on', 'off', '1', '0')
+
+        super().__init__(
+            option_strings=_option_strings,
+            dest=dest,
+            nargs='?',
+            default=default,
+            type=None,
+            choices=None,
+            required=required,
+            help=help,
+            metavar=','.join(self.possible_values))
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        if option_string is None or option_string in self.option_strings:
+            if option_string is not None and option_string.startswith('--no-'):
+                if values is not None:
+                    raise ValueError('Value string not supported for %s.' % option_string)
+                else:
+                    result = False
+            else:
+                if values is None:
+                    result = True
+                else:
+                    # Taken from distutils.util.strtobool().
+                    val = values.lower()
+                    if val in ('y', 'yes', 't', 'true', 'on', '1'):
+                        result = True
+                    elif val in ('n', 'no', 'f', 'false', 'off', '0'):
+                        result = False
+                    else:
+                        raise ValueError("Invalid boolean value %r." % val)
+
+            setattr(namespace, self.dest, result)
+
+    def format_usage(self):
+        options = '[={%s}]' % ','.join(self.possible_values)
+        return ', '.join([s + options if i == 0 else s for i, s in enumerate(self.option_strings)])
