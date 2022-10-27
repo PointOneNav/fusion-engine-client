@@ -815,7 +815,22 @@ class SetMessageRate(MessagePayload):
         fields = ['output_interface', 'protocol', 'message_id', 'rate', 'flags']
         string = f'Set Message Output Rate Command\n'
         for field in fields:
-            val = str(self.__dict__[field]).replace('Container:', '')
+            if field == 'message_id':
+                enum = None
+                try:
+                    if self.protocol == ProtocolType.NMEA:
+                        enum = NmeaMessageType(self.message_id)
+                    elif self.protocol == ProtocolType.FUSION_ENGINE:
+                        enum = MessageType(self.message_id)
+                except ValueError:
+                    pass
+
+                if enum is None:
+                    val = str(self.message_id)
+                else:
+                    val = '%s (%d)' % (str(enum), int(enum))
+            else:
+                val = str(self.__dict__[field]).replace('Container:', '')
             string += f'  {field}: {val}\n'
         return string.rstrip()
 
@@ -884,6 +899,27 @@ class RateResponseEntry(NamedTuple):
     message_id: int = 0
     configured_rate: MessageRate = MessageRate.OFF
     effective_rate: MessageRate = MessageRate.OFF
+
+    __parent_str__ = object.__str__
+
+    def __str__(self):
+        enum = None
+        try:
+            if self.protocol == ProtocolType.NMEA:
+                enum = NmeaMessageType(self.message_id)
+            elif self.protocol == ProtocolType.FUSION_ENGINE:
+                enum = MessageType(self.message_id)
+        except ValueError:
+            pass
+
+        if enum is None:
+            message_id_str = str(self.message_id)
+        else:
+            message_id_str = '%s (%d)' % (str(enum), int(enum))
+
+        return f'RateResponseEntry(protocol={self.protocol.to_string(True)}), flags={self.flags}, ' \
+               f'message_id={message_id_str}, configured_rate={self.configured_rate.to_string(True)}, ' \
+               f'effective_rate={self.effective_rate.to_string(True)})'
 
 
 _RateResponseEntryConstructRaw = Struct(
