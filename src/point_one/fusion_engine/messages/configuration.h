@@ -1120,8 +1120,7 @@ struct alignas(4) InterfaceID {
  * @ingroup config_and_ctrl_messages
  */
 inline std::ostream& operator<<(std::ostream& stream, InterfaceID val) {
-  stream << "[type=" << to_string(val.type) << ", index=" << (int)val.index
-         << "]";
+  stream << "[type=" << val.type << ", index=" << (int)val.index << "]";
   return stream;
 }
 
