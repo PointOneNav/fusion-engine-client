@@ -1033,6 +1033,11 @@ enum class TransportType : uint8_t {
   TCP_SERVER = 4,
   UDP_CLIENT = 5,
   UDP_SERVER = 6,
+  /**
+   * Set/get the configuration for the interface on which the command was
+   * received.
+   */
+  CURRENT = 254,
   /** Set/get the configuration for the all I/O interfaces. */
   ALL = 255,
 };
@@ -1062,6 +1067,8 @@ inline const char* to_string(TransportType val) {
       return "UDP Client";
     case TransportType::UDP_SERVER:
       return "UDP Server";
+    case TransportType::CURRENT:
+      return "Current";
     case TransportType::ALL:
       return "All";
     default:
@@ -1093,6 +1100,11 @@ struct alignas(4) InterfaceID {
   /** An identifier for the instance of this transport. */
   uint8_t index = 0;
   uint8_t reserved[2] = {0};
+
+  InterfaceID() = default;
+
+  explicit InterfaceID(TransportType type, uint8_t index = 0)
+      : type(type), index(index) {}
 
   bool operator==(const InterfaceID& other) const {
     return type == other.type && index == other.index;
@@ -1428,7 +1440,7 @@ struct alignas(4) SetMessageRate : public MessagePayload {
    * The output interface to configure. If @ref TransportType::ALL, set rates on
    * all supported interfaces.
    */
-  InterfaceID output_interface = {};
+  InterfaceID output_interface{TransportType::CURRENT};
 
   /**
    * The message protocol being configured. If @ref ProtocolType::ALL, set rates
@@ -1475,7 +1487,7 @@ struct alignas(4) GetMessageRate : public MessagePayload {
    * @ref TransportType::ALL is not supported. To query for multiple transports,
    * send separate requests.
    */
-  InterfaceID output_interface = {};
+  InterfaceID output_interface{TransportType::CURRENT};
 
   /**
    * The desired message protocol. If @ref ProtocolType::ALL, return the current

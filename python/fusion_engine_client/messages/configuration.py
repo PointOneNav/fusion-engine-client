@@ -131,6 +131,8 @@ class TransportType(IntEnum):
     TCP_SERVER = 4,
     UDP_CLIENT = 5,
     UDP_SERVER = 6,
+    ## Set/get the configuration for the interface on which the command was received.
+    CURRENT = 254,
     ## Set/get the configuration for the all I/O interfaces.
     ALL = 255,
 
@@ -787,7 +789,7 @@ class SetMessageRate(MessagePayload):
                  rate: MessageRate = MessageRate.OFF,
                  flags: int = 0x0):
         if output_interface is None:
-            self.output_interface = InterfaceID()
+            self.output_interface = InterfaceID(type=TransportType.CURRENT)
         else:
             self.output_interface = output_interface
         self.protocol = protocol
@@ -833,11 +835,11 @@ class GetMessageRate(MessagePayload):
 
     def __init__(self,
                  output_interface: InterfaceID = None,
-                 protocol: ProtocolType = ProtocolType.INVALID,
-                 request_source = ConfigurationSource.ACTIVE,
+                 protocol: ProtocolType = ProtocolType.ALL,
+                 request_source: ConfigurationSource = ConfigurationSource.ACTIVE,
                  message_id: int = ALL_MESSAGES_ID):
         if output_interface is None:
-            self.output_interface = InterfaceID()
+            self.output_interface = InterfaceID(type=TransportType.CURRENT)
         else:
             self.output_interface = output_interface
         self.protocol = protocol
