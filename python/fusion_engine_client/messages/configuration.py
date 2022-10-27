@@ -785,17 +785,22 @@ class SetMessageRate(MessagePayload):
     def __init__(self,
                  output_interface: InterfaceID = None,
                  protocol: ProtocolType = ProtocolType.INVALID,
-                 message_id: int = ALL_MESSAGES_ID,
+                 message_id: int = None,
                  rate: MessageRate = MessageRate.OFF,
                  flags: int = 0x0):
         if output_interface is None:
             self.output_interface = InterfaceID(type=TransportType.CURRENT)
         else:
             self.output_interface = output_interface
+
         self.protocol = protocol
-        self.message_id = message_id
         self.rate = rate
         self.flags = flags
+
+        if message_id is None:
+            self.message_id = ALL_MESSAGES_ID
+        else:
+            self.message_id = message_id
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         packed_data = self.SetMessageRateConstruct.build(self.__dict__)
@@ -837,14 +842,19 @@ class GetMessageRate(MessagePayload):
                  output_interface: InterfaceID = None,
                  protocol: ProtocolType = ProtocolType.ALL,
                  request_source: ConfigurationSource = ConfigurationSource.ACTIVE,
-                 message_id: int = ALL_MESSAGES_ID):
+                 message_id: int = None):
         if output_interface is None:
             self.output_interface = InterfaceID(type=TransportType.CURRENT)
         else:
             self.output_interface = output_interface
+
         self.protocol = protocol
         self.request_source = request_source
-        self.message_id = message_id
+
+        if message_id is None:
+            self.message_id = ALL_MESSAGES_ID
+        else:
+            self.message_id = message_id
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         packed_data = self.GetMessageRateConstruct.build(self.__dict__)
