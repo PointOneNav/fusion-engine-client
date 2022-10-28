@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iostream>
+#include <string>
 
 namespace point_one {
 namespace fusion_engine {
@@ -78,6 +79,10 @@ std::ostream& operator<<(std::ostream& stream, const DataVersion& ver);
 std::string ToString(const DataVersion& ver);
 
 DataVersion FromString(const char* str);
+
+inline DataVersion FromString(std::string str) {
+  return FromString(str.c_str());
+}
 
 } // namespace messages
 } // namespace fusion_engine
