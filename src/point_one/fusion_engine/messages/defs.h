@@ -67,14 +67,13 @@ enum class MessageType : uint16_t {
   SAVE_CONFIG = 13102, ///< @ref SaveConfigMessage
   CONFIG_RESPONSE = 13103, ///< @ref ConfigResponseMessage
 
+  IMPORT_DATA = 13110, ///< @ref ImportDataMessage
+  EXPORT_DATA = 13111, ///< @ref ExportDataMessage
+  PLATFORM_STORAGE_DATA = 13113, ///< @ref PlatformStorageDataMessage
+
   SET_MESSAGE_RATE = 13220, ///< @ref SetMessageRate
   GET_MESSAGE_RATE = 13221, ///< @ref GetMessageRate
   MESSAGE_RATE_RESPONSE = 13222, ///< @ref MessageRateResponse
-
-  // Data management messages.
-  IMPORT_DATA = 20102, ///< @ref ImportDataMessage
-  EXPORT_DATA = 20104, ///< @ref ExportDataMessage
-  PLATFORM_STORAGE_DATA = 20105, ///< @ref PlatformStorageDataMessage
 
   /// The maximum defined @ref MessageType enum value.
   MAX_VALUE = MESSAGE_RATE_RESPONSE,

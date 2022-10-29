@@ -36,13 +36,13 @@ message_type_to_class = {
     SaveConfigMessage.MESSAGE_TYPE: SaveConfigMessage,
     ConfigResponseMessage.MESSAGE_TYPE: ConfigResponseMessage,
 
-    SetMessageRate.MESSAGE_TYPE: SetMessageRate,
-    GetMessageRate.MESSAGE_TYPE: GetMessageRate,
-    MessageRateResponse.MESSAGE_TYPE: MessageRateResponse,
-
     ExportDataMessage.MESSAGE_TYPE: ExportDataMessage,
     ImportDataMessage.MESSAGE_TYPE: ImportDataMessage,
     PlatformStorageDataMessage.MESSAGE_TYPE: PlatformStorageDataMessage,
+
+    SetMessageRate.MESSAGE_TYPE: SetMessageRate,
+    GetMessageRate.MESSAGE_TYPE: GetMessageRate,
+    MessageRateResponse.MESSAGE_TYPE: MessageRateResponse,
 }
 
 messages_with_system_time = [t for t, c in message_type_to_class.items() if hasattr(c(), 'system_time_ns')]

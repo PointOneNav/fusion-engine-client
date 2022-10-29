@@ -1023,7 +1023,7 @@ inline std::ostream& operator<<(std::ostream& stream, ProtocolType val) {
 }
 
 /**
- * @brief Type of IO interface transport.
+ * @brief Type of I/O interface transport.
  */
 enum class TransportType : uint8_t {
   INVALID = 0,
@@ -1033,7 +1033,12 @@ enum class TransportType : uint8_t {
   TCP_SERVER = 4,
   UDP_CLIENT = 5,
   UDP_SERVER = 6,
-  /** This is used for requesting the configuration for all interfaces. */
+  /**
+   * Set/get the configuration for the interface on which the command was
+   * received.
+   */
+  CURRENT = 254,
+  /** Set/get the configuration for the all I/O interfaces. */
   ALL = 255,
 };
 
@@ -1062,6 +1067,8 @@ inline const char* to_string(TransportType val) {
       return "UDP Client";
     case TransportType::UDP_SERVER:
       return "UDP Server";
+    case TransportType::CURRENT:
+      return "Current";
     case TransportType::ALL:
       return "All";
     default:
@@ -1079,9 +1086,13 @@ inline std::ostream& operator<<(std::ostream& stream, TransportType val) {
 }
 
 /**
- * @brief Identifies an IO interface.
+ * @brief Identifies an I/O interface.
  *
- * (e.g., serial port 0 or TCP server 2)
+ * For example, serial port 1 or TCP server 2.
+ *
+ * @note
+ * On most devices, serial ports (UARTs) use 1-based numbering: the first serial
+ * port is typically index 1 (UART1).
  */
 struct alignas(4) InterfaceID {
   /** The interface's transport type. **/
@@ -1089,6 +1100,11 @@ struct alignas(4) InterfaceID {
   /** An identifier for the instance of this transport. */
   uint8_t index = 0;
   uint8_t reserved[2] = {0};
+
+  InterfaceID() = default;
+
+  explicit InterfaceID(TransportType type, uint8_t index = 0)
+      : type(type), index(index) {}
 
   bool operator==(const InterfaceID& other) const {
     return type == other.type && index == other.index;
@@ -1104,8 +1120,7 @@ struct alignas(4) InterfaceID {
  * @ingroup config_and_ctrl_messages
  */
 inline std::ostream& operator<<(std::ostream& stream, InterfaceID val) {
-  stream << "[type=" << to_string(val.type) << ", index=" << (int)val.index
-         << "]";
+  stream << "[type=" << val.type << ", index=" << (int)val.index << "]";
   return stream;
 }
 
@@ -1424,7 +1439,7 @@ struct alignas(4) SetMessageRate : public MessagePayload {
    * The output interface to configure. If @ref TransportType::ALL, set rates on
    * all supported interfaces.
    */
-  InterfaceID output_interface = {};
+  InterfaceID output_interface{TransportType::CURRENT};
 
   /**
    * The message protocol being configured. If @ref ProtocolType::ALL, set rates
@@ -1466,10 +1481,12 @@ struct alignas(4) GetMessageRate : public MessagePayload {
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
   /**
-   * The output interface to be queried. @ref TransportType::ALL is not
-   * supported.
+   * The output interface to be queried.
+   *
+   * @ref TransportType::ALL is not supported. To query for multiple transports,
+   * send separate requests.
    */
-  InterfaceID output_interface = {};
+  InterfaceID output_interface{TransportType::CURRENT};
 
   /**
    * The desired message protocol. If @ref ProtocolType::ALL, return the current
@@ -1593,7 +1610,8 @@ inline std::ostream& operator<<(std::ostream& stream, DataType val) {
 }
 
 /**
- * @brief Import data from the host to the device.
+ * @brief Import data from the host to the device (@ref
+ *        MessageType::IMPORT_DATA, version 1.0).
  * @ingroup config_and_ctrl_messages
  *
  * The device will respond with a @ref CommandResponseMessage indicating if the
@@ -1626,7 +1644,8 @@ struct alignas(4) ImportDataMessage {
 };
 
 /**
- * @brief Export data from the device.
+ * @brief Export data from the device (@ref
+ *        MessageType::EXPORT_DATA, version 1.0).
  * @ingroup config_and_ctrl_messages
  *
  * The device will respond with a @ref PlatformStorageDataMessage.
@@ -1647,7 +1666,8 @@ struct alignas(4) ExportDataMessage {
 };
 
 /**
- * @brief Message for reporting platform storage data.
+ * @brief Message for reporting platform storage data (@ref
+ *        MessageType::PLATFORM_STORAGE_DATA, version 1.0).
  * @ingroup config_and_ctrl_messages
  *
  * See also @ref ExportDataMessage.

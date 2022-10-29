@@ -21,10 +21,10 @@ console.
     options = parser.parse_args()
 
     # Enable FusionEngine PoseMessage output on UART1
-    message = SetMessageOutputRate(output_interface=InterfaceID(TransportType.SERIAL, 1),
-                                   protocol=ProtocolType.FUSION_ENGINE,
-                                   message_id=10000,
-                                   rate=MessageRate.ON_CHANGE)
+    message = SetMessageRate(output_interface=InterfaceID(TransportType.SERIAL, 1),
+                             protocol=ProtocolType.FUSION_ENGINE,
+                             message_id=MessageType.POSE,
+                             rate=MessageRate.ON_CHANGE)
 
     encoder = FusionEngineEncoder()
     encoded_data = encoder.encode_message(message)
