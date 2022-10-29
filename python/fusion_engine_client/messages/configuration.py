@@ -131,7 +131,9 @@ class TransportType(IntEnum):
     TCP_SERVER = 4,
     UDP_CLIENT = 5,
     UDP_SERVER = 6,
-    ## This is used for requesting the configuration for all interfaces.
+    ## Set/get the configuration for the interface on which the command was received.
+    CURRENT = 254,
+    ## Set/get the configuration for the all I/O interfaces.
     ALL = 255,
 
 
@@ -184,6 +186,25 @@ class NmeaMessageType(IntEnum):
     PQTMVERNO = 1200
     PQTMVER = 1201
     PQTMGNSS = 1202
+
+
+def get_message_type_string(protocol: ProtocolType, message_id: int):
+    if message_id == ALL_MESSAGES_ID:
+        return 'ALL (%d)' % message_id
+    else:
+        enum = None
+        try:
+            if protocol == ProtocolType.NMEA:
+                enum = NmeaMessageType(message_id)
+            elif protocol == ProtocolType.FUSION_ENGINE:
+                enum = MessageType(message_id)
+        except ValueError:
+            pass
+
+        if enum is None:
+            return str(message_id)
+        else:
+            return '%s (%d)' % (str(enum), int(enum))
 
 
 class _ConfigClassGenerator:
@@ -781,19 +802,24 @@ class SetMessageRate(MessagePayload):
     )
 
     def __init__(self,
-                 output_interface: InterfaceID = None,
+                 output_interface: Optional[InterfaceID] = None,
                  protocol: ProtocolType = ProtocolType.INVALID,
-                 message_id: int = ALL_MESSAGES_ID,
+                 message_id: Optional[int] = None,
                  rate: MessageRate = MessageRate.OFF,
                  flags: int = 0x0):
         if output_interface is None:
-            self.output_interface = InterfaceID()
+            self.output_interface = InterfaceID(type=TransportType.CURRENT)
         else:
             self.output_interface = output_interface
+
         self.protocol = protocol
-        self.message_id = message_id
         self.rate = rate
         self.flags = flags
+
+        if message_id is None:
+            self.message_id = ALL_MESSAGES_ID
+        else:
+            self.message_id = message_id
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         packed_data = self.SetMessageRateConstruct.build(self.__dict__)
@@ -808,7 +834,10 @@ class SetMessageRate(MessagePayload):
         fields = ['output_interface', 'protocol', 'message_id', 'rate', 'flags']
         string = f'Set Message Output Rate Command\n'
         for field in fields:
-            val = str(self.__dict__[field]).replace('Container:', '')
+            if field == 'message_id':
+                val = get_message_type_string(self.protocol, self.message_id)
+            else:
+                val = str(self.__dict__[field]).replace('Container:', '')
             string += f'  {field}: {val}\n'
         return string.rstrip()
 
@@ -832,17 +861,22 @@ class GetMessageRate(MessagePayload):
     )
 
     def __init__(self,
-                 output_interface: InterfaceID = None,
-                 protocol: ProtocolType = ProtocolType.INVALID,
-                 request_source = ConfigurationSource.ACTIVE,
-                 message_id: int = ALL_MESSAGES_ID):
+                 output_interface: Optional[InterfaceID] = None,
+                 protocol: ProtocolType = ProtocolType.ALL,
+                 request_source: ConfigurationSource = ConfigurationSource.ACTIVE,
+                 message_id: Optional[int] = None):
         if output_interface is None:
-            self.output_interface = InterfaceID()
+            self.output_interface = InterfaceID(type=TransportType.CURRENT)
         else:
             self.output_interface = output_interface
+
         self.protocol = protocol
         self.request_source = request_source
-        self.message_id = message_id
+
+        if message_id is None:
+            self.message_id = ALL_MESSAGES_ID
+        else:
+            self.message_id = message_id
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         packed_data = self.GetMessageRateConstruct.build(self.__dict__)
@@ -872,6 +906,14 @@ class RateResponseEntry(NamedTuple):
     message_id: int = 0
     configured_rate: MessageRate = MessageRate.OFF
     effective_rate: MessageRate = MessageRate.OFF
+
+    __parent_str__ = object.__str__
+
+    def __str__(self):
+        return f'RateResponseEntry(protocol={self.protocol.to_string(True)}), flags={self.flags}, ' \
+               f'message_id={get_message_type_string(self.protocol, self.message_id)}, ' \
+               f'configured_rate={self.configured_rate.to_string(True)}, ' \
+               f'effective_rate={self.effective_rate.to_string(True)})'
 
 
 _RateResponseEntryConstructRaw = Struct(

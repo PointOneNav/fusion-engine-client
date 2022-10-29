@@ -36,13 +36,13 @@ message_type_to_class = {
     SaveConfigMessage.MESSAGE_TYPE: SaveConfigMessage,
     ConfigResponseMessage.MESSAGE_TYPE: ConfigResponseMessage,
 
-    SetMessageRate.MESSAGE_TYPE: SetMessageRate,
-    GetMessageRate.MESSAGE_TYPE: GetMessageRate,
-    MessageRateResponse.MESSAGE_TYPE: MessageRateResponse,
-
     ExportDataMessage.MESSAGE_TYPE: ExportDataMessage,
     ImportDataMessage.MESSAGE_TYPE: ImportDataMessage,
     PlatformStorageDataMessage.MESSAGE_TYPE: PlatformStorageDataMessage,
+
+    SetMessageRate.MESSAGE_TYPE: SetMessageRate,
+    GetMessageRate.MESSAGE_TYPE: GetMessageRate,
+    MessageRateResponse.MESSAGE_TYPE: MessageRateResponse,
 }
 
 # Note: This must be imported after message_type_to_class is defined, but before messages_with_system_time is defined.

@@ -11,3 +11,9 @@ class IntEnum(IntEnumBase):
         #
         #   print(Foo.BAR)   # Prints "BAR", not "Foo.BAR"
         return super().__str__().replace(self.__class__.__name__ + '.', '')
+
+    def to_string(self, include_value=False):
+        if include_value:
+            return '%s (%d)' % (str(self), int(self))
+        else:
+            return str(self)
