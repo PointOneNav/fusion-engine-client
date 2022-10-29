@@ -188,6 +188,25 @@ class NmeaMessageType(IntEnum):
     PQTMGNSS = 1202
 
 
+def get_message_type_string(protocol: ProtocolType, message_id: int):
+    if message_id == ALL_MESSAGES_ID:
+        return 'ALL (%d)' % message_id
+    else:
+        enum = None
+        try:
+            if protocol == ProtocolType.NMEA:
+                enum = NmeaMessageType(message_id)
+            elif protocol == ProtocolType.FUSION_ENGINE:
+                enum = MessageType(message_id)
+        except ValueError:
+            pass
+
+        if enum is None:
+            return str(message_id)
+        else:
+            return '%s (%d)' % (str(enum), int(enum))
+
+
 class _ConfigClassGenerator:
     """!
     @brief Internal class for generating `ConfigClass` children.
@@ -783,9 +802,9 @@ class SetMessageRate(MessagePayload):
     )
 
     def __init__(self,
-                 output_interface: InterfaceID = None,
+                 output_interface: Optional[InterfaceID] = None,
                  protocol: ProtocolType = ProtocolType.INVALID,
-                 message_id: int = None,
+                 message_id: Optional[int] = None,
                  rate: MessageRate = MessageRate.OFF,
                  flags: int = 0x0):
         if output_interface is None:
@@ -816,19 +835,7 @@ class SetMessageRate(MessagePayload):
         string = f'Set Message Output Rate Command\n'
         for field in fields:
             if field == 'message_id':
-                enum = None
-                try:
-                    if self.protocol == ProtocolType.NMEA:
-                        enum = NmeaMessageType(self.message_id)
-                    elif self.protocol == ProtocolType.FUSION_ENGINE:
-                        enum = MessageType(self.message_id)
-                except ValueError:
-                    pass
-
-                if enum is None:
-                    val = str(self.message_id)
-                else:
-                    val = '%s (%d)' % (str(enum), int(enum))
+                val = get_message_type_string(self.protocol, self.message_id)
             else:
                 val = str(self.__dict__[field]).replace('Container:', '')
             string += f'  {field}: {val}\n'
@@ -854,10 +861,10 @@ class GetMessageRate(MessagePayload):
     )
 
     def __init__(self,
-                 output_interface: InterfaceID = None,
+                 output_interface: Optional[InterfaceID] = None,
                  protocol: ProtocolType = ProtocolType.ALL,
                  request_source: ConfigurationSource = ConfigurationSource.ACTIVE,
-                 message_id: int = None):
+                 message_id: Optional[int] = None):
         if output_interface is None:
             self.output_interface = InterfaceID(type=TransportType.CURRENT)
         else:
@@ -903,22 +910,9 @@ class RateResponseEntry(NamedTuple):
     __parent_str__ = object.__str__
 
     def __str__(self):
-        enum = None
-        try:
-            if self.protocol == ProtocolType.NMEA:
-                enum = NmeaMessageType(self.message_id)
-            elif self.protocol == ProtocolType.FUSION_ENGINE:
-                enum = MessageType(self.message_id)
-        except ValueError:
-            pass
-
-        if enum is None:
-            message_id_str = str(self.message_id)
-        else:
-            message_id_str = '%s (%d)' % (str(enum), int(enum))
-
         return f'RateResponseEntry(protocol={self.protocol.to_string(True)}), flags={self.flags}, ' \
-               f'message_id={message_id_str}, configured_rate={self.configured_rate.to_string(True)}, ' \
+               f'message_id={get_message_type_string(self.protocol, self.message_id)}, ' \
+               f'configured_rate={self.configured_rate.to_string(True)}, ' \
                f'effective_rate={self.effective_rate.to_string(True)})'
 
 
