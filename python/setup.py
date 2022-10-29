@@ -13,6 +13,7 @@ setup(
             'argparse-formatter>=1.4',
             'colorama>=0.4.4',
             'gpstime>=0.6.2',
+            'palettable>=3.3.0',
             'plotly>=4.0.0',
             'pymap3d>=2.4.3',
         ],

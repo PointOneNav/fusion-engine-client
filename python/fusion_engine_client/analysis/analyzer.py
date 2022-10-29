@@ -10,6 +10,7 @@ import sys
 import webbrowser
 
 from gpstime import gpstime
+from palettable.tableau import Tableau_20
 import plotly
 import plotly.graph_objs as go
 from plotly.subplots import make_subplots
@@ -742,8 +743,103 @@ class Analyzer(object):
 
         self._add_figure(name="map", figure=figure, title="Vehicle Trajectory (Map)")
 
+    def plot_skyplot(self, decimate=True):
+        # Read the satellite data.
+        result = self.reader.read(message_types=[GNSSSatelliteMessage], **self.params)
+        data = result[GNSSSatelliteMessage.MESSAGE_TYPE]
+
+        if len(data.p1_time) == 0:
+            self.logger.info('No satellite data available. Skipping sky plot.')
+            return
+
+        # Setup the figure.
+        figure = go.Figure()
+        figure['layout'].update(title='GNSS Sky Plot')
+        figure['layout']['polar']['radialaxis'].update(range=[90, 0])
+        figure['layout']['polar']['angularaxis'].update(visible=False)
+
+        # Assign colors to each satellite.
+        data_by_sv = GNSSSatelliteMessage.group_by_sv(data)
+        svs = sorted(list(data_by_sv.keys()))
+        color_by_sv = self._assign_colors(svs)
+
+        # Plot each satellite.
+        indices_by_system = defaultdict(list)
+        color_by_sv_format = []
+        color_by_cn0_format = []
+        for sv in svs:
+            name = satellite_to_string(sv, short=False)
+            system = get_system(sv)
+            sv_data = data_by_sv[sv]
+
+            p1_time = sv_data['p1_time']
+            az_deg = sv_data['azimuth_deg']
+            el_deg = sv_data['elevation_deg']
+            cn0_dbhz = sv_data['cn0_dbhz']
+
+            # Decimate the data to 30 second intervals.
+            if decimate and len(p1_time) > 1:
+                interval_sec = 30.0
+                dt_sec = np.round(np.min(np.diff(p1_time)) / 0.1) * 0.1
+                if dt_sec < interval_sec:
+                    rounded_time = np.round(p1_time / interval_sec) * interval_sec
+                    idx = np.where(np.diff(rounded_time, prepend=rounded_time[0]) > 0.01)[0]
+                    p1_time = p1_time[idx]
+                    az_deg = az_deg[idx]
+                    el_deg = el_deg[idx]
+                    cn0_dbhz = cn0_dbhz[idx]
+
+            # Plot the data. We set styles for both coloring by SV and by C/N0. We'll add buttons below to switch
+            # between styles.
+            color_by_sv_format.append({'color': color_by_sv[sv]})
+            color_by_cn0_format.append({'cmin': 20, 'cmax': 55, 'colorscale': 'RdBu', 'showscale': True,
+                                        'colorbar': {'x': 0}, 'color': cn0_dbhz})
+
+            text = ['P1: %.1f sec<br>(Az, El): (%.2f, %.2f) deg<br>C/N0: %.1f dB-Hz' %
+                    (t, a, e, c) for t, a, e, c in zip(p1_time, az_deg, el_deg, cn0_dbhz)]
+            figure.add_trace(go.Scatterpolargl(r=el_deg, theta=(90 - az_deg), text=text,
+                                               name=name, hoverinfo='name+text', hoverlabel={'namelength': -1},
+                                               mode='markers', marker=color_by_sv_format[-1]))
+            indices_by_system[system].append(len(figure.data) - 1)
+
+        # Add selection buttons for each system and for choosing between coloring by SV and C/N0.
+        num_traces = len(figure.data)
+        buttons = [dict(label='All', method='restyle', args=['visible', [True] * num_traces])]
+        for system, indices in sorted(indices_by_system.items()):
+            if len(indices) == 0:
+                continue
+            visible = np.full((num_traces,), False)
+            visible[indices] = True
+            buttons.append(dict(label=f'{str(system)} ({len(indices)})', method='restyle', args=['visible', visible]))
+        updatemenus = [{
+            'type': 'buttons',
+            'direction': 'left',
+            'buttons': buttons,
+            'x': 0.0,
+            'xanchor': 'left',
+            'y': 1.1,
+            'yanchor': 'top'
+        }]
+
+        updatemenus += [{
+            'type': 'buttons',
+            'direction': 'left',
+            'buttons': [
+                dict(label='Color By SV', method='restyle', args=['marker', color_by_sv_format]),
+                dict(label='Color By C/N0', method='restyle', args=['marker', color_by_cn0_format])
+            ],
+            'x': 0.0,
+            'xanchor': 'left',
+            'y': 1.045,
+            'yanchor': 'top'
+        }]
+
+        figure['layout']['updatemenus'] = updatemenus
+
+        self._add_figure(name='gnss_skyplot', figure=figure, title='GNSS Sky Plot')
+
     def plot_signal_status(self):
-        filename = 'signal_status'
+        filename = 'gnss_signal_status'
         figure_title = "GNSS Signal Status"
 
         # Read the satellite data.
@@ -1490,6 +1586,23 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         elif time_source == SystemTimeSource.TIMESTAMPED_ON_RECEPTION:
             return 'System'
 
+    @classmethod
+    def _get_colors(cls, num_colors=None):
+        colors = Tableau_20.hex_colors
+        if num_colors is None:
+            return colors
+        elif num_colors <= len(colors):
+            return colors[:num_colors]
+        else:
+            num_repeats = int(num_colors / len(colors))
+            num_extra = num_colors % len(colors)
+            return colors * num_repeats + colors[:num_extra]
+
+    @classmethod
+    def _assign_colors(cls, elements, num_colors=None):
+        colors = cls._get_colors(num_colors)
+        return {e: colors[i % len(colors)] for i, e in enumerate(elements)}
+
 
 def main():
     parser = ArgumentParser(description="""\
@@ -1635,6 +1748,7 @@ Load and display information stored in a FusionEngine binary file.
         analyzer.plot_map(mapbox_token=options.mapbox_token)
         analyzer.plot_calibration()
         analyzer.plot_signal_status()
+        analyzer.plot_skyplot()
 
         if options.measurements:
             analyzer.plot_imu()
