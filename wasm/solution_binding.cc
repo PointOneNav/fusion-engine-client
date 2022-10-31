@@ -30,11 +30,14 @@ EMSCRIPTEN_BINDINGS(solution) {
       .property("reserved", &PoseMessage::reserved)
       .property("undulation_cm", &PoseMessage::undulation_cm)
       .ARRAY_PROPERTY(PoseMessage, lla_deg)
+      .ARRAY_PROPERTY(PoseMessage, position_std_enu_m)
       .ARRAY_PROPERTY(PoseMessage, ypr_deg)
       .ARRAY_PROPERTY(PoseMessage, ypr_std_deg)
       .ARRAY_PROPERTY(PoseMessage, velocity_body_mps)
       .ARRAY_PROPERTY(PoseMessage, velocity_std_body_mps)
-      .ARRAY_PROPERTY(PoseMessage, position_std_enu_m)
+      .property("aggregate_protection_level_m", &PoseMessage::aggregate_protection_level_m)
+      .property("horizontal_protection_level_m", &PoseMessage::horizontal_protection_level_m)
+      .property("vertical_protection_level_m", &PoseMessage::vertical_protection_level_m)
       .STRUCT_FUNCTIONS(PoseMessage);
 
   static auto PoseAuxMessage_MESSAGE_TYPE = PoseAuxMessage::MESSAGE_TYPE;
