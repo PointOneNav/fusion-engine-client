@@ -37,3 +37,6 @@ docs/versions.html
 # Other output files.
 *.csv
 *.kml
+
+#Mac files
+.DS_Store
