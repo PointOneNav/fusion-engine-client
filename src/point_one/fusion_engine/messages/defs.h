@@ -309,6 +309,10 @@ enum class Response : uint8_t {
    * Requested data was corrupted and not available.
    */
   DATA_CORRUPTED = 7,
+  /**
+   * No instances of the requested data are available.
+   */
+  NO_DATA_STORED = 8,
 };
 
 /**
@@ -336,6 +340,8 @@ inline const char* to_string(Response val) {
       return "Inconsistent Payload Length";
     case Response::DATA_CORRUPTED:
       return "Data Corrupted";
+    case Response::NO_DATA_STORED:
+      return "No Data Stored";
     default:
       return "Unrecognized";
   }
