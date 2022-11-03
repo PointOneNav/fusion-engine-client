@@ -67,6 +67,8 @@ class Response(IntEnum):
     INCONSISTENT_PAYLOAD_LENGTH = 6
     ## Requested data was corrupted and not available.
     DATA_CORRUPTED = 7
+    ## The requested data isn't available.
+    NO_DATA_STORED = 8
 
 
 class MessageType(IntEnum):
