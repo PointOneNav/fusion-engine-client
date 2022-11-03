@@ -269,6 +269,12 @@ class TriStateBooleanAction(argparse.Action):
             if option_string is not None and option_string.startswith('--no-'):
                 if values is not None:
                     raise ValueError('Value string not supported for %s.' % option_string)
+                # This is a special case. Normally, for an argument `--foo`, self.options_strings contains `--foo` and
+                # `--no-foo`. On the other hand, if the original argument is prefixed with "no-" like `--no-bar`,
+                # self.options_strings will contain `--no-bar` and `--no-no-bar`. In that case, specifying `--no-bar` on
+                # the command line should return true, not false.
+                elif option_string == self.option_strings[0]:
+                    result = True
                 else:
                     result = False
             else:
