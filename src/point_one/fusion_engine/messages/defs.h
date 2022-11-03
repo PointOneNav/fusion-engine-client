@@ -310,7 +310,7 @@ enum class Response : uint8_t {
    */
   DATA_CORRUPTED = 7,
   /**
-   * No instances of the requested data are available.
+   * The requested data isn't available.
    */
   NO_DATA_STORED = 8,
 };
