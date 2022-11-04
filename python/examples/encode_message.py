@@ -26,8 +26,10 @@ console.
                              protocol=ProtocolType.FUSION_ENGINE,
                              message_id=MessageType.POSE,
                              rate=MessageRate.ON_CHANGE)
+    print(message)
 
     encoder = FusionEngineEncoder()
     encoded_data = encoder.encode_message(message)
 
+    print('')
     print(bytes_to_hex(encoded_data, bytes_per_row=16, bytes_per_col=2))
