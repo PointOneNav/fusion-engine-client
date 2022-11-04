@@ -67,6 +67,8 @@ class Response(IntEnum):
     INCONSISTENT_PAYLOAD_LENGTH = 6
     ## Requested data was corrupted and not available.
     DATA_CORRUPTED = 7
+    ## The requested data isn't available.
+    NO_DATA_STORED = 8
 
 
 class MessageType(IntEnum):
@@ -101,6 +103,7 @@ class MessageType(IntEnum):
     VERSION_INFO = 13003
     EVENT_NOTIFICATION = 13004
     SHUTDOWN_REQUEST = 13005
+    FAULT_CONTROL = 13006
 
     SET_CONFIG = 13100
     GET_CONFIG = 13101

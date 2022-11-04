@@ -43,6 +43,8 @@ for the latest API documentation.
         class)
       - [message_decode.py](examples/message_decode.py) - Read a `.p1log` binary file containing FusionEngine messages,
         optionally mixed with other binary data, and decode the contents using the `FusionEngineDecoder` helper class
+      - [send_command.py](examples/send_command.py) - Send a command to a device over serial or TCP, and wait for a
+        response
       - [serial_client.py](examples/serial_client.py) - Connect to a device over a local serial port and decode messages
         in real time to be displayed and/or logged to disk using the `FusionEngineDecoder` helper class
       - [tcp_client.py](examples/tcp_client.py) - Connect to a device over TCP and decode messages in real time to be

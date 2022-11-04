@@ -5,6 +5,7 @@ from typing import List, Dict, Callable, Optional, Tuple, Union
 
 from ..messages import MessageHeader, MessageType, MessagePayload, message_type_to_class
 from ..utils import trace
+from ..utils.bin_utils import bytes_to_hex
 from ..utils.enum_utils import IntEnum
 
 _logger = logging.getLogger('point_one.fusion_engine.parsers.decoder')
@@ -291,8 +292,4 @@ class FusionEngineDecoder:
     @classmethod
     def _trace_buffer(cls, buffer, depth=1, bytes_per_line=32):
         if _logger.isEnabledFor(logging.TRACE, depth=depth):
-            _logger.trace('\n' + cls._get_byte_string(buffer, bytes_per_line=bytes_per_line), depth=depth)
-
-    @classmethod
-    def _get_byte_string(cls, buffer, bytes_per_line=32):
-        return '\n'.join(textwrap.wrap(' '.join(['%02X' % b for b in buffer]), (3 * bytes_per_line - 1)))
+            _logger.trace('\n' + bytes_to_hex(buffer, bytes_per_row=bytes_per_line), depth=depth)

@@ -1,4 +1,5 @@
 from .core import *
+from .fault_control import *
 from . import ros
 
 message_type_to_class = {
@@ -30,6 +31,7 @@ message_type_to_class = {
     ResetRequest.MESSAGE_TYPE: ResetRequest,
     VersionInfoMessage.MESSAGE_TYPE: VersionInfoMessage,
     EventNotificationMessage.MESSAGE_TYPE: EventNotificationMessage,
+    FaultControlMessage.MESSAGE_TYPE: FaultControlMessage,
 
     SetConfigMessage.MESSAGE_TYPE: SetConfigMessage,
     GetConfigMessage.MESSAGE_TYPE: GetConfigMessage,
