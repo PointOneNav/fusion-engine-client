@@ -8,7 +8,7 @@ from .defs import *
 
 
 class FaultType(IntEnum):
-    NONE = 0
+    CLEAR_ALL = 0
     CRASH = 1
     FATAL_ERROR = 2
     COCOM = 3
@@ -113,10 +113,10 @@ class FaultControlMessage(MessagePayload):
     MESSAGE_TYPE = MessageType.FAULT_CONTROL
     MESSAGE_VERSION = 0
 
-    @_class_gen.create_payload_class(FaultType.NONE, _class_gen.EmptyConstruct)
-    class NoAction(_class_gen.Empty):
+    @_class_gen.create_payload_class(FaultType.CLEAR_ALL, _class_gen.EmptyConstruct)
+    class ClearAll(_class_gen.Empty):
         """!
-        @brief Take no action (no-op).
+        @brief Clear existing faults.
         """
         pass
 

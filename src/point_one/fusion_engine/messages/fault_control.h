@@ -31,11 +31,15 @@ namespace messages {
  */
 enum class FaultType : uint8_t {
   /**
-   * Take no action.
+   * Clear existing faults.
+   *
+   * @note
+   * This cannot be used to clear a @ref FaultType::CRASH or @ref
+   * FaultType::FATAL_ERROR.
    *
    * Payload format: none
    */
-  NONE = 0,
+  CLEAR_ALL = 0,
   /**
    * Force the device to crash (intended for factory test purposes only).
    *
@@ -96,8 +100,8 @@ enum class FaultType : uint8_t {
  */
 inline const char* to_string(FaultType type) {
   switch (type) {
-    case FaultType::NONE:
-      return "No Action";
+    case FaultType::CLEAR_ALL:
+      return "Clear Faults";
 
     case FaultType::CRASH:
       return "Crash";
