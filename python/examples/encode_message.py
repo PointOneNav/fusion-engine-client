@@ -11,6 +11,7 @@ sys.path.insert(0, root_dir)
 from fusion_engine_client.messages import *
 from fusion_engine_client.parsers import FusionEngineEncoder
 from fusion_engine_client.utils.argument_parser import ArgumentParser
+from fusion_engine_client.utils.bin_utils import bytes_to_hex
 
 if __name__ == "__main__":
     parser = ArgumentParser(description="""\
@@ -29,16 +30,4 @@ console.
     encoder = FusionEngineEncoder()
     encoded_data = encoder.encode_message(message)
 
-    bytes_per_row = 16
-    bytes_per_col = 2
-    byte_string = ''
-    for i, b in enumerate(encoded_data):
-        if i > 0:
-            if (i % bytes_per_row) == 0:
-                byte_string += '\n'
-            elif (i % bytes_per_col) == 0:
-                byte_string += ' '
-
-        byte_string += '%02x' % b
-
-    print(byte_string)
+    print(bytes_to_hex(encoded_data, bytes_per_row=16, bytes_per_col=2))
