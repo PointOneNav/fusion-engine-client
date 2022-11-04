@@ -61,6 +61,7 @@ enum class MessageType : uint16_t {
   VERSION_INFO = 13003, ///< @ref VersionInfoMessage
   EVENT_NOTIFICATION = 13004, ///< @ref EventNotificationMessage
   SHUTDOWN_REQUEST = 13005, ///< @ref ShutdownRequest
+  FAULT_CONTROL = 13006, ///< @ref FaultControlMessage
 
   SET_CONFIG = 13100, ///< @ref SetConfigMessage
   GET_CONFIG = 13101, ///< @ref GetConfigMessage
@@ -155,6 +156,9 @@ inline const char* to_string(MessageType type) {
 
     case MessageType::SHUTDOWN_REQUEST:
       return "Shutdown Request";
+
+    case MessageType::FAULT_CONTROL:
+      return "Fault Control";
 
     case MessageType::SET_CONFIG:
       return "Set Configuration Parameter";
