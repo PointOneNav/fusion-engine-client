@@ -39,6 +39,10 @@ enum class FaultType : uint8_t {
   /**
    * Force the device to crash (intended for factory test purposes only).
    *
+   * On crash, the device no longer produce any output on any interfaces, and
+   * will stop responding to commands. If the watchdog is enabled, the device
+   * will restart automatically after the watchdog timer elapses.
+   *
    * @warning
    * The device will crash immediately after receiving this request. It will not
    * send a @ref CommandResponseMessage back to the user.
@@ -50,6 +54,12 @@ enum class FaultType : uint8_t {
    * Force the device to exhibit a fatal error (intended for factory test
    * purposes only).
    *
+   * After a fatal error, the device will stop navigating and will no longer
+   * produce solution messages on any interfaces. Instead, it will output an
+   * @ref EventNotificationMessage indicating the fault status. If the watchdog
+   * is enabled, the device will restart automatically after the watchdog timer
+   * elapses.
+   *
    * Unlike @ref FaultType::CRASH, a fatal error will send an error notification
    * to the user, but will still not send a @ref CommandResponseMessage.
    *
@@ -58,6 +68,11 @@ enum class FaultType : uint8_t {
   FATAL_ERROR = 2,
   /**
    * Simulate a COCOM limit (intended for factory test purposes only).
+   *
+   * When a COCOM limit is exceeded, the device will stop navigating and will
+   * produce @ref SolutionType::Invalid solution messages. COCOM limits may be
+   * cleared via @ref ResetRequest, or by sending a @ref CoComType::NONE fault
+   * control.
    *
    * Payload format: @ref CoComType
    */
