@@ -49,12 +49,13 @@ cc_library(
         "src/point_one/fusion_engine/messages/control.h",
         "src/point_one/fusion_engine/messages/core.h",
         "src/point_one/fusion_engine/messages/defs.h",
+        "src/point_one/fusion_engine/messages/fault_control.h",
         "src/point_one/fusion_engine/messages/measurements.h",
         "src/point_one/fusion_engine/messages/solution.h",
     ],
     deps = [
         ":common",
-        ":data_version"
+        ":data_version",
     ],
 )
 
