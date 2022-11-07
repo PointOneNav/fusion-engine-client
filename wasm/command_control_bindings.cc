@@ -40,6 +40,44 @@ EMSCRIPTEN_BINDINGS(control) {
         .ARRAY_PROPERTY(VersionInfoMessage, fw_version_str)
         .STRUCT_FUNCTIONS(VersionInfoMessage);
 
+    static auto ResetRequest_MESSAGE_TYPE = ResetRequest::MESSAGE_TYPE;
+    static auto ResetRequest_MESSAGE_VERSION = ResetRequest::MESSAGE_VERSION;
+    static auto ResetRequest_RESTART_NAVIGATION_ENGINE = ResetRequest::RESTART_NAVIGATION_ENGINE;
+    static auto ResetRequest_RESET_GNSS_CORRECTIONS = ResetRequest::RESET_GNSS_CORRECTIONS;
+    static auto ResetRequest_RESET_POSITION_DATA = ResetRequest::RESET_POSITION_DATA;
+    static auto ResetRequest_RESET_EPHEMERIS = ResetRequest::RESET_EPHEMERIS;
+    static auto ResetRequest_RESET_FAST_IMU_CORRECTIONS = ResetRequest::RESET_FAST_IMU_CORRECTIONS;
+    static auto ResetRequest_RESET_NAVIGATION_ENGINE_DATA = ResetRequest::RESET_NAVIGATION_ENGINE_DATA;
+    static auto ResetRequest_RESET_CALIBRATION_DATA = ResetRequest::RESET_CALIBRATION_DATA;
+    static auto ResetRequest_RESET_CONFIG = ResetRequest::RESET_CONFIG;
+    static auto ResetRequest_RESTART_GNSS_MEASUREMENT_ENGINE = ResetRequest::RESTART_GNSS_MEASUREMENT_ENGINE;
+    static auto ResetRequest_REBOOT_NAVIGATION_PROCESSOR = ResetRequest::REBOOT_NAVIGATION_PROCESSOR;
+    static auto ResetRequest_HOT_START = ResetRequest::HOT_START;
+    static auto ResetRequest_WARM_START = ResetRequest::WARM_START;
+    static auto ResetRequest_COLD_START = ResetRequest::COLD_START;
+    static auto ResetRequest_FACTORY_RESET = ResetRequest::FACTORY_RESET;
+    class_<VersionInfoMessage>("VersionInfoMessage")
+        .constructor<>()
+        .class_property("MESSAGE_TYPE", &ResetRequest_MESSAGE_TYPE)
+        .class_property("MESSAGE_VERSION", &ResetRequest_MESSAGE_VERSION)
+        .class_property("RESTART_NAVIGATION_ENGINE", &ResetRequest_RESTART_NAVIGATION_ENGINE)
+        .class_property("RESET_GNSS_CORRECTIONS", &ResetRequest_RESET_GNSS_CORRECTIONS)
+        .class_property("RESET_POSITION_DATA", &ResetRequest_RESET_POSITION_DATA)
+        .class_property("RESET_EPHEMERIS", &ResetRequest_RESET_EPHEMERIS)
+        .class_property("RESET_FAST_IMU_CORRECTIONS", &ResetRequest_RESET_FAST_IMU_CORRECTIONS)
+        .class_property("RESET_NAVIGATION_ENGINE_DATA", &ResetRequest_RESET_NAVIGATION_ENGINE_DATA)
+        .class_property("RESET_CALIBRATION_DATA", &ResetRequest_RESET_CALIBRATION_DATA)
+        .class_property("RESET_CONFIG", &ResetRequest_RESET_CONFIG)
+        .class_property("RESTART_GNSS_MEASUREMENT_ENGINE", &ResetRequest_RESTART_GNSS_MEASUREMENT_ENGINE)
+        .class_property("REBOOT_NAVIGATION_PROCESSOR", &ResetRequest_REBOOT_NAVIGATION_PROCESSOR)
+        .class_property("HOT_START", &ResetRequest_HOT_START)
+        .class_property("WARM_START", &ResetRequest_WARM_START)
+        .class_property("COLD_START", &ResetRequest_COLD_START)
+        .class_property("FACTORY_RESET", &ResetRequest_FACTORY_RESET)
+        .property("reset_mask", &VersionInfoMessage::reset_mask)
+        .STRUCT_FUNCTIONS(VersionInfoMessage);
+
+
     static auto MessageRequest_MESSAGE_TYPE = MessageRequest::MESSAGE_TYPE;
     static auto MessageRequest_MESSAGE_VERSION = MessageRequest::MESSAGE_VERSION;
     class_<MessageRequest>("MessageRequest")
