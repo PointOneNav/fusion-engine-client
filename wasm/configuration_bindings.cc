@@ -204,4 +204,90 @@ EMSCRIPTEN_BINDINGS(configuration) {
         .property("type", &MsgRate::type)
         .property("update_period_ms", &MsgRate::update_period_ms)
         .STRUCT_FUNCTIONS(MsgRate);
+
+    enum_<TransportType>("TransportType")
+        .value("INVALID", TransportType::INVALID)
+        .value("SERIAL", TransportType::SERIAL)
+        .value("FILE", TransportType::FILE)
+        .value("TCP_CLIENT", TransportType::TCP_CLIENT)
+        .value("TCP_SERVER", TransportType::TCP_SERVER)
+        .value("UDP_CLIENT", TransportType::UDP_CLIENT)
+        .value("UDP_SERVER", TransportType::UDP_SERVER)
+        .value("CURRENT", TransportType::CURRENT)
+        .value("ALL", TransportType::ALL);
+
+    class_<InterfaceID>("InterfaceID")
+        .constructor<>()
+        .property("type", &InterfaceID::type)
+        .property("index", &InterfaceID::index)
+        .ARRAY_PROPERTY(InterfaceID, reserved)
+        .function("InterfaceID", &InterfaceID::InterfaceID)
+        .STRUCT_FUNCTIONS(InterfaceID);
+
+    static auto GetMessageRate_MESSAGE_TYPE = GetMessageRate::MESSAGE_TYPE;
+    static auto GetMessageRate_MESSAGE_VERSION = GetMessageRate::MESSAGE_VERSION;
+    class_<GetMessageRate>("GetMessageRate")
+        .constructor<>()
+        .class_property("MESSAGE_TYPE", &GetMessageRate_MESSAGE_TYPE)
+        .class_property("MESSAGE_VERSION", &GetMessageRate_MESSAGE_VERSION)
+        .property("output_interface", &GetMessageRate::output_interface)
+        .property("protocol", &GetMessageRate::protocol)
+        .property("request_source", &GetMessageRate::request_source)
+        .property("message_id", &GetMessageRate::message_id)
+        .STRUCT_FUNCTIONS(GetMessageRate);
+
+    static auto MessageRateResponseEntry_FLAG_APPLY_AND_SAVE = MessageRateResponseEntry::FLAG_APPLY_AND_SAVE;
+    class_<MessageRateResponseEntry>("MessageRateResponseEntry")
+        .constructor<>()
+        .property("protocol", &MessageRateResponseEntry::protocol)
+        .property("flags", &MessageRateResponseEntry::flags)
+        .property("message_id", &MessageRateResponseEntry::message_id)
+        .property("configured_rate", &MessageRateResponseEntry::configured_rate)
+        .property("effective_rate", &MessageRateResponseEntry::effective_rate)
+        .ARRAY_PROPERTY(MessageRateResponseEntry, reserved)
+        .STRUCT_FUNCTIONS(MessageRateResponseEntry);
+
+    static auto MessageRateResponse_MESSAGE_TYPE = MessageRateResponse::MESSAGE_TYPE;
+    static auto MessageRateResponse_MESSAGE_VERSION = MessageRateResponse::MESSAGE_VERSION;
+    class_<MessageRateResponse>("MessageRateResponse")
+        .constructor<>()
+        .class_property("MESSAGE_TYPE", &GetMessageRate_MESSAGE_TYPE)
+        .class_property("MESSAGE_VERSION", &GetMessageRate_MESSAGE_VERSION)
+        .property("config_source", &MessageRateResponse::config_source)
+        .property("response", &MessageRateResponse::response)
+        .property("num_rates", &MessageRateResponse::num_rates)
+        .property("output_interface", &MessageRateResponse::output_interface)
+        .STRUCT_FUNCTIONS(MessageRateResponse);
+
+    enum_<DataType>("DataType")
+        .value("CALIBRATION_STATE", DataType::CALIBRATION_STATE)
+        .value("CRASH_LOG", DataType::CRASH_LOG)
+        .value("FILTER_STATE", DataType::FILTER_STATE)
+        .value("USER_CONFIG", DataType::USER_CONFIG)
+        .value("INVALID", DataType::INVALID);
+
+    static auto ExportDataMessage_MESSAGE_TYPE = ExportDataMessage::MESSAGE_TYPE;
+    static auto ExportDataMessage_MESSAGE_VERSION = ExportDataMessage::MESSAGE_VERSION;
+    class_<ExportDataMessage>("ExportDataMessage")
+        .constructor<>()
+        .class_property("MESSAGE_TYPE", &ExportDataMessage_MESSAGE_TYPE)
+        .class_property("MESSAGE_VERSION", &ExportDataMessage_MESSAGE_VERSION)
+        .property("data_type", &ExportDataMessage::data_type)
+        .property("source", &ExportDataMessage::source)
+        .ARRAY_PROPERTY(ExportDataMessage, reserved)
+        .STRUCT_FUNCTIONS(ExportDataMessage);
+
+    static auto PlatformStorageDataMessage_MESSAGE_TYPE = PlatformStorageDataMessage::MESSAGE_TYPE;
+    static auto PlatformStorageDataMessage_VERSION = PlatformStorageDataMessage::MESSAGE_VERSION;
+    class_<PlatformStorageDataMessage>("PlatformStorageDataMessage")
+        .constructor<>()
+        .class_property("MESSAGE_TYPE", &PlatformStorageDataMessage_MESSAGE_TYPE)
+        .class_property("MESSAGE_VERSION", &PlatformStorageDataMessage_VERSION)
+        .property("data_type", &PlatformStorageDataMessage::data_type)
+        .property("response", &PlatformStorageDataMessage::response)
+        .property("source", &PlatformStorageDataMessage::source)
+        .ARRAY_PROPERTY(PlatformStorageDataMessage, reserved)
+        .property("data_version", &PlatformStorageDataMessage::data_version)
+        .property("data_length_bytes", &PlatformStorageDataMessage::data_length_bytes)
+        .STRUCT_FUNCTIONS(PlatformStorageDataMessage);
 }
