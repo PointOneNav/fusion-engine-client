@@ -58,7 +58,7 @@ other types of data.
         '--output',
         type=str,
         metavar='DIR',
-        help="The file path where output will be stored. Defaults to `platform_storage.bin` in parent directory of the input"
+        help="The file path where output will be stored. Defaults to `platform_storage.bin` and `platform_storage_version.txt` in parent directory of the input"
         "file, or to the log directory if reading from a log.")
     parser.add_argument('-s', '--storage-type', default=DataType.USER_CONFIG.name, choices=(v.name for v in DataType),
                         help="The type of platform storage to dump.")
@@ -93,10 +93,16 @@ other types of data.
         # locate_log() will log an error.
         sys.exit(1)
 
-    output_file = os.path.join(output_dir, 'platform_storage.bin')
+    output_bin_file = os.path.join(output_dir, 'platform_storage.bin')
 
     if options.output is not None:
-        output_file = options.output
+        output_bin_file = options.output
+
+    if '.' in output_bin_file:
+        output_version_file=''.join(output_bin_file.split('.')[:-1])
+    else:
+        output_version_file = output_bin_file
+    output_version_file = output_version_file + '_version.txt'
 
     _logger.info("Processing input file '%s'." % input_path)
 
@@ -110,7 +116,7 @@ other types of data.
     message_types = (MessageType.PLATFORM_STORAGE_DATA, InternalMessageType.LEGACY_PLATFORM_STORAGE_DATA)
 
     # Process all data in the file.
-    reader = MixedLogReader(input_path, return_bytes=True, return_offset=True, show_progress=options.progress,
+    reader = MixedLogReader(input_path, show_progress=options.progress,
                             ignore_index=not read_index, generate_index=generate_index,
                             message_types=message_types, time_range=time_range)
 
@@ -119,15 +125,18 @@ other types of data.
 
     total_messages = 0
 
+    version = None
+
     last_message_data = None
-    with open(output_file, 'wb') as fd:
-        for header, message, data, offset_bytes in reader:
+    with open(output_bin_file, 'wb') as fd:
+        for header, message in reader:
             if message.data_type == storage_type:
                 total_messages += 1
+                version = message.data_version
                 if options.last:
-                    last_message = data
+                    last_message = message.data
                 else:
-                    fd.write(data)
+                    fd.write(message.data)
                     if options.first:
                         break
 
@@ -136,3 +145,8 @@ other types of data.
 
     if total_messages == 0:
         _logger.warning(f'No valid {options.storage_type} PlatformStorage messages found.')
+    else:
+        version_str = f'{version.major}.{version.minor}'
+        _logger.info(f'Decoded {total_messages} instances of {options.storage_type} PlatformStorage message version {version_str}.')
+        with open(output_version_file, 'w') as fd:
+            fd.write(version_str)
