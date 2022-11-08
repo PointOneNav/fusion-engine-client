@@ -22,9 +22,8 @@ _logger = logging.getLogger('point_one.fusion_engine.applications.print_contents
 
 if __name__ == "__main__":
     parser = ArgumentParser(description="""\
-Decode and print the contents of messages contained in a *.p1log file or other
-binary file containing FusionEngine messages. The binary file may also contain
-other types of data.
+Decode and dump the platform storage data for a specific datatype.
+The version of the data is also recorded to the a `*_version.txt` file.
 """)
     parser.add_argument(
         '-t', '--time', type=str, metavar='[START][:END]',
