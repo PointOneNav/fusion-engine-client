@@ -27,6 +27,9 @@ class InternalMessageType(IntEnum):
     PROFILE_COUNTER = 20062
     PROFILE_COUNTER_DEFINITION = 20063
 
+    # Legacy Internal Alias
+    LEGACY_PLATFORM_STORAGE_DATA = 20105
+
 
 # Extend the message type enum with internal types.
 for entry in InternalMessageType:
