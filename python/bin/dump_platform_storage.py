@@ -99,7 +99,7 @@ other types of data.
         output_bin_file = options.output
 
     if '.' in output_bin_file:
-        output_version_file=''.join(output_bin_file.split('.')[:-1])
+        output_version_file = ''.join(output_bin_file.split('.')[:-1])
     else:
         output_version_file = output_bin_file
     output_version_file = output_version_file + '_version.txt'
@@ -147,6 +147,7 @@ other types of data.
         _logger.warning(f'No valid {options.storage_type} PlatformStorage messages found.')
     else:
         version_str = f'{version.major}.{version.minor}'
-        _logger.info(f'Decoded {total_messages} instances of {options.storage_type} PlatformStorage message version {version_str}.')
+        _logger.info(
+            f'Decoded {total_messages} instances of {options.storage_type} PlatformStorage message version {version_str}.')
         with open(output_version_file, 'w') as fd:
             fd.write(version_str)
