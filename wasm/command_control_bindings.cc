@@ -56,7 +56,7 @@ EMSCRIPTEN_BINDINGS(control) {
     static auto ResetRequest_WARM_START = ResetRequest::WARM_START;
     static auto ResetRequest_COLD_START = ResetRequest::COLD_START;
     static auto ResetRequest_FACTORY_RESET = ResetRequest::FACTORY_RESET;
-    class_<VersionInfoMessage>("VersionInfoMessage")
+    class_<ResetRequest>("ResetRequest")
         .constructor<>()
         .class_property("MESSAGE_TYPE", &ResetRequest_MESSAGE_TYPE)
         .class_property("MESSAGE_VERSION", &ResetRequest_MESSAGE_VERSION)
@@ -74,9 +74,8 @@ EMSCRIPTEN_BINDINGS(control) {
         .class_property("WARM_START", &ResetRequest_WARM_START)
         .class_property("COLD_START", &ResetRequest_COLD_START)
         .class_property("FACTORY_RESET", &ResetRequest_FACTORY_RESET)
-        .property("reset_mask", &VersionInfoMessage::reset_mask)
-        .STRUCT_FUNCTIONS(VersionInfoMessage);
-
+        .property("reset_mask", &ResetRequest::reset_mask)
+        .STRUCT_FUNCTIONS(ResetRequest);
 
     static auto MessageRequest_MESSAGE_TYPE = MessageRequest::MESSAGE_TYPE;
     static auto MessageRequest_MESSAGE_VERSION = MessageRequest::MESSAGE_VERSION;

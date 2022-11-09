@@ -74,12 +74,12 @@ EMSCRIPTEN_BINDINGS(configuration) {
 
     static auto ConfigResponseMessage_MESSAGE_TYPE = ConfigResponseMessage::MESSAGE_TYPE;
     static auto ConfigResponseMessage_MESSAGE_VERSION = ConfigResponseMessage::MESSAGE_VERSION;
+    static auto ConfigResponseMessage_FLAG_ACTIVE_DIFFERS_FROM_SAVED = ConfigResponseMessage::FLAG_ACTIVE_DIFFERS_FROM_SAVED;
     class_<ConfigResponseMessage>("ConfigResponseMessage")
         .constructor<>()
         .class_property("MESSAGE_TYPE", &ConfigResponseMessage_MESSAGE_TYPE)
         .class_property("MESSAGE_VERSION", &ConfigResponseMessage_MESSAGE_VERSION)
         .property("config_source", &ConfigResponseMessage::config_source)
-        .property("active_differs_from_saved", &ConfigResponseMessage::active_differs_from_saved)
         .property("config_type", &ConfigResponseMessage::config_type)
         .property("response", &ConfigResponseMessage::response)
         .ARRAY_PROPERTY(ConfigResponseMessage, reserved)
@@ -221,7 +221,6 @@ EMSCRIPTEN_BINDINGS(configuration) {
         .property("type", &InterfaceID::type)
         .property("index", &InterfaceID::index)
         .ARRAY_PROPERTY(InterfaceID, reserved)
-        .function("InterfaceID", &InterfaceID::InterfaceID)
         .STRUCT_FUNCTIONS(InterfaceID);
 
     static auto GetMessageRate_MESSAGE_TYPE = GetMessageRate::MESSAGE_TYPE;
@@ -236,15 +235,16 @@ EMSCRIPTEN_BINDINGS(configuration) {
         .property("message_id", &GetMessageRate::message_id)
         .STRUCT_FUNCTIONS(GetMessageRate);
 
-    static auto MessageRateResponseEntry_FLAG_APPLY_AND_SAVE = MessageRateResponseEntry::FLAG_APPLY_AND_SAVE;
+    static auto MessageRateResponseEntry_FLAG_ACTIVE_DIFFERS_FROM_SAVED = MessageRateResponseEntry::FLAG_ACTIVE_DIFFERS_FROM_SAVED;
     class_<MessageRateResponseEntry>("MessageRateResponseEntry")
         .constructor<>()
+        .class_property("FLAG_ACTIVE_DIFFERS_FROM_SAVED", &MessageRateResponseEntry_FLAG_ACTIVE_DIFFERS_FROM_SAVED)
         .property("protocol", &MessageRateResponseEntry::protocol)
         .property("flags", &MessageRateResponseEntry::flags)
         .property("message_id", &MessageRateResponseEntry::message_id)
         .property("configured_rate", &MessageRateResponseEntry::configured_rate)
         .property("effective_rate", &MessageRateResponseEntry::effective_rate)
-        .ARRAY_PROPERTY(MessageRateResponseEntry, reserved)
+        .ARRAY_PROPERTY(MessageRateResponseEntry, reserved1)
         .STRUCT_FUNCTIONS(MessageRateResponseEntry);
 
     static auto MessageRateResponse_MESSAGE_TYPE = MessageRateResponse::MESSAGE_TYPE;

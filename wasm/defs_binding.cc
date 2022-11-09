@@ -66,13 +66,6 @@ EMSCRIPTEN_BINDINGS(defs) {
       .value("SAVE_CONFIG", MessageType::SAVE_CONFIG)
       .value("CONFIG_RESPONSE", MessageType::CONFIG_RESPONSE)
 
-      .value("SET_OUTPUT_INTERFACE_CONFIG",
-             MessageType::SET_OUTPUT_INTERFACE_CONFIG)
-      .value("GET_OUTPUT_INTERFACE_CONFIG",
-             MessageType::GET_OUTPUT_INTERFACE_CONFIG)
-      .value("OUTPUT_INTERFACE_CONFIG_RESPONSE",
-             MessageType::OUTPUT_INTERFACE_CONFIG_RESPONSE)
-
       .value("SET_MESSAGE_RATE", MessageType::SET_MESSAGE_RATE)
       .value("GET_MESSAGE_RATE", MessageType::GET_MESSAGE_RATE)
       .value("MESSAGE_RATE_RESPONSE", MessageType::MESSAGE_RATE_RESPONSE);
