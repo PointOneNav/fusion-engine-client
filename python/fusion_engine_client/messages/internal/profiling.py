@@ -608,9 +608,10 @@ class ProfileFreeRtosSystemStatusMessage(MessagePayload):
         if len(messages) > 0:
             num_tasks = len(messages[0].task_entries)
             for i in range(num_tasks):
-                task_cpu_usage_percent = np.array([m.task_entries[i].cpu_usage for m in messages])
+                # If the number of tasks changes, avoid crashing.
+                task_cpu_usage_percent = np.array([m.task_entries[i].cpu_usage if i < len(m.task_entries) else np.nan for m in messages])
                 result['task_cpu_usage_percent'].append(task_cpu_usage_percent)
-                task_min_stack_free_bytes = np.array([m.task_entries[i].stack_high_water_mark_bytes for m in messages])
+                task_min_stack_free_bytes = np.array([m.task_entries[i].stack_high_water_mark_bytes if i < len(m.task_entries) else np.nan for m in messages])
                 result['task_min_stack_free_bytes'].append(task_min_stack_free_bytes)
         return result
 
