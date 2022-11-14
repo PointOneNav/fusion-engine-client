@@ -606,7 +606,7 @@ class ProfileFreeRtosSystemStatusMessage(MessagePayload):
             'task_min_stack_free_bytes': [],
         }
         if len(messages) > 0:
-            num_tasks = len(messages[0].task_entries)
+            num_tasks = max(len(m.task_entries) for m in messages)
             for i in range(num_tasks):
                 # If the number of tasks changes, avoid crashing.
                 task_cpu_usage_percent = np.array([m.task_entries[i].cpu_usage if i < len(m.task_entries) else np.nan for m in messages])
