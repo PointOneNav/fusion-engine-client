@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Union
 
 from collections import namedtuple
+from enum import IntEnum
 import copy
 import io
 import os
@@ -385,6 +386,9 @@ class FileIndex(object):
             return FileIndex(data=self._data[key], t0=self.t0)
         elif isinstance(key, (set, list, tuple)):
             if len(key) > 0:
+                # Convert to the int values if enums are specified.
+                if isinstance(list(key)[0], IntEnum):
+                    key = [v.value for v in key]
                 key = np.array(key)
                 return FileIndex(data=self._data[key], t0=self.t0)
             else:
