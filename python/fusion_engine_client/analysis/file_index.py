@@ -343,14 +343,14 @@ class FileIndex(object):
         elif isinstance(key, str):
             return getattr(self, key)
         # Return entries for a specific message type.
-        elif isinstance(key, MessageType):
+        elif isinstance(key, IntEnum):
             idx = self._data['type'] == key
             return FileIndex(data=self._data[idx], t0=self.t0)
         elif MessagePayload.is_subclass(key):
             idx = self._data['type'] == key.get_type()
             return FileIndex(data=self._data[idx], t0=self.t0)
         # Return entries for a list of message types.
-        elif isinstance(key, (set, list, tuple)) and len(key) > 0 and isinstance(next(iter(key)), MessageType):
+        elif isinstance(key, (set, list, tuple)) and len(key) > 0 and isinstance(next(iter(key)), IntEnum):
             idx = np.isin(self._data['type'], [int(k) for k in key])
             return FileIndex(data=self._data[idx], t0=self.t0)
         elif isinstance(key, (set, list, tuple)) and len(key) > 0 and MessagePayload.is_subclass(next(iter(key))):
@@ -386,9 +386,6 @@ class FileIndex(object):
             return FileIndex(data=self._data[key], t0=self.t0)
         elif isinstance(key, (set, list, tuple)):
             if len(key) > 0:
-                # Convert to the int values if enums are specified.
-                if isinstance(list(key)[0], IntEnum):
-                    key = [v.value for v in key]
                 key = np.array(key)
                 return FileIndex(data=self._data[key], t0=self.t0)
             else:
