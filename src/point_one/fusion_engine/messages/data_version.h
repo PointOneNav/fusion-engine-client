@@ -27,7 +27,7 @@ struct alignas(4) DataVersion {
 
   constexpr DataVersion() = default;
   constexpr DataVersion(uint8_t major, uint16_t minor)
-      : major(major), minor(minor) {}
+      : major{major}, minor{minor} {}
 
   /**
    * @brief Returns whether the stored version is valid.
