@@ -190,7 +190,9 @@ inline std::ostream& operator<<(std::ostream& stream, CoComType type) {
  * {MessageHeader, FaultControlMessage, uint8_t}
  * ```
  *
- * The device will respond with a @ref CommandResponseMessage.
+ * # Expected Response
+ * The device will respond with a @ref CommandResponseMessage indicating whether
+ * or not the request succeeded.
  */
 struct alignas(4) FaultControlMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::FAULT_CONTROL;

@@ -288,14 +288,16 @@ inline std::ostream& operator<<(std::ostream& stream, SaveAction action) {
  * axis, while a serial port baud rate may be specified as single 32-bit
  * unsigned integer (`uint32_t`).
  *
- * The device will respond with a @ref CommandResponseMessage indicating whether
- * or not the request was accepted. Not all parameters defined in @ref
- * ConfigType are supported on all devices.
+ * Not all parameters defined in @ref ConfigType are supported on all devices.
  *
  * Parameter changes are applied to the device's active configuration
  * immediately, but are not saved to persistent storage and will be restored to
  * their previous values on reset. To save configuration settings to persistent
  * storage, see @ref SaveConfigMessage.
+ *
+ * # Expected Response
+ * The device will respond with a @ref CommandResponseMessage indicating whether
+ * or not the request succeeded.
  */
 struct alignas(4) SetConfigMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::SET_CONFIG;
@@ -329,6 +331,7 @@ struct alignas(4) SetConfigMessage : public MessagePayload {
  *        MessageType::GET_CONFIG, version 1.0).
  * @ingroup config_and_ctrl_messages
  *
+ * # Expected Response
  * The device will respond with a @ref ConfigResponseMessage containing the
  * requested parameter value, or a @ref CommandResponseMessage on failure.
  */
@@ -350,8 +353,9 @@ struct alignas(4) GetConfigMessage : public MessagePayload {
  *        version 1.0).
  * @ingroup config_and_ctrl_messages
  *
+ * # Expected Response
  * The device will respond with a @ref CommandResponseMessage indicating whether
- * or not the request was accepted.
+ * or not the request succeeded.
  */
 struct alignas(4) SaveConfigMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::SAVE_CONFIG;
@@ -1421,6 +1425,10 @@ inline std::ostream& operator<<(std::ostream& stream, MessageRate val) {
  * configuration to be saved to non-volatile memory.
  *
  * @ingroup config_and_ctrl_messages
+ *
+ * # Expected Response
+ * The device will respond with a @ref CommandResponseMessage indicating whether
+ * or not the request succeeded.
  */
 struct alignas(4) SetMessageRate : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::SET_MESSAGE_RATE;
@@ -1473,8 +1481,9 @@ struct alignas(4) SetMessageRate : public MessagePayload {
  * Multiple message rates can be requested with a single command if wild cards
  * are used for the protocol, or message ID.
  *
- * The device will respond with a @ref MessageRateResponse
- * containing the values.
+ * # Expected Response
+ * The device will respond with a @ref MessageRateResponse containing the
+ * requested values, or a @ref CommandResponseMessage on failure.
  */
 struct alignas(4) GetMessageRate : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::GET_MESSAGE_RATE;
@@ -1614,8 +1623,9 @@ inline std::ostream& operator<<(std::ostream& stream, DataType val) {
  *        MessageType::IMPORT_DATA, version 1.0).
  * @ingroup config_and_ctrl_messages
  *
- * The device will respond with a @ref CommandResponseMessage indicating if the
- * message was accepted.
+ * # Expected Response
+ * The device will respond with a @ref CommandResponseMessage indicating whether
+ * or not the request succeeded.
  */
 struct alignas(4) ImportDataMessage {
   static constexpr MessageType MESSAGE_TYPE = MessageType::IMPORT_DATA;
@@ -1648,6 +1658,7 @@ struct alignas(4) ImportDataMessage {
  *        MessageType::EXPORT_DATA, version 1.0).
  * @ingroup config_and_ctrl_messages
  *
+ * # Expected Response
  * The device will respond with a @ref PlatformStorageDataMessage.
  */
 struct alignas(4) ExportDataMessage {
