@@ -74,6 +74,9 @@ struct alignas(4) CommandResponseMessage : public MessagePayload {
  * @note
  * The generated response may not immediately follow the request if other
  * outbound messages are already enqueued to be sent.
+ *
+ * # Expected Response
+ * The requested message type, or @ref CommandResponseMessage on error.
  */
 struct alignas(4) MessageRequest : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::MESSAGE_REQUEST;
@@ -92,6 +95,10 @@ struct alignas(4) MessageRequest : public MessagePayload {
  *
  * This message contains a bitmask indicating the set of components to be reset.
  * Helper bitmasks are provided for common reset operations.
+ *
+ * # Expected Response
+ * The device will respond with a @ref CommandResponseMessage indicating whether
+ * or not the request succeeded.
  */
 struct alignas(4) ResetRequest : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::RESET_REQUEST;
@@ -366,6 +373,10 @@ struct alignas(4) EventNotificationMessage : public MessagePayload {
  * @brief Perform a device shutdown (@ref
  *        MessageType::SHUTDOWN_REQUEST, version 1.0).
  * @ingroup config_and_ctrl_messages
+ *
+ * # Expected Response
+ * The device will respond with a @ref CommandResponseMessage indicating whether
+ * or not the request succeeded.
  */
 struct alignas(4) ShutdownRequest : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::SHUTDOWN_REQUEST;
