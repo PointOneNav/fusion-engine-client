@@ -7,6 +7,9 @@ directories:
   -examples/bazel-examples
   -examples/bazel-out
   -examples/bazel-testlogs
+  -docs/html
+  -python/.pytest_cache
+  -python/venv*
   -wasm/build
   -wasm/emsdk
 
