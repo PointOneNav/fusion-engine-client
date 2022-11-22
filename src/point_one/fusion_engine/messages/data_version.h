@@ -16,25 +16,27 @@ namespace messages {
 /**
  * @brief A struct representing the version of a data object.
  *
- * The version is considered invalid if @ref major is 0xFF and @ref minor is
+ * The version is considered invalid if @ref major_version is 0xFF and @ref minor_version is
  * 0xFFFF.
  */
 struct alignas(4) DataVersion {
   // The reserved bytes must be 0xFF for backward compatibility.
   uint8_t reserved = 0xFF;
-  uint8_t major = 0xFF;
-  uint16_t minor = 0xFF;
+  uint8_t major_version = 0xFF;
+  uint16_t minor_version = 0xFF;
 
   constexpr DataVersion() = default;
   constexpr DataVersion(uint8_t major, uint16_t minor)
-      : major(major), minor(minor) {}
+      : major_version{major}, minor_version{minor} {}
 
   /**
    * @brief Returns whether the stored version is valid.
    *
    * @return `true` if the version is valid, `false` otherwise.
    */
-  bool IsValid() const { return major != 0xFF || minor != 0xFFFF; }
+  bool IsValid() const {
+    return major_version != 0xFF || minor_version != 0xFFFF;
+  }
 };
 
 #pragma pack(pop)
@@ -42,7 +44,8 @@ struct alignas(4) DataVersion {
 constexpr DataVersion INVALID_DATA_VERSION;
 
 inline constexpr bool operator==(const DataVersion& a, const DataVersion& b) {
-  return a.major == b.major && a.minor == b.minor;
+  return a.major_version == b.major_version &&
+         a.minor_version == b.minor_version;
 }
 
 inline constexpr bool operator!=(const DataVersion& a, const DataVersion& b) {
@@ -50,7 +53,9 @@ inline constexpr bool operator!=(const DataVersion& a, const DataVersion& b) {
 }
 
 inline constexpr bool operator<(const DataVersion& a, const DataVersion& b) {
-  return a.major < b.major || (a.major == b.major && a.minor < b.minor);
+  return a.major_version < b.major_version ||
+         (a.major_version == b.major_version &&
+          a.minor_version < b.minor_version);
 }
 
 inline constexpr bool operator>(const DataVersion& a, const DataVersion& b) {
