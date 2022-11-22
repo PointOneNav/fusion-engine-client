@@ -8,7 +8,7 @@ namespace messages {
 
 std::ostream& operator<<(std::ostream& stream, const DataVersion& ver) {
   if (ver.IsValid()) {
-    return stream << (int)ver.major << "." << ver.minor;
+    return stream << (int)ver.major_version << "." << ver.minor_version;
   } else {
     return stream << "<invalid>";
   }
@@ -29,7 +29,7 @@ DataVersion FromString(const char* str) {
   if (end_c == str || tmp > 0xFF || tmp < 0) {
     return INVALID_DATA_VERSION;
   }
-  version.major = (uint8_t)tmp;
+  version.major_version = (uint8_t)tmp;
 
   const char* minor_str = end_c + 1;
 
@@ -37,7 +37,7 @@ DataVersion FromString(const char* str) {
   if (end_c == minor_str || tmp > 0xFFFF || tmp < 0) {
     return INVALID_DATA_VERSION;
   }
-  version.minor = (uint16_t)tmp;
+  version.minor_version = (uint16_t)tmp;
 
   return version;
 }
