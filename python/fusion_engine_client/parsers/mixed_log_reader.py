@@ -288,7 +288,7 @@ class MixedLogReader(object):
             self.logger.log(logging.INFO if self.show_progress else logging.DEBUG,
                             'Processed %d/%d bytes (%.1f%%). [elapsed=%.1f sec, rate=%.1f MB/s]' %
                             (self.total_bytes_read, file_size,
-                             100.0 * float(self.total_bytes_read) / file_size,
+                             100.0 if file_size == 0 else 100.0 * float(self.total_bytes_read) / file_size,
                              elapsed_sec, self.total_bytes_read / elapsed_sec / 1e6))
             self.last_print_bytes = self.total_bytes_read
 
