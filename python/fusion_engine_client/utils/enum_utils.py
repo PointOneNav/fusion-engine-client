@@ -10,7 +10,7 @@ class IntEnum(IntEnumBase):
         #       BAR = 1
         #
         #   print(Foo.BAR)   # Prints "BAR", not "Foo.BAR"
-        return super().__str__().replace(self.__class__.__name__ + '.', '')
+        return self.name
 
     def to_string(self, include_value=False):
         if include_value:
