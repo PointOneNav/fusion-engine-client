@@ -371,14 +371,16 @@ class Analyzer(object):
         figure['layout']['yaxis5'].update(title="Meters")
 
         # Plot calibration stage and completion percentages.
-        figure.add_trace(go.Scattergl(x=time, y=cal_data.gyro_bias_percent_complete, name='Gyro Bias Completion',
-                                      text=text, mode='lines', line={'color': 'red'}),
+        figure.add_trace(go.Scattergl(x=time, y=cal_data.gyro_bias_percent_complete, text=text,
+                                      name='Gyro Bias Completion', hoverlabel={'namelength': -1},
+                                      mode='lines', line={'color': 'red'}),
                          1, 1)
-        figure.add_trace(go.Scattergl(x=time, y=cal_data.accel_bias_percent_complete, name='Accel Bias Completion',
-                                      text=text, mode='lines', line={'color': 'green'}),
+        figure.add_trace(go.Scattergl(x=time, y=cal_data.accel_bias_percent_complete, text=text,
+                                      name='Accel Bias Completion', hoverlabel={'namelength': -1},
+                                      mode='lines', line={'color': 'green'}),
                          1, 1)
-        figure.add_trace(go.Scattergl(x=time, y=cal_data.mounting_angle_percent_complete,
-                                      name='Mounting Angle Completion', text=text,
+        figure.add_trace(go.Scattergl(x=time, y=cal_data.mounting_angle_percent_complete, text=text,
+                                      name='Mounting Angle Completion', hoverlabel={'namelength': -1},
                                       mode='lines', line={'color': 'blue'}),
                          1, 1)
 
@@ -398,35 +400,35 @@ class Analyzer(object):
                          2, 1)
 
         figure.add_trace(go.Scattergl(x=time, y=cal_data.ypr_std_dev_deg[0, :], name='Yaw Std Dev', legendgroup='y',
-                                      text=text, mode='lines', line={'color': 'red'}),
+                                      text=text, mode='lines', line={'color': 'red'}, hoverlabel={'namelength': -1}),
                          3, 1)
         figure.add_trace(go.Scattergl(x=time, y=cal_data.ypr_std_dev_deg[1, :], name='Pitch Std Dev', legendgroup='p',
-                                      text=text, mode='lines', line={'color': 'green'}),
+                                      text=text, mode='lines', line={'color': 'green'}, hoverlabel={'namelength': -1}),
                          3, 1)
         figure.add_trace(go.Scattergl(x=time, y=cal_data.ypr_std_dev_deg[2, :], name='Roll Std Dev', legendgroup='r',
-                                      text=text, mode='lines', line={'color': 'blue'}),
+                                      text=text, mode='lines', line={'color': 'blue'}, hoverlabel={'namelength': -1}),
                          3, 1)
 
         thresh_time = time[np.array((0, -1))]
         figure.add_trace(go.Scattergl(x=thresh_time, y=[cal_data.mounting_angle_max_std_dev_deg[0]] * 2,
-                                      name='Max Yaw Std Dev', legendgroup='y',
+                                      name='Max Yaw Std Dev', legendgroup='y', hoverlabel={'namelength': -1},
                                       mode='lines', line={'color': 'red', 'dash': 'dash'}),
                          3, 1)
         figure.add_trace(go.Scattergl(x=thresh_time, y=[cal_data.mounting_angle_max_std_dev_deg[1]] * 2,
-                                      name='Max Pitch Std Dev', legendgroup='p',
+                                      name='Max Pitch Std Dev', legendgroup='p', hoverlabel={'namelength': -1},
                                       text=text, mode='lines', line={'color': 'green', 'dash': 'dash'}),
                          3, 1)
         figure.add_trace(go.Scattergl(x=thresh_time, y=[cal_data.mounting_angle_max_std_dev_deg[2]] * 2,
-                                      name='Max Roll Std Dev', legendgroup='r',
+                                      name='Max Roll Std Dev', legendgroup='r', hoverlabel={'namelength': -1},
                                       text=text, mode='lines', line={'color': 'blue', 'dash': 'dash'}),
                          3, 1)
 
         # Plot travel distance.
         figure.add_trace(go.Scattergl(x=time, y=cal_data.travel_distance_m, name='Travel Distance', text=text,
-                                      mode='lines', line={'color': 'blue'}),
+                                      mode='lines', line={'color': 'blue'}, hoverlabel={'namelength': -1}),
                          4, 1)
         figure.add_trace(go.Scattergl(x=thresh_time, y=[cal_data.min_travel_distance_m] * 2,
-                                      name='Min Travel Distance', text=text,
+                                      name='Min Travel Distance', text=text, hoverlabel={'namelength': -1},
                                       mode='lines', line={'color': 'black', 'dash': 'dash'}),
                          4, 1)
 
@@ -519,7 +521,8 @@ class Analyzer(object):
 
         # Plot the data.
         def _plot_data(name, idx, marker_style=None):
-            style = {'mode': 'markers', 'marker': {'size': 8}, 'showlegend': True, 'legendgroup': name}
+            style = {'mode': 'markers', 'marker': {'size': 8}, 'showlegend': True, 'legendgroup': name,
+                     'hoverlabel': {'namelength': -1}}
             if marker_style is not None:
                 style['marker'].update(marker_style)
 
@@ -742,12 +745,41 @@ class Analyzer(object):
         if wheel_data is None and vehicle_data is None:
             self.logger.info('No wheel %s data available. Skipping plot.' % type)
             return
+        elif wheel_data is not None and vehicle_data is not None:
+            self.logger.warning('Both wheel and vehicle %s data detected.' % type)
+            speed_type = 'Wheel/Vehicle'
+        else:
+            speed_type = 'Wheel' if wheel_data is not None else 'Vehicle'
+
+        # If plotting speed data, try to plot the navigation engine's speed estimate for reference.
+        nav_engine_speed_mps = None
+        if type == 'speed':
+            # If we have pose messages _and_ they contain body velocity, we can use that.
+            #
+            # Note that we are using this to compare vs wheel speeds, so we're only interested in forward speed here.
+            result = self.reader.read(message_types=[PoseMessage], **self.params)
+            pose_data = result[PoseMessage.MESSAGE_TYPE]
+            if len(pose_data.p1_time) != 0 and np.any(~np.isnan(pose_data.velocity_body_mps[0, :])):
+                nav_engine_speed_mps = pose_data.velocity_body_mps[0, :]
+                nav_engine_speed_name = 'Forward Velocity (Nav Engine)'
+            # Otherwise, if we have pose aux messages, read those and use the ENU velocity to estimate speed. Since we
+            # don't know attitude, the best we can do is estimate 3D speed and assume it's primarily in the along-track
+            # direction. This will also be an absolute value, so may not match the wheel data if it is signed and the
+            # vehicle is going backward.
+            else:
+                result = self.reader.read(message_types=[PoseAuxMessage], **self.params)
+                pose_aux_data = result[PoseAuxMessage.MESSAGE_TYPE]
+                if len(pose_aux_data.p1_time) != 0:
+                    self.logger.warning('Body forward velocity not available. Estimating |speed| from ENU velocity. '
+                                        'May not match wheel speeds when going backward.')
+                    nav_engine_speed_mps = np.linalg.norm(pose_aux_data.velocity_enu_mps, axis=0)
+                    nav_engine_speed_name = '|Vehicle 3D Speed| (Nav Engine)'
 
         # Setup the figure.
         if type == 'tick':
-            titles = ['Tick Count', 'Tick Rate', 'Gear/Direction']
+            titles = ['%s Tick Count' % speed_type, '%s Tick Rate' % speed_type, 'Gear/Direction']
         else:
-            titles = ['Speed', 'Gear/Direction']
+            titles = ['%s Speed' % speed_type, 'Gear/Direction']
 
         figure = make_subplots(rows=len(titles), cols=1, print_grid=False, shared_xaxes=True, subplot_titles=titles)
 
@@ -780,10 +812,6 @@ class Analyzer(object):
             else:
                 wheel_time_source = SystemTimeSource.P1_TIME
 
-            figure['layout']['annotations'][0]['text'] += '<br>Wheel %s Time Source: %s' % \
-                                                          (type.title(),
-                                                           self._time_source_to_display_name(wheel_time_source))
-
         if vehicle_data is not None:
             if np.all(np.isnan(vehicle_data.p1_time)):
                 if np.any(np.diff(vehicle_data.measurement_time_source) != 0):
@@ -795,34 +823,65 @@ class Analyzer(object):
             else:
                 vehicle_time_source = SystemTimeSource.P1_TIME
 
-            figure['layout']['annotations'][0]['text'] += '<br>Vehicle %s Time Source: %s' % \
-                                                          (type.title(),
-                                                           self._time_source_to_display_name(vehicle_time_source))
-
-        if wheel_time_source is not None and vehicle_time_source is not None:
-            if wheel_time_source != vehicle_time_source:
+        same_time_source = True
+        if wheel_time_source is None:
+            common_time_source = vehicle_time_source
+        elif vehicle_time_source is None:
+            common_time_source = wheel_time_source
+        else:
+            if wheel_time_source == vehicle_time_source:
+                common_time_source = wheel_time_source
+            else:
                 self.logger.warning('Both wheel and vehicle %s data present, but timestamped with different '
                                     'sources. Plotted data may not align in time.')
+                same_time_source = False
+                common_time_source = None
+
+        if same_time_source:
+            figure['layout']['annotations'][0]['text'] += \
+                '<br>Time Source: %s' % self._time_source_to_display_name(common_time_source)
+        else:
+            figure['layout']['annotations'][0]['text'] += \
+                '<br>Time Source: %s (Wheel), %s (Vehicle)' % \
+                                                          (self._time_source_to_display_name(wheel_time_source),
+                                                           self._time_source_to_display_name(vehicle_time_source))
+
+        p1_time_present = (wheel_time_source == SystemTimeSource.P1_TIME or
+                           vehicle_time_source == SystemTimeSource.P1_TIME)
 
         # Plot the data.
         def _plot_trace(time, data, name, color, text):
             if type == 'tick':
                 figure.add_trace(go.Scattergl(x=time, y=data, text=text,
-                                              name=name, legendgroup=name,
-                                              mode='markers', marker={'color': color}),
+                                              name=name, hoverlabel={'namelength': -1},
+                                              legendgroup=name,
+                                              mode='lines', marker={'color': color}),
                                  1, 1)
 
                 dt_sec = np.diff(time)
                 ticks_per_sec = np.diff(data) / dt_sec
                 figure.add_trace(go.Scattergl(x=time[1:], y=ticks_per_sec, text=text,
-                                              name=name, legendgroup=name, showlegend=False,
-                                              mode='markers', marker={'color': color}),
+                                              name=name, hoverlabel={'namelength': -1},
+                                              legendgroup=name, showlegend=False,
+                                              mode='lines', marker={'color': color}),
                                  2, 1)
             else:
                 figure.add_trace(go.Scattergl(x=time, y=data, text=text,
-                                              name=name, legendgroup=name,
-                                              mode='markers', marker={'color': color}),
+                                              name=name, hoverlabel={'namelength': -1},
+                                              legendgroup=name,
+                                              mode='lines', marker={'color': color}),
                                  1, 1)
+
+        # Note: Pose data is not read when plotting ticks (ticks do not plot in meters/second). If the wheel data is not
+        # in P1 time, we cannot compare against the pose data, which is.
+        if nav_engine_speed_mps is not None and p1_time_present:
+            time = pose_data.p1_time - float(self.t0)
+            text = ["P1: %.3f sec" % t for t in pose_data.p1_time]
+            speed_mps = np.linalg.norm(pose_data.velocity_body_mps, axis=0)
+            figure.add_trace(go.Scattergl(x=time, y=speed_mps, text=text,
+                                          name=nav_engine_speed_name, hoverlabel={'namelength': -1},
+                                          mode='lines', line={'color': 'black', 'dash': 'dash'}),
+                             1, 1)
 
         if wheel_data is not None:
             abs_time_sec = self._get_measurement_time(wheel_data, wheel_time_source)
@@ -849,9 +908,9 @@ class Analyzer(object):
                         name='Rear Right Wheel', color='purple')
 
             figure.add_trace(go.Scattergl(x=time, y=wheel_data.gear[idx], text=text,
-                                          name='Gear (Wheel Data)',
+                                          name='Gear (Wheel Data)', hoverlabel={'namelength': -1},
                                           mode='markers', marker={'color': 'red'}),
-                             3, 1)
+                             3 if type == 'tick' else 2, 1)
 
         if vehicle_data is not None:
             abs_time_sec = self._get_measurement_time(vehicle_data, vehicle_time_source)
@@ -869,12 +928,12 @@ class Analyzer(object):
                 attr = 'vehicle_speed_mps'
 
             _plot_trace(time=time, data=getattr(vehicle_data, attr)[idx], text=text,
-                        name='Vehicle Data', color='orange')
+                        name='Speed Measurement', color='orange')
 
             figure.add_trace(go.Scattergl(x=time, y=vehicle_data.gear[idx], text=text,
-                                          name='Gear (Vehicle Data)',
+                                          name='Gear (Vehicle Data)', hoverlabel={'namelength': -1},
                                           mode='markers', marker={'color': 'orange'}),
-                             3, 1)
+                             3 if type == 'tick' else 2, 1)
 
         if type == 'tick':
             self._add_figure(name="wheel_ticks", figure=figure, title="Measurements: Wheel Encoder Ticks")
