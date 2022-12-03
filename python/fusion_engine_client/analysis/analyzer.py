@@ -1616,7 +1616,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
 
         # Since the monitoring task can be preempted, other tasks can send additional data between the counter check
         # and when the profiling message is transmitted. This can result in the recieved data can be greater than the
-        # ammount reported by profiling. However, this should happen rarely, and can be filtered out.
+        # amount reported by profiling. However, this should happen rarely, and can be filtered out.
         tmp_diff = np.diff(dropped_data)
         good_idx = np.insert(tmp_diff >= 0, 0, True)
         dropped_data_diff = np.diff(dropped_data[good_idx])
