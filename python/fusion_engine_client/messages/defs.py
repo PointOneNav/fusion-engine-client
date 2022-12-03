@@ -7,23 +7,11 @@ from zlib import crc32
 
 import numpy as np
 
+from .signal_defs import *
 from .timestamp import *
 from ..utils.enum_utils import IntEnum
 
 _logger = logging.getLogger('point_one.fusion_engine.messages.defs')
-
-
-class SatelliteType(IntEnum):
-    UNKNOWN = 0
-    GPS = 1
-    GLONASS = 2
-    LEO = 3
-    GALILEO = 4
-    BEIDOU = 5
-    QZSS = 6
-    MIXED = 7
-    SBAS = 8
-    IRNSS = 9
 
 
 class SolutionType(IntEnum):

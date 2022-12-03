@@ -160,7 +160,7 @@ class TriStateBoolFormatter(argparse.HelpFormatter):
 
 
 # Modified from argparse.ArgumentDefaultsHelpFormatter to omit when default is None.
-class ArgumentDefaultsHelpFormatter(TriStateBoolFormatter):
+class ArgumentDefaultsHelpFormatter(argparse.HelpFormatter):
     def _get_help_string(self, action):
         help = action.help
         if '%(default)' not in action.help:
@@ -178,24 +178,50 @@ class FlexiFormatterNoDescription(FlexiFormatter):
         return text + '\n\n'
 
 
-class CapitalisedHelpFormatter(FlexiFormatter, ArgumentDefaultsHelpFormatter):
+class CapitalisedHelpFormatter(FlexiFormatter):
     def add_usage(self, usage, actions, groups, prefix=None):
         if prefix is None:
             prefix = 'Usage: '
         return super(CapitalisedHelpFormatter, self).add_usage(usage, actions, groups, prefix)
 
 
-class CapitalisedHelpFormatterNoDescription(FlexiFormatterNoDescription, ArgumentDefaultsHelpFormatter):
+class CapitalisedHelpFormatterNoDescription(FlexiFormatterNoDescription):
     def add_usage(self, usage, actions, groups, prefix=None):
         if prefix is None:
             prefix = 'Usage: '
         return super(CapitalisedHelpFormatterNoDescription, self).add_usage(usage, actions, groups, prefix)
 
 
+def compose_formatter(*formatters) -> argparse.HelpFormatter:
+    """!
+    @brief Generate a new argparse `HelpFormatter` class that inherits from ome or more specified formatter classes
+           in the order they are listed.
+
+    @param formatters A list of names of one or more formatter classes to use. Each class must inherit from
+           `HelpFormatter`.
+
+    @return A new class that inherits from each of the listed classes.
+    """
+    if len(formatters) == 0:
+        return argparse.HelpFormatter
+    else:
+        result = formatters[0]
+        for formatter in formatters[1:]:
+            class Formatter(result, formatter):
+                pass
+            result = Formatter
+    return result
+
+
+DefaultFormatter = compose_formatter(ArgumentDefaultsHelpFormatter,
+                                     TriStateBoolFormatter,
+                                     CapitalisedHelpFormatterNoDescription)
+
+
 class ArgumentParser(argparse.ArgumentParser):
     def __init__(self, *args, **kwargs):
         if 'formatter_class' not in kwargs:
-            kwargs['formatter_class'] = CapitalisedHelpFormatterNoDescription
+            kwargs['formatter_class'] = DefaultFormatter
         if 'add_help' not in kwargs:
             overwrite_help = True
             kwargs['add_help'] = False

@@ -2,7 +2,7 @@
 
 from typing import Tuple, Union, List, Any
 
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 import copy
 import logging
 import os
@@ -27,11 +27,12 @@ from ..messages import *
 from .attitude import get_enu_rotation_matrix
 from .file_index import FileIndex
 from .file_reader import FileReader
-from ..utils import trace
+from fusion_engine_client.utils.trace import HighlightFormatter
 from ..utils.argument_parser import ArgumentParser, TriStateBooleanAction, CSVAction
 from ..utils.log import locate_log, DEFAULT_LOG_BASE_DIR
-_logger = logging.getLogger('point_one.fusion_engine.analysis.analyzer')
 
+
+_logger = logging.getLogger('point_one.fusion_engine.analysis.analyzer')
 
 SolutionTypeInfo = namedtuple('SolutionTypeInfo', ['name', 'style'])
 
@@ -85,10 +86,13 @@ _page_template = '''\
 class Analyzer(object):
     logger = _logger
 
+    LONG_LOG_DURATION_SEC = 2 * 3600.0
+    HIGH_MEASUREMENT_RATE_HZ = 40.0
+
     def __init__(self, file: Union[FileReader, str], output_dir: str = None, ignore_index: bool = False,
                  prefix: str = '',
                  time_range: Tuple[Union[float, Timestamp], Union[float, Timestamp]] = None,
-                 absolute_time: bool = False,
+                 absolute_time: bool = False, truncate_long_logs: bool = True,
                  max_messages: int = None):
         """!
         @brief Create an analyzer for the specified log.
@@ -102,6 +106,8 @@ class Analyzer(object):
                Both the start and end values may be set to `None` to read all data.
         @param absolute_time If `True`, interpret the timestamps in `time_range` as absolute P1 times. Otherwise, treat
                them as relative to the first message in the file.
+        @param truncate_long_logs If `True`, reduce or skip certain plots if the log extremely long (as defined by
+               @ref LONG_LOG_DURATION_SEC).
         @param max_messages If set, read up to the specified maximum number of messages. Applies across all message
                types.
         """
@@ -132,6 +138,27 @@ class Analyzer(object):
         if self.output_dir is not None:
             if not os.path.exists(self.output_dir):
                 os.makedirs(self.output_dir)
+
+        # Determine if this is a long log. In practice, some plots can be extremely slow to generate for long logs
+        # because of plotly limitations when handling a lot of traces (signal status, sky plot), or some may generate
+        # HTML files, but may fail to load in the browser because of plotly call stack errors:
+        #   Uncaught RangeError: Maximum call stack size exceeded
+        #
+        # To get around this, those plots may be reduced in scope, downsampled, or disabled entirely unless the user
+        # says not to.
+        _, processing_duration_sec = self._calculate_duration()
+        self.long_log_detected = processing_duration_sec > self.LONG_LOG_DURATION_SEC
+        self.truncate_data = False
+        if self.long_log_detected:
+            if truncate_long_logs:
+                _logger.warning('Log duration very long (%.1f hours > %.1f hours). Some plots may be reduced or '
+                                'disabled.' %
+                                (processing_duration_sec / 3600.0, self.LONG_LOG_DURATION_SEC / 3600.0))
+                self.truncate_data = True
+            else:
+                _logger.warning('Log duration very long (%.1f hours > %.1f hours). Some plots may be very slow to '
+                                'generate or load.' %
+                                (processing_duration_sec / 3600.0, self.LONG_LOG_DURATION_SEC / 3600.0))
 
     def plot_time_scale(self):
         if self.output_dir is None:
@@ -720,6 +747,135 @@ class Analyzer(object):
 
         self._add_figure(name="map", figure=figure, title="Vehicle Trajectory (Map)")
 
+    def plot_signal_status(self):
+        filename = 'signal_status'
+        figure_title = "GNSS Signal Status"
+
+        # Read the satellite data.
+        result = self.reader.read(message_types=[GNSSSatelliteMessage], **self.params)
+        data = result[GNSSSatelliteMessage.MESSAGE_TYPE]
+        is_legacy_message = True
+
+        if len(data.p1_time) == 0:
+            self.logger.info('No satellite data available. Skipping signal usage plot.')
+            return
+
+        # Setup the figure.
+        colors = {'unused': 'black', 'pr': 'red', 'is_pivot': 'purple',
+                  'float': 'darkgoldenrod', 'not_fixed': 'green', 'fixed_skipped': 'blue', 'fixed': 'orange'}
+
+        # The legacy GNSSSatelliteMessage contains data per satellite, not per signal, and only includes in-use status.
+        # It does not elaborate on how the signal was used.
+        if is_legacy_message:
+            title = '''\
+Satellite Status<br>
+Black=Unused, Red=Used'''
+            entry_type = 'Satellite'
+        else:
+            # In practice, the signal status plot can be _VERY_ slow to generate for really long logs (multiple hours)
+            # because plotly doesn't handle figures with lots of traces very efficiently. The legacy satellite status
+            # plot doesn't seem to suffer nearly as much since A) it has fewer elements (# SVs vs # signals), and B) it
+            # only supports at most 2 traces per element since it doesn't convey usage type.
+            if self.truncate_data:
+                _logger.warning('Skipping signal status plot for very long log. Rerun with --truncate=false to '
+                                'generate this plot.')
+                self._add_figure(name=filename, title=f'{figure_title} (Skipped - Long Log Detected)')
+                return
+
+            title = '''\
+Signal Status<br>
+Black=Unused, Red=Pseudorange, Pink=Pseudorange (Differential), Purple=Pivot (Differential)<br>
+Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type), Orange=Integer (Fixed)'''
+            entry_type = 'Signal'
+
+        figure = make_subplots(
+            rows=5, cols=1,  print_grid=False, shared_xaxes=True,
+            subplot_titles=[title,
+                            None, None, None,
+                            'Satellite Count'],
+            specs=[[{'rowspan': 4}],
+                   [None],
+                   [None],
+                   [None],
+                   [{}]])
+        figure['layout'].update(showlegend=False, modebar_add=['v1hovermode'])
+        figure['layout']['xaxis1'].update(title="Time (sec)")
+        figure['layout']['yaxis1'].update(title=entry_type)
+        figure['layout']['yaxis2'].update(title=f"# {entry_type}s", rangemode='tozero')
+
+        # Plot the signal counts.
+        time = data.p1_time - float(self.t0)
+        text = ["P1: %.3f sec" % (t + float(self.t0)) for t in time]
+        figure.add_trace(go.Scattergl(x=time, y=data.num_svs, text=text,
+                                      name=f'# {entry_type}s', hoverlabel={'namelength': -1},
+                                      mode='lines', line={'color': 'black', 'dash': 'dash'}),
+                         5, 1)
+        figure.add_trace(go.Scattergl(x=time, y=data.num_used_svs, text=text,
+                                      name=f'# Used {entry_type}s', hoverlabel={'namelength': -1},
+                                      mode='lines', line={'color': 'green'}),
+                         5, 1)
+
+        num_count_traces = len(figure.data)
+
+        # Plot each satellite. Plot in reverse order so G01 is at the top of the Y axis.
+        data_by_sv = GNSSSatelliteMessage.group_by_sv(data)
+        svs = list(data_by_sv.keys())
+        indices_by_system = defaultdict(list)
+        for i, sv in enumerate(svs[::-1]):
+            sv = int(sv)
+            system = get_system(sv)
+            name = satellite_to_string(sv, short=True)
+
+            sv_data = data_by_sv[sv]
+            time = sv_data['p1_time'] - float(self.t0)
+            is_used = np.bitwise_and(sv_data['flags'], SatelliteInfo.SATELLITE_USED).astype(bool)
+
+            idx = is_used
+            if np.any(idx):
+                text = ["P1: %.3f sec" % (t + float(self.t0)) for t in time[idx]]
+                figure.add_trace(go.Scattergl(x=time[idx], y=[i] * np.sum(idx), text=text,
+                                              name=name, hoverlabel={'namelength': -1},
+                                              mode='markers',
+                                              marker={'color': colors['pr'], 'symbol': 'circle', 'size': 8}),
+                                 1, 1)
+                indices_by_system[system].append(len(figure.data) - 1)
+
+            idx = ~is_used
+            if np.any(idx):
+                text = ["P1: %.3f sec" % (t + float(self.t0)) for t in time[idx]]
+                figure.add_trace(go.Scattergl(x=time[idx], y=[i] * np.sum(idx), text=text,
+                                              name=name + ' (Unused)', hoverlabel={'namelength': -1},
+                                              mode='markers',
+                                              marker={'color': colors['unused'], 'symbol': 'x', 'size': 8}),
+                                 1, 1)
+                indices_by_system[system].append(len(figure.data) - 1)
+
+        tick_text = [satellite_to_string(s, short=True) for s in svs[::-1]]
+        figure['layout']['yaxis1'].update(tickmode='array', tickvals=np.arange(0, len(svs)),
+                                          ticktext=tick_text, automargin=True)
+
+        # Add signal type selection buttons.
+        num_traces = len(figure.data)
+        buttons = [dict(label='All', method='restyle', args=['visible', [True] * num_traces])]
+        for system, indices in sorted(indices_by_system.items()):
+            if len(indices) == 0:
+                continue
+            visible = np.full((num_traces,), False)
+            visible[:num_count_traces] = True
+            visible[indices] = True
+            buttons.append(dict(label=str(system), method='restyle', args=['visible', list(visible)]))
+        figure['layout']['updatemenus'] = [{
+            'type': 'buttons',
+            'direction': 'left',
+            'buttons': buttons,
+            'x': 0.0,
+            'xanchor': 'left',
+            'y': 1.1,
+            'yanchor': 'top'
+        }]
+
+        self._add_figure(name=filename, figure=figure, title=figure_title)
+
     def plot_wheel_data(self):
         """!
         @brief Plot wheel tick/speed data.
@@ -738,9 +894,36 @@ class Analyzer(object):
         if type == 'tick':
             wheel_measurement_type = WheelTickMeasurement
             vehicle_measurement_type = VehicleTickMeasurement
+            filename = 'wheel_ticks'
+            figure_title = 'Measurements: Wheel Encoder Ticks'
         else:
             wheel_measurement_type = WheelSpeedMeasurement
             vehicle_measurement_type = VehicleSpeedMeasurement
+            filename = 'wheel_speed'
+            figure_title = 'Measurements: Wheel Speed'
+
+        # If the measurement data is very high rate, this plot may be very slow to generate for a multi-hour log.
+        if self.truncate_data:
+            params = copy.deepcopy(self.params)
+            params['max_messages'] = 2
+            dt_sec = None
+            result = self.reader.read(message_types=wheel_measurement_type, remove_nan_times=False, **params)
+            data = result[wheel_measurement_type.MESSAGE_TYPE]
+            if len(data.measurement_time) == 2:
+                dt_sec = data.measurement_time[1] - data.measurement_time[0]
+            else:
+                result = self.reader.read(message_types=vehicle_measurement_type, remove_nan_times=False, **params)
+                data = result[vehicle_measurement_type.MESSAGE_TYPE]
+                if len(data.measurement_time) == 2:
+                    dt_sec = data.measurement_time[1] - data.measurement_time[0]
+
+            if dt_sec is not None:
+                data_rate_hz = round(1.0 / dt_sec)
+                if data_rate_hz > self.HIGH_MEASUREMENT_RATE_HZ:
+                    _logger.warning('High rate data detected (%d Hz). Skipping wheel %s plot for very long log. Rerun '
+                                    'with --truncate=false to generate this plot.' % (data_rate_hz, type))
+                    self._add_figure(name=filename, title=f'{figure_title} (Skipped - Long Log Detected)')
+                    return
 
         result = self.reader.read(message_types=[wheel_measurement_type, vehicle_measurement_type],
                                   remove_nan_times=False, **self.params)
@@ -761,30 +944,6 @@ class Analyzer(object):
             speed_type = 'Wheel/Vehicle'
         else:
             speed_type = 'Wheel' if wheel_data is not None else 'Vehicle'
-
-        # If plotting speed data, try to plot the navigation engine's speed estimate for reference.
-        nav_engine_speed_mps = None
-        if type == 'speed':
-            # If we have pose messages _and_ they contain body velocity, we can use that.
-            #
-            # Note that we are using this to compare vs wheel speeds, so we're only interested in forward speed here.
-            result = self.reader.read(message_types=[PoseMessage], **self.params)
-            pose_data = result[PoseMessage.MESSAGE_TYPE]
-            if len(pose_data.p1_time) != 0 and np.any(~np.isnan(pose_data.velocity_body_mps[0, :])):
-                nav_engine_speed_mps = pose_data.velocity_body_mps[0, :]
-                nav_engine_speed_name = 'Forward Velocity (Nav Engine)'
-            # Otherwise, if we have pose aux messages, read those and use the ENU velocity to estimate speed. Since we
-            # don't know attitude, the best we can do is estimate 3D speed and assume it's primarily in the along-track
-            # direction. This will also be an absolute value, so may not match the wheel data if it is signed and the
-            # vehicle is going backward.
-            else:
-                result = self.reader.read(message_types=[PoseAuxMessage], **self.params)
-                pose_aux_data = result[PoseAuxMessage.MESSAGE_TYPE]
-                if len(pose_aux_data.p1_time) != 0:
-                    self.logger.warning('Body forward velocity not available. Estimating |speed| from ENU velocity. '
-                                        'May not match wheel speeds when going backward.')
-                    nav_engine_speed_mps = np.linalg.norm(pose_aux_data.velocity_enu_mps, axis=0)
-                    nav_engine_speed_name = '|Vehicle 3D Speed| (Nav Engine)'
 
         # Setup the figure.
         if type == 'tick':
@@ -883,16 +1042,42 @@ class Analyzer(object):
                                               mode='lines', marker={'color': color}),
                                  1, 1)
 
+        # If plotting speed data, try to plot the navigation engine's speed estimate for reference.
+        #
         # Note: Pose data is not read when plotting ticks (ticks do not plot in meters/second). If the wheel data is not
         # in P1 time, we cannot compare against the pose data, which is.
-        if nav_engine_speed_mps is not None and p1_time_present:
-            time = pose_data.p1_time - float(self.t0)
-            text = ["P1: %.3f sec" % t for t in pose_data.p1_time]
-            speed_mps = np.linalg.norm(pose_data.velocity_body_mps, axis=0)
-            figure.add_trace(go.Scattergl(x=time, y=speed_mps, text=text,
-                                          name=nav_engine_speed_name, hoverlabel={'namelength': -1},
-                                          mode='lines', line={'color': 'black', 'dash': 'dash'}),
-                             1, 1)
+        if type == 'speed' and p1_time_present:
+            nav_engine_speed_mps = None
+
+            # If we have pose messages _and_ they contain body velocity, we can use that.
+            #
+            # Note that we are using this to compare vs wheel speeds, so we're only interested in forward speed here.
+            result = self.reader.read(message_types=[PoseMessage], **self.params)
+            pose_data = result[PoseMessage.MESSAGE_TYPE]
+            if len(pose_data.p1_time) != 0 and np.any(~np.isnan(pose_data.velocity_body_mps[0, :])):
+                nav_engine_speed_mps = pose_data.velocity_body_mps[0, :]
+                nav_engine_speed_name = 'Forward Velocity (Nav Engine)'
+            # Otherwise, if we have pose aux messages, read those and use the ENU velocity to estimate speed. Since we
+            # don't know attitude, the best we can do is estimate 3D speed and assume it's primarily in the along-track
+            # direction. This will also be an absolute value, so may not match the wheel data if it is signed and the
+            # vehicle is going backward.
+            else:
+                result = self.reader.read(message_types=[PoseAuxMessage], **self.params)
+                pose_aux_data = result[PoseAuxMessage.MESSAGE_TYPE]
+                if len(pose_aux_data.p1_time) != 0:
+                    self.logger.warning('Body forward velocity not available. Estimating |speed| from ENU velocity. '
+                                        'May not match wheel speeds when going backward.')
+                    nav_engine_speed_mps = np.linalg.norm(pose_aux_data.velocity_enu_mps, axis=0)
+                    nav_engine_speed_name = '|Vehicle 3D Speed| (Nav Engine)'
+
+            if nav_engine_speed_mps is not None:
+                time = pose_data.p1_time - float(self.t0)
+                text = ["P1: %.3f sec" % t for t in pose_data.p1_time]
+                speed_mps = np.linalg.norm(pose_data.velocity_body_mps, axis=0)
+                figure.add_trace(go.Scattergl(x=time, y=speed_mps, text=text,
+                                              name=nav_engine_speed_name, hoverlabel={'namelength': -1},
+                                              mode='lines', line={'color': 'black', 'dash': 'dash'}),
+                                 1, 1)
 
         if wheel_data is not None:
             abs_time_sec = self._get_measurement_time(wheel_data, wheel_time_source)
@@ -946,10 +1131,7 @@ class Analyzer(object):
                                           mode='markers', marker={'color': 'orange'}),
                              3 if type == 'tick' else 2, 1)
 
-        if type == 'tick':
-            self._add_figure(name="wheel_ticks", figure=figure, title="Measurements: Wheel Encoder Ticks")
-        else:
-            self._add_figure(name="wheel_speed", figure=figure, title="Measurements: Wheel Speed")
+        self._add_figure(name=filename, figure=figure, title=figure_title)
 
     def plot_imu(self):
         """!
@@ -957,6 +1139,24 @@ class Analyzer(object):
         """
         if self.output_dir is None:
             return
+
+        filename ='imu'
+        figure_title ='Measurements: IMU'
+
+        # If the measurement data is very high rate, this plot may be very slow to generate for a multi-hour log.
+        if self.truncate_data:
+            params = copy.deepcopy(self.params)
+            params['max_messages'] = 2
+            result = self.reader.read(message_types=[IMUMeasurement], **params)
+            data = result[IMUMeasurement.MESSAGE_TYPE]
+            if len(data.p1_time) == 2:
+                dt_sec = data.p1_time[1] - data.p1_time[0]
+                data_rate_hz = round(1.0 / dt_sec)
+                if data_rate_hz > self.HIGH_MEASUREMENT_RATE_HZ:
+                    _logger.warning('High rate IMU data detected (%d Hz). Skipping IMU plot for very long log. Rerun '
+                                    'with --truncate=false to generate this plot.' % data_rate_hz)
+                    self._add_figure(name=filename, title=f'{figure_title} (Skipped - Long Log Detected)')
+                    return
 
         # Read the data.
         result = self.reader.read(message_types=[IMUMeasurement], **self.params)
@@ -997,7 +1197,7 @@ class Analyzer(object):
                                       showlegend=False, mode='lines', line={'color': 'blue'}),
                          2, 1)
 
-        self._add_figure(name="imu", figure=figure, title="Measurements: IMU")
+        self._add_figure(name=filename, figure=figure, title=figure_title)
 
     def plot_system_status_profiling(self):
         """!
@@ -1692,7 +1892,10 @@ class Analyzer(object):
         for title in titles:
             name = title_to_name[title]
             entry = self.plots[name]
-            link = '<br><a href="%s" target="_blank">%s</a>' % (os.path.relpath(entry['path'], index_dir), title)
+            if entry['path'] is None:
+                link = '<br><i>%s</i>' % title
+            else:
+                link = '<br><a href="%s" target="_blank">%s</a>' % (os.path.relpath(entry['path'], index_dir), title)
             links += link
 
         index_html = _page_template % {
@@ -1729,7 +1932,7 @@ class Analyzer(object):
 
         return (CrashType.CRASH_TYPE_NONE, 0)
 
-    def _set_data_summary(self):
+    def _calculate_duration(self, return_index=False):
         # Generate an index file, which we need to calculate the log duration, in case it wasn't created earlier (i.e.,
         # we didn't read anything to plot).
         self.reader.generate_index()
@@ -1759,6 +1962,15 @@ class Analyzer(object):
             processing_duration_sec = time[-1] - time[0]
         else:
             processing_duration_sec = np.nan
+
+        if return_index:
+            return log_duration_sec, processing_duration_sec, reduced_index
+        else:
+            return log_duration_sec, processing_duration_sec
+
+    def _set_data_summary(self):
+        # Calculate the log duration.
+        log_duration_sec, processing_duration_sec, reduced_index = self._calculate_duration(return_index=True)
 
         # Create a table with position solution type statistics.
         result = self.reader.read(message_types=[PoseMessage], **self.params)
@@ -1866,7 +2078,7 @@ class Analyzer(object):
 
         self.plots[name] = {'title': title, 'path': path}
 
-    def _add_figure(self, name, figure, title=None):
+    def _add_figure(self, name, figure=None, title=None):
         if title is None:
             title = name
 
@@ -1875,19 +2087,20 @@ class Analyzer(object):
         elif name == 'index':
             raise ValueError('Plot name cannot be index.')
 
-        path = os.path.join(self.output_dir, self.prefix + name + '.html')
-        self.logger.info('Creating %s...' % path)
+        if figure is not None:
+            path = os.path.join(self.output_dir, self.prefix + name + '.html')
+            self.logger.info('Creating %s...' % path)
 
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        plotly.offline.plot(
-            figure,
-            output_type='file',
-            filename=path,
-            include_plotlyjs=True,
-            auto_open=False,
-            show_link=False)
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            plotly.offline.plot(
+                figure,
+                output_type='file',
+                filename=path,
+                include_plotlyjs=True,
+                auto_open=False,
+                show_link=False)
 
-        self.plots[name] = {'title': title, 'path': path}
+        self.plots[name] = {'title': title, 'path': path if figure is not None else None}
 
     def _open_browser(self, filename):
         try:
@@ -1958,6 +2171,15 @@ Load and display information stored in a FusionEngine binary file.
     plot_group.add_argument(
         '-m', '--measurements', action=TriStateBooleanAction,
         help="Plot incoming measurement data (slow). Ignored if --plot is specified.")
+    plot_group.add_argument(
+        '--truncate', '--trunc', action=TriStateBooleanAction, default=True,
+        help="When processing a very long log (>%.1f hours), reduce or skip some plots that may be very slow to "
+             "generate or display. This includes:"
+             "\n- GNSS signal status display"
+             "\n- High-rate (>%d Hz) measurement data"
+             "\n"
+             "\nTruncation is disabled if --plot is specified." %
+             (Analyzer.LONG_LOG_DURATION_SEC / 3600.0, Analyzer.HIGH_MEASUREMENT_RATE_HZ))
 
     plot_function_names = [n[5:] for n in dir(Analyzer) if n.startswith('plot_')]
     plot_group.add_argument(
@@ -2025,6 +2247,8 @@ Load and display information stored in a FusionEngine binary file.
     else:
         logging.basicConfig(level=logging.INFO, format='%(message)s', stream=sys.stdout)
 
+    HighlightFormatter.install(color=True, standoff_level=logging.WARNING)
+
     # Parse the time range.
     if options.time is not None:
         time_range = options.time.split(':')
@@ -2070,7 +2294,8 @@ Load and display information stored in a FusionEngine binary file.
     # Read pose data from the file.
     analyzer = Analyzer(file=input_path, output_dir=output_dir, ignore_index=options.ignore_index,
                         prefix=options.prefix + '.' if options.prefix is not None else '',
-                        time_range=time_range, absolute_time=options.absolute_time)
+                        time_range=time_range, absolute_time=options.absolute_time,
+                        truncate_long_logs=options.truncate and options.plot is None)
 
     if options.plot is None:
         analyzer.plot_time_scale()
@@ -2080,6 +2305,7 @@ Load and display information stored in a FusionEngine binary file.
         analyzer.plot_relative_position()
         analyzer.plot_map(mapbox_token=options.mapbox_token)
         analyzer.plot_calibration()
+        analyzer.plot_signal_status()
 
         if options.measurements:
             analyzer.plot_imu()

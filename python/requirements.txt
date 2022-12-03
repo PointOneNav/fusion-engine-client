@@ -12,8 +12,9 @@ git+https://github.com/PointOneNav/aenum.git@extend-enum#egg=aenum
 numpy>=1.16.0
 construct>=2.10.0
 
-# Required for analysis tools only.
+# Required for analysis and example applications only. Not used by the `messages` package.
 argparse-formatter>=1.4
+colorama>=0.4.6
 gpstime>=0.6.2
 plotly>=4.0.0
 pymap3d>=2.4.3
