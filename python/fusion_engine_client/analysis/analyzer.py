@@ -1914,6 +1914,24 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                     self._add_figure(name=filename, title=f'{figure_title} (Skipped - Long Log Detected)')
                     return
 
+        filename ='imu'
+        figure_title ='Measurements: IMU'
+
+        # If the measurement data is very high rate, this plot may be very slow to generate for a multi-hour log.
+        if self.truncate_data:
+            params = copy.deepcopy(self.params)
+            params['max_messages'] = 2
+            result = self.reader.read(message_types=[IMUMeasurement], **params)
+            data = result[IMUMeasurement.MESSAGE_TYPE]
+            if len(data.p1_time) == 2:
+                dt_sec = data.p1_time[1] - data.p1_time[0]
+                data_rate_hz = round(1.0 / dt_sec)
+                if data_rate_hz > self.HIGH_MEASUREMENT_RATE_HZ:
+                    _logger.warning('High rate IMU data detected (%d Hz). Skipping IMU plot for very long log. Rerun '
+                                    'with --truncate=false to generate this plot.' % data_rate_hz)
+                    self._add_figure(name=filename, title=f'{figure_title} (Skipped)')
+                    return
+
         # Read the data.
         result = self.reader.read(message_types=[message_cls], **self.params)
         data = result[message_cls.MESSAGE_TYPE]
