@@ -28,7 +28,17 @@ from .file_reader import FileReader
 from ..utils import trace
 from ..utils.argument_parser import ArgumentParser, TriStateBooleanAction, CSVAction
 from ..utils.log import locate_log, DEFAULT_LOG_BASE_DIR
+
+
 _logger = logging.getLogger('point_one.fusion_engine.analysis.analyzer')
+__orig_warning = _logger.warning
+def bold_warning(msg, *args, **kwargs):
+    __orig_warning('\nWARNING: %s\n' % msg, *args, **kwargs)
+_logger.warning = bold_warning
+__orig_error = _logger.error
+def bold_error(msg, *args, **kwargs):
+    __orig_error('\nERROR: %s\n' % msg, *args, **kwargs)
+_logger.error = bold_error
 
 
 SolutionTypeInfo = namedtuple('SolutionTypeInfo', ['name', 'style'])
