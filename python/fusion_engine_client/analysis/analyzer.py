@@ -104,7 +104,8 @@ class Analyzer(object):
                Both the start and end values may be set to `None` to read all data.
         @param absolute_time If `True`, interpret the timestamps in `time_range` as absolute P1 times. Otherwise, treat
                them as relative to the first message in the file.
-        @param truncate_long_logs If `True`, reduce or skip certain plots if the log extremely long.
+        @param truncate_long_logs If `True`, reduce or skip certain plots if the log extremely long (as defined by
+               @ref LONG_LOG_DURATION_SEC).
         @param max_messages If set, read up to the specified maximum number of messages. Applies across all message
                types.
         """
@@ -768,7 +769,7 @@ Black=Unused, Red=Used'''
             if self.truncate_data:
                 _logger.warning('Skipping signal status plot for very long log. Rerun with --truncate=false to '
                                 'generate this plot.')
-                self._add_figure(name=filename, title=f'{figure_title} (Skipped)')
+                self._add_figure(name=filename, title=f'{figure_title} (Skipped - Long Log Detected)')
                 return
 
             title = '''\
@@ -911,7 +912,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                 if data_rate_hz > self.HIGH_MEASUREMENT_RATE_HZ:
                     _logger.warning('High rate data detected (%d Hz). Skipping wheel %s plot for very long log. Rerun '
                                     'with --truncate=false to generate this plot.' % (data_rate_hz, type))
-                    self._add_figure(name=filename, title=f'{figure_title} (Skipped)')
+                    self._add_figure(name=filename, title=f'{figure_title} (Skipped - Long Log Detected)')
                     return
 
         result = self.reader.read(message_types=[wheel_measurement_type, vehicle_measurement_type],
@@ -1144,7 +1145,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                 if data_rate_hz > self.HIGH_MEASUREMENT_RATE_HZ:
                     _logger.warning('High rate IMU data detected (%d Hz). Skipping IMU plot for very long log. Rerun '
                                     'with --truncate=false to generate this plot.' % data_rate_hz)
-                    self._add_figure(name=filename, title=f'{figure_title} (Skipped)')
+                    self._add_figure(name=filename, title=f'{figure_title} (Skipped - Long Log Detected)')
                     return
 
         # Read the data.
