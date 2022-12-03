@@ -1282,9 +1282,10 @@ Load and display information stored in a FusionEngine binary file.
                              "specified and a .p1i file does not exist, do not generate one. Otherwise, a .p1i file "
                              "will be created automatically to improve data read speed in the future.")
     parser.add_argument('--mapbox-token', metavar='TOKEN',
-                        help="A Mapbox token to use when generating a map. If unspecified, the token will be read from "
-                             "the MAPBOX_ACCESS_TOKEN or MapboxAccessToken environment variables if set. If no token "
-                             "is available, a map will not be displayed.")
+                        help="A Mapbox token to use for satellite imagery when generating a map. If unspecified, the "
+                             "token will be read from the MAPBOX_ACCESS_TOKEN or MapboxAccessToken environment "
+                             "variables if set. If no token is available, a default map will be displayed using Open "
+                             "Street Maps data.")
     parser.add_argument('-m', '--measurements', action=TriStateBooleanAction,
                         help="Plot incoming measurement data (slow).")
     parser.add_argument('--no-index', action=TriStateBooleanAction,
