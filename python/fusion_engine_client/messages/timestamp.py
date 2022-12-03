@@ -8,22 +8,47 @@ import numpy as np
 from ..utils.enum_utils import IntEnum
 
 
+SECONDS_PER_WEEK = 7 * 24 * 3600.0
+
+GPS_EPOCH = datetime(1980, 1, 6, tzinfo=timezone.utc)
+GPS_EPOCH_SEC = GPS_EPOCH.timestamp()
+
+# 2000/1/1 00:00:00
+#
+# Used to distinguish between:
+# - P1 timestamps (0 at time of boot) vs GPS timestamps (referenced to 1/6/1980)
+# - System CPU/MCU monotonic timestamps (0 at time of boot) vs POSIX timestamps (referenced to 1/1/1970)
+Y2K_POSIX_SEC = 946684800
+Y2K_GPS_SEC = Y2K_POSIX_SEC - GPS_EPOCH_SEC
+
+
 class Timestamp:
     _INVALID = 0xFFFFFFFF
 
     _FORMAT = '<II'
     _SIZE: int = struct.calcsize(_FORMAT)
 
-    _GPS_EPOCH = datetime(1980, 1, 6, tzinfo=timezone.utc)
-
     def __init__(self, time_sec=math.nan):
         self.seconds = float(time_sec)
 
+    def is_gps(self) -> bool:
+        # Note: We're assuming no Point One device will ever operate before 2000/1/1, even in simulation, and that no
+        # device will be running for 20 years continuously and have a P1 time > (2000 - 1980) seconds.
+        return self.seconds >= Y2K_GPS_SEC
+
     def as_gps(self) -> datetime:
-        if math.isnan(self.seconds):
-            return None
+        if self.is_gps():
+            return GPS_EPOCH + timedelta(seconds=self.seconds)
         else:
-            return Timestamp._GPS_EPOCH + timedelta(seconds=self.seconds)
+            return None
+
+    def get_week_tow(self) -> (int, float):
+        if self.is_gps():
+            week = int(self.seconds / SECONDS_PER_WEEK)
+            tow_sec = self.seconds - week * SECONDS_PER_WEEK
+            return week, tow_sec
+        else:
+            return np.nan, np.nan
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = False) -> (bytes, int):
         if math.isnan(self.seconds):
@@ -81,7 +106,10 @@ class Timestamp:
         return self.seconds
 
     def __str__(self):
-        return 'P1 time %.3f sec' % self.seconds
+        if self.is_gps():
+            return 'GPS: %d:%.3f (%.3f sec)' % (*self.get_week_tow(), self.seconds)
+        else:
+            return 'P1: %.3f sec' % self.seconds
 
 
 def system_time_to_str(system_time, is_seconds=False):
@@ -90,7 +118,9 @@ def system_time_to_str(system_time, is_seconds=False):
     else:
         system_time_sec = system_time * 1e-9
 
-    if system_time_sec >= 946684800: # 2000/1/1 00:00:00
+    # Note: We're assuming no Point One device will ever operate before 2000/1/1, even in simulation, and that no
+    # device will be running for 30 years continuously and have a system time > (2000 - 1970) seconds.
+    if system_time_sec >= Y2K_POSIX_SEC:
         return 'POSIX time %s (%.3f sec)' % \
                (datetime.utcfromtimestamp(system_time_sec).replace(tzinfo=timezone.utc), system_time_sec)
     else:
