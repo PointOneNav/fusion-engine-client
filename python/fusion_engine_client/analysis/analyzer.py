@@ -877,7 +877,7 @@ class Analyzer(object):
                 attr = 'vehicle_speed_mps'
 
             _plot_trace(time=time, data=getattr(vehicle_data, attr)[idx], text=text,
-                        name='Vehicle Speed', hoverlabel={'namelength': -1}, color='orange')
+                        name='Vehicle Speed', color='orange')
 
             figure.add_trace(go.Scattergl(x=time, y=vehicle_data.gear[idx], text=text,
                                           name='Gear (Vehicle Data)', hoverlabel={'namelength': -1},
