@@ -1098,15 +1098,15 @@ class Analyzer(object):
             trace_name = id_to_name.get(i, f'unknown_{i}')
             figure.add_trace(go.Scattergl(x=time, y=data.running_time_ns[i] / data.run_count[i] / 1e6,
                                           name=trace_name, legendgroup=f'{i}',
-                                          mode='lines', line={'color': color}),
+                                          mode='lines', line={'color': color}, hoverlabel={'namelength': -1}),
                              1, 1)
             figure.add_trace(go.Scattergl(x=time, y=data.max_run_time_ns[i] / 1e6,
                                           name=trace_name, legendgroup=f'{i}', showlegend=False,
-                                          mode='lines', line={'color': color}),
+                                          mode='lines', line={'color': color}, hoverlabel={'namelength': -1}),
                              2, 1)
             figure.add_trace(go.Scattergl(x=time, y=data.run_count[i],
                                           name=trace_name, legendgroup=f'{i}', showlegend=False,
-                                          mode='lines', line={'color': color}),
+                                          mode='lines', line={'color': color}, hoverlabel={'namelength': -1}),
                              3, 1)
 
         self._add_figure(name="profile_execution_stats", figure=figure, title="Profiling: Execution Stats")
@@ -1615,7 +1615,7 @@ class Analyzer(object):
             idx = action == ProfileExecutionEntry.START
             if np.any(idx):
                 figure.add_trace(go.Scattergl(x=time_sec[idx], y=[id] * np.sum(idx),
-                                              name=name + ' (start)', legendgroup=id,
+                                              name=name + ' (start)', legendgroup=id, hoverlabel={'namelength': -1},
                                               mode='markers',
                                               marker={'color': color, 'size': 12, 'symbol': 'triangle-right'}),
                                  1, 1)
@@ -1623,7 +1623,7 @@ class Analyzer(object):
             idx = action == ProfileExecutionEntry.STOP
             if np.any(idx):
                 figure.add_trace(go.Scattergl(x=time_sec[idx], y=[id] * np.sum(idx),
-                                              name=name + ' (stop)', legendgroup=id,
+                                              name=name + ' (stop)', legendgroup=id, hoverlabel={'namelength': -1},
                                               mode='markers',
                                               marker={'color': color, 'size': 12, 'symbol': 'triangle-left-open'}),
                                  1, 1)
