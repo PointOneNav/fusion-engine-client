@@ -25,21 +25,12 @@ if __name__ == "__main__" and (__package__ is None or __package__ == ''):
 from ..messages import *
 from .attitude import get_enu_rotation_matrix
 from .file_reader import FileReader
-from ..utils import trace
+from fusion_engine_client.utils.trace import HighlightFormatter
 from ..utils.argument_parser import ArgumentParser, TriStateBooleanAction, CSVAction
 from ..utils.log import locate_log, DEFAULT_LOG_BASE_DIR
 
 
 _logger = logging.getLogger('point_one.fusion_engine.analysis.analyzer')
-__orig_warning = _logger.warning
-def bold_warning(msg, *args, **kwargs):
-    __orig_warning('\nWARNING: %s\n' % msg, *args, **kwargs)
-_logger.warning = bold_warning
-__orig_error = _logger.error
-def bold_error(msg, *args, **kwargs):
-    __orig_error('\nERROR: %s\n' % msg, *args, **kwargs)
-_logger.error = bold_error
-
 
 SolutionTypeInfo = namedtuple('SolutionTypeInfo', ['name', 'style'])
 
@@ -1577,6 +1568,8 @@ Load and display information stored in a FusionEngine binary file.
             logging.getLogger('point_one.fusion_engine').setLevel(logging.TRACE)
     else:
         logging.basicConfig(level=logging.INFO, format='%(message)s', stream=sys.stdout)
+
+    HighlightFormatter.install(color=True, standoff_level=logging.WARNING)
 
     # Parse the time range.
     if options.time is not None:
