@@ -10,12 +10,157 @@
 from __future__ import absolute_import
 
 import argparse
+import copy
 
 from argparse_formatter import FlexiFormatter
 
 
+class TriStateBooleanAction(argparse.Action):
+    POSSIBLE_VALUES = ('true', 'false', 't', 'f', 'yes', 'no', 'y', 'n', 'on', 'off', '1', '0')
+
+    """!
+    @brief Return a boolean argument taking a variety of values, that may be `None` if not specified.
+
+    This action is similar to `argparse.BooleanOptionalAction` (Python 3.9+), except that it adds two additional
+    features:
+    1. The user may specify an optional value string in addition to `--foo` and `--no-foo`. Supported values include:
+       `true, false, t, f, yes, no, y, n, on, off, 1, 0`
+    2. By default, the argument defaults to `None` if not specified, rather than `True` or `False. This allows the
+       application to explicitly detect if the argument was not specified and take an alternative action. `default` may
+       be set to `True` or `False` to disable this behavior.
+
+    Example usage:
+    ```
+                 # None (unless `default` is set)
+    --foo        # True
+    --foo=true   # True
+    --foo=false  # False
+    --no-foo     # False
+    ```
+    """
+    def __init__(self,
+                 option_strings,
+                 dest,
+                 default=None,
+                 type=None,
+                 choices=None,
+                 required=False,
+                 help=None,
+                 metavar=None):
+        for option_string in option_strings:
+            if not option_string.startswith('-'):
+                raise ValueError('Positional arguments not supported for tri-state bool actions.')
+
+        # Unfortunately Python argparse does not have a way to selectively capture an optional argument value only if it
+        # meets some criteria. This means that we cannot support argument syntax with spaces:
+        #   --foo true
+        # If we tried to by setting nargs='?', if the user did not specify a truthiness value and just did --foo, any
+        # positional arguments after --foo would be captured incorrectly. Python would not know that we don't want to
+        # capture it. For example, if the user specified:
+        #  --foo abc def
+        # abc would be captured by --foo, and would not show up as a positional argument.
+        #
+        # To get around this, we only support = syntax, and we add all --foo=value variants as option names
+        # (option_strings) rather than values. For ['--foo', '--bar'], we generate:
+        #   --foo
+        #   --no-foo
+        #   --foo=true
+        #   --foo=false
+        #   ...
+        #   --bar
+        #   ...
+        #
+        # By default, when you run --help, the resulting output will be a bit of a mess:
+        #   Optional arguments:
+        #     --foo, --no-foo, --foo=true, --foo=false, --foo=t, ...
+        #
+        # We provide the TriStateBoolFormatter class below to instead print:
+        #   Optional arguments:
+        #     --foo[=<true, false, t, f, yes, no, y, n, on, off, 1, 0>], --no-foo
+        _option_strings = copy.copy(option_strings)
+        long_option_strings = [o for o in option_strings if o.startswith('--')]
+        _option_strings.extend([f'--no-{o[2:]}' for o in long_option_strings])
+        for v in self.POSSIBLE_VALUES:
+            _option_strings.extend([f'{o}={v}' for o in long_option_strings])
+
+        if help is not None and default is not None and default != argparse.SUPPRESS:
+            help += " (default: %(default)s)"
+
+        super().__init__(
+            option_strings=_option_strings,
+            dest=dest,
+            nargs=0,
+            const=True,
+            default=default if default is not None else False,
+            type=None,
+            choices=None,
+            required=required,
+            help=help,
+            metavar=None)
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        if option_string is None:
+            # Caught in constructor. Should not happen.
+            raise ValueError('Positional arguments not supported for tri-state bool actions.')
+
+        parts = option_string.split('=')
+        name = parts[0]
+        if len(parts) > 1:
+            # Taken from distutils.util.strtobool().
+            value = parts[1].lower()
+            if value in ('y', 'yes', 't', 'true', 'on', '1'):
+                result = True
+            elif value in ('n', 'no', 'f', 'false', 'off', '0'):
+                result = False
+            else:
+                raise ValueError("Invalid boolean value %r." % value)
+        elif name.startswith('--no-'):
+            # There is a special case here. If the user named the argument `--no-foo`, they will have the options:
+            #   1. --no-foo
+            #   2. --no-no-foo
+            # We strip out the leading `--no-` to check if (1) is present in the options strings. If so, this is case
+            # (2) and they want us to return false. If not, this is case (1) and we should return true.
+            #
+            # For the more typical `--bar`, we'll only ever see `--no-` prefix for the false case, and this condition
+            # will correctly identify case (2):
+            #   1. --foo
+            #   2. --no-bar
+            if name.replace('--no-', '--') in self.option_strings:
+                result = False
+            else:
+                result = True
+        else:
+            result = True
+
+        setattr(namespace, self.dest, result)
+
+
+class CSVAction(argparse.Action):
+    def __call__(self, parser, namespace, values, option_string=None):
+        setattr(namespace, self.dest, [v.strip() for v in values.split(',')])
+
+
+class TriStateBoolFormatter(argparse.HelpFormatter):
+    def _format_action_invocation(self, action):
+        if isinstance(action, TriStateBooleanAction):
+            def _format(option):
+                # Note: Special case handling for --no-no-foo. See explanation in TriStateBooleanAction.
+                if ((option.startswith('--no-') and option.replace('--no-', '--') in action.option_strings) or
+                    not option.startswith('--')):
+                    return option
+                elif '=' in option:
+                    return None
+                else:
+                    return f"{option}[=<{', '.join(TriStateBooleanAction.POSSIBLE_VALUES)}>]"
+
+            strings = [_format(o) for o in action.option_strings]
+            return ', '.join([o for o in strings if o is not None])
+        else:
+            return super(TriStateBoolFormatter, self)._format_action_invocation(action)
+
+
 # Modified from argparse.ArgumentDefaultsHelpFormatter to omit when default is None.
-class ArgumentDefaultsHelpFormatter(argparse.HelpFormatter):
+class ArgumentDefaultsHelpFormatter(TriStateBoolFormatter):
     def _get_help_string(self, action):
         help = action.help
         if '%(default)' not in action.help:
@@ -59,8 +204,8 @@ class ArgumentParser(argparse.ArgumentParser):
 
         super(ArgumentParser, self).__init__(*args, **kwargs)
 
-        self._positionals.title = 'Positional arguments'
-        self._optionals.title = 'Optional arguments'
+        self._positionals.title = 'Positional Arguments'
+        self._optionals.title = 'Optional Arguments'
 
         if overwrite_help:
             self.add_argument('-h', '--help', action='help', default=argparse.SUPPRESS,
