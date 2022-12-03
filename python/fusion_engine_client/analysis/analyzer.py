@@ -1274,44 +1274,53 @@ def main():
     parser = ArgumentParser(description="""\
 Load and display information stored in a FusionEngine binary file.
 """)
-    parser.add_argument('--absolute-time', '--abs', action=TriStateBooleanAction,
-                        help="Interpret the timestamps in --time as absolute P1 times. Otherwise, treat them as "
-                             "relative to the first message in the file.")
-    parser.add_argument('--ignore-index', action=TriStateBooleanAction,
-                        help="If set, do not load the .p1i index file corresponding with the .p1log data file. If "
-                             "specified and a .p1i file does not exist, do not generate one. Otherwise, a .p1i file "
-                             "will be created automatically to improve data read speed in the future.")
-    parser.add_argument('--mapbox-token', metavar='TOKEN',
-                        help="A Mapbox token to use for satellite imagery when generating a map. If unspecified, the "
-                             "token will be read from the MAPBOX_ACCESS_TOKEN or MapboxAccessToken environment "
-                             "variables if set. If no token is available, a default map will be displayed using Open "
-                             "Street Maps data.")
-    parser.add_argument('-m', '--measurements', action=TriStateBooleanAction,
-                        help="Plot incoming measurement data (slow).")
-    parser.add_argument('--no-index', action=TriStateBooleanAction,
-                        help="Do not automatically open the plots in a web browser.")
-    parser.add_argument('-o', '--output', type=str, metavar='DIR',
-                        help="The directory where output will be stored. Defaults to the current directory, or to "
-                             "'<log_dir>/plot_fusion_engine/' if reading from a log.")
-    parser.add_argument('-p', '--prefix', metavar='PREFIX',
-                        help="If specified, prepend each filename with PREFIX.")
-    parser.add_argument('-t', '--time', type=str, metavar='[START][:END]',
-                        help="The desired time range to be analyzed. Both start and end may be omitted to read from "
-                             "beginning or to the end of the file. By default, timestamps are treated as relative to "
-                             "the first message in the file. See --absolute-time.")
-    parser.add_argument('-v', '--verbose', action='count', default=0,
-                        help="Print verbose/trace debugging messages.")
 
-    parser.add_argument('--log-base-dir', metavar='DIR', default=DEFAULT_LOG_BASE_DIR,
-                        help="The base directory containing FusionEngine logs to be searched if a log pattern is "
-                             "specified.")
-    parser.add_argument('log',
-                        help="The log to be read. May be one of:\n"
-                             "- The path to a .p1log file or a file containing FusionEngine messages and other "
-                             "content\n"
-                             "- The path to a FusionEngine log directory\n"
-                             "- A pattern matching a FusionEngine log directory under the specified base directory "
-                             "(see find_fusion_engine_log() and --log-base-dir)")
+    parser.add_argument(
+        '--absolute-time', '--abs', action=TriStateBooleanAction,
+        help="Interpret the timestamps in --time as absolute P1 times. Otherwise, treat them as relative to the first "
+             "message in the file.")
+    parser.add_argument(
+        '--ignore-index', action=TriStateBooleanAction,
+        help="If set, do not load the .p1i index file corresponding with the .p1log data file. If specified and a "
+             ".p1i file does not exist, do not generate one. Otherwise, a .p1i file will be created automatically to "
+             "improve data read speed in the future.")
+    parser.add_argument(
+        '--mapbox-token', metavar='TOKEN',
+        help="A Mapbox token to use for satellite imagery when generating a map. If unspecified, the token will be "
+             "read from the MAPBOX_ACCESS_TOKEN or MapboxAccessToken environment variables if set. If no token is "
+             "available, a default map will be displayed using Open Street Maps data.")
+    parser.add_argument(
+        '-m', '--measurements', action=TriStateBooleanAction,
+        help="Plot incoming measurement data (slow).")
+    parser.add_argument(
+        '--no-index', action=TriStateBooleanAction,
+        help="Do not automatically open the plots in a web browser.")
+    parser.add_argument(
+        '-o', '--output', type=str, metavar='DIR',
+        help="The directory where output will be stored. Defaults to the current directory, or to "
+              "'<log_dir>/plot_fusion_engine/' if reading from a log.")
+    parser.add_argument(
+        '-p', '--prefix', metavar='PREFIX',
+        help="If specified, prepend each filename with PREFIX.")
+    parser.add_argument(
+        '-t', '--time', type=str, metavar='[START][:END]',
+        help="The desired time range to be analyzed. Both start and end may be omitted to read from beginning or to "
+             "the end of the file. By default, timestamps are treated as relative to the first message in the file. "
+             "See --absolute-time.")
+    parser.add_argument(
+        '-v', '--verbose', action='count', default=0,
+        help="Print verbose/trace debugging messages.")
+
+    parser.add_argument(
+        '--log-base-dir', metavar='DIR', default=DEFAULT_LOG_BASE_DIR,
+        help="The base directory containing FusionEngine logs to be searched if a log pattern is specified.")
+    parser.add_argument(
+        'log',
+        help="The log to be read. May be one of:\n"
+             "- The path to a .p1log file or a file containing FusionEngine messages and other content\n"
+             "- The path to a FusionEngine log directory\n"
+             "- A pattern matching a FusionEngine log directory under the specified base directory "
+             "(see find_fusion_engine_log() and --log-base-dir)")
     options = parser.parse_args()
 
     # Configure logging.
