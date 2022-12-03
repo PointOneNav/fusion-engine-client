@@ -3,6 +3,7 @@
 from typing import Tuple, Union, List, Any
 
 from collections import namedtuple, defaultdict
+import copy
 import logging
 import os
 import sys
@@ -82,10 +83,13 @@ _page_template = '''\
 class Analyzer(object):
     logger = _logger
 
+    LONG_LOG_DURATION_SEC = 2 * 3600.0
+    HIGH_MEASUREMENT_RATE_HZ = 40.0
+
     def __init__(self, file: Union[FileReader, str], output_dir: str = None, ignore_index: bool = False,
                  prefix: str = '',
                  time_range: Tuple[Union[float, Timestamp], Union[float, Timestamp]] = None,
-                 absolute_time: bool = False,
+                 absolute_time: bool = False, truncate_long_logs: bool = True,
                  max_messages: int = None):
         """!
         @brief Create an analyzer for the specified log.
@@ -99,6 +103,7 @@ class Analyzer(object):
                Both the start and end values may be set to `None` to read all data.
         @param absolute_time If `True`, interpret the timestamps in `time_range` as absolute P1 times. Otherwise, treat
                them as relative to the first message in the file.
+        @param truncate_long_logs If `True`, reduce or skip certain plots if the log extremely long.
         @param max_messages If set, read up to the specified maximum number of messages. Applies across all message
                types.
         """
@@ -129,6 +134,27 @@ class Analyzer(object):
         if self.output_dir is not None:
             if not os.path.exists(self.output_dir):
                 os.makedirs(self.output_dir)
+
+        # Determine if this is a long log. In practice, some plots can be extremely slow to generate for long logs
+        # because of plotly limitations when handling a lot of traces (signal status, sky plot), or some may generate
+        # HTML files, but may fail to load in the browser because of plotly call stack errors:
+        #   Uncaught RangeError: Maximum call stack size exceeded
+        #
+        # To get around this, those plots may be reduced in scope, downsampled, or disabled entirely unless the user
+        # says not to.
+        _, processing_duration_sec = self._calculate_duration()
+        self.long_log_detected = processing_duration_sec > self.LONG_LOG_DURATION_SEC
+        self.truncate_data = False
+        if self.long_log_detected:
+            if truncate_long_logs:
+                _logger.warning('Log duration very long (%.1f hours > %.1f hours). Some plots may be reduced or '
+                                'disabled.' %
+                                (processing_duration_sec / 3600.0, self.LONG_LOG_DURATION_SEC / 3600.0))
+                self.truncate_data = True
+            else:
+                _logger.warning('Log duration very long (%.1f hours > %.1f hours). Some plots may be very slow to '
+                                'generate or load.' %
+                                (processing_duration_sec / 3600.0, self.LONG_LOG_DURATION_SEC / 3600.0))
 
     def plot_time_scale(self):
         if self.output_dir is None:
@@ -710,6 +736,9 @@ class Analyzer(object):
         self._add_figure(name="map", figure=figure, title="Vehicle Trajectory (Map)")
 
     def plot_signal_status(self):
+        filename = 'signal_status'
+        figure_title = "GNSS Signal Status"
+
         # Read the satellite data.
         result = self.reader.read(message_types=[GNSSSatelliteMessage], **self.params)
         data = result[GNSSSatelliteMessage.MESSAGE_TYPE]
@@ -731,6 +760,16 @@ Satellite Status<br>
 Black=Unused, Red=Used'''
             entry_type = 'Satellite'
         else:
+            # In practice, the signal status plot can be _VERY_ slow to generate for really long logs (multiple hours)
+            # because plotly doesn't handle figures with lots of traces very efficiently. The legacy satellite status
+            # plot doesn't seem to suffer nearly as much since A) it has fewer elements (# SVs vs # signals), and B) it
+            # only supports at most 2 traces per element since it doesn't convey usage type.
+            if self.truncate_data:
+                _logger.warning('Skipping signal status plot for very long log. Rerun with --truncate=false to '
+                                'generate this plot.')
+                self._add_figure(name=filename, title=f'{figure_title} (Skipped)')
+                return
+
             title = '''\
 Signal Status<br>
 Black=Unused, Red=Pseudorange, Pink=Pseudorange (Differential), Purple=Pivot (Differential)<br>
@@ -823,7 +862,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             'yanchor': 'top'
         }]
 
-        self._add_figure(name="signal_status", figure=figure, title="Signal Status")
+        self._add_figure(name=filename, figure=figure, title=figure_title)
 
     def plot_wheel_data(self):
         """!
@@ -843,9 +882,36 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         if type == 'tick':
             wheel_measurement_type = WheelTickMeasurement
             vehicle_measurement_type = VehicleTickMeasurement
+            filename = 'wheel_ticks'
+            figure_title = 'Measurements: Wheel Encoder Ticks'
         else:
             wheel_measurement_type = WheelSpeedMeasurement
             vehicle_measurement_type = VehicleSpeedMeasurement
+            filename = 'wheel_speed'
+            figure_title = 'Measurements: Wheel Speed'
+
+        # If the measurement data is very high rate, this plot may be very slow to generate for a multi-hour log.
+        if self.truncate_data:
+            params = copy.deepcopy(self.params)
+            params['max_messages'] = 2
+            dt_sec = None
+            result = self.reader.read(message_types=wheel_measurement_type, remove_nan_times=False, **params)
+            data = result[wheel_measurement_type.MESSAGE_TYPE]
+            if len(data.measurement_time) == 2:
+                dt_sec = data.measurement_time[1] - data.measurement_time[0]
+            else:
+                result = self.reader.read(message_types=vehicle_measurement_type, remove_nan_times=False, **params)
+                data = result[vehicle_measurement_type.MESSAGE_TYPE]
+                if len(data.measurement_time) == 2:
+                    dt_sec = data.measurement_time[1] - data.measurement_time[0]
+
+            if dt_sec is not None:
+                data_rate_hz = round(1.0 / dt_sec)
+                if data_rate_hz > self.HIGH_MEASUREMENT_RATE_HZ:
+                    _logger.warning('High rate data detected (%d Hz). Skipping wheel %s plot for very long log. Rerun '
+                                    'with --truncate=false to generate this plot.' % (data_rate_hz, type))
+                    self._add_figure(name=filename, title=f'{figure_title} (Skipped)')
+                    return
 
         result = self.reader.read(message_types=[wheel_measurement_type, vehicle_measurement_type],
                                   remove_nan_times=False, **self.params)
@@ -1053,10 +1119,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                                           mode='markers', marker={'color': 'orange'}),
                              3 if type == 'tick' else 2, 1)
 
-        if type == 'tick':
-            self._add_figure(name="wheel_ticks", figure=figure, title="Measurements: Wheel Encoder Ticks")
-        else:
-            self._add_figure(name="wheel_speed", figure=figure, title="Measurements: Wheel Speed")
+        self._add_figure(name=filename, figure=figure, title=figure_title)
 
     def plot_imu(self):
         """!
@@ -1064,6 +1127,24 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         """
         if self.output_dir is None:
             return
+
+        filename ='imu'
+        figure_title ='Measurements: IMU'
+
+        # If the measurement data is very high rate, this plot may be very slow to generate for a multi-hour log.
+        if self.truncate_data:
+            params = copy.deepcopy(self.params)
+            params['max_messages'] = 2
+            result = self.reader.read(message_types=[IMUMeasurement], **params)
+            data = result[IMUMeasurement.MESSAGE_TYPE]
+            if len(data.p1_time) == 2:
+                dt_sec = data.p1_time[1] - data.p1_time[0]
+                data_rate_hz = round(1.0 / dt_sec)
+                if data_rate_hz > self.HIGH_MEASUREMENT_RATE_HZ:
+                    _logger.warning('High rate IMU data detected (%d Hz). Skipping IMU plot for very long log. Rerun '
+                                    'with --truncate=false to generate this plot.' % data_rate_hz)
+                    self._add_figure(name=filename, title=f'{figure_title} (Skipped)')
+                    return
 
         # Read the data.
         result = self.reader.read(message_types=[IMUMeasurement], **self.params)
@@ -1104,7 +1185,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                                       showlegend=False, mode='lines', line={'color': 'blue'}),
                          2, 1)
 
-        self._add_figure(name="imu", figure=figure, title="Measurements: IMU")
+        self._add_figure(name=filename, figure=figure, title=figure_title)
 
     def plot_events(self):
         """!
@@ -1168,7 +1249,10 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         for title in titles:
             name = title_to_name[title]
             entry = self.plots[name]
-            link = '<br><a href="%s" target="_blank">%s</a>' % (os.path.relpath(entry['path'], index_dir), title)
+            if entry['path'] is None:
+                link = '<br><i>%s</i>' % title
+            else:
+                link = '<br><a href="%s" target="_blank">%s</a>' % (os.path.relpath(entry['path'], index_dir), title)
             links += link
 
         index_html = _page_template % {
@@ -1184,7 +1268,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         if auto_open:
             self._open_browser(index_path)
 
-    def _set_data_summary(self):
+    def _calculate_duration(self, return_index=False):
         # Generate an index file, which we need to calculate the log duration, in case it wasn't created earlier (i.e.,
         # we didn't read anything to plot).
         self.reader.generate_index()
@@ -1214,6 +1298,15 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             processing_duration_sec = time[-1] - time[0]
         else:
             processing_duration_sec = np.nan
+
+        if return_index:
+            return log_duration_sec, processing_duration_sec, reduced_index
+        else:
+            return log_duration_sec, processing_duration_sec
+
+    def _set_data_summary(self):
+        # Calculate the log duration.
+        log_duration_sec, processing_duration_sec, reduced_index = self._calculate_duration(return_index=True)
 
         # Create a table with position solution type statistics.
         result = self.reader.read(message_types=[PoseMessage], **self.params)
@@ -1313,7 +1406,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
 
         self.plots[name] = {'title': title, 'path': path}
 
-    def _add_figure(self, name, figure, title=None):
+    def _add_figure(self, name, figure=None, title=None):
         if title is None:
             title = name
 
@@ -1322,19 +1415,20 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         elif name == 'index':
             raise ValueError('Plot name cannot be index.')
 
-        path = os.path.join(self.output_dir, self.prefix + name + '.html')
-        self.logger.info('Creating %s...' % path)
+        if figure is not None:
+            path = os.path.join(self.output_dir, self.prefix + name + '.html')
+            self.logger.info('Creating %s...' % path)
 
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        plotly.offline.plot(
-            figure,
-            output_type='file',
-            filename=path,
-            include_plotlyjs=True,
-            auto_open=False,
-            show_link=False)
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            plotly.offline.plot(
+                figure,
+                output_type='file',
+                filename=path,
+                include_plotlyjs=True,
+                auto_open=False,
+                show_link=False)
 
-        self.plots[name] = {'title': title, 'path': path}
+        self.plots[name] = {'title': title, 'path': path if figure is not None else None}
 
     def _open_browser(self, filename):
         try:
@@ -1404,6 +1498,15 @@ Load and display information stored in a FusionEngine binary file.
     plot_group.add_argument(
         '-s', '--signals', action=TriStateBooleanAction,
         help="Plot signal status details (slower).")
+    plot_group.add_argument(
+        '--truncate', '--trunc', action=TriStateBooleanAction, default=True,
+        help="When processing a very long log (>%.1f hours), reduce or skip some plots that may be very slow to "
+             "generate or display. This includes:"
+             "\n- GNSS signal status display"
+             "\n- High-rate (>%d Hz) measurement data"
+             "\n"
+             "\nTruncation is disabled if --plot is specified." %
+             (Analyzer.LONG_LOG_DURATION_SEC / 3600.0, Analyzer.HIGH_MEASUREMENT_RATE_HZ))
 
     plot_function_names = [n[5:] for n in dir(Analyzer) if n.startswith('plot_')]
     plot_group.add_argument(
@@ -1512,7 +1615,8 @@ Load and display information stored in a FusionEngine binary file.
     # Read pose data from the file.
     analyzer = Analyzer(file=input_path, output_dir=output_dir, ignore_index=options.ignore_index,
                         prefix=options.prefix + '.' if options.prefix is not None else '',
-                        time_range=time_range, absolute_time=options.absolute_time)
+                        time_range=time_range, absolute_time=options.absolute_time,
+                        truncate_long_logs=options.truncate and options.plot is None)
 
     if options.plot is None:
         analyzer.plot_time_scale()
