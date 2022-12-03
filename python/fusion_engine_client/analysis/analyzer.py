@@ -747,12 +747,15 @@ class Analyzer(object):
             return
         elif wheel_data is not None and vehicle_data is not None:
             self.logger.warning('Both wheel and vehicle %s data detected.' % type)
+            speed_type = 'Wheel/Vehicle'
+        else:
+            speed_type = 'Wheel' if wheel_data is not None else 'Vehicle'
 
         # Setup the figure.
         if type == 'tick':
-            titles = ['Tick Count', 'Tick Rate', 'Gear/Direction']
+            titles = ['%s Tick Count' % speed_type, '%s Tick Rate' % speed_type, 'Gear/Direction']
         else:
-            titles = ['Speed', 'Gear/Direction']
+            titles = ['%s Speed' % speed_type, 'Gear/Direction']
 
         figure = make_subplots(rows=len(titles), cols=1, print_grid=False, shared_xaxes=True, subplot_titles=titles)
 
@@ -785,10 +788,6 @@ class Analyzer(object):
             else:
                 wheel_time_source = SystemTimeSource.P1_TIME
 
-            figure['layout']['annotations'][0]['text'] += '<br>Wheel %s Time Source: %s' % \
-                                                          (type.title(),
-                                                           self._time_source_to_display_name(wheel_time_source))
-
         if vehicle_data is not None:
             if np.all(np.isnan(vehicle_data.p1_time)):
                 if np.any(np.diff(vehicle_data.measurement_time_source) != 0):
@@ -800,14 +799,31 @@ class Analyzer(object):
             else:
                 vehicle_time_source = SystemTimeSource.P1_TIME
 
-            figure['layout']['annotations'][0]['text'] += '<br>Vehicle %s Time Source: %s' % \
-                                                          (type.title(),
-                                                           self._time_source_to_display_name(vehicle_time_source))
-
-        if wheel_time_source is not None and vehicle_time_source is not None:
-            if wheel_time_source != vehicle_time_source:
+        same_time_source = True
+        if wheel_time_source is None:
+            common_time_source = vehicle_time_source
+        elif vehicle_time_source is None:
+            common_time_source = wheel_time_source
+        else:
+            if wheel_time_source == vehicle_time_source:
+                common_time_source = wheel_time_source
+            else:
                 self.logger.warning('Both wheel and vehicle %s data present, but timestamped with different '
                                     'sources. Plotted data may not align in time.')
+                same_time_source = False
+                common_time_source = None
+
+        if same_time_source:
+            figure['layout']['annotations'][0]['text'] += \
+                '<br>Time Source: %s' % self._time_source_to_display_name(common_time_source)
+        else:
+            figure['layout']['annotations'][0]['text'] += \
+                '<br>Time Source: %s (Wheel), %s (Vehicle)' % \
+                                                          (self._time_source_to_display_name(wheel_time_source),
+                                                           self._time_source_to_display_name(vehicle_time_source))
+
+        p1_time_present = (wheel_time_source == SystemTimeSource.P1_TIME or
+                           vehicle_time_source == SystemTimeSource.P1_TIME)
 
         # Plot the data.
         def _plot_trace(time, data, name, color, text):
