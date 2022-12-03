@@ -988,7 +988,7 @@ class Analyzer(object):
 
         self._add_figure(name="imu", figure=figure, title="Measurements: IMU")
 
-    def generate_event_table(self):
+    def plot_events(self):
         """!
         @brief Generate a table of event notifications.
         """
@@ -1398,7 +1398,7 @@ Load and display information stored in a FusionEngine binary file.
         analyzer.plot_imu()
         analyzer.plot_wheel_data()
 
-    analyzer.generate_event_table()
+    analyzer.plot_events()
 
     analyzer.generate_index(auto_open=not options.no_index)
 
