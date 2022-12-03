@@ -25,7 +25,7 @@ from ..messages import *
 from .attitude import get_enu_rotation_matrix
 from .file_reader import FileReader
 from ..utils import trace
-from ..utils.argument_parser import ArgumentParser
+from ..utils.argument_parser import ArgumentParser, TriStateBooleanAction
 from ..utils.log import locate_log, DEFAULT_LOG_BASE_DIR
 _logger = logging.getLogger('point_one.fusion_engine.analysis.analyzer')
 
@@ -1274,10 +1274,10 @@ def main():
     parser = ArgumentParser(description="""\
 Load and display information stored in a FusionEngine binary file.
 """)
-    parser.add_argument('--absolute-time', '--abs', action='store_true',
+    parser.add_argument('--absolute-time', '--abs', action=TriStateBooleanAction,
                         help="Interpret the timestamps in --time as absolute P1 times. Otherwise, treat them as "
                              "relative to the first message in the file.")
-    parser.add_argument('--ignore-index', action='store_true',
+    parser.add_argument('--ignore-index', action=TriStateBooleanAction,
                         help="If set, do not load the .p1i index file corresponding with the .p1log data file. If "
                              "specified and a .p1i file does not exist, do not generate one. Otherwise, a .p1i file "
                              "will be created automatically to improve data read speed in the future.")
@@ -1285,9 +1285,9 @@ Load and display information stored in a FusionEngine binary file.
                         help="A Mapbox token to use when generating a map. If unspecified, the token will be read from "
                              "the MAPBOX_ACCESS_TOKEN or MapboxAccessToken environment variables if set. If no token "
                              "is available, a map will not be displayed.")
-    parser.add_argument('-m', '--measurements', action='store_true',
+    parser.add_argument('-m', '--measurements', action=TriStateBooleanAction,
                         help="Plot incoming measurement data (slow).")
-    parser.add_argument('--no-index', action='store_true',
+    parser.add_argument('--no-index', action=TriStateBooleanAction,
                         help="Do not automatically open the plots in a web browser.")
     parser.add_argument('-o', '--output', type=str, metavar='DIR',
                         help="The directory where output will be stored. Defaults to the current directory, or to "
