@@ -135,6 +135,11 @@ class TriStateBooleanAction(argparse.Action):
         setattr(namespace, self.dest, result)
 
 
+class CSVAction(argparse.Action):
+    def __call__(self, parser, namespace, values, option_string=None):
+        setattr(namespace, self.dest, [v.strip() for v in values.split(',')])
+
+
 class TriStateBoolFormatter(argparse.HelpFormatter):
     def _format_action_invocation(self, action):
         if isinstance(action, TriStateBooleanAction):
