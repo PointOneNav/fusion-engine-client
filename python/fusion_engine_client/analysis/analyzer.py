@@ -371,14 +371,16 @@ class Analyzer(object):
         figure['layout']['yaxis5'].update(title="Meters")
 
         # Plot calibration stage and completion percentages.
-        figure.add_trace(go.Scattergl(x=time, y=cal_data.gyro_bias_percent_complete, name='Gyro Bias Completion',
-                                      text=text, mode='lines', line={'color': 'red'}),
+        figure.add_trace(go.Scattergl(x=time, y=cal_data.gyro_bias_percent_complete, text=text,
+                                      name='Gyro Bias Completion', hoverlabel={'namelength': -1},
+                                      mode='lines', line={'color': 'red'}),
                          1, 1)
-        figure.add_trace(go.Scattergl(x=time, y=cal_data.accel_bias_percent_complete, name='Accel Bias Completion',
-                                      text=text, mode='lines', line={'color': 'green'}),
+        figure.add_trace(go.Scattergl(x=time, y=cal_data.accel_bias_percent_complete, text=text,
+                                      name='Accel Bias Completion', hoverlabel={'namelength': -1},
+                                      mode='lines', line={'color': 'green'}),
                          1, 1)
-        figure.add_trace(go.Scattergl(x=time, y=cal_data.mounting_angle_percent_complete,
-                                      name='Mounting Angle Completion', text=text,
+        figure.add_trace(go.Scattergl(x=time, y=cal_data.mounting_angle_percent_complete, text=text,
+                                      name='Mounting Angle Completion', hoverlabel={'namelength': -1},
                                       mode='lines', line={'color': 'blue'}),
                          1, 1)
 
@@ -398,35 +400,35 @@ class Analyzer(object):
                          2, 1)
 
         figure.add_trace(go.Scattergl(x=time, y=cal_data.ypr_std_dev_deg[0, :], name='Yaw Std Dev', legendgroup='y',
-                                      text=text, mode='lines', line={'color': 'red'}),
+                                      text=text, mode='lines', line={'color': 'red'}, hoverlabel={'namelength': -1}),
                          3, 1)
         figure.add_trace(go.Scattergl(x=time, y=cal_data.ypr_std_dev_deg[1, :], name='Pitch Std Dev', legendgroup='p',
-                                      text=text, mode='lines', line={'color': 'green'}),
+                                      text=text, mode='lines', line={'color': 'green'}, hoverlabel={'namelength': -1}),
                          3, 1)
         figure.add_trace(go.Scattergl(x=time, y=cal_data.ypr_std_dev_deg[2, :], name='Roll Std Dev', legendgroup='r',
-                                      text=text, mode='lines', line={'color': 'blue'}),
+                                      text=text, mode='lines', line={'color': 'blue'}, hoverlabel={'namelength': -1}),
                          3, 1)
 
         thresh_time = time[np.array((0, -1))]
         figure.add_trace(go.Scattergl(x=thresh_time, y=[cal_data.mounting_angle_max_std_dev_deg[0]] * 2,
-                                      name='Max Yaw Std Dev', legendgroup='y',
+                                      name='Max Yaw Std Dev', legendgroup='y', hoverlabel={'namelength': -1},
                                       mode='lines', line={'color': 'red', 'dash': 'dash'}),
                          3, 1)
         figure.add_trace(go.Scattergl(x=thresh_time, y=[cal_data.mounting_angle_max_std_dev_deg[1]] * 2,
-                                      name='Max Pitch Std Dev', legendgroup='p',
+                                      name='Max Pitch Std Dev', legendgroup='p', hoverlabel={'namelength': -1},
                                       text=text, mode='lines', line={'color': 'green', 'dash': 'dash'}),
                          3, 1)
         figure.add_trace(go.Scattergl(x=thresh_time, y=[cal_data.mounting_angle_max_std_dev_deg[2]] * 2,
-                                      name='Max Roll Std Dev', legendgroup='r',
+                                      name='Max Roll Std Dev', legendgroup='r', hoverlabel={'namelength': -1},
                                       text=text, mode='lines', line={'color': 'blue', 'dash': 'dash'}),
                          3, 1)
 
         # Plot travel distance.
         figure.add_trace(go.Scattergl(x=time, y=cal_data.travel_distance_m, name='Travel Distance', text=text,
-                                      mode='lines', line={'color': 'blue'}),
+                                      mode='lines', line={'color': 'blue'}, hoverlabel={'namelength': -1}),
                          4, 1)
         figure.add_trace(go.Scattergl(x=thresh_time, y=[cal_data.min_travel_distance_m] * 2,
-                                      name='Min Travel Distance', text=text,
+                                      name='Min Travel Distance', text=text, hoverlabel={'namelength': -1},
                                       mode='lines', line={'color': 'black', 'dash': 'dash'}),
                          4, 1)
 
@@ -519,7 +521,8 @@ class Analyzer(object):
 
         # Plot the data.
         def _plot_data(name, idx, marker_style=None):
-            style = {'mode': 'markers', 'marker': {'size': 8}, 'showlegend': True, 'legendgroup': name}
+            style = {'mode': 'markers', 'marker': {'size': 8}, 'showlegend': True, 'legendgroup': name,
+                     'hoverlabel': {'namelength': -1}}
             if marker_style is not None:
                 style['marker'].update(marker_style)
 
@@ -808,19 +811,22 @@ class Analyzer(object):
         def _plot_trace(time, data, name, color, text):
             if type == 'tick':
                 figure.add_trace(go.Scattergl(x=time, y=data, text=text,
-                                              name=name, legendgroup=name,
+                                              name=name, hoverlabel={'namelength': -1},
+                                              legendgroup=name,
                                               mode='markers', marker={'color': color}),
                                  1, 1)
 
                 dt_sec = np.diff(time)
                 ticks_per_sec = np.diff(data) / dt_sec
                 figure.add_trace(go.Scattergl(x=time[1:], y=ticks_per_sec, text=text,
-                                              name=name, legendgroup=name, showlegend=False,
+                                              name=name, hoverlabel={'namelength': -1},
+                                              legendgroup=name, showlegend=False,
                                               mode='markers', marker={'color': color}),
                                  2, 1)
             else:
                 figure.add_trace(go.Scattergl(x=time, y=data, text=text,
-                                              name=name, legendgroup=name,
+                                              name=name, hoverlabel={'namelength': -1},
+                                              legendgroup=name,
                                               mode='markers', marker={'color': color}),
                                  1, 1)
 
@@ -849,7 +855,7 @@ class Analyzer(object):
                         name='Rear Right Wheel', color='purple')
 
             figure.add_trace(go.Scattergl(x=time, y=wheel_data.gear[idx], text=text,
-                                          name='Gear (Wheel Data)',
+                                          name='Gear (Wheel Data)', hoverlabel={'namelength': -1},
                                           mode='markers', marker={'color': 'red'}),
                              3, 1)
 
@@ -869,10 +875,10 @@ class Analyzer(object):
                 attr = 'vehicle_speed_mps'
 
             _plot_trace(time=time, data=getattr(vehicle_data, attr)[idx], text=text,
-                        name='Vehicle Data', color='orange')
+                        name='Vehicle Speed', hoverlabel={'namelength': -1}, color='orange')
 
             figure.add_trace(go.Scattergl(x=time, y=vehicle_data.gear[idx], text=text,
-                                          name='Gear (Vehicle Data)',
+                                          name='Gear (Vehicle Data)', hoverlabel={'namelength': -1},
                                           mode='markers', marker={'color': 'orange'}),
                              3, 1)
 
