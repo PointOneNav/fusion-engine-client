@@ -25,7 +25,7 @@ from ..messages import *
 from .attitude import get_enu_rotation_matrix
 from .file_reader import FileReader
 from ..utils import trace
-from ..utils.argument_parser import ArgumentParser
+from ..utils.argument_parser import ArgumentParser, TriStateBooleanAction, CSVAction
 from ..utils.log import locate_log, DEFAULT_LOG_BASE_DIR
 _logger = logging.getLogger('point_one.fusion_engine.analysis.analyzer')
 
@@ -594,7 +594,7 @@ class Analyzer(object):
 
         self._plot_displacement('Pose Displacement', time, solution_type, displacement_enu_m, std_enu_m)
 
-    def plot_relative_position_to_base_station(self):
+    def plot_relative_position(self):
         """!
         @brief Generate a topocentric (top-down) plot of relative position vs base station, as well as plot of relative
                position over time.
@@ -988,7 +988,7 @@ class Analyzer(object):
 
         self._add_figure(name="imu", figure=figure, title="Measurements: IMU")
 
-    def generate_event_table(self):
+    def plot_events(self):
         """!
         @brief Generate a table of event notifications.
         """
@@ -1274,43 +1274,66 @@ def main():
     parser = ArgumentParser(description="""\
 Load and display information stored in a FusionEngine binary file.
 """)
-    parser.add_argument('--absolute-time', '--abs', action='store_true',
-                        help="Interpret the timestamps in --time as absolute P1 times. Otherwise, treat them as "
-                             "relative to the first message in the file.")
-    parser.add_argument('--ignore-index', action='store_true',
-                        help="If set, do not load the .p1i index file corresponding with the .p1log data file. If "
-                             "specified and a .p1i file does not exist, do not generate one. Otherwise, a .p1i file "
-                             "will be created automatically to improve data read speed in the future.")
-    parser.add_argument('--mapbox-token', metavar='TOKEN',
-                        help="A Mapbox token to use when generating a map. If unspecified, the token will be read from "
-                             "the MAPBOX_ACCESS_TOKEN or MapboxAccessToken environment variables if set. If no token "
-                             "is available, a map will not be displayed.")
-    parser.add_argument('-m', '--measurements', action='store_true',
-                        help="Plot incoming measurement data (slow).")
-    parser.add_argument('--no-index', action='store_true',
-                        help="Do not automatically open the plots in a web browser.")
-    parser.add_argument('-o', '--output', type=str, metavar='DIR',
-                        help="The directory where output will be stored. Defaults to the current directory, or to "
-                             "'<log_dir>/plot_fusion_engine/' if reading from a log.")
-    parser.add_argument('-p', '--prefix', metavar='PREFIX',
-                        help="If specified, prepend each filename with PREFIX.")
-    parser.add_argument('-t', '--time', type=str, metavar='[START][:END]',
-                        help="The desired time range to be analyzed. Both start and end may be omitted to read from "
-                             "beginning or to the end of the file. By default, timestamps are treated as relative to "
-                             "the first message in the file. See --absolute-time.")
-    parser.add_argument('-v', '--verbose', action='count', default=0,
-                        help="Print verbose/trace debugging messages.")
 
-    parser.add_argument('--log-base-dir', metavar='DIR', default=DEFAULT_LOG_BASE_DIR,
-                        help="The base directory containing FusionEngine logs to be searched if a log pattern is "
-                             "specified.")
-    parser.add_argument('log',
-                        help="The log to be read. May be one of:\n"
-                             "- The path to a .p1log file or a file containing FusionEngine messages and other "
-                             "content\n"
-                             "- The path to a FusionEngine log directory\n"
-                             "- A pattern matching a FusionEngine log directory under the specified base directory "
-                             "(see find_fusion_engine_log() and --log-base-dir)")
+    plot_group = parser.add_argument_group('Plot Control')
+    plot_group.add_argument('--mapbox-token', metavar='TOKEN',
+        help="A Mapbox token to use for satellite imagery when generating a map. If unspecified, the token will be "
+             "read from the MAPBOX_ACCESS_TOKEN or MapboxAccessToken environment variables if set. If no token is "
+             "available, a default map will be displayed using Open Street Maps data.")
+    plot_group.add_argument(
+        '-m', '--measurements', action=TriStateBooleanAction,
+        help="Plot incoming measurement data (slow). Ignored if --plot is specified.")
+
+    plot_function_names = [n[5:] for n in dir(Analyzer) if n.startswith('plot_')]
+    plot_group.add_argument(
+        '--plot', action=CSVAction,
+        help="A comma-separated list of names of plots to be displayed. If omitted, plots will be generated based on "
+             "data present in the log. Options include:%s" %
+             ''.join(['\n- %s' % n for n in plot_function_names]))
+
+    time_group = parser.add_argument_group('Time Control')
+    time_group.add_argument(
+        '--absolute-time', '--abs', action=TriStateBooleanAction,
+        help="Interpret the timestamps in --time as absolute P1 times. Otherwise, treat them as relative to the first "
+             "message in the file.")
+    time_group.add_argument(
+        '-t', '--time', type=str, metavar='[START][:END]',
+        help="The desired time range to be analyzed. Both start and end may be omitted to read from beginning or to "
+             "the end of the file. By default, timestamps are treated as relative to the first message in the file. "
+             "See --absolute-time.")
+
+    log_group = parser.add_argument_group('Input File/Log Control')
+    log_group.add_argument(
+        '--ignore-index', action=TriStateBooleanAction,
+        help="If set, do not load the .p1i index file corresponding with the .p1log data file. If specified and a "
+             ".p1i file does not exist, do not generate one. Otherwise, a .p1i file will be created automatically to "
+             "improve data read speed in the future.")
+    log_group.add_argument(
+        '--log-base-dir', metavar='DIR', default=DEFAULT_LOG_BASE_DIR,
+        help="The base directory containing FusionEngine logs to be searched if a log pattern is specified.")
+    log_group.add_argument(
+        'log',
+        help="The log to be read. May be one of:\n"
+             "- The path to a .p1log file or a file containing FusionEngine messages and other content\n"
+             "- The path to a FusionEngine log directory\n"
+             "- A pattern matching a FusionEngine log directory under the specified base directory "
+             "(see find_fusion_engine_log() and --log-base-dir)")
+
+    output_group = parser.add_argument_group('Output Control')
+    output_group.add_argument(
+        '--no-index', action=TriStateBooleanAction,
+        help="Do not automatically open the plots in a web browser.")
+    output_group.add_argument(
+        '-o', '--output', type=str, metavar='DIR',
+        help="The directory where output will be stored. Defaults to the current directory, or to "
+              "'<log_dir>/plot_fusion_engine/' if reading from a log.")
+    output_group.add_argument(
+        '-p', '--prefix', metavar='PREFIX',
+        help="If specified, prepend each filename with PREFIX.")
+    output_group.add_argument(
+        '-v', '--verbose', action='count', default=0,
+        help="Print verbose/trace debugging messages.")
+
     options = parser.parse_args()
 
     # Configure logging.
@@ -1370,19 +1393,35 @@ Load and display information stored in a FusionEngine binary file.
                         prefix=options.prefix + '.' if options.prefix is not None else '',
                         time_range=time_range, absolute_time=options.absolute_time)
 
-    analyzer.plot_time_scale()
-    analyzer.plot_solution_type()
-    analyzer.plot_pose()
-    analyzer.plot_pose_displacement()
-    analyzer.plot_relative_position_to_base_station()
-    analyzer.plot_map(mapbox_token=options.mapbox_token)
-    analyzer.plot_calibration()
+    if options.plot is None:
+        analyzer.plot_time_scale()
+        analyzer.plot_solution_type()
+        analyzer.plot_pose()
+        analyzer.plot_pose_displacement()
+        analyzer.plot_relative_position()
+        analyzer.plot_map(mapbox_token=options.mapbox_token)
+        analyzer.plot_calibration()
 
-    if options.measurements:
-        analyzer.plot_imu()
-        analyzer.plot_wheel_data()
+        if options.measurements:
+            analyzer.plot_imu()
+            analyzer.plot_wheel_data()
 
-    analyzer.generate_event_table()
+        analyzer.plot_events()
+    else:
+        if len(options.plot) == 0:
+            _logger.error('No plot names specified.')
+            sys.exit(1)
+        else:
+            for name in options.plot:
+                if not hasattr(analyzer, f'plot_{name}'):
+                    _logger.error("Unrecognized plot name '%s'." % name)
+                    sys.exit(1)
+
+        for name in options.plot:
+            if name == 'map':
+                analyzer.plot_map(mapbox_token=options.mapbox_token)
+            else:
+                getattr(analyzer, f'plot_{name}')()
 
     analyzer.generate_index(auto_open=not options.no_index)
 
