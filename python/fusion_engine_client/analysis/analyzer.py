@@ -25,7 +25,7 @@ from ..messages import *
 from .attitude import get_enu_rotation_matrix
 from .file_reader import FileReader
 from ..utils import trace
-from ..utils.argument_parser import ArgumentParser, TriStateBooleanAction
+from ..utils.argument_parser import ArgumentParser, TriStateBooleanAction, CSVAction
 from ..utils.log import locate_log, DEFAULT_LOG_BASE_DIR
 _logger = logging.getLogger('point_one.fusion_engine.analysis.analyzer')
 
@@ -1282,7 +1282,14 @@ Load and display information stored in a FusionEngine binary file.
              "available, a default map will be displayed using Open Street Maps data.")
     plot_group.add_argument(
         '-m', '--measurements', action=TriStateBooleanAction,
-        help="Plot incoming measurement data (slow).")
+        help="Plot incoming measurement data (slow). Ignored if --plot is specified.")
+
+    plot_function_names = [n[5:] for n in dir(Analyzer) if n.startswith('plot_')]
+    plot_group.add_argument(
+        '--plot', action=CSVAction,
+        help="A comma-separated list of names of plots to be displayed. If omitted, plots will be generated based on "
+             "data present in the log. Options include:%s" %
+             ''.join(['\n- %s' % n for n in plot_function_names]))
 
     time_group = parser.add_argument_group('Time Control')
     time_group.add_argument(
@@ -1386,19 +1393,35 @@ Load and display information stored in a FusionEngine binary file.
                         prefix=options.prefix + '.' if options.prefix is not None else '',
                         time_range=time_range, absolute_time=options.absolute_time)
 
-    analyzer.plot_time_scale()
-    analyzer.plot_solution_type()
-    analyzer.plot_pose()
-    analyzer.plot_pose_displacement()
-    analyzer.plot_relative_position()
-    analyzer.plot_map(mapbox_token=options.mapbox_token)
-    analyzer.plot_calibration()
+    if options.plot is None:
+        analyzer.plot_time_scale()
+        analyzer.plot_solution_type()
+        analyzer.plot_pose()
+        analyzer.plot_pose_displacement()
+        analyzer.plot_relative_position()
+        analyzer.plot_map(mapbox_token=options.mapbox_token)
+        analyzer.plot_calibration()
 
-    if options.measurements:
-        analyzer.plot_imu()
-        analyzer.plot_wheel_data()
+        if options.measurements:
+            analyzer.plot_imu()
+            analyzer.plot_wheel_data()
 
-    analyzer.plot_events()
+        analyzer.plot_events()
+    else:
+        if len(options.plot) == 0:
+            _logger.error('No plot names specified.')
+            sys.exit(1)
+        else:
+            for name in options.plot:
+                if not hasattr(analyzer, f'plot_{name}'):
+                    _logger.error("Unrecognized plot name '%s'." % name)
+                    sys.exit(1)
+
+        for name in options.plot:
+            if name == 'map':
+                analyzer.plot_map(mapbox_token=options.mapbox_token)
+            else:
+                getattr(analyzer, f'plot_{name}')()
 
     analyzer.generate_index(auto_open=not options.no_index)
 
