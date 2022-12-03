@@ -857,7 +857,7 @@ class Analyzer(object):
             figure.add_trace(go.Scattergl(x=time, y=wheel_data.gear[idx], text=text,
                                           name='Gear (Wheel Data)', hoverlabel={'namelength': -1},
                                           mode='markers', marker={'color': 'red'}),
-                             3, 1)
+                             3 if type == 'tick' else 2, 1)
 
         if vehicle_data is not None:
             abs_time_sec = self._get_measurement_time(vehicle_data, vehicle_time_source)
@@ -880,7 +880,7 @@ class Analyzer(object):
             figure.add_trace(go.Scattergl(x=time, y=vehicle_data.gear[idx], text=text,
                                           name='Gear (Vehicle Data)', hoverlabel={'namelength': -1},
                                           mode='markers', marker={'color': 'orange'}),
-                             3, 1)
+                             3 if type == 'tick' else 2, 1)
 
         if type == 'tick':
             self._add_figure(name="wheel_ticks", figure=figure, title="Measurements: Wheel Encoder Ticks")
