@@ -745,6 +745,8 @@ class Analyzer(object):
         if wheel_data is None and vehicle_data is None:
             self.logger.info('No wheel %s data available. Skipping plot.' % type)
             return
+        elif wheel_data is not None and vehicle_data is not None:
+            self.logger.warning('Both wheel and vehicle %s data detected.' % type)
 
         # Setup the figure.
         if type == 'tick':
