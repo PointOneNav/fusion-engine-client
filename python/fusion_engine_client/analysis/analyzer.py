@@ -713,6 +713,7 @@ class Analyzer(object):
         # Read the satellite data.
         result = self.reader.read(message_types=[GNSSSatelliteMessage], **self.params)
         data = result[GNSSSatelliteMessage.MESSAGE_TYPE]
+        is_legacy_message = True
 
         if len(data.p1_time) == 0:
             self.logger.info('No satellite data available. Skipping signal usage plot.')
@@ -722,11 +723,23 @@ class Analyzer(object):
         colors = {'unused': 'black', 'pr': 'red', 'is_pivot': 'purple',
                   'float': 'darkgoldenrod', 'not_fixed': 'green', 'fixed_skipped': 'blue', 'fixed': 'orange'}
 
+        # The legacy GNSSSatelliteMessage contains data per satellite, not per signal, and only includes in-use status.
+        # It does not elaborate on how the signal was used.
+        if is_legacy_message:
+            title = '''\
+Satellite Status<br>
+Black=Unused, Red=Used'''
+            entry_type = 'Satellite'
+        else:
+            title = '''\
+Signal Status<br>
+Black=Unused, Red=Pseudorange, Pink=Pseudorange (Differential), Purple=Pivot (Differential)<br>
+Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type), Orange=Integer (Fixed)'''
+            entry_type = 'Signal'
+
         figure = make_subplots(
             rows=5, cols=1,  print_grid=False, shared_xaxes=True,
-            subplot_titles=['Signal Status<br>'
-                            'Black=Unused, Red=Pseudorange, Pink=Pseudorange (Differential), Purple=Pivot (Differential)<br>'
-                            'Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type), Orange=Integer (Fixed)',
+            subplot_titles=[title,
                             None, None, None,
                             'Satellite Count'],
             specs=[[{'rowspan': 4}],
@@ -736,18 +749,18 @@ class Analyzer(object):
                    [{}]])
         figure['layout'].update(showlegend=False, modebar_add=['v1hovermode'])
         figure['layout']['xaxis1'].update(title="Time (sec)")
-        figure['layout']['yaxis1'].update(title="Satellite")
-        figure['layout']['yaxis2'].update(title="# Satellites", rangemode='tozero')
+        figure['layout']['yaxis1'].update(title=entry_type)
+        figure['layout']['yaxis2'].update(title=f"# {entry_type}s", rangemode='tozero')
 
         # Plot the signal counts.
         time = data.p1_time - float(self.t0)
         text = ["P1: %.3f sec" % (t + float(self.t0)) for t in time]
         figure.add_trace(go.Scattergl(x=time, y=data.num_svs, text=text,
-                                      name='# SVs', hoverlabel={'namelength': -1},
+                                      name=f'# {entry_type}s', hoverlabel={'namelength': -1},
                                       mode='lines', line={'color': 'black', 'dash': 'dash'}),
                          5, 1)
         figure.add_trace(go.Scattergl(x=time, y=data.num_used_svs, text=text,
-                                      name='# Used SVs', hoverlabel={'namelength': -1},
+                                      name=f'# Used {entry_type}s', hoverlabel={'namelength': -1},
                                       mode='lines', line={'color': 'green'}),
                          5, 1)
 
