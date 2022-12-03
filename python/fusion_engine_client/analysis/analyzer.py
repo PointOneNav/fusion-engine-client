@@ -751,6 +751,30 @@ class Analyzer(object):
         else:
             speed_type = 'Wheel' if wheel_data is not None else 'Vehicle'
 
+        # If plotting speed data, try to plot the navigation engine's speed estimate for reference.
+        nav_engine_speed_mps = None
+        if type == 'speed':
+            # If we have pose messages _and_ they contain body velocity, we can use that.
+            #
+            # Note that we are using this to compare vs wheel speeds, so we're only interested in forward speed here.
+            result = self.reader.read(message_types=[PoseMessage], **self.params)
+            pose_data = result[PoseMessage.MESSAGE_TYPE]
+            if len(pose_data.p1_time) != 0 and np.any(~np.isnan(pose_data.velocity_body_mps[0, :])):
+                nav_engine_speed_mps = pose_data.velocity_body_mps[0, :]
+                nav_engine_speed_name = 'Forward Velocity (Nav Engine)'
+            # Otherwise, if we have pose aux messages, read those and use the ENU velocity to estimate speed. Since we
+            # don't know attitude, the best we can do is estimate 3D speed and assume it's primarily in the along-track
+            # direction. This will also be an absolute value, so may not match the wheel data if it is signed and the
+            # vehicle is going backward.
+            else:
+                result = self.reader.read(message_types=[PoseAuxMessage], **self.params)
+                pose_aux_data = result[PoseAuxMessage.MESSAGE_TYPE]
+                if len(pose_aux_data.p1_time) != 0:
+                    self.logger.warning('Body forward velocity not available. Estimating |speed| from ENU velocity. '
+                                        'May not match wheel speeds when going backward.')
+                    nav_engine_speed_mps = np.linalg.norm(pose_aux_data.velocity_enu_mps, axis=0)
+                    nav_engine_speed_name = '|Vehicle 3D Speed| (Nav Engine)'
+
         # Setup the figure.
         if type == 'tick':
             titles = ['%s Tick Count' % speed_type, '%s Tick Rate' % speed_type, 'Gear/Direction']
@@ -831,7 +855,7 @@ class Analyzer(object):
                 figure.add_trace(go.Scattergl(x=time, y=data, text=text,
                                               name=name, hoverlabel={'namelength': -1},
                                               legendgroup=name,
-                                              mode='markers', marker={'color': color}),
+                                              mode='lines', marker={'color': color}),
                                  1, 1)
 
                 dt_sec = np.diff(time)
@@ -839,14 +863,25 @@ class Analyzer(object):
                 figure.add_trace(go.Scattergl(x=time[1:], y=ticks_per_sec, text=text,
                                               name=name, hoverlabel={'namelength': -1},
                                               legendgroup=name, showlegend=False,
-                                              mode='markers', marker={'color': color}),
+                                              mode='lines', marker={'color': color}),
                                  2, 1)
             else:
                 figure.add_trace(go.Scattergl(x=time, y=data, text=text,
                                               name=name, hoverlabel={'namelength': -1},
                                               legendgroup=name,
-                                              mode='markers', marker={'color': color}),
+                                              mode='lines', marker={'color': color}),
                                  1, 1)
+
+        # Note: Pose data is not read when plotting ticks (ticks do not plot in meters/second). If the wheel data is not
+        # in P1 time, we cannot compare against the pose data, which is.
+        if nav_engine_speed_mps is not None and p1_time_present:
+            time = pose_data.p1_time - float(self.t0)
+            text = ["P1: %.3f sec" % t for t in pose_data.p1_time]
+            speed_mps = np.linalg.norm(pose_data.velocity_body_mps, axis=0)
+            figure.add_trace(go.Scattergl(x=time, y=speed_mps, text=text,
+                                          name=nav_engine_speed_name, hoverlabel={'namelength': -1},
+                                          mode='lines', line={'color': 'black', 'dash': 'dash'}),
+                             1, 1)
 
         if wheel_data is not None:
             abs_time_sec = self._get_measurement_time(wheel_data, wheel_time_source)
@@ -893,7 +928,7 @@ class Analyzer(object):
                 attr = 'vehicle_speed_mps'
 
             _plot_trace(time=time, data=getattr(vehicle_data, attr)[idx], text=text,
-                        name='Vehicle Speed', color='orange')
+                        name='Speed Measurement', color='orange')
 
             figure.add_trace(go.Scattergl(x=time, y=vehicle_data.gear[idx], text=text,
                                           name='Gear (Vehicle Data)', hoverlabel={'namelength': -1},
