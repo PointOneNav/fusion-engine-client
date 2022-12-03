@@ -594,7 +594,7 @@ class Analyzer(object):
 
         self._plot_displacement('Pose Displacement', time, solution_type, displacement_enu_m, std_enu_m)
 
-    def plot_relative_position_to_base_station(self):
+    def plot_relative_position(self):
         """!
         @brief Generate a topocentric (top-down) plot of relative position vs base station, as well as plot of relative
                position over time.
@@ -1390,7 +1390,7 @@ Load and display information stored in a FusionEngine binary file.
     analyzer.plot_solution_type()
     analyzer.plot_pose()
     analyzer.plot_pose_displacement()
-    analyzer.plot_relative_position_to_base_station()
+    analyzer.plot_relative_position()
     analyzer.plot_map(mapbox_token=options.mapbox_token)
     analyzer.plot_calibration()
 
