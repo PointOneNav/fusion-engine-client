@@ -199,8 +199,8 @@ class ArgumentParser(argparse.ArgumentParser):
 
         super(ArgumentParser, self).__init__(*args, **kwargs)
 
-        self._positionals.title = 'Positional arguments'
-        self._optionals.title = 'Optional arguments'
+        self._positionals.title = 'Positional Arguments'
+        self._optionals.title = 'Optional Arguments'
 
         if overwrite_help:
             self.add_argument('-h', '--help', action='help', default=argparse.SUPPRESS,
