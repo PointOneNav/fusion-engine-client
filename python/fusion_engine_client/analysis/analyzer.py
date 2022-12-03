@@ -1496,9 +1496,6 @@ Load and display information stored in a FusionEngine binary file.
         '-m', '--measurements', action=TriStateBooleanAction,
         help="Plot incoming measurement data (slow). Ignored if --plot is specified.")
     plot_group.add_argument(
-        '-s', '--signals', action=TriStateBooleanAction,
-        help="Plot signal status details (slower).")
-    plot_group.add_argument(
         '--truncate', '--trunc', action=TriStateBooleanAction, default=True,
         help="When processing a very long log (>%.1f hours), reduce or skip some plots that may be very slow to "
              "generate or display. This includes:"
@@ -1626,9 +1623,7 @@ Load and display information stored in a FusionEngine binary file.
         analyzer.plot_relative_position()
         analyzer.plot_map(mapbox_token=options.mapbox_token)
         analyzer.plot_calibration()
-
-        if options.signals:
-            analyzer.plot_signal_status()
+        analyzer.plot_signal_status()
 
         if options.measurements:
             analyzer.plot_imu()
