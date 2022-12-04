@@ -68,8 +68,6 @@ class HighlightFormatter(logging.Formatter):
 
 # Define Logger TRACE level and associated trace() function if it doesn't exist.
 if not hasattr(logging, 'TRACE'):
-    print('INSTALLING TRACE')
-
     logging.TRACE = logging.DEBUG - 1
     if sys.version_info.major == 2:
         logging._levelNames['TRACE'] = logging.TRACE
