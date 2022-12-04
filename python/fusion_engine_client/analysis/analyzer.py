@@ -1047,6 +1047,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         # Note: Pose data is not read when plotting ticks (ticks do not plot in meters/second). If the wheel data is not
         # in P1 time, we cannot compare against the pose data, which is.
         if type == 'speed' and p1_time_present:
+            nav_engine_p1_time = None
             nav_engine_speed_mps = None
 
             # If we have pose messages _and_ they contain body velocity, we can use that.
@@ -1055,6 +1056,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             result = self.reader.read(message_types=[PoseMessage], **self.params)
             pose_data = result[PoseMessage.MESSAGE_TYPE]
             if len(pose_data.p1_time) != 0 and np.any(~np.isnan(pose_data.velocity_body_mps[0, :])):
+                nav_engine_p1_time = pose_data.p1_time
                 nav_engine_speed_mps = pose_data.velocity_body_mps[0, :]
                 nav_engine_speed_name = 'Forward Velocity (Nav Engine)'
             # Otherwise, if we have pose aux messages, read those and use the ENU velocity to estimate speed. Since we
@@ -1067,14 +1069,14 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                 if len(pose_aux_data.p1_time) != 0:
                     self.logger.warning('Body forward velocity not available. Estimating |speed| from ENU velocity. '
                                         'May not match wheel speeds when going backward.')
+                    nav_engine_p1_time = pose_aux_data.p1_time
                     nav_engine_speed_mps = np.linalg.norm(pose_aux_data.velocity_enu_mps, axis=0)
                     nav_engine_speed_name = '|Vehicle 3D Speed| (Nav Engine)'
 
             if nav_engine_speed_mps is not None:
-                time = pose_data.p1_time - float(self.t0)
-                text = ["P1: %.3f sec" % t for t in pose_data.p1_time]
-                speed_mps = np.linalg.norm(pose_data.velocity_body_mps, axis=0)
-                figure.add_trace(go.Scattergl(x=time, y=speed_mps, text=text,
+                time = nav_engine_p1_time - float(self.t0)
+                text = ["P1: %.3f sec" % t for t in nav_engine_p1_time]
+                figure.add_trace(go.Scattergl(x=time, y=nav_engine_speed_mps, text=text,
                                               name=nav_engine_speed_name, hoverlabel={'namelength': -1},
                                               mode='lines', line={'color': 'black', 'dash': 'dash'}),
                                  1, 1)
