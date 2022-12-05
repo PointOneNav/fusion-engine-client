@@ -18,9 +18,9 @@ for the latest API documentation.
 ### Directory Structure
   - `python/` - Python source files
     - `bin/` - Application files
-      - [p1_display.py](examples/p1_display.py) - Generate HTML plots of vehicle trajectory, etc. (see also
+      - [p1_display.py](bin/p1_display.py) - Generate HTML plots of vehicle trajectory, etc. (see also
         `analyzer.py` below)
-      - [separate_mixed_log.py](examples/separate_mixed_log.py) - Extract FusionEngine message contents from a binary 
+      - [separate_mixed_log.py](bin/separate_mixed_log.py) - Extract FusionEngine message contents from a binary 
         file containing mixed data (e.g., interleaved RTCM and FusionEngine messages) 
     - `examples/` - Python example applications
       - [analyze_data.py](examples/analyze_data.py) - Generate HTML plots of vehicle trajectory, INS filter state, etc.
