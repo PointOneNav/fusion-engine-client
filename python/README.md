@@ -20,6 +20,8 @@ for the latest API documentation.
     - `bin/` - Application files
       - [p1_display.py](bin/p1_display.py) - Generate HTML plots of vehicle trajectory, etc. (see also
         `analyzer.py` below)
+      - [p1_print.py](bin/p1_print.py) - Print the contents of FusionEngine messages found in a binary file to the
+        console
       - [separate_mixed_log.py](bin/separate_mixed_log.py) - Extract FusionEngine message contents from a binary 
         file containing mixed data (e.g., interleaved RTCM and FusionEngine messages) 
     - `examples/` - Python example applications
