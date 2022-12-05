@@ -10,7 +10,7 @@ This library provides message definitions and support functionality for interact
 time, as well as processing recorded output data. Both C++ and Python are supported.
 
 Click here to download the latest FusionEngine protocol specification PDF:
-[Point One FusionEngine Message Specification (v0.11)](https://pointonenav.com/files/FusionEngine-Message-Specification-v0.11.pdf)
+[Point One FusionEngine Message Specification](http://pointonenav.com/files/fusion-engine-message-spec)
 
 See http://docs.pointonenav.com/fusion-engine/ for the latest C++ API documentation.
 
