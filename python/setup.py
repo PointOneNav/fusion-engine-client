@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='fusion-engine-client',
-    version='v1.11.3',
+    version='v1.14.0',
     packages=find_packages(where='.'),
     install_requires=[
         'numpy>=1.16.0',
