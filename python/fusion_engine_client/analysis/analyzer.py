@@ -838,6 +838,66 @@ class Analyzer(object):
 
         self._add_figure(name='gnss_skyplot', figure=figure, title='GNSS Sky Plot')
 
+    def plot_cn0(self):
+        # The legacy GNSSSatelliteMessage contains data per satellite, not per signal. The plotted C/N0 values will
+        # reflect the L1 signal, unless L1 is not being tracked.
+        result = self.reader.read(message_types=[GNSSSatelliteMessage], **self.params)
+        data = result[GNSSSatelliteMessage.MESSAGE_TYPE]
+
+        if len(data.p1_time) == 0:
+            self.logger.info('No satellite data available. Skipping C/N0 plot.')
+            return
+
+        # Setup the figure.
+        figure = make_subplots(
+            rows=1, cols=1,  print_grid=False, shared_xaxes=True,
+            subplot_titles=['C/N0 (L1 Only)'])
+
+        figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
+        figure['layout']['xaxis1'].update(title="Time (sec)", showticklabels=True)
+        figure['layout']['yaxis1'].update(title="C/N0 (dB-Hz)")
+
+        # Assign colors to each satellite.
+        data_by_sv = GNSSSatelliteMessage.group_by_sv(data)
+        svs = sorted(list(data_by_sv.keys()))
+        color_by_sv = self._assign_colors(svs)
+
+        # Plot each satellite.
+        indices_by_system = defaultdict(list)
+        for sv in svs:
+            name = satellite_to_string(sv, short=False)
+            system = get_system(sv)
+            sv_data = data_by_sv[sv]
+
+            text = ['P1: %.1f sec' % t for t in sv_data['p1_time']]
+            time = sv_data['p1_time'] - float(self.t0)
+            figure.add_trace(go.Scattergl(x=time, y=sv_data['cn0_dbhz'], text=text,
+                                          name=name, hoverlabel={'namelength': -1},
+                                          mode='markers', marker={'color': color_by_sv[sv]}),
+                             1, 1)
+            indices_by_system[system].append(len(figure.data) - 1)
+
+        # Add signal type selection buttons.
+        num_traces = len(figure.data)
+        buttons = [dict(label='All', method='restyle', args=['visible', [True] * num_traces])]
+        for system, indices in sorted(indices_by_system.items()):
+            if len(indices) == 0:
+                continue
+            visible = np.full((num_traces,), False)
+            visible[indices] = True
+            buttons.append(dict(label=str(system), method='restyle', args=['visible', list(visible)]))
+        figure['layout']['updatemenus'] = [{
+            'type': 'buttons',
+            'direction': 'left',
+            'buttons': buttons,
+            'x': 0.0,
+            'xanchor': 'left',
+            'y': 1.1,
+            'yanchor': 'top'
+        }]
+
+        self._add_figure(name='gnss_cn0', figure=figure, title='GNSS C/N0 vs. Time')
+
     def plot_signal_status(self):
         filename = 'gnss_signal_status'
         figure_title = "GNSS Signal Status"
@@ -1747,6 +1807,7 @@ Load and display information stored in a FusionEngine binary file.
         analyzer.plot_relative_position()
         analyzer.plot_map(mapbox_token=options.mapbox_token)
         analyzer.plot_calibration()
+        analyzer.plot_cn0()
         analyzer.plot_signal_status()
         analyzer.plot_skyplot()
 
