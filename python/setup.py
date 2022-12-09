@@ -11,7 +11,7 @@ setup(
     extras_require={
         'analysis': [
             'argparse-formatter>=1.4',
-            'colorama>=0.4.6',
+            'colorama>=0.4.4',
             'gpstime>=0.6.2',
             'plotly>=4.0.0',
             'pymap3d>=2.4.3',
