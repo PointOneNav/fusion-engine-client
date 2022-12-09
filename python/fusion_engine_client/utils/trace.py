@@ -3,7 +3,13 @@ import sys
 
 try:
     import colorama
-    colorama.just_fix_windows_console()
+
+    # This function was added in colorama 0.4.6, but some users may be using an earlier version. It only affects
+    # operation in Windows. The deprecated alternative is to call colorama.init().
+    try:
+        colorama.just_fix_windows_console()
+    except AttributeError:
+        colorama.init()
 except ImportError:
     colorama = None
 
