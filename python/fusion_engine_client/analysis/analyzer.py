@@ -30,6 +30,7 @@ from .file_reader import FileReader
 from fusion_engine_client.utils.trace import HighlightFormatter
 from ..utils.argument_parser import ArgumentParser, TriStateBooleanAction, CSVAction
 from ..utils.log import locate_log, DEFAULT_LOG_BASE_DIR
+from ..utils.numpy_utils import find_first
 
 
 _logger = logging.getLogger('point_one.fusion_engine.analysis.analyzer')
@@ -283,7 +284,11 @@ class Analyzer(object):
             self.logger.info('No valid position solutions detected.')
             return
 
-        first_idx = np.argmax(valid_idx)
+        first_idx = find_first(valid_idx)
+        # If there are no valid indices, use the last index.
+        if first_idx < 0:
+            first_idx = len(valid_idx) - 1
+
         c_enu_ecef = get_enu_rotation_matrix(*pose_data.lla_deg[0:2, first_idx], deg=True)
 
         # Setup the figure.

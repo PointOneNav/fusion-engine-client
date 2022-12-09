@@ -11,6 +11,7 @@ import os
 import numpy as np
 
 from ..messages import MessageHeader, MessagePayload, MessageType, Timestamp
+from ..utils.numpy_utils import find_first
 from ..utils.time_range import TimeRange
 
 
@@ -300,8 +301,17 @@ class FileIndex(object):
             return FileIndex(data=self._data, t0=self.t0)
         else:
             # Note: The index stores only the integer part of the timestamp.
-            start_idx = np.argmax(self._data['time'] >= np.floor(start)) if start is not None else 0
-            end_idx = np.argmax(self._data['time'] >= stop) if stop is not None else len(self._data)
+
+            # If self._data['time'] ends _before_ `start``, use 0 as start_idx. If self._data['time'] ends _after_
+            # `end`, use len(self._data['time']) as end_idx.
+            start_idx = find_first(self._data['time'] >= np.floor(start)) if start is not None else 0
+            end_idx = find_first(self._data['time'] >= stop) if stop is not None else len(self._data)
+
+            if start_idx < 0:
+                start_idx = 0
+
+            if end_idx < 0:
+                end_idx = len(self._data['time'])
 
             if hint == 'include_nans':
                 return FileIndex(data=self._data[start_idx:end_idx], t0=self.t0)
