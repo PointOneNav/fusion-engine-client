@@ -1687,12 +1687,15 @@ Load and display information stored in a FusionEngine binary file.
              "\nTruncation is disabled if --plot is specified." %
              (Analyzer.LONG_LOG_DURATION_SEC / 3600.0, Analyzer.HIGH_MEASUREMENT_RATE_HZ))
 
-    plot_function_names = [n[5:] for n in dir(Analyzer) if n.startswith('plot_')]
+    plot_function_names = [n for n in dir(Analyzer) if n.startswith('plot_')]
     plot_group.add_argument(
         '--plot', action=CSVAction,
-        help="A comma-separated list of names of plots to be displayed. If omitted, plots will be generated based on "
-             "data present in the log. Options include:%s" %
-             ''.join(['\n- %s' % n for n in plot_function_names]))
+        help="A comma-separated list of names of plots to be displayed. If a partial name is specified, the best "
+             "matching plot will be generated (e.g., 'sky' will match 'gnss_skyplot'). Use the wildcard '*' to match "
+             "multiple plots. If omitted, plots will be generated based on data present in the log.\n"
+             "\n"
+             "Options include:%s" %
+             ''.join(['\n- %s' % f[5:] for f in plot_function_names]))
 
     time_group = parser.add_argument_group('Time Control')
     time_group.add_argument(
@@ -1820,17 +1823,32 @@ Load and display information stored in a FusionEngine binary file.
         if len(options.plot) == 0:
             _logger.error('No plot names specified.')
             sys.exit(1)
-        else:
-            for name in options.plot:
-                if not hasattr(analyzer, f'plot_{name}'):
-                    _logger.error("Unrecognized plot name '%s'." % name)
-                    sys.exit(1)
 
+        # Convert the user patterns into regex. The user is allowed to specify wildcards to match multiple figures.
+        functions = set()
         for name in options.plot:
-            if name == 'map':
-                analyzer.plot_map(mapbox_token=options.mapbox_token)
+            pattern = r'plot_.*%s.*' % name.replace('*', '.*')
+            allow_multiple = '*' in name
+
+            funcs = [f for f in plot_function_names if re.match(pattern, f)]
+            if len(funcs) == 0:
+                _logger.error("Unrecognized plot pattern '%s'." % name)
+                sys.exit(1)
+            elif len(funcs) > 1 and not allow_multiple:
+                _logger.error("Pattern '%s' matches multiple plots:%s\n\nAdd a wildcard (%s*) to display all matching "
+                              "plots." %
+                              (name, ''.join(['\n  %s' % f[5:] for f in funcs]), name))
+                sys.exit(1)
             else:
-                getattr(analyzer, f'plot_{name}')()
+                functions.update(funcs)
+
+        for func in functions:
+            if func == 'plot_map':
+                analyzer.plot_map(mapbox_token=options.mapbox_token)
+            elif func == 'plot_skyplot':
+                analyzer.plot_gnss_skyplot(decimate=False)
+            else:
+                getattr(analyzer, func)()
 
     analyzer.generate_index(auto_open=not options.no_index)
 
