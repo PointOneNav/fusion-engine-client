@@ -743,7 +743,7 @@ class Analyzer(object):
 
         self._add_figure(name="map", figure=figure, title="Vehicle Trajectory (Map)")
 
-    def plot_skyplot(self, decimate=True):
+    def plot_gnss_skyplot(self, decimate=True):
         # Read the satellite data.
         result = self.reader.read(message_types=[GNSSSatelliteMessage], **self.params)
         data = result[GNSSSatelliteMessage.MESSAGE_TYPE]
@@ -838,7 +838,7 @@ class Analyzer(object):
 
         self._add_figure(name='gnss_skyplot', figure=figure, title='GNSS Sky Plot')
 
-    def plot_cn0(self):
+    def plot_gnss_cn0(self):
         # The legacy GNSSSatelliteMessage contains data per satellite, not per signal. The plotted C/N0 values will
         # reflect the L1 signal, unless L1 is not being tracked.
         result = self.reader.read(message_types=[GNSSSatelliteMessage], **self.params)
@@ -898,7 +898,7 @@ class Analyzer(object):
 
         self._add_figure(name='gnss_cn0', figure=figure, title='GNSS C/N0 vs. Time')
 
-    def plot_signal_status(self):
+    def plot_gnss_signal_status(self):
         filename = 'gnss_signal_status'
         figure_title = "GNSS Signal Status"
 
@@ -1807,9 +1807,9 @@ Load and display information stored in a FusionEngine binary file.
         analyzer.plot_relative_position()
         analyzer.plot_map(mapbox_token=options.mapbox_token)
         analyzer.plot_calibration()
-        analyzer.plot_cn0()
-        analyzer.plot_signal_status()
-        analyzer.plot_skyplot()
+        analyzer.plot_gnss_cn0()
+        analyzer.plot_gnss_signal_status()
+        analyzer.plot_gnss_skyplot()
 
         if options.measurements:
             analyzer.plot_imu()
