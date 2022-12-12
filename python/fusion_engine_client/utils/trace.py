@@ -29,7 +29,7 @@ class HighlightFormatter(logging.Formatter):
                 self.color_map = {
                     logging.FATAL: colorama.Back.RED + colorama.Fore.BLACK,
                     logging.ERROR: colorama.Fore.RED,
-                    logging.WARNING: colorama.Fore.MAGENTA,
+                    logging.WARNING: colorama.Fore.CYAN,
                     logging.INFO: None,
                 }
             else:
