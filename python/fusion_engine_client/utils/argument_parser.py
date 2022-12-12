@@ -143,6 +143,7 @@ class CSVAction(argparse.Action):
 class TriStateBoolFormatter(argparse.HelpFormatter):
     def _format_action_invocation(self, action):
         if isinstance(action, TriStateBooleanAction):
+            options_printed = False
             def _format(option):
                 # Note: Special case handling for --no-no-foo. See explanation in TriStateBooleanAction.
                 if ((option.startswith('--no-') and option.replace('--no-', '--') in action.option_strings) or
@@ -151,7 +152,12 @@ class TriStateBoolFormatter(argparse.HelpFormatter):
                 elif '=' in option:
                     return None
                 else:
-                    return f"{option}[=<{', '.join(TriStateBooleanAction.POSSIBLE_VALUES)}>]"
+                    nonlocal options_printed
+                    if options_printed:
+                        return f"{option}[=...]"
+                    else:
+                        options_printed = True
+                        return f"{option}[=<{', '.join(TriStateBooleanAction.POSSIBLE_VALUES)}>]"
 
             strings = [_format(o) for o in action.option_strings]
             return ', '.join([o for o in strings if o is not None])
