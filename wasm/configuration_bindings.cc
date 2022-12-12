@@ -189,7 +189,8 @@ EMSCRIPTEN_BINDINGS(configuration) {
         .value("INVALID", ProtocolType::INVALID)
         .value("FUSION_ENGINE", ProtocolType::FUSION_ENGINE)
         .value("NMEA", ProtocolType::NMEA)
-        .value("RTCM", ProtocolType::RTCM);
+        .value("RTCM", ProtocolType::RTCM)
+        .value("ALL", ProtocolType::ALL);
 
     class_<MsgType>("MsgType")
         .constructor<>()
@@ -222,6 +223,39 @@ EMSCRIPTEN_BINDINGS(configuration) {
         .property("index", &InterfaceID::index)
         .ARRAY_PROPERTY(InterfaceID, reserved)
         .STRUCT_FUNCTIONS(InterfaceID);
+
+    enum_<NmeaMessageType>("NmeaMessageType")
+        .value("INVALID", NmeaMessageType::INVALID)
+        .value("GGA", NmeaMessageType::GGA)
+        .value("GLL", NmeaMessageType::GLL)
+        .value("GSA", NmeaMessageType::GSA)
+        .value("GSV", NmeaMessageType::GSV)
+        .value("RMC", NmeaMessageType::RMC)
+        .value("VTG", NmeaMessageType::VTG)
+        .value("P1CALSTATUS", NmeaMessageType::P1CALSTATUS)
+        .value("P1MSG", NmeaMessageType::P1MSG)
+        .value("PQTMVERNO", NmeaMessageType::PQTMVERNO)
+        .value("PQTMVER", NmeaMessageType::PQTMVER)
+        .value("PQTMGNSS", NmeaMessageType::PQTMGNSS);
+
+    enum_<MessageRate>("MessageRate")
+        .value("OFF", MessageRate::OFF)
+        .value("ON_CHANGE", MessageRate::ON_CHANGE)
+        .value("MAX_RATE", MessageRate::MAX_RATE)
+        .value("INTERVAL_10_MS", MessageRate::INTERVAL_10_MS)
+        .value("INTERVAL_20_MS", MessageRate::INTERVAL_20_MS)
+        .value("INTERVAL_40_MS", MessageRate::INTERVAL_40_MS)
+        .value("INTERVAL_50_MS", MessageRate::INTERVAL_50_MS)
+        .value("INTERVAL_100_MS", MessageRate::INTERVAL_100_MS)
+        .value("INTERVAL_200_MS", MessageRate::INTERVAL_200_MS)
+        .value("INTERVAL_500_MS", MessageRate::INTERVAL_500_MS)
+        .value("INTERVAL_1_S", MessageRate::INTERVAL_1_S)
+        .value("INTERVAL_2_S", MessageRate::INTERVAL_2_S)
+        .value("INTERVAL_5_S", MessageRate::INTERVAL_5_S)
+        .value("INTERVAL_10_S", MessageRate::INTERVAL_10_S)
+        .value("DEFAULT", MessageRate::DEFAULT);
+
+
 
     static auto GetMessageRate_MESSAGE_TYPE = GetMessageRate::MESSAGE_TYPE;
     static auto GetMessageRate_MESSAGE_VERSION = GetMessageRate::MESSAGE_VERSION;
