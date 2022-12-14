@@ -555,6 +555,8 @@ struct alignas(4) RelativeENUHeadingMessage : public MessagePayload {
   /**
    * The heading between the primary device antenna and the secondary in degrees with
    * respect to true north.
+   * 
+   * @note Frame is in 0-360.
    *
    */
   double heading_deg_true_north = NAN;
