@@ -791,8 +791,6 @@ class RelativeENUHeadingMessage(MessagePayload):
     MESSAGE_TYPE = MessageType.RELATIVE_ENU_POSITION
     MESSAGE_VERSION = 0
 
-    INVALID_REFERENCE_STATION = 0xFFFFFFFF
-
     GetConfigMessageConstruct = Struct(
         "p1_time" / TimestampConstruct,
         "gps_time" / TimestampConstruct,
@@ -801,8 +799,8 @@ class RelativeENUHeadingMessage(MessagePayload):
         "flags" / Int32ul,
         "relative_position_enu_m" / Array(3, Float64l),
         "position_std_enu_m" / Array(3, Float32l),
-        "heading_true_north_deg" / Array(3, Float32l),
-        "baseline_distance_m" / Array(3, Float32l),
+        "heading_true_north_deg" / Float32l,
+        "baseline_distance_m" / Float32l,
     )
 
     def __init__(self):
@@ -812,6 +810,8 @@ class RelativeENUHeadingMessage(MessagePayload):
         self.gps_time = Timestamp()
         # The type of this position solution.
         self.solution_type = SolutionType.Invalid
+        # A bitmask of flags associated with the solution
+        self.flags = 0
         # The ID of the differential base station, if used.
         ##
         # The relative position (in meters), resolved in the local ENU frame.
@@ -876,6 +876,7 @@ class RelativeENUHeadingMessage(MessagePayload):
             'p1_time': np.array([float(m.p1_time) for m in messages]),
             'gps_time': np.array([float(m.gps_time) for m in messages]),
             'solution_type': np.array([int(m.solution_type) for m in messages], dtype=int),
+            'flags': np.array([int(m.flags) for m in messages], dtype=int),
             'relative_position_enu_m': np.array([m.relative_position_enu_m for m in messages]).T,
             'position_std_enu_m': np.array([m.position_std_enu_m for m in messages]).T,
             'heading_true_north_deg': np.array([float(m.heading_true_north_deg) for m in messages]),
