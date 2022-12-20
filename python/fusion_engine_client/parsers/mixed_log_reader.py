@@ -132,23 +132,23 @@ class MixedLogReader(object):
         while True:
             if not self._advance_to_next_sync():
                 # End of file.
-                self.total_bytes_read = self.input_file.tell()
                 self.logger.debug('EOF reached.')
                 break
 
-            offset_bytes = self.input_file.tell()
-            self.total_bytes_read = offset_bytes
+            start_offset_bytes = self.total_bytes_read
             self._print_progress()
 
-            if offset_bytes + MessageHeader.calcsize() > self.max_bytes:
+            if start_offset_bytes + MessageHeader.calcsize() > self.max_bytes:
                 self.logger.debug('Max read length exceeded (%d B).' % self.max_bytes)
                 break
 
-            self.logger.trace('Reading candidate message @ %d (0x%x).' % (offset_bytes, offset_bytes), depth=2)
+            self.logger.trace('Reading candidate message @ %d (0x%x).' % (start_offset_bytes, start_offset_bytes),
+                              depth=2)
 
             # Read the next message header.
             data = self.input_file.read(MessageHeader.calcsize())
             read_len = len(data)
+            self.total_bytes_read += len(data)
             if read_len < MessageHeader.calcsize():
                 # End of file.
                 self.logger.debug('EOF reached.')
@@ -178,6 +178,7 @@ class MixedLogReader(object):
                 # validate_crc() will raise a ValueError and we will skip forward in the same manner.
                 payload_bytes = self.input_file.read(header.payload_size_bytes)
                 read_len += len(payload_bytes)
+                self.total_bytes_read += len(payload_bytes)
                 if len(payload_bytes) != header.payload_size_bytes:
                     raise ValueError('Not enough data - likely not a valid FusionEngine header.')
 
@@ -186,11 +187,11 @@ class MixedLogReader(object):
 
                 message_length_bytes = MessageHeader.calcsize() + header.payload_size_bytes
                 self.logger.trace('Read %s message @ %d (0x%x). [length=%d B, sequence=%d, # messages=%d]' %
-                                  (header.get_type_string(), offset_bytes, offset_bytes, message_length_bytes,
-                                   header.sequence_number, self.valid_count + 1),
+                                  (header.get_type_string(), start_offset_bytes, start_offset_bytes,
+                                   message_length_bytes, header.sequence_number, self.valid_count + 1),
                                   depth=1)
 
-                if offset_bytes + message_length_bytes > self.max_bytes:
+                if start_offset_bytes + message_length_bytes > self.max_bytes:
                     self.logger.debug('Max read length exceeded (%d B).' % self.max_bytes)
                     break
 
@@ -204,7 +205,7 @@ class MixedLogReader(object):
                    not (header.sequence_number == 0 and self.prev_sequence_number == 0xFFFFFFFF):
                     func = self.logger.warning if self.warn_on_gaps else self.logger.debug
                     func('Data gap detected @ %d (0x%x). [sequence=%d, gap_size=%d, total_messages=%d]' %
-                         (offset_bytes, offset_bytes, header.sequence_number,
+                         (start_offset_bytes, start_offset_bytes, header.sequence_number,
                           header.sequence_number - self.prev_sequence_number, self.valid_count + 1))
                 self.prev_sequence_number = header.sequence_number
 
@@ -225,7 +226,7 @@ class MixedLogReader(object):
                 # Add this message to the index file.
                 if self.index_builder is not None:
                     p1_time = payload.get_p1_time() if payload is not None else None
-                    self.index_builder.append(message_type=header.message_type, offset_bytes=offset_bytes,
+                    self.index_builder.append(message_type=header.message_type, offset_bytes=start_offset_bytes,
                                               p1_time=p1_time)
 
                 # Now, if this message is not in the user-specified filter criteria, skip it.
@@ -249,13 +250,15 @@ class MixedLogReader(object):
                 if self.return_bytes:
                     result.append(data)
                 if self.return_offset:
-                    result.append(offset_bytes)
+                    result.append(start_offset_bytes)
                 return result
             except ValueError as e:
-                offset_bytes += 1
-                self.logger.trace('%s Rewinding to offset %d (0x%x).' % (str(e), offset_bytes, offset_bytes),
+                start_offset_bytes += 1
+                self.logger.trace('%s Rewinding to offset %d (0x%x).' %
+                                  (str(e), start_offset_bytes, start_offset_bytes),
                                   depth=2)
-                self.input_file.seek(offset_bytes, os.SEEK_SET)
+                self.input_file.seek(start_offset_bytes, os.SEEK_SET)
+                self.total_bytes_read = start_offset_bytes
 
         # Out of the loop - EOF reached.
         self._print_progress(self.total_bytes_read)
@@ -272,23 +275,29 @@ class MixedLogReader(object):
     def _advance_to_next_sync(self):
         if self.index is None:
             try:
+                self.logger.trace('Starting next sync search @ %d (0x%x).' %
+                                  (self.total_bytes_read, self.total_bytes_read),
+                                  depth=2)
                 while True:
-                    if self.input_file.tell() + 1 >= self.max_bytes:
+                    if self.total_bytes_read + 1 >= self.max_bytes:
                         self.logger.debug('Max read length exceeded (%d B).' % self.max_bytes)
                         return False
 
                     byte0 = self.input_file.read(1)[0]
+                    self.total_bytes_read += 1
                     while True:
                         if byte0 == MessageHeader._SYNC0:
-                            if self.input_file.tell() + 1 >= self.max_bytes:
+                            if self.total_bytes_read + 1 >= self.max_bytes:
                                 self.logger.debug('Max read length exceeded (%d B).' % self.max_bytes)
                                 return False
 
                             byte1 = self.input_file.read(1)[0]
+                            self.total_bytes_read += 1
                             if byte1 == MessageHeader._SYNC1:
                                 self.input_file.seek(-2, os.SEEK_CUR)
-                                offset_bytes = self.input_file.tell()
-                                self.logger.trace('Sync bytes found @ %d (0x%x).' % (offset_bytes, offset_bytes),
+                                self.total_bytes_read -= 2
+                                self.logger.trace('Sync bytes found @ %d (0x%x).' %
+                                                  (self.total_bytes_read, self.total_bytes_read),
                                                   depth=3)
                                 return True
                             byte0 = byte1
@@ -303,6 +312,7 @@ class MixedLogReader(object):
                 offset_bytes = self.index._data['offset'][self.next_index_elem]
                 self.next_index_elem += 1
                 self.input_file.seek(offset_bytes, os.SEEK_SET)
+                self.total_bytes_read = offset_bytes
                 return True
 
     def _print_progress(self, file_size=None):
