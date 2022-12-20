@@ -194,7 +194,7 @@ class FileReader(object):
             # re-read the data if they try to use it again.
             prev_data = self.data.get(MessageType.POSE, None)
 
-            self.read(message_types=[MessageType.POSE], max_messages=1, generate_index=True)
+            self.read(message_types=[MessageType.POSE], max_messages=1, generate_index=True, ignore_cache=True)
 
             if prev_data is not None:
                 self.data[MessageType.POSE] = prev_data
@@ -206,7 +206,8 @@ class FileReader(object):
              time_align: TimeAlignmentMode = TimeAlignmentMode.NONE,
              aligned_message_types: Union[list, tuple, set] = None,
              generate_index: bool = True, show_progress: bool = False,
-             ignore_index: bool = False, ignore_index_max_messages: bool = False) \
+             ignore_index: bool = False, ignore_index_max_messages: bool = False,
+             ignore_cache: bool = False) \
             -> Dict[MessageType, MessageData]:
         """!
         @brief Read data for one or more desired message types.
@@ -247,6 +248,8 @@ class FileReader(object):
         @param ignore_index If `True`, ignore the data index if loaded.
         @param ignore_index_max_messages If `True`, do not apply the `max_messages` limit when listing messages to be
                loaded from the data index file. `max_messages` _will_ still be applied after the data is decoded.
+        @param ignore_cache If `True`, ignore any cached data from a previous @ref read() call, and reload the requested
+               data from disk.
 
         @return A dictionary, keyed by @ref fusion_engine_client.messages.defs.MessageType "MessageType", containing
                @ref MessageData objects with the data read for each of the requested message types.
@@ -290,9 +293,12 @@ class FileReader(object):
             message_types = list(message_type_to_class.keys())
 
         # If any of the requested types were already read from the file for the requested parameters, skip them.
-        needed_message_types = [t for t in message_types
-                                if (t not in self.data or self.data[t].params != params)]
-        needed_message_types = set(needed_message_types)
+        if ignore_cache:
+            needed_message_types = set(message_types)
+        else:
+            needed_message_types = [t for t in message_types
+                                    if (t not in self.data or self.data[t].params != params)]
+            needed_message_types = set(needed_message_types)
 
         # Make cache entries for the messages to be read.
         supported_message_types = set()
