@@ -513,7 +513,7 @@ class Analyzer(object):
         topo_figure['layout']['yaxis1'].update(title="North (m)")
 
         time_figure = make_subplots(rows=4, cols=1, print_grid=False, shared_xaxes=True,
-                                    subplot_titles=['3D', 'North', 'East', 'Up'])
+                                    subplot_titles=['3D', 'East', 'North', 'Up'])
         time_figure['layout'].update(showlegend=True)
         for i in range(4):
             time_figure['layout']['xaxis%d' % (i + 1)].update(title="Time (sec)", showticklabels=True)
