@@ -302,7 +302,6 @@ class FileReader(object):
 
         # Make cache entries for the messages to be read.
         supported_message_types = set()
-        message_class = {}
         for type in needed_message_types:
             self.data[type] = MessageData(message_type=type, params=params)
 
