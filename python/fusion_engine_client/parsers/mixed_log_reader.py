@@ -142,8 +142,9 @@ class MixedLogReader(object):
                 self.logger.debug('Max read length exceeded (%d B).' % self.max_bytes)
                 break
 
-            self.logger.trace('Reading candidate message @ %d (0x%x).' % (start_offset_bytes, start_offset_bytes),
-                              depth=2)
+            if self.logger.isEnabledFor(logging.TRACE, depth=2):
+                self.logger.trace('Reading candidate message @ %d (0x%x).' % (start_offset_bytes, start_offset_bytes),
+                                  depth=2)
 
             # Read the next message header.
             data = self.input_file.read(MessageHeader.calcsize())
@@ -186,10 +187,11 @@ class MixedLogReader(object):
                 header.validate_crc(data)
 
                 message_length_bytes = MessageHeader.calcsize() + header.payload_size_bytes
-                self.logger.trace('Read %s message @ %d (0x%x). [length=%d B, sequence=%d, # messages=%d]' %
-                                  (header.get_type_string(), start_offset_bytes, start_offset_bytes,
-                                   message_length_bytes, header.sequence_number, self.valid_count + 1),
-                                  depth=1)
+                if self.logger.isEnabledFor(logging.TRACE, depth=1):
+                    self.logger.trace('Read %s message @ %d (0x%x). [length=%d B, sequence=%d, # messages=%d]' %
+                                      (header.get_type_string(), start_offset_bytes, start_offset_bytes,
+                                       message_length_bytes, header.sequence_number, self.valid_count + 1),
+                                      depth=1)
 
                 if start_offset_bytes + message_length_bytes > self.max_bytes:
                     self.logger.debug('Max read length exceeded (%d B).' % self.max_bytes)
@@ -254,9 +256,10 @@ class MixedLogReader(object):
                 return result
             except ValueError as e:
                 start_offset_bytes += 1
-                self.logger.trace('%s Rewinding to offset %d (0x%x).' %
-                                  (str(e), start_offset_bytes, start_offset_bytes),
-                                  depth=2)
+                if self.logger.isEnabledFor(logging.TRACE, depth=2):
+                    self.logger.trace('%s Rewinding to offset %d (0x%x).' %
+                                      (str(e), start_offset_bytes, start_offset_bytes),
+                                      depth=2)
                 self.input_file.seek(start_offset_bytes, os.SEEK_SET)
                 self.total_bytes_read = start_offset_bytes
 
@@ -275,9 +278,10 @@ class MixedLogReader(object):
     def _advance_to_next_sync(self):
         if self.index is None:
             try:
-                self.logger.trace('Starting next sync search @ %d (0x%x).' %
-                                  (self.total_bytes_read, self.total_bytes_read),
-                                  depth=2)
+                if self.logger.isEnabledFor(logging.TRACE, depth=2):
+                    self.logger.trace('Starting next sync search @ %d (0x%x).' %
+                                      (self.total_bytes_read, self.total_bytes_read),
+                                      depth=2)
                 while True:
                     if self.total_bytes_read + 1 >= self.max_bytes:
                         self.logger.debug('Max read length exceeded (%d B).' % self.max_bytes)
@@ -296,9 +300,10 @@ class MixedLogReader(object):
                             if byte1 == MessageHeader._SYNC1:
                                 self.input_file.seek(-2, os.SEEK_CUR)
                                 self.total_bytes_read -= 2
-                                self.logger.trace('Sync bytes found @ %d (0x%x).' %
-                                                  (self.total_bytes_read, self.total_bytes_read),
-                                                  depth=3)
+                                if self.logger.isEnabledFor(logging.TRACE, depth=3):
+                                    self.logger.trace('Sync bytes found @ %d (0x%x).' %
+                                                      (self.total_bytes_read, self.total_bytes_read),
+                                                      depth=3)
                                 return True
                             byte0 = byte1
                         else:
