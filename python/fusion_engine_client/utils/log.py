@@ -355,7 +355,8 @@ def extract_fusion_engine_log(
 
     with open(input_path, 'rb') as in_fd, open(output_path, 'wb') as out_path:
         reader = MixedLogReader(in_fd, warn_on_gaps=warn_on_gaps, generate_index=generate_mixed_index,
-                                return_header=True, return_payload=True, return_bytes=True, return_offset=False)
+                                return_header=True, return_payload=True, return_bytes=True, return_offset=False,
+                                show_progress=True)
         for header, payload, data in reader:
             if index_builder is not None:
                 p1_time = payload.get_p1_time() if payload is not None else None
