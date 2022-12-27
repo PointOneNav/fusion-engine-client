@@ -10,20 +10,18 @@ from fusion_engine_client.utils.time_range import TimeRange
 
 
 class TestClass:
-    _messages = []
-
     @pytest.fixture
     def data_path(self, tmpdir):
         data_path = tmpdir.join('test_file.p1log')
         yield data_path
 
     def _generate_data(self, data_path, message_types):
-        self._messages = []
+        messages = []
         prev_p1_time_sec = None
         prev_system_time_sec = None
         for message_cls, time_sec in message_types:
             if isinstance(message_cls, bytes):
-                self._messages.append(message_cls)
+                messages.append(message_cls)
                 continue
 
             message = message_cls()
@@ -51,17 +49,17 @@ class TestClass:
                         dt_sec = time_sec - prev_system_time_sec
                         prev_p1_time_sec += dt_sec
                     prev_system_time_sec = time_sec
-            self._messages.append(message)
+            messages.append(message)
 
         encoder = FusionEngineEncoder()
         with open(data_path, 'wb') as f:
-            for message in self._messages:
+            for message in messages:
                 if isinstance(message, bytes):
                     f.write(message)
                 else:
                     f.write(encoder.encode_message(message))
 
-        return [m for m in self._messages if not isinstance(m, bytes)]
+        return [m for m in messages if not isinstance(m, bytes)]
 
     def _generate_mixed_data(self, data_path):
         messages = self._generate_data(data_path, message_types=[
