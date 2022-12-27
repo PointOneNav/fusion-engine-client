@@ -359,6 +359,30 @@ class TestClass:
     def test_reset_filter_with_index(self, data_path):
         self._test_reset_filter(data_path, use_index=True)
 
+    def _test_redo_filter(self, data_path, use_index):
+        messages = self._generate_mixed_data_with_binary(data_path)
+
+        if use_index:
+            MixedLogReader.generate_index_file(str(data_path))
+
+        # Unlike reset_filter, here we intentionally do _not_ read anything after setting the filter once. The idea is
+        # to make sure that if we change the filter but havn't read anything, we still end up reading the first element.
+        reader = MixedLogReader(str(data_path))
+        reader.filter_in_place((PoseMessage,))
+
+        # Now, change the filter to allow all messages. We expect to read starting at the first entry: we haven't read
+        # anything yet, so we shouldn't be picking up where we left off.
+        reader.filter_in_place((PoseMessage, EventNotificationMessage), clear_existing=True)
+        for i in range(3):
+            _, message = next(reader)
+            self._check_message(message, messages[i])
+
+    def test_redo_filter_no_index(self, data_path):
+        self._test_redo_filter(data_path, use_index=False)
+
+    def test_redo_filter_with_index(self, data_path):
+        self._test_redo_filter(data_path, use_index=True)
+
     def _test_seek_to_eof(self, data_path, use_index):
         messages = self._generate_mixed_data_with_binary(data_path)
 

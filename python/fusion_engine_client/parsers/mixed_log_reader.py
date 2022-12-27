@@ -460,7 +460,7 @@ class MixedLogReader(object):
         # need to do anything special.
         if self.index is not None:
             if self.next_index_elem == 0:
-                prev_offset_bytes = 0
+                prev_offset_bytes = -1
             else:
                 # Note that next_index_elem refers to the _next_ message to be read. We want the offset of the message
                 # that we just read.
