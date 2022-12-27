@@ -165,6 +165,9 @@ class MixedLogReader(object):
                 self.logger.debug("Index generation disabled.")
                 self.index_builder = None
 
+    def set_show_progress(self, show_progress):
+        self.show_progress = show_progress
+
     def get_bytes_read(self):
         return self.total_bytes_read
 
