@@ -81,6 +81,20 @@ class Timestamp:
     def calcsize(cls) -> int:
         return Timestamp._SIZE
 
+    def __add__(self, other):
+        return Timestamp(self.seconds + float(other))
+
+    def __sub__(self, other):
+        return Timestamp(self.seconds - float(other))
+
+    def __iadd__(self, other):
+        self.seconds + float(other)
+        return self
+
+    def __isub(self, other):
+        self.seconds - float(other)
+        return self
+
     def __eq__(self, other):
         return self.seconds == float(other)
 
