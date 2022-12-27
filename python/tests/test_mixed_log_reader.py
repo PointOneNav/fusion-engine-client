@@ -359,7 +359,7 @@ class TestClass:
     def test_reset_filter_with_index(self, data_path):
         self._test_reset_filter(data_path, use_index=True)
 
-    def _test_force_eof(self, data_path, use_index):
+    def _test_seek_to_eof(self, data_path, use_index):
         messages = self._generate_mixed_data_with_binary(data_path)
 
         if use_index:
@@ -375,13 +375,13 @@ class TestClass:
 
         # Now jump to EOF. If we're generating an index file, this is illegal.
         if use_index:
-            reader.read_next(force_eof=True)
+            reader.seek_to_eof()
         else:
             with pytest.raises(ValueError):
-                reader.read_next(force_eof=True)
+                reader.seek_to_eof()
 
-    def test_force_eof_no_index(self, data_path):
-        self._test_force_eof(data_path, use_index=False)
+    def test_seek_to_eof_no_index(self, data_path):
+        self._test_seek_to_eof(data_path, use_index=False)
 
-    def test_force_eof_with_index(self, data_path):
-        self._test_force_eof(data_path, use_index=True)
+    def test_seek_to_eof_with_index(self, data_path):
+        self._test_seek_to_eof(data_path, use_index=True)

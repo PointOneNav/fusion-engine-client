@@ -152,6 +152,15 @@ class MixedLogReader(object):
         if self.index_builder is not None:
             self.index_builder = file_index.FileIndexBuilder()
 
+    def seek_to_eof(self):
+        self._read_next(force_eof=True)
+
+    def reached_eof(self):
+        if self.index is None:
+            return self.total_bytes_read == self.file_size_bytes
+        else:
+            return self.next_index_elem == len(self.index)
+
     def have_index(self):
         return self.index is not None
 
@@ -176,16 +185,14 @@ class MixedLogReader(object):
     def get_bytes_read(self):
         return self.total_bytes_read
 
-    def reached_eof(self):
-        if self.index is None:
-            return self.total_bytes_read == self.file_size_bytes
-        else:
-            return self.next_index_elem == len(self.index)
-
     def next(self):
         return self.read_next()
 
-    def read_next(self, require_p1_time=False, require_system_time=False, generate_index=True, force_eof=False):
+    def read_next(self, require_p1_time=False, require_system_time=False, generate_index=True):
+        return self._read_next(require_p1_time=require_p1_time, require_system_time=require_system_time,
+                               generate_index=generate_index)
+
+    def _read_next(self, require_p1_time=False, require_system_time=False, generate_index=True, force_eof=False):
         if force_eof:
             if not self.reached_eof():
                 if self.generating_index():
