@@ -360,3 +360,31 @@ class TestClass:
 
     def test_reset_filter_with_index(self, data_path):
         self._test_reset_filter(data_path, use_index=True)
+
+    def _test_force_eof(self, data_path, use_index):
+        messages = self._generate_mixed_data_with_binary(data_path)
+
+        if use_index:
+            MixedLogReader.generate_index_file(str(data_path))
+
+        # Read the first 2 pose messages.
+        reader = MixedLogReader(str(data_path))
+        reader.filter_in_place((PoseMessage,))
+        expected_messages = [m for m in messages if isinstance(m, PoseMessage)][:2]
+        for i in range(2):
+            _, message = next(reader)
+            self._check_message(message, expected_messages[i])
+
+        # Now jump to EOF. If we're generating an index file, this is illegal.
+        if use_index:
+            with pytest.raises(StopIteration):
+                reader.read_next(force_eof=True)
+        else:
+            with pytest.raises(ValueError):
+                reader.read_next(force_eof=True)
+
+    def test_force_eof_no_index(self, data_path):
+        self._test_force_eof(data_path, use_index=False)
+
+    def test_force_eof_with_index(self, data_path):
+        self._test_force_eof(data_path, use_index=True)
