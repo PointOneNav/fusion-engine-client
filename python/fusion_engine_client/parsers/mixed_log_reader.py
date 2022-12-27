@@ -58,8 +58,8 @@ class MixedLogReader(object):
         self.return_bytes = return_bytes
         self.return_offset = return_offset
 
-        self.time_range = time_range
-        self._original_time_range = copy.deepcopy(self.time_range)
+        self._original_time_range = copy.deepcopy(time_range)
+        self.time_range = copy.deepcopy(self._original_time_range)
 
         if message_types is None:
             self.message_types = None
@@ -134,6 +134,8 @@ class MixedLogReader(object):
 
         if self.time_range is not None:
             self.time_range.restart()
+
+        if self._original_time_range is not None:
             self._original_time_range.restart()
 
         self.valid_count = 0
@@ -455,7 +457,7 @@ class MixedLogReader(object):
         if clear_existing:
             if self.index is None:
                 self.message_types = copy.deepcopy(self._original_message_types)
-                self.time_range = copy.deepcopy(self.time_range)
+                self.time_range = copy.deepcopy(self._original_time_range)
             else:
                 self.index = self._original_index
 
