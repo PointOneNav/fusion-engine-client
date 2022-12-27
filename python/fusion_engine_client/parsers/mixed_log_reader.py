@@ -339,7 +339,7 @@ class MixedLogReader(object):
                              elapsed_sec, self.total_bytes_read / elapsed_sec / 1e6))
             self.last_print_bytes = self.total_bytes_read
 
-    def filter_inplace(self, key):
+    def filter_in_place(self, key):
         """!
         @brief Limit the returned messages by type or time.
 
