@@ -306,8 +306,8 @@ class FileIndex(object):
                 stop = time_range.end
             else:
                 p1_t0 = time_range.p1_t0 if time_range.p1_t0 is not None else self.t0
-                start = time_range.start + p1_t0 if time_range.start is not None else None
-                stop = time_range.end + p1_t0 if time_range.end is not None else None
+                start = p1_t0 + time_range.start if time_range.start is not None else None
+                stop = p1_t0 + time_range.end if time_range.end is not None else None
 
         # No data available. Skip time indexing (argmax will fail on an empty vector).
         if len(self._data) == 0:
