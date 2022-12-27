@@ -486,3 +486,10 @@ class MixedLogReader(object):
 
     def __next__(self):
         return self.next()
+
+    @classmethod
+    def generate_index_file(cls, input_file):
+        reader = MixedLogReader(input_file=input_file, ignore_index=False, generate_index=True, return_payload=False)
+        if reader.index is None:
+            for _ in reader:
+                pass
