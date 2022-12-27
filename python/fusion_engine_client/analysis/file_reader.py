@@ -89,6 +89,9 @@ class MessageData(object):
             raise ValueError('Message type %s does not support numpy conversion.' %
                              MessageType.get_type_string(self.message_type))
 
+    def __repr__(self):
+        return f'{MessageType.get_type_string(self.message_type)} data ({len(self.messages)} messages)'
+
 
 class TimeAlignmentMode(IntEnum):
     NONE = 0
