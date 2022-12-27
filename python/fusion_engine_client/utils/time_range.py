@@ -91,6 +91,9 @@ class TimeRange(object):
 
         return self
 
+    def is_specified(self) -> bool:
+        return self._range_specified
+
     def in_range_started(self) -> bool:
         return self._in_range_started
 
