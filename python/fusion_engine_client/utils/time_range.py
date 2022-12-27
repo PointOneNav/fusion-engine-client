@@ -183,6 +183,28 @@ class TimeRange(object):
         else:
             return in_range
 
+    def __str__(self):
+        if self.start is None:
+            start = '-inf'
+        elif self.absolute:
+            start = str(Timestamp(self.start))
+        else:
+            start = '%.3f sec' % self.start
+
+        if self.end is None:
+            end = 'inf'
+        elif self.absolute:
+            end = str(Timestamp(self.end))
+        else:
+            end = '%.3f sec' % self.end
+
+        if self.absolute:
+            type = 'abs'
+        else:
+            type = 'rel'
+
+        return f'[start={start}, end={end}, type={type}]'
+
     @classmethod
     def parse(cls,
               time_range: Union[str,
