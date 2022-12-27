@@ -40,13 +40,13 @@ def test_absolute_in_range():
     assert time_range.is_in_range(message)
     message.p1_time = Timestamp(3.5)
     assert time_range.is_in_range(message)
-    message.p1_time = Timestamp(5.0)
+    message.p1_time = Timestamp(4.999)
     assert time_range.is_in_range(message)
 
     # Out of range.
     message.p1_time = Timestamp(2.9)
     assert not time_range.is_in_range(message)
-    message.p1_time = Timestamp(5.1)
+    message.p1_time = Timestamp(5.0)
     assert not time_range.is_in_range(message)
 
 
@@ -63,11 +63,11 @@ def test_relative_in_range():
     assert time_range.is_in_range(message)
     message.p1_time = Timestamp(4.5)
     assert time_range.is_in_range(message)
-    message.p1_time = Timestamp(5.0)
+    message.p1_time = Timestamp(4.999)
     assert time_range.is_in_range(message)
 
     # Out of range.
-    message.p1_time = Timestamp(5.1)
+    message.p1_time = Timestamp(5.0)
     assert not time_range.is_in_range(message)
 
 
@@ -84,11 +84,11 @@ def test_relative_system_time():
     assert time_range.is_in_range(message)
     message.system_time_ns = int(4.5 * 1e9)
     assert time_range.is_in_range(message)
-    message.system_time_ns = int(5.0 * 1e9)
+    message.system_time_ns = int(4.999 * 1e9)
     assert time_range.is_in_range(message)
 
     # Out of range.
-    message.system_time_ns = int(5.1 * 1e9)
+    message.system_time_ns = int(5.0 * 1e9)
     assert not time_range.is_in_range(message)
 
 

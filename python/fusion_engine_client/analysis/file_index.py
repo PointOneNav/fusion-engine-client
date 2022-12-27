@@ -284,8 +284,8 @@ class FileIndex(object):
         """!
         @brief Get a subset of the contents for a specified time range.
 
-        @param start The P1 time at the start of the desired time range.
-        @param stop The P1 time at the end of the desired time range.
+        @param start The P1 time at the start of the desired time range (inclusive).
+        @param stop The P1 time at the end of the desired time range (exclusive).
         @param hint A hint indicating how to handle entries that do not have P1 time (`nan` timestamps):
                - `all_nans` - Return _all_ elements with nan timestamps in addition to entries within the time range,
                  including nan elements outside the time range

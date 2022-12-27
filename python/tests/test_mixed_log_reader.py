@@ -111,23 +111,6 @@ class TestClass:
         assert num_matches == len(expected_messages)
 
     def _filter_by_time(self, messages, time_range: TimeRange):
-        # Important: For relative time ranges, TimeRange.is_in_range() treats P1 and system times independently. For
-        # example, consider the following log:
-        #   Event (system time 0)
-        #   Pose (P1 time 1)
-        #   Pose (P1 time 2)
-        #   Event (system time 2)
-        #   Pose (P1 time 3)
-        #   Pose (P1 time 4)
-        #   Event (system time 4)
-        #
-        # Say we specify a relative time range ending after 2 seconds (inclusive). Since the first P1 timestamp is 1.0,
-        # the results will include the pose message at time 3.0 (1.0 + 2), even though the first _system_ time was 0.0.
-        #
-        # Separately, for absolute time ranges, system time messages occurring before the first _included_ P1 timestamp
-        # will be omitted (P1 and system time are not correlated, so we ignore anything outside the P1 time range).
-        # Here, for an absolute time range ending at P1 time 2.0, the results should include just the event at system
-        # time 2.0, but not 0.0 or 4.0.
         result = [m for m in messages if time_range.is_in_range(m)]
         time_range.restart()
         return result

@@ -11,6 +11,17 @@ from ..messages.defs import MessagePayload
 class TimeRange(object):
     def __init__(self, start: Union[float, Timestamp] = None, end: Union[float, Timestamp] = None,
                  absolute: bool = False, p1_t0: Timestamp = None, system_t0: float = None):
+        """!
+        @brief Specify a time range (`[start, end)`) used to restrict data reads.
+
+        @param start The start of the time interval (inclusive). May be a relative timestamp (in seconds), or a @ref
+               Timestamp object containing a P1 time.
+        @param end The end of the time interval (exclusive). May be a relative timestamp (in seconds), or a @ref
+               Timestamp object containing a P1 time.
+        @param absolute If `True`, treat the time range as absolute P1 times.
+        @param p1_t0 The P1 time at the start of the data, if known.
+        @param system_t0 The system time (in seconds) at the start of the data, if known.
+        """
         self.start = start
         self.end = end
         self.absolute = absolute
@@ -103,6 +114,49 @@ class TimeRange(object):
 
     def is_in_range(self, message: Union[MessagePayload, bytes], return_timestamps: bool = False) ->\
             Union[bool, Tuple[bool, Timestamp, float]]:
+        """!
+        @brief Check if a message falls within the specified time range.
+
+        Important: For relative time ranges, this function treats P1 and system times independently. For example,
+        consider the following sequence of messages:
+        ```
+        Event (system time 0)
+        Pose (P1 time 1)
+        Pose (P1 time 2)
+        Event (system time 2)
+        Pose (P1 time 3)
+        Event (system time 3)
+        Pose (P1 time 4)
+        Event (system time 4)
+        ```
+
+        Say we specify a relative time range ending after 3 seconds (exclusive):
+        ```py
+        TimeRange(end=3.0)
+        ```
+
+        The results will include event messages from system time 0.0-2.0, and pose messages from P1 time 1.0-3.0. Even
+        though the system time range, dictated by the event data, ends before the pose at P1 time 3.0, P1 time is
+        considered independent of system time.
+
+        Separately, for absolute time ranges, system time messages occurring before the first _included_ P1 timestamp
+        will be omitted. P1 and system time are not correlated, so we must wait for P1 time to know if messages with
+        system timestamps may be included.
+
+        For the example above, say we have the following time range ending at P1 time 4.0 (exclusive):
+        ```py
+        TimeRange(end=4.0, absolute=True)
+        ```
+
+        The results will include pose data from P1 time 1.0-3.0 and event messages for system time 2.0-3.0. The event at
+        system time 0.0 will be dropped even though the time range does not specify a start time.
+
+        @param message The message object to be tested. For parsing convenience, if the object is not @ref
+               MessagePayload it will be treated as a generic non-timestamped object, possibly falling within the range
+               of valid P1 messages.
+        @param return_timestamps If `True`, return a length-3 tuple containing the boolean result, plus the extracted
+               P1 and system timestamps, if applicable.
+        """
         # Shortcut if no range is specified.
         if not self._range_specified and not return_timestamps:
             self._in_range_started = True
@@ -168,7 +222,7 @@ class TimeRange(object):
 
             if self.start is not None and comparison_time_sec < self.start:
                 in_range = False
-            elif self.end is not None and comparison_time_sec > self.end:
+            elif self.end is not None and comparison_time_sec >= self.end:
                 in_range = False
             else:
                 in_range = True
