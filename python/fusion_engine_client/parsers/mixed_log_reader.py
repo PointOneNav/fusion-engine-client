@@ -37,6 +37,10 @@ class MixedLogReader(object):
         @param ignore_index If `True`, ignore the existing index file and read from the binary file directly. If
                `generate_index == True`, this will delete the existing file and create a new one.
         @param max_bytes If specified, read up to the maximum number of bytes.
+        @param time_range An optional length-2 tuple specifying desired start and end bounds on the data timestamps.
+               Both the start and end values may be set to `None` to read all data.
+        @param message_types A list of one or more @ref fusion_engine_client.messages.defs.MessageType "MessageTypes" to
+               be returned. If `None` or an empty list, read all available messages.
         @param return_header If `True`, return the decoded @ref MessageHeader for each message.
         @param return_payload If `True`, parse and return the payload for each message as a subclass of @ref
                MessagePayload. Will return `None` if the payload cannot be parsed.
