@@ -103,9 +103,13 @@ class MixedLogReader(object):
         self.next_index_elem = 0
         if ignore_index:
             if os.path.exists(self.index_path):
-                self.logger.debug("Ignoring index file @ '%s'." % self.index_path)
+                if generate_index:
+                    self.logger.debug("Deleting/regenerating index file @ '%s'." % self.index_path)
+                    os.remove(self.index_path)
+                else:
+                    self.logger.debug("Ignoring index file @ '%s'." % self.index_path)
+
             self.index = None
-            self.index_builder = file_index.FileIndexBuilder() if generate_index else None
         else:
             if os.path.exists(self.index_path):
                 try:
@@ -113,18 +117,15 @@ class MixedLogReader(object):
                     self._original_index = file_index.FileIndex(index_path=self.index_path, data_path=input_path,
                                                                 delete_on_error=generate_index)
                     self.index = self._original_index[self.message_types][self.time_range]
-                    self.index_builder = None
                 except ValueError as e:
                     self.logger.error("Error loading index file: %s" % str(e))
                     self.index = None
-                    self.index_builder = file_index.FileIndexBuilder() if generate_index else None
             else:
                 self.logger.debug("No index file found @ '%s'." % self.index_path)
                 self.index = None
-                self.index_builder = file_index.FileIndexBuilder() if generate_index else None
 
-        if self.index_builder is not None:
-            self.logger.debug("Generating index file '%s'." % self.index_path)
+        self.index_builder = None
+        self.set_generate_index(generate_index)
 
     def rewind(self):
         self.logger.debug('Rewinding to the start of the file.')
@@ -154,6 +155,15 @@ class MixedLogReader(object):
 
     def generating_index(self):
         return self.index_builder is not None
+
+    def set_generate_index(self, generate_index):
+        if self.index is None:
+            if generate_index:
+                self.logger.debug("Generating index file '%s'." % self.index_path)
+                self.index_builder = file_index.FileIndexBuilder()
+            else:
+                self.logger.debug("Index generation disabled.")
+                self.index_builder = None
 
     def get_bytes_read(self):
         return self.total_bytes_read
