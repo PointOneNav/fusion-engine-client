@@ -6,6 +6,8 @@ import logging
 import os
 import sys
 
+import numpy as np
+
 from ..analysis import file_index
 from ..messages import MessageType, MessageHeader, MessagePayload, Timestamp, message_type_to_class
 from ..utils.time_range import TimeRange
@@ -371,7 +373,7 @@ class MixedLogReader(object):
             if self.next_index_elem == len(self.index):
                 return False
             else:
-                offset_bytes = self.index._data['offset'][self.next_index_elem]
+                offset_bytes = self.index.offset[self.next_index_elem]
                 self.next_index_elem += 1
                 self.input_file.seek(offset_bytes, os.SEEK_SET)
                 self.total_bytes_read = offset_bytes
@@ -404,6 +406,16 @@ class MixedLogReader(object):
                - A @ref TimeRange object
         @param clear_existing If `True`, clear any previous filter criteria.
         """
+        # If we're reading using an index, determine the current file offset. Then below, after we filter the index
+        # down, locate the next entry to be read in the file that meets the new criteria. That way we continue where we
+        # left off.
+        #
+        # If we're reading directly from the file without an index, we'll just pick up where the current seek is, so no
+        # need to do anything special.
+        if self.index is not None:
+            prev_offset_bytes = self.index.offset[self.next_index_elem]
+
+        # If requested, clear previous filter criteria.
         if clear_existing:
             if self.index is None:
                 self.message_types = copy.deepcopy(self._original_message_types)
@@ -448,6 +460,19 @@ class MixedLogReader(object):
                     self.time_range = key
                 else:
                     self.time_range.intersect(key, in_place=True)
+
+        # Now, find the next entry in the newly filtered index starting at/after the most recent message we read. That
+        # way we can continue reading where we left off.
+        if self.index is not None:
+            if len(self.index) == 0:
+                self.next_index_elem = 0
+            else:
+                idx = np.argmax(self.index.offset >= prev_offset_bytes)
+                if idx == 0 and self.index.offset[0] < prev_offset_bytes:
+                    self.next_index_elem = len(self.index)
+                else:
+                    self.next_index_elem = idx
+
         return self
 
     def __iter__(self):
