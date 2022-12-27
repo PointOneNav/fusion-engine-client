@@ -169,6 +169,9 @@ class MixedLogReader(object):
         return self.total_bytes_read
 
     def next(self):
+        return self.read_next()
+
+    def read_next(self, require_p1_time=False, require_system_time=False, generate_index=True):
         while True:
             if not self._advance_to_next_sync():
                 # End of file.
@@ -252,7 +255,11 @@ class MixedLogReader(object):
                 self.prev_sequence_number = header.sequence_number
 
                 # Deserialize the payload if we need it.
-                need_payload = self.return_payload or self.index_builder is not None or self.time_range is not None
+                need_payload = self.return_payload or \
+                               self.time_range is not None or \
+                               require_p1_time or require_system_time or \
+                               (self.index_builder is not None and generate_index)
+
                 if need_payload:
                     cls = message_type_to_class.get(header.message_type, None)
                     if cls is not None:
@@ -265,8 +272,15 @@ class MixedLogReader(object):
                     else:
                         payload = None
 
+                    if require_p1_time and (payload is None or payload.get_p1_time() is None):
+                        self.logger.trace("Skipping %s message. P1 time requested." % header.get_type_string())
+                        continue
+                    elif require_system_time and (payload is None or payload.get_system_time_ns() is None):
+                        self.logger.trace("Skipping %s message. System time requested." % header.get_type_string())
+                        continue
+
                 # Add this message to the index file.
-                if self.index_builder is not None:
+                if self.index_builder is not None and generate_index:
                     p1_time = payload.get_p1_time() if payload is not None else None
                     self.index_builder.append(message_type=header.message_type, offset_bytes=start_offset_bytes,
                                               p1_time=p1_time)
@@ -276,7 +290,7 @@ class MixedLogReader(object):
                     self.logger.trace("Message type not requested. Skipping.", depth=1)
                     continue
                 elif self.time_range is not None and not self.time_range.is_in_range(payload):
-                    if self.time_range.in_range_started() and self.index_builder is None:
+                    if self.time_range.in_range_started() and (self.index_builder is None or not generate_index):
                         self.logger.debug("End of time range reached. Finished processing.")
                         break
                     else:
@@ -308,7 +322,7 @@ class MixedLogReader(object):
         self.logger.debug("Read %d bytes total." % self.total_bytes_read)
 
         # If we are creating an index file, save it now.
-        if self.index_builder is not None:
+        if self.index_builder is not None and generate_index:
             self.logger.debug("Saving index file as '%s'." % self.index_path)
             self.index_builder.save(self.index_path, self.input_file.name)
 
