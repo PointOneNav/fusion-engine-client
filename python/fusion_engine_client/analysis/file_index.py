@@ -280,7 +280,7 @@ class FileIndex(object):
             raw_data.tofile(index_path)
 
     def get_time_range(self, start: Union[Timestamp, float] = None, stop: Union[Timestamp, float] = None,
-                       hint: str = None) -> FileIndex:
+                       hint: str = None, time_range: TimeRange = None) -> FileIndex:
         """!
         @brief Get a subset of the contents for a specified time range.
 
@@ -291,9 +291,23 @@ class FileIndex(object):
                  including nan elements outside the time range
                - `include_nans` - Include nan elements within the requested time range (default)
                - `remove_nans` - Do not return nan elements; remove elements falling within the requested time range
+        @param time_range A @ref TimeRange object to use instead of `start` and `stop`.
         """
         if hint is None:
             hint = 'include_nans'
+
+        # If the caller provided a TimeRange object, use that to set start/stop.
+        if time_range is not None:
+            if start is not None or stop is not None:
+                raise ValueError('Cannot specify both a TimeRange and start/stop times.')
+
+            if time_range.absolute:
+                start = time_range.start
+                stop = time_range.end
+            else:
+                p1_t0 = time_range.p1_t0 if time_range.p1_t0 is not None else self.t0
+                start = time_range.start + p1_t0 if time_range.start is not None else None
+                stop = time_range.end + p1_t0 if time_range.end is not None else None
 
         # No data available. Skip time indexing (argmax will fail on an empty vector).
         if len(self._data) == 0:
@@ -378,18 +392,11 @@ class FileIndex(object):
             hint = key.step
             if hint is not None and not isinstance(hint, str):
                 raise ValueError('Step size not supported for time range slicing.')
-            return self.get_time_range(key.start, key.stop, hint)
+            return self.get_time_range(start=key.start, stop=key.stop, hint=hint)
         # Key is a TimeRange object. Return a subset of the data. All nan elements (messages without P1 time) will be
         # included in the results.
         elif isinstance(key, TimeRange):
-            if key.absolute:
-                start = key.start
-                end = key.end
-            else:
-                p1_t0 = key.p1_t0 if key.p1_t0 is not None else self.t0
-                start = key.start + p1_t0 if key.start is not None else None
-                end = key.end + p1_t0 if key.end is not None else None
-            return self.get_time_range(start, end, 'include_nans')
+            return self.get_time_range(time_range=key, hint='include_nans')
         # Key is an index slice or a list of individual element indices. Return a subset of the data.
         elif isinstance(key, slice):
             return FileIndex(data=self._data[key], t0=self.t0)
