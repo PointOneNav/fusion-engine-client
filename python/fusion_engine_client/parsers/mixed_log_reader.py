@@ -493,6 +493,11 @@ class MixedLogReader(object):
                     self.time_range = time_range
                 else:
                     self.time_range.intersect(time_range, in_place=True)
+            # Key is a slice by index (# of messages). Return a subset of the index file.
+            #
+            # Note: Slicing is not supported if there is no index file. Slicing with an index file is handled above.
+            elif isinstance(key, slice) and (isinstance(key.start, int) or isinstance(key.stop, int)):
+                raise ValueError('Index slicing not supported when an index file is not present.')
             # Key is a TimeRange object. Return a subset of the data. All nan elements (messages without P1 time) will
             # be included in the results.
             elif isinstance(key, TimeRange):
