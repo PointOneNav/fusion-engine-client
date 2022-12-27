@@ -333,3 +333,73 @@ class TestClass:
 
         reader.rewind()
         self._check_results(reader, expected_messages)
+
+    def test_partial_filter_no_index(self, data_path):
+        messages = self._generate_mixed_data_with_binary(data_path)
+
+        # Read the first 3 messages without filtering. This should include 2 pose messages.
+        reader = MixedLogReader(str(data_path))
+        for i in range(3):
+            _, message = next(reader)
+            self._check_message(message, messages[i])
+
+        # Next, filter to just pose messages. This should continue where we left off.
+        expected_messages = [m for m in messages if isinstance(m, PoseMessage)]
+        expected_messages = expected_messages[2:]
+        reader.filter_in_place((PoseMessage,))
+        self._check_results(reader, expected_messages)
+
+    def test_partial_filter_with_index(self, data_path):
+        messages = self._generate_mixed_data_with_binary(data_path)
+
+        MixedLogReader.generate_index_file(str(data_path))
+
+        # Read the first 3 messages without filtering. This should include 2 pose messages.
+        reader = MixedLogReader(str(data_path))
+        for i in range(3):
+            _, message = next(reader)
+            self._check_message(message, messages[i])
+
+        # Next, filter to just pose messages. This should continue where we left off.
+        expected_messages = [m for m in messages if isinstance(m, PoseMessage)]
+        expected_messages = expected_messages[2:]
+        reader.filter_in_place((PoseMessage,))
+        self._check_results(reader, expected_messages)
+
+    def test_reset_filter_no_index(self, data_path):
+        messages = self._generate_mixed_data_with_binary(data_path)
+
+        # Read the first 2 pose messages.
+        reader = MixedLogReader(str(data_path))
+        reader.filter_in_place((PoseMessage,))
+        expected_messages = [m for m in messages if isinstance(m, PoseMessage)][:2]
+        for i in range(2):
+            _, message = next(reader)
+            self._check_message(message, expected_messages[i])
+
+        # Now, reset the filter to include all message types. This should continue where we left off, starting with the
+        # event message at system time 2.0.
+        idx = messages.index(expected_messages[-1])
+        expected_messages = messages[idx + 1:]
+        reader.filter_in_place(None, clear_existing=True)
+        self._check_results(reader, expected_messages)
+
+    def test_reset_filter_with_index(self, data_path):
+        messages = self._generate_mixed_data_with_binary(data_path)
+
+        MixedLogReader.generate_index_file(str(data_path))
+
+        # Read the first 2 pose messages.
+        reader = MixedLogReader(str(data_path))
+        reader.filter_in_place((PoseMessage,))
+        expected_messages = [m for m in messages if isinstance(m, PoseMessage)][:2]
+        for i in range(2):
+            _, message = next(reader)
+            self._check_message(message, expected_messages[i])
+
+        # Now, reset the filter to include all message types. This should continue where we left off, starting with the
+        # event message at system time 2.0.
+        idx = messages.index(expected_messages[-1])
+        expected_messages = messages[idx + 1:]
+        reader.filter_in_place(None, clear_existing=True)
+        self._check_results(reader, expected_messages)
