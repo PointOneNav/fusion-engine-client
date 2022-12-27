@@ -1,5 +1,6 @@
 from typing import Iterable, Union
 
+import copy
 from datetime import datetime
 import logging
 import os
@@ -56,6 +57,7 @@ class MixedLogReader(object):
         self.return_offset = return_offset
 
         self.time_range = time_range
+        self._original_time_range = copy.deepcopy(self.time_range)
 
         if message_types is None:
             self.message_types = None
@@ -67,6 +69,8 @@ class MixedLogReader(object):
             self.message_types = set([(t.get_type() if MessagePayload.is_subclass(t) else t) for t in message_types])
             if len(self.message_types) == 0:
                 self.message_types = None
+
+        self._original_message_types = copy.deepcopy(self.message_types)
 
         self.valid_count = 0
         self.message_counts = {}
@@ -106,9 +110,9 @@ class MixedLogReader(object):
             if os.path.exists(self.index_path):
                 try:
                     self.logger.debug("Loading index file '%s'." % self.index_path)
-                    self.index = file_index.FileIndex(index_path=self.index_path, data_path=input_path,
-                                                      delete_on_error=generate_index)
-                    self.index = self.index[self.message_types][self.time_range]
+                    self._original_index = file_index.FileIndex(index_path=self.index_path, data_path=input_path,
+                                                                delete_on_error=generate_index)
+                    self.index = self._original_index[self.message_types][self.time_range]
                     self.index_builder = None
                 except ValueError as e:
                     self.logger.error("Error loading index file: %s" % str(e))
@@ -121,6 +125,26 @@ class MixedLogReader(object):
 
         if self.index_builder is not None:
             self.logger.debug("Generating index file '%s'." % self.index_path)
+
+    def rewind(self):
+        self.logger.debug('Rewinding to the start of the file.')
+
+        self.time_range.restart()
+        self._original_time_range.restart()
+
+        self.valid_count = 0
+        self.message_counts = {}
+        self.prev_sequence_number = None
+        self.total_bytes_read = 0
+
+        self.last_print_bytes = 0
+        self.start_time = datetime.now()
+
+        self.next_index_elem = 0
+        self.input_file.seek(0, os.SEEK_SET)
+
+        if self.index_builder is not None:
+            self.index_builder = file_index.FileIndexBuilder()
 
     def have_index(self):
         return self.index is not None
@@ -339,7 +363,7 @@ class MixedLogReader(object):
                              elapsed_sec, self.total_bytes_read / elapsed_sec / 1e6))
             self.last_print_bytes = self.total_bytes_read
 
-    def filter_in_place(self, key):
+    def filter_in_place(self, key, clear_existing: bool = False):
         """!
         @brief Limit the returned messages by type or time.
 
@@ -351,7 +375,15 @@ class MixedLogReader(object):
                - An iterable listing one or more @ref MessageType%s to be returned
                - A `slice` specifying the start/end of the desired absolute (P1) or relative time range
                - A @ref TimeRange object
+        @param clear_existing If `True`, clear any previous filter criteria.
         """
+        if clear_existing:
+            if self.index is None:
+                self.message_types = copy.deepcopy(self._original_message_types)
+                self.time_range = copy.deepcopy(self.time_range)
+            else:
+                self.index = self._original_index
+
         # No key specified (convenience case).
         if key is None:
             pass

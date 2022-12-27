@@ -43,6 +43,10 @@ class TimeRange(object):
         self._in_range_started = False
         self._in_range_ended = False
 
+    def restart(self):
+        self._in_range_started = False
+        self._in_range_ended = False
+
     def make_absolute(self, p1_t0: Timestamp = None, in_place: bool = True) -> TimeRange:
         if not in_place:
             return copy.copy(self).make_absolute(p1_t0=p1_t0)
