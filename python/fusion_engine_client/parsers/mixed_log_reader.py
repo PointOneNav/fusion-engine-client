@@ -132,8 +132,9 @@ class MixedLogReader(object):
     def rewind(self):
         self.logger.debug('Rewinding to the start of the file.')
 
-        self.time_range.restart()
-        self._original_time_range.restart()
+        if self.time_range is not None:
+            self.time_range.restart()
+            self._original_time_range.restart()
 
         self.valid_count = 0
         self.message_counts = {}

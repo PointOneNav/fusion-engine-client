@@ -303,3 +303,33 @@ class TestClass:
 
         reader = MixedLogReader(str(data_path), time_range=time_range)
         self._check_results(reader, expected_messages)
+
+    def test_rewind_no_index(self, data_path):
+        messages = self._generate_mixed_data_with_binary(data_path)
+        expected_messages = [m for m in messages if isinstance(m, PoseMessage)]
+
+        reader = MixedLogReader(str(data_path))
+        reader.filter_in_place((PoseMessage,))
+        for i in range(3):
+            _, message = next(reader)
+            self._check_message(message, expected_messages[i])
+        assert reader.index is None
+
+        reader.rewind()
+        self._check_results(reader, expected_messages)
+        assert reader.index is not None and len(reader.index) == len(expected_messages)
+
+    def test_rewind_with_index(self, data_path):
+        messages = self._generate_mixed_data_with_binary(data_path)
+        expected_messages = [m for m in messages if isinstance(m, PoseMessage)]
+
+        MixedLogReader.generate_index_file(str(data_path))
+        reader = MixedLogReader(str(data_path))
+        assert reader.index is not None
+        reader.filter_in_place((PoseMessage,))
+        for i in range(3):
+            _, message = next(reader)
+            self._check_message(message, expected_messages[i])
+
+        reader.rewind()
+        self._check_results(reader, expected_messages)
