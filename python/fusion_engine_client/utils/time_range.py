@@ -9,8 +9,8 @@ from ..messages.defs import MessagePayload
 
 
 class TimeRange(object):
-    def __init__(self, start: Union[float, Timestamp], end: Union[float, Timestamp], absolute: bool = False,
-                 p1_t0: Timestamp = None, system_t0: float = None):
+    def __init__(self, start: Union[float, Timestamp] = None, end: Union[float, Timestamp] = None,
+                 absolute: bool = False, p1_t0: Timestamp = None, system_t0: float = None):
         self.start = start
         self.end = end
         self.absolute = absolute
