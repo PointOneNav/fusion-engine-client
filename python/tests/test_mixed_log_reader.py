@@ -375,8 +375,7 @@ class TestClass:
 
         # Now jump to EOF. If we're generating an index file, this is illegal.
         if use_index:
-            with pytest.raises(StopIteration):
-                reader.read_next(force_eof=True)
+            reader.read_next(force_eof=True)
         else:
             with pytest.raises(ValueError):
                 reader.read_next(force_eof=True)

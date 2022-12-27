@@ -186,27 +186,30 @@ class MixedLogReader(object):
         return self.read_next()
 
     def read_next(self, require_p1_time=False, require_system_time=False, generate_index=True, force_eof=False):
-        if force_eof and not self.reached_eof():
-            if self.generating_index():
-                raise ValueError('Cannot jump to EOF while building an index file.')
+        if force_eof:
+            if not self.reached_eof():
+                if self.generating_index():
+                    raise ValueError('Cannot jump to EOF while building an index file.')
 
-            self.logger.debug('Forcibly seeking to EOF.')
-            if self.index is None:
-                self.input_file.seek(self.file_size_bytes, os.SEEK_SET)
-                self.total_bytes_read = self.file_size_bytes
-            elif len(self.index) == 0:
-                self.next_index_elem = 0
-                self.total_bytes_read = 0
+                self.logger.debug('Forcibly seeking to EOF.')
+                if self.index is None:
+                    self.input_file.seek(self.file_size_bytes, os.SEEK_SET)
+                    self.total_bytes_read = self.file_size_bytes
+                elif len(self.index) == 0:
+                    self.next_index_elem = 0
+                    self.total_bytes_read = 0
+                else:
+                    # Read the header of the last element so we can set total_bytes_read equal to the end of the index.
+                    # We're not actually going to return this message.
+                    offset_bytes = self.index.offset[-1]
+                    self.input_file.seek(offset_bytes, os.SEEK_SET)
+                    data = self.input_file.read(MessageHeader.calcsize())
+                    header = MessageHeader()
+                    header.unpack(data, warn_on_unrecognized=False)
+                    self.total_bytes_read = offset_bytes + header.get_message_size()
+                    self.next_index_elem = len(self.index)
             else:
-                # Read the header of the last element so we can set total_bytes_read equal to the end of the index.
-                # We're not actually going to return this message.
-                offset_bytes = self.index.offset[-1]
-                self.input_file.seek(offset_bytes, os.SEEK_SET)
-                data = self.input_file.read(MessageHeader.calcsize())
-                header = MessageHeader()
-                header.unpack(data, warn_on_unrecognized=False)
-                self.total_bytes_read = offset_bytes + header.get_message_size()
-                self.next_index_elem = len(self.index)
+                return
 
         while True:
             if not self._advance_to_next_sync():
@@ -365,7 +368,10 @@ class MixedLogReader(object):
             self.next_index_elem = len(self.index)
 
         # Finished iterating.
-        raise StopIteration()
+        if force_eof:
+            return
+        else:
+            raise StopIteration()
 
     def _advance_to_next_sync(self):
         if self.index is None:
