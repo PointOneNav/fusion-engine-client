@@ -237,29 +237,22 @@ class TestClass:
 
         assert reader.index is None
 
-    def _test_time_range(self, data_path, time_range):
+    @pytest.mark.parametrize("time_range", [
+        TimeRange(start=1.0, absolute=False),
+        TimeRange(end=2.0, absolute=False),
+        TimeRange(start=1.0, end=2.0, absolute=False),
+        TimeRange(start=1.0, absolute=True),
+        TimeRange(end=2.0, absolute=True),
+        TimeRange(start=1.0, end=2.0, absolute=True),
+    ])
+    @pytest.mark.parametrize("use_index", [False, True])
+    def test_time_range(self, data_path, time_range, use_index):
         messages = self._generate_mixed_data(data_path)
         expected_messages = self._filter_by_time(messages, time_range)
+        if use_index:
+            MixedLogReader.generate_index_file(str(data_path))
         reader = MixedLogReader(str(data_path), time_range=time_range)
         self._check_results(reader, expected_messages)
-
-    def test_time_range_rel_start(self, data_path):
-        self._test_time_range(data_path, time_range=TimeRange(start=1.0, absolute=False))
-
-    def test_time_range_rel_end(self, data_path):
-        self._test_time_range(data_path, time_range=TimeRange(end=2.0, absolute=False))
-
-    def test_time_range_rel_both(self, data_path):
-        self._test_time_range(data_path, time_range=TimeRange(start=1.0, end=2.0, absolute=False))
-
-    def test_time_range_abs_start(self, data_path):
-        self._test_time_range(data_path, time_range=TimeRange(start=1.0, absolute=True))
-
-    def test_time_range_abs_end(self, data_path):
-        self._test_time_range(data_path, time_range=TimeRange(end=2.0, absolute=True))
-
-    def test_time_range_abs_both(self, data_path):
-        self._test_time_range(data_path, time_range=TimeRange(start=1.0, end=2.0, absolute=True))
 
     def _test_rewind(self, data_path, use_index):
         messages = self._generate_mixed_data_with_binary(data_path)
