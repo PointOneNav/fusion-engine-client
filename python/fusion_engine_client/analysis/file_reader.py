@@ -281,8 +281,14 @@ class FileReader(object):
 
         # Make cache entries for the messages to be read.
         supported_message_types = set()
+
+        if ignore_cache:
+            data_cache = {}
+        else:
+            data_cache = self.data
+
         for type in needed_message_types:
-            self.data[type] = MessageData(message_type=type, params=params)
+            data_cache[type] = MessageData(message_type=type, params=params)
 
             cls = message_type_to_class.get(type, None)
             if cls is None:
@@ -301,7 +307,7 @@ class FileReader(object):
 
         # Create a dict with references to the requested types only to be returned below. If any data was already
         # cached, it will be present in self.data and populated here.
-        result = {t: self.data[t] for t in message_types}
+        result = {t: data_cache[t] for t in message_types}
 
         num_needed = len(needed_message_types)
         if num_needed == 0:
@@ -335,9 +341,9 @@ class FileReader(object):
             if max_messages is not None and self.reader.have_index():
                 reader_max_messages_applied = True
                 if max_messages >= 0:
-                    self.reader.filter_in_place(slice(stop=max_messages + 1), clear_existing=False)
+                    self.reader.filter_in_place(slice(max_messages + 1), clear_existing=False)
                 elif max_messages < 0:
-                    self.reader.filter_in_place(slice(stop=max_messages), clear_existing=False)
+                    self.reader.filter_in_place(slice(max_messages), clear_existing=False)
 
         # When the user requests max_messages < 0, they would like the _last_ N messages in the file. If the reader does
         # not have an index file, so we can't do a slice above, we will create a circular buffer and store the last N
@@ -425,7 +431,7 @@ class FileReader(object):
             if newest_messages is not None:
                 newest_messages.append((header, payload))
             elif max_messages is None or message_count <= abs(max_messages):
-                self.data[header.message_type].messages.append(payload)
+                data_cache[header.message_type].messages.append(payload)
 
             if max_messages is not None:
                 # If we reached the max message count but we're generating an index file, we need to read through the
@@ -445,7 +451,7 @@ class FileReader(object):
         # If the user only wanted the N newest messages, take them from the circular buffer now.
         if newest_messages is not None:
             for entry in newest_messages:
-                self.data[entry[0].message_type].messages.append(entry[1])
+                data_cache[entry[0].message_type].messages.append(entry[1])
 
         # Time-align the data if requested.
         FileReader.time_align_data(result, mode=time_align, message_types=aligned_message_types)
