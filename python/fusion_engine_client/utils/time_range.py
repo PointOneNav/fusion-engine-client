@@ -329,6 +329,11 @@ class TimeRange(object):
               absolute: Optional[bool] = None) -> 'TimeRange':
         if time_range is None:
             return TimeRange(None, None, absolute=absolute)
+        elif isinstance(time_range, TimeRange):
+            if absolute is None or absolute == time_range.absolute:
+                return time_range
+            else:
+                raise ValueError('Cannot specify a TimeRange object and absolute argument.')
 
         start = None
         end = None
