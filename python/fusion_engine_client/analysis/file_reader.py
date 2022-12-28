@@ -252,9 +252,14 @@ class FileReader(object):
         else:
             time_range = TimeRange.parse(time_range)
 
+        # Store the set of parameters used to perform this read along with the cache data. When doing reads for the
+        # requested message type(s) in the future, if the parameters match exactly, we can return the cached data.
+        # Otherwise, we need to read from disk again.
         params = {
             'time_range': time_range,
-            'max_messages': max_messages
+            'max_messages': max_messages,
+            'require_p1_time': require_p1_time,
+            'require_system_time': require_system_time,
         }
 
         # Parse the message types argument into a list of MessageType elements.
