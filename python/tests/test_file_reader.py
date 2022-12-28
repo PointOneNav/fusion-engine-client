@@ -170,6 +170,19 @@ class TestReader:
         assert len(reader.reader._original_index) == len(messages)
         assert len(reader.reader.index) == len(expected_messages)
 
+    def test_read_pose_with_index(self, data_path):
+        messages = generate_data(data_path=str(data_path), include_binary=False, return_dict=False)
+        expected_messages = [m for m in messages if isinstance(m, PoseMessage)]
+        expected_result = message_list_to_dict(expected_messages)
+
+        MixedLogReader.generate_index_file(str(data_path))
+
+        # Just read pose messages. The index file already exists, so we should use that to do the read.
+        reader = FileReader(path=str(data_path))
+        assert reader.reader.have_index()
+        result = reader.read(message_types=PoseMessage)
+        self._check_results(result, expected_result)
+
     def test_read_pose_mixed_binary(self, data_path):
         messages = generate_data(data_path=str(data_path), include_binary=True, return_dict=False)
         expected_messages = [m for m in messages if isinstance(m, PoseMessage)]
