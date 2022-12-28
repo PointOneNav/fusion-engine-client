@@ -246,6 +246,36 @@ class TestReader:
         result = reader.read(time_range=time_range)
         self._check_results(result, expected_result)
 
+    @pytest.mark.parametrize("max_messages", [1, 3, -1, -1])
+    @pytest.mark.parametrize("use_index", [False, True])
+    def test_max_messages(self, data_path, max_messages, use_index):
+        messages = generate_data(data_path=str(data_path), include_binary=False, return_dict=False)
+
+        if use_index:
+            MixedLogReader.generate_index_file(str(data_path))
+
+        # First, try reading for all message types.
+        if max_messages >= 0:
+            expected_messages = messages[:max_messages]
+        else:
+            expected_messages = messages[max_messages:]
+        expected_result = message_list_to_dict(expected_messages)
+        reader = FileReader(path=str(data_path))
+        result = reader.read(max_messages=max_messages)
+        self._check_results(result, expected_result)
+
+        # Now, try reading just specific message types.
+        message_types = (PoseMessage, PoseAuxMessage)
+        messages = [m for m in messages if isinstance(m, message_types)]
+        if max_messages >= 0:
+            expected_messages = messages[:max_messages]
+        else:
+            expected_messages = messages[max_messages:]
+        expected_result = message_list_to_dict(expected_messages)
+        reader = FileReader(path=str(data_path))
+        result = reader.read(max_messages=max_messages, message_types=message_types)
+        self._check_results(result, expected_result)
+
 
 class TestTimeAlignment:
     @pytest.fixture
