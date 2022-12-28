@@ -152,13 +152,15 @@ class FileReader(object):
         if self.reader.have_index():
             self.t0 = self.reader.index.t0
         else:
-            self.read(require_p1_time=True, max_messages=1, disable_index_generation=True, show_progress=False)
+            self.read(require_p1_time=True, max_messages=1, disable_index_generation=True, show_progress=False,
+                      ignore_cache=True)
 
         # Similarly, we also set the system t0 based on the first system-stamped (typically POSIX) message to appear in
         # the log, if any (profiling data, etc.). Unlike P1 time, since the index file does not contain system
         # timestamps, we have to do a read() even if an index exists. read() will use the index to at least speed up the
         # read operation.
-        self.read(require_system_time=True, max_messages=1, disable_index_generation=True, show_progress=False)
+        self.read(require_system_time=True, max_messages=1, disable_index_generation=True, show_progress=False,
+                  ignore_cache=True)
 
     def close(self):
         """!
