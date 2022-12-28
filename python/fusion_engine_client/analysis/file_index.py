@@ -162,7 +162,7 @@ class FileIndex(object):
         elif len(self._data) == 0:
             self.t0 = None
         else:
-            idx = np.argmax(~np.isnan(self._data['time']))
+            idx = find_first(~np.isnan(self._data['time']))
             if idx >= 0:
                 self.t0 = Timestamp(self._data['time'][idx])
             else:
