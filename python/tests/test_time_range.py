@@ -6,22 +6,58 @@ def test_parse_full():
     time_range = TimeRange.parse('3:5')
     assert time_range.start == 3.0
     assert time_range.end == 5.0
+    assert not time_range.absolute
+
+
+def test_parse_full_with_type():
+    time_range = TimeRange.parse('3:5:rel')
+    assert time_range.start == 3.0
+    assert time_range.end == 5.0
+    assert not time_range.absolute
+
+    time_range = TimeRange.parse('3:5:abs')
+    assert time_range.start == 3.0
+    assert time_range.end == 5.0
+    assert time_range.absolute
 
 
 def test_parse_start_only():
     time_range = TimeRange.parse('3')
     assert time_range.start == 3.0
     assert time_range.end is None
+    assert not time_range.absolute
 
     time_range = TimeRange.parse('3:')
     assert time_range.start == 3.0
     assert time_range.end is None
+    assert not time_range.absolute
+
+    time_range = TimeRange.parse('3::rel')
+    assert time_range.start == 3.0
+    assert time_range.end is None
+    assert not time_range.absolute
+
+    time_range = TimeRange.parse('3::abs')
+    assert time_range.start == 3.0
+    assert time_range.end is None
+    assert time_range.absolute
 
 
 def test_parse_end_only():
     time_range = TimeRange.parse(':5')
     assert time_range.start is None
     assert time_range.end == 5.0
+    assert not time_range.absolute
+
+    time_range = TimeRange.parse(':5:rel')
+    assert time_range.start is None
+    assert time_range.end == 5.0
+    assert not time_range.absolute
+
+    time_range = TimeRange.parse(':5:abs')
+    assert time_range.start is None
+    assert time_range.end == 5.0
+    assert time_range.absolute
 
 
 def test_parse_empty():
@@ -73,21 +109,20 @@ def test_relative_p1_time():
 
 def test_relative_system_time():
     time_range = TimeRange.parse('1:2', absolute=False)
-    message = VersionInfoMessage()
+    message = EventNotificationMessage()
 
-    # Establish t0 == 3 seconds. The range starts at 1, so this message is _not_ in the range.
     message.system_time_ns = int(3.0 * 1e9)
     assert not time_range.is_in_range(message)
 
-    # In range.
+    # Time ranges are _exclusively_ based on P1 time, so even though these are 1-2 seconds after the first message
+    # above, they are still out of range.
     message.system_time_ns = int(4.0 * 1e9)
-    assert time_range.is_in_range(message)
+    assert not time_range.is_in_range(message)
     message.system_time_ns = int(4.5 * 1e9)
-    assert time_range.is_in_range(message)
+    assert not time_range.is_in_range(message)
     message.system_time_ns = int(4.999 * 1e9)
-    assert time_range.is_in_range(message)
+    assert not time_range.is_in_range(message)
 
-    # Out of range.
     message.system_time_ns = int(5.0 * 1e9)
     assert not time_range.is_in_range(message)
 
@@ -131,36 +166,46 @@ def test_absolute_mixed_time():
     pose.p1_time = Timestamp(5.0)
     assert not time_range.is_in_range(pose)
     assert not time_range.is_in_range(event)
+    assert not time_range.is_in_range(reset)
 
 
 def test_relative_mixed_time():
     time_range = TimeRange.parse('1:2', absolute=False)
     pose = PoseMessage()
     event = EventNotificationMessage()
+    # We use reset requests messages as a stand-in for anything that doesn't have a timestamp. They are considered in
+    # range only when the other message types are.
     reset = ResetRequest()
+
+    # First system time message at system 0.0 before the first P1 message. This has no bearing on the time range.
+    event.system_time_ns = int(0.0 * 1e9)
+    assert not time_range.is_in_range(event)
+    assert not time_range.is_in_range(reset)
+
+    assert not time_range.is_in_range(reset)
 
     # Establish t0 == 3 seconds. The range starts at 1, so this pose is _not_ in the range.
     pose.p1_time = Timestamp(3.0)
     assert not time_range.is_in_range(pose)
 
-    # Establish system t0 = 13.5 seconds. This is independent of P1 time.
-    event.system_time_ns = int(13.5 * 1e9)
-    assert not time_range.is_in_range(event)
-
-    # Check in range.
-    #
-    # We use reset requests messages as a stand-in for anything that doesn't have a timestamp. They are considered in
-    # range only when the other message types are.
+    # Again, t0 established but P1 time not in range, so non-P1 messages are out of range too.
     assert not time_range.is_in_range(reset)
 
-    pose.p1_time = Timestamp(4.0)
-    assert time_range.is_in_range(pose)
-    assert time_range.is_in_range(reset)
-
-    event.system_time_ns = int(14.2 * 1e9)  # Not in range - independent of P1 time.
+    # This is true even for the event at system time 1.5, even though the first _system_ timestamp above was 0.0 and
+    # 1.5 - 0.0 falls within the relative range. Only P1 time applies for time ranges.
+    event.system_time_ns = int(1.5 * 1e9)
     assert not time_range.is_in_range(event)
 
-    event.system_time_ns = int(14.5 * 1e9)
+    # Check in range. All non-P1 messages now considered in range.
+    pose.p1_time = Timestamp(4.0)
+    assert time_range.is_in_range(pose)
+
+    assert time_range.is_in_range(reset)
+
+    # Note that system time has no bearing on the range bounds, no matter the value.
+    event.system_time_ns = int(4.0 * 1e9)
+    assert time_range.is_in_range(event)
+    event.system_time_ns = int(54.0 * 1e9)
     assert time_range.is_in_range(event)
 
     pose.p1_time = Timestamp(4.5)
@@ -168,27 +213,104 @@ def test_relative_mixed_time():
     pose.p1_time = Timestamp(4.999)
     assert time_range.is_in_range(pose)
 
-    event.system_time_ns = int(15.499 * 1e9)
-    assert time_range.is_in_range(event)
-
-    # This message is out of range for system time. It should not prevent us outputting non-timestamped messages,
-    # however, since P1 time is present.
-    event.system_time_ns = int(15.5 * 1e9)
-    assert not time_range.is_in_range(event)
     assert time_range.is_in_range(reset)
 
-    # Out of range of P1 time.
+    # Out of range.
     pose.p1_time = Timestamp(5.0)
     assert not time_range.is_in_range(pose)
+
+    # All non-P1 messages no considered out of range too.
+    assert not time_range.is_in_range(reset)
+    assert not time_range.is_in_range(event)
+
+
+def _test_open_start(time_range):
+    pose = PoseMessage()
+    event = EventNotificationMessage()
+    reset = ResetRequest()
+
+    # Range has an open start. All messages allowed, even before P1 time arrives.
+    event.system_time_ns = int(0.0 * 1e9)
+    assert time_range.is_in_range(event)
+    assert time_range.is_in_range(reset)
+
+    # In range.
+    pose.p1_time = Timestamp(0.0)  # Set t0 = 0.0
+    assert time_range.is_in_range(pose)
+    assert time_range.is_in_range(event)
+    assert time_range.is_in_range(reset)
+
+    pose.p1_time = Timestamp(1.0)
+    assert time_range.is_in_range(pose)
+    assert time_range.is_in_range(event)
+    assert time_range.is_in_range(reset)
+
+    # Out of range.
+    pose.p1_time = Timestamp(2.0)
+    assert not time_range.is_in_range(pose)
+    assert not time_range.is_in_range(event)
     assert not time_range.is_in_range(reset)
 
-    # Now we'll check for an _in_ range system time message. If the P1 time declares the end of the range, all messages,
-    # including system times, are considered out of range. This is necessary for consistency with FileIndex (see
-    # is_in_range() documentation).
-    #
-    # This is out of order, but TimeRange shouldn't have any state with respect to system times, so that should be ok.
-    event.system_time_ns = int(14.5 * 1e9)
+
+def test_absolute_open_start():
+    _test_open_start(TimeRange.parse(':2', absolute=True))
+
+
+def test_relative_open_start():
+    _test_open_start(TimeRange.parse(':2', absolute=False))
+
+
+def test_absolute_open_end():
+    time_range = TimeRange.parse('2:', absolute=True)
+    pose = PoseMessage()
+    event = EventNotificationMessage()
+    reset = ResetRequest()
+
+    # Range not started.
+    event.system_time_ns = int(0.0 * 1e9)
     assert not time_range.is_in_range(event)
+    assert not time_range.is_in_range(reset)
+
+    # Not in range.
+    pose.p1_time = Timestamp(1.0)  # Set t0 = 1.0
+    assert not time_range.is_in_range(pose)
+    assert not time_range.is_in_range(event)
+    assert not time_range.is_in_range(reset)
+
+    # In range.
+    pose.p1_time = Timestamp(2.0)
+    assert time_range.is_in_range(pose)
+    assert time_range.is_in_range(event)
+    assert time_range.is_in_range(reset)
+
+
+def test_relative_open_end():
+    time_range = TimeRange.parse('2:', absolute=False)
+    pose = PoseMessage()
+    event = EventNotificationMessage()
+    reset = ResetRequest()
+
+    # Range not started.
+    event.system_time_ns = int(0.0 * 1e9)
+    assert not time_range.is_in_range(event)
+    assert not time_range.is_in_range(reset)
+
+    # Not in range.
+    pose.p1_time = Timestamp(1.0)  # Set t0 = 1.0
+    assert not time_range.is_in_range(pose)
+    assert not time_range.is_in_range(event)
+    assert not time_range.is_in_range(reset)
+
+    pose.p1_time = Timestamp(2.0)
+    assert not time_range.is_in_range(pose)
+    assert not time_range.is_in_range(event)
+    assert not time_range.is_in_range(reset)
+
+    # In range.
+    pose.p1_time = Timestamp(3.0)
+    assert time_range.is_in_range(pose)
+    assert time_range.is_in_range(event)
+    assert time_range.is_in_range(reset)
 
 
 def test_return_timestamps():
@@ -202,7 +324,7 @@ def test_return_timestamps():
     assert result[1] == message.p1_time
     assert result[2] is None
 
-    message = VersionInfoMessage()
+    message = EventNotificationMessage()
     message.system_time_ns = int(3.0 * 1e9)
     result = time_range.is_in_range(message, return_timestamps=True)
     assert len(result) == 3

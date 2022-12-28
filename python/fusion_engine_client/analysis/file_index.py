@@ -305,7 +305,7 @@ class FileIndex(object):
                 start = time_range.start
                 stop = time_range.end
             else:
-                p1_t0 = time_range.p1_t0 if time_range.p1_t0 is not None else self.t0
+                p1_t0 = time_range.p1_t0 if time_range.p1_t0 else self.t0
                 start = p1_t0 + time_range.start if time_range.start is not None else None
                 stop = p1_t0 + time_range.end if time_range.end is not None else None
 
