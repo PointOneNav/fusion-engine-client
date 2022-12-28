@@ -305,13 +305,27 @@ class FileIndex(object):
                 start = time_range.start
                 stop = time_range.end
             else:
-                p1_t0 = time_range.p1_t0 if time_range.p1_t0 else self.t0
+                # If the caller explicitly set t0 in the relative time range, assume they intended for the relative
+                # values to be evaluated with respect to that t0, even if it does not match the first message in the
+                # index file.
+                if time_range.p1_t0:
+                    p1_t0 = time_range.p1_t0
+                else:
+                    p1_t0 = self.t0 if self.t0 is not None else Timestamp()
+
                 start = p1_t0 + time_range.start if time_range.start is not None else None
                 stop = p1_t0 + time_range.end if time_range.end is not None else None
 
         # No data available. Skip time indexing (argmax will fail on an empty vector).
         if len(self._data) == 0:
             return FileIndex(data=self._data, t0=self.t0)
+        # No time bounds specified. Return the complete dataset.
+        elif start is None and stop is None:
+            return FileIndex(data=self._data, t0=self.t0)
+        # If there's no P1 timestamps in the index file whatsoever, t0 will be None. In that case, we cannot apply time
+        # bounds to the data, since they are based on P1 time. This should be extremely rare.
+        elif self.t0 is None:
+            raise IndexError('No P1 timestamps present in index. Cannot apply time bounds.')
         else:
             # Note: The index stores only the integer part of the timestamp.
 
