@@ -102,6 +102,8 @@ class MixedLogReader(object):
 
         # Open the companion index file if one exists.
         self.index_path = file_index.FileIndex.get_path(input_path)
+        self._original_index = None
+        self.index = None
         self.next_index_elem = 0
         if ignore_index:
             if os.path.exists(self.index_path):
@@ -110,8 +112,6 @@ class MixedLogReader(object):
                     os.remove(self.index_path)
                 else:
                     self.logger.debug("Ignoring index file @ '%s'." % self.index_path)
-
-            self.index = None
         else:
             if os.path.exists(self.index_path):
                 try:
@@ -121,10 +121,8 @@ class MixedLogReader(object):
                     self.index = self._original_index[self.message_types][self.time_range]
                 except ValueError as e:
                     self.logger.error("Error loading index file: %s" % str(e))
-                    self.index = None
             else:
                 self.logger.debug("No index file found @ '%s'." % self.index_path)
-                self.index = None
 
         self.index_builder = None
         self.set_generate_index(generate_index)
