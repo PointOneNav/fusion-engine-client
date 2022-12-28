@@ -348,9 +348,9 @@ class FileReader(object):
             if max_messages is not None and self.reader.have_index():
                 reader_max_messages_applied = True
                 if max_messages >= 0:
-                    self.reader.filter_in_place(slice(max_messages + 1), clear_existing=False)
-                elif max_messages < 0:
-                    self.reader.filter_in_place(slice(max_messages), clear_existing=False)
+                    self.reader.filter_in_place(slice(None, max_messages), clear_existing=False)
+                else:
+                    self.reader.filter_in_place(slice(max_messages, None), clear_existing=False)
 
         # When the user requests max_messages < 0, they would like the _last_ N messages in the file. If the reader does
         # not have an index file, so we can't do a slice above, we will create a circular buffer and store the last N
