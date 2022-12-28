@@ -346,7 +346,7 @@ def extract_fusion_engine_log(input_path, output_path=None, warn_on_gaps=True, r
 
 
 def locate_log(input_path, log_base_dir=DEFAULT_LOG_BASE_DIR, return_output_dir=False, return_log_id=False,
-               extract_fusion_engine_data=True):
+               extract_fusion_engine_data=False):
     """!
     @brief Locate a FusionEngine `*.p1log` file, or a binary file containing a mixed stream of FusionEngine messages and
            other content.
