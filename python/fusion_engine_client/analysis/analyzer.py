@@ -27,7 +27,7 @@ from ..messages import *
 from .attitude import get_enu_rotation_matrix
 from .file_reader import FileReader
 from fusion_engine_client.utils.trace import HighlightFormatter
-from ..utils.argument_parser import ArgumentParser, TriStateBooleanAction, CSVAction
+from ..utils.argument_parser import ArgumentParser, ExtendedBooleanAction, TriStateBooleanAction, CSVAction
 from ..utils.log import locate_log, DEFAULT_LOG_BASE_DIR
 from ..utils.numpy_utils import find_first
 
@@ -1675,10 +1675,10 @@ Load and display information stored in a FusionEngine binary file.
              "read from the MAPBOX_ACCESS_TOKEN or MapboxAccessToken environment variables if set. If no token is "
              "available, a default map will be displayed using Open Street Maps data.")
     plot_group.add_argument(
-        '-m', '--measurements', action=TriStateBooleanAction,
+        '-m', '--measurements', action=ExtendedBooleanAction,
         help="Plot incoming measurement data (slow). Ignored if --plot is specified.")
     plot_group.add_argument(
-        '--truncate', '--trunc', action=TriStateBooleanAction, default=True,
+        '--truncate', '--trunc', action=ExtendedBooleanAction, default=True,
         help="When processing a very long log (>%.1f hours), reduce or skip some plots that may be very slow to "
              "generate or display. This includes:"
              "\n- GNSS signal status display"
@@ -1699,7 +1699,7 @@ Load and display information stored in a FusionEngine binary file.
 
     time_group = parser.add_argument_group('Time Control')
     time_group.add_argument(
-        '--absolute-time', '--abs', action=TriStateBooleanAction,
+        '--absolute-time', '--abs', action=TriStateBooleanAction, default=None,
         help="Interpret the timestamps in --time as absolute P1 times. Otherwise, treat them as relative to the first "
              "message in the file.")
     time_group.add_argument(
@@ -1710,7 +1710,7 @@ Load and display information stored in a FusionEngine binary file.
 
     log_group = parser.add_argument_group('Input File/Log Control')
     log_group.add_argument(
-        '--ignore-index', action=TriStateBooleanAction,
+        '--ignore-index', action=ExtendedBooleanAction,
         help="If set, do not load the .p1i index file corresponding with the .p1log data file. If specified and a "
              ".p1i file does not exist, do not generate one. Otherwise, a .p1i file will be created automatically to "
              "improve data read speed in the future.")
@@ -1727,7 +1727,7 @@ Load and display information stored in a FusionEngine binary file.
 
     output_group = parser.add_argument_group('Output Control')
     output_group.add_argument(
-        '--no-index', action=TriStateBooleanAction,
+        '--no-index', action=ExtendedBooleanAction,
         help="Do not automatically open the plots in a web browser.")
     output_group.add_argument(
         '-o', '--output', type=str, metavar='DIR',
