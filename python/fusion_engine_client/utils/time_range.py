@@ -299,6 +299,12 @@ class TimeRange(object):
         else:
             return in_range
 
+    def __eq__(self, other):
+        return self.start == other.start and self.end == other.end and self.absolute == other.absolute
+
+    def __ne__(self, other):
+        return not (self == other)
+
     def __str__(self):
         if self.start is None:
             start = '-inf'
