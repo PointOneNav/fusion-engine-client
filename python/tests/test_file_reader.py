@@ -4,6 +4,7 @@ import pytest
 from fusion_engine_client.analysis.file_reader import FileReader, MessageData, TimeAlignmentMode
 from fusion_engine_client.messages import *
 from fusion_engine_client.parsers import FusionEngineEncoder, MixedLogReader
+from fusion_engine_client.utils.time_range import TimeRange
 
 
 def generate_data(data_path=None, include_binary=False, return_dict=True):
@@ -90,6 +91,12 @@ def message_list_to_dict(messages):
         if message.get_type() not in result:
             result[message.get_type()] = MessageData(message.get_type(), None)
         result[message.get_type()].messages.append(message)
+    return result
+
+
+def filter_by_time(messages, time_range: TimeRange):
+    result = [m for m in messages if time_range.is_in_range(m)]
+    time_range.restart()
     return result
 
 
@@ -211,6 +218,28 @@ class TestReader:
         result = reader.read(generate_index=False)
         self._check_results(result, expected_result)
         assert not reader.reader.have_index()
+
+    # Note: TimeRange objects keep internal state, so we can't use them here since the state will remain across multiple
+    # calls for different use_index values. Instead we store range strings and parse them on each call.
+    @pytest.mark.parametrize("time_range", [
+        '1.0::rel',
+        ':2.0:rel',
+        '1.0:2.0:rel',
+        '1.0::abs',
+        ':2.0:abs',
+        '1.0:2.0:abs',
+    ])
+    @pytest.mark.parametrize("use_index", [False, True])
+    def test_time_range(self, data_path, time_range, use_index):
+        time_range = TimeRange.parse(time_range)
+        messages = generate_data(data_path=str(data_path), include_binary=False, return_dict=False)
+        expected_messages = filter_by_time(messages, time_range)
+        expected_result = message_list_to_dict(expected_messages)
+        if use_index:
+            MixedLogReader.generate_index_file(str(data_path))
+        reader = FileReader(path=str(data_path))
+        result = reader.read(time_range=time_range)
+        self._check_results(result, expected_result)
 
 
 class TestTimeAlignment:
