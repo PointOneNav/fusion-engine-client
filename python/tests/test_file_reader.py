@@ -34,6 +34,11 @@ def generate_data(data_path=None, include_binary=False, return_dict=True):
     message.velocity_enu_mps = np.array([14.0, 15.0, 16.0])
     messages.append(message)
 
+    message = GNSSInfoMessage()
+    message.p1_time = Timestamp(2.0)
+    message.gdop = 5.0
+    messages.append(message)
+
     if include_binary:
         messages.append(b'12345')
 
@@ -44,11 +49,6 @@ def generate_data(data_path=None, include_binary=False, return_dict=True):
     message = PoseAuxMessage()
     message.p1_time = Timestamp(3.0)
     message.velocity_enu_mps = np.array([17.0, 18.0, 19.0])
-    messages.append(message)
-
-    message = GNSSInfoMessage()
-    message.p1_time = Timestamp(2.0)
-    message.gdop = 5.0
     messages.append(message)
 
     if include_binary:
