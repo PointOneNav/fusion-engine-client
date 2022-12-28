@@ -237,16 +237,19 @@ class TestClass:
 
         assert reader.index is None
 
+    # Note: TimeRange objects keep internal state, so we can't use them here since the state will remain across multiple
+    # calls for different use_index values. Instead we store range strings and parse them on each call.
     @pytest.mark.parametrize("time_range", [
-        TimeRange(start=1.0, absolute=False),
-        TimeRange(end=2.0, absolute=False),
-        TimeRange(start=1.0, end=2.0, absolute=False),
-        TimeRange(start=1.0, absolute=True),
-        TimeRange(end=2.0, absolute=True),
-        TimeRange(start=1.0, end=2.0, absolute=True),
+        '1.0::rel',
+        ':2.0:rel',
+        '1.0:2.0:rel',
+        '1.0::abs',
+        ':2.0:abs',
+        '1.0:2.0:abs',
     ])
     @pytest.mark.parametrize("use_index", [False, True])
     def test_time_range(self, data_path, time_range, use_index):
+        time_range = TimeRange.parse(time_range)
         messages = self._generate_mixed_data(data_path)
         expected_messages = self._filter_by_time(messages, time_range)
         if use_index:
