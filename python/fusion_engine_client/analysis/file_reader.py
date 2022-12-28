@@ -480,7 +480,7 @@ class FileReader(object):
         return self.system_t0_ns
 
     def get_index(self):
-        return self.reader.index
+        return self.reader.get_index()
 
     def get_input_path(self):
         return self.reader.input_file.name

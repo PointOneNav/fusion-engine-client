@@ -162,16 +162,16 @@ class MixedLogReader(object):
             return self.next_index_elem == len(self.index)
 
     def have_index(self):
-        return self.index is not None
+        return self._original_index is not None
 
     def get_index(self):
-        return self.index
+        return self._original_index
 
     def generating_index(self):
         return self.index_builder is not None
 
     def set_generate_index(self, generate_index):
-        if self.index is None:
+        if self._original_index is None:
             if generate_index:
                 self.logger.debug("Generating index file '%s'." % self.index_path)
                 self.index_builder = file_index.FileIndexBuilder()
