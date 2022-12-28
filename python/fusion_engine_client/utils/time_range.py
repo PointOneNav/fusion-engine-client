@@ -53,10 +53,12 @@ class TimeRange(object):
 
         self._in_range_started = False
         self._in_range_ended = False
+        self._p1_time_seen = self.p1_t0 is not None and self.p1_t0
 
     def restart(self):
         self._in_range_started = False
         self._in_range_ended = False
+        self._p1_time_seen = self.p1_t0 is not None and self.p1_t0
 
     def make_absolute(self, p1_t0: Timestamp = None, in_place: bool = True) -> TimeRange:
         if not in_place:
@@ -64,6 +66,7 @@ class TimeRange(object):
 
         if self.p1_t0 is None:
             self.p1_t0 = p1_t0
+            self._p1_time_seen = self.p1_t0 is not None and self.p1_t0
 
         if not self.absolute:
             if p1_t0 is None:
@@ -101,6 +104,7 @@ class TimeRange(object):
         self._range_specified = self.start is not None or self.end is not None
         if self.p1_t0 is None:
             self.p1_t0 = other.p1_t0
+            self._p1_time_seen = self.p1_t0 is not None and self.p1_t0
         if self.system_t0 is None:
             self.system_t0 = other.system_t0
 
@@ -117,8 +121,8 @@ class TimeRange(object):
         """!
         @brief Check if a message falls within the specified time range.
 
-        Important: For relative time ranges, this function treats P1 and system times independently. For example,
-        consider the following sequence of messages:
+        Important: For relative time ranges, this function treats P1 and system _start_ times independently, but the end
+        of the time range depends on P1 time. For example, consider the following sequence of messages:
         ```
         Event (system time 0)
         Pose (P1 time 1)
@@ -135,15 +139,34 @@ class TimeRange(object):
         TimeRange(end=3.0)
         ```
 
-        The results will include event messages from system time 0.0-2.0, and pose messages from P1 time 1.0-3.0. Even
-        though the system time range, dictated by the event data, ends before the pose at P1 time 3.0, P1 time is
+        The results will include event messages from system time 0.0-2.0, and pose messages from P1 time 1.0-3.0.
+        Even though the system time range, dictated by the event data, ends before the pose at P1 time 3.0, P1 time is
         considered independent of system time.
+
+        On the other hand, if we omit the event at system time 0:
+        ```
+        Pose (P1 time 1)
+        Pose (P1 time 2)
+        Event (system time 2)
+        Pose (P1 time 3)
+        Event (system time 3)
+        Pose (P1 time 4)
+        Event (system time 4)
+        ```
+
+        Now, the relative range for system time is <3 seconds. However, since the P1 time range ends at P1 time 4.0,
+        only system times 2.0-3.0 are included.
+
+        @note
+        While odd, this behavior is intentional for consistency with `.p1i` index files (@ref FileIndex). Index files do
+        not have knowledge of system timestamps, only P1 timestamps, so they cannot consider each time type
+        independently.
 
         Separately, for absolute time ranges, system time messages occurring before the first _included_ P1 timestamp
         will be omitted. P1 and system time are not correlated, so we must wait for P1 time to know if messages with
         system timestamps may be included.
 
-        For the example above, say we have the following time range ending at P1 time 4.0 (exclusive):
+        For the first example above, say we have the following time range ending at P1 time 4.0 (exclusive):
         ```py
         TimeRange(end=4.0, absolute=True)
         ```
@@ -171,6 +194,7 @@ class TimeRange(object):
             if p1_time is not None and p1_time:
                 if self.p1_t0 is None:
                     self.p1_t0 = p1_time
+                    self._p1_time_seen = self.p1_t0 is not None and self.p1_t0
 
             if system_time_sec is not None:
                 if self.system_t0 is None:
@@ -180,6 +204,9 @@ class TimeRange(object):
             system_time_ns = None
             system_time_sec = None
 
+        p1_time_orig = p1_time
+        p1_time = Timestamp() if p1_time_orig is None else p1_time_orig
+
         # Shortcut if no range is specified.
         if not self._range_specified:
             self._in_range_started = True
@@ -188,10 +215,10 @@ class TimeRange(object):
         # Select the appropriate timestamp and reference t0 value.
         message_time_sec = None
         ref_time_sec = None
-        if (p1_time is None or not p1_time) and (self.absolute or system_time_sec is None):
+        if not p1_time and (self.absolute or system_time_sec is None):
             # No timestamps available. Handled below.
             pass
-        elif p1_time is not None and p1_time:
+        elif p1_time:
             message_time_sec = float(p1_time)
             ref_time_sec = float(self.p1_t0)
         elif not self.absolute:
@@ -199,17 +226,19 @@ class TimeRange(object):
             ref_time_sec = self.system_t0
 
         # Test if we fall within the time range.
-        if message_time_sec is None:
+        if self._in_range_ended:
+            in_range = False
+        elif message_time_sec is None:
             # If this message doesn't have any timestamps, or we're testing against absolute P1 time and it only has
             # system time, we'll set its status based on whether or not previous messages were in range. For example:
             #   PoseMessage @ 123.4 [out of range]
-            #   DummyMessage @ no P1 time [out of range]
+            #   DummyMessage @ no timestamp [out of range]
             #   PoseMessage @ 124.0 [in range]
-            #   DummyMessage @ no P1 time [in range]
+            #   DummyMessage @ no timestamp [in range]
             #   PoseMessage @ 125.0 [in range]
-            #   DummyMessage @ no P1 time [in range]
+            #   DummyMessage @ no timestamp [in range]
             #   PoseMessage @ 126.0 [out of range]
-            #   DummyMessage @ no P1 time [out of range]
+            #   DummyMessage @ no timestamp [out of range]
             #
             # Note that this assumes data is processed in order. If timestamps are received out of order, all messages
             # received after _in_range_ended is set to True will be discarded.
@@ -227,13 +256,30 @@ class TimeRange(object):
             else:
                 in_range = True
 
+        # If this message is within the bounds, we are now in the time range. Any non-timestamped messages will be
+        # considered in range.
         if in_range:
             self._in_range_started = True
-        elif self._in_range_started:
+        # If the message is no longer in the bounds, we _may_ end the time range. If this message has P1 time, that is
+        # the end of the range: do not consider _any_ messages after this one. If the message does not have P1 time,
+        # only system time, _and_ we have not ever seen P1 time, we'll let system time declare end of range.
+        #
+        # For example, say we have a relative range from (0.0, 2.0]:
+        #   PoseMessage @ P1 124.0 [in range]
+        #   EventNotificationMessage @ system 4.7 [in range]
+        #   PoseMessage @ P1 125.0 [in range]
+        #   EventNotificationMessage @ system 5.7  [in range]
+        #   PoseMessage @ P1 126.0 [out of range]
+        #   EventNotificationMessage @ system 6.2  [out of range]
+        #   ^-- Considered out of range, even though it's only 1.5 seconds away from the first event
+        #
+        # This is a slightly unexpected behavior, but is necessary for consistency with FileIndex. Index files do not
+        # have access to system time, so they cannot treat P1 and system timestamps independently for relative ranges.
+        elif self._in_range_started and (p1_time or not self._p1_time_seen):
             self._in_range_ended = True
 
         if return_timestamps:
-            return in_range, p1_time, system_time_ns
+            return in_range, p1_time_orig, system_time_ns
         else:
             return in_range
 
