@@ -206,16 +206,21 @@ class TestReader:
     def test_read_no_generate_index(self, data_path):
         expected_result = generate_data(data_path=str(data_path), include_binary=False)
 
-        # Construct a reader. This will attempt to set t0 immediately by scanning the data file. If an index file
-        # exists, the reader will use the index file to find t0 quickly. If not, it'll read the file directly, but will
-        # _not_ attempt to generate an index (which requires reading the entire data file).
-        reader = FileReader(path=str(data_path))
+        # Construct a reader with index generation disabled. This never generates an index, but the read() call below
+        # would if we did not set this.
+        reader = FileReader(path=str(data_path), generate_index=False)
         assert reader.t0 is not None
         assert reader.system_t0 is not None
         assert not reader.reader.have_index()
 
-        # Now read the data itself. This _will_ generate an index file.
-        result = reader.read(generate_index=False)
+        # Now read the data itself. This will _not_ generate an index file.
+        result = reader.read()
+        self._check_results(result, expected_result)
+        assert not reader.reader.have_index()
+
+        # Do the same but this time using the disable argument to read().
+        reader = FileReader(path=str(data_path))
+        result = reader.read(disable_index_generation=True)
         self._check_results(result, expected_result)
         assert not reader.reader.have_index()
 
