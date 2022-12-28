@@ -373,12 +373,12 @@ class FileIndex(object):
         # No key specified (convenience case).
         if key is None:
             return copy.copy(self)
-        # No data available.
-        elif len(self._data) == 0:
-            return FileIndex()
         # Key is a string (e.g., index['type']), defer to getattr() (e.g., index.type).
         elif isinstance(key, str):
             return getattr(self, key)
+        # No data available.
+        elif len(self._data) == 0:
+            return FileIndex()
         # Return entries for a specific message type.
         elif isinstance(key, MessageType):
             idx = self._data['type'] == key
