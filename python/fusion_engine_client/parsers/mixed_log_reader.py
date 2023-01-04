@@ -369,6 +369,8 @@ class MixedLogReader(object):
         if self.index_builder is not None and generate_index:
             self.logger.debug("Saving index file as '%s'." % self.index_path)
             self._original_index = self.index_builder.save(self.index_path, self.input_file.name)
+            self.index_builder = None
+
             self.index = self._original_index[self.message_types][self.time_range]
             self.next_index_elem = len(self.index)
 
