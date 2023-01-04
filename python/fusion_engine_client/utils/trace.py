@@ -89,6 +89,15 @@ if not hasattr(logging, 'TRACE'):
         # - etc.
         if depth < 1:
             depth = 1
+
+        # The stacklevel value (1) tells findCaller() to get the line number one function call up from log() in
+        # logging/__init__.py. Since we have an function call (this one) in between log() and the caller, we need to
+        # pop up the stack one extra call.
+        if 'stacklevel' in kwargs:
+            kwargs['stacklevel'] += 1
+        else:
+            kwargs['stacklevel'] = 2
+
         self.log(logging.TRACE - (depth - 1), msg, *args, **kwargs)
     logging.Logger.trace = trace
 
