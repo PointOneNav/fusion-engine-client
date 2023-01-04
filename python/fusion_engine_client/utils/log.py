@@ -49,12 +49,13 @@ def find_log_by_pattern(pattern, log_base_dir=DEFAULT_LOG_BASE_DIR, allow_multip
       FusionEngine log manifest file)
 
     For example:
-    | Path                                | `1234`   | `foo*/1234` | `foo_*/1234` |
-    | `path/to/foo_bar/12345678`          | match    | match       | match        |
-    | `path/to/foo_/1234abcd`             | match    | match       | match        |
-    | `path/to/foo_bar/12345678/more/info`| no match | no match    | no match     |
-    | `path/to/foo/12345678`              | match    | match       | no match     |
-    | `path/to/foo_/abcd1234`             | no match | no match    | no match     |
+    | Path                                | `1234`   | `1234$`  | `foo*/1234` | `foo_*/1234` |
+    | `path/to/foo_bar/12345678`          | match    | no match | match       | match        |
+    | `path/to/foo_/1234abcd`             | match    | no match | match       | match        |
+    | `path/to/foo_bar/12345678/more/info`| no match | no match | no match    | no match     |
+    | `path/to/foo/12345678`              | match    | no match | match       | no match     |
+    | `path/to/foo_/abcd1234`             | no match | no match | no match    | no match     |
+    | `path/to/foo/1234`                  | match    | match    | match       | no match     |
 
     Most commonly, users specify the first N characters of a log's hash (e.g., `1234` to locate `/path/to/12345678`.
 
@@ -78,7 +79,13 @@ def find_log_by_pattern(pattern, log_base_dir=DEFAULT_LOG_BASE_DIR, allow_multip
         log_test_filenames = [f for f in log_test_filenames if f is not None]
 
     # Match logs in any directory starting with the specified pattern.
-    match_pattern = '*/' + pattern + '*'
+    #
+    # If the pattern ends with '$', treat that as the end of the match and do not append a '*'.
+    if pattern[-1] == '$':
+        match_pattern = '*/' + pattern[:-1]
+    else:
+        match_pattern = '*/' + pattern + '*'
+
     last_element = match_pattern.split('/')[-1]
 
     matches = []
