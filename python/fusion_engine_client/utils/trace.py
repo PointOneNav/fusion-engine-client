@@ -72,6 +72,14 @@ class HighlightFormatter(logging.Formatter):
                 h.setFormatter(formatter)
 
 
+class SilentLogger(logging.Logger):
+    def __init__(self, name, level=logging.NOTSET):
+        if isinstance(name, logging.Logger):
+            name = name.name
+        super().__init__(name=name, level=level)
+        self.disabled = True
+
+
 # Define Logger TRACE level and associated trace() function if it doesn't exist.
 if not hasattr(logging, 'TRACE'):
     logging.TRACE = logging.DEBUG - 1
@@ -112,4 +120,4 @@ if not hasattr(logging, 'TRACE'):
     logging.Logger.isEnabledFor = isEnabledFor
 
 
-__all__ = [HighlightFormatter]
+__all__ = [HighlightFormatter, SilentLogger]
