@@ -390,7 +390,9 @@ def locate_log(input_path, log_base_dir=DEFAULT_LOG_BASE_DIR, return_output_dir=
         result = find_p1log_file(input_path, log_base_dir=log_base_dir,
                                  return_output_dir=return_output_dir, return_log_id=return_log_id)
         return result
-    except (FileNotFoundError, RuntimeError) as e:
+    except FileNotFoundError as e:
+        is_mixed_file = False
+    except RuntimeError as e:
         is_mixed_file = False
         _logger.error(str(e))
     except FileExistsError as e:
