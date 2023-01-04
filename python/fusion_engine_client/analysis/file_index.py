@@ -318,10 +318,10 @@ class FileIndex(object):
 
         # No data available. Skip time indexing (argmax will fail on an empty vector).
         if len(self._data) == 0:
-            return FileIndex(data=self._data, t0=self.t0)
+            return FileIndex(data=np.copy(self._data), t0=self.t0)
         # No time bounds specified. Return the complete dataset.
         elif start is None and stop is None:
-            return FileIndex(data=self._data, t0=self.t0)
+            return FileIndex(data=np.copy(self._data), t0=self.t0)
         # If there's no P1 timestamps in the index file whatsoever, t0 will be None. In that case, we cannot apply time
         # bounds to the data, since they are based on P1 time. This should be extremely rare.
         elif self.t0 is None:
