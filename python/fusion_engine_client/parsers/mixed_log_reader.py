@@ -424,12 +424,20 @@ class MixedLogReader(object):
                 return True
 
     def _print_progress(self, file_size=None):
+        show_progress = self.show_progress
+
+        # If this function is being called when we're done reading (file_size not None), and we used an index file which
+        # did not have any entries for the requested set of data filters, don't print an info print stating "processed
+        # 0/0 bytes". It's more confusing than helpful.
+        if file_size is not None and self.index is not None and self.total_bytes_read == 0:
+            show_progress = False
+
         if file_size is None:
             file_size = min(self.file_size_bytes, self.max_bytes)
 
         if self.total_bytes_read - self.last_print_bytes > 10e6 or self.total_bytes_read == file_size:
             elapsed_sec = (datetime.now() - self.start_time).total_seconds()
-            self.logger.log(logging.INFO if self.show_progress else logging.DEBUG,
+            self.logger.log(logging.INFO if show_progress else logging.DEBUG,
                             'Processed %d/%d bytes (%.1f%%). [elapsed=%.1f sec, rate=%.1f MB/s]' %
                             (self.total_bytes_read, file_size,
                              100.0 if file_size == 0 else 100.0 * float(self.total_bytes_read) / file_size,
