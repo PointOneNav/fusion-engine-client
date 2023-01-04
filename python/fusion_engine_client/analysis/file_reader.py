@@ -11,7 +11,7 @@ import numpy as np
 
 from ..messages import *
 from ..parsers.mixed_log_reader import MixedLogReader
-from ..utils import trace
+from ..utils.trace import SilentLogger
 from ..utils.enum_utils import IntEnum
 from ..utils.time_range import TimeRange
 from .file_index import FileIndex, FileIndexBuilder
@@ -186,20 +186,12 @@ class FileReader(object):
 
             self._generate_index = True
             self.read(message_types=[MessageType.POSE], max_messages=1, disable_index_generation=False,
-                      ignore_cache=True, show_progress=show_progress)
+                      ignore_cache=True, show_progress=show_progress, quiet=True)
 
             if prev_data is not None:
                 self.data[MessageType.POSE] = prev_data
 
-    def read(self,
-             message_types: Union[Iterable[MessageType], MessageType] = None,
-             time_range: TimeRange = None,
-             show_progress: bool = False,
-             ignore_cache: bool = False, disable_index_generation: bool = False,
-             max_messages: int = None, require_p1_time: bool = False, require_system_time: bool = False,
-             return_numpy: bool = False, keep_messages: bool = False, remove_nan_times: bool = True,
-             time_align: TimeAlignmentMode = TimeAlignmentMode.NONE,
-             aligned_message_types: Union[list, tuple, set] = None) \
+    def read(self, *args, **kwargs) \
             -> Dict[MessageType, MessageData]:
         """!
         @brief Read data for one or more desired message types.
@@ -244,6 +236,24 @@ class FileReader(object):
         @return A dictionary, keyed by @ref fusion_engine_client.messages.defs.MessageType "MessageType", containing
                @ref MessageData objects with the data read for each of the requested message types.
         """
+        return self._read(*args, **kwargs)
+
+    def _read(self,
+             message_types: Union[Iterable[MessageType], MessageType] = None,
+             time_range: TimeRange = None,
+             show_progress: bool = False,
+             ignore_cache: bool = False, disable_index_generation: bool = False,
+             max_messages: int = None, require_p1_time: bool = False, require_system_time: bool = False,
+             return_numpy: bool = False, keep_messages: bool = False, remove_nan_times: bool = True,
+             time_align: TimeAlignmentMode = TimeAlignmentMode.NONE,
+             aligned_message_types: Union[list, tuple, set] = None,
+             quiet: bool = False) \
+            -> Dict[MessageType, MessageData]:
+        if quiet:
+            logger = SilentLogger(self.logger.name)
+        else:
+            logger = self.logger
+
         # Parse the time range params.
         if time_range is None:
             time_range = TimeRange()
@@ -299,8 +309,8 @@ class FileReader(object):
 
             cls = message_type_to_class.get(type, None)
             if cls is None:
-                self.logger.warning('Decode not supported for message type %s. Omitting from output.' %
-                                    MessageType.get_type_string(type))
+                logger.warning('Decode not supported for message type %s. Omitting from output.' %
+                               MessageType.get_type_string(type))
             else:
                 supported_message_types.add(type)
 
@@ -319,8 +329,8 @@ class FileReader(object):
         num_needed = len(needed_message_types)
         if num_needed == 0:
             # Nothing to read. Return cached data.
-            self.logger.debug('Requested data already cached. [# types=%d, time_range=%s]' %
-                              (len(message_types), str(time_range)))
+            logger.debug('Requested data already cached. [# types=%d, time_range=%s]' %
+                         (len(message_types), str(time_range)))
             return result
 
         # Reset the filter criteria for the reader.
@@ -335,7 +345,7 @@ class FileReader(object):
         # We can get t0 from any message type.
         reader_max_messages_applied = False
         if self.t0 is None or (self.system_t0 is None and system_time_messages_requested):
-            self.logger.debug('Establishing t0. Postponing reader filter setup.')
+            logger.debug('Establishing t0. Postponing reader filter setup.')
             filters_applied = False
         else:
             filters_applied = True
@@ -362,9 +372,9 @@ class FileReader(object):
 
         # Now read each available message matching the user criteria.
         num_total = len(message_types)
-        self.logger.debug('Reading data for %d message types. [cached=%d, max=%s, time_range=%s]' %
-                          (num_total, num_total - num_needed, 'N/A' if max_messages is None else str(max_messages),
-                           str(time_range)))
+        logger.debug('Reading data for %d message types. [cached=%d, max=%s, time_range=%s]' %
+                     (num_total, num_total - num_needed, 'N/A' if max_messages is None else str(max_messages),
+                      str(time_range)))
 
         message_count = 0
         while True:
@@ -379,12 +389,12 @@ class FileReader(object):
 
             # Unsupported/unrecognized message type.
             if payload is None:
-                self.logger.debug('  Skipping unsupported %s message @ %d. [length=%d B]' %
-                                  (header.get_type_string(), message_offset_bytes, message_size_bytes))
+                logger.debug('  Skipping unsupported %s message @ %d. [length=%d B]' %
+                             (header.get_type_string(), message_offset_bytes, message_size_bytes))
                 continue
 
-            self.logger.debug('  Parsed %s message @ %d. [length=%d B]' %
-                              (header.get_type_string(), message_offset_bytes, message_size_bytes))
+            logger.debug('  Parsed %s message @ %d. [length=%d B]' %
+                         (header.get_type_string(), message_offset_bytes, message_size_bytes))
 
             # Extract P1 and system times from this message, if applicable.
             p1_time = payload.get_p1_time()
@@ -394,14 +404,14 @@ class FileReader(object):
             # Store t0 if this is the first message with a (valid) timestamp.
             if p1_time is not None and p1_time:
                 if self.t0 is None:
-                    self.logger.debug('Received first message. [type=%s, time=%s]' %
-                                      (header.get_type_string(), str(p1_time)))
+                    logger.debug('Received first message. [type=%s, time=%s]' %
+                                 (header.get_type_string(), str(p1_time)))
                     self.t0 = p1_time
 
             if system_time_ns is not None:
                 if self.system_t0 is None:
-                    self.logger.debug('Received first system-timestamped message. [type=%s, time=%s]' %
-                                      (header.get_type_string(), system_time_to_str(system_time_ns)))
+                    logger.debug('Received first system-timestamped message. [type=%s, time=%s]' %
+                                 (header.get_type_string(), system_time_to_str(system_time_ns)))
                     self.system_t0 = system_time_sec
                     self.system_t0_ns = system_time_ns
 
@@ -410,23 +420,23 @@ class FileReader(object):
             if not filters_applied:
                 # Once we know t0, enable the reader's internal filtering to take effect on the next message.
                 if self.t0 is not None and (self.system_t0 is not None or not system_time_messages_requested):
-                    self.logger.debug('Established t0. Applying reader filters.')
+                    logger.debug('Established t0. Applying reader filters.')
                     self.reader.filter_in_place(message_types)
                     self.reader.filter_in_place(time_range)
                     filters_applied = True
 
                 # Apply any filtering the reader would have.
                 if header.message_type.value not in needed_message_types:
-                    self.logger.debug('  Message not in requested types. Discarding.')
+                    logger.debug('  Message not in requested types. Discarding.')
                     continue
                 elif not time_range.is_in_range(payload):
-                    self.logger.debug('  Message not in specified time range. Discarding.')
+                    logger.debug('  Message not in specified time range. Discarding.')
                     continue
                 elif require_p1_time and not p1_time:
-                    self.logger.debug('  Message does not contain P1 time. Discarding.')
+                    logger.debug('  Message does not contain P1 time. Discarding.')
                     continue
                 elif require_system_time and system_time_ns is None:
-                    self.logger.debug('  Message does not contain system time. Discarding.')
+                    logger.debug('  Message does not contain system time. Discarding.')
                     continue
 
             # Store the message.
@@ -444,11 +454,11 @@ class FileReader(object):
                 # If we reached the max message count but we're generating an index file, we need to read through the
                 # entire data file. Keep reading but discard any further messages.
                 if self.reader.generating_index() and message_count > abs(max_messages):
-                    self.logger.debug('  Max messages reached. Discarding. [# messages=%d]' % message_count)
+                    logger.debug('  Max messages reached. Discarding. [# messages=%d]' % message_count)
                     continue
                 # If we're not generating an index and we hit the max message count, we're done reading.
                 elif not self.reader.generating_index() and message_count == abs(max_messages):
-                    self.logger.debug('  Max messages reached. Done reading. [# messages=%d]' % message_count)
+                    logger.debug('  Max messages reached. Done reading. [# messages=%d]' % message_count)
                     break
 
         # Fast-forward the reader to EOF to print out one last progress update. If we already reached EOF and printed
