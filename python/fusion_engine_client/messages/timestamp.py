@@ -88,11 +88,11 @@ class Timestamp:
         return Timestamp(self.seconds - float(other))
 
     def __iadd__(self, other):
-        self.seconds + float(other)
+        self.seconds += float(other)
         return self
 
     def __isub(self, other):
-        self.seconds - float(other)
+        self.seconds -= float(other)
         return self
 
     def __eq__(self, other):
