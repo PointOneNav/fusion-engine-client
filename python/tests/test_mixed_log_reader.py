@@ -125,6 +125,10 @@ class TestClass:
         # Verify that we successfully generated an index file.
         assert reader.index is not None and len(reader.index) == len(messages)
 
+        # Now rewind and read again. This time, it should read from the index and produce the same results.
+        reader.rewind()
+        self._check_results(reader, messages)
+
     def test_read_pose(self, data_path):
         messages = self._generate_mixed_data(data_path)
         expected_messages = [m for m in messages if isinstance(m, PoseMessage)]
@@ -137,6 +141,16 @@ class TestClass:
         # Verify that we successfully generated an index file, _and_ that the index was filtered to just pose messages.
         assert reader.index is not None and len(reader.index) == len(expected_messages)
         assert len(reader._original_index) == len(messages)
+
+        # Now rewind and read again. This time, it should read from the index and produce the same results.
+        reader.rewind()
+        self._check_results(reader, expected_messages)
+
+        # Last, rewind and read a different message type. This should also read successfully from the index.
+        expected_messages = [m for m in messages if isinstance(m, EventNotificationMessage)]
+        reader.rewind()
+        reader.filter_in_place((EventNotificationMessage,), clear_existing=True)
+        self._check_results(reader, expected_messages)
 
     def test_read_pose_constructor(self, data_path):
         messages = self._generate_mixed_data(data_path)

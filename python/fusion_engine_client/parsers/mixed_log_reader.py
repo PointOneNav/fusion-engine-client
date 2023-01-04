@@ -335,16 +335,22 @@ class MixedLogReader(object):
                                               p1_time=p1_time)
 
                 # Now, if this message is not in the user-specified filter criteria, skip it.
-                if self.message_types is not None and header.message_type not in self.message_types:
-                    self.logger.trace("Message type not requested. Skipping.", depth=1)
-                    continue
-                elif self.time_range is not None and not self.time_range.is_in_range(payload):
-                    if self.time_range.in_range_started() and (self.index_builder is None or not generate_index):
-                        self.logger.debug("End of time range reached. Finished processing.")
-                        break
-                    else:
-                        self.logger.trace("Message not in time range. Skipping.", depth=1)
+                #
+                # If we have an index available, this is implied by the index (we won't seek to messages that don't meet
+                # the criteria at all), so we do not need to do this check. Further, self.message_types and
+                # self.time_range are _only_ valid if we are _not_ using an index, so this may end up incorrectly
+                # filtering out some messages as unwanted.
+                if self.index is None:
+                    if self.message_types is not None and header.message_type not in self.message_types:
+                        self.logger.trace("Message type not requested. Skipping.", depth=1)
                         continue
+                    elif self.time_range is not None and not self.time_range.is_in_range(payload):
+                        if self.time_range.in_range_started() and (self.index_builder is None or not generate_index):
+                            self.logger.debug("End of time range reached. Finished processing.")
+                            break
+                        else:
+                            self.logger.trace("Message not in time range. Skipping.", depth=1)
+                            continue
 
                 # Construct the result. If we're returning the payload, deserialize the payload.
                 result = []
@@ -377,6 +383,8 @@ class MixedLogReader(object):
             self.index_builder = None
 
             self.index = self._original_index[self.message_types][self.time_range]
+            self.message_types = None
+            self.time_range = None
             self.next_index_elem = len(self.index)
 
         # Finished iterating.
