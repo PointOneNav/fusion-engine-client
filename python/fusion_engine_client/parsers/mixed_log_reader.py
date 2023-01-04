@@ -73,6 +73,7 @@ class MixedLogReader(object):
                 self.message_types = None
 
         self._original_message_types = copy.deepcopy(self.message_types)
+        self.filtered_message_types = self.message_types is not None
 
         self.valid_count = 0
         self.message_counts = {}
@@ -119,6 +120,8 @@ class MixedLogReader(object):
                     self._original_index = file_index.FileIndex(index_path=self.index_path, data_path=input_path,
                                                                 delete_on_error=generate_index)
                     self.index = self._original_index[self.message_types][self.time_range]
+                    self.filtered_message_types = len(np.unique(self._original_index.type)) !=\
+                                                  len(np.unique(self.index.type))
                 except ValueError as e:
                     self.logger.error("Error loading index file: %s" % str(e))
             else:
@@ -288,8 +291,10 @@ class MixedLogReader(object):
                 self.message_counts.setdefault(header.message_type, 0)
                 self.message_counts[header.message_type] += 1
 
-                # Check for sequence number gaps.
-                if self.prev_sequence_number is not None and \
+                # Check for sequence number gaps. If we're filtering to just specific message types, we'll likely have
+                # gaps since we're omitting messages, so we'll skip this check.
+                if not self.filtered_message_types and \
+                   self.prev_sequence_number is not None and \
                    (header.sequence_number - self.prev_sequence_number) != 1 and \
                    not (header.sequence_number == 0 and self.prev_sequence_number == 0xFFFFFFFF):
                     func = self.logger.warning if self.warn_on_gaps else self.logger.debug
@@ -488,13 +493,17 @@ class MixedLogReader(object):
         # If we have an index file available, reduce the index to the requested criteria.
         elif self.index is not None:
             self.index = self.index[key]
+            self.filtered_message_types = len(np.unique(self._original_index.type)) !=\
+                                          len(np.unique(self.index.type))
         # Otherwise, store the criteria and apply them while reading.
         else:
             # Return entries for a specific message type.
             if isinstance(key, MessageType):
                 self.message_types = set((key,))
+                self.filtered_message_types = True
             elif MessagePayload.is_subclass(key):
                 self.message_types = set((key.get_type(),))
+                self.filtered_message_types = True
             # Return entries for a list of message types.
             elif isinstance(key, (set, list, tuple)) and len(key) > 0 and isinstance(next(iter(key)), MessageType):
                 new_message_types = set(key)
@@ -502,12 +511,14 @@ class MixedLogReader(object):
                     self.message_types = new_message_types
                 else:
                     self.message_types = self.message_types & new_message_types
+                self.filtered_message_types = True
             elif isinstance(key, (set, list, tuple)) and len(key) > 0 and MessagePayload.is_subclass(next(iter(key))):
                 new_message_types = set([t.get_type() for t in key])
                 if self.message_types is None:
                     self.message_types = new_message_types
                 else:
                     self.message_types = self.message_types & new_message_types
+                self.filtered_message_types = True
             # Key is a slice in time. Return a subset of the data.
             elif isinstance(key, slice) and (isinstance(key.start, (Timestamp, float)) or
                                              isinstance(key.stop, (Timestamp, float))):
