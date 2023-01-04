@@ -95,20 +95,21 @@ class TestClass:
 
         expected_p1_time = expected_message.get_p1_time()
         if expected_p1_time is not None:
-            assert float(message.get_p1_time()) == pytest.approx(expected_p1_time, 1e-6)
+            assert float(message.get_p1_time()) == pytest.approx(expected_p1_time, 1e-6), "P1 time mismatch."
 
         expected_system_time_sec = expected_message.get_system_time_sec()
         if expected_system_time_sec is not None:
-            assert float(message.get_system_time_sec()) == pytest.approx(expected_system_time_sec, 1e-6)
+            assert float(message.get_system_time_sec()) == pytest.approx(expected_system_time_sec, 1e-6), \
+                   "System time mismatch."
 
     def _check_results(self, reader, expected_messages):
         num_matches = 0
         for header, payload in reader:
-            assert num_matches < len(expected_messages)
+            assert num_matches < len(expected_messages), "Number of returned messages exceeds expected."
             expected_message = expected_messages[num_matches]
             self._check_message(payload, expected_message)
             num_matches += 1
-        assert num_matches == len(expected_messages)
+        assert num_matches == len(expected_messages), "Number of returned messages does not match expected."
 
     def _filter_by_time(self, messages, time_range: TimeRange):
         result = [m for m in messages if time_range.is_in_range(m)]
