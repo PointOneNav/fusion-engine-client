@@ -151,6 +151,8 @@ class FileReader(object):
 
         if self.reader.have_index():
             self.t0 = self.reader.index.t0
+            if self.t0 is None:
+                self.logger.warning('Unable to set t0 - no P1 timestamps found in index file.')
         else:
             self.read(require_p1_time=True, max_messages=1, disable_index_generation=True, show_progress=False,
                       ignore_cache=True)
