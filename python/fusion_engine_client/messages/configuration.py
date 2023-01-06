@@ -164,6 +164,8 @@ class MessageRate(IntEnum):
     INTERVAL_2_S = 10
     INTERVAL_5_S = 11
     INTERVAL_10_S = 12
+    INTERVAL_30_S = 13
+    INTERVAL_60_S = 14
     DEFAULT = 255
 
 

@@ -1289,6 +1289,16 @@ enum class MessageRate : uint8_t {
    */
   INTERVAL_10_S = 12,
   /**
+   * Output this message at this interval. Not supported for all messages or
+   * platforms.
+   */
+  INTERVAL_30_S = 13,
+  /**
+   * Output this message at this interval. Not supported for all messages or
+   * platforms.
+   */
+  INTERVAL_60_S = 14,
+  /**
    * Restore this message's rate back to its default value.
    */
   DEFAULT = 255
@@ -1331,6 +1341,10 @@ inline const char* to_string(MessageRate value) {
       return "INTERVAL_5_S";
     case MessageRate::INTERVAL_10_S:
       return "INTERVAL_10_S";
+    case MessageRate::INTERVAL_30_S:
+      return "INTERVAL_30_S";
+    case MessageRate::INTERVAL_60_S:
+      return "INTERVAL_60_S";
     case MessageRate::DEFAULT:
       return "DEFAULT";
     default:
