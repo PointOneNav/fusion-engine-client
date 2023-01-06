@@ -1161,6 +1161,8 @@ enum class NmeaMessageType : uint16_t {
   PQTMVERNO = 1200,
   PQTMVER = 1201,
   PQTMGNSS = 1202,
+  PQTMVERNO_SUB = 1203,
+  PQTMVER_SUB = 1204,
   /** @} */
 };
 
@@ -1199,6 +1201,10 @@ inline const char* to_string(NmeaMessageType value) {
       return "PQTMVER";
     case NmeaMessageType::PQTMGNSS:
       return "PQTMGNSS";
+    case NmeaMessageType::PQTMVERNO_SUB:
+      return "PQTMVERNO_SUB";
+    case NmeaMessageType::PQTMVER_SUB:
+      return "PQTMVER_SUB";
     default:
       return "Unrecognized";
   }

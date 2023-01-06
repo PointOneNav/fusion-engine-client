@@ -186,6 +186,8 @@ class NmeaMessageType(IntEnum):
     PQTMVERNO = 1200
     PQTMVER = 1201
     PQTMGNSS = 1202
+    PQTMVERNO_SUB = 1203
+    PQTMVER_SUB = 1204
 
 
 def get_message_type_string(protocol: ProtocolType, message_id: int):
