@@ -80,7 +80,8 @@ class TestClass:
             (PoseMessage, 1.0),
             (b'1234', None),
             (PoseMessage, 2.0),
-            (b'1234', None),
+            # Include one bogus binary message that starts with an FE preamble.
+            (MessageHeader.SYNC + b'34', None),
             (EventNotificationMessage, 2.0),
             (PoseMessage, 3.0),
             (b'1234', None),
