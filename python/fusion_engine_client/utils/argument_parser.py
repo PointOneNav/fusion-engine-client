@@ -19,13 +19,13 @@ class TriStateBooleanAction(argparse.Action):
     POSSIBLE_VALUES = ('true', 'false', 't', 'f', 'yes', 'no', 'y', 'n', 'on', 'off', '1', '0')
 
     """!
-    @brief Return a boolean argument taking a variety of values, that may be `None` if not specified.
+    @brief A tri-state boolean action that can be `None` if not specified.
 
     This action is similar to `argparse.BooleanOptionalAction` (Python 3.9+), except that it adds two additional
     features:
     1. The user may specify an optional value string in addition to `--foo` and `--no-foo`. Supported values include:
        `true, false, t, f, yes, no, y, n, on, off, 1, 0`
-    2. By default, the argument defaults to `None` if not specified, rather than `True` or `False. This allows the
+    2. By default, the argument defaults to `None` if not specified, rather than `True` or `False`. This allows the
        application to explicitly detect if the argument was not specified and take an alternative action. `default` may
        be set to `True` or `False` to disable this behavior.
 
@@ -91,7 +91,7 @@ class TriStateBooleanAction(argparse.Action):
             dest=dest,
             nargs=0,
             const=True,
-            default=default if default is not None else False,
+            default=default,
             type=None,
             choices=None,
             required=required,
@@ -135,6 +135,34 @@ class TriStateBooleanAction(argparse.Action):
         setattr(namespace, self.dest, result)
 
 
+class ExtendedBooleanAction(TriStateBooleanAction):
+    """!
+    @brief A boolean action accepting more values than a typical `store_true` or `store_false` action.
+
+    This action is similar to `argparse.BooleanOptionalAction` (Python 3.9+), except that in addition to `--foo` and
+    `-no-foo`, the user may also specify any of the following values (e.g., `--foo=off`):
+    `true, false, t, f, yes, no, y, n, on, off, 1, 0`
+
+    This makes it easier to specify boolean options via command line scripts by simply changing the value rather than
+    having to include/omit the argument itself.
+
+    Example usage:
+    ```
+                 # False (unless `default` is set to `True`)
+    --foo        # True
+    --foo=true   # True
+    --foo=false  # False
+    --no-foo     # False
+    ```
+    """
+    POSSIBLE_VALUES = ('true', 'false', 't', 'f', 'yes', 'no', 'y', 'n', 'on', 'off', '1', '0')
+
+    def __init__(self, *args, **kwargs):
+        if kwargs.get('default', None) is None:
+            kwargs['default'] = False
+        super().__init__(*args, **kwargs)
+
+
 class CSVAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
         setattr(namespace, self.dest, [v.strip() for v in values.split(',')])
@@ -163,6 +191,11 @@ class TriStateBoolFormatter(argparse.HelpFormatter):
             return ', '.join([o for o in strings if o is not None])
         else:
             return super(TriStateBoolFormatter, self)._format_action_invocation(action)
+
+
+# Alias for convenience.
+class ExtendedBooleanFormatter(TriStateBoolFormatter):
+    pass
 
 
 # Modified from argparse.ArgumentDefaultsHelpFormatter to omit when default is None.

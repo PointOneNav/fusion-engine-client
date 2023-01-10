@@ -3,8 +3,8 @@ import os
 
 import logging
 
-from ..analysis.file_index import FileIndexBuilder, FileIndex
 from ..messages import MessageType
+from ..parsers.file_index import FileIndexBuilder, FileIndex
 from ..parsers.mixed_log_reader import MixedLogReader
 from ..utils import trace
 
@@ -49,12 +49,13 @@ def find_log_by_pattern(pattern, log_base_dir=DEFAULT_LOG_BASE_DIR, allow_multip
       FusionEngine log manifest file)
 
     For example:
-    | Path                                | `1234`   | `foo*/1234` | `foo_*/1234` |
-    | `path/to/foo_bar/12345678`          | match    | match       | match        |
-    | `path/to/foo_/1234abcd`             | match    | match       | match        |
-    | `path/to/foo_bar/12345678/more/info`| no match | no match    | no match     |
-    | `path/to/foo/12345678`              | match    | match       | no match     |
-    | `path/to/foo_/abcd1234`             | no match | no match    | no match     |
+    | Path                                | `1234`   | `1234$`  | `foo*/1234` | `foo_*/1234` |
+    | `path/to/foo_bar/12345678`          | match    | no match | match       | match        |
+    | `path/to/foo_/1234abcd`             | match    | no match | match       | match        |
+    | `path/to/foo_bar/12345678/more/info`| no match | no match | no match    | no match     |
+    | `path/to/foo/12345678`              | match    | no match | match       | no match     |
+    | `path/to/foo_/abcd1234`             | no match | no match | no match    | no match     |
+    | `path/to/foo/1234`                  | match    | match    | match       | no match     |
 
     Most commonly, users specify the first N characters of a log's hash (e.g., `1234` to locate `/path/to/12345678`.
 
@@ -78,7 +79,13 @@ def find_log_by_pattern(pattern, log_base_dir=DEFAULT_LOG_BASE_DIR, allow_multip
         log_test_filenames = [f for f in log_test_filenames if f is not None]
 
     # Match logs in any directory starting with the specified pattern.
-    match_pattern = '*/' + pattern + '*'
+    #
+    # If the pattern ends with '$', treat that as the end of the match and do not append a '*'.
+    if pattern[-1] == '$':
+        match_pattern = '*/' + pattern[:-1]
+    else:
+        match_pattern = '*/' + pattern + '*'
+
     last_element = match_pattern.split('/')[-1]
 
     matches = []
@@ -132,7 +139,7 @@ def find_log_by_pattern(pattern, log_base_dir=DEFAULT_LOG_BASE_DIR, allow_multip
 
 
 def find_log_file(input_path, candidate_files=None, return_output_dir=False, return_log_id=False,
-                  log_base_dir=DEFAULT_LOG_BASE_DIR):
+                  log_base_dir=DEFAULT_LOG_BASE_DIR, check_exact_match=True):
     """!
     @brief Locate a log directory containing the specified file(s).
 
@@ -164,6 +171,8 @@ def find_log_file(input_path, candidate_files=None, return_output_dir=False, ret
     @param return_output_dir If `True`, return the output directory associated with the located input file.
     @param return_log_id If `True`, return the ID of the log if the requested path is a FusionEngine log.
     @param log_base_dir The base directory to be searched when performing a pattern match for a log directory.
+    @param check_exact_match If `True`, check if `input_path` is the path to a data file. Otherwise, skip this check and
+           only perform a pattern search.
 
     @return The path to the located file or a tuple containing:
             - The path to the located file.
@@ -172,7 +181,7 @@ def find_log_file(input_path, candidate_files=None, return_output_dir=False, ret
               `return_log_id` is `True`.
     """
     # Check if the input path is a file. If so, return it and set the output directory to its parent directory.
-    if os.path.isfile(input_path):
+    if os.path.isfile(input_path) and check_exact_match:
         output_dir = os.path.dirname(input_path)
         if output_dir == "":
             output_dir = "."
@@ -191,27 +200,33 @@ def find_log_file(input_path, candidate_files=None, return_output_dir=False, ret
         # First, see if the user's path is an existing log directory containing a data file. If so, use that.
         log_dir = None
         log_id = None
-        dir_exists = os.path.isdir(input_path)
-        if dir_exists:
-            for f in candidate_files:
-                if f is None:
-                    continue
 
-                test_path = os.path.join(input_path, f)
-                if os.path.exists(test_path):
-                    log_dir = input_path
-                    log_id = os.path.basename(log_dir)
-                    input_path = test_path
-                    break
+        if check_exact_match:
+            dir_exists = os.path.isdir(input_path)
+            if dir_exists:
+                for f in candidate_files:
+                    if f is None:
+                        continue
+
+                    test_path = os.path.join(input_path, f)
+                    if os.path.exists(test_path):
+                        log_dir = input_path
+                        log_id = os.path.basename(log_dir)
+                        input_path = test_path
+                        break
+        else:
+            dir_exists = False
 
         # If the user didn't specify a directory, or the directory wasn't considered a valid log (i.e., didn't have any
         # of the candidate files in it), check if they provided a pattern match to a log (i.e., a partial log ID or a
         # search pattern (foo*/partial_id*)).
         if log_dir is None:
-            if dir_exists:
-                _logger.info("Directory '%s' does not contain a data file. Attempting a pattern match." % input_path)
-            else:
-                _logger.info("File '%s' not found. Searching for a matching log." % input_path)
+            if check_exact_match:
+                if dir_exists:
+                    _logger.info("Directory '%s' does not contain a data file. Attempting a pattern match." %
+                                 input_path)
+                else:
+                    _logger.info("File '%s' not found. Searching for a matching log." % input_path)
 
             try:
                 matches = find_log_by_pattern(input_path, log_base_dir=log_base_dir,
@@ -346,7 +361,7 @@ def extract_fusion_engine_log(input_path, output_path=None, warn_on_gaps=True, r
 
 
 def locate_log(input_path, log_base_dir=DEFAULT_LOG_BASE_DIR, return_output_dir=False, return_log_id=False,
-               extract_fusion_engine_data=True):
+               extract_fusion_engine_data=False):
     """!
     @brief Locate a FusionEngine `*.p1log` file, or a binary file containing a mixed stream of FusionEngine messages and
            other content.
@@ -382,7 +397,9 @@ def locate_log(input_path, log_base_dir=DEFAULT_LOG_BASE_DIR, return_output_dir=
         result = find_p1log_file(input_path, log_base_dir=log_base_dir,
                                  return_output_dir=return_output_dir, return_log_id=return_log_id)
         return result
-    except (FileNotFoundError, RuntimeError) as e:
+    except FileNotFoundError as e:
+        is_mixed_file = False
+    except RuntimeError as e:
         is_mixed_file = False
         _logger.error(str(e))
     except FileExistsError as e:
@@ -399,7 +416,8 @@ def locate_log(input_path, log_base_dir=DEFAULT_LOG_BASE_DIR, return_output_dir=
                      'with mixed binary data.')
         try:
             result = find_log_file(input_path, candidate_files=CANDIDATE_MIXED_FILES, log_base_dir=log_base_dir,
-                                   return_output_dir=return_output_dir, return_log_id=return_log_id)
+                                   return_output_dir=return_output_dir, return_log_id=return_log_id,
+                                   check_exact_match=False)
             if isinstance(result, tuple):
                 mixed_file_path = result[0]
             else:

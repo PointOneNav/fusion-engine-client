@@ -3,9 +3,9 @@ import os
 import numpy as np
 import pytest
 
-from fusion_engine_client.analysis.file_index import FileIndex, FileIndexBuilder
 from fusion_engine_client.messages import MessageType, Timestamp, message_type_to_class
 from fusion_engine_client.parsers import FusionEngineEncoder
+from fusion_engine_client.parsers.file_index import FileIndex, FileIndexBuilder, TimeRange
 
 RAW_DATA = [
     (None, MessageType.VERSION_INFO, 0),
@@ -130,6 +130,58 @@ def test_time_slice():
     raw = RAW_DATA[_lower_bound(2.0):_lower_bound(3.0)]
     assert _test_time(sliced_index.time, raw)
     assert (sliced_index.offset == [e[2] for e in raw]).all()
+
+
+def test_time_range_slice():
+    def _lower_bound(time):
+        return next(i for i, e in enumerate(RAW_DATA) if (e[0] is not None and e[0] >= time))
+
+    index = FileIndex(data=RAW_DATA)
+
+    # Access to the end.
+    sliced_index = index[TimeRange(start=2.0, absolute=True)]
+    raw = RAW_DATA[_lower_bound(2.0):]
+    assert _test_time(sliced_index.time, raw)
+    assert (sliced_index.offset == [e[2] for e in raw]).all()
+
+    # Access from the beginning.
+    sliced_index = index[TimeRange(end=3.0, absolute=True)]
+    raw = RAW_DATA[:_lower_bound(3.0)]
+    assert _test_time(sliced_index.time, raw)
+    assert (sliced_index.offset == [e[2] for e in raw]).all()
+
+    # Access a range.
+    sliced_index = index[TimeRange(start=2.0, end=3.0, absolute=True)]
+    raw = RAW_DATA[_lower_bound(2.0):_lower_bound(3.0)]
+    assert _test_time(sliced_index.time, raw)
+    assert (sliced_index.offset == [e[2] for e in raw]).all()
+
+    # Relative time range, assuming the first P1 time is 1.0.
+    sliced_index = index[TimeRange(start=1.0, end=2.0, absolute=False)]
+    raw = RAW_DATA[_lower_bound(2.0):_lower_bound(3.0)]
+    assert _test_time(sliced_index.time, raw)
+    assert (sliced_index.offset == [e[2] for e in raw]).all()
+
+    # Relative time range with an explicit t0 that differs from the actual index data: use the t0 in the range.
+    sliced_index = index[TimeRange(start=1.0, end=2.0, absolute=False, p1_t0=Timestamp(0.0))]
+    raw = RAW_DATA[_lower_bound(1.0):_lower_bound(2.0)]
+    assert _test_time(sliced_index.time, raw)
+    assert (sliced_index.offset == [e[2] for e in raw]).all()
+
+
+def test_time_slice_no_p1_time():
+    def _lower_bound(time):
+        return next(i for i, e in enumerate(RAW_DATA) if (e[0] is not None and e[0] >= time))
+
+    raw_data = [e for e in RAW_DATA if e[0] is None]
+    index = FileIndex(data=raw_data)
+    assert index.t0 is None
+
+    # If the log does not contain P1 time, slicing it by time is not supported.
+    with pytest.raises(IndexError):
+        sliced_index = index[1.0:]
+        sliced_index = index[TimeRange(start=2.0, absolute=True)]
+        sliced_index = index[TimeRange(start=2.0, absolute=False)]
 
 
 def test_empty_index():

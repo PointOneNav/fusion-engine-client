@@ -72,6 +72,14 @@ class HighlightFormatter(logging.Formatter):
                 h.setFormatter(formatter)
 
 
+class SilentLogger(logging.Logger):
+    def __init__(self, name, level=logging.NOTSET):
+        if isinstance(name, logging.Logger):
+            name = name.name
+        super().__init__(name=name, level=level)
+        self.disabled = True
+
+
 # Define Logger TRACE level and associated trace() function if it doesn't exist.
 if not hasattr(logging, 'TRACE'):
     logging.TRACE = logging.DEBUG - 1
@@ -89,6 +97,15 @@ if not hasattr(logging, 'TRACE'):
         # - etc.
         if depth < 1:
             depth = 1
+
+        # The stacklevel value (1) tells findCaller() to get the line number one function call up from log() in
+        # logging/__init__.py. Since we have an function call (this one) in between log() and the caller, we need to
+        # pop up the stack one extra call.
+        if 'stacklevel' in kwargs:
+            kwargs['stacklevel'] += 1
+        else:
+            kwargs['stacklevel'] = 2
+
         self.log(logging.TRACE - (depth - 1), msg, *args, **kwargs)
     logging.Logger.trace = trace
 
@@ -103,4 +120,4 @@ if not hasattr(logging, 'TRACE'):
     logging.Logger.isEnabledFor = isEnabledFor
 
 
-__all__ = [HighlightFormatter]
+__all__ = [HighlightFormatter, SilentLogger]
