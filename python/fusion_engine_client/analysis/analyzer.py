@@ -26,10 +26,9 @@ if __name__ == "__main__" and (__package__ is None or __package__ == ''):
 
 from ..messages import *
 from .attitude import get_enu_rotation_matrix
-from .file_index import FileIndex
-from .file_reader import FileReader
+from .data_loader import DataLoader, TimeRange, FileIndex
 from fusion_engine_client.utils.trace import HighlightFormatter
-from ..utils.argument_parser import ArgumentParser, TriStateBooleanAction, CSVAction
+from ..utils.argument_parser import ArgumentParser, ExtendedBooleanAction, TriStateBooleanAction, CSVAction
 from ..utils.log import locate_log, DEFAULT_LOG_BASE_DIR
 from ..utils.numpy_utils import find_first
 
@@ -91,30 +90,28 @@ class Analyzer(object):
     LONG_LOG_DURATION_SEC = 2 * 3600.0
     HIGH_MEASUREMENT_RATE_HZ = 40.0
 
-    def __init__(self, file: Union[FileReader, str], output_dir: str = None, ignore_index: bool = False,
-                 prefix: str = '',
-                 time_range: Tuple[Union[float, Timestamp], Union[float, Timestamp]] = None,
-                 absolute_time: bool = False, truncate_long_logs: bool = True,
-                 max_messages: int = None):
+    def __init__(self,
+                 file: Union[DataLoader, str], ignore_index: bool = False,
+                 output_dir: str = None, prefix: str = '',
+                 time_range: TimeRange = None, max_messages: int = None,
+                 truncate_long_logs: bool = True):
         """!
         @brief Create an analyzer for the specified log.
 
-        @param file A @ref FileReader instance, or the path to a file to be loaded.
-        @param output_dir The directory where output will be stored.
+        @param file A @ref DataLoader instance, or the path to a file to be loaded.
         @param ignore_index If `True`, do not use the `.p1i` index file if present, and instead regenerate it from the
                `.p1log` data file.
+        @param output_dir The directory where output will be stored.
         @param prefix An optional prefix to be appended to the generated filenames.
-        @param time_range An optional length-2 tuple specifying desired start and end bounds on the data timestamps.
-               Both the start and end values may be set to `None` to read all data.
-        @param absolute_time If `True`, interpret the timestamps in `time_range` as absolute P1 times. Otherwise, treat
-               them as relative to the first message in the file.
-        @param truncate_long_logs If `True`, reduce or skip certain plots if the log extremely long (as defined by
-               @ref LONG_LOG_DURATION_SEC).
+        @param time_range An optional @ref TimeRange object specifying desired start and end time bounds of the data to
+               be read. See @ref TimeRange for more details.
         @param max_messages If set, read up to the specified maximum number of messages. Applies across all message
                types.
+        @param truncate_long_logs If `True`, reduce or skip certain plots if the log extremely long (as defined by
+               @ref LONG_LOG_DURATION_SEC).
         """
         if isinstance(file, str):
-            self.reader = FileReader(file, regenerate_index=ignore_index)
+            self.reader = DataLoader(file, ignore_index=ignore_index)
         else:
             self.reader = file
 
@@ -122,8 +119,7 @@ class Analyzer(object):
         self.prefix = prefix
 
         self.params = {
-            'time_range': time_range if time_range is not None else (None, None),
-            'absolute_time': absolute_time,
+            'time_range': time_range,
             'max_messages': max_messages,
             'show_progress': True,
             'return_numpy': True
@@ -2098,18 +2094,11 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
     def _calculate_duration(self, return_index=False):
         # Generate an index file, which we need to calculate the log duration, in case it wasn't created earlier (i.e.,
         # we didn't read anything to plot).
-        self.reader.generate_index()
+        self.reader.generate_index(show_progress=True)
 
         # Restrict the index to the user-requested time range.
-        if self.params['absolute_time']:
-            start_time, end_time = self.params['time_range']
-        else:
-            time_range = self.params['time_range']
-            start_time = None if time_range[0] is None else (time_range[0] + float(self.t0))
-            end_time = None if time_range[1] is None else (time_range[1] + float(self.t0))
-
-        full_index = self.reader.index
-        reduced_index = full_index[start_time:end_time]
+        full_index = self.reader.get_index()
+        reduced_index = full_index[self.params['time_range']]
 
         # Calculate the log duration.
         idx = ~np.isnan(full_index['time'])
@@ -2177,7 +2166,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         message_counts.append(None)
 
         message_types.append('Total')
-        message_counts.append(f'{len(self.reader.index)}')
+        message_counts.append(f'{len(self.reader.get_index())}')
 
         message_table = _data_to_table(['Message Type', 'Count'], [message_types, message_counts])
 
@@ -2349,10 +2338,10 @@ Load and display information stored in a FusionEngine binary file.
              "read from the MAPBOX_ACCESS_TOKEN or MapboxAccessToken environment variables if set. If no token is "
              "available, a default map will be displayed using Open Street Maps data.")
     plot_group.add_argument(
-        '-m', '--measurements', action=TriStateBooleanAction,
+        '-m', '--measurements', action=ExtendedBooleanAction,
         help="Plot incoming measurement data (slow). Ignored if --plot is specified.")
     plot_group.add_argument(
-        '--truncate', '--trunc', action=TriStateBooleanAction, default=True,
+        '--truncate', '--trunc', action=ExtendedBooleanAction, default=True,
         help="When processing a very long log (>%.1f hours), reduce or skip some plots that may be very slow to "
              "generate or display. This includes:"
              "\n- GNSS signal status display"
@@ -2375,16 +2364,16 @@ Load and display information stored in a FusionEngine binary file.
     time_group.add_argument(
         '--absolute-time', '--abs', action=TriStateBooleanAction,
         help="Interpret the timestamps in --time as absolute P1 times. Otherwise, treat them as relative to the first "
-             "message in the file.")
+             "message in the file. Ignored if --time contains a type specifier.")
     time_group.add_argument(
-        '-t', '--time', type=str, metavar='[START][:END]',
+        '-t', '--time', type=str, metavar='[START][:END][:{rel,abs}]',
         help="The desired time range to be analyzed. Both start and end may be omitted to read from beginning or to "
-             "the end of the file. By default, timestamps are treated as relative to the first message in the file. "
-             "See --absolute-time.")
+             "the end of the file. By default, timestamps are treated as relative to the first message in the file, "
+             "unless an 'abs' type is specified or --absolute-time is set.")
 
     log_group = parser.add_argument_group('Input File/Log Control')
     log_group.add_argument(
-        '--ignore-index', action=TriStateBooleanAction,
+        '--ignore-index', action=ExtendedBooleanAction,
         help="If set, do not load the .p1i index file corresponding with the .p1log data file. If specified and a "
              ".p1i file does not exist, do not generate one. Otherwise, a .p1i file will be created automatically to "
              "improve data read speed in the future.")
@@ -2392,7 +2381,7 @@ Load and display information stored in a FusionEngine binary file.
         '--log-base-dir', metavar='DIR', default=DEFAULT_LOG_BASE_DIR,
         help="The base directory containing FusionEngine logs to be searched if a log pattern is specified.")
     log_group.add_argument(
-        '--original', action=TriStateBooleanAction,
+        '--original', action=ExtendedBooleanAction,
         help='When loading from a log, load the recorded FusionEngine output file instead of playback results.')
     log_group.add_argument(
         'log',
@@ -2404,7 +2393,7 @@ Load and display information stored in a FusionEngine binary file.
 
     output_group = parser.add_argument_group('Output Control')
     output_group.add_argument(
-        '--no-index', action=TriStateBooleanAction,
+        '--no-index', action=ExtendedBooleanAction,
         help="Do not automatically open the plots in a web browser.")
     output_group.add_argument(
         '-o', '--output', type=str, metavar='DIR',
@@ -2434,24 +2423,7 @@ Load and display information stored in a FusionEngine binary file.
 
     # Parse the time range.
     if options.time is not None:
-        time_range = options.time.split(':')
-        if len(time_range) == 0:
-            time_range = [None, None]
-        elif len(time_range) == 1:
-            time_range.append(None)
-        elif len(time_range) == 2:
-            pass
-        else:
-            raise ValueError('Invalid time range specification.')
-
-        for i in range(2):
-            if time_range[i] is not None:
-                if time_range[i] == '':
-                    time_range[i] = None
-                else:
-                    time_range[i] = float(time_range[i])
-                    if time_range[i] < 0.0:
-                        time_range[i] = None
+        time_range = TimeRange.parse(options.time, absolute=options.absolute_time)
     else:
         time_range = None
 
@@ -2477,7 +2449,7 @@ Load and display information stored in a FusionEngine binary file.
     # Read pose data from the file.
     analyzer = Analyzer(file=input_path, output_dir=output_dir, ignore_index=options.ignore_index,
                         prefix=options.prefix + '.' if options.prefix is not None else '',
-                        time_range=time_range, absolute_time=options.absolute_time,
+                        time_range=time_range,
                         truncate_long_logs=options.truncate and options.plot is None)
 
     if options.plot is None:

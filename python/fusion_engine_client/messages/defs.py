@@ -136,6 +136,8 @@ class MessageHeader:
     _SYNC0 = 0x2E  # '.'
     _SYNC1 = 0x31  # '1'
 
+    SYNC = bytes((_SYNC0, _SYNC1))
+
     _FORMAT = '<BB2xIBBHIII'
     _SIZE: int = struct.calcsize(_FORMAT)
 

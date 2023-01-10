@@ -12,7 +12,7 @@ def find_first(arr: np.ndarray):
         raise ValueError('Input array is not a boolean array.')
 
     idx = np.argmax(arr)
-    if idx == 0 and arr[0] is not True:
+    if idx == 0 and not arr[0]:
         return -1
     else:
         return idx

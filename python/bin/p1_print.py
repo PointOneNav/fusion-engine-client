@@ -18,7 +18,7 @@ sys.path.append(root_dir)
 
 from fusion_engine_client.messages import *
 from fusion_engine_client.parsers import MixedLogReader
-from fusion_engine_client.utils.argument_parser import ArgumentParser
+from fusion_engine_client.utils.argument_parser import ArgumentParser, TriStateBooleanAction
 from fusion_engine_client.utils.log import locate_log, DEFAULT_LOG_BASE_DIR
 from fusion_engine_client.utils.time_range import TimeRange
 
@@ -48,9 +48,9 @@ other types of data.
 """)
 
     parser.add_argument(
-        '--absolute-time', '--abs', action='store_true',
+        '--absolute-time', '--abs', action=TriStateBooleanAction,
         help="Interpret the timestamps in --time as absolute P1 times. Otherwise, treat them as relative to the first "
-             "message in the file.")
+             "message in the file. Ignored if --time contains a type specifier.")
     parser.add_argument(
         '-f', '--format', choices=['pretty', 'oneline'], default='pretty',
         help="Specify the format used to print the message contents.")
@@ -63,10 +63,10 @@ other types of data.
              "multiple times (-m Type 1 -m Type 2), or as a comma-separated list (-m Type1,Type2). "
              "Supported types:\n%s" % '\n'.join(['- %s' % c for c in message_type_by_name.keys()]))
     parser.add_argument(
-        '-t', '--time', type=str, metavar='[START][:END]',
+        '-t', '--time', type=str, metavar='[START][:END][:{rel,abs}]',
         help="The desired time range to be analyzed. Both start and end may be omitted to read from beginning or to "
-             "the end of the file. By default, timestamps are treated as relative to the first message in the file. "
-             "See --absolute-time.")
+             "the end of the file. By default, timestamps are treated as relative to the first message in the file, "
+             "unless an 'abs' type is specified or --absolute-time is set.")
     parser.add_argument('-v', '--verbose', action='count', default=0,
                         help="Print verbose/trace debugging messages.")
 

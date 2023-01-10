@@ -368,6 +368,9 @@ class EventNotificationMessage(MessagePayload):
         self.__dict__.update(parsed)
         return parsed._io.tell()
 
+    def __repr__(self):
+        return '%s @ %s' % (self.MESSAGE_TYPE.name, system_time_to_str(self.system_time_ns))
+
     def __str__(self):
         fields = ['action', 'event_flags', 'event_description']
         string = f'Event Notification @ %s\n' % system_time_to_str(self.system_time_ns)

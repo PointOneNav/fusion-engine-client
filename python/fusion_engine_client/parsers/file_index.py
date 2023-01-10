@@ -163,7 +163,7 @@ class FileIndex(object):
         elif len(self._data) == 0:
             self.t0 = None
         else:
-            idx = np.argmax(~np.isnan(self._data['time']))
+            idx = find_first(~np.isnan(self._data['time']))
             if idx >= 0:
                 self.t0 = Timestamp(self._data['time'][idx])
             else:
@@ -281,24 +281,52 @@ class FileIndex(object):
             raw_data.tofile(index_path)
 
     def get_time_range(self, start: Union[Timestamp, float] = None, stop: Union[Timestamp, float] = None,
-                       hint: str = None) -> FileIndex:
+                       hint: str = None, time_range: TimeRange = None) -> FileIndex:
         """!
         @brief Get a subset of the contents for a specified time range.
 
-        @param start The P1 time at the start of the desired time range.
-        @param stop The P1 time at the end of the desired time range.
+        @param start The P1 time at the start of the desired time range (inclusive).
+        @param stop The P1 time at the end of the desired time range (exclusive).
         @param hint A hint indicating how to handle entries that do not have P1 time (`nan` timestamps):
                - `all_nans` - Return _all_ elements with nan timestamps in addition to entries within the time range,
                  including nan elements outside the time range
                - `include_nans` - Include nan elements within the requested time range (default)
                - `remove_nans` - Do not return nan elements; remove elements falling within the requested time range
+        @param time_range A @ref TimeRange object to use instead of `start` and `stop`.
         """
         if hint is None:
             hint = 'include_nans'
 
+        # If the caller provided a TimeRange object, use that to set start/stop.
+        if time_range is not None:
+            if start is not None or stop is not None:
+                raise ValueError('Cannot specify both a TimeRange and start/stop times.')
+
+            if time_range.absolute:
+                start = time_range.start
+                stop = time_range.end
+            else:
+                # If the caller explicitly set t0 in the relative time range, assume they intended for the relative
+                # values to be evaluated with respect to that t0, even if it does not match the first message in the
+                # index file.
+                if time_range.p1_t0:
+                    p1_t0 = time_range.p1_t0
+                else:
+                    p1_t0 = self.t0 if self.t0 is not None else Timestamp()
+
+                start = p1_t0 + time_range.start if time_range.start is not None else None
+                stop = p1_t0 + time_range.end if time_range.end is not None else None
+
         # No data available. Skip time indexing (argmax will fail on an empty vector).
         if len(self._data) == 0:
-            return FileIndex(data=self._data, t0=self.t0)
+            return FileIndex(data=np.copy(self._data), t0=self.t0)
+        # No time bounds specified. Return the complete dataset.
+        elif start is None and stop is None:
+            return FileIndex(data=np.copy(self._data), t0=self.t0)
+        # If there's no P1 timestamps in the index file whatsoever, t0 will be None. In that case, we cannot apply time
+        # bounds to the data, since they are based on P1 time. This should be extremely rare.
+        elif self.t0 is None:
+            raise IndexError('No P1 timestamps present in index. Cannot apply time bounds.')
         else:
             # Note: The index stores only the integer part of the timestamp.
 
@@ -346,12 +374,12 @@ class FileIndex(object):
         # No key specified (convenience case).
         if key is None:
             return copy.copy(self)
-        # No data available.
-        elif len(self._data) == 0:
-            return FileIndex()
         # Key is a string (e.g., index['type']), defer to getattr() (e.g., index.type).
         elif isinstance(key, str):
             return getattr(self, key)
+        # No data available.
+        elif len(self._data) == 0:
+            return FileIndex()
         # Return entries for a specific message type.
         elif isinstance(key, IntEnum):
             idx = self._data['type'] == key
@@ -379,18 +407,11 @@ class FileIndex(object):
             hint = key.step
             if hint is not None and not isinstance(hint, str):
                 raise ValueError('Step size not supported for time range slicing.')
-            return self.get_time_range(key.start, key.stop, hint)
+            return self.get_time_range(start=key.start, stop=key.stop, hint=hint)
         # Key is a TimeRange object. Return a subset of the data. All nan elements (messages without P1 time) will be
         # included in the results.
         elif isinstance(key, TimeRange):
-            if key.absolute:
-                start = key.start
-                end = key.end
-            else:
-                p1_t0 = key.p1_t0 if key.p1_t0 is not None else self.t0
-                start = key.start + p1_t0 if key.start is not None else None
-                end = key.end + p1_t0 if key.end is not None else None
-            return self.get_time_range(start, end, 'include_nans')
+            return self.get_time_range(time_range=key, hint='include_nans')
         # Key is an index slice or a list of individual element indices. Return a subset of the data.
         elif isinstance(key, slice):
             return FileIndex(data=self._data[key], t0=self.t0)

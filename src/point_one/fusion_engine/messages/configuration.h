@@ -1189,6 +1189,8 @@ enum class NmeaMessageType : uint16_t {
   PQTMVERNO = 1200,
   PQTMVER = 1201,
   PQTMGNSS = 1202,
+  PQTMVERNO_SUB = 1203,
+  PQTMVER_SUB = 1204,
   /** @} */
 };
 
@@ -1227,6 +1229,10 @@ inline const char* to_string(NmeaMessageType value) {
       return "PQTMVER";
     case NmeaMessageType::PQTMGNSS:
       return "PQTMGNSS";
+    case NmeaMessageType::PQTMVERNO_SUB:
+      return "PQTMVERNO_SUB";
+    case NmeaMessageType::PQTMVER_SUB:
+      return "PQTMVER_SUB";
     default:
       return "Unrecognized";
   }
@@ -1256,60 +1262,70 @@ enum class MessageRate : uint8_t {
   /** Alias for @ref MessageRate::ON_CHANGE. */
   MAX_RATE = 1,
   /**
-   * Output this message at this interval. Not supported for all messages or
-   * platforms.
+   * Output this message every 10 milliseconds. Not supported for all messages
+   * or platforms.
    */
   INTERVAL_10_MS = 2,
   /**
-   * Output this message at this interval. Not supported for all messages or
-   * platforms.
+   * Output this message every 20 milliseconds. Not supported for all messages
+   * or platforms.
    */
   INTERVAL_20_MS = 3,
   /**
-   * Output this message at this interval. Not supported for all messages or
-   * platforms.
+   * Output this message every 40 milliseconds. Not supported for all messages
+   * or platforms.
    */
   INTERVAL_40_MS = 4,
   /**
-   * Output this message at this interval. Not supported for all messages or
-   * platforms.
+   * Output this message every 50 milliseconds. Not supported for all messages
+   * or platforms.
    */
   INTERVAL_50_MS = 5,
   /**
-   * Output this message at this interval. Not supported for all messages or
-   * platforms.
+   * Output this message every 100 milliseconds. Not supported for all messages
+   * or platforms.
    */
   INTERVAL_100_MS = 6,
   /**
-   * Output this message at this interval. Not supported for all messages or
-   * platforms.
+   * Output this message every 200 milliseconds. Not supported for all messages
+   * or platforms.
    */
   INTERVAL_200_MS = 7,
   /**
-   * Output this message at this interval. Not supported for all messages or
-   * platforms.
+   * Output this message every 500 milliseconds. Not supported for all messages
+   * or platforms.
    */
   INTERVAL_500_MS = 8,
   /**
-   * Output this message at this interval. Not supported for all messages or
+   * Output this message every second. Not supported for all messages or
    * platforms.
    */
   INTERVAL_1_S = 9,
   /**
-   * Output this message at this interval. Not supported for all messages or
+   * Output this message every 2 seconds. Not supported for all messages or
    * platforms.
    */
   INTERVAL_2_S = 10,
   /**
-   * Output this message at this interval. Not supported for all messages or
+   * Output this message every 5 seconds. Not supported for all messages or
    * platforms.
    */
   INTERVAL_5_S = 11,
   /**
-   * Output this message at this interval. Not supported for all messages or
+   * Output this message every 10 seconds. Not supported for all messages or
    * platforms.
    */
   INTERVAL_10_S = 12,
+  /**
+   * Output this message every 30 seconds. Not supported for all messages or
+   * platforms.
+   */
+  INTERVAL_30_S = 13,
+  /**
+   * Output this message every 60 seconds. Not supported for all messages or
+   * platforms.
+   */
+  INTERVAL_60_S = 14,
   /**
    * Restore this message's rate back to its default value.
    */
@@ -1353,6 +1369,10 @@ inline const char* to_string(MessageRate value) {
       return "INTERVAL_5_S";
     case MessageRate::INTERVAL_10_S:
       return "INTERVAL_10_S";
+    case MessageRate::INTERVAL_30_S:
+      return "INTERVAL_30_S";
+    case MessageRate::INTERVAL_60_S:
+      return "INTERVAL_60_S";
     case MessageRate::DEFAULT:
       return "DEFAULT";
     default:

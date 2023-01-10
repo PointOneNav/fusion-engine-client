@@ -164,6 +164,8 @@ class MessageRate(IntEnum):
     INTERVAL_2_S = 10
     INTERVAL_5_S = 11
     INTERVAL_10_S = 12
+    INTERVAL_30_S = 13
+    INTERVAL_60_S = 14
     DEFAULT = 255
 
 
@@ -186,6 +188,8 @@ class NmeaMessageType(IntEnum):
     PQTMVERNO = 1200
     PQTMVER = 1201
     PQTMGNSS = 1202
+    PQTMVERNO_SUB = 1203
+    PQTMVER_SUB = 1204
 
 
 def get_message_type_string(protocol: ProtocolType, message_id: int):
