@@ -25,7 +25,7 @@ if __name__ == "__main__" and (__package__ is None or __package__ == ''):
 
 from ..messages import *
 from .attitude import get_enu_rotation_matrix
-from .file_reader import FileReader, TimeRange
+from .data_loader import DataLoader, TimeRange
 from fusion_engine_client.utils.trace import HighlightFormatter
 from ..utils.argument_parser import ArgumentParser, ExtendedBooleanAction, TriStateBooleanAction, CSVAction
 from ..utils.log import locate_log, DEFAULT_LOG_BASE_DIR
@@ -90,14 +90,14 @@ class Analyzer(object):
     HIGH_MEASUREMENT_RATE_HZ = 40.0
 
     def __init__(self,
-                 file: Union[FileReader, str], ignore_index: bool = False,
+                 file: Union[DataLoader, str], ignore_index: bool = False,
                  output_dir: str = None, prefix: str = '',
                  time_range: TimeRange = None, max_messages: int = None,
                  truncate_long_logs: bool = True):
         """!
         @brief Create an analyzer for the specified log.
 
-        @param file A @ref FileReader instance, or the path to a file to be loaded.
+        @param file A @ref DataLoader instance, or the path to a file to be loaded.
         @param ignore_index If `True`, do not use the `.p1i` index file if present, and instead regenerate it from the
                `.p1log` data file.
         @param output_dir The directory where output will be stored.
@@ -110,7 +110,7 @@ class Analyzer(object):
                @ref LONG_LOG_DURATION_SEC).
         """
         if isinstance(file, str):
-            self.reader = FileReader(file, ignore_index=ignore_index)
+            self.reader = DataLoader(file, ignore_index=ignore_index)
         else:
             self.reader = file
 

@@ -101,8 +101,18 @@ class TimeAlignmentMode(IntEnum):
     INSERT = 2
 
 
-class FileReader(object):
-    logger = logging.getLogger('point_one.fusion_engine.analysis.file_reader')
+class DataLoader(object):
+    """!
+    @brief Load FusionEngine data from one or more message types, optionally converting the data to numeric (Numpy)
+           representation for analysis.
+
+    If desired, data from different message types can be time-aligned automatically. See @ref read() and @ref
+    time_align_data().
+
+    By default, the loaded data will be cached internally for future access.
+    """
+
+    logger = logging.getLogger('point_one.fusion_engine.analysis.data_loader')
 
     def __init__(self, path=None, generate_index=True, ignore_index=False):
         """!
@@ -473,11 +483,11 @@ class FileReader(object):
                 data_cache[entry[0].message_type].messages.append(entry[1])
 
         # Time-align the data if requested.
-        FileReader.time_align_data(result, mode=time_align, message_types=aligned_message_types)
+        DataLoader.time_align_data(result, mode=time_align, message_types=aligned_message_types)
 
         # Convert the resulting message data to numpy (if supported).
         if return_numpy:
-            FileReader.to_numpy(result, keep_messages=keep_messages, remove_nan_times=remove_nan_times)
+            DataLoader.to_numpy(result, keep_messages=keep_messages, remove_nan_times=remove_nan_times)
 
         # Done.
         return result

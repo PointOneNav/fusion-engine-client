@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from fusion_engine_client.analysis.file_reader import FileReader, MessageData, TimeAlignmentMode
+from fusion_engine_client.analysis.data_loader import DataLoader, MessageData, TimeAlignmentMode
 from fusion_engine_client.messages import *
 from fusion_engine_client.parsers import FusionEngineEncoder, MixedLogReader
 from fusion_engine_client.utils.time_range import TimeRange
@@ -136,7 +136,7 @@ class TestReader:
         # Construct a reader. This will attempt to set t0 immediately by scanning the data file. If an index file
         # exists, the reader will use the index file to find t0 quickly. If not, it'll read the file directly, but will
         # _not_ attempt to generate an index (which requires reading the entire data file).
-        reader = FileReader(path=str(data_path))
+        reader = DataLoader(path=str(data_path))
         assert reader.t0 is not None
         assert reader.system_t0 is not None
         assert not reader.reader.have_index()
@@ -155,7 +155,7 @@ class TestReader:
         MixedLogReader.generate_index_file(str(data_path))
 
         # Construct a reader. We have an index file, so this should use that.
-        reader = FileReader(path=str(data_path))
+        reader = DataLoader(path=str(data_path))
         assert reader.t0 is not None
         assert reader.system_t0 is not None
         assert reader.reader.have_index()
@@ -170,7 +170,7 @@ class TestReader:
         expected_result = message_list_to_dict(expected_messages)
 
         # Read just pose messages. This should generate an index for the entire file.
-        reader = FileReader(path=str(data_path))
+        reader = DataLoader(path=str(data_path))
         result = reader.read(message_types=PoseMessage)
         self._check_results(result, expected_result)
         assert reader.reader.have_index()
@@ -185,7 +185,7 @@ class TestReader:
         MixedLogReader.generate_index_file(str(data_path))
 
         # Just read pose messages. The index file already exists, so we should use that to do the read.
-        reader = FileReader(path=str(data_path))
+        reader = DataLoader(path=str(data_path))
         assert reader.reader.have_index()
         result = reader.read(message_types=PoseMessage)
         self._check_results(result, expected_result)
@@ -196,7 +196,7 @@ class TestReader:
         expected_result = message_list_to_dict(expected_messages)
 
         # Read just pose messages. This should generate an index for the entire file.
-        reader = FileReader(path=str(data_path))
+        reader = DataLoader(path=str(data_path))
         result = reader.read(message_types=PoseMessage)
         self._check_results(result, expected_result)
         assert reader.reader.have_index()
@@ -208,7 +208,7 @@ class TestReader:
 
         # Construct a reader with index generation disabled. This never generates an index, but the read() call below
         # would if we did not set this.
-        reader = FileReader(path=str(data_path), generate_index=False)
+        reader = DataLoader(path=str(data_path), generate_index=False)
         assert reader.t0 is not None
         assert reader.system_t0 is not None
         assert not reader.reader.have_index()
@@ -219,7 +219,7 @@ class TestReader:
         assert not reader.reader.have_index()
 
         # Do the same but this time using the disable argument to read().
-        reader = FileReader(path=str(data_path))
+        reader = DataLoader(path=str(data_path))
         result = reader.read(disable_index_generation=True)
         self._check_results(result, expected_result)
         assert not reader.reader.have_index()
@@ -242,7 +242,7 @@ class TestReader:
         expected_result = message_list_to_dict(expected_messages)
         if use_index:
             MixedLogReader.generate_index_file(str(data_path))
-        reader = FileReader(path=str(data_path))
+        reader = DataLoader(path=str(data_path))
         result = reader.read(time_range=time_range)
         self._check_results(result, expected_result)
 
@@ -260,7 +260,7 @@ class TestReader:
         else:
             expected_messages = messages[max_messages:]
         expected_result = message_list_to_dict(expected_messages)
-        reader = FileReader(path=str(data_path))
+        reader = DataLoader(path=str(data_path))
         result = reader.read(max_messages=max_messages)
         self._check_results(result, expected_result)
 
@@ -272,7 +272,7 @@ class TestReader:
         else:
             expected_messages = messages[max_messages:]
         expected_result = message_list_to_dict(expected_messages)
-        reader = FileReader(path=str(data_path))
+        reader = DataLoader(path=str(data_path))
         result = reader.read(max_messages=max_messages, message_types=message_types)
         self._check_results(result, expected_result)
 
@@ -283,7 +283,7 @@ class TestTimeAlignment:
         return generate_data()
 
     def test_drop(self, data):
-        FileReader.time_align_data(data, TimeAlignmentMode.DROP)
+        DataLoader.time_align_data(data, TimeAlignmentMode.DROP)
         assert len(data[PoseMessage.MESSAGE_TYPE].messages) == 1
         assert float(data[PoseMessage.MESSAGE_TYPE].messages[0].p1_time) == 2.0
         assert len(data[PoseAuxMessage.MESSAGE_TYPE].messages) == 1
@@ -292,7 +292,7 @@ class TestTimeAlignment:
         assert float(data[GNSSInfoMessage.MESSAGE_TYPE].messages[0].p1_time) == 2.0
 
     def test_insert(self, data):
-        FileReader.time_align_data(data, TimeAlignmentMode.INSERT)
+        DataLoader.time_align_data(data, TimeAlignmentMode.INSERT)
 
         assert len(data[PoseMessage.MESSAGE_TYPE].messages) == 3
         assert float(data[PoseMessage.MESSAGE_TYPE].messages[0].p1_time) == 1.0
@@ -319,7 +319,7 @@ class TestTimeAlignment:
         assert data[GNSSInfoMessage.MESSAGE_TYPE].messages[2].gdop == 6.0
 
     def test_specific(self, data):
-        FileReader.time_align_data(data, TimeAlignmentMode.DROP,
+        DataLoader.time_align_data(data, TimeAlignmentMode.DROP,
                                    message_types=[PoseMessage.MESSAGE_TYPE, GNSSInfoMessage.MESSAGE_TYPE])
         assert len(data[PoseMessage.MESSAGE_TYPE].messages) == 1
         assert float(data[PoseMessage.MESSAGE_TYPE].messages[0].p1_time) == 2.0
