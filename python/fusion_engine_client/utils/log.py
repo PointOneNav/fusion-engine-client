@@ -3,8 +3,8 @@ import os
 
 import logging
 
-from ..analysis.file_index import FileIndexBuilder, FileIndex
 from ..messages import MessageType
+from ..parsers.file_index import FileIndexBuilder, FileIndex
 from ..parsers.mixed_log_reader import MixedLogReader
 from ..utils import trace
 

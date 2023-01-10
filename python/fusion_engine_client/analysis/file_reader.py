@@ -10,11 +10,11 @@ import os
 import numpy as np
 
 from ..messages import *
+from ..parsers.file_index import FileIndex, FileIndexBuilder
 from ..parsers.mixed_log_reader import MixedLogReader
 from ..utils.trace import SilentLogger
 from ..utils.enum_utils import IntEnum
 from ..utils.time_range import TimeRange
-from .file_index import FileIndex, FileIndexBuilder
 
 
 class MessageData(object):

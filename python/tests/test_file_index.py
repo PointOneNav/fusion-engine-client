@@ -3,9 +3,9 @@ import os
 import numpy as np
 import pytest
 
-from fusion_engine_client.analysis.file_index import FileIndex, FileIndexBuilder, TimeRange
 from fusion_engine_client.messages import MessageType, Timestamp, message_type_to_class
 from fusion_engine_client.parsers import FusionEngineEncoder
+from fusion_engine_client.parsers.file_index import FileIndex, FileIndexBuilder, TimeRange
 
 RAW_DATA = [
     (None, MessageType.VERSION_INFO, 0),

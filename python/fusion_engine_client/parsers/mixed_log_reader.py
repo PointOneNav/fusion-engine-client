@@ -8,7 +8,7 @@ import sys
 
 import numpy as np
 
-from ..analysis import file_index
+from . import file_index
 from ..messages import MessageType, MessageHeader, MessagePayload, Timestamp, message_type_to_class
 from ..utils.time_range import TimeRange
 

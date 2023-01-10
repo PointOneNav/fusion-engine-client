@@ -3,9 +3,8 @@ import os
 
 import pytest
 
-from fusion_engine_client.analysis.file_index import FileIndex
 from fusion_engine_client.messages import *
-from fusion_engine_client.parsers import FusionEngineEncoder, MixedLogReader
+from fusion_engine_client.parsers import FusionEngineEncoder, MixedLogReader, FileIndex
 from fusion_engine_client.utils.time_range import TimeRange
 
 
