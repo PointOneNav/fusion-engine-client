@@ -26,7 +26,7 @@ if __name__ == "__main__" and (__package__ is None or __package__ == ''):
 
 from ..messages import *
 from .attitude import get_enu_rotation_matrix
-from .data_loader import DataLoader, TimeRange, FileIndex
+from .data_loader import DataLoader, TimeRange
 from fusion_engine_client.utils.trace import HighlightFormatter
 from ..utils.argument_parser import ArgumentParser, ExtendedBooleanAction, TriStateBooleanAction, CSVAction
 from ..utils.log import locate_log, DEFAULT_LOG_BASE_DIR
@@ -1579,12 +1579,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         # Figure out how much serial data the host had received at the time of each counter profiling message.
         # This requires finding the data offset for these messages in the original mixed log.
 
-        # The index can be used to map the messages to the .p1log offset
-        if not self.reader.index:
-            self.logger.info("Index file not found. Can't check for host serial dropouts.")
-            return
-
-        counter_p1log_offsets = self.reader.index[ProfileCounterMessage.MESSAGE_TYPE].offset
+        counter_p1log_offsets = raw_file_index[ProfileCounterMessage.MESSAGE_TYPE].offset
 
         # The index is stored only by P1 time, not system time, but counter messages are logged in system time. If the
         # user specifies a time range instead of plotting the whole log, we don't have an easy way of determining which
@@ -1595,10 +1590,8 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             self.logger.warning('Serial dropout profiling cannot be plotted for a restricted time range.')
             return
 
-        counter_raw_offsets = raw_file_index[ProfileCounterMessage.MESSAGE_TYPE].offset
-
-        start_offset = serial_tx_counts[0] - counter_raw_offsets[0]
-        dropped_data = serial_tx_counts - counter_raw_offsets - start_offset
+        start_offset = serial_tx_counts[0] - counter_p1log_offsets[0]
+        dropped_data = serial_tx_counts - counter_p1log_offsets - start_offset
 
         if np.min(dropped_data) <= -10e6:
             self.logger.warning('Host serial diverges significantly from profiling data for %s. Make sure %s is the '
@@ -1752,13 +1745,10 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
 
         self.plot_serial_profiling(id_to_name, data)
 
-        raw_file_index_paths = ['input.66.p1i']
-        for path in raw_file_index_paths:
-            full_path = os.path.join(os.path.dirname(self.reader.file.name), path)
-            if os.path.exists(full_path):
-                raw_file_index = FileIndex(full_path)
-                self.plot_host_side_serial_dropouts(id_to_name, data, raw_file_index, device_uart)
-                break
+        reader_index = self.reader.reader.get_index()
+        if reader_index is not None:
+            self.logger.debug("Checking index file against '%s'." % device_uart)
+            self.plot_host_side_serial_dropouts(id_to_name, data, reader_index, device_uart)
 
         self.plot_eigen_profiling(id_to_name, data)
 
