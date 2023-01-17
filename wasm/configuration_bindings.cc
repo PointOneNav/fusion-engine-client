@@ -255,6 +255,22 @@ EMSCRIPTEN_BINDINGS(configuration) {
         .value("INTERVAL_10_S", MessageRate::INTERVAL_10_S)
         .value("DEFAULT", MessageRate::DEFAULT);
 
+    static auto SetMessageRate_MESSAGE_TYPE = SetMessageRate::MESSAGE_TYPE;
+    static auto SetMessageRate_MESSAGE_VERSION = SetMessageRate::MESSAGE_VERSION;
+    static auto SetMessageRate_FLAG_APPLY_AND_SAVE = SetMessageRate::FLAG_APPLY_AND_SAVE;
+    static auto SetMessageRate_FLAG_INCLUDE_DISABLED_MESSAGES = SetMessageRate::FLAG_INCLUDE_DISABLED_MESSAGES;
+    class_<SetMessageRate>("SetMessageRate")
+        .constructor<>()
+        .class_property("MESSAGE_TYPE", &SetMessageRate_MESSAGE_TYPE)
+        .class_property("MESSAGE_VERSION", &SetMessageRate_MESSAGE_VERSION)
+        .property("output_interface", &SetMessageRate::output_interface)
+        .property("protocol", &SetMessageRate::protocol)
+        .property("flags", &SetMessageRate::flags)
+        .property("message_id", &SetMessageRate::message_id)
+        .property("rate", &SetMessageRate::rate)
+        .ARRAY_PROPERTY(SetMessageRate, reserved2)
+        .STRUCT_FUNCTIONS(SetMessageRate);
+
     static auto GetMessageRate_MESSAGE_TYPE = GetMessageRate::MESSAGE_TYPE;
     static auto GetMessageRate_MESSAGE_VERSION = GetMessageRate::MESSAGE_VERSION;
     class_<GetMessageRate>("GetMessageRate")
