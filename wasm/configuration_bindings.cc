@@ -255,8 +255,6 @@ EMSCRIPTEN_BINDINGS(configuration) {
         .value("INTERVAL_10_S", MessageRate::INTERVAL_10_S)
         .value("DEFAULT", MessageRate::DEFAULT);
 
-
-
     static auto GetMessageRate_MESSAGE_TYPE = GetMessageRate::MESSAGE_TYPE;
     static auto GetMessageRate_MESSAGE_VERSION = GetMessageRate::MESSAGE_VERSION;
     class_<GetMessageRate>("GetMessageRate")

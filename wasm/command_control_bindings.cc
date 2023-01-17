@@ -86,4 +86,24 @@ EMSCRIPTEN_BINDINGS(control) {
         .property("message_type", &MessageRequest::message_type)
         .ARRAY_PROPERTY(MessageRequest, reserved)
         .STRUCT_FUNCTIONS(MessageRequest);
+
+    static auto EventNotificationMessage_MESSAGE_TYPE = EventNotificationMessage::MESSAGE_TYPE;
+    static auto EventNotificationMessage_MESSAGE_VERSION = EventNotificationMessage::MESSAGE_VERSION;
+    class_<EventNotificationMessage>("EventNotificationMessage")
+        .constructor<>()
+        .class_property("MESSAGE_TYPE", &EventNotificationMessage_MESSAGE_TYPE)
+        .class_property("MESSAGE_VERSION", &EventNotificationMessage_MESSAGE_VERSION)
+        .property("type", &EventNotificationMessage::type)
+        .ARRAY_PROPERTY(EventNotificationMessage, reserved1)
+        .property("system_time_ns", &EventNotificationMessage::system_time_ns)
+        .property("event_flags", &EventNotificationMessage::event_flags)
+        .property("event_description_len_bytes", &EventNotificationMessage::event_description_len_bytes)
+        .ARRAY_PROPERTY(EventNotificationMessage, reserved2)
+        .ARRAY_PROPERTY(EventNotificationMessage, event_description)
+        .STRUCT_FUNCTIONS(EventNotificationMessage);
+
+    enum_<EventNotificationMessage::EventType>("EventType")
+        .value("LOG", EventNotificationMessage::EventType::LOG)
+        .value("RESET", EventNotificationMessage::EventType::RESET)
+        .value("CONFIG_CHANGE", EventNotificationMessage::EventType::CONFIG_CHANGE);
 }
