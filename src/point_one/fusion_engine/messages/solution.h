@@ -468,11 +468,8 @@ struct alignas(4) RelativeENUPositionMessage : public MessagePayload {
 
   static constexpr uint32_t INVALID_REFERENCE_STATION = 0xFFFFFFFF;
 
-  /** The time of the message, in P1 time (beginning at power-on). */
-  Timestamp p1_time;
-
-  /** The GPS time of the message, if available, referenced to 1980/1/6. */
-  Timestamp gps_time;
+ /** Measurement timestamps, if available. See @ref measurement_messages. */
+  MeasurementTimestamps timestamps;
 
   /** The type of this position solution. */
   SolutionType solution_type = SolutionType::Invalid;
@@ -517,11 +514,8 @@ struct alignas(4) RelativeENUHeadingMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::RELATIVE_ENU_HEADING;
   static constexpr uint8_t MESSAGE_VERSION = 1;
 
-  /** The time of the message, in P1 time (beginning at power-on). */
-  Timestamp p1_time;
-
-  /** The GPS time of the message, if available, referenced to 1980/1/6. */
-  Timestamp gps_time;
+  /** Measurement timestamps, if available. See @ref measurement_messages. */
+  MeasurementTimestamps timestamps;
 
   /** The type of this position solution. */
   SolutionType solution_type = SolutionType::Invalid;
