@@ -88,6 +88,12 @@ enum class FaultType : uint8_t {
    * Payload format: `uint8_t` (0=disable, 1=enable)
    */
   ENABLE_GNSS = 4,
+  /**
+   * Simulate a region blackout (intended for factory test purposes only).
+   *
+   * Payload format: `uint8_t` (0=disable, 1=enable)
+   */
+  REGION_BLACKOUT = 5,
 };
 
 /**
