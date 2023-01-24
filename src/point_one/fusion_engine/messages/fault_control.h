@@ -121,6 +121,9 @@ inline const char* to_string(FaultType type) {
     case FaultType::ENABLE_GNSS:
       return "Enable GNSS";
 
+    case FaultType::REGION_BLACKOUT:
+      return "Region Blackout";
+
     default:
       return "Unrecognized";
   }

@@ -13,6 +13,7 @@ class FaultType(IntEnum):
     FATAL_ERROR = 2
     COCOM = 3
     ENABLE_GNSS = 4
+    REGION_BLACKOUT = 5
 
 
 class CoComType(IntEnum):
@@ -145,6 +146,13 @@ class FaultControlMessage(MessagePayload):
     class EnableGNSS(_class_gen.Bool):
         """!
         @brief Enable/disable use of GNSS measurements (intended for dead reckoning performance testing).
+        """
+        pass
+
+    @_class_gen.create_payload_class(FaultType.REGION_BLACKOUT, _class_gen.BoolConstruct)
+    class RegionBlackout(_class_gen.Bool):
+        """!
+        @brief Simulate a region blackout (intended for factory test purposes only).
         """
         pass
 
