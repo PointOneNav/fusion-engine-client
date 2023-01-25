@@ -208,7 +208,7 @@ struct alignas(4) FaultControlMessage : public MessagePayload {
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
   /** The type of fault/control to be performed. */
-  FaultType fault_type;
+  FaultType fault_type = FaultType::CLEAR_ALL;
 
   uint8_t reserved[15] = {0};
 
