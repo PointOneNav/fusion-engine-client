@@ -468,8 +468,11 @@ struct alignas(4) RelativeENUPositionMessage : public MessagePayload {
 
   static constexpr uint32_t INVALID_REFERENCE_STATION = 0xFFFFFFFF;
 
- /** Measurement timestamps, if available. See @ref measurement_messages. */
-  MeasurementTimestamps timestamps;
+  /** The time of the message, in P1 time (beginning at power-on). */
+  Timestamp p1_time;
+
+  /** The GPS time of the message, if available, referenced to 1980/1/6. */
+  Timestamp gps_time;
 
   /** The type of this position solution. */
   SolutionType solution_type = SolutionType::Invalid;
@@ -500,15 +503,15 @@ struct alignas(4) RelativeENUPositionMessage : public MessagePayload {
 };
 
 /**
- * @brief Relative ENU vector and heading (in degrees) from moving primary rover
- *        antenna.
+ * @brief from a secondary heading antenna, measured with respect to a
+ *        primary antenna.
  * @ingroup solution_messages
  *
  * @note
- * All data is timestamped using the Point One Time, which is a monotonic
+ * All data is timestamped using the P1 Time values, which is a monotonic
  * timestamp referenced to the start of the device. Corresponding messages (@ref
  * PoseMessage, @ref GNSSSatelliteMessage, etc.) may be associated using
- * their @ref p1_time values.
+ * their @ref timestamps.
  */
 struct alignas(4) RelativeENUHeadingMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::RELATIVE_ENU_HEADING;
@@ -526,8 +529,11 @@ struct alignas(4) RelativeENUHeadingMessage : public MessagePayload {
   uint32_t flags = 0;
 
   /**
-   * The relative position (in meters), resolved in the local ENU frame.
-   *
+   * Position is measured with respect to the primary antenna as follows:
+   * @f[
+   * \Delta r_{ENU} = C^{ENU}_{ECEF} (r_{Primary, ECEF} - r_{Secondary, ECEF})
+   * @f]
+   * 
    * @note
    * If a differential solution to the secondary antenna is not available, these
    * values will be `NAN`.
@@ -545,12 +551,11 @@ struct alignas(4) RelativeENUHeadingMessage : public MessagePayload {
   float position_std_enu_m[3] = {NAN, NAN, NAN};
 
   /**
-   * The heading between the primary device antenna and the secondary (in degrees) with
-   * respect to true north.
+   * The heading angle (in degrees) with respect to true north, pointing from
+   * the primary antenna to the secondary antenna.
    * 
    * @note
    * Reported in the range [0, 360).
-   *
    */
   float heading_true_north_deg = NAN;
 

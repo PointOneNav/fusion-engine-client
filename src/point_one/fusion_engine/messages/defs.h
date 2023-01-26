@@ -113,6 +113,9 @@ inline const char* to_string(MessageType type) {
     case MessageType::RELATIVE_ENU_POSITION:
       return "Relative ENU Position";
 
+    case MessageType::RELATIVE_ENU_HEADING:
+      return "Relative ENU heading";
+
     // Sensor measurement messages.
     case MessageType::IMU_MEASUREMENT:
       return "IMU Measurement";
