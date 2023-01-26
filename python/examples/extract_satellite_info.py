@@ -9,7 +9,7 @@ import sys
 root_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, root_dir)
 
-from fusion_engine_client.analysis.file_reader import FileReader
+from fusion_engine_client.analysis.data_loader import DataLoader
 from fusion_engine_client.messages.core import *
 from fusion_engine_client.utils.argument_parser import ArgumentParser
 from fusion_engine_client.utils.log import locate_log, DEFAULT_LOG_BASE_DIR
@@ -48,7 +48,7 @@ Extract satellite azimuth, elevation, and L1 signal C/N0 data to a CSV file.
         logger.info('Loading %s from log %s.' % (os.path.basename(input_path), log_id))
 
     # Read satellite data from the file.
-    reader = FileReader(input_path)
+    reader = DataLoader(input_path)
     result = reader.read(message_types=[GNSSSatelliteMessage], show_progress=True)
     satellite_data = result[GNSSSatelliteMessage.MESSAGE_TYPE]
     if len(satellite_data.messages) == 0:
