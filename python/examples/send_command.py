@@ -18,6 +18,7 @@ sys.path.insert(0, root_dir)
 
 from fusion_engine_client.messages import *
 from fusion_engine_client.parsers import FusionEngineDecoder, FusionEngineEncoder
+from fusion_engine_client.utils import trace
 from fusion_engine_client.utils.argument_parser import ArgumentParser
 from fusion_engine_client.utils.bin_utils import bytes_to_hex
 
@@ -56,7 +57,8 @@ The path to the target FusionEngine device:
         logging.getLogger('point_one.fusion_engine.parsers').setLevel(logging.DEBUG)
     else:
         logger.setLevel(logging.DEBUG)
-        logging.getLogger('point_one.fusion_engine.parsers').setLevel(logging.TRACE, depth=options.verbose - 2)
+        logging.getLogger('point_one.fusion_engine.parsers').setLevel(
+            logging.getTraceLevel(depth=options.verbose - 1))
 
     # Specify the message to be sent.
     message = ResetRequest(reset_mask=ResetRequest.HOT_START)

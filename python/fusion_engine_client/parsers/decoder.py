@@ -291,5 +291,5 @@ class FusionEngineDecoder:
 
     @classmethod
     def _trace_buffer(cls, buffer, depth=1, bytes_per_line=32):
-        if _logger.isEnabledFor(logging.TRACE, depth=depth):
+        if _logger.isEnabledFor(logging.getTraceLevel(depth)):
             _logger.trace('\n' + bytes_to_hex(buffer, bytes_per_row=bytes_per_line), depth=depth)
