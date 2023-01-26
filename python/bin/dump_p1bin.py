@@ -9,9 +9,9 @@ import sys
 root_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, root_dir)
 
+from fusion_engine_client.utils import trace
 from fusion_engine_client.utils.argument_parser import ArgumentParser
 from fusion_engine_client.utils.dump_p1bin import dump_p1bin
-from fusion_engine_client.utils import trace
 from fusion_engine_client.utils.log import find_log_file, DEFAULT_LOG_BASE_DIR
 
 
@@ -50,7 +50,7 @@ type.
         if options.verbose == 1:
             logger.setLevel(logging.DEBUG)
         elif options.verbose > 1:
-            logger.setLevel(logging.TRACE)
+            logger.setLevel(logging.getTraceLevel(depth=options.verbose - 1))
     else:
         logging.basicConfig(level=logging.INFO, format='%(message)s', stream=sys.stdout)
 
