@@ -788,26 +788,13 @@ class RelativeENUHeadingMessage(MessagePayload):
     """!
     @brief Relative ENU vector and heading (in degrees) from moving primary rover antenna.
     """
-    MESSAGE_TYPE = MessageType.RELATIVE_ENU_POSITION
+    MESSAGE_TYPE = MessageType.RELATIVE_ENU_HEADING
     MESSAGE_VERSION = 0
 
-    GetConfigMessageConstruct = Struct(
-        "p1_time" / TimestampConstruct,
-        "gps_time" / TimestampConstruct,
-        "solution_type" / AutoEnum(Int8ul, SolutionType),
-        Padding(3),
-        "flags" / Int32ul,
-        "relative_position_enu_m" / Array(3, Float64l),
-        "position_std_enu_m" / Array(3, Float32l),
-        "heading_true_north_deg" / Float32l,
-        "baseline_distance_m" / Float32l,
-    )
-
     def __init__(self):
-        # The time of the message, in P1 time (beginning at power-on).
-        self.p1_time = Timestamp()
-        # The GPS time of the message, if available, referenced to 1980/1/6.
-        self.gps_time = Timestamp()
+        ## Measurement timestamps, if available. See @ref measurement_messages.
+        self.timestamps = MeasurementTimestamps()
+
         # The type of this position solution.
         self.solution_type = SolutionType.Invalid
         # A bitmask of flags associated with the solution
@@ -849,32 +836,59 @@ class RelativeENUHeadingMessage(MessagePayload):
         
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
-        values = dict(self.__dict__)
-        packed_data = self.GetConfigMessageConstruct.build(values)
+        # values = dict(self.__dict__)
+        # offset += self.pack_values(
+        #     self._STRUCT, buffer, offset,
+        #     self.front_left_speed_mps,
+        #     self.front_right_speed_mps,
+        #     self.rear_left_speed_mps,
+        #     self.rear_right_speed_mps,
+        #     int(self.gear),
+        #     self.is_signed)
+
+        packed_data = self.MessageConstruct.build(values)
         return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
 
     def unpack(self, buffer: bytes, offset: int = 0) -> int:
-        parsed = self.GetConfigMessageConstruct.parse(buffer[offset:])
-        self.__dict__.update(parsed)
-        return parsed._io.tell()
+        initial_offset = offset
+
+        offset += self.timestamps.unpack(buffer, offset)
+        (solution_type_int, 
+            self.flags,
+            self.relative_position_enu_m[0],
+            self.relative_position_enu_m[1],
+            self.relative_position_enu_m[2],
+            self.position_std_enu_m[0],
+            self.position_std_enu_m[1],
+            self.position_std_enu_m[2],
+            self.heading_true_north_deg,
+            self.baseline_distance_m) = struct.unpack_from("<B3xL3f3fff", buffer, offset)
+        offset += struct.calcsize("<B3xL3f3fff")
+        self.solution_type = SolutionType(solution_type_int)
+
+        return offset - initial_offset
 
     def __str__(self):
-        fields = ['gps_time', 'solution_type', 'flags', 'relative_position_enu_m', 'position_std_enu_m', 'heading_true_north_deg', 'baseline_distance_m']
-        string = f'RelativeENUPosition @ {self.p1_time}\n'
-        for field in fields:
-            val = str(self.__dict__[field]).replace('Container:', '')
-            string += f'  {field}: {val}\n'
-        return string.rstrip()
+        newline = '\n'
+        return f"""
+        RelativeENUHeading @ {str(self.timestamps.p1_time)}
+        {str(self.timestamps).replace(newline, ' ' + newline)}
+        solution_type: {str(self.solution_type)}
+        flags: {self.flags}
+        relative_position_enu_m: {self.relative_position_enu_m}
+        position_std_enu_m: {self.position_std_enu_m}
+        heading_true_north_deg: {self.heading_true_north_deg}
+        baseline_distance_m: {self.baseline_distance_m}
+        """
+
 
     @classmethod
     def calcsize(cls) -> int:
-        return cls.GetConfigMessageConstruct.sizeof()
+        return cls.MessageConstruct.sizeof()
 
     @classmethod
-    def to_numpy(cls, messages: Sequence['RelativeENUPositionMessage']):
+    def to_numpy(cls, messages: Sequence['RelativeENUHeadingMessage']):
         result = {
-            'p1_time': np.array([float(m.p1_time) for m in messages]),
-            'gps_time': np.array([float(m.gps_time) for m in messages]),
             'solution_type': np.array([int(m.solution_type) for m in messages], dtype=int),
             'flags': np.array([int(m.flags) for m in messages], dtype=int),
             'relative_position_enu_m': np.array([m.relative_position_enu_m for m in messages]).T,
@@ -882,5 +896,5 @@ class RelativeENUHeadingMessage(MessagePayload):
             'heading_true_north_deg': np.array([float(m.heading_true_north_deg) for m in messages]),
             'baseline_distance_m': np.array([float(m.baseline_distance_m) for m in messages]),
         }
-
+        result.update(MeasurementTimestamps.to_numpy([m.timestamps for m in messages]))
         return result
