@@ -89,7 +89,7 @@ class TriStateBooleanAction(argparse.Action):
         super().__init__(
             option_strings=_option_strings,
             dest=dest,
-            nargs=0,
+            nargs=1 if len(_option_strings) == 0 else 0,
             const=True,
             default=default,
             type=None,
@@ -100,10 +100,14 @@ class TriStateBooleanAction(argparse.Action):
 
     def __call__(self, parser, namespace, values, option_string=None):
         if option_string is None:
-            # Caught in constructor. Should not happen.
-            raise ValueError('Positional arguments not supported for tri-state bool actions.')
+            if len(values) == 0:
+                # Caught in constructor. Should not happen.
+                raise ValueError('Value not specified.')
+            else:
+                parts = [self.dest, values[0]]
+        else:
+            parts = option_string.split('=')
 
-        parts = option_string.split('=')
         name = parts[0]
         if len(parts) > 1:
             # Taken from distutils.util.strtobool().
