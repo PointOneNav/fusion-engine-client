@@ -7,7 +7,7 @@ import sys
 root_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(root_dir)
 
-from fusion_engine_client.analysis.file_reader import FileReader
+from fusion_engine_client.analysis.data_loader import DataLoader
 from fusion_engine_client.messages.core import *
 from fusion_engine_client.utils.argument_parser import ArgumentParser
 from fusion_engine_client.utils.log import locate_log, DEFAULT_LOG_BASE_DIR
@@ -46,9 +46,9 @@ Compute the average LLA position for the data contained in a *.p1log file.
 
     # Read pose data from the file.
     #
-    # Note that we explicitly ask the FileReader to return the data converted to numpy arrays so we can analyze it
+    # Note that we explicitly ask the DataLoader to return the data converted to numpy arrays so we can analyze it
     # below.
-    reader = FileReader(input_path)
+    reader = DataLoader(input_path)
     result = reader.read(message_types=[PoseMessage], show_progress=True, return_numpy=True)
 
     # Print out the messages that were read.

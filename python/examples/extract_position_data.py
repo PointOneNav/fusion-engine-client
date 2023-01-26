@@ -9,7 +9,7 @@ import sys
 root_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, root_dir)
 
-from fusion_engine_client.analysis.file_reader import FileReader, TimeAlignmentMode
+from fusion_engine_client.analysis.data_loader import DataLoader, TimeAlignmentMode
 from fusion_engine_client.messages.core import *
 from fusion_engine_client.utils.argument_parser import ArgumentParser
 from fusion_engine_client.utils.log import locate_log, DEFAULT_LOG_BASE_DIR
@@ -77,7 +77,7 @@ Extract position data to both CSV and KML files.
     # timestamps where we have one message but not another, we will insert a default object. That way, even if we
     # started or stopped recording in between two messages, or if a message got dropped (CRC failure, etc.), there will
     # be an equal number of all message types and we can simply loop over them.
-    reader = FileReader(input_path)
+    reader = DataLoader(input_path)
     result = reader.read(message_types=[PoseMessage, PoseAuxMessage, GNSSSatelliteMessage], show_progress=True,
                          time_align=TimeAlignmentMode.INSERT)
     pose_data = result[PoseMessage.MESSAGE_TYPE]
