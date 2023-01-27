@@ -503,8 +503,8 @@ struct alignas(4) RelativeENUPositionMessage : public MessagePayload {
 };
 
 /**
- * @brief from a secondary heading antenna, measured with respect to a
- *        primary antenna.
+ * @brief The heading angle (in degrees) with respect to true north,
+ *        pointing from the primary antenna to the secondary antenna.
  * @ingroup solution_messages
  *
  * @note

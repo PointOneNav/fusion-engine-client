@@ -786,10 +786,19 @@ class RelativeENUPositionMessage(MessagePayload):
 
 class RelativeENUHeadingMessage(MessagePayload):
     """!
-    @brief Relative ENU vector and heading (in degrees) from moving primary rover antenna.
+     @brief The heading angle (in degrees) with respect to true north,
+            pointing from the primary antenna to the secondary antenna.
+     @ingroup solution_messages
+    
+     @note
+     All data is timestamped using the P1 Time values, which is a monotonic
+     timestamp referenced to the start of the device. Corresponding messages (@ref
+     PoseMessage, @ref GNSSSatelliteMessage, etc.) may be associated using
+     their @ref timestamps.
     """
     MESSAGE_TYPE = MessageType.RELATIVE_ENU_HEADING
     MESSAGE_VERSION = 0
+    _STRUCT = struct.Struct('<B3xL3f3fff')
 
     def __init__(self):
         ## Measurement timestamps, if available. See @ref measurement_messages.
@@ -838,10 +847,10 @@ class RelativeENUHeadingMessage(MessagePayload):
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         initial_offset = offset
         if (buffer is None):
-            buffer = bytearray(self.timestamps.calcsize() + struct.calcsize("<B3xL3f3fff"))
+            buffer = bytearray(self.calcsize())
         buffer = self.timestamps.pack(buffer)
         offset += self.timestamps.calcsize()
-        struct.pack_into("<B3xL3f3fff", buffer, offset,
+        self._STRUCT.pack_into(buffer, offset,
             self.solution_type,
             self.flags,
             self.relative_position_enu_m[0],
@@ -852,7 +861,7 @@ class RelativeENUHeadingMessage(MessagePayload):
             self.position_std_enu_m[2],
             self.heading_true_north_deg,
             self.baseline_distance_m)
-        offset += struct.calcsize("<B3xL3f3fff")
+        offset += self._STRUCT.size
         if return_buffer:
             return buffer
         else:
@@ -871,10 +880,9 @@ class RelativeENUHeadingMessage(MessagePayload):
             self.position_std_enu_m[1],
             self.position_std_enu_m[2],
             self.heading_true_north_deg,
-            self.baseline_distance_m) = struct.unpack_from("<B3xL3f3fff", buffer, offset)
-        offset += struct.calcsize("<B3xL3f3fff")
+            self.baseline_distance_m) = self._STRUCT.unpack_from(buffer, offset)
+        offset += self._STRUCT.size
         self.solution_type = SolutionType(solution_type_int)
-
         return offset - initial_offset
 
     def __str__(self):
@@ -893,7 +901,7 @@ class RelativeENUHeadingMessage(MessagePayload):
 
     @classmethod
     def calcsize(cls) -> int:
-        return cls.MessageConstruct.sizeof()
+        return cls._STRUCT.size + MeasurementTimestamps.calcsize()
 
     @classmethod
     def to_numpy(cls, messages: Sequence['RelativeENUHeadingMessage']):
