@@ -887,13 +887,12 @@ class RelativeENUHeadingMessage(MessagePayload):
 
     def __str__(self):
         return f"""\
-        Relative ENU Heading @ {str(self.timestamps.p1_time)}
-        Solution Type: {str(self.solution_type)}
-        Relative position (ENU): {tuple(self.relative_position_enu_m)}
-        Position std (ENU): {tuple(self.position_std_enu_m)}
-        Heading (deg): {self.heading_true_north_deg}
-        Baseline distance (m): {self.baseline_distance_m}
-        """
+Relative ENU Heading @ {str(self.timestamps.p1_time)}
+  Solution Type: {str(self.solution_type)}
+  Relative position (ENU) (m): {self.relative_position_enu_m[0]:.2f}, {self.relative_position_enu_m[1]:.2f}, {self.relative_position_enu_m[2]:.2f}
+  Position std (ENU) (m): {self.position_std_enu_m[0]:.2f}, {self.position_std_enu_m[1]:.2f}, {self.position_std_enu_m[2]:.2f}
+  Heading (deg): {self.heading_true_north_deg:.2f}
+  Baseline distance (m): {self.baseline_distance_m:.2f}"""
 
     @classmethod
     def calcsize(cls) -> int:
