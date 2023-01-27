@@ -80,6 +80,7 @@ EMSCRIPTEN_BINDINGS(configuration) {
         .class_property("MESSAGE_TYPE", &ConfigResponseMessage_MESSAGE_TYPE)
         .class_property("MESSAGE_VERSION", &ConfigResponseMessage_MESSAGE_VERSION)
         .property("config_source", &ConfigResponseMessage::config_source)
+        .property("flags", &ConfigResponseMessage::flags)
         .property("config_type", &ConfigResponseMessage::config_type)
         .property("response", &ConfigResponseMessage::response)
         .ARRAY_PROPERTY(ConfigResponseMessage, reserved)
