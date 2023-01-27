@@ -837,8 +837,8 @@ class RelativeENUHeadingMessage(MessagePayload):
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         initial_offset = offset
-
-        buffer = bytearray(self.timestamps.calcsize() + struct.calcsize("<B3xL3f3fff"))
+        if (buffer is None):
+            buffer = bytearray(self.timestamps.calcsize() + struct.calcsize("<B3xL3f3fff"))
         buffer = self.timestamps.pack(buffer)
         offset += self.timestamps.calcsize()
         struct.pack_into("<B3xL3f3fff", buffer, offset,
