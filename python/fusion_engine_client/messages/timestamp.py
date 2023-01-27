@@ -237,6 +237,7 @@ class MeasurementTimestamps(object):
         self._STRUCT.pack_into(buffer, offset, int(self.measurement_time_source))
         offset += self._STRUCT.size
         offset += self.p1_time.pack(buffer, offset, return_buffer=False)
+
         if return_buffer:
             return buffer
         else:
