@@ -898,7 +898,6 @@ class RelativeENUHeadingMessage(MessagePayload):
         baseline_distance_m: {self.baseline_distance_m}
         """
 
-
     @classmethod
     def calcsize(cls) -> int:
         return cls._STRUCT.size + MeasurementTimestamps.calcsize()
