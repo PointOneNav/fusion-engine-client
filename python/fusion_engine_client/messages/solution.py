@@ -836,18 +836,27 @@ class RelativeENUHeadingMessage(MessagePayload):
         
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
-        # values = dict(self.__dict__)
-        # offset += self.pack_values(
-        #     self._STRUCT, buffer, offset,
-        #     self.front_left_speed_mps,
-        #     self.front_right_speed_mps,
-        #     self.rear_left_speed_mps,
-        #     self.rear_right_speed_mps,
-        #     int(self.gear),
-        #     self.is_signed)
+        initial_offset = offset
 
-        packed_data = self.MessageConstruct.build(values)
-        return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
+        buffer = bytearray(self.timestamps.calcsize() + struct.calcsize("<B3xL3f3fff"))
+        buffer = self.timestamps.pack(buffer)
+        offset += self.timestamps.calcsize()
+        struct.pack_into("<B3xL3f3fff", buffer, offset,
+            self.solution_type,
+            self.flags,
+            self.relative_position_enu_m[0],
+            self.relative_position_enu_m[1],
+            self.relative_position_enu_m[2],
+            self.position_std_enu_m[0],
+            self.position_std_enu_m[1],
+            self.position_std_enu_m[2],
+            self.heading_true_north_deg,
+            self.baseline_distance_m)
+        offset += struct.calcsize("<B3xL3f3fff")
+        if return_buffer:
+            return buffer
+        else:
+            return offset - initial_offset
 
     def unpack(self, buffer: bytes, offset: int = 0) -> int:
         initial_offset = offset
