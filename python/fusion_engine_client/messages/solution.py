@@ -886,16 +886,13 @@ class RelativeENUHeadingMessage(MessagePayload):
         return offset - initial_offset
 
     def __str__(self):
-        newline = '\n'
-        return f"""
-        RelativeENUHeading @ {str(self.timestamps.p1_time)}
-        {str(self.timestamps).replace(newline, ' ' + newline)}
-        solution_type: {str(self.solution_type)}
-        flags: {self.flags}
-        relative_position_enu_m: {self.relative_position_enu_m}
-        position_std_enu_m: {self.position_std_enu_m}
-        heading_true_north_deg: {self.heading_true_north_deg}
-        baseline_distance_m: {self.baseline_distance_m}
+        return f"""\
+        Relative ENU Heading @ {str(self.timestamps.p1_time)}
+        Solution Type: {str(self.solution_type)}
+        Relative position (ENU): {tuple(self.relative_position_enu_m)}
+        Position std (ENU): {tuple(self.position_std_enu_m)}
+        Heading (deg): {self.heading_true_north_deg}
+        Baseline distance (m): {self.baseline_distance_m}
         """
 
     @classmethod
