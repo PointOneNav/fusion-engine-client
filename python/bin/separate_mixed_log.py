@@ -9,7 +9,6 @@ import sys
 root_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, root_dir)
 
-from fusion_engine_client.utils.argument_parser import ArgumentParser
 from fusion_engine_client.utils import trace
 from fusion_engine_client.utils.argument_parser import ArgumentParser
 from fusion_engine_client.utils.log import extract_fusion_engine_log, find_log_file, CANDIDATE_MIXED_FILES, \
@@ -53,7 +52,7 @@ Extract FusionEngine message contents from a binary file containing mixed data
     if options.verbose == 1:
         logger.setLevel(logging.DEBUG)
     elif options.verbose > 1:
-        logger.setLevel(logging.TRACE)
+        logger.setLevel(logging.getTraceLevel(depth=options.verbose - 1))
 
     # Locate the input file and set the output directory.
     try:
