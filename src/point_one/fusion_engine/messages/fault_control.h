@@ -88,6 +88,12 @@ enum class FaultType : uint8_t {
    * Payload format: `uint8_t` (0=disable, 1=enable)
    */
   ENABLE_GNSS = 4,
+  /**
+   * Simulate a region blackout (intended for factory test purposes only).
+   *
+   * Payload format: `uint8_t` (0=disable, 1=enable)
+   */
+  REGION_BLACKOUT = 5,
 };
 
 /**
@@ -114,6 +120,9 @@ inline const char* to_string(FaultType type) {
 
     case FaultType::ENABLE_GNSS:
       return "Enable GNSS";
+
+    case FaultType::REGION_BLACKOUT:
+      return "Region Blackout";
 
     default:
       return "Unrecognized";
@@ -199,7 +208,7 @@ struct alignas(4) FaultControlMessage : public MessagePayload {
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
   /** The type of fault/control to be performed. */
-  FaultType fault_type;
+  FaultType fault_type = FaultType::CLEAR_ALL;
 
   uint8_t reserved[15] = {0};
 
