@@ -80,6 +80,27 @@ class SilentLogger(logging.Logger):
         self.disabled = True
 
 
+def getTraceLevel(depth=1):
+    # Trace messages increase in verbosity with increasing depth, starting from 1:
+    # - Depth 1 (Level == TRACE): Default
+    # - Depth 2 (Level == TRACE - 1): More verbose
+    # - etc.
+    if depth < 1:
+        depth = 1
+    return logging.TRACE - (depth - 1)
+
+
+def trace(msg, depth=1, *args, **kwargs):
+    """
+    Log a message with severity 'TRACE' on the root logger. If the logger has
+    no handlers, call basicConfig() to add a console handler with a pre-defined
+    format.
+    """
+    if len(logging.root.handlers) == 0:
+        logging.basicConfig()
+    logging.root.trace(msg, depth=depth, *args, **kwargs)
+
+
 # Define Logger TRACE level and associated trace() function if it doesn't exist.
 if not hasattr(logging, 'TRACE'):
     logging.TRACE = logging.DEBUG - 1
@@ -90,14 +111,9 @@ if not hasattr(logging, 'TRACE'):
         logging._nameToLevel['TRACE'] = logging.TRACE
         logging._levelToName[logging.TRACE] = 'TRACE'
 
-    def trace(self, msg, depth=1, *args, **kwargs):
-        # Trace messages increase in verbosity with increasing depth, starting from 1:
-        # - Depth 1 (Level == TRACE): Default
-        # - Depth 2 (Level == TRACE - 1): More verbose
-        # - etc.
-        if depth < 1:
-            depth = 1
+    logging.getTraceLevel = getTraceLevel
 
+    def _trace(self, msg, depth=1, *args, **kwargs):
         # The stacklevel value (1) tells findCaller() to get the line number one function call up from log() in
         # logging/__init__.py. Since we have an function call (this one) in between log() and the caller, we need to
         # pop up the stack one extra call.
@@ -106,18 +122,7 @@ if not hasattr(logging, 'TRACE'):
         else:
             kwargs['stacklevel'] = 2
 
-        self.log(logging.TRACE - (depth - 1), msg, *args, **kwargs)
-    logging.Logger.trace = trace
+        self.log(getTraceLevel(depth), msg, *args, **kwargs)
+    logging.Logger.trace = _trace
 
-    def setLevel(self, level, depth=1, *args, **kwargs):
-        return self.real_setLevel(logging._checkLevel(level) - (depth - 1), *args, **kwargs)
-    logging.Logger.real_setLevel = logging.Logger.setLevel
-    logging.Logger.setLevel = setLevel
-
-    def isEnabledFor(self, level, depth=1, *args, **kwargs):
-        return self.real_isEnabledFor(logging._checkLevel(level) - (depth - 1), *args, **kwargs)
-    logging.Logger.real_isEnabledFor = logging.Logger.isEnabledFor
-    logging.Logger.isEnabledFor = isEnabledFor
-
-
-__all__ = [HighlightFormatter, SilentLogger]
+__all__ = [HighlightFormatter, SilentLogger, getTraceLevel, trace]

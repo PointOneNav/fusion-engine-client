@@ -10,6 +10,7 @@ import numpy as np
 
 from . import file_index
 from ..messages import MessageType, MessageHeader, MessagePayload, Timestamp, message_type_to_class
+from ..utils import trace
 from ..utils.time_range import TimeRange
 
 
@@ -232,7 +233,7 @@ class MixedLogReader(object):
                 self.logger.debug('Max read length exceeded (%d B).' % self.max_bytes)
                 break
 
-            if self.logger.isEnabledFor(logging.TRACE, depth=2):
+            if self.logger.isEnabledFor(logging.getTraceLevel(depth=2)):
                 self.logger.trace('Reading candidate message @ %d (0x%x).' % (start_offset_bytes, start_offset_bytes),
                                   depth=2)
 
@@ -277,7 +278,7 @@ class MixedLogReader(object):
                 header.validate_crc(data)
 
                 message_length_bytes = MessageHeader.calcsize() + header.payload_size_bytes
-                if self.logger.isEnabledFor(logging.TRACE, depth=1):
+                if self.logger.isEnabledFor(logging.getTraceLevel(depth=1)):
                     self.logger.trace('Read %s message @ %d (0x%x). [length=%d B, sequence=%d, # messages=%d]' %
                                       (header.get_type_string(), start_offset_bytes, start_offset_bytes,
                                        message_length_bytes, header.sequence_number, self.valid_count + 1),
@@ -365,7 +366,7 @@ class MixedLogReader(object):
                 return result
             except ValueError as e:
                 start_offset_bytes += 1
-                if self.logger.isEnabledFor(logging.TRACE, depth=2):
+                if self.logger.isEnabledFor(logging.getTraceLevel(depth=2)):
                     self.logger.trace('%s Rewinding to offset %d (0x%x).' %
                                       (str(e), start_offset_bytes, start_offset_bytes),
                                       depth=2)
@@ -396,7 +397,7 @@ class MixedLogReader(object):
     def _advance_to_next_sync(self):
         if self.index is None:
             try:
-                if self.logger.isEnabledFor(logging.TRACE, depth=2):
+                if self.logger.isEnabledFor(logging.getTraceLevel(depth=2)):
                     self.logger.trace('Starting next sync search @ %d (0x%x).' %
                                       (self.total_bytes_read, self.total_bytes_read),
                                       depth=2)
@@ -418,7 +419,7 @@ class MixedLogReader(object):
                             if byte1 == MessageHeader._SYNC1:
                                 self.input_file.seek(-2, os.SEEK_CUR)
                                 self.total_bytes_read -= 2
-                                if self.logger.isEnabledFor(logging.TRACE, depth=3):
+                                if self.logger.isEnabledFor(logging.getTraceLevel(depth=3)):
                                     self.logger.trace('Sync bytes found @ %d (0x%x).' %
                                                       (self.total_bytes_read, self.total_bytes_read),
                                                       depth=3)

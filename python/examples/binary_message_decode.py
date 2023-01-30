@@ -11,6 +11,7 @@ sys.path.insert(0, root_dir)
 
 from fusion_engine_client.messages.core import MessageHeader, MessagePayload
 from fusion_engine_client.parsers import FusionEngineDecoder
+from fusion_engine_client.utils import trace
 from fusion_engine_client.utils.argument_parser import ArgumentParser
 
 from examples.message_decode import print_message
@@ -46,7 +47,8 @@ Payload: Reset Request [mask=0x01000fff]
         if options.verbose == 1:
             logging.getLogger('point_one.fusion_engine').setLevel(logging.DEBUG)
         else:
-            logging.getLogger('point_one.fusion_engine').setLevel(logging.TRACE, depth=(options.verbose - 1))
+            logging.getLogger('point_one.fusion_engine').setLevel(
+                logging.getTraceLevel(depth=options.verbose - 1))
     else:
         logging.basicConfig(level=logging.INFO, format='%(message)s', stream=sys.stdout)
 

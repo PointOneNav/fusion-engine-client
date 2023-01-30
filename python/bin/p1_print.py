@@ -18,6 +18,7 @@ sys.path.append(root_dir)
 
 from fusion_engine_client.messages import *
 from fusion_engine_client.parsers import MixedLogReader
+from fusion_engine_client.utils import trace
 from fusion_engine_client.utils.argument_parser import ArgumentParser, TriStateBooleanAction
 from fusion_engine_client.utils.log import locate_log, DEFAULT_LOG_BASE_DIR
 from fusion_engine_client.utils.time_range import TimeRange
@@ -102,7 +103,8 @@ other types of data.
         if options.verbose == 1:
             logging.getLogger('point_one.fusion_engine.parsers').setLevel(logging.DEBUG)
         else:
-            logging.getLogger('point_one.fusion_engine.parsers').setLevel(logging.TRACE, depth=options.verbose - 1)
+            logging.getLogger('point_one.fusion_engine.parsers').setLevel(
+                logging.getTraceLevel(depth=options.verbose - 1))
     else:
         logging.basicConfig(level=logging.INFO, format='%(message)s', stream=sys.stdout)
 
