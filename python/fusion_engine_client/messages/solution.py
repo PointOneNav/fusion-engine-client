@@ -784,12 +784,13 @@ class RelativeENUPositionMessage(MessagePayload):
 
         return result
 
+
 class RelativeENUHeadingMessage(MessagePayload):
     """!
      @brief The heading angle (in degrees) with respect to true north,
             pointing from the primary antenna to the secondary antenna.
      @ingroup solution_messages
-    
+
      @note
      All data is timestamped using the P1 Time values, which is a monotonic
      timestamp referenced to the start of the device. Corresponding messages (@ref
@@ -798,6 +799,7 @@ class RelativeENUHeadingMessage(MessagePayload):
     """
     MESSAGE_TYPE = MessageType.RELATIVE_ENU_HEADING
     MESSAGE_VERSION = 0
+
     _STRUCT = struct.Struct('<B3xL3f3fff')
 
     def __init__(self):
@@ -842,7 +844,6 @@ class RelativeENUHeadingMessage(MessagePayload):
         #
         ##
         self.baseline_distance_m = np.nan
-        
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         initial_offset = offset
@@ -871,7 +872,7 @@ class RelativeENUHeadingMessage(MessagePayload):
         initial_offset = offset
 
         offset += self.timestamps.unpack(buffer, offset)
-        (solution_type_int, 
+        (solution_type_int,
             self.flags,
             self.relative_position_enu_m[0],
             self.relative_position_enu_m[1],
