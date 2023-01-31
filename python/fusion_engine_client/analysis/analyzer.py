@@ -1739,7 +1739,7 @@ Load and display information stored in a FusionEngine binary file.
         if options.verbose == 1:
             logging.getLogger('point_one.fusion_engine').setLevel(logging.DEBUG)
         else:
-            logging.getLogger('point_one.fusion_engine').setLevel(logging.TRACE)
+            logging.getLogger('point_one.fusion_engine').setLevel(logging.getTraceLevel(depth=options.verbose - 1))
     else:
         logging.basicConfig(level=logging.INFO, format='%(message)s', stream=sys.stdout)
 
