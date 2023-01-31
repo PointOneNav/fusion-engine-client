@@ -16,7 +16,7 @@ using namespace point_one::fusion_engine::messages;
 /******************************************************************************/
 static void SetMessageCRC(const emscripten::val& buffer) {
   auto header = reinterpret_cast<MessageHeader*>(buffer.as<size_t>());
-  header->crc = Cal√BculateCRC(header);
+  header->crc = CalculateCRC(header);
 }
 
 /******************************************************************************/
