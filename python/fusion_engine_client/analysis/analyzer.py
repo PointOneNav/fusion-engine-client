@@ -4,7 +4,6 @@ from typing import Tuple, Union, List, Any
 
 from collections import namedtuple, defaultdict
 import copy
-import logging
 import os
 import sys
 import webbrowser
@@ -26,7 +25,7 @@ if __name__ == "__main__" and (__package__ is None or __package__ == ''):
 from ..messages import *
 from .attitude import get_enu_rotation_matrix
 from .data_loader import DataLoader, TimeRange
-from ..utils import trace
+from ..utils import trace as logging
 from ..utils.argument_parser import ArgumentParser, ExtendedBooleanAction, TriStateBooleanAction, CSVAction
 from ..utils.log import locate_log, DEFAULT_LOG_BASE_DIR
 from ..utils.numpy_utils import find_first

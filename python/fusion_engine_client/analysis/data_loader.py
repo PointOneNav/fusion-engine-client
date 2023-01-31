@@ -4,7 +4,6 @@ from collections import deque
 import copy
 from datetime import datetime
 import io
-import logging
 import os
 
 import numpy as np
@@ -12,6 +11,7 @@ import numpy as np
 from ..messages import *
 from ..parsers.file_index import FileIndex, FileIndexBuilder
 from ..parsers.mixed_log_reader import MixedLogReader
+from ..utils import trace as logging
 from ..utils.trace import SilentLogger
 from ..utils.enum_utils import IntEnum
 from ..utils.time_range import TimeRange

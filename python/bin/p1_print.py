@@ -2,7 +2,6 @@
 
 from collections import defaultdict
 import io
-import logging
 import os
 import sys
 
@@ -18,7 +17,7 @@ sys.path.append(root_dir)
 
 from fusion_engine_client.messages import *
 from fusion_engine_client.parsers import MixedLogReader
-from fusion_engine_client.utils import trace
+from fusion_engine_client.utils import trace as logging
 from fusion_engine_client.utils.argument_parser import ArgumentParser, TriStateBooleanAction
 from fusion_engine_client.utils.log import locate_log, DEFAULT_LOG_BASE_DIR
 from fusion_engine_client.utils.time_range import TimeRange

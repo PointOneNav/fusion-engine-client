@@ -2,7 +2,6 @@ from typing import Iterable, Union
 
 import copy
 from datetime import datetime
-import logging
 import os
 import sys
 
@@ -10,7 +9,7 @@ import numpy as np
 
 from . import file_index
 from ..messages import MessageType, MessageHeader, MessagePayload, Timestamp, message_type_to_class
-from ..utils import trace
+from ..utils import trace as logging
 from ..utils.time_range import TimeRange
 
 

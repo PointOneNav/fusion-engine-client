@@ -1,10 +1,9 @@
 from collections import defaultdict
-import logging
 import textwrap
 from typing import List, Dict, Callable, Optional, Tuple, Union
 
 from ..messages import MessageHeader, MessageType, MessagePayload, message_type_to_class
-from ..utils import trace
+from ..utils import trace as logging
 from ..utils.bin_utils import bytes_to_hex
 from ..utils.enum_utils import IntEnum
 
