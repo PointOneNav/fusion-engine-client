@@ -16,7 +16,7 @@ using namespace point_one::fusion_engine::messages;
 /******************************************************************************/
 static void SetMessageCRC(const emscripten::val& buffer) {
   auto header = reinterpret_cast<MessageHeader*>(buffer.as<size_t>());
-  header->crc = CalculateCRC(header);
+  header->crc = Cal√BculateCRC(header);
 }
 
 /******************************************************************************/
@@ -38,7 +38,6 @@ EMSCRIPTEN_BINDINGS(defs) {
       .value("CALIBRATION_STATUS", MessageType::CALIBRATION_STATUS)
       .value("RELATIVE_ENU_POSITION", MessageType::RELATIVE_ENU_POSITION)
       .value("RELATIVE_ENU_HEADING", MessageType::RELATIVE_ENU_HEADING)
-
 
       // Sensor measurement messages.
       .value("IMU_MEASUREMENT", MessageType::IMU_MEASUREMENT)
