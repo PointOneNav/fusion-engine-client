@@ -20,6 +20,7 @@ from fusion_engine_client.utils import trace as logging
 from fusion_engine_client.utils.argument_parser import ArgumentParser, TriStateBooleanAction
 from fusion_engine_client.utils.log import locate_log, DEFAULT_LOG_BASE_DIR
 from fusion_engine_client.utils.time_range import TimeRange
+from fusion_engine_client.utils.trace import HighlightFormatter
 
 _logger = logging.getLogger('point_one.fusion_engine.applications.print_contents')
 
@@ -105,6 +106,8 @@ other types of data.
                 logging.getTraceLevel(depth=options.verbose - 1))
     else:
         logging.basicConfig(level=logging.INFO, format='%(message)s', stream=sys.stdout)
+
+    HighlightFormatter.install(color=True, standoff_level=logging.WARNING)
 
     # Locate the input file and set the output directory.
     input_path, log_id = locate_log(input_path=options.log, log_base_dir=options.log_base_dir, return_log_id=True,
