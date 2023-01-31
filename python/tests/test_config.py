@@ -1,4 +1,4 @@
-import logging
+from fusion_engine_client.utils import trace as logging
 
 import pytest
 from fusion_engine_client.messages import (ConfigResponseMessage, ConfigType,

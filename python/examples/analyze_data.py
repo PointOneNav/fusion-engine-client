@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import logging
 import os
 import sys
 
@@ -9,6 +8,7 @@ sys.path.append(root_dir)
 
 from fusion_engine_client.analysis.data_loader import DataLoader
 from fusion_engine_client.messages.core import *
+from fusion_engine_client.utils import trace as logging
 from fusion_engine_client.utils.argument_parser import ArgumentParser
 from fusion_engine_client.utils.log import locate_log, DEFAULT_LOG_BASE_DIR
 

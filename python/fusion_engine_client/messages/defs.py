@@ -1,5 +1,4 @@
 import inspect
-import logging
 import math
 import struct
 from typing import Union
@@ -9,6 +8,7 @@ import numpy as np
 
 from .signal_defs import *
 from .timestamp import *
+from ..utils import trace as logging
 from ..utils.enum_utils import IntEnum
 
 _logger = logging.getLogger('point_one.fusion_engine.messages.defs')
