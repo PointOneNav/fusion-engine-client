@@ -1,7 +1,8 @@
-import logging
 import os
 
 from construct import *
+
+from . import trace as logging
 
 _logger = logging.getLogger('point_one.fusion_engine.utils.dump_p1bin')
 

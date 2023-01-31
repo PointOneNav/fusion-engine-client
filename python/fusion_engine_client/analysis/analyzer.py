@@ -4,7 +4,6 @@ from typing import Tuple, Union, List, Any
 
 from collections import namedtuple, defaultdict
 import copy
-import logging
 import os
 import re
 import sys
@@ -27,7 +26,7 @@ if __name__ == "__main__" and (__package__ is None or __package__ == ''):
 from ..messages import *
 from .attitude import get_enu_rotation_matrix
 from .data_loader import DataLoader, TimeRange
-from ..utils import trace
+from ..utils import trace as logging
 from ..utils.argument_parser import ArgumentParser, ExtendedBooleanAction, TriStateBooleanAction, CSVAction
 from ..utils.log import locate_log, DEFAULT_LOG_BASE_DIR
 from ..utils.numpy_utils import find_first
@@ -2406,7 +2405,7 @@ Load and display information stored in a FusionEngine binary file.
         if options.verbose == 1:
             logging.getLogger('point_one.fusion_engine').setLevel(logging.DEBUG)
         else:
-            logging.getLogger('point_one.fusion_engine').setLevel(logging.TRACE)
+            logging.getLogger('point_one.fusion_engine').setLevel(logging.getTraceLevel(depth=options.verbose - 1))
     else:
         logging.basicConfig(level=logging.INFO, format='%(message)s', stream=sys.stdout)
 

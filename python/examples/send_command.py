@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import logging
 import os
 import socket
 import sys
@@ -18,7 +17,7 @@ sys.path.insert(0, root_dir)
 
 from fusion_engine_client.messages import *
 from fusion_engine_client.parsers import FusionEngineDecoder, FusionEngineEncoder
-from fusion_engine_client.utils import trace
+from fusion_engine_client.utils import trace as logging
 from fusion_engine_client.utils.argument_parser import ArgumentParser
 from fusion_engine_client.utils.bin_utils import bytes_to_hex
 

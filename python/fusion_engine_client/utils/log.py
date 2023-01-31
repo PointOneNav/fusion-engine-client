@@ -1,14 +1,11 @@
 import fnmatch
 import os
 
-import logging
-import struct
-
+from . import trace as logging
 from .dump_p1bin import dump_p1bin
 from ..messages import MessageType
 from ..parsers.file_index import FileIndexBuilder, FileIndex
 from ..parsers.mixed_log_reader import MixedLogReader
-from ..utils import trace
 
 _logger = logging.getLogger('point_one.utils.log')
 

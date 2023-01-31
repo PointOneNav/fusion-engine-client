@@ -1,3 +1,8 @@
+# Import all logging stuff here locally for caller convenience. That way, the caller can do the following to get both
+# built-in logging support and additional trace support:
+#   import fusion_engine_client.utils.trace as logging
+from logging import *
+
 import logging
 import sys
 
@@ -80,6 +85,17 @@ class SilentLogger(logging.Logger):
         self.disabled = True
 
 
+# Define Logger TRACE level and associated trace() function. These are extensions of the built-in logging library.
+if not hasattr(logging, 'TRACE'):
+    logging.TRACE = logging.DEBUG - 1
+    if sys.version_info.major == 2:
+        logging._levelNames['TRACE'] = logging.TRACE
+        logging._levelNames[logging.TRACE] = 'TRACE'
+    else:
+        logging._nameToLevel['TRACE'] = logging.TRACE
+        logging._levelToName[logging.TRACE] = 'TRACE'
+
+
 def getTraceLevel(depth=1):
     # Trace messages increase in verbosity with increasing depth, starting from 1:
     # - Depth 1 (Level == TRACE): Default
@@ -88,6 +104,20 @@ def getTraceLevel(depth=1):
     if depth < 1:
         depth = 1
     return logging.TRACE - (depth - 1)
+
+
+if not hasattr(logging.Logger, 'trace'):
+    def _trace_member(self, msg, depth=1, *args, **kwargs):
+        # The stacklevel value (1) tells findCaller() to get the line number one function call up from log() in
+        # logging/__init__.py. Since we have an function call (this one) in between log() and the caller, we need to
+        # pop up the stack one extra call.
+        if 'stacklevel' in kwargs:
+            kwargs['stacklevel'] += 1
+        else:
+            kwargs['stacklevel'] = 2
+
+        self.log(getTraceLevel(depth), msg, *args, **kwargs)
+    logging.Logger.trace = _trace_member
 
 
 def trace(msg, depth=1, *args, **kwargs):
@@ -99,30 +129,3 @@ def trace(msg, depth=1, *args, **kwargs):
     if len(logging.root.handlers) == 0:
         logging.basicConfig()
     logging.root.trace(msg, depth=depth, *args, **kwargs)
-
-
-# Define Logger TRACE level and associated trace() function if it doesn't exist.
-if not hasattr(logging, 'TRACE'):
-    logging.TRACE = logging.DEBUG - 1
-    if sys.version_info.major == 2:
-        logging._levelNames['TRACE'] = logging.TRACE
-        logging._levelNames[logging.TRACE] = 'TRACE'
-    else:
-        logging._nameToLevel['TRACE'] = logging.TRACE
-        logging._levelToName[logging.TRACE] = 'TRACE'
-
-    logging.getTraceLevel = getTraceLevel
-
-    def _trace(self, msg, depth=1, *args, **kwargs):
-        # The stacklevel value (1) tells findCaller() to get the line number one function call up from log() in
-        # logging/__init__.py. Since we have an function call (this one) in between log() and the caller, we need to
-        # pop up the stack one extra call.
-        if 'stacklevel' in kwargs:
-            kwargs['stacklevel'] += 1
-        else:
-            kwargs['stacklevel'] = 2
-
-        self.log(getTraceLevel(depth), msg, *args, **kwargs)
-    logging.Logger.trace = _trace
-
-__all__ = [HighlightFormatter, SilentLogger, getTraceLevel, trace]

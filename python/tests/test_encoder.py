@@ -2,8 +2,8 @@ import numpy as np
 
 from fusion_engine_client.messages import PoseMessage, PoseAuxMessage
 from fusion_engine_client.parsers import FusionEngineEncoder
+from fusion_engine_client.utils import trace as logging
 
-import logging
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logging.getLogger('point_one').setLevel(logging.DEBUG)
