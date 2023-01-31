@@ -1,5 +1,4 @@
 from collections import defaultdict
-import textwrap
 from typing import List, Dict, Callable, Optional, Tuple, Union
 
 from ..messages import MessageHeader, MessageType, MessagePayload, message_type_to_class

@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 from collections import defaultdict
-import io
 import os
 import sys
 
