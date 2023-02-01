@@ -652,25 +652,23 @@ class Analyzer(object):
 
             # build heading plots
             fig = make_subplots(
-                rows=4, cols=1,
+                rows=3, cols=1,
                 subplot_titles=(
                     'Heading, 2-sigma band',
                     'ENU/Baseline Distance',
-                    'Delta Norm',
                     'Solution Type'
                 ),
                 shared_xaxes=True,
             )
 
             fig.update_xaxes(title_text='Time (sec)', showticklabels=True)
-
             fig.update_yaxes(title_text='Heading (deg)', row=1, col=1)
             fig.update_yaxes(title_text='Distance (m)', row=2, col=1)
             fig.update_yaxes(
                 ticktext=['%s (%d)' % (e.name, e.value) for e in SolutionType],
                 tickvals=[e.value for e in SolutionType],
                 title_text='Solution Type',
-                row=4, col=1
+                row=3, col=1
             )
 
             fig.update_layout(title='Heading Plots', legend_traceorder='normal')
@@ -804,7 +802,7 @@ class Analyzer(object):
                     text=[str(SolutionType(s)) for s in primary_pose_message.solution_type],
                     name='Primary Solution Type'
                 ),
-                row=4, col=1
+                row=3, col=1
             )
 
             fig.add_trace(
@@ -817,7 +815,7 @@ class Analyzer(object):
                     text=[str(SolutionType(s)) for s in relative_heading_message.solution_type],
                     name='Secondary Solution Type'
                 ),
-                row=4, col=1
+                row=3, col=1
             )
 
             self._add_figure(name='heading_vs_time', figure=fig, title='Heading vs Time')
