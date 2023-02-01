@@ -634,6 +634,195 @@ class Analyzer(object):
 
         self._plot_displacement('Pose Displacement', time, solution_type, displacement_enu_m, std_enu_m)
 
+    def plot_heading(self):
+            """!
+            @brief Generate time series plots for heading (degrees) and baseline distance (meters) data.
+            """
+            if self.output_dir is None:
+                return
+            result = self.reader.read(message_types=[RelativeENUHeadingMessage], **self.params)
+            relative_heading_message = result[RelativeENUHeadingMessage.MESSAGE_TYPE]
+
+
+            result = self.reader.read(message_types=[PoseMessage], **self.params)
+            primary_pose_message = result[PoseMessage.MESSAGE_TYPE]
+
+            if (len(relative_heading_message.p1_time) == 0):
+                return
+
+            # build heading plots
+            fig = make_subplots(
+                rows=4, cols=1,
+                subplot_titles=(
+                    'Heading, 2-sigma band',
+                    'ENU/Baseline Distance',
+                    'Delta Norm',
+                    'Solution Type'
+                ),
+                shared_xaxes=True,
+            )
+
+            fig.update_xaxes(title_text='Time (sec)', showticklabels=True)
+
+            fig.update_yaxes(title_text='Heading (deg)', row=1, col=1)
+            fig.update_yaxes(title_text='Distance (m)', row=2, col=1)
+            fig.update_yaxes(
+                ticktext=['%s (%d)' % (e.name, e.value) for e in SolutionType],
+                tickvals=[e.value for e in SolutionType],
+                title_text='Solution Type',
+                row=4, col=1
+            )
+
+            fig.update_layout(title='Heading Plots', legend_traceorder='normal')
+
+            # First plot - heading in degrees with error bar
+            # calculate uncertainty envelope for heading
+            denom = relative_heading_message.relative_position_enu_m[0]**2 + relative_heading_message.relative_position_enu_m[1]**2
+            dh_e = relative_heading_message.relative_position_enu_m[0] / denom
+            dh_n = relative_heading_message.relative_position_enu_m[2] / denom
+
+            heading_std = np.sqrt(
+                (dh_e * relative_heading_message.position_std_enu_m[0]) ** 2 +
+                (dh_n * relative_heading_message.position_std_enu_m[1]) ** 2
+            )
+
+            envelope = np.arctan(
+                (2 * heading_std / relative_heading_message.baseline_distance_m)
+            )
+            envelope *= 180. / np.pi
+
+            # add reference heading, if available
+            if primary_pose_message is not None:
+                fig.add_trace(
+                    go.Scatter(
+                        x=primary_pose_message.p1_time,
+                        y=primary_pose_message.ypr_deg[0],
+                        mode='lines',
+                        line={'color': 'yellow'},
+                        name='Reference Heading',
+                        hovertemplate='<b>Time</b>: %{x:.2f}' +
+                                        '<br><b>Heading</b>: %{y:.2f}'
+                    ),
+                    row=1, col=1
+                )
+
+
+            fig.add_trace(
+                go.Scatter(
+                    x=relative_heading_message.p1_time,
+                    y=relative_heading_message.heading_true_north_deg,
+                    mode='markers',
+                    marker={'size': 2},
+                    name='Heading',
+                    hovertemplate='<b>Time</b>: %{x:.2f}' +
+                                    '<br><b>Heading</b>: %{y:.2f}'
+                ),
+                row=1, col=1
+            )
+
+            fig.add_trace(
+                go.Scatter(
+                    x=relative_heading_message.p1_time,
+                    y=relative_heading_message.heading_true_north_deg + envelope,
+                    mode='lines',
+                    marker=dict(color="#444"),
+                    line=dict(width=0),
+                    showlegend=False,
+                    hoverinfo='skip'
+                ),
+                row=1, col=1
+            )
+
+            fig.add_trace(
+                go.Scatter(
+                    x=relative_heading_message.p1_time,
+                    y=relative_heading_message.heading_true_north_deg - envelope,
+                    mode='lines',
+                    marker=dict(color="#444"),
+                    line=dict(width=0),
+                    fillcolor='rgba(68, 68, 68, 0.3)',
+                    fill='tonexty',
+                    showlegend=False,
+                    hoverinfo='skip'
+                ),
+                row=1, col=1
+            )
+
+            # Second plot - baseline, ENU components
+            fig.add_trace(
+                go.Scatter(
+                    x=relative_heading_message.p1_time,
+                    y=relative_heading_message.relative_position_enu_m[0],
+                    hovertemplate='<b>Time</b>: %{x:.2f}' +
+                                    '<br><b>East</b>: %{y:.2f}',
+                    name='East'
+                ),
+                row=2, col=1
+            )
+
+            fig.add_trace(
+                go.Scatter(
+                    x=relative_heading_message.p1_time,
+                    y=relative_heading_message.relative_position_enu_m[1],
+                    hovertemplate='<b>Time</b>: %{x:.2f}' +
+                                    '<br><b>North</b>: %{y:.2f}',
+                    name='North'
+                ),
+                row=2, col=1
+            )
+
+            fig.add_trace(
+                go.Scatter(
+                    x=relative_heading_message.p1_time,
+                    y=relative_heading_message.relative_position_enu_m[2],
+                    hovertemplate='<b>Time</b>: %{x:.2f}' +
+                                    '<br><b>Up</b>: %{y:.2f}',
+                    name='Up'
+                ),
+                row=2, col=1
+            )
+
+            fig.add_trace(
+                go.Scatter(
+                    x=relative_heading_message.p1_time,
+                    y=relative_heading_message.baseline_distance_m,
+                    hovertemplate='<b>Time</b>: %{x:.2f}' +
+                                    '<br><b>Baseline</b>: %{y:.2f}',
+                    name='Baseline'
+                ),
+                row=2, col=1
+            )
+
+            # 3rd plot - solution type
+            fig.add_trace(
+                go.Scatter(
+                    x=primary_pose_message.p1_time,
+                    y=primary_pose_message.solution_type,
+                    mode='markers',
+                    hovertemplate='<b>Time</b>: %{x:.2f}' +
+                                    '<br><b>Solution</b>: %{text}',
+                    text=[str(SolutionType(s)) for s in primary_pose_message.solution_type],
+                    name='Primary Solution Type'
+                ),
+                row=4, col=1
+            )
+
+            fig.add_trace(
+                go.Scatter(
+                    x=relative_heading_message.p1_time,
+                    y=relative_heading_message.solution_type,
+                    mode='markers',
+                    hovertemplate='<b>Time</b>: %{x:.2f}' +
+                                    '<br><b>Solution</b>: %{text}',
+                    text=[str(SolutionType(s)) for s in relative_heading_message.solution_type],
+                    name='Secondary Solution Type'
+                ),
+                row=4, col=1
+            )
+
+            self._add_figure(name='heading_vs_time', figure=fig, title='Heading vs Time')
+
+
     def plot_relative_position(self):
         """!
         @brief Generate a topocentric (top-down) plot of relative position vs base station, as well as plot of relative
@@ -2447,6 +2636,7 @@ Load and display information stored in a FusionEngine binary file.
         analyzer.plot_solution_type()
         analyzer.plot_pose()
         analyzer.plot_pose_displacement()
+        analyzer.plot_heading()
         analyzer.plot_relative_position()
         analyzer.plot_map(mapbox_token=options.mapbox_token)
         analyzer.plot_calibration()
