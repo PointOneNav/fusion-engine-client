@@ -187,5 +187,5 @@ EMSCRIPTEN_BINDINGS(solution) {
     .ARRAY_PROPERTY(RelativeENUHeadingMessage, position_std_enu_m)
     .property("heading_true_north_deg", &RelativeENUHeadingMessage::heading_true_north_deg)
     .property("baseline_distance_m", &RelativeENUHeadingMessage::baseline_distance_m)
-    .STRUCT_FUNCTIONS(RelativeENUPositionMessage);
+    .STRUCT_FUNCTIONS(RelativeENUHeadingMessage);
 }
