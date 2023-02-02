@@ -254,6 +254,8 @@ EMSCRIPTEN_BINDINGS(configuration) {
         .value("INTERVAL_2_S", MessageRate::INTERVAL_2_S)
         .value("INTERVAL_5_S", MessageRate::INTERVAL_5_S)
         .value("INTERVAL_10_S", MessageRate::INTERVAL_10_S)
+        .value("INTERVAL_30_S", MessageRate::INTERVAL_30_S)
+        .value("INTERVAL_60_S", MessageRate::INTERVAL_60_S)
         .value("DEFAULT", MessageRate::DEFAULT);
 
     static auto SetMessageRate_MESSAGE_TYPE = SetMessageRate::MESSAGE_TYPE;

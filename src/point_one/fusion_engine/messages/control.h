@@ -147,8 +147,7 @@ struct P1_ALIGNAS(4) ResetRequest : public MessagePayload {
    *
    * @note
    * This does _not_ reset any existing navigation engine state. It is
-   WARM_START02S* recommended that you set @ref RESET_NAVIGATION_ENGINE_DATA as well under
-ZXaqaqq2W       -+89=-+989*-/***C .w/S/s/saaaaaaaaa
+   WARM_START recommended that you set @ref RESET_NAVIGATION_ENGINE_DATA as well under
    * normal circumstances.
    */
   static constexpr uint32_t RESET_CALIBRATION_DATA = 0x00002000;
