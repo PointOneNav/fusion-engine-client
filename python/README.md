@@ -13,11 +13,11 @@ for the latest API documentation.
 * [Using A Python Virtual Environment](#using-a-python-virtual-environment)
 
 ### Requirements
-- Python 3.6 or later
+- Python 3.7 or later
 
 ### Directory Structure
   - `python/` - Python source files
-    - `bin/` - Application files
+    - `bin/` - Analysis and processing tools
       - [p1_display](bin/p1_display) - Generate HTML plots of vehicle trajectory, etc. (see also
         `analyzer.py` below)
       - [p1_extract](bin/p1_extract) - Extract FusionEngine message contents from a binary file containing mixed data
@@ -71,17 +71,54 @@ for the latest API documentation.
     
 ### Usage Instructions
 
-To use the Python library:
+#### Install From PyPI
 
-1. Install Python 3.4 (or later) and pip.
-2. Install the Python requirements:
+1. Install Python 3.7 (or later) and pip.
+2. Install the `fusione-engine-client` module _including_ extra requirements used by the analysis and processing tools:
    ```bash
-   pip install -r requirements.txt
+   python3 -m pip install fusion-engine-client[all]
    ```
-3. Run any of the applications in `python/bin/` or the example code in `python/examples/`. For example, to plot results
-   from a `*.p1log` file or recorded in an Atlas log:
+   - Note: If you wish to only install data parsing support, and do not want to install plotting and other requirements
+     used by the analysis tools in `bin/`, you may omit `[all]` and run `python3 -m pip install fusion-engine-client`
+3. Run any of the applications in `bin/`. For example, to plot results from a `*.p1log` file from a Point One device:
    ```bash
-   python3 bin/p1_display /path/to/log/directory
+   p1_display /path/to/log/file_or_directory
+   ```
+
+#### Install From Source (Use In Another Python Project)
+
+1. Install Python 3.7 (or later) and pip.
+2. Clone a copy of this repository:
+   ```bash
+   git clone https://github.com/PointOneNav/fusion-engine-client.git
+   ```
+3. Install the `fusione-engine-client` module _including_ extra requirements used by the analysis and processing tools:
+   ```bash
+   python3 -m pip install -e /path/to/fusion-engine-client[all]
+   ```
+   - Note the additional `-e` argument (optional), which tells `pip` to install `fusion-engine-client` as editable.
+     This means that it will reference the local directory instead of copying the source code. That way, if you update
+     the code (`git pull`), your Python installation will automatically use the new version.
+4. Run any of the applications in `bin/`. For example, to plot results from a `*.p1log` file from a Point One device:
+   ```bash
+   p1_display /path/to/log/file_or_directory
+   ```
+
+#### Install From Source (Development)
+
+1. Install Python 3.7 (or later) and pip.
+2. Clone a copy of this repository:
+   ```bash
+   git clone https://github.com/PointOneNav/fusion-engine-client.git
+   ```
+3. Install the Python requirements:
+   ```bash
+   python3 -m pip install -r requirements.txt
+   ```
+4. Run any of the applications in `bin/` or the example code in `examples/`. For example, to plot results from a
+   `*.p1log` file from a Point One device:
+   ```bash
+   python3 bin/p1_display /path/to/log/file_or_directory
    ```
 
 Whenever possible, we strongly encourage the use of a Python [virtual environment](#using-a-python-virtual-environment).

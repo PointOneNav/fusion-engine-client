@@ -50,7 +50,7 @@ One FusionEngine or a Point One device (Atlas, Quectel LG69T, etc.), please cont
 - GCC, Clang, or Microsoft Visual Studio
 
 #### Python Support
-- Python 3.6 or later
+- Python 3.7 or later
 
 #### Documentation Build Support (Optional)
 - [Doxygen](https://www.doxygen.nl/) version 1.8.18
@@ -61,10 +61,11 @@ One FusionEngine or a Point One device (Atlas, Quectel LG69T, etc.), please cont
 - `<root>` - Top-level Bazel and CMake build files (C++)
   - `examples/` - C++ example applications
   - `python/` - Python source files
-    - `bin/` - Application files
+    - `bin/` - Analysis and processing tools
     - `examples/` - Python example applications
     - `fusion_engine_client` - Top Python package directory
       - `messages` - Python message definitions
+      - `parsers` - Message encoding and decoding support
   - `src/` - C++ source files
     - `point_one/`
       - `fusion_engine/`
@@ -185,21 +186,38 @@ bazel run -c opt //message_decode -- message_decode/example_data.p1log
 
 ### Python
 
-The `python/` directory contains source code for reading and analyzing FusionEngine output. To use the Python library:
+See [Point One FusionEngine Python Client](python) for complete details and usage examples.
 
-1. Install Python 3.4 and Pip
-2. Navigate to the `python/` directory and install the requirements:
+#### Install From PyPI
+
+1. Install Python 3.7 (or later) and pip.
+2. Install the `fusione-engine-client` module _including_ extra requirements used by the analysis and processing tools:
+   ```bash
+   python3 -m pip install fusion-engine-client[all]
    ```
-   pip install -r requirements.txt
-   ```
-3. Run any of the applications in `python/bin/` or the example code in `python/examples/`. For example, to plot results
-   from a `*.p1log` file or recorded in an Atlas log:
-   ```
-   cd python/
-   python3 bin/p1_display.py /path/to/log/directory
+   - Note: If you wish to only install data parsing support, and do not want to install plotting and other requirements
+     used by the analysis tools in `bin/`, you may omit `[all]` and run `python3 -m pip install fusion-engine-client`
+3. Run any of the applications in `bin/`. For example, to plot results from a `*.p1log` file from a Point One device:
+   ```bash
+   p1_display /path/to/log/file_or_directory
    ```
 
-See [Point One FusionEngine Python Client](python) for more details and examples.
+#### Install From Source (Development)
+
+1. Install Python 3.7 (or later) and pip.
+2. Clone a copy of this repository:
+   ```bash
+   git clone https://github.com/PointOneNav/fusion-engine-client.git
+   ```
+3. Install the Python requirements:
+   ```bash
+   python3 -m pip install -r requirements.txt
+   ```
+4. Run any of the applications in `bin/` or the example code in `examples/`. For example, to plot results from a
+   `*.p1log` file from a Point One device:
+   ```bash
+   python3 bin/p1_display /path/to/log/file_or_directory
+   ```
 
 ### Compiling Documentation
 
