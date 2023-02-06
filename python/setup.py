@@ -48,6 +48,9 @@ setup(
         'bin/p1_print',
     ],
     python_requires='>3.7',
+    setup_requires=[
+        'wheel>=0.36.2',
+    ],
     install_requires=[
         'numpy>=1.16.0',
         'construct>=2.10.0',
