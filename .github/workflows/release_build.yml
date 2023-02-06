@@ -348,6 +348,25 @@ jobs:
       run: |
         python -m pytest
 
+    - name: Build A Python Distribution
+      run: |
+        pip install build twine
+        python -m build
+        twine check dist/*
+
+    - name: Upload The Python Distribution To TestPyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        password: ${{ secrets.TEST_PYPI_API_TOKEN }}
+        repository_url: https://test.pypi.org/legacy/
+        packages_dir: python/dist/
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v1
+      with:
+        name: python_dist
+        path: dist
+
   # Create a release only on a tag (not on a branch push).
   release:
     name: Create Release
@@ -361,6 +380,12 @@ jobs:
       uses: actions/download-artifact@v2
       with:
         name: fusion-engine-client-docs.tar.gz
+
+    - name: Get Python Distribution Artifact
+      uses: actions/download-artifact@v2
+      with:
+        name: python_dist
+        path: python/dist
 
     - name: Create Release
       id: create_release
@@ -383,3 +408,9 @@ jobs:
         asset_path: fusion-engine-client-docs.tar.gz
         asset_name: fusion-engine-client-docs.tar.gz
         asset_content_type: application/tar+gzip
+
+    - name: Upload The Python Distribution To PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        password: ${{ secrets.PYPI_API_TOKEN }}
+        packages_dir: python/dist/
