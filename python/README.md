@@ -3,8 +3,9 @@
 This directory includes Python support for the Point One FusionEngine message protocol, along with analysis tools,
 data extraction utilities, and example usage scripts.
 
-See https://github.com/PointOneNav/fusion-engine-client for full details. See http://docs.pointonenav.com/fusion-engine/
-for the latest API documentation.
+See https://github.com/PointOneNav/fusion-engine-client for full details. See
+[Point One FusionEngine Message Specification](http://pointonenav.com/files/fusion-engine-message-spec) for the latest
+FusionEngine message specification.
 
 * [Requirements](#requirements)
 * [Directory Structure](#directory-structure)

@@ -32,7 +32,14 @@ all_requirements = tools_requirements | display_requirements
 setup(
     name='fusion-engine-client',
     version=version,
-    description='Point One FusionEngine protocol interaction and analysis tools.',
+    description='Point One FusionEngine Library',
+    long_description="""\
+Point One FusionEngine protocol support for real-time interaction and control, plus post-processing data analysis tools.
+
+See https://github.com/PointOneNav/fusion-engine-client for full details. See https://pointonenav.com/docs/
+for the latest FusionEngine message specification.
+""",
+    long_description_content_type='text/markdown',
     author='Point One Navigation',
     author_email='support@pointonenavigation.com',
     license='MIT',
