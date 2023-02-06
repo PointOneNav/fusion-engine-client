@@ -18,12 +18,12 @@ for the latest API documentation.
 ### Directory Structure
   - `python/` - Python source files
     - `bin/` - Application files
-      - [p1_display.py](bin/p1_display.py) - Generate HTML plots of vehicle trajectory, etc. (see also
+      - [p1_display](bin/p1_display) - Generate HTML plots of vehicle trajectory, etc. (see also
         `analyzer.py` below)
-      - [p1_print.py](bin/p1_print.py) - Print the contents of FusionEngine messages found in a binary file to the
+      - [p1_extract](bin/p1_extract) - Extract FusionEngine message contents from a binary file containing mixed data
+        (e.g., interleaved RTCM and FusionEngine messages)
+      - [p1_print](bin/p1_print) - Print the contents of FusionEngine messages found in a binary file to the
         console
-      - [separate_mixed_log.py](bin/separate_mixed_log.py) - Extract FusionEngine message contents from a binary 
-        file containing mixed data (e.g., interleaved RTCM and FusionEngine messages) 
     - `examples/` - Python example applications
       - [analyze_data.py](examples/analyze_data.py) - Generate HTML plots of vehicle trajectory, INS filter state, etc.
       - [binary_message_decode.py](examples/binary_message_decode.py) - Decode and print FusionEngine messages contained
@@ -58,7 +58,7 @@ for the latest API documentation.
       - `analysis`
         - [analyzer.py](analysis/analyzer.py) - `Analyzer` class, used to plot data from a recorded file of FusionEngine
           messages (vehicle trajectory map, navigation engine state information, etc.)
-          - This class is used by the `bin/p1_display.py` application
+          - This class is used by the `bin/p1_display` application
         - [file_reader.py](analysis/file_reader.py) - `FileReader` class, capable of loading and time-aligning
           FusionEngine data captured in a `*.p1log` file
       - `messages` - Python message definitions
@@ -81,7 +81,7 @@ To use the Python library:
 3. Run any of the applications in `python/bin/` or the example code in `python/examples/`. For example, to plot results
    from a `*.p1log` file or recorded in an Atlas log:
    ```bash
-   python3 bin/p1_display.py /path/to/log/directory
+   python3 bin/p1_display /path/to/log/directory
    ```
 
 Whenever possible, we strongly encourage the use of a Python [virtual environment](#using-a-python-virtual-environment).
@@ -90,7 +90,7 @@ Whenever possible, we strongly encourage the use of a Python [virtual environmen
 
 ### Analyzing A Recorded Log And Plotting Results
 
-> Note: `p1_display.py` will generate a map showing the vehicle trajectory. By default, the map will be displayed using
+> Note: `p1_display` will generate a map showing the vehicle trajectory. By default, the map will be displayed using
 > freely available Open Street Map street data. In order to display satellite imagery, please request a free access
 > token from https://account.mapbox.com/access-tokens, then provide that token by specifying the `--mapbox-token`
 > argument, or by setting either the `MAPBOX_ACCESS_TOKEN` or `MapboxAccessToken` environment variables.
@@ -98,20 +98,20 @@ Whenever possible, we strongly encourage the use of a Python [virtual environmen
 The following will generate plots for a log with ID `c25445f4e60d441dbf4af8a3571352fa`.
 
 ```bash
-> python3 bin/p1_display.py --mapbox-token MY_MAPBOX_TOKEN /path/to/c25445f4e60d441dbf4af8a3571352fa
+> python3 bin/p1_display --mapbox-token MY_MAPBOX_TOKEN /path/to/c25445f4e60d441dbf4af8a3571352fa
 ```
 
 Alternatively, you can search for a log by entering the first few characters of the ID. By default, logs are assumed to
 be stored in the directory `/logs`.
 
 ```bash
-> python3 bin/p1_display.py c2544
+> python3 bin/p1_display c2544
 ```
 
 Use the `--logs-base-dir` argument to search a directory other than `/logs`:
 
 ```bash
-> python3 bin/p1_display.py --logs-base-dir /my/log/directory c2544
+> python3 bin/p1_display --logs-base-dir /my/log/directory c2544
 ```
 
 ### Record Data Over TCP
@@ -234,5 +234,5 @@ virtual  environment:
    ```
 4. Run any of the FusionEngine applications/scripts normally:
    ```bash
-   python3 bin/p1_display.py /path/to/log/directory
+   python3 bin/p1_display /path/to/log/directory
    ```

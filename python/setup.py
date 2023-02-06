@@ -42,6 +42,11 @@ setup(
     ],
     url='https://github.com/PointOneNav/fusion-engine-client',
     packages=find_packages(where='.'),
+    scripts=[
+        'bin/p1_display',
+        'bin/p1_extract',
+        'bin/p1_print',
+    ],
     python_requires='>3.7',
     install_requires=[
         'numpy>=1.16.0',
