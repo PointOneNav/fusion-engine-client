@@ -4,11 +4,7 @@
 #   error: invalid command 'bdist_wheel'
 wheel>=0.36.2
 
-# TODO Temporarily install the patched aenum from my fork until https://github.com/ethanfurman/aenum/issues/4 is
-# resolved.
-#aenum>=3.0.0
-git+https://github.com/PointOneNav/aenum.git@extend-enum#egg=aenum
-
+aenum>=3.1.1
 numpy>=1.16.0
 construct>=2.10.0
 

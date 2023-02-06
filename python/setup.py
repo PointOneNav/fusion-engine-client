@@ -77,8 +77,7 @@ for the latest FusionEngine message specification.
         'wheel>=0.36.2',
     ],
     install_requires=[
-        'wheel>=0.36.2',
-        'aenum @ git+https://github.com/PointOneNav/aenum.git@extend-enum#egg=aenum',
+        'aenum>=3.1.1',
         'numpy>=1.16.0',
         'construct>=2.10.0',
     ],
