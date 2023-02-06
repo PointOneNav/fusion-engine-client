@@ -365,7 +365,7 @@ jobs:
       uses: actions/upload-artifact@v1
       with:
         name: python_dist
-        path: dist
+        path: python/dist
 
   # Create a release only on a tag (not on a branch push).
   release:
