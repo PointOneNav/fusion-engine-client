@@ -41,7 +41,7 @@ for the latest FusionEngine message specification.
 """,
     long_description_content_type='text/markdown',
     author='Point One Navigation',
-    author_email='support@pointonenavigation.com',
+    author_email='support@pointonenav.com',
     license='MIT',
     classifiers=[
         'Development Status :: 5 - Production/Stable',
