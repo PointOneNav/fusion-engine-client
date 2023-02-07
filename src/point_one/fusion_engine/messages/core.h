@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include "point_one/fusion_engine/common/version.h"
 #include "point_one/fusion_engine/messages/configuration.h"
 #include "point_one/fusion_engine/messages/control.h"
 #include "point_one/fusion_engine/messages/defs.h"

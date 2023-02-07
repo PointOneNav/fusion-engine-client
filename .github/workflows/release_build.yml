@@ -271,16 +271,24 @@ jobs:
     - name: Build Documentation
       run: |
         echo "Setting documentation version to: ${GIT_TAG}"
+        pip install packaging
         python3 docs/update_versions.py ${GIT_TAG}
         doxygen Doxyfile.version
         cp docs/include_header.js docs/html/
         tar czf fusion-engine-client-docs.tar.gz docs/html --transform 's|^docs/html|fusion-engine-client/docs/html|'
+        tar czf version-docs.tar.gz docs/include_header.js docs/versions.html
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v1
       with:
         name: fusion-engine-client-docs.tar.gz
         path: fusion-engine-client-docs.tar.gz
+
+    - name: Upload Versioned Files
+      uses: actions/upload-artifact@v1
+      with:
+        name: version-docs.tar.gz
+        path: version-docs.tar.gz
 
   # Upload release (v*) or master documentation to S3.
   upload_doxygen:
@@ -290,14 +298,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-      with:
-        # Note: Checking out with full tag history for version query below.
-        fetch-depth: 0
-
-    - name: Get Documentation Artifact
-      uses: actions/download-artifact@v2
-      with:
-        name: fusion-engine-client-docs.tar.gz
 
     - name: Configure AWS Credentials
       uses: aws-actions/configure-aws-credentials@v1
@@ -311,11 +311,20 @@ jobs:
         echo "GIT_TAG=${GITHUB_REF##*/}" >> $GITHUB_ENV
         echo "Setting tag to: ${GIT_TAG}"
 
+    - name: Get Documentation Artifact
+      uses: actions/download-artifact@v2
+      with:
+        name: fusion-engine-client-docs.tar.gz
+
+    - name: Get Versioned Files
+      uses: actions/download-artifact@v2
+      with:
+        name: version-docs.tar.gz
+
     - name: Upload Documentation To Web (S3)
       run: |
-        echo "Setting documentation version to: ${GIT_TAG}"
-        python3 docs/update_versions.py ${GIT_TAG}
         tar xvzf fusion-engine-client-docs.tar.gz --strip-components=1
+        tar xvzf version-docs.tar.gz
         aws s3 sync --delete --acl public-read docs/html s3://docs.pointonenav.com/fusion-engine/${GIT_TAG}
         aws s3 cp --acl public-read docs/include_header.js s3://docs.pointonenav.com/fusion-engine/
         aws s3 cp --acl public-read docs/versions.html s3://docs.pointonenav.com/fusion-engine/
@@ -348,6 +357,18 @@ jobs:
       run: |
         python -m pytest
 
+    - name: Build A Python Distribution
+      run: |
+        pip install build twine
+        python -m build
+        twine check dist/*
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v1
+      with:
+        name: python_dist
+        path: python/dist
+
   # Create a release only on a tag (not on a branch push).
   release:
     name: Create Release
@@ -361,6 +382,12 @@ jobs:
       uses: actions/download-artifact@v2
       with:
         name: fusion-engine-client-docs.tar.gz
+
+    - name: Get Python Distribution Artifact
+      uses: actions/download-artifact@v2
+      with:
+        name: python_dist
+        path: python/dist
 
     - name: Create Release
       id: create_release
@@ -383,3 +410,9 @@ jobs:
         asset_path: fusion-engine-client-docs.tar.gz
         asset_name: fusion-engine-client-docs.tar.gz
         asset_content_type: application/tar+gzip
+
+    - name: Upload The Python Distribution To PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        password: ${{ secrets.PYPI_API_TOKEN }}
+        packages_dir: python/dist/
