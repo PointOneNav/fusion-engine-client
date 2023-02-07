@@ -27,7 +27,11 @@ display_requirements = set([
     'pymap3d>=2.4.3',
 ]) | tools_requirements
 
-all_requirements = tools_requirements | display_requirements
+dev_requirements = set([
+    'packaging>=23.0.0',
+]) | tools_requirements
+
+all_requirements = tools_requirements | display_requirements | dev_requirements
 
 setup(
     name='fusion-engine-client',
@@ -78,6 +82,7 @@ for the latest FusionEngine message specification.
     ],
     extras_require={
         'all': list(all_requirements),
+        'dev': list(dev_requirements),
         'display': list(display_requirements),
         'tools': list(tools_requirements),
     },
