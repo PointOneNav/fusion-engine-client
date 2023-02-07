@@ -276,12 +276,19 @@ jobs:
         doxygen Doxyfile.version
         cp docs/include_header.js docs/html/
         tar czf fusion-engine-client-docs.tar.gz docs/html --transform 's|^docs/html|fusion-engine-client/docs/html|'
+        tar czf version-docs.tar.gz docs/include_header.js docs/versions.html
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v1
       with:
         name: fusion-engine-client-docs.tar.gz
         path: fusion-engine-client-docs.tar.gz
+
+    - name: Upload Versioned Files
+      uses: actions/upload-artifact@v1
+      with:
+        name: version-docs.tar.gz
+        path: version-docs.tar.gz
 
   # Upload release (v*) or master documentation to S3.
   upload_doxygen:
@@ -309,9 +316,15 @@ jobs:
       with:
         name: fusion-engine-client-docs.tar.gz
 
+    - name: Get Versioned Files
+      uses: actions/download-artifact@v2
+      with:
+        name: version-docs.tar.gz
+
     - name: Upload Documentation To Web (S3)
       run: |
         tar xvzf fusion-engine-client-docs.tar.gz --strip-components=1
+        tar xvzf version-docs.tar.gz
         aws s3 sync --delete --acl public-read docs/html s3://docs.pointonenav.com/fusion-engine/${GIT_TAG}
         aws s3 cp --acl public-read docs/include_header.js s3://docs.pointonenav.com/fusion-engine/
         aws s3 cp --acl public-read docs/versions.html s3://docs.pointonenav.com/fusion-engine/
