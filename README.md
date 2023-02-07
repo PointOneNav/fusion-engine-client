@@ -191,7 +191,7 @@ See [Point One FusionEngine Python Client](python) for complete details and usag
 #### Install From PyPI
 
 1. Install Python 3.7 (or later) and pip.
-2. Install the `fusione-engine-client` module _including_ extra requirements used by the analysis and processing tools:
+2. Install the `fusione-engine-client` module, including all analysis and data processing tools:
    ```bash
    python3 -m pip install fusion-engine-client[all]
    ```

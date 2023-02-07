@@ -75,7 +75,7 @@ FusionEngine message specification.
 #### Install From PyPI
 
 1. Install Python 3.7 (or later) and pip.
-2. Install the `fusione-engine-client` module _including_ extra requirements used by the analysis and processing tools:
+2. Install the `fusione-engine-client` module, including all analysis and data processing tools:
    ```bash
    python3 -m pip install fusion-engine-client[all]
    ```
@@ -93,7 +93,7 @@ FusionEngine message specification.
    ```bash
    git clone https://github.com/PointOneNav/fusion-engine-client.git
    ```
-3. Install the `fusione-engine-client` module _including_ extra requirements used by the analysis and processing tools:
+3. Install the `fusione-engine-client` module, including all analysis and data processing tools:
    ```bash
    python3 -m pip install -e /path/to/fusion-engine-client[all]
    ```
