@@ -440,6 +440,69 @@ struct alignas(4) VehicleTickMeasurement : public MessagePayload {
   uint8_t reserved[3] = {0};
 };
 
+/**
+ * @brief The heading angle (in degrees) with respect to true north,
+ *        pointing from the primary antenna to the secondary antenna.
+ * @ingroup solution_messages
+ *
+ * @note
+ * All data is timestamped using the P1 Time values, which is a monotonic
+ * timestamp referenced to the start of the device. Corresponding messages (@ref
+ * PoseMessage, @ref GNSSSatelliteMessage, etc.) may be associated using
+ * their @ref timestamps.
+ */
+struct alignas(4) HeadingMeasurement : public MessagePayload {
+  static constexpr MessageType MESSAGE_TYPE = MessageType::HEADING_MEASUREMENT;
+  static constexpr uint8_t MESSAGE_VERSION = 1;
+
+  /** Measurement timestamps, if available. See @ref measurement_messages. */
+  MeasurementTimestamps timestamps;
+
+  /** The type of this position solution. */
+  SolutionType solution_type = SolutionType::Invalid;
+
+  uint8_t reserved[3] = {0};
+
+  /** A bitmask of flags associated with the solution. */
+  uint32_t flags = 0;
+
+  /**
+   * Position is measured with respect to the primary antenna as follows:
+   * @f[
+   * \Delta r_{ENU} = C^{ENU}_{ECEF} (r_{Secondary, ECEF} - r_{Primary, ECEF})
+   * @f]
+   *
+   * @note
+   * If a differential solution to the secondary antenna is not available, these
+   * values will be `NAN`.
+   */
+  float relative_position_enu_m[3] = {NAN, NAN, NAN};
+
+  /**
+   * The position standard deviation (in meters), resolved with respect to the
+   * local ENU tangent plane: east, north, up.
+   *
+   * @note
+   * If a differential solution to the secondary antenna is not available, these
+   * values will be `NAN`.
+   */
+  float position_std_enu_m[3] = {NAN, NAN, NAN};
+
+  /**
+   * The heading angle (in degrees) with respect to true north, pointing from
+   * the primary antenna to the secondary antenna.
+   * 
+   * @note
+   * Reported in the range [0, 360).
+   */
+  float heading_true_north_deg = NAN;
+
+  /**
+   * The estimated distance between primary and secondary antennas (in meters).
+   */
+  float baseline_distance_m = NAN;
+};
+
 #pragma pack(pop)
 
 } // namespace messages
