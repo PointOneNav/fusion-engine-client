@@ -291,11 +291,6 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    - name: Get Documentation Artifact
-      uses: actions/download-artifact@v2
-      with:
-        name: fusion-engine-client-docs.tar.gz
-
     - name: Configure AWS Credentials
       uses: aws-actions/configure-aws-credentials@v1
       with:
@@ -307,6 +302,11 @@ jobs:
       run: |
         echo "GIT_TAG=${GITHUB_REF##*/}" >> $GITHUB_ENV
         echo "Setting tag to: ${GIT_TAG}"
+
+    - name: Get Documentation Artifact
+      uses: actions/download-artifact@v2
+      with:
+        name: fusion-engine-client-docs.tar.gz
 
     - name: Upload Documentation To Web (S3)
       run: |
