@@ -290,9 +290,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-      with:
-        # Note: Checking out with full tag history for version query below.
-        fetch-depth: 0
 
     - name: Get Documentation Artifact
       uses: actions/download-artifact@v2
@@ -313,8 +310,6 @@ jobs:
 
     - name: Upload Documentation To Web (S3)
       run: |
-        echo "Setting documentation version to: ${GIT_TAG}"
-        python3 docs/update_versions.py ${GIT_TAG}
         tar xvzf fusion-engine-client-docs.tar.gz --strip-components=1
         aws s3 sync --delete --acl public-read docs/html s3://docs.pointonenav.com/fusion-engine/${GIT_TAG}
         aws s3 cp --acl public-read docs/include_header.js s3://docs.pointonenav.com/fusion-engine/
