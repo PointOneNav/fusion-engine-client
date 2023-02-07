@@ -446,7 +446,7 @@ struct alignas(4) VehicleTickMeasurement : public MessagePayload {
  * @ingroup solution_messages
  *
  * @note
- * All data is timestamped using the P1 Time values, which is a monotonic
+ * All data is timestamped using the Point One Time, which is a monotonic
  * timestamp referenced to the start of the device. Corresponding messages (@ref
  * PoseMessage, @ref GNSSSatelliteMessage, etc.) may be associated using
  * their @ref timestamps.
