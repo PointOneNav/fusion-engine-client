@@ -39,10 +39,10 @@ enum class MessageType : uint16_t {
   POSE_AUX = 10003, ///< @ref PoseAuxMessage
   CALIBRATION_STATUS = 10004, ///< @ref CalibrationStatusMessage
   RELATIVE_ENU_POSITION = 10005, ///< @ref RelativeENUPositionMessage
-  RELATIVE_ENU_HEADING = 10006, ///< @ref RelativeENUHeadingMessage
 
   // Sensor measurement messages.
   IMU_MEASUREMENT = 11000, ///< @ref IMUMeasurement
+  HEADING_MEASUREMENT = 11001, ///< @ref HeadingMeasurement
 
   // Vehicle measurement messages.
   WHEEL_SPEED_MEASUREMENT = 11101, ///< @ref WheelSpeedMeasurement
@@ -113,12 +113,12 @@ inline const char* to_string(MessageType type) {
     case MessageType::RELATIVE_ENU_POSITION:
       return "Relative ENU Position";
 
-    case MessageType::RELATIVE_ENU_HEADING:
-      return "Relative ENU heading";
-
     // Sensor measurement messages.
     case MessageType::IMU_MEASUREMENT:
       return "IMU Measurement";
+
+    case MessageType::HEADING_MEASUREMENT:
+      return "Heading Measurement";
 
     case MessageType::WHEEL_SPEED_MEASUREMENT:
       return "Wheel Speed Measurement";

@@ -1,4 +1,5 @@
 import struct
+from typing import Sequence
 
 import numpy as np
 
@@ -506,6 +507,133 @@ Vehicle Tick Measurement @ {str(self.timestamps.p1_time)}
         result = {
             'tick_count': np.array([m.tick_count for m in messages], dtype=int),
             'gear': np.array([m.gear for m in messages], dtype=int),
+        }
+        result.update(MeasurementTimestamps.to_numpy([m.timestamps for m in messages]))
+        return result
+
+class HeadingMeasurement(MessagePayload):
+    """!
+     @brief The heading angle (in degrees) with respect to true north,
+            pointing from the primary antenna to the secondary antenna.
+     @ingroup solution_messages
+
+     @note
+     All data is timestamped using the P1 Time values, which is a monotonic
+     timestamp referenced to the start of the device. Corresponding messages (@ref
+     PoseMessage, @ref GNSSSatelliteMessage, etc.) may be associated using
+     their @ref timestamps.
+    """
+    MESSAGE_TYPE = MessageType.HEADING_MEASUREMENT
+    MESSAGE_VERSION = 0
+
+    _STRUCT = struct.Struct('<B3xL3f3fff')
+
+    def __init__(self):
+        ## Measurement timestamps, if available. See @ref measurement_messages.
+        self.timestamps = MeasurementTimestamps()
+
+        # The type of this position solution.
+        self.solution_type = SolutionType.Invalid
+        # A bitmask of flags associated with the solution
+        self.flags = 0
+        # The ID of the differential base station, if used.
+        ##
+        # The relative position (in meters), resolved in the local ENU frame.
+        #
+        # @note
+        # If a differential solution to the base station is not available, these
+        # values will be `NAN`.
+        ##
+        self.relative_position_enu_m = np.full((3,), np.nan)
+        ##
+        # The position standard deviation (in meters), resolved with respect to the
+        # local ENU tangent plane: east, north, up.
+        #
+        # @note
+        # If a differential solution to the base station is not available, these
+        # values will be `NAN`.
+        ##
+        self.position_std_enu_m = np.full((3,), np.nan)
+
+        ##
+        # The heading between the primary device antenna and the secondary (in degrees) with
+        # respect to true north.
+        #
+        # @note
+        # Reported in the range [0, 360).
+        #
+        ##
+        self.heading_true_north_deg = np.nan
+
+        ##
+        # The estmated distance between primary and secondary antennas (in meters)
+        #
+        ##
+        self.baseline_distance_m = np.nan
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        initial_offset = offset
+        if (buffer is None):
+            buffer = bytearray(self.calcsize())
+        buffer = self.timestamps.pack(buffer)
+        offset += self.timestamps.calcsize()
+        self._STRUCT.pack_into(buffer, offset,
+            self.solution_type,
+            self.flags,
+            self.relative_position_enu_m[0],
+            self.relative_position_enu_m[1],
+            self.relative_position_enu_m[2],
+            self.position_std_enu_m[0],
+            self.position_std_enu_m[1],
+            self.position_std_enu_m[2],
+            self.heading_true_north_deg,
+            self.baseline_distance_m)
+        offset += self._STRUCT.size
+        if return_buffer:
+            return buffer
+        else:
+            return offset - initial_offset
+
+    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+        initial_offset = offset
+
+        offset += self.timestamps.unpack(buffer, offset)
+        (solution_type_int,
+            self.flags,
+            self.relative_position_enu_m[0],
+            self.relative_position_enu_m[1],
+            self.relative_position_enu_m[2],
+            self.position_std_enu_m[0],
+            self.position_std_enu_m[1],
+            self.position_std_enu_m[2],
+            self.heading_true_north_deg,
+            self.baseline_distance_m) = self._STRUCT.unpack_from(buffer, offset)
+        offset += self._STRUCT.size
+        self.solution_type = SolutionType(solution_type_int)
+        return offset - initial_offset
+
+    def __str__(self):
+        return f"""\
+HeadingMeasurement @ {str(self.timestamps.p1_time)}
+  Solution Type: {str(self.solution_type)}
+  Relative position (ENU) (m): {self.relative_position_enu_m[0]:.2f}, {self.relative_position_enu_m[1]:.2f}, {self.relative_position_enu_m[2]:.2f}
+  Position std (ENU) (m): {self.position_std_enu_m[0]:.2f}, {self.position_std_enu_m[1]:.2f}, {self.position_std_enu_m[2]:.2f}
+  Heading (deg): {self.heading_true_north_deg:.2f}
+  Baseline distance (m): {self.baseline_distance_m:.2f}"""
+
+    @classmethod
+    def calcsize(cls) -> int:
+        return cls._STRUCT.size + MeasurementTimestamps.calcsize()
+
+    @classmethod
+    def to_numpy(cls, messages: Sequence['HeadingMeasurement']):
+        result = {
+            'solution_type': np.array([int(m.solution_type) for m in messages], dtype=int),
+            'flags': np.array([int(m.flags) for m in messages], dtype=int),
+            'relative_position_enu_m': np.array([m.relative_position_enu_m for m in messages]).T,
+            'position_std_enu_m': np.array([m.position_std_enu_m for m in messages]).T,
+            'heading_true_north_deg': np.array([float(m.heading_true_north_deg) for m in messages]),
+            'baseline_distance_m': np.array([float(m.baseline_distance_m) for m in messages]),
         }
         result.update(MeasurementTimestamps.to_numpy([m.timestamps for m in messages]))
         return result
