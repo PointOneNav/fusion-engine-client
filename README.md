@@ -50,7 +50,7 @@ One FusionEngine or a Point One device (Atlas, Quectel LG69T, etc.), please cont
 - GCC, Clang, or Microsoft Visual Studio
 
 #### Python Support
-- Python 3.7 or later
+- Python 3.8 or later
 
 #### Documentation Build Support (Optional)
 - [Doxygen](https://www.doxygen.nl/) version 1.8.18
@@ -190,7 +190,7 @@ See [Point One FusionEngine Python Client](python) for complete details and usag
 
 #### Install From PyPI
 
-1. Install Python 3.7 (or later) and pip.
+1. Install Python 3.8 (or later) and pip.
 2. Install the `fusione-engine-client` module, including all analysis and data processing tools:
    ```bash
    python3 -m pip install fusion-engine-client[all]
@@ -204,7 +204,7 @@ See [Point One FusionEngine Python Client](python) for complete details and usag
 
 #### Install From Source (Development)
 
-1. Install Python 3.7 (or later) and pip.
+1. Install Python 3.8 (or later) and pip.
 2. Clone a copy of this repository:
    ```bash
    git clone https://github.com/PointOneNav/fusion-engine-client.git
