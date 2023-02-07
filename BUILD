@@ -83,6 +83,7 @@ cc_library(
     hdrs = [
         "src/point_one/fusion_engine/common/logging.h",
         "src/point_one/fusion_engine/common/portability.h",
+        "src/point_one/fusion_engine/common/version.h",
     ],
     includes = ["src"],
 )
