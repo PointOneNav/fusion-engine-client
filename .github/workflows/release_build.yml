@@ -271,6 +271,7 @@ jobs:
     - name: Build Documentation
       run: |
         echo "Setting documentation version to: ${GIT_TAG}"
+        pip install packaging
         python3 docs/update_versions.py ${GIT_TAG}
         doxygen Doxyfile.version
         cp docs/include_header.js docs/html/
