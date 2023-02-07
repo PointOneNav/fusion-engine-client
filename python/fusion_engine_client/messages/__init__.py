@@ -10,10 +10,10 @@ message_type_to_class = {
     GNSSSatelliteMessage.MESSAGE_TYPE: GNSSSatelliteMessage,
     CalibrationStatus.MESSAGE_TYPE: CalibrationStatus,
     RelativeENUPositionMessage.MESSAGE_TYPE: RelativeENUPositionMessage,
-    RelativeENUHeadingMessage.MESSAGE_TYPE: RelativeENUHeadingMessage,
 
     # Sensor measurement messages.
     IMUMeasurement.MESSAGE_TYPE: IMUMeasurement,
+    HeadingMeasurement.MESSAGE_TYPE: HeadingMeasurement,
 
     # Vehicle measurement messages.
     WheelSpeedMeasurement.MESSAGE_TYPE: WheelSpeedMeasurement,

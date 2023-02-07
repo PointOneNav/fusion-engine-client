@@ -69,10 +69,10 @@ class MessageType(IntEnum):
     POSE_AUX = 10003
     CALIBRATION_STATUS = 10004
     RELATIVE_ENU_POSITION = 10005
-    RELATIVE_ENU_HEADING = 10006
 
     # Sensor measurement messages.
     IMU_MEASUREMENT = 11000
+    HEADING_MEASUREMENT = 11001
 
     # Vehicle measurement messages.
     WHEEL_SPEED_MEASUREMENT = 11101
