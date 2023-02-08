@@ -26,12 +26,13 @@ One FusionEngine or a Point One device (Atlas, Quectel LG69T, etc.), please cont
   * [Example Applications](#example-applications)
 * [Installation](#installation)
   * [CMake](#cmake)
-    * [Compiling (Linux)](#compiling-linux)
-    * [Compiling (Windows)](#compiling-windows)
     * [Including In Your CMake Project](#including-in-your-cmake-project)
+    * [Compiling From Source (Linux)](#compiling-from-source-linux)
+    * [Compiling From Source (Windows)](#compiling-from-source-windows)
     * [Running Examples](#running-examples-1)
   * [Bazel](#bazel)
-    * [Compiling](#compiling)
+    * [Including In Your Bazel Project](#including-in-your-bazel-project)
+    * [Compiling From Source](#compiling-from-source)
     * [Running Examples](#running-examples)
   * [Python](#python)
   * [Compiling Documentation](#compiling-documentation)
@@ -84,36 +85,6 @@ The `examples/` directory contains example applications demonstrating how to use
 
 ### CMake
 
-#### Compiling (Linux)
-
-Use the following steps to compile and install this library using CMake:
-
-```
-mkdir build
-cd build
-cmake ..
-make
-sudo make install
-```
-
-This will generate `libfusion_engine_client.so`, and install the library and header files on your system. By default,
-this will also build the [example applications](#example-applications). You can disable the example applications by
-specifying `cmake -DP1_FE_BUILD_EXAMPLES=OFF ..`.
-
-#### Compiling (Windows)
-
-Use the following steps to compile and install this library using CMake and MSBuild:
-
-```
-mkdir output
-cd output
-cmake ..
-MSBuild p1_fusion_engine_client.sln
-```
-
-> Note: For Windows, we name the build directory `output`. Windows is not case-sensitive, and `build` conflicts with the
-> Bazel `BUILD` file.
-
 #### Including In Your CMake Project
 
 To include this library as part of your CMake project, we recommend using the CMake `FetchContent` feature as shown
@@ -141,6 +112,36 @@ changes by using `GIT_TAG master` instead.
 
 See [examples/external_cmake_project/CMakeLists.txt](examples/external_cmake_project/CMakeLists.txt) for more details.
 
+#### Compiling From Source (Linux)
+
+Use the following steps to compile and install this library using CMake:
+
+```
+mkdir build
+cd build
+cmake ..
+make
+sudo make install
+```
+
+This will generate `libfusion_engine_client.so`, and install the library and header files on your system. By default,
+this will also build the [example applications](#example-applications). You can disable the example applications by
+specifying `cmake -DP1_FE_BUILD_EXAMPLES=OFF ..`.
+
+#### Compiling From Source (Windows)
+
+Use the following steps to compile and install this library using CMake and MSBuild:
+
+```
+mkdir output
+cd output
+cmake ..
+MSBuild p1_fusion_engine_client.sln
+```
+
+> Note: For Windows, we name the build directory `output`. Windows is not case-sensitive, and `build` conflicts with the
+> Bazel `BUILD` file.
+
 #### Running Examples
 
 By default, the compiled example applications will be located in `build/examples/` and can be run from there:
@@ -151,7 +152,7 @@ By default, the compiled example applications will be located in `build/examples
 
 ### Bazel
 
-#### Compiling
+#### Including In Your Bazel Project
 
 To use this library in an existing Bazel project, add the following to your project's `WORKSPACE` file:
 
@@ -183,8 +184,10 @@ cc_library(
 If desired, you can add a dependency for only part of the library. For example, to depend on only the core message
 definitions and support code, set your `deps` entry to `@fusion_engine_client//:core`.
 
-Note that there is no need to explicitly compile or link this library when using Bazel - it will be built automatically
-when your application is built. If desired, however, you can build a stand-alone shared library as follows:
+#### Compiling From Source
+
+In general, it is strongly recommended that you let Bazel import and compile the library using `git_repository()` as
+shown above. If you would like to compile the library manually, however, you can run the following command:
 
 ```
 bazel build -c opt //:libfusion_engine_client.so
