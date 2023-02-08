@@ -3,7 +3,7 @@
  * @file
  ******************************************************************************/
 
-#include "common/print_message.h"
+#include "print_message.h"
 
 using namespace point_one::fusion_engine::messages;
 
