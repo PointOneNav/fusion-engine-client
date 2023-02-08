@@ -28,6 +28,7 @@ One FusionEngine or a Point One device (Atlas, Quectel LG69T, etc.), please cont
   * [CMake](#cmake)
     * [Compiling (Linux)](#compiling-linux)
     * [Compiling (Windows)](#compiling-windows)
+    * [Including In Your CMake Project](#including-in-your-cmake-project)
     * [Running Examples](#running-examples-1)
   * [Bazel](#bazel)
     * [Compiling](#compiling)
@@ -73,6 +74,8 @@ One FusionEngine or a Point One device (Atlas, Quectel LG69T, etc.), please cont
 
 The `examples/` directory contains example applications demonstrating how to use this library. They are:
 - `message_decode` - Print the contents of messages contained in a binary file.
+- `external_cmake_project` - Download a copy of the FusionEngine Client library from the public repository and import
+  it into a CMake project using `FetchContent`.
 - `generate_data` - Generate a binary file containing a fixed set of messages.
 
 ## Installation
@@ -107,6 +110,33 @@ MSBuild p1_fusion_engine_client.sln
 
 > Note: For Windows, we name the build directory `output`. Windows is not case-sensitive, and `build` conflicts with the
 > Bazel `BUILD` file.
+
+#### Including In Your CMake Project
+
+To include this library as part of your CMake project, we recommend using the CMake `FetchContent` feature as shown
+below, rather than compiling and installing the library manually as in the sections above:
+```cmake
+set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
+set(P1_FE_BUILD_EXAMPLES OFF)
+include(FetchContent)
+FetchContent_Declare(
+    fusion_engine_client
+    GIT_REPOSITORY https://github.com/PointOneNav/fusion-engine-client.git
+    GIT_TAG v1.15.2
+)
+FetchContent_Populate(fusion_engine_client)
+add_subdirectory(${fusion_engine_client_SOURCE_DIR})
+
+add_executable(example_app main.cc)
+target_link_libraries(example_app PUBLIC fusion_engine_client)
+```
+
+Note that we strongly recommend using a specific version of the library in your code by specifying a git tag (e.g.,
+`GIT_TAG v1.15.2`), and updating that as new versions are released. That way, you can be sure that your code is always
+built with a known version of fusion-engine-client. If you prefer, however, you can tell CMake to track the latest
+changes by using `GIT_TAG master` instead.
+
+See [examples/external_cmake_project/CMakeLists.txt](examples/external_cmake_project/CMakeLists.txt) for more details.
 
 #### Running Examples
 
