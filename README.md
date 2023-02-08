@@ -158,12 +158,18 @@ To use this library in an existing Bazel project, add the following to your proj
 ```python
 git_repository(
     name = "fusion_engine_client",
-    branch = "master",
     remote = "git@github.com:PointOneNav/fusion_engine_client.git",
+    tag = "v1.15.2",
 )
 ```
 
-Then add the following dependency to any `cc_library()` or `cc_binary()` definitions in your project:
+Note that we strongly recommend using a specific version of the library in your code by specifying a git tag (e.g.,
+`tag = "v1.15.2"`), and updating that as new versions are released. That way, you can be sure that your code is always
+built with a known version of fusion-engine-client. If you prefer, however, you can tell Bazel to track the latest
+changes by using `branch = "master"` instead.
+
+After declaring the repository in your `WORKSPACE` file, you can add the following dependency to any `cc_library()` or
+`cc_binary()` definitions in your project's `BAZEL` files:
 
 ```python
 cc_library(
