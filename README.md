@@ -77,6 +77,8 @@ The `examples/` directory contains example applications demonstrating how to use
 - `external_cmake_project` - Download a copy of the FusionEngine Client library from the public repository and import
   it into a CMake project using `FetchContent`.
 - `generate_data` - Generate a binary file containing a fixed set of messages.
+- `tcp_client` - Connect to a device over TCP and display the received FusionEngine messages.
+- `udp_client` - Connect to a device over UDP and display the received FusionEngine messages.
 
 ## Installation
 
