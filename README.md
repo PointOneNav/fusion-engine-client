@@ -97,7 +97,8 @@ sudo make install
 ```
 
 This will generate `libfusion_engine_client.so`, and install the library and header files on your system. By default,
-this will also build the [example applications](#examples).
+this will also build the [example applications](#example-applications). You can disable the example applications by
+specifying `cmake -DP1_FE_BUILD_EXAMPLES=OFF ..`.
 
 #### Compiling (Windows)
 
