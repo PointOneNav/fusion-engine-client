@@ -57,6 +57,8 @@ class Response(IntEnum):
     DATA_CORRUPTED = 7
     ## The requested data isn't available.
     NO_DATA_STORED = 8
+    ## The device is in a state where it can't process the command.
+    UNAVAILABLE = 9
 
 
 class MessageType(IntEnum):
