@@ -321,6 +321,10 @@ enum class Response : uint8_t {
    * The requested data isn't available.
    */
   NO_DATA_STORED = 8,
+  /**
+   * The device is in a state where it can't process the command.
+   */
+  UNAVAILABLE = 9,
 };
 
 /**
@@ -350,6 +354,8 @@ inline const char* to_string(Response val) {
       return "Data Corrupted";
     case Response::NO_DATA_STORED:
       return "No Data Stored";
+    case Response::UNAVAILABLE:
+      return "Device Unavailable";
     default:
       return "Unrecognized";
   }
