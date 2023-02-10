@@ -18,6 +18,7 @@ version = find_version('fusion_engine_client', '__init__.py')
 tools_requirements = set([
     'argparse-formatter>=1.4',
     'gpstime>=0.6.2',
+    'scipy>=1.6.0',
 ])
 
 display_requirements = set([
