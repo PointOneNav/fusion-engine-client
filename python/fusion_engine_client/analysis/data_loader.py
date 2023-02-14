@@ -2,13 +2,16 @@ from typing import Dict, Iterable, Tuple, Union
 
 from collections import deque
 import copy
-from datetime import datetime
+from datetime import datetime, timezone
 import io
 import os
 
+from gpstime import gpstime, unix2gps
 import numpy as np
+import scipy as sp
 
 from ..messages import *
+from ..messages.timestamp import is_gps_time
 from ..parsers.file_index import FileIndex, FileIndexBuilder
 from ..parsers.mixed_log_reader import MixedLogReader
 from ..utils import trace as logging
@@ -506,6 +509,103 @@ class DataLoader(object):
 
     def get_input_path(self):
         return self.reader.input_file.name
+
+    def convert_to_p1_time(self,
+                           times: Union[Iterable[Union[datetime, gpstime, Timestamp, float]],
+                                        Union[datetime, gpstime, Timestamp, float]],
+                           assume_utc: bool = False) ->\
+            np.ndarray:
+        """!
+        @brief Convert UTC or GPS timestamps to P1 time.
+
+        @param times A list of one or more timestamps to be converted, using any of the following formats:
+               - `datetime` - A UTC or local timezone date and time
+               - `gpstime` - A GPS timestamp
+               - A @ref fusion_engine_client.messages.timestamps.Timestamp containing GPS time or P1 time
+               - A @ref fusion_engine_client.messages.timestamps.MeasurementTimestamps containing GPS time or P1 time
+               - `float` - A GPS or P1 time value (in seconds)
+                 - Note that UTC timestamps cannot be specified `float` unless `assume_utc == True`
+        @param assume_utc If `True`, assume all `float` values greater than the POSIX offset for 2000/1/1 are UTC
+               timestamps in seconds
+
+        @return A numpy array containing P1 time values (in seconds), or `nan` if the value could not be converted.
+        """
+        # Load pose messages, which contain the relationship between P1 and GPS time. Omit any NAN values from the
+        # reference timestamps.
+        #
+        # If no pose data is available, we can't convert to P1 time. We'll return nan for any values that are not
+        # already P1 time below.
+        if PoseMessage.MESSAGE_TYPE in self.data:
+            # If the caller already read in pose data, we'll use the cached messages read with whatever parameters they
+            # specified (e.g., a specific time range). That way, A) we don't read from disk multiple times, and B) for a
+            # very long log, we don't read a ton of data from disk when the caller is only interested in a short
+            # snippet. We assume the requested timestamps won't be too far out of the time range specified for the
+            # cached messages.
+            self.logger.debug('Using existing cached pose data for P1 time conversion.')
+            pose_data = self.data[PoseMessage.MESSAGE_TYPE]
+        else:
+            result = self.read(message_types=[PoseMessage], return_numpy=True)
+            pose_data = result[PoseMessage.MESSAGE_TYPE]
+
+        idx = ~np.logical_or(np.isnan(pose_data.p1_time), np.isnan(pose_data.gps_time))
+        p1_ref_sec = pose_data.p1_time[idx]
+        gps_ref_sec = pose_data.gps_time[idx]
+
+        if len(p1_ref_sec) == 0:
+            self.logger.debug('Pose data not available. Cannot convert timestamps to P1 time.')
+            p1_ref_sec = None
+            gps_ref_sec = None
+
+        # First, convert all UTC times and all timestamp objects to GPS time or P1 values in seconds.
+        def _to_gps_or_p1(value):
+            if isinstance(value, gpstime):
+                return value.gps()
+            elif isinstance(value, datetime):
+                return gpstime.fromdatetime(value).gps()
+            elif isinstance(value, Timestamp):
+                return value.seconds
+            elif assume_utc and is_gps_time(value):
+                return unix2gps(value)
+            else:
+                return value
+
+        # If the input is a numpy array and we're not assuming the timestamps are UTC, they're already floats and either
+        # GPS timestamps or already P1 timestamps. We don't need to convert anything to GPS time, so we can skip right
+        # to the P1 conversion step below.
+        if isinstance(times, np.ndarray) and not assume_utc:
+            return_scalar = False
+            time_sec = times
+        else:
+            # If the user passed in an iterable object (list, tuple numpy array, etc.), convert all entries to GPS or
+            # P1 values in seconds.
+            try:
+                iter(times)
+                return_scalar = False
+                time_sec = np.array([_to_gps_or_p1(t) for t in times])
+            # Otherwise, if they passed in a single element, convert it to a numpy array with one value. We'll return a
+            # single scalar P1 value below.
+            except TypeError:
+                return_scalar = True
+                time_sec = np.array((_to_gps_or_p1(times),))
+
+        # Now, find all values that are GPS time (i.e., big enough that we assume they're not P1 times already) and
+        # convert them to P1 time.
+        gps_idx = is_gps_time(time_sec)
+        if np.any(gps_idx):
+            if p1_ref_sec is None:
+                time_sec[gps_idx] = np.nan
+            else:
+                # The relationship between P1 time and GPS time should not change rapidly since P1 time is rate-steered
+                # to align with GPS time. As a result, it should be safe to extrapolate between gaps in P1 or GPS times,
+                # as long as the gaps aren't extremely large. NumPy's interp() function does not extrapolate, so we
+                # instead use SciPy's function.
+                f = sp.interpolate.interp1d(gps_ref_sec, p1_ref_sec, fill_value='extrapolate')
+                time_sec[gps_idx] = f(time_sec[gps_idx])
+
+        if return_scalar:
+            return time_sec[0]
+        else:
+            return time_sec
 
     @classmethod
     def time_align_data(cls, data: dict, mode: TimeAlignmentMode = TimeAlignmentMode.INSERT,

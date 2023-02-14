@@ -1,3 +1,6 @@
+from datetime import datetime, timezone
+
+from gpstime import gpstime
 import numpy as np
 import pytest
 
@@ -5,6 +8,22 @@ from fusion_engine_client.analysis.data_loader import DataLoader, MessageData, T
 from fusion_engine_client.messages import *
 from fusion_engine_client.parsers import FusionEngineEncoder, MixedLogReader
 from fusion_engine_client.utils.time_range import TimeRange
+
+
+def encode_generated_data(messages, data_path=None, return_dict=True):
+    if data_path is not None:
+        encoder = FusionEngineEncoder()
+        with open(data_path, 'wb') as f:
+            for message in messages:
+                if isinstance(message, bytes):
+                    f.write(message)
+                else:
+                    f.write(encoder.encode_message(message))
+
+    if return_dict:
+        return message_list_to_dict(messages)
+    else:
+        return [m for m in messages if not isinstance(m, bytes)]
 
 
 def generate_data(data_path=None, include_binary=False, return_dict=True):
@@ -67,19 +86,7 @@ def generate_data(data_path=None, include_binary=False, return_dict=True):
     if include_binary:
         messages.append(b'12345')
 
-    if data_path is not None:
-        encoder = FusionEngineEncoder()
-        with open(data_path, 'wb') as f:
-            for message in messages:
-                if isinstance(message, bytes):
-                    f.write(message)
-                else:
-                    f.write(encoder.encode_message(message))
-
-    if return_dict:
-        return message_list_to_dict(messages)
-    else:
-        return [m for m in messages if not isinstance(m, bytes)]
+    return encode_generated_data(messages, data_path=data_path, return_dict=return_dict)
 
 
 def message_list_to_dict(messages):
@@ -328,3 +335,77 @@ class TestTimeAlignment:
         assert float(data[PoseAuxMessage.MESSAGE_TYPE].messages[1].p1_time) == 3.0
         assert len(data[GNSSInfoMessage.MESSAGE_TYPE].messages) == 1
         assert float(data[GNSSInfoMessage.MESSAGE_TYPE].messages[0].p1_time) == 2.0
+
+
+class TestTimeConversion:
+    @pytest.fixture
+    def data_path(self, tmpdir):
+        data_path = tmpdir.join('test_file.p1log')
+        yield data_path
+
+    @classmethod
+    def _generate_data(cls, data_path):
+        messages = []
+        for i in range(1, 20):
+            message = PoseMessage()
+            message.p1_time = Timestamp(50.0 + i)
+            message.gps_time = message.p1_time + Y2K_GPS_SEC
+            messages.append(message)
+        return encode_generated_data(messages, data_path=data_path)
+
+    def test_p1_to_p1(self, data_path):
+        self._generate_data(data_path=str(data_path))
+        loader = DataLoader(path=str(data_path))
+        assert loader.convert_to_p1_time(49.1) == pytest.approx(49.1) # Out of range, but P1 so untouched
+        assert loader.convert_to_p1_time(53.0) == pytest.approx(53.0) # Exact message value
+        assert loader.convert_to_p1_time(53.7) == pytest.approx(53.7) # Between messages, return as is
+        assert loader.convert_to_p1_time(80.7) == pytest.approx(80.7) # Out of range, but P1 so untouched
+
+    def test_gps_to_p1(self, data_path):
+        self._generate_data(data_path=str(data_path))
+        loader = DataLoader(path=str(data_path))
+        assert loader.convert_to_p1_time(Y2K_GPS_SEC + 49.1) == pytest.approx(49.1) # Out of range, extrapolate
+        assert loader.convert_to_p1_time(Y2K_GPS_SEC + 53.0) == pytest.approx(53.0) # Exact message value
+        assert loader.convert_to_p1_time(Y2K_GPS_SEC + 53.7) == pytest.approx(53.7) # Between messages, interpolate
+        assert loader.convert_to_p1_time(Y2K_GPS_SEC + 80.7) == pytest.approx(80.7) # Out of range, extrapolate
+
+    def test_gpstime_to_p1(self, data_path):
+        self._generate_data(data_path=str(data_path))
+        loader = DataLoader(path=str(data_path))
+        gps_time = gpstime.fromgps(Y2K_GPS_SEC + 53.7)
+        assert loader.convert_to_p1_time(gps_time) == pytest.approx(53.7)
+        assert loader.convert_to_p1_time(gps_time.gps()) == pytest.approx(53.7)
+
+    def test_utc_to_p1(self, data_path):
+        self._generate_data(data_path=str(data_path))
+        loader = DataLoader(path=str(data_path))
+        utc_time = datetime.fromtimestamp(Y2K_POSIX_SEC + 53.7, tz=timezone.utc)
+        assert loader.convert_to_p1_time(utc_time) == pytest.approx(53.7)
+        assert loader.convert_to_p1_time(utc_time.timestamp(), assume_utc=True) == pytest.approx(53.7)
+
+    def test_timestamp_to_p1(self, data_path):
+        self._generate_data(data_path=str(data_path))
+        loader = DataLoader(path=str(data_path))
+        assert loader.convert_to_p1_time(Timestamp(53.7)) == pytest.approx(53.7) # P1 time
+        assert loader.convert_to_p1_time(Timestamp(Y2K_GPS_SEC + 53.7)) == pytest.approx(53.7) # GPS
+
+    def test_list_to_p1(self, data_path):
+        self._generate_data(data_path=str(data_path))
+        loader = DataLoader(path=str(data_path))
+        times = [
+            53.7,
+            Y2K_GPS_SEC + 53.7,
+            gpstime.fromgps(Y2K_GPS_SEC + 53.7),
+            datetime.fromtimestamp(Y2K_POSIX_SEC + 53.7, tz=timezone.utc),
+            Timestamp(53.7),
+            Timestamp(Y2K_GPS_SEC + 53.7)
+        ]
+        assert np.allclose(loader.convert_to_p1_time(times), [53.7] * len(times))
+
+    def test_ndarray_to_p1(self, data_path):
+        self._generate_data(data_path=str(data_path))
+        loader = DataLoader(path=str(data_path))
+        times = np.array((53.7, Y2K_GPS_SEC + 53.7))
+        assert np.allclose(loader.convert_to_p1_time(times), [53.7] * len(times))
+        times = np.array((53.7, Y2K_POSIX_SEC + 53.7))
+        assert np.allclose(loader.convert_to_p1_time(times, assume_utc=True), [53.7] * len(times))
