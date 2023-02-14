@@ -1,3 +1,5 @@
+from typing import Union
+
 from datetime import datetime, timedelta, timezone
 import math
 import struct
@@ -10,16 +12,29 @@ from ..utils.enum_utils import IntEnum
 
 SECONDS_PER_WEEK = 7 * 24 * 3600.0
 
-GPS_EPOCH = datetime(1980, 1, 6, tzinfo=timezone.utc)
-GPS_EPOCH_SEC = GPS_EPOCH.timestamp()
+GPS_POSIX_EPOCH = datetime(1980, 1, 6, tzinfo=timezone.utc)
+GPS_POSIX_EPOCH_SEC = GPS_POSIX_EPOCH.timestamp()
 
 # 2000/1/1 00:00:00
 #
 # Used to distinguish between:
 # - P1 timestamps (0 at time of boot) vs GPS timestamps (referenced to 1/6/1980)
 # - System CPU/MCU monotonic timestamps (0 at time of boot) vs POSIX timestamps (referenced to 1/1/1970)
-Y2K_POSIX_SEC = 946684800
-Y2K_GPS_SEC = Y2K_POSIX_SEC - GPS_EPOCH_SEC
+Y2K_POSIX_SEC = datetime(2000, 1, 1, tzinfo=timezone.utc).timestamp()
+Y2K_GPS_SEC = (Y2K_POSIX_SEC - GPS_POSIX_EPOCH_SEC) + 13
+
+
+def is_gps_time(value_sec: Union[float, np.ndarray]) -> Union[bool, np.ndarray]:
+    """!
+    @brief Test if a timestamp (or list of timestamps) is large enough to be presumed a GPS time (>2000/1/1).
+
+    @param value_sec A timestamp or `ndarray` array of timestamps (in seconds).
+
+    @return `True` if the timestamp appears to be a GPS timestamp.
+    """
+    # Note: We're assuming no Point One device will ever operate before 2000/1/1, even in simulation, and that no
+    # device will be running for 20 years continuously and have a P1 time > (2000 - 1980) seconds.
+    return value_sec >= Y2K_GPS_SEC
 
 
 class Timestamp:
@@ -32,13 +47,11 @@ class Timestamp:
         self.seconds = float(time_sec)
 
     def is_gps(self) -> bool:
-        # Note: We're assuming no Point One device will ever operate before 2000/1/1, even in simulation, and that no
-        # device will be running for 20 years continuously and have a P1 time > (2000 - 1980) seconds.
-        return self.seconds >= Y2K_GPS_SEC
+        return is_gps_time(self.seconds)
 
     def as_gps(self) -> datetime:
         if self.is_gps():
-            return GPS_EPOCH + timedelta(seconds=self.seconds)
+            return GPS_POSIX_EPOCH + timedelta(seconds=self.seconds)
         else:
             return None
 
