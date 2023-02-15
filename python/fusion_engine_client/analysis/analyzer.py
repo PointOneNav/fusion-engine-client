@@ -705,6 +705,9 @@ class Analyzer(object):
                 )
 
 
+
+        # Display the navigation engine's heading estimate,
+        # if available, for comparison with the heading sensor measurement.
             fig.add_trace(
                 go.Scatter(
                     x=relative_heading_message.p1_time,
@@ -2634,7 +2637,7 @@ Load and display information stored in a FusionEngine binary file.
         analyzer.plot_solution_type()
         analyzer.plot_pose()
         analyzer.plot_pose_displacement()
-        analyzer.plot_heading()
+        analyzer.plot_heading_measurements()
         analyzer.plot_relative_position()
         analyzer.plot_map(mapbox_token=options.mapbox_token)
         analyzer.plot_calibration()
