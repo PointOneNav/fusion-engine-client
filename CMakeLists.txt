@@ -17,7 +17,7 @@ endif()
 # Define the project and setup the compiler toolchain. This will establish
 # default compiler/linker flags. If the user specifies a cross-compilation
 # toolchain (-DCMAKE_TOOLCHAIN_FILE=...), it will be applied now.
-project(p1_fusion_engine_client)
+project(p1_fusion_engine_client VERSION 1.15.2)
 
 # Set additional compilation flags.
 if (MSVC)
@@ -40,6 +40,10 @@ target_include_directories(fusion_engine_client PUBLIC ${PROJECT_SOURCE_DIR}/src
 if (MSVC)
     target_compile_definitions(fusion_engine_client PRIVATE BUILDING_DLL)
 endif()
+
+set_target_properties(fusion_engine_client PROPERTIES
+                      VERSION ${PROJECT_VERSION}
+                      SOVERSION ${PROJECT_VERSION_MAJOR})
 
 # Install targets.
 install(TARGETS fusion_engine_client
