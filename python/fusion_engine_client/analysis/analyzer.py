@@ -634,196 +634,6 @@ class Analyzer(object):
 
         self._plot_displacement('Pose Displacement', time, solution_type, displacement_enu_m, std_enu_m)
 
-    def plot_heading_measurements(self):
-        """!
-        @brief Generate time series plots for heading (degrees) and baseline distance (meters) data.
-        """
-        if self.output_dir is None:
-            return
-
-        # Read the heading measurement data.
-        result = self.reader.read(message_types=[HeadingMeasurement], **self.params)
-        heading_data = result[HeadingMeasurement.MESSAGE_TYPE]
-
-        result = self.reader.read(message_types=[PoseMessage], **self.params)
-        primary_pose_data = result[PoseMessage.MESSAGE_TYPE]
-
-        if len(heading_data.p1_time) == 0:
-            self.logger.info('No heading measurement data available. Skipping plot.')
-            return
-
-        # Setup the figure.
-        fig = make_subplots(
-            rows=3, cols=1,
-            subplot_titles=(
-                'Heading, 2-sigma band',
-                'ENU/Baseline Distance',
-                'Solution Type'
-            ),
-            shared_xaxes=True,
-        )
-
-        fig.update_xaxes(title_text='Time (sec)', showticklabels=True)
-        fig.update_yaxes(title_text='Heading (deg)', row=1, col=1)
-        fig.update_yaxes(title_text='Distance (m)', row=2, col=1)
-        fig.update_yaxes(
-            ticktext=['%s (%d)' % (e.name, e.value) for e in SolutionType],
-            tickvals=[e.value for e in SolutionType],
-            title_text='Solution Type',
-            row=3, col=1
-        )
-
-        fig.update_layout(title='Heading Plots', legend_traceorder='normal')
-
-        # First plot - heading in degrees with error bar
-        # calculate uncertainty envelope for heading
-        denom = heading_data.relative_position_enu_m[0]**2 + heading_data.relative_position_enu_m[1]**2
-        dh_e = heading_data.relative_position_enu_m[0] / denom
-        dh_n = heading_data.relative_position_enu_m[2] / denom
-
-        heading_std = np.sqrt(
-            (dh_e * heading_data.position_std_enu_m[0]) ** 2 +
-            (dh_n * heading_data.position_std_enu_m[1]) ** 2
-        )
-
-        envelope = np.arctan(
-            (2 * heading_std / heading_data.baseline_distance_m)
-        )
-        envelope *= 180. / np.pi
-
-        # Display the navigation engine's heading estimate,
-        # if available, for comparison with the heading sensor measurement.
-        if primary_pose_data is not None:
-            fig.add_trace(
-                go.Scatter(
-                    x=primary_pose_data.p1_time,
-                    y=primary_pose_data.ypr_deg[0],
-                    mode='lines',
-                    line={'color': 'yellow'},
-                    name='Reference Heading',
-                    hovertemplate='<b>Time</b>: %{x:.2f}' +
-                                    '<br><b>Heading</b>: %{y:.2f}'
-                ),
-                row=1, col=1
-            )
-
-
-        fig.add_trace(
-            go.Scatter(
-                x=heading_data.p1_time,
-                y=heading_data.heading_true_north_deg,
-                mode='markers',
-                marker={'size': 2},
-                name='Heading',
-                hovertemplate='<b>Time</b>: %{x:.2f}' +
-                                '<br><b>Heading</b>: %{y:.2f}'
-            ),
-            row=1, col=1
-        )
-
-        fig.add_trace(
-            go.Scatter(
-                x=heading_data.p1_time,
-                y=heading_data.heading_true_north_deg + envelope,
-                mode='lines',
-                marker=dict(color="#444"),
-                line=dict(width=0),
-                showlegend=False,
-                hoverinfo='skip'
-            ),
-            row=1, col=1
-        )
-
-        fig.add_trace(
-            go.Scatter(
-                x=heading_data.p1_time,
-                y=heading_data.heading_true_north_deg - envelope,
-                mode='lines',
-                marker=dict(color="#444"),
-                line=dict(width=0),
-                fillcolor='rgba(68, 68, 68, 0.3)',
-                fill='tonexty',
-                showlegend=False,
-                hoverinfo='skip'
-            ),
-            row=1, col=1
-        )
-
-        # Second plot - baseline, ENU components
-        fig.add_trace(
-            go.Scatter(
-                x=heading_data.p1_time,
-                y=heading_data.relative_position_enu_m[0],
-                hovertemplate='<b>Time</b>: %{x:.2f}' +
-                                '<br><b>East</b>: %{y:.2f}',
-                name='East'
-            ),
-            row=2, col=1
-        )
-
-        fig.add_trace(
-            go.Scatter(
-                x=heading_data.p1_time,
-                y=heading_data.relative_position_enu_m[1],
-                hovertemplate='<b>Time</b>: %{x:.2f}' +
-                                '<br><b>North</b>: %{y:.2f}',
-                name='North'
-            ),
-            row=2, col=1
-        )
-
-        fig.add_trace(
-            go.Scatter(
-                x=heading_data.p1_time,
-                y=heading_data.relative_position_enu_m[2],
-                hovertemplate='<b>Time</b>: %{x:.2f}' +
-                                '<br><b>Up</b>: %{y:.2f}',
-                name='Up'
-            ),
-            row=2, col=1
-        )
-
-        fig.add_trace(
-            go.Scatter(
-                x=heading_data.p1_time,
-                y=heading_data.baseline_distance_m,
-                hovertemplate='<b>Time</b>: %{x:.2f}' +
-                                '<br><b>Baseline</b>: %{y:.2f}',
-                name='Baseline'
-            ),
-            row=2, col=1
-        )
-
-        # 3rd plot - solution type
-        fig.add_trace(
-            go.Scatter(
-                x=primary_pose_data.p1_time,
-                y=primary_pose_data.solution_type,
-                mode='markers',
-                hovertemplate='<b>Time</b>: %{x:.2f}' +
-                                '<br><b>Solution</b>: %{text}',
-                text=[str(SolutionType(s)) for s in primary_pose_data.solution_type],
-                name='Primary Solution Type'
-            ),
-            row=3, col=1
-        )
-
-        fig.add_trace(
-            go.Scatter(
-                x=heading_data.p1_time,
-                y=heading_data.solution_type,
-                mode='markers',
-                hovertemplate='<b>Time</b>: %{x:.2f}' +
-                                '<br><b>Solution</b>: %{text}',
-                text=[str(SolutionType(s)) for s in heading_data.solution_type],
-                name='Secondary Solution Type'
-            ),
-            row=3, col=1
-        )
-
-        self._add_figure(name='heading_measurement', figure=fig, title='Measurements: Heading')
-
-
     def plot_relative_position(self):
         """!
         @brief Generate a topocentric (top-down) plot of relative position vs base station, as well as plot of relative
@@ -1547,6 +1357,195 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                          2, 1)
 
         self._add_figure(name=filename, figure=figure, title=figure_title)
+
+    def plot_heading_measurements(self):
+        """!
+        @brief Generate time series plots for heading (degrees) and baseline distance (meters) data.
+        """
+        if self.output_dir is None:
+            return
+
+        # Read the heading measurement data.
+        result = self.reader.read(message_types=[HeadingMeasurement], **self.params)
+        heading_data = result[HeadingMeasurement.MESSAGE_TYPE]
+
+        result = self.reader.read(message_types=[PoseMessage], **self.params)
+        primary_pose_data = result[PoseMessage.MESSAGE_TYPE]
+
+        if len(heading_data.p1_time) == 0:
+            self.logger.info('No heading measurement data available. Skipping plot.')
+            return
+
+        # Setup the figure.
+        fig = make_subplots(
+            rows=3, cols=1,
+            subplot_titles=(
+                'Heading, 2-sigma band',
+                'ENU/Baseline Distance',
+                'Solution Type'
+            ),
+            shared_xaxes=True,
+        )
+
+        fig.update_xaxes(title_text='Time (sec)', showticklabels=True)
+        fig.update_yaxes(title_text='Heading (deg)', row=1, col=1)
+        fig.update_yaxes(title_text='Distance (m)', row=2, col=1)
+        fig.update_yaxes(
+            ticktext=['%s (%d)' % (e.name, e.value) for e in SolutionType],
+            tickvals=[e.value for e in SolutionType],
+            title_text='Solution Type',
+            row=3, col=1
+        )
+
+        fig.update_layout(title='Heading Plots', legend_traceorder='normal')
+
+        # First plot - heading in degrees with error bar
+        # calculate uncertainty envelope for heading
+        denom = heading_data.relative_position_enu_m[0]**2 + heading_data.relative_position_enu_m[1]**2
+        dh_e = heading_data.relative_position_enu_m[0] / denom
+        dh_n = heading_data.relative_position_enu_m[2] / denom
+
+        heading_std = np.sqrt(
+            (dh_e * heading_data.position_std_enu_m[0]) ** 2 +
+            (dh_n * heading_data.position_std_enu_m[1]) ** 2
+        )
+
+        envelope = np.arctan(
+            (2 * heading_std / heading_data.baseline_distance_m)
+        )
+        envelope *= 180. / np.pi
+
+        # Display the navigation engine's heading estimate,
+        # if available, for comparison with the heading sensor measurement.
+        if primary_pose_data is not None:
+            fig.add_trace(
+                go.Scatter(
+                    x=primary_pose_data.p1_time,
+                    y=primary_pose_data.ypr_deg[0],
+                    mode='lines',
+                    line={'color': 'yellow'},
+                    name='Reference Heading',
+                    hovertemplate='<b>Time</b>: %{x:.2f}' +
+                                    '<br><b>Heading</b>: %{y:.2f}'
+                ),
+                row=1, col=1
+            )
+
+
+        fig.add_trace(
+            go.Scatter(
+                x=heading_data.p1_time,
+                y=heading_data.heading_true_north_deg,
+                mode='markers',
+                marker={'size': 2},
+                name='Heading',
+                hovertemplate='<b>Time</b>: %{x:.2f}' +
+                                '<br><b>Heading</b>: %{y:.2f}'
+            ),
+            row=1, col=1
+        )
+
+        fig.add_trace(
+            go.Scatter(
+                x=heading_data.p1_time,
+                y=heading_data.heading_true_north_deg + envelope,
+                mode='lines',
+                marker=dict(color="#444"),
+                line=dict(width=0),
+                showlegend=False,
+                hoverinfo='skip'
+            ),
+            row=1, col=1
+        )
+
+        fig.add_trace(
+            go.Scatter(
+                x=heading_data.p1_time,
+                y=heading_data.heading_true_north_deg - envelope,
+                mode='lines',
+                marker=dict(color="#444"),
+                line=dict(width=0),
+                fillcolor='rgba(68, 68, 68, 0.3)',
+                fill='tonexty',
+                showlegend=False,
+                hoverinfo='skip'
+            ),
+            row=1, col=1
+        )
+
+        # Second plot - baseline, ENU components
+        fig.add_trace(
+            go.Scatter(
+                x=heading_data.p1_time,
+                y=heading_data.relative_position_enu_m[0],
+                hovertemplate='<b>Time</b>: %{x:.2f}' +
+                                '<br><b>East</b>: %{y:.2f}',
+                name='East'
+            ),
+            row=2, col=1
+        )
+
+        fig.add_trace(
+            go.Scatter(
+                x=heading_data.p1_time,
+                y=heading_data.relative_position_enu_m[1],
+                hovertemplate='<b>Time</b>: %{x:.2f}' +
+                                '<br><b>North</b>: %{y:.2f}',
+                name='North'
+            ),
+            row=2, col=1
+        )
+
+        fig.add_trace(
+            go.Scatter(
+                x=heading_data.p1_time,
+                y=heading_data.relative_position_enu_m[2],
+                hovertemplate='<b>Time</b>: %{x:.2f}' +
+                                '<br><b>Up</b>: %{y:.2f}',
+                name='Up'
+            ),
+            row=2, col=1
+        )
+
+        fig.add_trace(
+            go.Scatter(
+                x=heading_data.p1_time,
+                y=heading_data.baseline_distance_m,
+                hovertemplate='<b>Time</b>: %{x:.2f}' +
+                                '<br><b>Baseline</b>: %{y:.2f}',
+                name='Baseline'
+            ),
+            row=2, col=1
+        )
+
+        # 3rd plot - solution type
+        fig.add_trace(
+            go.Scatter(
+                x=primary_pose_data.p1_time,
+                y=primary_pose_data.solution_type,
+                mode='markers',
+                hovertemplate='<b>Time</b>: %{x:.2f}' +
+                                '<br><b>Solution</b>: %{text}',
+                text=[str(SolutionType(s)) for s in primary_pose_data.solution_type],
+                name='Primary Solution Type'
+            ),
+            row=3, col=1
+        )
+
+        fig.add_trace(
+            go.Scatter(
+                x=heading_data.p1_time,
+                y=heading_data.solution_type,
+                mode='markers',
+                hovertemplate='<b>Time</b>: %{x:.2f}' +
+                                '<br><b>Solution</b>: %{text}',
+                text=[str(SolutionType(s)) for s in heading_data.solution_type],
+                name='Secondary Solution Type'
+            ),
+            row=3, col=1
+        )
+
+        self._add_figure(name='heading_measurement', figure=fig, title='Measurements: Heading')
 
     def plot_system_status_profiling(self):
         """!
@@ -2637,13 +2636,16 @@ Load and display information stored in a FusionEngine binary file.
         analyzer.plot_solution_type()
         analyzer.plot_pose()
         analyzer.plot_pose_displacement()
-        analyzer.plot_heading_measurements()
         analyzer.plot_relative_position()
         analyzer.plot_map(mapbox_token=options.mapbox_token)
         analyzer.plot_calibration()
         analyzer.plot_gnss_cn0()
         analyzer.plot_gnss_signal_status()
         analyzer.plot_gnss_skyplot()
+
+        # By default, we always plot heading measurements (i.e., output from a secondary heading device like an
+        # LG69T-AH), separate from other sensor measurements controlled by --measurements.
+        analyzer.plot_heading_measurements()
 
         if options.measurements:
             analyzer.plot_imu()
