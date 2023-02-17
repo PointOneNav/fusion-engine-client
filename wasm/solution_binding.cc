@@ -125,6 +125,7 @@ EMSCRIPTEN_BINDINGS(solution) {
                       &CalibrationStatusMessage_MESSAGE_VERSION)
       .property("p1_time", &CalibrationStatusMessage::p1_time)
       .REF_TO(CalibrationStatusMessage, p1_time)
+      .property("calibration_stage", &CalibrationStatusMessage::calibration_stage)
       .ARRAY_PROPERTY(CalibrationStatusMessage, reserved1)
       .ARRAY_PROPERTY(CalibrationStatusMessage, ypr_deg)
       .ARRAY_PROPERTY(CalibrationStatusMessage, ypr_std_dev_deg)
