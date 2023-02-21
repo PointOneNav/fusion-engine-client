@@ -86,14 +86,18 @@ class SilentLogger(logging.Logger):
 
 
 # Define Logger TRACE level and associated trace() function. These are extensions of the built-in logging library.
+
 if not hasattr(logging, 'TRACE'):
-    logging.TRACE = logging.DEBUG - 1
+    TRACE = logging.DEBUG - 1
+    logging.TRACE = TRACE
     if sys.version_info.major == 2:
         logging._levelNames['TRACE'] = logging.TRACE
         logging._levelNames[logging.TRACE] = 'TRACE'
     else:
         logging._nameToLevel['TRACE'] = logging.TRACE
         logging._levelToName[logging.TRACE] = 'TRACE'
+else:
+    TRACE = logging.TRACE
 
 
 def getTraceLevel(depth=1):
