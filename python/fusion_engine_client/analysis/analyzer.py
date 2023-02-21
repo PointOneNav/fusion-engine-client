@@ -1436,7 +1436,8 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                 marker={'size': 2},
                 name='Secondary Device Heading Measurement',
                 hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
-                              '<br><b>Heading</b>: %{y:.2f} deg'
+                              '<br><b>Heading</b>: %{y:.2f} deg',
+                legendgroup='heading'
             ),
             row=1, col=1
         )
@@ -1448,6 +1449,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                 mode='lines',
                 marker=dict(color="#444"),
                 line=dict(width=0),
+                legendgroup='heading',
                 showlegend=False,
                 hoverinfo='skip'
             ),
@@ -1463,6 +1465,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                 line=dict(width=0),
                 fillcolor='rgba(68, 68, 68, 0.3)',
                 fill='tonexty',
+                legendgroup='heading',
                 showlegend=False,
                 hoverinfo='skip'
             ),
