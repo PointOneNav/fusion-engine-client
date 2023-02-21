@@ -1522,19 +1522,21 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         )
 
         # 3rd plot - solution type
-        fig.add_trace(
-            go.Scatter(
-                x=primary_pose_data.p1_time - float(self.t0),
-                y=primary_pose_data.solution_type,
-                customdata=primary_pose_data.p1_time,
-                mode='markers',
-                hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
-                              '<br><b>Solution</b>: %{text}',
-                text=[str(SolutionType(s)) for s in primary_pose_data.solution_type],
-                name='Primary Solution Type'
-            ),
-            row=3, col=1
-        )
+        if primary_pose_data is not None:
+            fig.add_trace(
+                go.Scatter(
+                    x=primary_pose_data.p1_time - float(self.t0),
+                    y=primary_pose_data.solution_type,
+                    customdata=primary_pose_data.p1_time,
+                    mode='markers',
+                    marker={'color': 'yellow'},
+                    hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
+                                  '<br><b>Solution</b>: %{text}',
+                    text=[str(SolutionType(s)) for s in primary_pose_data.solution_type],
+                    name='Primary Solution Type'
+                ),
+                row=3, col=1
+            )
 
         fig.add_trace(
             go.Scatter(
