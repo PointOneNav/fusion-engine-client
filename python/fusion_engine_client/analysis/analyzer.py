@@ -1442,10 +1442,12 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             row=1, col=1
         )
 
+        idx = ~np.isnan(heading_data.heading_true_north_deg)
+
         fig.add_trace(
             go.Scatter(
-                x=heading_time,
-                y=heading_data.heading_true_north_deg + envelope,
+                x=heading_time[idx],
+                y=heading_data.heading_true_north_deg[idx] + envelope[idx],
                 mode='lines',
                 marker=dict(color="#444"),
                 line=dict(width=0),
@@ -1458,8 +1460,8 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
 
         fig.add_trace(
             go.Scatter(
-                x=heading_time,
-                y=heading_data.heading_true_north_deg - envelope,
+                x=heading_time[idx],
+                y=heading_data.heading_true_north_deg[idx] - envelope[idx],
                 mode='lines',
                 marker=dict(color="#444"),
                 line=dict(width=0),
