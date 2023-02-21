@@ -1379,7 +1379,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         )
 
         fig.update_xaxes(title_text='Time (sec)', showticklabels=True)
-        fig.update_yaxes(title_text='Heading (deg)', row=1, col=1)
+        fig.update_yaxes(title_text='Heading (deg)', rangemode='tozero', row=1, col=1)
         fig.update_yaxes(title_text='Distance (m)', row=2, col=1)
         fig.update_yaxes(
             ticktext=['%s (%d)' % (e.name, e.value) for e in SolutionType],
