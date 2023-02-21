@@ -1406,16 +1406,18 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         )
         envelope *= 180. / np.pi
 
-        # Display the navigation engine's heading estimate,
-        # if available, for comparison with the heading sensor measurement.
+        # Display the navigation engine's heading estimate, if available, for comparison with the heading sensor
+        # measurement.
         if primary_pose_data is not None:
+            pose_heading_deg = 90.0 - primary_pose_data.ypr_deg[0]
+            pose_heading_deg[pose_heading_deg < 0.0] += 360.0
             fig.add_trace(
                 go.Scatter(
-                    x=primary_pose_data.p1_time,
-                    y=primary_pose_data.ypr_deg[0],
+                    x=primary_pose_data.p1_time - float(self.t0),
+                    y=pose_heading_deg,
                     mode='lines',
                     line={'color': 'yellow'},
-                    name='Reference Heading',
+                    name='Primary Device Heading Estimate',
                     hovertemplate='<b>Time</b>: %{x:.2f}' +
                                     '<br><b>Heading</b>: %{y:.2f}'
                 ),
@@ -1429,7 +1431,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                 y=heading_data.heading_true_north_deg,
                 mode='markers',
                 marker={'size': 2},
-                name='Heading',
+                name='Secondary Device Heading Measurement',
                 hovertemplate='<b>Time</b>: %{x:.2f}' +
                                 '<br><b>Heading</b>: %{y:.2f}'
             ),
