@@ -1379,7 +1379,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         )
 
         fig.update_xaxes(title_text='Time (sec)', showticklabels=True)
-        fig.update_yaxes(title_text='Heading (deg)', row=1, col=1)
+        fig.update_yaxes(title_text='Heading (deg)', rangemode='tozero', row=1, col=1)
         fig.update_yaxes(title_text='Distance (m)', row=2, col=1)
         fig.update_yaxes(
             ticktext=['%s (%d)' % (e.name, e.value) for e in SolutionType],
@@ -1406,43 +1406,52 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         )
         envelope *= 180. / np.pi
 
-        # Display the navigation engine's heading estimate,
-        # if available, for comparison with the heading sensor measurement.
+        # Display the navigation engine's heading estimate, if available, for comparison with the heading sensor
+        # measurement.
         if primary_pose_data is not None:
+            pose_heading_deg = 90.0 - primary_pose_data.ypr_deg[0]
+            pose_heading_deg[pose_heading_deg < 0.0] += 360.0
             fig.add_trace(
                 go.Scatter(
-                    x=primary_pose_data.p1_time,
-                    y=primary_pose_data.ypr_deg[0],
+                    x=primary_pose_data.p1_time - float(self.t0),
+                    y=pose_heading_deg,
+                    customdata=primary_pose_data.p1_time,
                     mode='lines',
                     line={'color': 'yellow'},
-                    name='Reference Heading',
-                    hovertemplate='<b>Time</b>: %{x:.2f}' +
-                                    '<br><b>Heading</b>: %{y:.2f}'
+                    name='Primary Device Heading Estimate',
+                    hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
+                                  '<br><b>Heading</b>: %{y:.2f} deg'
                 ),
                 row=1, col=1
             )
 
+        heading_time = heading_data.p1_time - float(self.t0)
 
         fig.add_trace(
             go.Scatter(
-                x=heading_data.p1_time,
+                x=heading_time,
                 y=heading_data.heading_true_north_deg,
+                customdata=heading_data.p1_time,
                 mode='markers',
                 marker={'size': 2},
-                name='Heading',
-                hovertemplate='<b>Time</b>: %{x:.2f}' +
-                                '<br><b>Heading</b>: %{y:.2f}'
+                name='Secondary Device Heading Measurement',
+                hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
+                              '<br><b>Heading</b>: %{y:.2f} deg',
+                legendgroup='heading'
             ),
             row=1, col=1
         )
 
+        idx = ~np.isnan(heading_data.heading_true_north_deg)
+
         fig.add_trace(
             go.Scatter(
-                x=heading_data.p1_time,
-                y=heading_data.heading_true_north_deg + envelope,
+                x=heading_time[idx],
+                y=heading_data.heading_true_north_deg[idx] + envelope[idx],
                 mode='lines',
                 marker=dict(color="#444"),
                 line=dict(width=0),
+                legendgroup='heading',
                 showlegend=False,
                 hoverinfo='skip'
             ),
@@ -1451,13 +1460,14 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
 
         fig.add_trace(
             go.Scatter(
-                x=heading_data.p1_time,
-                y=heading_data.heading_true_north_deg - envelope,
+                x=heading_time[idx],
+                y=heading_data.heading_true_north_deg[idx] - envelope[idx],
                 mode='lines',
                 marker=dict(color="#444"),
                 line=dict(width=0),
                 fillcolor='rgba(68, 68, 68, 0.3)',
                 fill='tonexty',
+                legendgroup='heading',
                 showlegend=False,
                 hoverinfo='skip'
             ),
@@ -1467,10 +1477,11 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         # Second plot - baseline, ENU components
         fig.add_trace(
             go.Scatter(
-                x=heading_data.p1_time,
+                x=heading_time,
                 y=heading_data.relative_position_enu_m[0],
-                hovertemplate='<b>Time</b>: %{x:.2f}' +
-                                '<br><b>East</b>: %{y:.2f}',
+                customdata=heading_data.p1_time,
+                hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
+                              '<br><b>East</b>: %{y:.2f} m',
                 name='East'
             ),
             row=2, col=1
@@ -1478,10 +1489,11 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
 
         fig.add_trace(
             go.Scatter(
-                x=heading_data.p1_time,
+                x=heading_time,
                 y=heading_data.relative_position_enu_m[1],
-                hovertemplate='<b>Time</b>: %{x:.2f}' +
-                                '<br><b>North</b>: %{y:.2f}',
+                customdata=heading_data.p1_time,
+                hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
+                              '<br><b>North</b>: %{y:.2f} m',
                 name='North'
             ),
             row=2, col=1
@@ -1489,10 +1501,11 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
 
         fig.add_trace(
             go.Scatter(
-                x=heading_data.p1_time,
+                x=heading_time,
                 y=heading_data.relative_position_enu_m[2],
-                hovertemplate='<b>Time</b>: %{x:.2f}' +
-                                '<br><b>Up</b>: %{y:.2f}',
+                customdata=heading_data.p1_time,
+                hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
+                              '<br><b>Up</b>: %{y:.2f} m',
                 name='Up'
             ),
             row=2, col=1
@@ -1500,36 +1513,41 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
 
         fig.add_trace(
             go.Scatter(
-                x=heading_data.p1_time,
+                x=heading_time,
                 y=heading_data.baseline_distance_m,
-                hovertemplate='<b>Time</b>: %{x:.2f}' +
-                                '<br><b>Baseline</b>: %{y:.2f}',
+                customdata=heading_data.p1_time,
+                hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
+                              '<br><b>Baseline</b>: %{y:.2f} m',
                 name='Baseline'
             ),
             row=2, col=1
         )
 
         # 3rd plot - solution type
-        fig.add_trace(
-            go.Scatter(
-                x=primary_pose_data.p1_time,
-                y=primary_pose_data.solution_type,
-                mode='markers',
-                hovertemplate='<b>Time</b>: %{x:.2f}' +
-                                '<br><b>Solution</b>: %{text}',
-                text=[str(SolutionType(s)) for s in primary_pose_data.solution_type],
-                name='Primary Solution Type'
-            ),
-            row=3, col=1
-        )
+        if primary_pose_data is not None:
+            fig.add_trace(
+                go.Scatter(
+                    x=primary_pose_data.p1_time - float(self.t0),
+                    y=primary_pose_data.solution_type,
+                    customdata=primary_pose_data.p1_time,
+                    mode='markers',
+                    marker={'color': 'yellow'},
+                    hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
+                                  '<br><b>Solution</b>: %{text}',
+                    text=[str(SolutionType(s)) for s in primary_pose_data.solution_type],
+                    name='Primary Solution Type'
+                ),
+                row=3, col=1
+            )
 
         fig.add_trace(
             go.Scatter(
-                x=heading_data.p1_time,
+                x=heading_time,
                 y=heading_data.solution_type,
+                customdata=heading_data.p1_time,
                 mode='markers',
-                hovertemplate='<b>Time</b>: %{x:.2f}' +
-                                '<br><b>Solution</b>: %{text}',
+                hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
+                              '<br><b>Solution</b>: %{text}',
                 text=[str(SolutionType(s)) for s in heading_data.solution_type],
                 name='Secondary Solution Type'
             ),

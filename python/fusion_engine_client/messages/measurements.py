@@ -511,6 +511,7 @@ Vehicle Tick Measurement @ {str(self.timestamps.p1_time)}
         result.update(MeasurementTimestamps.to_numpy([m.timestamps for m in messages]))
         return result
 
+
 class HeadingMeasurement(MessagePayload):
     """!
      @brief The heading angle (in degrees) with respect to true north,
