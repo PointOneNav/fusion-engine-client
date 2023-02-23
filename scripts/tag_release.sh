@@ -181,6 +181,29 @@ with open('${CPP_VERSION_PATH}', 'wt') as f:
 EOF
 git add "${CPP_VERSION_PATH}"
 
+# Update the version string in the C++ CMake file.
+#
+# Note: CMake does not support version suffixes like rc3, etc., so we only use
+# the major.minor.patch version here.
+echo "Updating CMake project version string."
+CMAKE_PATH="CMakeLists.txt"
+cat <<EOF | python3
+import re
+from packaging import version
+
+new_version = version.parse("${VERSION}")
+
+with open('${CMAKE_PATH}', 'rt') as f:
+    cmake_contents = f.read()
+
+with open('${CMAKE_PATH}', 'wt') as f:
+    f.write(re.sub(
+        r'project\\((.* VERSION) .*\\)',
+        f'project(\\\\1 {new_version.major}.{new_version.minor}.{new_version.micro})',
+        cmake_contents))
+EOF
+git add "${CMAKE_PATH}"
+
 # Update the version string in the Python library.
 echo "Updating Python library version string."
 PYTHON_INIT_PATH="python/fusion_engine_client/__init__.py"
