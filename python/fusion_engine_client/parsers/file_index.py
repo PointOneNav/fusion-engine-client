@@ -451,7 +451,10 @@ class FileIndex(object):
     def _to_raw(cls, data):
         time_sec = data['time']
         idx = np.isnan(time_sec)
+        # Ignore `RuntimeWarning: invalid value encountered in cast` since we want the NaN to be cast to int.
+        np.seterr(invalid="ignore")
         raw_data = data.astype(dtype=cls._RAW_DTYPE)
+        np.seterr(invalid="warn")
         raw_data['int'][idx] = Timestamp._INVALID
         return raw_data
 
