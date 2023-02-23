@@ -1,1 +1,2 @@
 add_library(print_message STATIC print_message.cc)
+target_link_libraries(print_message PUBLIC fusion_engine_client)

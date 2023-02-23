@@ -26,11 +26,13 @@ One FusionEngine or a Point One device (Atlas, Quectel LG69T, etc.), please cont
   * [Example Applications](#example-applications)
 * [Installation](#installation)
   * [CMake](#cmake)
-    * [Compiling (Linux)](#compiling-linux)
-    * [Compiling (Windows)](#compiling-windows)
+    * [Including In Your CMake Project](#including-in-your-cmake-project)
+    * [Compiling From Source (Linux)](#compiling-from-source-linux)
+    * [Compiling From Source (Windows)](#compiling-from-source-windows)
     * [Running Examples](#running-examples-1)
   * [Bazel](#bazel)
-    * [Compiling](#compiling)
+    * [Including In Your Bazel Project](#including-in-your-bazel-project)
+    * [Compiling From Source](#compiling-from-source)
     * [Running Examples](#running-examples)
   * [Python](#python)
   * [Compiling Documentation](#compiling-documentation)
@@ -73,13 +75,44 @@ One FusionEngine or a Point One device (Atlas, Quectel LG69T, etc.), please cont
 
 The `examples/` directory contains example applications demonstrating how to use this library. They are:
 - `message_decode` - Print the contents of messages contained in a binary file.
+- `external_cmake_project` - Download a copy of the FusionEngine Client library from the public repository and import
+  it into a CMake project using `FetchContent`.
 - `generate_data` - Generate a binary file containing a fixed set of messages.
+- `tcp_client` - Connect to a device over TCP and display the received FusionEngine messages.
+- `udp_client` - Connect to a device over UDP and display the received FusionEngine messages.
 
 ## Installation
 
 ### CMake
 
-#### Compiling (Linux)
+#### Including In Your CMake Project
+
+To include this library as part of your CMake project, we recommend using the CMake `FetchContent` feature as shown
+below, rather than compiling and installing the library manually as in the sections above:
+```cmake
+set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
+set(P1_FE_BUILD_EXAMPLES OFF)
+include(FetchContent)
+FetchContent_Declare(
+    fusion_engine_client
+    GIT_REPOSITORY https://github.com/PointOneNav/fusion-engine-client.git
+    GIT_TAG v1.15.2
+)
+FetchContent_Populate(fusion_engine_client)
+add_subdirectory(${fusion_engine_client_SOURCE_DIR})
+
+add_executable(example_app main.cc)
+target_link_libraries(example_app PUBLIC fusion_engine_client)
+```
+
+Note that we strongly recommend using a specific version of the library in your code by specifying a git tag (e.g.,
+`GIT_TAG v1.15.2`), and updating that as new versions are released. That way, you can be sure that your code is always
+built with a known version of fusion-engine-client. If you prefer, however, you can tell CMake to track the latest
+changes by using `GIT_TAG master` instead.
+
+See [examples/external_cmake_project/CMakeLists.txt](examples/external_cmake_project/CMakeLists.txt) for more details.
+
+#### Compiling From Source (Linux)
 
 Use the following steps to compile and install this library using CMake:
 
@@ -92,9 +125,10 @@ sudo make install
 ```
 
 This will generate `libfusion_engine_client.so`, and install the library and header files on your system. By default,
-this will also build the [example applications](#examples).
+this will also build the [example applications](#example-applications). You can disable the example applications by
+specifying `cmake -DP1_FE_BUILD_EXAMPLES=OFF ..`.
 
-#### Compiling (Windows)
+#### Compiling From Source (Windows)
 
 Use the following steps to compile and install this library using CMake and MSBuild:
 
@@ -118,19 +152,25 @@ By default, the compiled example applications will be located in `build/examples
 
 ### Bazel
 
-#### Compiling
+#### Including In Your Bazel Project
 
 To use this library in an existing Bazel project, add the following to your project's `WORKSPACE` file:
 
 ```python
 git_repository(
     name = "fusion_engine_client",
-    branch = "master",
     remote = "git@github.com:PointOneNav/fusion_engine_client.git",
+    tag = "v1.15.2",
 )
 ```
 
-Then add the following dependency to any `cc_library()` or `cc_binary()` definitions in your project:
+Note that we strongly recommend using a specific version of the library in your code by specifying a git tag (e.g.,
+`tag = "v1.15.2"`), and updating that as new versions are released. That way, you can be sure that your code is always
+built with a known version of fusion-engine-client. If you prefer, however, you can tell Bazel to track the latest
+changes by using `branch = "master"` instead.
+
+After declaring the repository in your `WORKSPACE` file, you can add the following dependency to any `cc_library()` or
+`cc_binary()` definitions in your project's `BAZEL` files:
 
 ```python
 cc_library(
@@ -144,8 +184,10 @@ cc_library(
 If desired, you can add a dependency for only part of the library. For example, to depend on only the core message
 definitions and support code, set your `deps` entry to `@fusion_engine_client//:core`.
 
-Note that there is no need to explicitly compile or link this library when using Bazel - it will be built automatically
-when your application is built. If desired, however, you can build a stand-alone shared library as follows:
+#### Compiling From Source
+
+In general, it is strongly recommended that you let Bazel import and compile the library using `git_repository()` as
+shown above. If you would like to compile the library manually, however, you can run the following command:
 
 ```
 bazel build -c opt //:libfusion_engine_client.so
