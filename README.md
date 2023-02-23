@@ -1,6 +1,6 @@
-![Build Status](https://github.com/PointOneNav/fusion-engine-client/workflows/FusionEngine%20Client%20Build/badge.svg)
+![Build Status](https://github.com/PointOneNav/fusion-engine-client/actions/workflows/release_build.yml/badge.svg)
 <br/>
-![CodeQL](https://github.com/PointOneNav/fusion-engine-client/workflows/CodeQL/badge.svg)
+![CodeQL](https://github.com/PointOneNav/fusion-engine-client/actions/workflows/codeql.yml/badge.svg)
 
 # Point One FusionEngine Client
 
