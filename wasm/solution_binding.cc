@@ -171,22 +171,4 @@ EMSCRIPTEN_BINDINGS(solution) {
       .ARRAY_PROPERTY(RelativeENUPositionMessage, position_std_enu_m)
       .STRUCT_FUNCTIONS(RelativeENUPositionMessage);
 
-  static auto RelativeENUHeadingMessage_MESSAGE_TYPE =
-        RelativeENUHeadingMessage::MESSAGE_TYPE;
-  static auto RelativeENUHeadingMessage_MESSAGE_VERSION =
-        RelativeENUHeadingMessage::MESSAGE_VERSION;
-  class_<RelativeENUHeadingMessage>("RelativeENUHeadingMessage")
-    .constructor<>()
-    .class_property("MESSAGE_TYPE", &RelativeENUHeadingMessage_MESSAGE_TYPE)
-    .class_property("MESSAGE_VERSION",
-                    &RelativeENUHeadingMessage_MESSAGE_VERSION)
-    .property("timestamps", &RelativeENUHeadingMessage::timestamps)
-    .property("solution_type", &RelativeENUHeadingMessage::solution_type)
-    .ARRAY_PROPERTY(RelativeENUHeadingMessage, reserved)
-    .property("flags", &RelativeENUHeadingMessage::flags)
-    .ARRAY_PROPERTY(RelativeENUHeadingMessage, relative_position_enu_m)
-    .ARRAY_PROPERTY(RelativeENUHeadingMessage, position_std_enu_m)
-    .property("heading_true_north_deg", &RelativeENUHeadingMessage::heading_true_north_deg)
-    .property("baseline_distance_m", &RelativeENUHeadingMessage::baseline_distance_m)
-    .STRUCT_FUNCTIONS(RelativeENUHeadingMessage);
 }

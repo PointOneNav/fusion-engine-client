@@ -22,6 +22,7 @@ add_executable(fusion_engine_client_wasm
                fusion_engine_framer_binding.cc
                solution_binding.cc
                configuration_bindings.cc
+               measurements_binding.cc
                command_control_bindings.cc)
 target_include_directories(fusion_engine_client_wasm PUBLIC
                            ${CMAKE_CURRENT_SOURCE_DIR}})

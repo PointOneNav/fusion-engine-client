@@ -37,10 +37,10 @@ EMSCRIPTEN_BINDINGS(defs) {
       .value("POSE_AUX", MessageType::POSE_AUX)
       .value("CALIBRATION_STATUS", MessageType::CALIBRATION_STATUS)
       .value("RELATIVE_ENU_POSITION", MessageType::RELATIVE_ENU_POSITION)
-      .value("RELATIVE_ENU_HEADING", MessageType::RELATIVE_ENU_HEADING)
 
       // Sensor measurement messages.
       .value("IMU_MEASUREMENT", MessageType::IMU_MEASUREMENT)
+      .value("HEADING_MEASUREMENT", MessageType::HEADING_MEASUREMENT)
 
       // Vehicle measurement messages.
       .value("WHEEL_SPEED_MEASUREMENT", MessageType::WHEEL_SPEED_MEASUREMENT)
