@@ -214,6 +214,16 @@ class ArgumentDefaultsHelpFormatter(argparse.HelpFormatter):
         return help
 
 
+class LineBreakHelpFormatter(argparse.HelpFormatter):
+    # Modified from argparse.HelpFormatter.format_help() to remove the \n strip below.
+    def format_help(self):
+        help = self._root_section.format_help()
+        if help:
+            help = self._long_break_matcher.sub('\n\n', help)
+            # help = help.strip('\n') + '\n'
+        return help
+
+
 class FlexiFormatterNoDescription(FlexiFormatter):
     def _format_text(self, text):
         if '%(prog)' in text:
@@ -257,6 +267,7 @@ def compose_formatter(*formatters) -> argparse.HelpFormatter:
 
 
 DefaultFormatter = compose_formatter(ArgumentDefaultsHelpFormatter,
+                                     LineBreakHelpFormatter,
                                      TriStateBoolFormatter,
                                      CapitalisedHelpFormatterNoDescription)
 
