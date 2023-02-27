@@ -525,8 +525,11 @@ class DataLoader(object):
                - A @ref fusion_engine_client.messages.timestamps.MeasurementTimestamps containing GPS time or P1 time
                - `float` - A GPS or P1 time value (in seconds)
                  - Note that UTC timestamps cannot be specified `float` unless `assume_utc == True`
-        @param assume_utc If `True`, assume all `float` values greater than the POSIX offset for 2000/1/1 are UTC
-               timestamps in seconds
+        @param assume_utc If `True`:
+               - For `float` values, assume values greater than the POSIX offset for 2000/1/1 are UTC timestamps in
+                 seconds.
+               - For `datetime`, if `tzinfo` is not set, assume it is `timezone.utc`. Otherwise, interpret the timestamp
+                 in the local timezone.
 
         @return A numpy array containing P1 time values (in seconds), or `nan` if the value could not be converted.
         """
@@ -557,10 +560,18 @@ class DataLoader(object):
             gps_ref_sec = None
 
         # First, convert all UTC times and all timestamp objects to GPS time or P1 values in seconds.
+        timezone_warn_issued = False
         def _to_gps_or_p1(value):
+            nonlocal timezone_warn_issued
             if isinstance(value, gpstime):
                 return value.gps()
             elif isinstance(value, datetime):
+                if value.tzinfo is None:
+                    if assume_utc:
+                        value = value.replace(tzinfo=timezone.utc)
+                    elif not timezone_warn_issued:
+                        self.logger.warning('datetime object detected without timezone. Assuming local timezone.')
+                        timezone_warn_issued = True
                 return gpstime.fromdatetime(value).gps()
             elif isinstance(value, Timestamp):
                 return value.seconds
