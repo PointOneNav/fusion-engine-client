@@ -32,6 +32,7 @@ message_type_to_class = {
     ResetRequest.MESSAGE_TYPE: ResetRequest,
     VersionInfoMessage.MESSAGE_TYPE: VersionInfoMessage,
     EventNotificationMessage.MESSAGE_TYPE: EventNotificationMessage,
+    ShutdownRequest.MESSAGE_TYPE: ShutdownRequest,
     FaultControlMessage.MESSAGE_TYPE: FaultControlMessage,
 
     SetConfigMessage.MESSAGE_TYPE: SetConfigMessage,

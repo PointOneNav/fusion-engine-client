@@ -379,9 +379,21 @@ class TestTimeConversion:
     def test_utc_to_p1(self, data_path):
         self._generate_data(data_path=str(data_path))
         loader = DataLoader(path=str(data_path))
+
         utc_time = datetime.fromtimestamp(Y2K_POSIX_SEC + 53.7, tz=timezone.utc)
         assert loader.convert_to_p1_time(utc_time) == pytest.approx(53.7)
         assert loader.convert_to_p1_time(utc_time.timestamp(), assume_utc=True) == pytest.approx(53.7)
+
+        utc_time_no_tz = utc_time.replace(tzinfo=None)
+        assert loader.convert_to_p1_time(utc_time_no_tz, assume_utc=True) == pytest.approx(53.7)
+
+        current_tz = datetime.utcnow().astimezone().tzinfo
+        if current_tz != timezone.utc:
+            utc_time_no_tz = utc_time.replace(tzinfo=None)
+            assert loader.convert_to_p1_time(utc_time_no_tz, assume_utc=False) != pytest.approx(53.7)
+
+        local_time = datetime.fromtimestamp(Y2K_POSIX_SEC + 53.7, tz=None)
+        assert loader.convert_to_p1_time(local_time) == pytest.approx(53.7)
 
     def test_timestamp_to_p1(self, data_path):
         self._generate_data(data_path=str(data_path))
