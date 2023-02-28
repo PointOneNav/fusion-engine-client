@@ -35,9 +35,12 @@ EMSCRIPTEN_BINDINGS(solution) {
       .ARRAY_PROPERTY(PoseMessage, ypr_std_deg)
       .ARRAY_PROPERTY(PoseMessage, velocity_body_mps)
       .ARRAY_PROPERTY(PoseMessage, velocity_std_body_mps)
-      .property("aggregate_protection_level_m", &PoseMessage::aggregate_protection_level_m)
-      .property("horizontal_protection_level_m", &PoseMessage::horizontal_protection_level_m)
-      .property("vertical_protection_level_m", &PoseMessage::vertical_protection_level_m)
+      .property("aggregate_protection_level_m",
+                &PoseMessage::aggregate_protection_level_m)
+      .property("horizontal_protection_level_m",
+                &PoseMessage::horizontal_protection_level_m)
+      .property("vertical_protection_level_m",
+                &PoseMessage::vertical_protection_level_m)
       .STRUCT_FUNCTIONS(PoseMessage);
 
   static auto PoseAuxMessage_MESSAGE_TYPE = PoseAuxMessage::MESSAGE_TYPE;
@@ -125,7 +128,8 @@ EMSCRIPTEN_BINDINGS(solution) {
                       &CalibrationStatusMessage_MESSAGE_VERSION)
       .property("p1_time", &CalibrationStatusMessage::p1_time)
       .REF_TO(CalibrationStatusMessage, p1_time)
-      .property("calibration_stage", &CalibrationStatusMessage::calibration_stage)
+      .property("calibration_stage",
+                &CalibrationStatusMessage::calibration_stage)
       .ARRAY_PROPERTY(CalibrationStatusMessage, reserved1)
       .ARRAY_PROPERTY(CalibrationStatusMessage, ypr_deg)
       .ARRAY_PROPERTY(CalibrationStatusMessage, ypr_std_dev_deg)
@@ -170,5 +174,4 @@ EMSCRIPTEN_BINDINGS(solution) {
       .ARRAY_PROPERTY(RelativeENUPositionMessage, relative_position_enu_m)
       .ARRAY_PROPERTY(RelativeENUPositionMessage, position_std_enu_m)
       .STRUCT_FUNCTIONS(RelativeENUPositionMessage);
-
 }
