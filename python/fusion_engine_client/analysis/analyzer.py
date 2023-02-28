@@ -1662,7 +1662,8 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         for i in range(len(data.running_time_ns)):
             color = plotly.colors.DEFAULT_PLOTLY_COLORS[i % len(plotly.colors.DEFAULT_PLOTLY_COLORS)]
             trace_name = id_to_name.get(i, f'unknown_{i}')
-            figure.add_trace(go.Scattergl(x=time, y=data.running_time_ns[i] / data.run_count[i] / 1e6,
+            idx = data.run_count[i] != 0
+            figure.add_trace(go.Scattergl(x=time[idx], y=data.running_time_ns[i][idx] / data.run_count[i][idx] / 1e6,
                                           name=trace_name, legendgroup=f'{i}',
                                           mode='lines', line={'color': color}, hoverlabel={'namelength': -1}),
                              1, 1)
