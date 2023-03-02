@@ -158,6 +158,11 @@ other types of data.
             else:
                 message_types.append(message_type)
         message_types = set(message_types)
+        # These types both map to the same message so make sure they're both included if either is.
+        if InternalMessageType.LEGACY_PLATFORM_STORAGE_DATA in message_types:
+            message_types.add(MessageType.PLATFORM_STORAGE_DATA)
+        elif MessageType.PLATFORM_STORAGE_DATA in message_types:
+            message_types.add(InternalMessageType.LEGACY_PLATFORM_STORAGE_DATA)
 
     # Check if any of the requested message types do _not_ have P1 time (e.g., profiling messages). The index file
     # does not currently contain non-P1 time messages, so if we use it to search for messages we will end up
