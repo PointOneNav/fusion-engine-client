@@ -190,6 +190,7 @@ class WheelSpeedMeasurement(MessagePayload):
 Wheel Speed Measurement @ {str(self.timestamps.p1_time)}
   {str(self.timestamps).replace(newline, '  ' + newline)}
   Gear: {str(self.gear)}
+  Is signed: {self.is_signed}
   Front left: {self.front_left_speed_mps:.2f} m/s
   Front right: {self.front_right_speed_mps:.2f} m/s
   Rear left: {self.rear_left_speed_mps:.2f} m/s
@@ -203,6 +204,7 @@ Wheel Speed Measurement @ {str(self.timestamps.p1_time)}
             'rear_left_speed_mps': np.array([m.rear_left_speed_mps for m in messages]),
             'rear_right_speed_mps': np.array([m.rear_right_speed_mps for m in messages]),
             'gear': np.array([m.gear for m in messages], dtype=int),
+            'is_signed': np.array([m.is_signed for m in messages], dtype=int),
         }
         result.update(MeasurementTimestamps.to_numpy([m.timestamps for m in messages]))
         return result
@@ -293,12 +295,14 @@ class VehicleSpeedMeasurement(MessagePayload):
 Vehicle Speed Measurement @ {str(self.timestamps.p1_time)}
   {str(self.timestamps).replace(newline, '  ' + newline)}
   Gear: {str(self.gear)}
+  Is Signed: {self.is_signed}
   Speed: {self.vehicle_speed_mps:.2f} m/s"""
 
     @classmethod
     def to_numpy(cls, messages):
         result = {
             'vehicle_speed_mps': np.array([m.vehicle_speed_mps for m in messages]),
+            'is_signed': np.array([m.is_signed for m in messages], dtype=bool),
             'gear': np.array([m.gear for m in messages], dtype=int),
         }
         result.update(MeasurementTimestamps.to_numpy([m.timestamps for m in messages]))
