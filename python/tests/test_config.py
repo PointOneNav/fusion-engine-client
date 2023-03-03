@@ -1,16 +1,18 @@
 from fusion_engine_client.utils import trace as logging
 
 import pytest
-from fusion_engine_client.messages import (ConfigResponseMessage, ConfigType,
-                                           Direction, GNSSLeverArmConfig,
-                                           InvalidConfig, MessageRateResponse,
-                                           SetConfigMessage, Uart1BaudConfig,
-                                           VehicleModel)
-from fusion_engine_client.messages.configuration import (
-    AppliedSpeedType, ConfigurationSource, DeviceCourseOrientationConfig,
-    HardwareTickConfig, MessageRate, RateResponseEntry, SteeringType,
-    TickDirection, TickMode, VehicleDetailsConfig, WheelConfig,
-    WheelSensorType, _RateResponseEntryConstructRaw)
+from fusion_engine_client.messages import (
+    ConfigurationSource, ConfigResponseMessage, ConfigType, SetConfigMessage,
+    MessageRate, MessageRateResponse, RateResponseEntry,
+    InvalidConfig,
+    DeviceCourseOrientationConfig, Direction,
+    GNSSLeverArmConfig,
+    EnabledGNSSSystemsConfig, SatelliteType, SatelliteTypeMask,
+    AppliedSpeedType, SteeringType, VehicleDetailsConfig, VehicleModel, WheelConfig, WheelSensorType,
+    HardwareTickConfig, TickDirection, TickMode,
+    Uart1BaudConfig,
+    )
+from fusion_engine_client.messages.configuration import _RateResponseEntryConstructRaw
 
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
