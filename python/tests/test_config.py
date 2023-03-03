@@ -109,3 +109,18 @@ def test_msg_rate_data():
     data_msg = MessageRateResponse()
     data_msg.unpack(packed_data)
     assert data_msg.rates[1].configured_rate == MessageRate.INTERVAL_1_S
+
+
+def test_satellite_type_mask():
+    assert EnabledGNSSSystemsConfig(SatelliteType.GPS).value == SatelliteTypeMask.GPS
+    assert EnabledGNSSSystemsConfig('gps').value == SatelliteTypeMask.GPS
+    assert EnabledGNSSSystemsConfig('GPS').value == SatelliteTypeMask.GPS
+
+    systems = [SatelliteType.GPS, SatelliteType.GALILEO]
+    system_strs = ['GPS', 'GALILEO']
+    expected_mask = SatelliteTypeMask.GPS | SatelliteTypeMask.GALILEO
+    assert EnabledGNSSSystemsConfig(systems).value == expected_mask
+    assert EnabledGNSSSystemsConfig(*systems).value == expected_mask
+    assert EnabledGNSSSystemsConfig(system_strs).value == expected_mask
+    assert EnabledGNSSSystemsConfig(*system_strs).value == expected_mask
+    assert EnabledGNSSSystemsConfig(s.lower() for s in system_strs).value == expected_mask

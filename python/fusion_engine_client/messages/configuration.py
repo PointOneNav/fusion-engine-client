@@ -1,5 +1,5 @@
 import re
-from typing import NamedTuple, Optional, List
+from typing import Iterable, NamedTuple, Optional, List
 
 from construct import (Struct, Float32l, Int32ul, Int16ul, Int8ul, Padding, this, Flag, Bytes, Array)
 
@@ -27,6 +27,7 @@ class ConfigType(IntEnum):
     VEHICLE_DETAILS = 20
     WHEEL_CONFIG = 21
     HARDWARE_TICK_CONFIG = 22
+    ENABLED_GNSS_SYSTEMS = 50
     UART1_BAUD = 256
     UART2_BAUD = 257
     UART1_OUTPUT_DIAGNOSTICS_MESSAGES = 258
@@ -312,6 +313,38 @@ class _ConfigClassGenerator:
         "value" / Flag,
     )
 
+    class SatelliteTypeMaskVal(IntegerVal):
+        """!
+        @brief Bitmask specifying enabled @ref SatelliteType%s.
+        """
+        value: int
+
+        def __new__(cls, *args, **kwargs):
+            # Check if the user specified a single SatelliteType or a list of values, and convert to a mask.
+            if len(args) == 1:
+                # SatelliteTypeMaskVal(SatelliteType.GPS)
+                # SatelliteTypeMaskVal('GPS')
+                if isinstance(args[0], SatelliteType) or isinstance(args[0], str):
+                    args = (SatelliteTypeMask.to_bit_mask(args),)
+                # SatelliteTypeMaskVal([SatelliteType.GPS, SatelliteType.GALILEO])
+                # SatelliteTypeMaskVal(['GPS', 'GALILEO'])
+                elif isinstance(args[0], Iterable):
+                    args = (SatelliteTypeMask.to_bit_mask(args[0])),
+                # SatelliteTypeMaskVal(bit_mask)
+                else:
+                    pass
+            # Check if the user specified one or more SatelliteTypes values, and convert to a mask:
+            #   SatelliteTypeMaskVal(SatelliteType.GPS, SatelliteType.GALILEO)
+            #   SatelliteTypeMaskVal('GPS', 'GALILEO')
+            elif len(args) > 1:
+                args = (SatelliteTypeMask.to_bit_mask(args),)
+
+            return super().__new__(cls, *args, **kwargs)
+
+        def __repr__(self):
+            return f'{self.__class__.__name__}(value=0x{self.value:02x} ' \
+                   f'({SatelliteTypeMask.bit_mask_to_string(self.value)}))'
+
     class CoarseOrientation(NamedTuple):
         """!
         @brief The orientation of a device with respect to the vehicle body axes.
@@ -457,6 +490,14 @@ class GnssLeverArmConfig(_conf_gen.Point3F):
 class OutputLeverArmConfig(_conf_gen.Point3F):
     """!
     @brief The location of the desired output location with respect to the vehicle body frame (in meters).
+    """
+    pass
+
+
+@_conf_gen.create_config_class(ConfigType.ENABLED_GNSS_SYSTEMS, _conf_gen.UInt32Construct)
+class EnabledGNSSSystemsConfig(_conf_gen.SatelliteTypeMaskVal):
+    """!
+    @brief A bitmask indicating which GNSS constellations are enabled.
     """
     pass
 

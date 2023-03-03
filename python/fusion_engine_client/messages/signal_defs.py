@@ -1,4 +1,5 @@
 import re
+from typing import List, Union
 
 import numpy as np
 
@@ -32,6 +33,41 @@ SatelliteTypeChar = {
 }
 
 SatelliteTypeCharReverse = {v: k for k, v in SatelliteTypeChar.items()}
+
+
+class SatelliteTypeMask(IntEnum):
+    GPS = (1 << SatelliteType.GPS)
+    GLONASS = (1 << SatelliteType.GLONASS)
+    LEO = (1 << SatelliteType.LEO)
+    GALILEO = (1 << SatelliteType.GALILEO)
+    BEIDOU = (1 << SatelliteType.BEIDOU)
+    QZSS = (1 << SatelliteType.QZSS)
+    MIXED = (1 << SatelliteType.MIXED)
+    SBAS = (1 << SatelliteType.SBAS)
+    IRNSS = (1 << SatelliteType.IRNSS)
+
+    @classmethod
+    def to_bit_mask(cls, systems: List[Union[SatelliteType, str]]):
+        mask = 0
+        for system in systems:
+            if isinstance(system, str):
+                mask |= getattr(cls, system.upper())
+            else:
+                mask |= (1 << int(system))
+        return mask
+
+    @classmethod
+    def bit_mask_to_systems(cls, mask: int):
+        systems = []
+        for system in SatelliteType:
+            if (mask & (1 << int(system))) != 0:
+                systems.append(system)
+        return systems
+
+    @classmethod
+    def bit_mask_to_string(cls, mask: int):
+        systems = cls.bit_mask_to_systems(mask)
+        return ', '.join(str(s) for s in systems)
 
 
 class SignalType(IntEnum):
