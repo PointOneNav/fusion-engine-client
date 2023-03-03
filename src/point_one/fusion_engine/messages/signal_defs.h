@@ -137,6 +137,8 @@ static constexpr uint32_t SATELLITE_TYPE_MASK_SBAS =
 static constexpr uint32_t SATELLITE_TYPE_MASK_IRNSS =
     (1UL << static_cast<uint8_t>(SatelliteType::IRNSS));
 
+static constexpr uint32_t SATELLITE_TYPE_MASK_ALL = 0xFFFFFFFF;
+
 /**
  * @brief Convert a @ref SatelliteType to a corresponding constellation control
  *        bitmask value.

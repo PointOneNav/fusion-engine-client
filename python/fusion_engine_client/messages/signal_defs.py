@@ -46,6 +46,8 @@ class SatelliteTypeMask(IntEnum):
     SBAS = (1 << SatelliteType.SBAS)
     IRNSS = (1 << SatelliteType.IRNSS)
 
+    ALL = 0xFFFFFFFF
+
     @classmethod
     def to_bit_mask(cls, systems: List[Union[SatelliteType, str]]):
         mask = 0
