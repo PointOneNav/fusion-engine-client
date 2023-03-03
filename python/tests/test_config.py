@@ -8,6 +8,7 @@ from fusion_engine_client.messages import (
     DeviceCourseOrientationConfig, Direction,
     GNSSLeverArmConfig,
     EnabledGNSSSystemsConfig, SatelliteType, SatelliteTypeMask,
+    EnabledGNSSFrequencyBandsConfig, FrequencyBand, FrequencyBandMask,
     AppliedSpeedType, SteeringType, VehicleDetailsConfig, VehicleModel, WheelConfig, WheelSensorType,
     HardwareTickConfig, TickDirection, TickMode,
     Uart1BaudConfig,
@@ -126,3 +127,18 @@ def test_satellite_type_mask():
     assert EnabledGNSSSystemsConfig(system_strs).value == expected_mask
     assert EnabledGNSSSystemsConfig(*system_strs).value == expected_mask
     assert EnabledGNSSSystemsConfig(s.lower() for s in system_strs).value == expected_mask
+
+
+def test_frequency_band_mask():
+    assert EnabledGNSSFrequencyBandsConfig(FrequencyBand.L1).value == FrequencyBandMask.L1
+    assert EnabledGNSSFrequencyBandsConfig('L1').value == FrequencyBandMask.L1
+    assert EnabledGNSSFrequencyBandsConfig('L1').value == FrequencyBandMask.L1
+
+    bands = [FrequencyBand.L1, FrequencyBand.L5]
+    band_strs = ['L1', 'L5']
+    expected_mask = FrequencyBandMask.L1 | FrequencyBandMask.L5
+    assert EnabledGNSSFrequencyBandsConfig(bands).value == expected_mask
+    assert EnabledGNSSFrequencyBandsConfig(*bands).value == expected_mask
+    assert EnabledGNSSFrequencyBandsConfig(band_strs).value == expected_mask
+    assert EnabledGNSSFrequencyBandsConfig(*band_strs).value == expected_mask
+    assert EnabledGNSSFrequencyBandsConfig(s.lower() for s in band_strs).value == expected_mask

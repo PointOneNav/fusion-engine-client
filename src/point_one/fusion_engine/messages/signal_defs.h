@@ -194,6 +194,172 @@ constexpr uint32_t ToBitMask(SatelliteType first, Args... others) {
 
 /** @} */
 
+////////////////////////////////////////////////////////////////////////////////
+// FrequencyBand
+////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * @name GNSS Constellation (System) Definitions
+ * @{
+ */
+
+/**
+ * @brief GNSS frequency band definitions.
+ */
+enum class FrequencyBand : uint8_t {
+  UNKNOWN = 0,
+  /**
+   * L1 band = 1561.098 MHz (BeiDou B1) -> 1602.0 (GLONASS G1)
+   * Includes: GPS/QZSS L1, Galileo E1 (same as GPS L1), BeiDou B1I and B1C
+   * (same as GPS L1), GLONASS G1
+   */
+  L1 = 1,
+  /**
+   * L2 band = 1202.025 MHz (G3) -> 1248.06 (G2)
+   * Includes: GPS L2, Galileo E5b, BeiDou B2I (same as Galileo E5b),
+   * GLONASS G2 & G3
+   */
+  L2 = 2,
+  /**
+   * L5 band = 1176.45 MHz (L5)
+   * Includes: GPS/QZSS L5, Galileo E5a, BeiDou B2a, IRNSS L5
+   */
+  L5 = 5,
+  /**
+   * L2 band = 1262.52 MHz (B3) -> 1278.75 (QZSS L6)
+   * Includes: Galileo E6, BeiDou B3, QZSS L6
+   */
+  L6 = 6,
+  MAX_VALUE = L6,
+};
+
+/**
+ * @brief Get a human-friendly string name for the specified @ref FrequencyBand.
+ * @ingroup enum_definitions
+ *
+ * @param type The desired frequency band.
+ *
+ * @return The corresponding string name.
+ */
+inline const char* to_string(FrequencyBand type) {
+  switch (type) {
+    case FrequencyBand::UNKNOWN:
+      return "Unknown";
+
+    case FrequencyBand::L1:
+      return "L1";
+
+    case FrequencyBand::L2:
+      return "L2";
+
+    case FrequencyBand::L5:
+      return "L5";
+
+    case FrequencyBand::L6:
+      return "L6";
+
+    default:
+      return "Invalid Frequency Band";
+  }
+}
+
+/**
+ * @brief @ref FrequencyBand stream operator.
+ * @ingroup enum_definitions
+ */
+inline std::ostream& operator<<(std::ostream& stream, FrequencyBand type) {
+  stream << to_string(type) << " (" << (int)type << ")";
+  return stream;
+}
+
+/** @} */
+
+/**
+ * @defgroup freq_band_masks @ref FrequencyBand Bitmask Support
+ * @ingroup config_types
+ *
+ * These values can be used to specify a bitmask for controlling enabled GNSS
+ * frequency bands. The bit locations are equal to the values set by @ref
+ * FrequencyBand.
+ *
+ * For example, the mask 0x22 enables L1 and L5. You can create that mask with
+ * the `FREQUENCY_BAND_MASK_*` constants:
+ * ```cpp
+ * uint16_t mask = FREQUENCY_BAND_MASK_L1 | FREQUENCY_BAND_MASK_L5;
+ * ```
+ *
+ * or by calling the @ref ToBitMask(FrequencyBand) helper function:
+ * ```cpp
+ * uint16_t mask = ToBitMask(FrequencyBand::L1, FrequencyBand::L5);
+ * ```
+ *
+ * @{
+ */
+
+static constexpr uint16_t FREQUENCY_BAND_MASK_L1 =
+    (1UL << static_cast<uint8_t>(FrequencyBand::L1));
+static constexpr uint16_t FREQUENCY_BAND_MASK_L2 =
+    (1UL << static_cast<uint8_t>(FrequencyBand::L2));
+static constexpr uint16_t FREQUENCY_BAND_MASK_L5 =
+    (1UL << static_cast<uint8_t>(FrequencyBand::L5));
+static constexpr uint16_t FREQUENCY_BAND_MASK_L6 =
+    (1UL << static_cast<uint8_t>(FrequencyBand::L6));
+
+static constexpr uint16_t FREQUENCY_BAND_MASK_ALL = 0xFFFF;
+
+/**
+ * @brief Convert a @ref FrequencyBand to a corresponding frequency control
+ *        bitmask value.
+ *
+ * For example:
+ *
+ * ```cpp
+ * uint16_t mask = ToBitMask(FrequencyBand::L1);
+ * ```
+ *
+ * generates the following bitmask:
+ *
+ * ```cpp
+ * uint16_t mask = (1UL << static_cast<uint8_t>(FrequencyBand::L1));
+ * ```
+ *
+ * @param type The desired frequency band.
+ *
+ * @return The corresponding bitmask.
+ */
+constexpr uint16_t ToBitMask(FrequencyBand type) {
+  return (1U << (static_cast<uint8_t>(type)));
+}
+
+/**
+ * @brief Convert two or more @ref FrequencyBand values to a bitmask.
+ *
+ * For example:
+ *
+ * ```cpp
+ * uint16_t mask = ToBitMask(FrequencyBand::L1, FrequencyBand::L5);
+ * ```
+ *
+ * generates the following bitmask:
+ *
+ * ```cpp
+ * uint16_t mask = (1UL << static_cast<uint8_t>(FrequencyBand::L1)) |
+ *                 (1UL << static_cast<uint8_t>(FrequencyBand::L5));
+ * ```
+ *
+ * @tparam Args The type of the `others` values (@ref FrequencyBand)
+ * @param first The first value.
+ * @param others One or more additional values.
+ *
+ * @return The corresponding bitmask.
+ */
+template <typename... Args>
+constexpr uint16_t ToBitMask(FrequencyBand first, Args... others) {
+  return ToBitMask(first) | ToBitMask(others...);
+}
+
+/** @} */
+
 } // namespace messages
 } // namespace fusion_engine
 } // namespace point_one

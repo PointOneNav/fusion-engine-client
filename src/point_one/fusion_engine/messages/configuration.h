@@ -99,6 +99,13 @@ enum class ConfigType : uint16_t {
   ENABLED_GNSS_SYSTEMS = 50,
 
   /**
+   * A bitmask indicating which GNSS frequency bands are enabled.
+   *
+   * Payload format: `uint16_t` (see @ref freq_band_masks)
+   */
+  ENABLED_GNSS_FREQUENCY_BANDS = 51,
+
+  /**
    * Configure the UART1 serial baud rate (in bits/second).
    *
    * Payload format: `uint32_t`
