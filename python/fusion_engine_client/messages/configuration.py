@@ -676,10 +676,13 @@ class GetConfigMessage(MessagePayload):
     )
 
     def __init__(self,
-                 config_type: ConfigType = ConfigType.INVALID,
+                 config_type: Union[ConfigType, _ConfigClassGenerator.ConfigClass] = ConfigType.INVALID,
                  request_source: ConfigurationSource = ConfigurationSource.ACTIVE):
         self.request_source = request_source
-        self.config_type = config_type
+        if isinstance(config_type, ConfigType):
+            self.config_type = config_type
+        else:
+            self.config_type = config_type.GetType()
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         values = dict(self.__dict__)
