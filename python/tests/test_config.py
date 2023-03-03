@@ -2,7 +2,7 @@ from fusion_engine_client.utils import trace as logging
 
 import pytest
 from fusion_engine_client.messages import (ConfigResponseMessage, ConfigType,
-                                           Direction, GnssLeverArmConfig,
+                                           Direction, GNSSLeverArmConfig,
                                            InvalidConfig, MessageRateResponse,
                                            SetConfigMessage, Uart1BaudConfig,
                                            VehicleModel)
@@ -33,7 +33,7 @@ def test_set_config():
     set_msg = SetConfigMessage(HardwareTickConfig(TickMode.OFF, TickDirection.OFF, 0.1))
     assert len(set_msg.pack()) == BASE_SIZE + 8
 
-    set_msg = SetConfigMessage(GnssLeverArmConfig(1, 2, 3))
+    set_msg = SetConfigMessage(GNSSLeverArmConfig(1, 2, 3))
     assert len(set_msg.pack()) == BASE_SIZE + 12
 
     set_msg = SetConfigMessage()
@@ -73,7 +73,7 @@ def test_bad_set_config():
 def test_config_data():
     BASE_SIZE = 12
     data_msg = ConfigResponseMessage()
-    data_msg.config_object = GnssLeverArmConfig(1, 2, 3)
+    data_msg.config_object = GNSSLeverArmConfig(1, 2, 3)
     assert len(data_msg.pack()) == BASE_SIZE + 12
 
     data_msg = ConfigResponseMessage()

@@ -479,11 +479,14 @@ class DeviceLeverArmConfig(_conf_gen.Point3F):
 
 
 @_conf_gen.create_config_class(ConfigType.GNSS_LEVER_ARM, _conf_gen.Point3FConstruct)
-class GnssLeverArmConfig(_conf_gen.Point3F):
+class GNSSLeverArmConfig(_conf_gen.Point3F):
     """!
     @brief The location of the GNSS antenna with respect to the vehicle body frame (in meters).
     """
     pass
+
+# Alias for convenience.
+GnssLeverArmConfig = GNSSLeverArmConfig
 
 
 @_conf_gen.create_config_class(ConfigType.OUTPUT_LEVER_ARM, _conf_gen.Point3FConstruct)
