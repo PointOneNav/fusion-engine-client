@@ -678,8 +678,8 @@ class GetConfigMessage(MessagePayload):
     def __init__(self,
                  config_type: ConfigType = ConfigType.INVALID,
                  request_source: ConfigurationSource = ConfigurationSource.ACTIVE):
-        self.request_source = config_type
-        self.config_type = request_source
+        self.request_source = request_source
+        self.config_type = config_type
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         values = dict(self.__dict__)
