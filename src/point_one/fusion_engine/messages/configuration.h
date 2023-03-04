@@ -92,6 +92,20 @@ enum class ConfigType : uint16_t {
   HARDWARE_TICK_CONFIG = 22,
 
   /**
+   * A bitmask indicating which GNSS constellations are enabled.
+   *
+   * Payload format: `uint32_t` (see @ref sat_type_masks)
+   */
+  ENABLED_GNSS_SYSTEMS = 50,
+
+  /**
+   * A bitmask indicating which GNSS frequency bands are enabled.
+   *
+   * Payload format: `uint32_t` (see @ref freq_band_masks)
+   */
+  ENABLED_GNSS_FREQUENCY_BANDS = 51,
+
+  /**
    * Configure the UART1 serial baud rate (in bits/second).
    *
    * Payload format: `uint32_t`
@@ -425,7 +439,7 @@ struct alignas(4) ConfigResponseMessage : public MessagePayload {
 };
 
 /**************************************************************************/ /**
- * @name Configuration Settings Type Definitions
+ * @defgroup config_types Configuration Settings Type Definitions
  * @{
  ******************************************************************************/
 

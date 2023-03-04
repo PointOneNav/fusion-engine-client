@@ -456,7 +456,7 @@ class MixedLogReader(object):
                             'Processed %d/%d bytes (%.1f%%). [elapsed=%.1f sec, rate=%.1f MB/s]' %
                             (self.total_bytes_read, file_size,
                              100.0 if file_size == 0 else 100.0 * float(self.total_bytes_read) / file_size,
-                             elapsed_sec, self.total_bytes_read / elapsed_sec / 1e6))
+                             elapsed_sec, (self.total_bytes_read / elapsed_sec / 1e6) if elapsed_sec > 0 else np.nan))
             self.last_print_bytes = self.total_bytes_read
 
     def filter_in_place(self, key, clear_existing: bool = False):

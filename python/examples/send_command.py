@@ -61,6 +61,9 @@ The path to the target FusionEngine device:
 
     # Specify the message to be sent.
     message = ResetRequest(reset_mask=ResetRequest.HOT_START)
+    # message = SetConfigMessage(GNSSLeverArmConfig(0.4, 0.0, 1.2))
+    # message = GetConfigMessage(GNSSLeverArmConfig)
+    # message = SetConfigMessage(EnabledGNSSSystemsConfig(SatelliteType.GPS, SatelliteType.GALILEO))
     # message = SetMessageRate(output_interface=InterfaceID(TransportType.SERIAL, 1),
     #                          protocol=ProtocolType.FUSION_ENGINE,
     #                          message_id=MessageType.POSE,
@@ -153,7 +156,7 @@ The path to the target FusionEngine device:
 
         messages = decoder.on_data(received_data)
         for header, message, encoded_data in messages:
-            if isinstance(message, CommandResponseMessage):
+            if isinstance(message, (CommandResponseMessage, ConfigResponseMessage)):
                 logger.info("Received response:\n%s" % str(message))
                 logger.debug(bytes_to_hex(encoded_data, bytes_per_row=16, bytes_per_col=2))
                 response = message.response
