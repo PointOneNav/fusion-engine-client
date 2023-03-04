@@ -1,7 +1,7 @@
 import re
-from typing import NamedTuple, Optional, List
+from typing import Iterable, NamedTuple, Optional, List
 
-from construct import (Struct, Float32l, Int32ul, Int16ul, Int8ul, Padding, this, Flag, Bytes, Array)
+from construct import (Struct, Float32l, Int64ul, Int32ul, Int16ul, Int8ul, Padding, this, Flag, Bytes, Array)
 
 from ..utils.construct_utils import NamedTupleAdapter, AutoEnum
 from ..utils.enum_utils import IntEnum
@@ -27,6 +27,8 @@ class ConfigType(IntEnum):
     VEHICLE_DETAILS = 20
     WHEEL_CONFIG = 21
     HARDWARE_TICK_CONFIG = 22
+    ENABLED_GNSS_SYSTEMS = 50
+    ENABLED_GNSS_FREQUENCY_BANDS = 51
     UART1_BAUD = 256
     UART2_BAUD = 257
     UART1_OUTPUT_DIAGNOSTICS_MESSAGES = 258
@@ -296,9 +298,21 @@ class _ConfigClassGenerator:
         """
         value: int
 
-    # Construct to serialize 32 bit IntegerVal types.
+    # Construct to serialize different sized IntegerVal types.
+    UInt64Construct = Struct(
+        "value" / Int64ul,
+    )
+
     UInt32Construct = Struct(
         "value" / Int32ul,
+    )
+
+    UInt16Construct = Struct(
+        "value" / Int16ul,
+    )
+
+    UInt8Construct = Struct(
+        "value" / Int8ul,
     )
 
     class BoolVal(NamedTuple):
@@ -311,6 +325,70 @@ class _ConfigClassGenerator:
     BoolConstruct = Struct(
         "value" / Flag,
     )
+
+    class SatelliteTypeMaskVal(IntegerVal):
+        """!
+        @brief Bitmask specifying enabled @ref SatelliteType%s.
+        """
+        value: int
+
+        def __new__(cls, *args, **kwargs):
+            # Check if the user specified a single SatelliteType or a list of values, and convert to a mask.
+            if len(args) == 1:
+                # SatelliteTypeMaskVal(SatelliteType.GPS)
+                # SatelliteTypeMaskVal('GPS')
+                if isinstance(args[0], SatelliteType) or isinstance(args[0], str):
+                    args = (SatelliteTypeMask.to_bit_mask(args),)
+                # SatelliteTypeMaskVal([SatelliteType.GPS, SatelliteType.GALILEO])
+                # SatelliteTypeMaskVal(['GPS', 'GALILEO'])
+                elif isinstance(args[0], Iterable):
+                    args = (SatelliteTypeMask.to_bit_mask(args[0])),
+                # SatelliteTypeMaskVal(bit_mask)
+                else:
+                    pass
+            # Check if the user specified one or more SatelliteTypes values, and convert to a mask:
+            #   SatelliteTypeMaskVal(SatelliteType.GPS, SatelliteType.GALILEO)
+            #   SatelliteTypeMaskVal('GPS', 'GALILEO')
+            elif len(args) > 1:
+                args = (SatelliteTypeMask.to_bit_mask(args),)
+
+            return super().__new__(cls, *args, **kwargs)
+
+        def __repr__(self):
+            return f'{self.__class__.__name__}(value=0x{self.value:02x} ' \
+                   f'({SatelliteTypeMask.bit_mask_to_string(self.value)}))'
+
+    class FrequencyBandMaskVal(IntegerVal):
+        """!
+        @brief Bitmask specifying enabled @ref FrequencyBand%s.
+        """
+        value: int
+
+        def __new__(cls, *args, **kwargs):
+            # Check if the user specified a single FrequencyBand or a list of values, and convert to a mask.
+            if len(args) == 1:
+                # FrequencyBandMaskVal(FrequencyBand.L1)
+                # FrequencyBandMaskVal('L1')
+                if isinstance(args[0], FrequencyBand) or isinstance(args[0], str):
+                    args = (FrequencyBandMask.to_bit_mask(args),)
+                # FrequencyBandMaskVal([FrequencyBand.L1, FrequencyBand.L5])
+                # FrequencyBandMaskVal(['L1', 'L5'])
+                elif isinstance(args[0], Iterable):
+                    args = (FrequencyBandMask.to_bit_mask(args[0])),
+                # FrequencyBandMaskVal(bit_mask)
+                else:
+                    pass
+            # Check if the user specified one or more FrequencyBands values, and convert to a mask:
+            #   FrequencyBandMaskVal(FrequencyBand.L1, FrequencyBand.L5)
+            #   FrequencyBandMaskVal('L1', 'L5')
+            elif len(args) > 1:
+                args = (FrequencyBandMask.to_bit_mask(args),)
+
+            return super().__new__(cls, *args, **kwargs)
+
+        def __repr__(self):
+            return f'{self.__class__.__name__}(value=0x{self.value:02x} ' \
+                   f'({FrequencyBandMask.bit_mask_to_string(self.value)}))'
 
     class CoarseOrientation(NamedTuple):
         """!
@@ -446,17 +524,36 @@ class DeviceLeverArmConfig(_conf_gen.Point3F):
 
 
 @_conf_gen.create_config_class(ConfigType.GNSS_LEVER_ARM, _conf_gen.Point3FConstruct)
-class GnssLeverArmConfig(_conf_gen.Point3F):
+class GNSSLeverArmConfig(_conf_gen.Point3F):
     """!
     @brief The location of the GNSS antenna with respect to the vehicle body frame (in meters).
     """
     pass
+
+# Alias for convenience.
+GnssLeverArmConfig = GNSSLeverArmConfig
 
 
 @_conf_gen.create_config_class(ConfigType.OUTPUT_LEVER_ARM, _conf_gen.Point3FConstruct)
 class OutputLeverArmConfig(_conf_gen.Point3F):
     """!
     @brief The location of the desired output location with respect to the vehicle body frame (in meters).
+    """
+    pass
+
+
+@_conf_gen.create_config_class(ConfigType.ENABLED_GNSS_SYSTEMS, _conf_gen.UInt32Construct)
+class EnabledGNSSSystemsConfig(_conf_gen.SatelliteTypeMaskVal):
+    """!
+    @brief A bitmask indicating which GNSS constellations are enabled.
+    """
+    pass
+
+
+@_conf_gen.create_config_class(ConfigType.ENABLED_GNSS_FREQUENCY_BANDS, _conf_gen.UInt32Construct)
+class EnabledGNSSFrequencyBandsConfig(_conf_gen.FrequencyBandMaskVal):
+    """!
+    @brief A bitmask indicating which GNSS frequency bands are enabled.
     """
     pass
 
@@ -635,10 +732,13 @@ class GetConfigMessage(MessagePayload):
     )
 
     def __init__(self,
-                 config_type: ConfigType = ConfigType.INVALID,
+                 config_type: Union[ConfigType, _ConfigClassGenerator.ConfigClass] = ConfigType.INVALID,
                  request_source: ConfigurationSource = ConfigurationSource.ACTIVE):
-        self.request_source = config_type
-        self.config_type = request_source
+        self.request_source = request_source
+        if isinstance(config_type, ConfigType):
+            self.config_type = config_type
+        else:
+            self.config_type = config_type.GetType()
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         values = dict(self.__dict__)
