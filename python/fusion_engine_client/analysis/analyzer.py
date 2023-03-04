@@ -1077,12 +1077,18 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                                   remove_nan_times=False, **self.params)
 
         wheel_data = result[wheel_measurement_type.MESSAGE_TYPE]
+        wheel_data_signed = False
         if len(wheel_data.p1_time) == 0:
             wheel_data = None
+        elif type == 'speed':
+            wheel_data_signed = np.any(wheel_data.is_signed)
 
         vehicle_data = result[vehicle_measurement_type.MESSAGE_TYPE]
+        vehicle_data_signed = False
         if len(vehicle_data.p1_time) == 0:
             vehicle_data = None
+        elif type == 'speed':
+            vehicle_data_signed = np.any(vehicle_data.is_signed)
 
         if wheel_data is None and vehicle_data is None:
             self.logger.info('No wheel %s data available. Skipping plot.' % type)
@@ -1097,11 +1103,10 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         if type == 'tick':
             titles = ['%s Tick Count' % speed_type, '%s Tick Rate' % speed_type, 'Gear/Direction']
         else:
-            if (speed_type == 'Wheel' and not np.any(wheel_data.is_signed)) or \
-               (speed_type == 'Vehicle' and not np.any(vehicle_data.is_signed)):
-                titles = ['%s Speed (abs)' % speed_type, 'Gear/Direction']
+            if wheel_data_signed or vehicle_data_signed:
+                titles = ['%s Speed (Signed)' % speed_type, 'Gear/Direction']
             else:
-                titles = ['%s Speed' % speed_type, 'Gear/Direction']
+                titles = ['%s Speed (Unsigned)' % speed_type, 'Gear/Direction']
 
         figure = make_subplots(rows=len(titles), cols=1, print_grid=False, shared_xaxes=True, subplot_titles=titles)
 
@@ -1210,7 +1215,11 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             if len(pose_data.p1_time) != 0 and np.any(~np.isnan(pose_data.velocity_body_mps[0, :])):
                 nav_engine_p1_time = pose_data.p1_time
                 nav_engine_speed_mps = pose_data.velocity_body_mps[0, :]
-                nav_engine_speed_name = 'Forward Velocity (Nav Engine)'
+                if wheel_data_signed or vehicle_data_signed:
+                    nav_engine_speed_name = 'Forward Velocity (Nav Engine)'
+                else:
+                    nav_engine_speed_mps = np.abs(nav_engine_speed_mps)
+                    nav_engine_speed_name = '|Forward Velocity| (Nav Engine)'
             # Otherwise, if we have pose aux messages, read those and use the ENU velocity to estimate speed. Since we
             # don't know attitude, the best we can do is estimate 3D speed and assume it's primarily in the along-track
             # direction. This will also be an absolute value, so may not match the wheel data if it is signed and the
@@ -1228,17 +1237,10 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             if nav_engine_speed_mps is not None:
                 time = nav_engine_p1_time - float(self.t0)
                 text = ["P1: %.3f sec" % t for t in nav_engine_p1_time]
-                if (wheel_data is not None and not np.any(wheel_data.is_signed)) or \
-                   (vehicle_data is not None and not np.any(vehicle_data.is_signed)):
-                    figure.add_trace(go.Scattergl(x=time, y=abs(nav_engine_speed_mps), text=text,
-                                                name=nav_engine_speed_name, hoverlabel={'namelength': -1},
-                                                mode='lines', line={'color': 'black', 'dash': 'dash'}),
-                                    1, 1)
-                else:
-                    figure.add_trace(go.Scattergl(x=time, y=nav_engine_speed_mps, text=text,
-                                                name=nav_engine_speed_name, hoverlabel={'namelength': -1},
-                                                mode='lines', line={'color': 'black', 'dash': 'dash'}),
-                                    1, 1)
+                figure.add_trace(go.Scattergl(x=time, y=nav_engine_speed_mps, text=text,
+                                              name=nav_engine_speed_name, hoverlabel={'namelength': -1},
+                                              mode='lines', line={'color': 'black', 'dash': 'dash'}),
+                                 1, 1)
 
         if wheel_data is not None:
             abs_time_sec = self._get_measurement_time(wheel_data, wheel_time_source)

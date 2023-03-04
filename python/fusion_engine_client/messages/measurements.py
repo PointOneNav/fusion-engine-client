@@ -190,7 +190,7 @@ class WheelSpeedMeasurement(MessagePayload):
 Wheel Speed Measurement @ {str(self.timestamps.p1_time)}
   {str(self.timestamps).replace(newline, '  ' + newline)}
   Gear: {str(self.gear)}
-  Is signed: {self.is_signed}
+  Type: {'signed' if self.is_signed else 'unsigned'}
   Front left: {self.front_left_speed_mps:.2f} m/s
   Front right: {self.front_right_speed_mps:.2f} m/s
   Rear left: {self.rear_left_speed_mps:.2f} m/s
@@ -295,7 +295,7 @@ class VehicleSpeedMeasurement(MessagePayload):
 Vehicle Speed Measurement @ {str(self.timestamps.p1_time)}
   {str(self.timestamps).replace(newline, '  ' + newline)}
   Gear: {str(self.gear)}
-  Is Signed: {self.is_signed}
+  Type: {'signed' if self.is_signed else 'unsigned'}
   Speed: {self.vehicle_speed_mps:.2f} m/s"""
 
     @classmethod
