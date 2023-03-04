@@ -550,7 +550,7 @@ class EnabledGNSSSystemsConfig(_conf_gen.SatelliteTypeMaskVal):
     pass
 
 
-@_conf_gen.create_config_class(ConfigType.ENABLED_GNSS_FREQUENCY_BANDS, _conf_gen.UInt16Construct)
+@_conf_gen.create_config_class(ConfigType.ENABLED_GNSS_FREQUENCY_BANDS, _conf_gen.UInt32Construct)
 class EnabledGNSSFrequencyBandsConfig(_conf_gen.FrequencyBandMaskVal):
     """!
     @brief A bitmask indicating which GNSS frequency bands are enabled.

@@ -90,7 +90,7 @@ class FrequencyBandMask(IntEnum):
     L5 = (1 << FrequencyBand.L5)
     L6 = (1 << FrequencyBand.L6)
 
-    ALL = 0xFFFF
+    ALL = 0xFFFFFFFF
 
     @classmethod
     def to_bit_mask(cls, frequencies: List[Union[FrequencyBand, str]]):

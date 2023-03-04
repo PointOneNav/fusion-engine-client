@@ -285,27 +285,27 @@ inline std::ostream& operator<<(std::ostream& stream, FrequencyBand type) {
  * For example, the mask 0x22 enables L1 and L5. You can create that mask with
  * the `FREQUENCY_BAND_MASK_*` constants:
  * ```cpp
- * uint16_t mask = FREQUENCY_BAND_MASK_L1 | FREQUENCY_BAND_MASK_L5;
+ * uint32_t mask = FREQUENCY_BAND_MASK_L1 | FREQUENCY_BAND_MASK_L5;
  * ```
  *
  * or by calling the @ref ToBitMask(FrequencyBand) helper function:
  * ```cpp
- * uint16_t mask = ToBitMask(FrequencyBand::L1, FrequencyBand::L5);
+ * uint32_t mask = ToBitMask(FrequencyBand::L1, FrequencyBand::L5);
  * ```
  *
  * @{
  */
 
-static constexpr uint16_t FREQUENCY_BAND_MASK_L1 =
+static constexpr uint32_t FREQUENCY_BAND_MASK_L1 =
     (1UL << static_cast<uint8_t>(FrequencyBand::L1));
-static constexpr uint16_t FREQUENCY_BAND_MASK_L2 =
+static constexpr uint32_t FREQUENCY_BAND_MASK_L2 =
     (1UL << static_cast<uint8_t>(FrequencyBand::L2));
-static constexpr uint16_t FREQUENCY_BAND_MASK_L5 =
+static constexpr uint32_t FREQUENCY_BAND_MASK_L5 =
     (1UL << static_cast<uint8_t>(FrequencyBand::L5));
-static constexpr uint16_t FREQUENCY_BAND_MASK_L6 =
+static constexpr uint32_t FREQUENCY_BAND_MASK_L6 =
     (1UL << static_cast<uint8_t>(FrequencyBand::L6));
 
-static constexpr uint16_t FREQUENCY_BAND_MASK_ALL = 0xFFFF;
+static constexpr uint32_t FREQUENCY_BAND_MASK_ALL = 0xFFFFFFFF;
 
 /**
  * @brief Convert a @ref FrequencyBand to a corresponding frequency control
@@ -314,20 +314,20 @@ static constexpr uint16_t FREQUENCY_BAND_MASK_ALL = 0xFFFF;
  * For example:
  *
  * ```cpp
- * uint16_t mask = ToBitMask(FrequencyBand::L1);
+ * uint32_t mask = ToBitMask(FrequencyBand::L1);
  * ```
  *
  * generates the following bitmask:
  *
  * ```cpp
- * uint16_t mask = (1UL << static_cast<uint8_t>(FrequencyBand::L1));
+ * uint32_t mask = (1UL << static_cast<uint8_t>(FrequencyBand::L1));
  * ```
  *
  * @param type The desired frequency band.
  *
  * @return The corresponding bitmask.
  */
-constexpr uint16_t ToBitMask(FrequencyBand type) {
+constexpr uint32_t ToBitMask(FrequencyBand type) {
   return (1U << (static_cast<uint8_t>(type)));
 }
 
@@ -337,13 +337,13 @@ constexpr uint16_t ToBitMask(FrequencyBand type) {
  * For example:
  *
  * ```cpp
- * uint16_t mask = ToBitMask(FrequencyBand::L1, FrequencyBand::L5);
+ * uint32_t mask = ToBitMask(FrequencyBand::L1, FrequencyBand::L5);
  * ```
  *
  * generates the following bitmask:
  *
  * ```cpp
- * uint16_t mask = (1UL << static_cast<uint8_t>(FrequencyBand::L1)) |
+ * uint32_t mask = (1UL << static_cast<uint8_t>(FrequencyBand::L1)) |
  *                 (1UL << static_cast<uint8_t>(FrequencyBand::L5));
  * ```
  *
@@ -354,7 +354,7 @@ constexpr uint16_t ToBitMask(FrequencyBand type) {
  * @return The corresponding bitmask.
  */
 template <typename... Args>
-constexpr uint16_t ToBitMask(FrequencyBand first, Args... others) {
+constexpr uint32_t ToBitMask(FrequencyBand first, Args... others) {
   return ToBitMask(first) | ToBitMask(others...);
 }
 

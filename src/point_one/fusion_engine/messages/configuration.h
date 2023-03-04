@@ -101,7 +101,7 @@ enum class ConfigType : uint16_t {
   /**
    * A bitmask indicating which GNSS frequency bands are enabled.
    *
-   * Payload format: `uint16_t` (see @ref freq_band_masks)
+   * Payload format: `uint32_t` (see @ref freq_band_masks)
    */
   ENABLED_GNSS_FREQUENCY_BANDS = 51,
 
