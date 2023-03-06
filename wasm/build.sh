@@ -1,6 +1,6 @@
-#!/ bin / bash
+#!/bin/bash
 
-set - e
+set -e
 
     ################################################################################
 #Set Directory Locations
@@ -11,11 +11,11 @@ set - e
 #Reference:
 #- https: //stackoverflow.com/questions/59895/how-to-get-the-source-directory-of-a-bash-script-from-within-the-script-itself
     get_parent_dir() {
-  local SOURCE = "${BASH_SOURCE[0]}" while[-h "$SOURCE"];
-  do
-        local DIR="$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )"
-        SOURCE="$(readlink "$SOURCE")"
-        [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
+    local SOURCE="${BASH_SOURCE[0]}"
+    while [ -h "$SOURCE" ]; do
+      local DIR="$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )"
+      SOURCE="$(readlink "$SOURCE")"
+      [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
     done
 
     local PARENT_DIR="$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )"
