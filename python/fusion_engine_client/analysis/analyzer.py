@@ -1216,10 +1216,10 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                 nav_engine_p1_time = pose_data.p1_time
                 nav_engine_speed_mps = pose_data.velocity_body_mps[0, :]
                 if wheel_data_signed or vehicle_data_signed:
-                    nav_engine_speed_name = 'Forward Velocity (Nav Engine)'
+                    nav_engine_speed_name = 'Speed Estimate (Nav Engine)'
                 else:
                     nav_engine_speed_mps = np.abs(nav_engine_speed_mps)
-                    nav_engine_speed_name = '|Forward Velocity| (Nav Engine)'
+                    nav_engine_speed_name = '|Speed Estimate| (Nav Engine)'
             # Otherwise, if we have pose aux messages, read those and use the ENU velocity to estimate speed. Since we
             # don't know attitude, the best we can do is estimate 3D speed and assume it's primarily in the along-track
             # direction. This will also be an absolute value, so may not match the wheel data if it is signed and the
@@ -1232,7 +1232,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                                         'May not match wheel speeds when going backward.')
                     nav_engine_p1_time = pose_aux_data.p1_time
                     nav_engine_speed_mps = np.linalg.norm(pose_aux_data.velocity_enu_mps, axis=0)
-                    nav_engine_speed_name = '|Vehicle 3D Speed| (Nav Engine)'
+                    nav_engine_speed_name = '|3D Speed Estimate| (Nav Engine)'
 
             if nav_engine_speed_mps is not None:
                 time = nav_engine_p1_time - float(self.t0)
