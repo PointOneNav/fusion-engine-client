@@ -54,7 +54,8 @@ Payload: Reset Request [mask=0x01000fff]
     logger = logging.getLogger('point_one.fusion_engine')
 
     # Concatenate all hex characters and convert to bytes.
-    contents_str = ''.join(options.contents).replace(' ', '')
+    byte_str_array = [b if len(b) == 2 else f'0{b}' for b in options.contents]
+    contents_str = ''.join(byte_str_array).replace(' ', '')
     if len(contents_str) % 2 != 0:
         logger.error("Error: Contents must contain an even number of hex characters.")
         sys.exit(1)
