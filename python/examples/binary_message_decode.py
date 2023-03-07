@@ -80,20 +80,35 @@ Payload: Reset Request [mask=0x01000fff]
                            "[size=%d B, minimum=%d B]" % (len(contents), MessageHeader.calcsize()))
         else:
             try:
+                # Try to decode a message header anyway.
                 header = MessageHeader()
-                header.unpack(contents)
+                header.unpack(contents, validate_crc=False)
                 if len(contents) < header.get_message_size():
                     logger.warning('Warning: Specified byte string too small. [expected=%d B, got=%d B]' %
                                    (header.get_message_size(), len(contents)))
-                    logger.warning("Header: " + str(header))
+                logger.info("Header: " + str(header))
 
-                    payload = message_type_to_class.get(header.message_type, None)
-                    if payload is None:
-                        logger.warning("Unrecognized message type %s." % str(header.message_type))
+                # If that succeeds, try to determine the payload type and print out the expected size. If we have enough
+                # bytes, try to decode the payload.
+                payload_cls = message_type_to_class.get(header.message_type, None)
+                if payload_cls is None:
+                    logger.warning("Unrecognized message type %s." % str(header.message_type))
+                else:
+                    payload = payload_cls()
+                    min_message_size_bytes = MessageHeader.calcsize() + payload.calcsize()
+
+                    logger.info("Minimum size for this message:")
+                    logger.info("  Payload: %d B" % payload.calcsize())
+                    logger.info("  Complete message: %d B" % min_message_size_bytes)
+
+                    if len(contents) >= min_message_size_bytes:
+                        try:
+                            payload.unpack(buffer=contents, offset=header.calcsize())
+                            logger.info("Decoded payload contents: %s" % str(payload))
+                        except ValueError as e:
+                            logger.warning("Unable to decode payload contents.")
                     else:
-                        logger.warning("Minimum size for this message:")
-                        logger.warning("  Payload: %d B" % payload().calcsize())
-                        logger.warning("  Complete message: %d B" % (MessageHeader.calcsize() + payload().calcsize()))
+                        logger.warning("Not enough data to decode payload.")
             except ValueError as e:
                 logger.warning("No valid FusionEngine messages decoded.")
 
