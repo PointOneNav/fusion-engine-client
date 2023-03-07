@@ -8,7 +8,7 @@ import sys
 root_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, root_dir)
 
-from fusion_engine_client.messages.core import MessageHeader, MessagePayload
+from fusion_engine_client.messages import MessageHeader, MessagePayload, message_type_to_class
 from fusion_engine_client.parsers import FusionEngineDecoder
 from fusion_engine_client.utils import trace as logging
 from fusion_engine_client.utils.argument_parser import ArgumentParser
@@ -86,6 +86,14 @@ Payload: Reset Request [mask=0x01000fff]
                     logger.warning('Warning: Specified byte string too small. [expected=%d B, got=%d B]' %
                                    (header.get_message_size(), len(contents)))
                     logger.warning("Header: " + str(header))
+
+                    payload = message_type_to_class.get(header.message_type, None)
+                    if payload is None:
+                        logger.warning("Unrecognized message type %s." % str(header.message_type))
+                    else:
+                        logger.warning("Minimum size for this message:")
+                        logger.warning("  Payload: %d B" % payload().calcsize())
+                        logger.warning("  Complete message: %d B" % (MessageHeader.calcsize() + payload().calcsize()))
             except ValueError as e:
                 logger.warning("No valid FusionEngine messages decoded.")
 
