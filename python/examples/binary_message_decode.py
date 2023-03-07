@@ -8,7 +8,7 @@ import sys
 root_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, root_dir)
 
-from fusion_engine_client.messages.core import MessageHeader, MessagePayload
+from fusion_engine_client.messages import MessageHeader, MessagePayload, message_type_to_class
 from fusion_engine_client.parsers import FusionEngineDecoder
 from fusion_engine_client.utils import trace as logging
 from fusion_engine_client.utils.argument_parser import ArgumentParser
@@ -54,7 +54,8 @@ Payload: Reset Request [mask=0x01000fff]
     logger = logging.getLogger('point_one.fusion_engine')
 
     # Concatenate all hex characters and convert to bytes.
-    contents_str = ''.join(options.contents).replace(' ', '')
+    byte_str_array = [b if len(b) == 2 else f'0{b}' for b in options.contents]
+    contents_str = ''.join(byte_str_array).replace(' ', '')
     if len(contents_str) % 2 != 0:
         logger.error("Error: Contents must contain an even number of hex characters.")
         sys.exit(1)
@@ -80,12 +81,35 @@ Payload: Reset Request [mask=0x01000fff]
                            "[size=%d B, minimum=%d B]" % (len(contents), MessageHeader.calcsize()))
         else:
             try:
+                # Try to decode a message header anyway.
                 header = MessageHeader()
-                header.unpack(contents)
+                header.unpack(contents, validate_crc=False)
                 if len(contents) < header.get_message_size():
                     logger.warning('Warning: Specified byte string too small. [expected=%d B, got=%d B]' %
                                    (header.get_message_size(), len(contents)))
-                    logger.warning("Header: " + str(header))
+                logger.info("Header: " + str(header))
+
+                # If that succeeds, try to determine the payload type and print out the expected size. If we have enough
+                # bytes, try to decode the payload.
+                payload_cls = message_type_to_class.get(header.message_type, None)
+                if payload_cls is None:
+                    logger.warning("Unrecognized message type %s." % str(header.message_type))
+                else:
+                    payload = payload_cls()
+                    min_message_size_bytes = MessageHeader.calcsize() + payload.calcsize()
+
+                    logger.info("Minimum size for this message:")
+                    logger.info("  Payload: %d B" % payload.calcsize())
+                    logger.info("  Complete message: %d B" % min_message_size_bytes)
+
+                    if len(contents) >= min_message_size_bytes:
+                        try:
+                            payload.unpack(buffer=contents, offset=header.calcsize())
+                            logger.info("Decoded payload contents: %s" % str(payload))
+                        except ValueError as e:
+                            logger.warning("Unable to decode payload contents.")
+                    else:
+                        logger.warning("Not enough data to decode payload.")
             except ValueError as e:
                 logger.warning("No valid FusionEngine messages decoded.")
 
