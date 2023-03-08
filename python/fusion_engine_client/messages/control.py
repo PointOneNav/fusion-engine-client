@@ -161,7 +161,7 @@ class ResetRequest(MessagePayload):
     ## @}
 
     ##
-    # @name Restart Hardware Modules
+    # @name Software Reboot And Special Reset Modes
     # @{
     ##
     # Reboot the GNSS measurement engine (GNSS receiver), in addition to
@@ -171,6 +171,30 @@ class ResetRequest(MessagePayload):
     REBOOT_GNSS_MEASUREMENT_ENGINE = 0x01000000
     ## Reboot the navigation processor.
     REBOOT_NAVIGATION_PROCESSOR = 0x02000000
+    ##
+    # Perform a diagnostic log reset to guarantee deterministic performance for
+    # data post-processing and diagnostic support.
+    #
+    # Diagnostic log resets are useful when capturing data to be sent to Point
+    # One for analysis and support. Performing a diagnostic reset guarantees that
+    # the performance of the device seen in real time can be reproduced during
+    # post-processing.
+    #
+    # This reset performs the following:
+    # - Restart the navigation engine (@ref RESTART_NAVIGATION_ENGINE)
+    # - Clear any stored data in RAM that was received since startup such as
+    #   ephemeris or GNSS corrections
+    #   - This is _not_ the same as @ref RESET_EPHEMERIS; this action does not
+    #     reset ephemeris data stored in persistent storage
+    # - Flush internal data buffers on the device
+    #
+    # Note that this does _not_ reset the navigation engine's position data,
+    # training parameters, or calibration. If the navigation engine has existing
+    # position information, it will be used.
+    #
+    # This reset may be combined with other resets as needed to clear additional
+    # information.
+    DIAGNOSTIC_LOG_RESET = 0x04000000
     ## @}
 
     ##
@@ -248,29 +272,6 @@ class ResetRequest(MessagePayload):
     # - Reboot GNSS measurement engine (@ref REBOOT_GNSS_MEASUREMENT_ENGINE)
     # - Reboot navigation processor (@ref REBOOT_NAVIGATION_PROCESSOR)
     PVT_RESET = 0x000001FF
-
-    ##
-    # Perform a @ref HOT_START, and also flush internal data buffers to guarantee
-    # deterministic performance for data post-processing and diagnostic support.
-    #
-    # Note that this does _not_ reset the navigation engine's position data. If
-    # the navigation engine has existing position information, it will be used.
-    #
-    # To be reset:
-    # - The navigation engine (@ref RESTART_NAVIGATION_ENGINE)
-    # - All runtime data (GNSS corrections (@ref RESET_GNSS_CORRECTIONS), etc.)
-    # - GNSS ephemeris data (@ref RESET_EPHEMERIS)
-    #
-    # Not reset/performed:
-    # - Position, velocity, orientation (@ref RESET_POSITION_DATA)
-    # - Fast IMU corrections (@ref RESET_FAST_IMU_CORRECTIONS)
-    # - Training parameters (slowly estimated IMU corrections, temperature
-    #   compensation, etc.; @ref RESET_NAVIGATION_ENGINE_DATA)
-    # - Calibration data (@ref RESET_CALIBRATION_DATA)
-    # - User configuration settings (@ref RESET_CONFIG)
-    # - Reboot GNSS measurement engine (@ref REBOOT_GNSS_MEASUREMENT_ENGINE)
-    # - Reboot navigation processor (@ref REBOOT_NAVIGATION_PROCESSOR)
-    DIAGNOSTIC_LOG_RESET = 0x00002FF
 
     ##
     # Perform a device cold start.
