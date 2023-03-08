@@ -163,8 +163,12 @@ class ResetRequest(MessagePayload):
     ##
     # @name Restart Hardware Modules
     # @{
-    ## Restart the GNSS measurement engine.
-    RESTART_GNSS_MEASUREMENT_ENGINE = 0x01000000
+    ##
+    # Reboot the GNSS measurement engine (GNSS receiver), in addition to
+    # performing any other requested resets (e.g., @ref RESET_EPHEMERIS). If no
+    # other resets are specified, the GNSS receiver will reboot and should
+    # perform a hot start.
+    REBOOT_GNSS_MEASUREMENT_ENGINE = 0x01000000
     ## Reboot the navigation processor.
     REBOOT_NAVIGATION_PROCESSOR = 0x02000000
     ## @}
@@ -192,7 +196,7 @@ class ResetRequest(MessagePayload):
     #   compensation, etc.; @ref RESET_NAVIGATION_ENGINE_DATA)
     # - Calibration data (@ref RESET_CALIBRATION_DATA)
     # - User configuration settings (@ref RESET_CONFIG)
-    # - Reboot GNSS measurement engine (@ref RESTART_GNSS_MEASUREMENT_ENGINE)
+    # - Reboot GNSS measurement engine (@ref REBOOT_GNSS_MEASUREMENT_ENGINE)
     # - Reboot navigation processor (@ref REBOOT_NAVIGATION_PROCESSOR)
     HOT_START = 0x00000001
 
@@ -217,7 +221,7 @@ class ResetRequest(MessagePayload):
     #   compensation, etc.; @ref RESET_NAVIGATION_ENGINE_DATA)
     # - Calibration data (@ref RESET_CALIBRATION_DATA)
     # - User configuration settings (@ref RESET_CONFIG)
-    # - Reboot GNSS measurement engine (@ref RESTART_GNSS_MEASUREMENT_ENGINE)
+    # - Reboot GNSS measurement engine (@ref REBOOT_GNSS_MEASUREMENT_ENGINE)
     # - Reboot navigation processor (@ref REBOOT_NAVIGATION_PROCESSOR)
     WARM_START = 0x00000201
 
@@ -241,7 +245,7 @@ class ResetRequest(MessagePayload):
     #   compensation, etc.; @ref RESET_NAVIGATION_ENGINE_DATA)
     # - Calibration data (@ref RESET_CALIBRATION_DATA)
     # - User configuration settings (@ref RESET_CONFIG)
-    # - Reboot GNSS measurement engine (@ref RESTART_GNSS_MEASUREMENT_ENGINE)
+    # - Reboot GNSS measurement engine (@ref REBOOT_GNSS_MEASUREMENT_ENGINE)
     # - Reboot navigation processor (@ref REBOOT_NAVIGATION_PROCESSOR)
     PVT_RESET = 0x000001FF
 
@@ -264,7 +268,7 @@ class ResetRequest(MessagePayload):
     #   compensation, etc.; @ref RESET_NAVIGATION_ENGINE_DATA)
     # - Calibration data (@ref RESET_CALIBRATION_DATA)
     # - User configuration settings (@ref RESET_CONFIG)
-    # - Reboot GNSS measurement engine (@ref RESTART_GNSS_MEASUREMENT_ENGINE)
+    # - Reboot GNSS measurement engine (@ref REBOOT_GNSS_MEASUREMENT_ENGINE)
     # - Reboot navigation processor (@ref REBOOT_NAVIGATION_PROCESSOR)
     DIAGNOSTIC_LOG_RESET = 0x00002FF
 
@@ -286,7 +290,7 @@ class ResetRequest(MessagePayload):
     #   compensation, etc.; @ref RESET_NAVIGATION_ENGINE_DATA)
     # - Calibration data (@ref RESET_CALIBRATION_DATA)
     # - User configuration settings (@ref RESET_CONFIG)
-    # - Reboot GNSS measurement engine (@ref RESTART_GNSS_MEASUREMENT_ENGINE)
+    # - Reboot GNSS measurement engine (@ref REBOOT_GNSS_MEASUREMENT_ENGINE)
     # - Reboot navigation processor (@ref REBOOT_NAVIGATION_PROCESSOR)
     #
     # @note

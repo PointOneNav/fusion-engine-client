@@ -165,8 +165,13 @@ struct alignas(4) ResetRequest : public MessagePayload {
    * @name Restart Hardware Modules
    * @{
    */
-  /** Restart the GNSS measurement engine. */
-  static constexpr uint32_t RESTART_GNSS_MEASUREMENT_ENGINE = 0x01000000;
+  /**
+   * Reboot the GNSS measurement engine (GNSS receiver), in addition to
+   * performing any other requested resets (e.g., @ref RESET_EPHEMERIS). If no
+   * other resets are specified, the GNSS receiver will reboot and should
+   * perform a hot start.
+   */
+  static constexpr uint32_t REBOOT_GNSS_MEASUREMENT_ENGINE = 0x01000000;
   /** Reboot the navigation processor. */
   static constexpr uint32_t REBOOT_NAVIGATION_PROCESSOR = 0x02000000;
   /** @} */
@@ -194,7 +199,7 @@ struct alignas(4) ResetRequest : public MessagePayload {
    *   compensation, etc.; @ref RESET_NAVIGATION_ENGINE_DATA)
    * - Calibration data (@ref RESET_CALIBRATION_DATA)
    * - User configuration settings (@ref RESET_CONFIG)
-   * - Reboot GNSS measurement engine (@ref RESTART_GNSS_MEASUREMENT_ENGINE)
+   * - Reboot GNSS measurement engine (@ref REBOOT_GNSS_MEASUREMENT_ENGINE)
    * - Reboot navigation processor (@ref REBOOT_NAVIGATION_PROCESSOR)
    */
   static constexpr uint32_t HOT_START = 0x00000001;
@@ -220,7 +225,7 @@ struct alignas(4) ResetRequest : public MessagePayload {
    *   compensation, etc.; @ref RESET_NAVIGATION_ENGINE_DATA)
    * - Calibration data (@ref RESET_CALIBRATION_DATA)
    * - User configuration settings (@ref RESET_CONFIG)
-   * - Reboot GNSS measurement engine (@ref RESTART_GNSS_MEASUREMENT_ENGINE)
+   * - Reboot GNSS measurement engine (@ref REBOOT_GNSS_MEASUREMENT_ENGINE)
    * - Reboot navigation processor (@ref REBOOT_NAVIGATION_PROCESSOR)
    */
   static constexpr uint32_t WARM_START = 0x00000201;
@@ -245,7 +250,7 @@ struct alignas(4) ResetRequest : public MessagePayload {
    *   compensation, etc.; @ref RESET_NAVIGATION_ENGINE_DATA)
    * - Calibration data (@ref RESET_CALIBRATION_DATA)
    * - User configuration settings (@ref RESET_CONFIG)
-   * - Reboot GNSS measurement engine (@ref RESTART_GNSS_MEASUREMENT_ENGINE)
+   * - Reboot GNSS measurement engine (@ref REBOOT_GNSS_MEASUREMENT_ENGINE)
    * - Reboot navigation processor (@ref REBOOT_NAVIGATION_PROCESSOR)
    */
   static constexpr uint32_t PVT_RESET = 0x000001FF;
@@ -269,7 +274,7 @@ struct alignas(4) ResetRequest : public MessagePayload {
    *   compensation, etc.; @ref RESET_NAVIGATION_ENGINE_DATA)
    * - Calibration data (@ref RESET_CALIBRATION_DATA)
    * - User configuration settings (@ref RESET_CONFIG)
-   * - Reboot GNSS measurement engine (@ref RESTART_GNSS_MEASUREMENT_ENGINE)
+   * - Reboot GNSS measurement engine (@ref REBOOT_GNSS_MEASUREMENT_ENGINE)
    * - Reboot navigation processor (@ref REBOOT_NAVIGATION_PROCESSOR)
    */
   static constexpr uint32_t DIAGNOSTIC_LOG_RESET = 0x00002FF;
@@ -292,7 +297,7 @@ struct alignas(4) ResetRequest : public MessagePayload {
    *   compensation, etc.; @ref RESET_NAVIGATION_ENGINE_DATA)
    * - Calibration data (@ref RESET_CALIBRATION_DATA)
    * - User configuration settings (@ref RESET_CONFIG)
-   * - Reboot GNSS measurement engine (@ref RESTART_GNSS_MEASUREMENT_ENGINE)
+   * - Reboot GNSS measurement engine (@ref REBOOT_GNSS_MEASUREMENT_ENGINE)
    * - Reboot navigation processor (@ref REBOOT_NAVIGATION_PROCESSOR)
    *
    * @note
