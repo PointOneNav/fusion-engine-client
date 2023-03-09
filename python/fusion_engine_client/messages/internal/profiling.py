@@ -580,13 +580,13 @@ class ProfileFreeRtosSystemStatusMessage(MessagePayload):
 
     def __str__(self):
         string = f'FreeRTOS System Profiling @ %s\n' % system_time_to_str(self.system_time_ns)
-        string += f'\theap_free_bytes: {self.heap_free_bytes}\n'
-        string += f'\tsbrk_free_bytes: {self.sbrk_free_bytes}\n'
-        string += f'\missed_task_switches: {self.missed_task_switches}\n'
+        string += f'  heap_free_bytes: {self.heap_free_bytes}\n'
+        string += f'  sbrk_free_bytes: {self.sbrk_free_bytes}\n'
+        string += f'  missed_task_switches: {self.missed_task_switches}\n'
         for i, task in enumerate(self.task_entries):
-            string += f'\tTask[{i}]:\n'
-            string += f'\t\tcpu_usage: {task.cpu_usage}%\n'
-            string += f'\t\tstack_high_water_mark_bytes: {task.stack_high_water_mark_bytes}\n'
+            string += f'  Task[{i}]:\n'
+            string += f'    cpu_usage: {task.cpu_usage}%\n'
+            string += f'    stack_high_water_mark_bytes: {task.stack_high_water_mark_bytes}\n'
         return string.rstrip()
 
     def calcsize(self) -> int:
@@ -654,10 +654,10 @@ class ProfileExecutionStatsMessage(MessagePayload):
     def __str__(self):
         string = f'Execution Stats Profiling @ %s\n' % system_time_to_str(self.system_time_ns)
         for i, trace in enumerate(self.entries):
-            string += f'\tTrace[{i}]:\n'
-            string += f'\t\trunning_time_ns: {trace.running_time_ns}\n'
-            string += f'\t\tmax_run_time_ns: {trace.max_run_time_ns}\n'
-            string += f'\t\trun_count: {trace.run_count}\n'
+            string += f'  Trace[{i}]:\n'
+            string += f'    running_time_ns: {trace.running_time_ns}\n'
+            string += f'    max_run_time_ns: {trace.max_run_time_ns}\n'
+            string += f'    run_count: {trace.run_count}\n'
         return string.rstrip()
 
     def calcsize(self) -> int:
@@ -722,7 +722,7 @@ class ProfileCounterMessage(MessagePayload):
     def __str__(self):
         string = f'Profiling Counters @ %s\n' % system_time_to_str(self.system_time_ns)
         for i, counter in enumerate(self.entries):
-            string += f'\tCount[{i}]: {counter.count}\n'
+            string += f'  Count[{i}]: {counter.count}\n'
         return string.rstrip()
 
     def calcsize(self) -> int:
