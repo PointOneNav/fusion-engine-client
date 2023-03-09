@@ -437,7 +437,9 @@ class EventNotificationMessage(MessagePayload):
         fields = ['action', 'event_flags', 'event_description']
         string = f'Event Notification @ %s\n' % system_time_to_str(self.system_time_ns)
         for field in fields:
-            if field == 'event_flags':
+            if field == 'action':
+                val = EventNotificationMessage.Action(self.__dict__[field]).to_string(include_value=True)
+            elif field == 'event_flags':
                 val = '0x%016X' % self.__dict__[field]
             else:
                 val = str(self.__dict__[field]).replace('Container:', '')
