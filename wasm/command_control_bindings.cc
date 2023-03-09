@@ -132,4 +132,16 @@ EMSCRIPTEN_BINDINGS(control) {
       .value("RESET", EventNotificationMessage::EventType::RESET)
       .value("CONFIG_CHANGE",
              EventNotificationMessage::EventType::CONFIG_CHANGE);
+
+  static auto ShutdownRequest_MESSAGE_TYPE =
+      ShutdownRequest::MESSAGE_TYPE;
+  static auto ShutdownRequest_MESSAGE_VERSION =
+      ShutdownRequest::MESSAGE_VERSION;
+  class_<ShutdownRequest>("ShutdownRequest")
+      .constructor<>()
+      .class_property("MESSAGE_TYPE", &ShutdownRequest_MESSAGE_TYPE)
+      .class_property("MESSAGE_VERSION", &ShutdownRequest_MESSAGE_VERSION)
+      .property("shutdown_flags", &ShutdownRequest::shutdown_flags)
+      .ARRAY_PROPERTY(ShutdownRequest, reserved1)
+      .STRUCT_FUNCTIONS(ShutdownRequest);
 }
