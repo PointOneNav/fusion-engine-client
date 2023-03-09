@@ -686,6 +686,12 @@ class CalibrationStatus(MessagePayload):
                 messages = messages[idx:]
 
         result = {
+            '__metadata__': {
+              'not_time_dependent': [
+                  'min_travel_distance_m',
+                  'mounting_angle_max_std_dev_deg',
+              ],
+            },
             'p1_time': np.array([float(m.p1_time) for m in messages]),
             'calibration_stage': np.array([int(m.calibration_stage) for m in messages], dtype=int),
             'ypr_deg': np.array([m.ypr_deg for m in messages]).T,
