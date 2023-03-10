@@ -12,14 +12,14 @@ class IntEnum(IntEnumBase):
         #   print(Foo.BAR)   # Prints "BAR", not "Foo.BAR"
         return self.name
 
-    def to_string(self, include_value=False):
+    def to_string(self, include_value=True):
         if include_value:
             return '%s (%d)' % (str(self), int(self))
         else:
             return str(self)
 
     @classmethod
-    def static_to_string(cls, value, include_value=False, raise_on_unrecognized=False):
+    def static_to_string(cls, value, include_value=True, raise_on_unrecognized=False):
         try:
             if isinstance(value, str):
                 # Convert a string name to an enum instance (e.g., 'BAR' -> Foo.BAR).
