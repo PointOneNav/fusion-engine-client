@@ -2,7 +2,7 @@ import struct
 
 from construct import (Struct, Int64ul, Int16ul, Int8ul, Padding, this, Bytes, PaddedString)
 
-from ..utils.construct_utils import AutoEnum
+from ..utils.construct_utils import AutoEnum, construct_message_to_string
 from ..utils.enum_utils import IntEnum
 from .defs import *
 
@@ -436,17 +436,11 @@ class EventNotificationMessage(MessagePayload):
         return '%s @ %s' % (self.MESSAGE_TYPE.name, system_time_to_str(self.system_time_ns))
 
     def __str__(self):
-        fields = ['action', 'event_flags', 'event_description']
-        string = f'Event Notification @ %s\n' % system_time_to_str(self.system_time_ns)
-        for field in fields:
-            if field == 'action':
-                val = EventNotificationMessage.Action(self.__dict__[field]).to_string(include_value=True)
-            elif field == 'event_flags':
-                val = '0x%016X' % self.__dict__[field]
-            else:
-                val = str(self.__dict__[field]).replace('Container:', '')
-            string += f'  {field}: {val}\n'
-        return string.rstrip()
+        return construct_message_to_string(
+            message=self, construct=self.EventNotificationConstruct,
+            title=f'Event Notification @ %s' % system_time_to_str(self.system_time_ns),
+            fields=['action', 'event_flags', 'event_description'],
+            value_to_string={'event_flags': lambda x: '0x%016X' % x})
 
     def calcsize(self) -> int:
         return len(self.pack())
