@@ -109,7 +109,7 @@ class EnumAdapter(Adapter):
     ```
     """
 
-    def __init__(self, enum_cls, *args):
+    def __init__(self, enum_cls, *args, **kwargs):
         """!
         @brief Create an adapter for (de)serializing Enums.
 
@@ -117,15 +117,22 @@ class EnumAdapter(Adapter):
         """
         super().__init__(*args)
         self.enum_cls = enum_cls
+        self.return_int_on_unrecognized = kwargs.get('return_int_on_unrecognized', True)
 
     def _decode(self, obj, context, path):
-        return self.enum_cls(int(obj))
+        try:
+            return self.enum_cls(int(obj))
+        except ValueError as e:
+            if self.return_int_on_unrecognized:
+                return int(obj)
+            else:
+                raise e
 
     def _encode(self, obj, context, path):
         return obj
 
 
-def AutoEnum(construct_cls, enum_cls):
+def AutoEnum(construct_cls, enum_cls, return_int_on_unrecognized: bool = True):
     """!
     @brief Wrapper for @ref EnumAdapter to make its arguments simpler.
 
@@ -143,4 +150,4 @@ def AutoEnum(construct_cls, enum_cls):
         assert ConfigType.ACTIVE == UserConfigConstruct.parse(data).config_type
     ```
     """
-    return EnumAdapter(enum_cls, Enum(construct_cls, enum_cls))
+    return EnumAdapter(enum_cls, Enum(construct_cls, enum_cls), return_int_on_unrecognized=return_int_on_unrecognized)
