@@ -111,26 +111,40 @@ class MessageType(IntEnum):
 
     RESERVED = 20000
 
+    @classmethod
+    def get_type_string(cls, type, include_value=True, raise_on_unrecognized=False):
+        return MessageType.static_to_string(type, include_value=include_value,
+                                            raise_on_unrecognized=raise_on_unrecognized)
 
     @classmethod
-    def get_type_string(cls, type):
+    def static_to_string(cls, value, include_value=True, raise_on_unrecognized=False):
         try:
-            if isinstance(type, str):
-                # Convert a string name to a message type (e.g., 'POSE' -> MessageType.POSE).
-                type = MessageType[type.upper()]
-            else:
-                # Convert an int to a MessageType. If `type` is already a MessageType, it'll pass through.
-                type = MessageType(type)
-
-            return '%s (%d)' % (type.name, type.value)
-        except (KeyError, ValueError):
+            return super().static_to_string(value, include_value=include_value, raise_on_unrecognized=True)
+        except (KeyError, ValueError) as e:
+            # For MessageType, if the user specifies an unrecognized value, we return:
+            # - RESERVED - Value defined for internal use only
+            # - UNKNOWN - Value not recognized
+            #
+            # We don't use the default static_to_string() behavior of returning "<Unrecognized>".
+            string_name = None
             try:
-                if int(type) >= MessageType.RESERVED:
-                    return 'RESERVED (%s)' % str(type)
+                int_value = int(value)
+                if value >= MessageType.RESERVED:
+                    string_name = 'RESERVED'
             except BaseException:
-                pass
+                # Value was not an integer. Let it pass through and print its str() representation below.
+                int_value = value
 
-            return 'UNKNOWN (%s)' % str(type)
+            if string_name is None:
+                if raise_on_unrecognized:
+                    raise e
+                else:
+                    string_name = 'UNKNOWN'
+
+            if include_value:
+                return '%s (%s)' % (string_name, str(int_value))
+            else:
+                return string_name
 
 
 class MessageHeader:

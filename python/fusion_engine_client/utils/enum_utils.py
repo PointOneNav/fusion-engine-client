@@ -17,3 +17,23 @@ class IntEnum(IntEnumBase):
             return '%s (%d)' % (str(self), int(self))
         else:
             return str(self)
+
+    @classmethod
+    def static_to_string(cls, value, include_value=False, raise_on_unrecognized=False):
+        try:
+            if isinstance(value, str):
+                # Convert a string name to an enum instance (e.g., 'BAR' -> Foo.BAR).
+                type = cls[value.upper()]
+            else:
+                # Convert an int to an enum instance. If `type` is already an enum, it'll pass through.
+                type = cls(value)
+
+            return cls(type).to_string(include_value=include_value)
+        except (KeyError, ValueError) as e:
+            if raise_on_unrecognized:
+                raise e
+            else:
+                if include_value:
+                    return '<Unrecognized> (%d)' % int(value)
+                else:
+                    return '<Unrecognized>'
