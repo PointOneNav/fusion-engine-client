@@ -138,8 +138,8 @@ struct alignas(4) ResetRequest : public MessagePayload {
    */
   /**
    * Reset all stored navigation engine data, including position, velocity, and
-   * orientation state, as well as all IMU corrections (fast and slow) and
-   * other training data.
+   * orientation state (same as @ref RESET_POSITION_DATA), plus all IMU
+   * corrections and other training data.
    */
   static constexpr uint32_t RESET_NAVIGATION_ENGINE_DATA = 0x00001000;
   /**
@@ -162,13 +162,43 @@ struct alignas(4) ResetRequest : public MessagePayload {
   /** @} */
 
   /**
-   * @name Restart Hardware Modules
+   * @name Software Reboot And Special Reset Modes
    * @{
    */
-  /** Restart the GNSS measurement engine. */
-  static constexpr uint32_t RESTART_GNSS_MEASUREMENT_ENGINE = 0x01000000;
+  /**
+   * Reboot the GNSS measurement engine (GNSS receiver), in addition to
+   * performing any other requested resets (e.g., @ref RESET_EPHEMERIS). If no
+   * other resets are specified, the GNSS receiver will reboot and should
+   * perform a hot start.
+   */
+  static constexpr uint32_t REBOOT_GNSS_MEASUREMENT_ENGINE = 0x01000000;
   /** Reboot the navigation processor. */
   static constexpr uint32_t REBOOT_NAVIGATION_PROCESSOR = 0x02000000;
+  /**
+   * Perform a diagnostic log reset to guarantee deterministic performance for
+   * data post-processing and diagnostic support.
+   *
+   * Diagnostic log resets are useful when capturing data to be sent to Point
+   * One for analysis and support. Performing a diagnostic reset guarantees that
+   * the performance of the device seen in real time can be reproduced during
+   * post-processing.
+   *
+   * This reset performs the following:
+   * - Restart the navigation engine (@ref RESTART_NAVIGATION_ENGINE)
+   * - Clear any stored data in RAM that was received since startup such as
+   *   ephemeris or GNSS corrections
+   *   - This is _not_ the same as @ref RESET_EPHEMERIS; this action does not
+   *     reset ephemeris data stored in persistent storage
+   * - Flush internal data buffers on the device
+   *
+   * Note that this does _not_ reset the navigation engine's position data,
+   * training parameters, or calibration. If the navigation engine has existing
+   * position information, it will be used.
+   *
+   * This reset may be combined with other resets as needed to clear additional
+   * information.
+   */
+  static constexpr uint32_t DIAGNOSTIC_LOG_RESET = 0x04000000;
   /** @} */
 
   /**
@@ -178,46 +208,77 @@ struct alignas(4) ResetRequest : public MessagePayload {
   /**
    * Perform a device hot start.
    *
-   * A hot start is typically used to restart the navigation engine in a
-   * deterministic state, particularly for logging purposes.
+   * This will reset the navigation engine into a known state, using previously
+   * stored position and time information. The device will begin navigating
+   * immediately if possible.
    *
    * To be reset:
    * - The navigation engine (@ref RESTART_NAVIGATION_ENGINE)
-   * - All runtime data (GNSS corrections (@ref RESET_GNSS_CORRECTIONS), etc.)
    *
-   * Not reset:
+   * Not reset/performed:
+   * - All runtime data (GNSS corrections (@ref RESET_GNSS_CORRECTIONS), etc.)
    * - Position, velocity, orientation (@ref RESET_POSITION_DATA)
+   * - GNSS ephemeris data (@ref RESET_EPHEMERIS)
    * - Fast IMU corrections (@ref RESET_FAST_IMU_CORRECTIONS)
    * - Training parameters (slowly estimated IMU corrections, temperature
    *   compensation, etc.; @ref RESET_NAVIGATION_ENGINE_DATA)
    * - Calibration data (@ref RESET_CALIBRATION_DATA)
    * - User configuration settings (@ref RESET_CONFIG)
-   * - GNSS measurement engine (@ref RESTART_GNSS_MEASUREMENT_ENGINE)
+   * - Reboot GNSS measurement engine (@ref REBOOT_GNSS_MEASUREMENT_ENGINE)
    * - Reboot navigation processor (@ref REBOOT_NAVIGATION_PROCESSOR)
    */
-  static constexpr uint32_t HOT_START = 0x000000FF;
+  static constexpr uint32_t HOT_START = 0x00000001;
 
   /**
    * Perform a device warm start.
    *
-   * A warm start is typically used to reset the device's estimate of position
-   * and kinematic state in case of error.
+   * During a warm start, the device retains its knowledge of approximate
+   * position and time, plus almanac data if available, but resets all ephemeris
+   * data. As a result, the device will need to download ephemeris data before
+   * continuing to navigate with GNSS.
+   *
+   * To be reset:
+   * - The navigation engine (i.e., perform a hot start, @ref
+   *   RESTART_NAVIGATION_ENGINE)
+   * - GNSS ephemeris data (@ref RESET_EPHEMERIS)
+   *
+   * Not reset/performed:
+   * - All runtime data (GNSS corrections (@ref RESET_GNSS_CORRECTIONS), etc.)
+   * - Position, velocity, orientation (@ref RESET_POSITION_DATA)
+   * - Fast IMU corrections (@ref RESET_FAST_IMU_CORRECTIONS)
+   * - Training parameters (slowly estimated IMU corrections, temperature
+   *   compensation, etc.; @ref RESET_NAVIGATION_ENGINE_DATA)
+   * - Calibration data (@ref RESET_CALIBRATION_DATA)
+   * - User configuration settings (@ref RESET_CONFIG)
+   * - Reboot GNSS measurement engine (@ref REBOOT_GNSS_MEASUREMENT_ENGINE)
+   * - Reboot navigation processor (@ref REBOOT_NAVIGATION_PROCESSOR)
+   */
+  static constexpr uint32_t WARM_START = 0x00000201;
+
+  /**
+   * Perform a PVT reset: reset all position, velocity, orientation, and time
+   * information (i.e., the navigation engine's kinematic state).
+   *
+   * A PVT reset is typically used to reset the kinematic portion of the
+   * navigation engine's state if you are experiencing errors on startup or
+   * after a @ref HOT_START.
    *
    * To be reset:
    * - The navigation engine (@ref RESTART_NAVIGATION_ENGINE)
    * - All runtime data (GNSS corrections (@ref RESET_GNSS_CORRECTIONS), etc.)
    * - Position, velocity, orientation (@ref RESET_POSITION_DATA)
    *
-   * Not reset:
+   * Not reset/performed:
+   * - GNSS ephemeris data (@ref RESET_EPHEMERIS)
    * - Fast IMU corrections (@ref RESET_FAST_IMU_CORRECTIONS)
    * - Training parameters (slowly estimated IMU corrections, temperature
    *   compensation, etc.; @ref RESET_NAVIGATION_ENGINE_DATA)
    * - Calibration data (@ref RESET_CALIBRATION_DATA)
    * - User configuration settings (@ref RESET_CONFIG)
-   * - GNSS measurement engine (@ref RESTART_GNSS_MEASUREMENT_ENGINE)
+   * - Reboot GNSS measurement engine (@ref REBOOT_GNSS_MEASUREMENT_ENGINE)
    * - Reboot navigation processor (@ref REBOOT_NAVIGATION_PROCESSOR)
    */
-  static constexpr uint32_t WARM_START = 0x000001FF;
+  static constexpr uint32_t PVT_RESET = 0x000001FF;
 
   /**
    * Perform a device cold start.
@@ -229,21 +290,22 @@ struct alignas(4) ResetRequest : public MessagePayload {
    * - The navigation engine (@ref RESTART_NAVIGATION_ENGINE)
    * - All runtime data (GNSS corrections (@ref RESET_GNSS_CORRECTIONS), etc.)
    * - Position, velocity, orientation (@ref RESET_POSITION_DATA)
+   * - GNSS ephemeris data (@ref RESET_EPHEMERIS)
    * - Fast IMU corrections (@ref RESET_FAST_IMU_CORRECTIONS)
-   * - GNSS measurement engine (@ref RESTART_GNSS_MEASUREMENT_ENGINE)
    *
-   * Not reset:
+   * Not reset/performed:
    * - Training parameters (slowly estimated IMU corrections, temperature
    *   compensation, etc.; @ref RESET_NAVIGATION_ENGINE_DATA)
    * - Calibration data (@ref RESET_CALIBRATION_DATA)
    * - User configuration settings (@ref RESET_CONFIG)
+   * - Reboot GNSS measurement engine (@ref REBOOT_GNSS_MEASUREMENT_ENGINE)
    * - Reboot navigation processor (@ref REBOOT_NAVIGATION_PROCESSOR)
    *
    * @note
    * To reset training or calibration data as well, set the @ref
    * RESET_NAVIGATION_ENGINE_DATA and @ref RESET_CALIBRATION_DATA bits.
    */
-  static constexpr uint32_t COLD_START = 0x01000FFF;
+  static constexpr uint32_t COLD_START = 0x00000FFF;
 
   /**
    * Restart mask to set all persistent data, including calibration and user

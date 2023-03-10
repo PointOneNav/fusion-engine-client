@@ -1152,8 +1152,7 @@ class ImportDataMessage(MessagePayload):
         string = f'Import Data Command ({str(self.data_type)}, {len(self.data)} B)\n'
         for field in fields:
             val = str(self.__dict__[field]).replace('Container:', '')
-            val = val.replace('  ', '\t')
-            string += f'\t{field}: {val}\n'
+            string += f'  {field}: {val}\n'
         return string.rstrip()
 
     def calcsize(self) -> int:
@@ -1192,8 +1191,7 @@ class ExportDataMessage(MessagePayload):
         string = f'Export data command ({str(self.data_type)})\n'
         for field in fields:
             val = str(self.__dict__[field]).replace('Container:', '')
-            val = val.replace('  ', '\t')
-            string += f'\t{field}: {val}\n'
+            string += f'  {field}: {val}\n'
         return string.rstrip()
 
     @classmethod
@@ -1241,8 +1239,7 @@ class PlatformStorageDataMessage(MessagePayload):
         string = f'Platform Storage Data ({str(self.data_type)}, {len(self.data)} B)\n'
         for field in fields:
             val = str(self.__dict__[field]).replace('Container:', '')
-            val = val.replace('  ', '\t')
-            string += f'\t{field}: {val}\n'
+            string += f'  {field}: {val}\n'
         return string.rstrip()
 
     def calcsize(self) -> int:

@@ -70,7 +70,11 @@ class MessageData(object):
                         for key, value in self.__dict__.items():
                             if (key not in ('message_type', 'message_class', 'params', 'messages') and
                                     isinstance(value, np.ndarray)):
-                                if len(value.shape) == 1:
+                                if key in self.__dict__.get('__metadata__', {}).get('not_time_dependent', []):
+                                    # Data is not time-dependent, even if it happens to have the same number of elements
+                                    # as the time vector.
+                                    pass
+                                elif len(value.shape) == 1:
                                     if len(value) == len(keep_idx):
                                         self.__dict__[key] = value[keep_idx]
                                     else:
@@ -78,7 +82,14 @@ class MessageData(object):
                                         # non-time-varying element (e.g., a position std dev threshold).
                                         pass
                                 elif len(value.shape) == 2:
-                                    if value.shape[0] == len(is_nan):
+                                    # We typically transpose data arrays to be AxN, where A is the number of axes, and N
+                                    # is the number of data points. If A == N, we'll assume that the time dimension is
+                                    # along the columns.
+                                    if value.shape[1] == len(is_nan):
+                                        # Assuming second dimension (columns) is time.
+                                        self.__dict__[key] = value[:, keep_idx]
+                                    # Otherwise, check to see if the data is transposed as NxA.
+                                    elif value.shape[0] == len(is_nan):
                                         # Assuming first dimension is time.
                                         self.__dict__[key] = value[keep_idx, :]
                                     elif value.shape[1] == len(is_nan):
