@@ -1,7 +1,55 @@
-from enum import IntEnum as IntEnumBase
+from enum import EnumMeta, IntEnum as IntEnumBase
+
+from aenum import extend_enum
 
 
-class IntEnum(IntEnumBase):
+class DynamicEnumMeta(EnumMeta):
+    UNRECOGNIZED_PREFIX = '_U'
+
+    def __call__(cls, value, *args, **kwargs):
+        # If the user passed in a string, redirect the request: (Foo('bar') -> Foo.BAR). Normally, enums use [] for
+        # strings and () for integers, but that can lead to confusion.
+        if isinstance(value, str):
+            return cls[value]
+        else:
+            raise_on_unrecognized = kwargs.pop('raise_on_unrecognized', True)
+
+            try:
+                return super().__call__(value, *args, **kwargs)
+            except ValueError as e:
+                # If the user specified an integer value that is not recognized, add a new hidden enum value:
+                #   6 --> MyEnum._UNRECOGNIZED_6 = 6
+                if raise_on_unrecognized:
+                    raise e from None
+                else:
+                    extend_enum(cls, f'{cls.UNRECOGNIZED_PREFIX}_{value}', value)
+                    return super().__call__(value, *args, **kwargs)
+
+    def __getitem__(cls, value):
+        if isinstance(value, str):
+            # Try to lookup by whatever value the user supplied: (Foo['BAR'] -> Foo.BAR)
+            try:
+                return super().__getitem__(value)
+            # For convenience, also try converting to uppercase: (Foo['bar'] -> Foo.BAR)
+            except KeyError:
+                return super().__getitem__(value.upper())
+        else:
+            # See if `value` is actually an integer integer: (Foo['bar'] -> Foo.BAR)
+            #
+            # If it is not, the cls() call will raise an exception. We do this for convenience so that the user can use
+            # the [] operator for strings and integers, instead of needing to use [] for strings and () for integers.
+            #
+            # If `value` is already an enum, it'll pass through: (Foo.BAR -> Foo.BAR)
+            return cls(value)
+
+    def __iter__(cls):
+        return (enum for enum in super().__iter__() if not enum.name.startswith(cls.UNRECOGNIZED_PREFIX))
+
+    def __len__(cls):
+        return len(list(iter(cls)))
+
+
+class IntEnum(IntEnumBase, metaclass=DynamicEnumMeta):
     def __str__(self):
         # The default str() for the built-in Enum class is ClassName.VALUE. For our purposes, we don't really need the
         # leading class name prefix, so we remove it. For example:
@@ -10,30 +58,16 @@ class IntEnum(IntEnumBase):
         #       BAR = 1
         #
         #   print(Foo.BAR)   # Prints "BAR", not "Foo.BAR"
-        return self.name
+        if self.name.startswith(IntEnum.UNRECOGNIZED_PREFIX):
+            return "<Unrecognized>"
+        else:
+            return self.name
+
+    def __repr__(self):
+        return f'<{self.__class__.__name__}.{str(self)}: {int(self)}>'
 
     def to_string(self, include_value=True):
         if include_value:
             return '%s (%d)' % (str(self), int(self))
         else:
             return str(self)
-
-    @classmethod
-    def static_to_string(cls, value, include_value=True, raise_on_unrecognized=False):
-        try:
-            if isinstance(value, str):
-                # Convert a string name to an enum instance (e.g., 'BAR' -> Foo.BAR).
-                type = cls[value.upper()]
-            else:
-                # Convert an int to an enum instance. If `type` is already an enum, it'll pass through.
-                type = cls(value)
-
-            return cls(type).to_string(include_value=include_value)
-        except (KeyError, ValueError) as e:
-            if raise_on_unrecognized:
-                raise e
-            else:
-                if include_value:
-                    return '<Unrecognized> (%d)' % int(value)
-                else:
-                    return '<Unrecognized>'

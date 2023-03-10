@@ -122,22 +122,16 @@ class EnumAdapter(Adapter):
         """
         super().__init__(*args)
         self.enum_cls = enum_cls
-        self.return_int_on_unrecognized = kwargs.get('return_int_on_unrecognized', True)
+        self.raise_on_unrecognized = kwargs.get('raise_on_unrecognized', True)
 
     def _decode(self, obj, context, path):
-        try:
-            return self.enum_cls(int(obj))
-        except ValueError as e:
-            if self.return_int_on_unrecognized:
-                return int(obj)
-            else:
-                raise e
+        return self.enum_cls(int(obj), raise_on_unrecognized=self.raise_on_unrecognized)
 
     def _encode(self, obj, context, path):
         return obj
 
 
-def AutoEnum(construct_cls, enum_cls, return_int_on_unrecognized: bool = True):
+def AutoEnum(construct_cls, enum_cls, raise_on_unrecognized: bool = False):
     """!
     @brief Wrapper for @ref EnumAdapter to make its arguments simpler.
 
@@ -155,7 +149,7 @@ def AutoEnum(construct_cls, enum_cls, return_int_on_unrecognized: bool = True):
         assert ConfigType.ACTIVE == UserConfigConstruct.parse(data).config_type
     ```
     """
-    return EnumAdapter(enum_cls, Enum(construct_cls, enum_cls), return_int_on_unrecognized=return_int_on_unrecognized)
+    return EnumAdapter(enum_cls, Enum(construct_cls, enum_cls), raise_on_unrecognized=raise_on_unrecognized)
 
 
 def construct_message_to_string(message: object, construct: Optional[Struct] = None, title: Optional[str] = None,
@@ -174,7 +168,7 @@ def construct_message_to_string(message: object, construct: Optional[Struct] = N
       bar: 0xE
     ```
 
-    Any enum values serialized using an @ref EnumAdapter will automatically use their enum class's `static_to_string()`
+    Any enum values serialized using an @ref EnumAdapter will automatically use their enum class's `to_string()`
     method (if defined) to generate a string representing the value. For instance, for a field `data` using the
     `ConfigType` @ref IntEnum value shown in the @ref AutoEnum() documentation, the resulting string would be either
     `data: BAR (1)` for recognized values, or `data: <Unrecognized> (3)` for unrecognized values. Enum fields listed in
@@ -182,8 +176,8 @@ def construct_message_to_string(message: object, construct: Optional[Struct] = N
 
     @param message The message instance.
     @param construct The `construct.Struct` instance used to serialize `message`. If omitted, the class is assumed to
-           have a `Struct` member named `Construct`. If that member does not exist, `static_to_string()` support for
-           enum values will be disabled.
+           have a `Struct` member named `Construct`. If that member does not exist, `to_string()` support for enum
+           values will be disabled and the default `repr()` result will be returned.
     @param title A title to be displayed for the message. If omitted, defaults to the message class name.
     @param fields An optional list of member variable names to be displayed. If omitted, all class members will be
            shown. This can also be used to define the sorting order used to display members. By default, members will be
@@ -223,9 +217,8 @@ def construct_message_to_string(message: object, construct: Optional[Struct] = N
             if subcon.name is not None and subcon.name not in value_to_string:
                 enum_cls = _get_enum_class(subcon)
                 if enum_cls is not None:
-                    static_to_string = getattr(enum_cls, 'static_to_string', None)
-                    if static_to_string is not None:
-                        value_to_string[subcon.name] = static_to_string
+                    to_string = getattr(enum_cls, 'to_string', repr)
+                    value_to_string[subcon.name] = to_string
 
     string = f'{title}\n'
     for field in fields:

@@ -654,7 +654,7 @@ class CalibrationStatus(MessagePayload):
 
     def __str__(self):
         string = 'Calibration Status Message @ %s\n' % str(self.p1_time)
-        string += '  Stage: %s\n' % CalibrationStage.static_to_string(self.calibration_stage)
+        string += '  Stage: %s\n' % CalibrationStage(self.calibration_stage).to_string()
         string += '  Completion: gyro=%.1f%%, accel=%.1f%%, mounting angles=%.1f%%\n' % \
                   (self.gyro_bias_percent_complete, self.accel_bias_percent_complete,
                    self.mounting_angle_percent_complete)

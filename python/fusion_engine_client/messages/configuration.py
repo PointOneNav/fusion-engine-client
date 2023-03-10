@@ -1006,11 +1006,11 @@ class RateResponseEntry(NamedTuple):
     __parent_str__ = object.__str__
 
     def __str__(self):
-        return f'RateResponseEntry(protocol={ProtocolType.static_to_string(self.protocol)}), ' \
+        return f'RateResponseEntry(protocol={ProtocolType(self.protocol).to_string()}), ' \
                f'flags=0x{self.flags:X}, ' \
                f'message_id={get_message_type_string(self.protocol, self.message_id)}, ' \
-               f'configured_rate={MessageRate.static_to_string(self.configured_rate)}, ' \
-               f'effective_rate={MessageRate.static_to_string(self.effective_rate)})'
+               f'configured_rate={MessageRate(self.configured_rate).to_string()}, ' \
+               f'effective_rate={MessageRate(self.effective_rate).to_string()})'
 
 
 _RateResponseEntryConstructRaw = Struct(

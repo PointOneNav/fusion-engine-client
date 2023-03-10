@@ -112,20 +112,15 @@ class MessageType(IntEnum):
     RESERVED = 20000
 
     @classmethod
-    def get_type_string(cls, type, include_value=True, raise_on_unrecognized=False):
-        return MessageType.static_to_string(type, include_value=include_value,
-                                            raise_on_unrecognized=raise_on_unrecognized)
-
-    @classmethod
-    def static_to_string(cls, value, include_value=True, raise_on_unrecognized=False):
+    def get_type_string(cls, value, include_value=True, raise_on_unrecognized=False):
         try:
-            return super().static_to_string(value, include_value=include_value, raise_on_unrecognized=True)
+            return cls(value, raise_on_unrecognized=True).to_string(include_value=include_value)
         except (KeyError, ValueError) as e:
             # For MessageType, if the user specifies an unrecognized value, we return:
             # - RESERVED - Value defined for internal use only
             # - UNKNOWN - Value not recognized
             #
-            # We don't use the default static_to_string() behavior of returning "<Unrecognized>".
+            # We don't use the default IntEnum behavior of returning "<Unrecognized>".
             string_name = None
             try:
                 int_value = int(value)
