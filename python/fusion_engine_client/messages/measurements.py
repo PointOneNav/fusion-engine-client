@@ -189,7 +189,7 @@ class WheelSpeedMeasurement(MessagePayload):
         return f"""\
 Wheel Speed Measurement @ {str(self.timestamps.p1_time)}
   {str(self.timestamps).replace(newline, '  ' + newline)}
-  Gear: {str(self.gear)}
+  Gear: {GearType.static_to_string(self.gear)}
   Type: {'signed' if self.is_signed else 'unsigned'}
   Front left: {self.front_left_speed_mps:.2f} m/s
   Front right: {self.front_right_speed_mps:.2f} m/s
@@ -294,7 +294,7 @@ class VehicleSpeedMeasurement(MessagePayload):
         return f"""\
 Vehicle Speed Measurement @ {str(self.timestamps.p1_time)}
   {str(self.timestamps).replace(newline, '  ' + newline)}
-  Gear: {str(self.gear)}
+  Gear: {GearType.static_to_string(self.gear)}
   Type: {'signed' if self.is_signed else 'unsigned'}
   Speed: {self.vehicle_speed_mps:.2f} m/s"""
 
@@ -404,7 +404,7 @@ class WheelTickMeasurement(MessagePayload):
         return f"""\
 Wheel Tick Measurement @ {str(self.timestamps.p1_time)}
   {str(self.timestamps).replace(newline, '  ' + newline)}
-  Gear: {str(self.gear)}
+  Gear: {GearType.static_to_string(self.gear)}
   Front left: {self.front_left_wheel_ticks}
   Front right: {self.front_right_wheel_ticks}
   Rear left: {self.rear_left_wheel_ticks}
@@ -503,7 +503,7 @@ class VehicleTickMeasurement(MessagePayload):
         return f"""\
 Vehicle Tick Measurement @ {str(self.timestamps.p1_time)}
   {str(self.timestamps).replace(newline, '  ' + newline)}
-  Gear: {str(self.gear)}
+  Gear: {GearType.static_to_string(self.gear)}
   Ticks: {self.tick_count}"""
 
     @classmethod
@@ -620,7 +620,7 @@ class HeadingMeasurement(MessagePayload):
     def __str__(self):
         return f"""\
 HeadingMeasurement @ {str(self.timestamps.p1_time)}
-  Solution Type: {str(self.solution_type)}
+  Solution Type: {SolutionType.static_to_string(self.solution_type)}
   Relative position (ENU) (m): {self.relative_position_enu_m[0]:.2f}, {self.relative_position_enu_m[1]:.2f}, {self.relative_position_enu_m[2]:.2f}
   Position std (ENU) (m): {self.position_std_enu_m[0]:.2f}, {self.position_std_enu_m[1]:.2f}, {self.position_std_enu_m[2]:.2f}
   Heading (deg): {self.heading_true_north_deg:.2f}

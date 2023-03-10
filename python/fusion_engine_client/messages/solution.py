@@ -4,7 +4,7 @@ from typing import List, Sequence
 from construct import (Struct, Float64l, Float32l, Int32ul, Int8ul, Padding, Array)
 import numpy as np
 
-from ..utils.construct_utils import AutoEnum
+from ..utils.construct_utils import AutoEnum, construct_message_to_string
 from ..utils.enum_utils import IntEnum
 from .defs import *
 
@@ -654,7 +654,7 @@ class CalibrationStatus(MessagePayload):
 
     def __str__(self):
         string = 'Calibration Status Message @ %s\n' % str(self.p1_time)
-        string += '  Stage: %s\n' % str(self.calibration_stage)
+        string += '  Stage: %s\n' % CalibrationStage.static_to_string(self.calibration_stage)
         string += '  Completion: gyro=%.1f%%, accel=%.1f%%, mounting angles=%.1f%%\n' % \
                   (self.gyro_bias_percent_complete, self.accel_bias_percent_complete,
                    self.mounting_angle_percent_complete)
@@ -766,12 +766,11 @@ class RelativeENUPositionMessage(MessagePayload):
         return parsed._io.tell()
 
     def __str__(self):
-        fields = ['gps_time', 'solution_type', 'reference_station_id', 'relative_position_enu_m', 'position_std_enu_m']
-        string = f'RelativeENUPosition @ {self.p1_time}\n'
-        for field in fields:
-            val = str(self.__dict__[field]).replace('Container:', '')
-            string += f'  {field}: {val}\n'
-        return string.rstrip()
+        return construct_message_to_string(
+            message=self,
+            title=f'RelativeENUPosition @ {self.p1_time}',
+            fields=['gps_time', 'solution_type', 'reference_station_id', 'relative_position_enu_m',
+                    'position_std_enu_m'])
 
     @classmethod
     def calcsize(cls) -> int:

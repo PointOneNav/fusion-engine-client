@@ -3,7 +3,7 @@ from typing import Iterable, NamedTuple, Optional, List
 
 from construct import (Struct, Float32l, Int64ul, Int32ul, Int16ul, Int8ul, Padding, this, Flag, Bytes, Array)
 
-from ..utils.construct_utils import NamedTupleAdapter, AutoEnum
+from ..utils.construct_utils import NamedTupleAdapter, AutoEnum, construct_message_to_string
 from ..utils.enum_utils import IntEnum
 from .defs import *
 
@@ -712,12 +712,11 @@ class SetConfigMessage(MessagePayload):
         return parsed._io.tell()
 
     def __str__(self):
-        fields = ['config_object']
-        string = f'Set Config Command\n'
-        for field in fields:
-            val = str(self.__dict__[field]).replace('Container:', '')
-            string += f'  {field}: {val}\n'
-        return string.rstrip()
+        return construct_message_to_string(
+            message=self, construct=self.SetConfigMessageConstruct,
+            title=f'Set Config Command',
+            fields=['config_object', 'flags'],
+            value_to_string={'flags': lambda x: '0x%X' % x})
 
     def calcsize(self) -> int:
         return len(self.pack())
@@ -756,12 +755,10 @@ class GetConfigMessage(MessagePayload):
         return parsed._io.tell()
 
     def __str__(self):
-        fields = ['request_source', 'config_type']
-        string = f'Get Config Command\n'
-        for field in fields:
-            val = str(self.__dict__[field]).replace('Container:', '')
-            string += f'  {field}: {val}\n'
-        return string.rstrip()
+        return construct_message_to_string(
+            message=self, construct=self.GetConfigMessageConstruct,
+            title=f'Get Config Command',
+            fields=['request_source', 'config_type'])
 
     @classmethod
     def calcsize(cls) -> int:
@@ -799,12 +796,8 @@ class SaveConfigMessage(MessagePayload):
         return parsed._io.tell()
 
     def __str__(self):
-        fields = ['action']
-        string = f'Save Config Command\n'
-        for field in fields:
-            val = str(self.__dict__[field]).replace('Container:', '')
-            string += f'  {field}: {val}\n'
-        return string.rstrip()
+        return construct_message_to_string(message=self, construct=self.SaveConfigMessageConstruct,
+                                           title=f'Save Config Command')
 
     @classmethod
     def calcsize(cls) -> int:
@@ -861,12 +854,11 @@ class ConfigResponseMessage(MessagePayload):
         return parsed._io.tell()
 
     def __str__(self):
-        fields = ['flags', 'config_source', 'response', 'config_object']
-        string = f'Config Data\n'
-        for field in fields:
-            val = str(self.__dict__[field]).replace('Container:', '')
-            string += f'  {field}: {val}\n'
-        return string.rstrip()
+        return construct_message_to_string(
+            message=self, construct=self.ConfigResponseMessageConstruct,
+            title=f'Config Data',
+            fields=['flags', 'config_source', 'response', 'config_object'],
+            value_to_string={'flags': lambda x: '0x%X' % x})
 
     def calcsize(self) -> int:
         return len(self.pack())
@@ -941,15 +933,11 @@ class SetMessageRate(MessagePayload):
         return parsed._io.tell()
 
     def __str__(self):
-        fields = ['output_interface', 'protocol', 'message_id', 'rate', 'flags']
-        string = f'Set Message Output Rate Command\n'
-        for field in fields:
-            if field == 'message_id':
-                val = get_message_type_string(self.protocol, self.message_id)
-            else:
-                val = str(self.__dict__[field]).replace('Container:', '')
-            string += f'  {field}: {val}\n'
-        return string.rstrip()
+        return construct_message_to_string(
+            message=self, construct=self.SetMessageRateConstruct,
+            title=f'Set Message Output Rate Command',
+            fields=['output_interface', 'protocol', 'message_id', 'rate', 'flags'],
+            value_to_string={'flags': lambda x: '0x%X' % x})
 
     @classmethod
     def calcsize(cls) -> int:
@@ -998,12 +986,10 @@ class GetMessageRate(MessagePayload):
         return parsed._io.tell()
 
     def __str__(self):
-        fields = ['output_interface', 'protocol', 'request_source', 'message_id']
-        string = f'Get Message Output Rate Command\n'
-        for field in fields:
-            val = str(self.__dict__[field]).replace('Container:', '')
-            string += f'  {field}: {val}\n'
-        return string.rstrip()
+        return construct_message_to_string(
+            message=self, construct=self.GetMessageRateConstruct,
+            title=f'Get Message Output Rate Command',
+            fields=['output_interface', 'protocol', 'request_source', 'message_id'])
 
     @classmethod
     def calcsize(cls) -> int:
@@ -1020,10 +1006,11 @@ class RateResponseEntry(NamedTuple):
     __parent_str__ = object.__str__
 
     def __str__(self):
-        return f'RateResponseEntry(protocol={self.protocol.to_string(True)}), flags={self.flags}, ' \
+        return f'RateResponseEntry(protocol={ProtocolType.static_to_string(self.protocol)}), ' \
+               f'flags=0x{self.flags:X}, ' \
                f'message_id={get_message_type_string(self.protocol, self.message_id)}, ' \
-               f'configured_rate={self.configured_rate.to_string(True)}, ' \
-               f'effective_rate={self.effective_rate.to_string(True)})'
+               f'configured_rate={MessageRate.static_to_string(self.configured_rate)}, ' \
+               f'effective_rate={MessageRate.static_to_string(self.effective_rate)})'
 
 
 _RateResponseEntryConstructRaw = Struct(
@@ -1074,19 +1061,10 @@ class MessageRateResponse(MessagePayload):
         return parsed._io.tell()
 
     def __str__(self):
-        fields = [
-            'config_source',
-            'response',
-            'output_interface',
-            'num_rates',
-            'rates']
-        string = f'Message Output Rate Response\n'
-        for field in fields:
-            val = str(self.__dict__[field]).replace('Container:', '')
-            val = re.sub(r'ListContainer\((.+)\)', r'\1', val)
-            val = re.sub(r'<TransportType\.(.+): [0-9]+>', r'\1', val)
-            string += f'  {field}: {val}\n'
-        return string.rstrip()
+        return construct_message_to_string(
+            message=self, construct=self.MessageRateResponseConstruct,
+            title=f'Message Output Rate Response',
+            fields=['config_source', 'response', 'output_interface', 'num_rates', 'rates'])
 
     def calcsize(self) -> int:
         return len(self.pack())
@@ -1153,12 +1131,10 @@ class ImportDataMessage(MessagePayload):
         return parsed._io.tell()
 
     def __str__(self):
-        fields = ['source', 'data_version']
-        string = f'Import Data Command ({str(self.data_type)}, {len(self.data)} B)\n'
-        for field in fields:
-            val = str(self.__dict__[field]).replace('Container:', '')
-            string += f'  {field}: {val}\n'
-        return string.rstrip()
+        return construct_message_to_string(
+            message=self, construct=self.ImportDataMessageConstruct,
+            title=f'Import Data Command ({str(self.data_type)}, {len(self.data)} B)',
+            fields=['source', 'data_version'])
 
     def calcsize(self) -> int:
         return len(self.pack())
@@ -1192,12 +1168,10 @@ class ExportDataMessage(MessagePayload):
         return parsed._io.tell()
 
     def __str__(self):
-        fields = ['source']
-        string = f'Export data command ({str(self.data_type)})\n'
-        for field in fields:
-            val = str(self.__dict__[field]).replace('Container:', '')
-            string += f'  {field}: {val}\n'
-        return string.rstrip()
+        return construct_message_to_string(
+            message=self, construct=self.ExportDataMessageConstruct,
+            title=f'Export Data Command ({str(self.data_type)})',
+            fields=['source'])
 
     @classmethod
     def calcsize(cls) -> int:
@@ -1240,12 +1214,10 @@ class PlatformStorageDataMessage(MessagePayload):
         return parsed._io.tell()
 
     def __str__(self):
-        fields = ['response', 'source', 'data_version']
-        string = f'Platform Storage Data ({str(self.data_type)}, {len(self.data)} B)\n'
-        for field in fields:
-            val = str(self.__dict__[field]).replace('Container:', '')
-            string += f'  {field}: {val}\n'
-        return string.rstrip()
+        return construct_message_to_string(
+            message=self, construct=self.PlatformStorageDataMessageConstruct,
+            title=f'Platform Storage Data ({str(self.data_type)}, {len(self.data)} B)',
+            fields=['response', 'source', 'data_version'])
 
     def calcsize(self) -> int:
         return len(self.pack())
