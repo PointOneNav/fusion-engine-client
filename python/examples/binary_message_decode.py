@@ -54,7 +54,7 @@ Payload: Reset Request [mask=0x01000fff]
     logger = logging.getLogger('point_one.fusion_engine')
 
     # Concatenate all hex characters and convert to bytes.
-    byte_str_array = [b if len(b) == 2 else f'0{b}' for b in options.contents]
+    byte_str_array = [b if len(b) % 2 == 0 else f'0{b}' for b in options.contents]
     contents_str = ''.join(byte_str_array).replace(' ', '')
     if len(contents_str) % 2 != 0:
         logger.error("Error: Contents must contain an even number of hex characters.")
@@ -107,10 +107,12 @@ Payload: Reset Request [mask=0x01000fff]
                             payload.unpack(buffer=contents, offset=header.calcsize())
                             logger.info("Decoded payload contents: %s" % str(payload))
                         except ValueError as e:
+                            logger.warning(str(e))
                             logger.warning("Unable to decode payload contents.")
                     else:
                         logger.warning("Not enough data to decode payload.")
             except ValueError as e:
+                logger.warning(str(e))
                 logger.warning("No valid FusionEngine messages decoded.")
 
         sys.exit(2)

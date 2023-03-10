@@ -422,6 +422,8 @@ class EventNotificationMessage(MessagePayload):
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         values = dict(self.__dict__)
         values['event_description_len_bytes'] = len(self.event_description)
+        if isinstance(self.event_description, str):
+            values['event_description'] = self.event_description.encode('utf-8')
         packed_data = self.EventNotificationConstruct.build(values)
         return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
 
