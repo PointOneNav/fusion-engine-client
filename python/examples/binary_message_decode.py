@@ -107,10 +107,12 @@ Payload: Reset Request [mask=0x01000fff]
                             payload.unpack(buffer=contents, offset=header.calcsize())
                             logger.info("Decoded payload contents: %s" % str(payload))
                         except ValueError as e:
+                            logger.warning(str(e))
                             logger.warning("Unable to decode payload contents.")
                     else:
                         logger.warning("Not enough data to decode payload.")
             except ValueError as e:
+                logger.warning(str(e))
                 logger.warning("No valid FusionEngine messages decoded.")
 
         sys.exit(2)
