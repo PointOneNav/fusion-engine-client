@@ -718,7 +718,7 @@ class RelativeENUPositionMessage(MessagePayload):
 
     INVALID_REFERENCE_STATION = 0xFFFFFFFF
 
-    GetConfigMessageConstruct = Struct(
+    Construct = Struct(
         "p1_time" / TimestampConstruct,
         "gps_time" / TimestampConstruct,
         "solution_type" / AutoEnum(Int8ul, SolutionType),
@@ -757,11 +757,11 @@ class RelativeENUPositionMessage(MessagePayload):
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         values = dict(self.__dict__)
-        packed_data = self.GetConfigMessageConstruct.build(values)
+        packed_data = self.Construct.build(values)
         return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
 
     def unpack(self, buffer: bytes, offset: int = 0) -> int:
-        parsed = self.GetConfigMessageConstruct.parse(buffer[offset:])
+        parsed = self.Construct.parse(buffer[offset:])
         self.__dict__.update(parsed)
         return parsed._io.tell()
 
