@@ -671,6 +671,11 @@ class SetConfigMessage(MessagePayload):
 
     # Flag to immediately save the config after applying this setting.
     FLAG_APPLY_AND_SAVE = 0x01
+    # Flag to restore the config_type back to its default value.
+    #
+    # When set, the config_length_bytes should be 0 and no data should be
+    # included.
+    FLAG_REVERT_TO_DEFAULT = 0x02
 
     SetConfigMessageConstruct = Struct(
         "config_type" / AutoEnum(Int16ul, ConfigType),
