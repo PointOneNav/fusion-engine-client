@@ -78,6 +78,7 @@ for the latest FusionEngine message specification.
         'wheel>=0.36.2',
     ],
     install_requires=[
+        'aenum>=3.1.1',
         'numpy>=1.16.0',
         'construct>=2.10.0',
     ],
