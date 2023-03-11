@@ -2,7 +2,7 @@ from typing import NamedTuple, Optional
 
 from construct import Struct, Bytes, Flag, Int8ul, Padding, this
 
-from ..utils.construct_utils import NamedTupleAdapter, AutoEnum
+from ..utils.construct_utils import NamedTupleAdapter, AutoEnum, construct_message_to_string
 from ..utils.enum_utils import IntEnum
 from .defs import *
 
@@ -187,12 +187,7 @@ class FaultControlMessage(MessagePayload):
         return parsed._io.tell()
 
     def __str__(self):
-        fields = ['payload']
-        string = f'Fault Control Command\n'
-        for field in fields:
-            val = str(self.__dict__[field]).replace('Container:', '')
-            string += f'  {field}: {val}\n'
-        return string.rstrip()
+        return construct_message_to_string(message=self, title='Fault Control Command')
 
     def calcsize(self) -> int:
         return len(self.pack())

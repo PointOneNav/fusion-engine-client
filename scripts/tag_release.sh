@@ -219,4 +219,12 @@ fi
 
 # Tag the updated git commit.
 echo "Tagging commit ${COMMIT} as '${TAG}'."
-git tag -a ${TAG} ${COMMIT}
+cat <<EOF | git tag -a ${TAG} ${COMMIT} --edit -F -
+Release version ${VERSION}.
+
+New Features
+
+Changes
+
+Fixes
+EOF

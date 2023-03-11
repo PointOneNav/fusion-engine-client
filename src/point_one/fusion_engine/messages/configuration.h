@@ -328,6 +328,13 @@ struct alignas(4) SetConfigMessage : public MessagePayload {
 
   /** Flag to immediately save the config after applying this setting. */
   static constexpr uint8_t FLAG_APPLY_AND_SAVE = 0x01;
+  /**
+   * Flag to restore the config_type back to its default value.
+   *
+   * When set, the config_length_bytes should be 0 and no data should be
+   * included.
+   */
+  static constexpr uint8_t FLAG_REVERT_TO_DEFAULT = 0x02;
 
   /** The type of parameter to be configured. */
   ConfigType config_type;
