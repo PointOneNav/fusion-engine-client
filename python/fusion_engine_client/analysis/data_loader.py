@@ -302,6 +302,7 @@ class DataLoader(object):
             'max_messages': max_messages,
             'require_p1_time': require_p1_time,
             'require_system_time': require_system_time,
+            'remove_nan_times': remove_nan_times,
         }
 
         # If the user requested output in the order that it was logged, we need to ignore cached data since that data
