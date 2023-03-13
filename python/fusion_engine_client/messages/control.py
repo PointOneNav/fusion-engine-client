@@ -391,6 +391,14 @@ class VersionInfoMessage(MessagePayload):
         return len(self.pack())
 
 
+class EventType(IntEnum):
+    LOG = 0
+    RESET = 1
+    CONFIG_CHANGE = 2
+    COMMAND = 3
+    COMMAND_RESPONSE = 4
+
+
 class EventNotificationMessage(MessagePayload):
     """!
     @brief Notification of a system event for logging purposes.
@@ -398,15 +406,8 @@ class EventNotificationMessage(MessagePayload):
     MESSAGE_TYPE = MessageType.EVENT_NOTIFICATION
     MESSAGE_VERSION = 0
 
-    class Action(IntEnum):
-        LOG = 0
-        RESET = 1
-        CONFIG_CHANGE = 2
-        COMMAND = 3
-        COMMAND_RESPONSE = 4
-
     EventNotificationConstruct = Struct(
-        "action" / AutoEnum(Int8ul, Action),
+        "event_type" / AutoEnum(Int8ul, EventType),
         Padding(3),
         "system_time_ns" / Int64ul,
         "event_flags" / Int64ul,
@@ -416,7 +417,7 @@ class EventNotificationMessage(MessagePayload):
     )
 
     def __init__(self):
-        self.action = self.Action.LOG
+        self.event_type = EventType.LOG
         self.system_time_ns = 0
         self.event_flags = 0
         self.event_description = bytes()
@@ -441,7 +442,7 @@ class EventNotificationMessage(MessagePayload):
         return construct_message_to_string(
             message=self, construct=self.EventNotificationConstruct,
             title=f'Event Notification @ %s' % system_time_to_str(self.system_time_ns),
-            fields=['action', 'event_flags', 'event_description'],
+            fields=['event_type', 'event_flags', 'event_description'],
             value_to_string={'event_flags': lambda x: '0x%016X' % x})
 
     def calcsize(self) -> int:

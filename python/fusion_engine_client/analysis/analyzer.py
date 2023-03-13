@@ -1588,7 +1588,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         table_data = [[], [], [], [], []]
         table_data[0] = [f'{(m.system_time_ns - self.reader.get_system_t0_ns()) / 1e9:.3f}' for m in messages]
         table_data[1] = [f'{(m.system_time_ns) / 1e9:.3f}' for m in messages]
-        table_data[2] = [str(m.action) for m in messages]
+        table_data[2] = [str(m.event_type) for m in messages]
         table_data[3] = [f'0x{m.event_flags:016X}' for m in messages]
         table_data[4] = [m.event_description.decode('utf-8') for m in messages]
 
