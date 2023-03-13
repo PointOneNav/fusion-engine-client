@@ -89,15 +89,17 @@ def generate_data(data_path=None, include_binary=False, return_dict=True):
     return encode_generated_data(messages, data_path=data_path, return_dict=return_dict)
 
 
-def message_list_to_dict(messages):
+def message_list_to_dict(messages, return_in_order=False):
     result = {}
     for message in messages:
         if isinstance(message, bytes):
             continue
 
-        if message.get_type() not in result:
-            result[message.get_type()] = MessageData(message.get_type(), None)
-        result[message.get_type()].messages.append(message)
+        cache_key = None if return_in_order else message.get_type()
+
+        if cache_key not in result:
+            result[cache_key] = MessageData(cache_key, None)
+        result[cache_key].messages.append(message)
     return result
 
 
@@ -245,17 +247,19 @@ class TestReader:
     def test_read_in_order(self, data_path):
         messages = generate_data(data_path=str(data_path), include_binary=False, return_dict=False)
         expected_messages = [m for m in messages if m.get_type() in (MessageType.POSE, MessageType.EVENT_NOTIFICATION)]
+        expected_result = message_list_to_dict(expected_messages, return_in_order=True)
 
         reader = DataLoader(path=str(data_path))
         assert not reader.reader.have_index()
 
         result = reader.read(message_types=[PoseMessage, EventNotificationMessage], return_in_order=True)
-        self._check_results(result, expected_messages)
+        self._check_results(result, expected_result)
         assert reader.reader.have_index()
 
     def test_read_in_order_with_index(self, data_path):
         messages = generate_data(data_path=str(data_path), include_binary=False, return_dict=False)
         expected_messages = [m for m in messages if m.get_type() in (MessageType.POSE, MessageType.EVENT_NOTIFICATION)]
+        expected_result = message_list_to_dict(expected_messages, return_in_order=True)
 
         MixedLogReader.generate_index_file(str(data_path))
 
@@ -263,7 +267,7 @@ class TestReader:
         assert reader.reader.have_index()
 
         result = reader.read(message_types=[PoseMessage, EventNotificationMessage], return_in_order=True)
-        self._check_results(result, expected_messages)
+        self._check_results(result, expected_result)
 
     # Note: TimeRange objects keep internal state, so we can't use them here since the state will remain across multiple
     # calls for different use_index values. Instead we store range strings and parse them on each call.

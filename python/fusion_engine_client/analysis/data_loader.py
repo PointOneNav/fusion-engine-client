@@ -218,7 +218,7 @@ class DataLoader(object):
                 self.data[MessageType.POSE] = prev_data
 
     def read(self, *args, **kwargs) \
-            -> Dict[MessageType, MessageData]:
+            -> Dict[Optional[MessageType], MessageData]:
         """!
         @brief Read data for one or more desired message types.
 
@@ -262,10 +262,10 @@ class DataLoader(object):
         @param aligned_message_types A list of message types for which time alignment will be performed. Any message
                types not present in the list will be left unmodified. If `None`, all message types will be aligned.
 
-        @return - `return_in_order == False`: A `dict`, keyed by @ref fusion_engine_client.messages.defs.MessageType
-                  "MessageType", containing @ref MessageData objects with the data read for each of the requested
-                  message types.
-                - `return_in_order == True`: A `list` containing each message in the order in which it was received.
+        @return - A `dict`, keyed by @ref fusion_engine_client.messages.defs.MessageType "MessageType", containing @ref
+                  MessageData objects with the data read for each of the requested message types. If
+                  `return_in_order == True`, the returned `dict` will contain a single entry with the key set to `None`.
+                  It will contain all message types in the order that they were recorded.
         """
         return self._read(*args, **kwargs)
 
@@ -524,10 +524,6 @@ class DataLoader(object):
                     data_cache[None].messages.append(entry[1])
                 else:
                     data_cache[entry[0].message_type].messages.append(entry[1])
-
-        # If returning data in-order, pull out the messages list.
-        if return_in_order:
-            result = data_cache[None].messages
 
         # Time-align the data if requested.
         if time_align != TimeAlignmentMode.NONE:
