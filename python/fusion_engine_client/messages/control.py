@@ -443,10 +443,32 @@ class EventNotificationMessage(MessagePayload):
             message=self, construct=self.EventNotificationConstruct,
             title=f'Event Notification @ %s' % system_time_to_str(self.system_time_ns),
             fields=['event_type', 'event_flags', 'event_description'],
-            value_to_string={'event_flags': lambda x: '0x%016X' % x})
+            value_to_string={
+                'event_flags': lambda x: '0x%016X' % x,
+                'event_description': lambda x: self.event_description_to_string(self.event_type, x),
+            })
 
     def calcsize(self) -> int:
         return len(self.pack())
+
+    @classmethod
+    def event_description_to_string(cls, event_type: EventType, event_description: bytes):
+        # For commands and responses, the payload should contain the binary FusionEngine message. Try to decode the
+        # message type.
+        if event_type == EventType.COMMAND or event_type == EventType.COMMAND_RESPONSE:
+            if len(event_description) >= MessageHeader.calcsize():
+                header = MessageHeader()
+                header.unpack(event_description, ignore_sync=True, validate_crc=False, warn_on_unrecognized=False)
+                message_type_str = header.message_type.to_string(include_value=True)
+            else:
+                message_type_str = '<Malformed>'
+
+            return f'{message_type_str} [{len(event_description)} B; payload=' \
+                   f'{" ".join("%02X" % b for b in event_description)}]'
+        elif isinstance(event_description, str):
+            return event_description
+        else:
+            return repr(event_description)
 
 
 class ShutdownRequest(MessagePayload):
