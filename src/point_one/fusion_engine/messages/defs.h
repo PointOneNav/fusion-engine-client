@@ -10,6 +10,7 @@
 #include <ostream>
 #include <string>
 
+#include "point_one/fusion_engine/common/portability.h"
 #include "point_one/fusion_engine/messages/signal_defs.h"
 
 namespace point_one {
@@ -208,6 +209,56 @@ P1_CONSTEXPR_FUNC const char* to_string(MessageType type) {
 inline std::ostream& operator<<(std::ostream& stream, MessageType type) {
   stream << to_string(type) << " (" << (int)type << ")";
   return stream;
+}
+
+/**
+ * @brief Check if the specified message type is a user command.
+ * @ingroup messages
+ *
+ * See also @ref IsResponse().
+ *
+ * @param message_type The message type in question.
+ *
+ * @return `true` if the message is a FusionEngine command.
+ */
+P1_CONSTEXPR_FUNC bool IsCommand(MessageType message_type) {
+  switch (message_type) {
+    case MessageType::MESSAGE_REQUEST:
+    case MessageType::RESET_REQUEST:
+    case MessageType::SHUTDOWN_REQUEST:
+    case MessageType::FAULT_CONTROL:
+    case MessageType::SET_CONFIG:
+    case MessageType::GET_CONFIG:
+    case MessageType::SAVE_CONFIG:
+    case MessageType::IMPORT_DATA:
+    case MessageType::EXPORT_DATA:
+    case MessageType::SET_MESSAGE_RATE:
+    case MessageType::GET_MESSAGE_RATE:
+      return true;
+    default:
+      return false;
+  }
+}
+
+/**
+ * @brief Check if the specified message type is a response to a user command.
+ * @ingroup messages
+ *
+ * See also @ref IsCommand().
+ *
+ * @param message_type The message type in question.
+ *
+ * @return `true` if the message is a FusionEngine command response.
+ */
+P1_CONSTEXPR_FUNC bool IsResponse(MessageType message_type) {
+  switch (message_type) {
+    case MessageType::COMMAND_RESPONSE:
+    case MessageType::CONFIG_RESPONSE:
+    case MessageType::MESSAGE_RATE_RESPONSE:
+      return true;
+    default:
+      return false;
+  }
 }
 
 /** @brief Command response status indicators. */
@@ -453,6 +504,34 @@ struct alignas(4) MessageHeader {
   /** Identifies the source of the serialized data. */
   uint32_t source_identifier = INVALID_SOURCE_ID;
 };
+
+/**
+ * @brief Check if the specified message is a user command.
+ * @ingroup messages
+ *
+ * See @ref IsCommand() for details.
+ *
+ * @param header Header of a received FusionEngine message.
+ *
+ * @return `true` if the message is a FusionEngine command.
+ */
+P1_CONSTEXPR_FUNC bool IsCommand(const MessageHeader& header) {
+  return IsCommand(header.message_type);
+}
+
+/**
+ * @brief Check if the specified message type is a response to a user command.
+ * @ingroup messages
+ *
+ * See @ref IsResponse() for details.
+ *
+ * @param header Header of a received FusionEngine message.
+ *
+ * @return `true` if the message is a FusionEngine command response.
+ */
+P1_CONSTEXPR_FUNC bool IsResponse(const MessageHeader& header) {
+  return IsResponse(header.message_type);
+}
 
 /**
  * @brief The base class for all message payloads.

@@ -142,6 +142,36 @@ class MessageType(IntEnum):
                 return string_name
 
 
+COMMAND_MESSAGES = {
+    MessageType.MESSAGE_REQUEST,
+    MessageType.RESET_REQUEST,
+    MessageType.SHUTDOWN_REQUEST,
+    MessageType.FAULT_CONTROL,
+    MessageType.SET_CONFIG,
+    MessageType.GET_CONFIG,
+    MessageType.SAVE_CONFIG,
+    MessageType.IMPORT_DATA,
+    MessageType.EXPORT_DATA,
+    MessageType.SET_MESSAGE_RATE,
+    MessageType.GET_MESSAGE_RATE,
+}
+
+
+def is_command(message_type: MessageType) -> bool:
+    return message_type in COMMAND_MESSAGES
+
+
+RESPONSE_MESSAGES = {
+    MessageType.COMMAND_RESPONSE,
+    MessageType.CONFIG_RESPONSE,
+    MessageType.MESSAGE_RATE_RESPONSE,
+}
+
+
+def is_response(message_type: MessageType) -> bool:
+    return message_type in RESPONSE_MESSAGES
+
+
 class MessageHeader:
     INVALID_SOURCE_ID = 0xFFFFFFFF
 
