@@ -299,7 +299,7 @@ class MessageHeader:
             if warn_on_unrecognized:
                 _logger.log(logging.WARNING if message_type_int < int(MessageType.RESERVED) else logging.DEBUG,
                             'Unrecognized message type %d.' % message_type_int)
-            self.message_type = message_type_int
+            self.message_type = MessageType(message_type_int, raise_on_unrecognized=False)
 
         return MessageHeader._SIZE
 
