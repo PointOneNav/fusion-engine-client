@@ -402,6 +402,8 @@ class EventNotificationMessage(MessagePayload):
         LOG = 0
         RESET = 1
         CONFIG_CHANGE = 2
+        COMMAND = 3
+        COMMAND_RESPONSE = 4
 
     EventNotificationConstruct = Struct(
         "action" / AutoEnum(Int8ul, Action),
