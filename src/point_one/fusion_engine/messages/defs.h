@@ -91,7 +91,7 @@ enum class MessageType : uint16_t {
  *
  * @return The corresponding string name.
  */
-inline const char* to_string(MessageType type) {
+P1_CONSTEXPR_FUNC const char* to_string(MessageType type) {
   switch (type) {
     case MessageType::INVALID:
       return "Invalid";
@@ -264,7 +264,7 @@ enum class Response : uint8_t {
  *
  * @return The corresponding string name.
  */
-inline const char* to_string(Response val) {
+P1_CONSTEXPR_FUNC const char* to_string(Response val) {
   switch (val) {
     case Response::OK:
       return "Ok";
@@ -338,7 +338,7 @@ enum class SolutionType : uint8_t {
  *
  * @return The corresponding string name.
  */
-inline const char* to_string(SolutionType type) {
+P1_CONSTEXPR_FUNC const char* to_string(SolutionType type) {
   switch (type) {
     case SolutionType::Invalid:
       return "Invalid";

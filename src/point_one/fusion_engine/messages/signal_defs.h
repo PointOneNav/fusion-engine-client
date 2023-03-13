@@ -7,6 +7,8 @@
 #include <cstdint>
 #include <ostream>
 
+#include "point_one/fusion_engine/common/portability.h"
+
 namespace point_one {
 namespace fusion_engine {
 namespace messages {
@@ -46,7 +48,7 @@ enum class SatelliteType : uint8_t {
  *
  * @return The corresponding string name.
  */
-inline const char* to_string(SatelliteType type) {
+P1_CONSTEXPR_FUNC const char* to_string(SatelliteType type) {
   switch (type) {
     case SatelliteType::UNKNOWN:
       return "Unknown";
@@ -241,7 +243,7 @@ enum class FrequencyBand : uint8_t {
  *
  * @return The corresponding string name.
  */
-inline const char* to_string(FrequencyBand type) {
+P1_CONSTEXPR_FUNC const char* to_string(FrequencyBand type) {
   switch (type) {
     case FrequencyBand::UNKNOWN:
       return "Unknown";

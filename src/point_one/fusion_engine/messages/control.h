@@ -14,6 +14,7 @@
 #  pragma warning(disable : 4200)
 #endif
 
+#include "point_one/fusion_engine/common/portability.h"
 #include "point_one/fusion_engine/messages/defs.h"
 
 namespace point_one {
@@ -411,7 +412,7 @@ struct alignas(4) EventNotificationMessage : public MessagePayload {
     COMMAND_RESPONSE = 4,
   };
 
-  static const char* to_string(EventType type) {
+  static P1_CONSTEXPR_FUNC const char* to_string(EventType type) {
     switch (type) {
       case EventType::LOG:
         return "Log";
