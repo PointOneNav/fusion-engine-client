@@ -52,6 +52,11 @@ class CommandResponseMessage(MessagePayload):
     def calcsize(cls) -> int:
         return cls._STRUCT.size
 
+    def __repr__(self):
+        result = super().__repr__()[:-1]
+        result += f', response={self.response}, seq_num={self.source_sequence_num}]'
+        return result
+
     def __str__(self):
         string = f'Command Response\n'
         string += f'  Sequence #: {self.source_sequence_num}\n'
@@ -99,7 +104,9 @@ class MessageRequest(MessagePayload):
         return offset - initial_offset
 
     def __repr__(self):
-        return '%s' % self.MESSAGE_TYPE.name
+        result = super().__repr__()[:-1]
+        result += f', message_type={self.message_type}]'
+        return result
 
     def __str__(self):
         return 'Transmission request for message %s.' % MessageType.get_type_string(self.message_type)
@@ -334,6 +341,11 @@ class ResetRequest(MessagePayload):
     def calcsize(cls) -> int:
         return cls._STRUCT.size
 
+    def __repr__(self):
+        result = super().__repr__()[:-1]
+        result += f', mask=0x{self.reset_mask:08X}]'
+        return result
+
     def __str__(self):
         return 'Reset Request [mask=0x%08x]' % self.reset_mask
 
@@ -378,6 +390,12 @@ class VersionInfoMessage(MessagePayload):
         parsed = self.VersionInfoMessageConstruct.parse(buffer[offset:])
         self.__dict__.update(parsed)
         return parsed._io.tell()
+
+    def __repr__(self):
+        result = super().__repr__()[:-1]
+        result += f', fw={self.fw_version_str}, engine={self.engine_version_str}, hw={self.hw_version_str} ' \
+                  f'rx={self.rx_version_str}]'
+        return result
 
     def __str__(self):
         string = f'Version Info @ %s\n' % system_time_to_str(self.system_time_ns)
@@ -447,7 +465,14 @@ class EventNotificationMessage(MessagePayload):
         return parsed._io.tell()
 
     def __repr__(self):
-        return '%s @ %s' % (self.MESSAGE_TYPE.name, system_time_to_str(self.system_time_ns))
+        result = super().__repr__()[:-1]
+        result += f', type={self.event_type}, flags=0x{self.event_flags:X}'
+        if self.event_type == EventType.COMMAND or self.event_type == EventType.COMMAND_RESPONSE:
+            result += f', data={len(self.event_description)} B'
+        else:
+            result += f', description={self.event_description}'
+        result += ']'
+        return result
 
     def __str__(self):
         return construct_message_to_string(
@@ -506,6 +531,11 @@ class ShutdownRequest(MessagePayload):
         parsed = self.ShutdownRequestConstruct.parse(buffer[offset:])
         self.__dict__.update(parsed)
         return parsed._io.tell()
+
+    def __repr__(self):
+        result = super().__repr__()[:-1]
+        result += f', flags=0x{self.shutdown_flags:016X}]'
+        return result
 
     def __str__(self):
         return 'Shutdown Request [flags=0x%016x]' % self.shutdown_flags

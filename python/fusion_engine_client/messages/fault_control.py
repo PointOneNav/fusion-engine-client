@@ -186,6 +186,11 @@ class FaultControlMessage(MessagePayload):
         self.payload = _class_gen.TYPE_MAP[parsed.fault_type].parse(parsed.payload)
         return parsed._io.tell()
 
+    def __repr__(self):
+        result = super().__repr__()[:-1]
+        result += f', fault_type={self.payload.GetType() if self.payload is not None else "None"}]'
+        return result
+
     def __str__(self):
         return construct_message_to_string(message=self, title='Fault Control Command')
 

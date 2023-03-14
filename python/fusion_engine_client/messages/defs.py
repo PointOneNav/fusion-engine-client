@@ -432,10 +432,19 @@ class MessagePayload:
             return system_time_ns * 1e-9
 
     def __repr__(self):
-        try:
-            return '%s message' % MessageType.get_type_string(self.get_type())
-        except NotImplementedError:
-            return 'Unknown message payload.'
+        result = f'[{self.get_type().to_string(include_value=True)}'
+
+        p1_time = self.get_p1_time()
+        if p1_time is not None:
+            result += f', p1_time={float(p1_time):.3f} sec'
+
+        system_time_sec = self.get_system_time_sec()
+        if system_time_sec is not None:
+            result += f', system_time={system_time_sec:.3f} sec'
+
+        result += ']'
+
+        return result
 
     def __str__(self):
         return repr(self)
