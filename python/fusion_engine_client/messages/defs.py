@@ -279,6 +279,7 @@ class MessageHeader:
         @param buffer A byte buffer containing a serialized message.
         @param offset The offset into the buffer (in bytes) at which the message header begins.
         @param validate_crc If `True`, validate the deserialized CRC against the data in the buffer.
+        @param warn_on_unrecognized If `True`, print a warning if the message type is not listed in @ref MessageType.
 
         @return The size of the serialized header (in bytes).
         """
