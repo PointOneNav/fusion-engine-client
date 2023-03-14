@@ -106,6 +106,12 @@ class PoseMessage(MessagePayload):
         return offset - initial_offset
 
     def __repr__(self):
+        result = super().__repr__()[:-1]
+        lla_str = '(%.6f, %.6f, %.3f)' % tuple(self.lla_deg)
+        result += f', solution_type={self.solution_type}, position={lla_str}]'
+        return result
+
+    def __repr__(self):
         return '%s @ %s' % (self.MESSAGE_TYPE.name, self.p1_time)
 
     def __str__(self):
@@ -205,9 +211,6 @@ class PoseAuxMessage(MessagePayload):
 
         return offset - initial_offset
 
-    def __repr__(self):
-        return '%s @ %s' % (self.MESSAGE_TYPE.name, self.p1_time)
-
     def __str__(self):
         return 'Pose Aux Message @ %s' % str(self.p1_time)
 
@@ -293,9 +296,6 @@ class GNSSInfoMessage(MessagePayload):
         offset += self._STRUCT.size
 
         return offset - initial_offset
-
-    def __repr__(self):
-        return '%s @ %s' % (self.MESSAGE_TYPE.name, self.p1_time)
 
     def __str__(self):
         string = 'GNSS Info Message @ %s\n' % str(self.p1_time)
@@ -428,7 +428,9 @@ class GNSSSatelliteMessage(MessagePayload):
         return offset - initial_offset
 
     def __repr__(self):
-        return '%s @ %s [%d SVs]' % (self.MESSAGE_TYPE.name, self.p1_time, len(self.svs))
+        result = super().__repr__()[:-1]
+        result += f', num_svs={len(self.svs)}]'
+        return result
 
     def __str__(self):
         string = 'GNSS Satellite Message @ %s\n' % str(self.p1_time)
@@ -648,9 +650,9 @@ class CalibrationStatus(MessagePayload):
         return offset - initial_offset
 
     def __repr__(self):
-        return '%s @ %s [stage=%s, mounting_angle=%.1f%%]' % (self.MESSAGE_TYPE.name, self.p1_time,
-                                                              str(self.calibration_stage),
-                                                              self.mounting_angle_percent_complete)
+        result = super().__repr__()[:-1]
+        result += f', stage={self.calibration_stage}, mounting_angle={self.mounting_angle_percent_complete:.1f}%]'
+        return result
 
     def __str__(self):
         string = 'Calibration Status Message @ %s\n' % str(self.p1_time)
@@ -764,6 +766,11 @@ class RelativeENUPositionMessage(MessagePayload):
         parsed = self.Construct.parse(buffer[offset:])
         self.__dict__.update(parsed)
         return parsed._io.tell()
+
+    def __repr__(self):
+        result = super().__repr__()[:-1]
+        result += f', solution_type={self.solution_type}]'
+        return result
 
     def __str__(self):
         return construct_message_to_string(

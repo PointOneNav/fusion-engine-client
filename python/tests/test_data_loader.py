@@ -101,6 +101,12 @@ def message_list_to_dict(messages):
     return result
 
 
+def message_list_to_messagedata(messages):
+    result = MessageData(None, None)
+    result.messages = messages
+    return result
+
+
 def filter_by_time(messages, time_range: TimeRange):
     result = [m for m in messages if time_range.is_in_range(m)]
     time_range.restart()
@@ -124,17 +130,25 @@ class TestReader:
         if expected_system_time_sec is not None:
             assert float(message.get_system_time_sec()) == pytest.approx(expected_system_time_sec, 1e-6)
 
-    def _check_results(self, results, expected_results):
+    def _check_dict_results(self, results: dict, expected_results: dict):
         expected_types = list(expected_results.keys())
         for message_type, message_data in results.items():
-            message_data = message_data.messages
             if message_type in expected_types:
-                expected_data = expected_results[message_type].messages
-                assert len(message_data) == len(expected_data)
-                for message, expected_message in zip(message_data, expected_data):
-                    self._check_message(message, expected_message)
+                expected_data = expected_results[message_type]
+                self._check_messagedata_results(message_data, expected_data)
             else:
-                assert len(message_data) == 0
+                assert len(message_data.messages) == 0
+
+    def _check_messagedata_results(self, results: MessageData, expected_results: MessageData):
+        assert len(results.messages) == len(expected_results.messages)
+        for message, expected_message in zip(results.messages, expected_results.messages):
+            self._check_message(message, expected_message)
+
+    def _check_results(self, results, expected_results):
+        if isinstance(results, MessageData):
+            self._check_messagedata_results(results, expected_results)
+        else:
+            self._check_dict_results(results, expected_results)
 
     def test_read_all(self, data_path):
         expected_messages = generate_data(data_path=str(data_path), include_binary=False, return_dict=False)
@@ -230,6 +244,31 @@ class TestReader:
         result = reader.read(disable_index_generation=True)
         self._check_results(result, expected_result)
         assert not reader.reader.have_index()
+
+    def test_read_in_order(self, data_path):
+        messages = generate_data(data_path=str(data_path), include_binary=False, return_dict=False)
+        expected_messages = [m for m in messages if m.get_type() in (MessageType.POSE, MessageType.EVENT_NOTIFICATION)]
+        expected_result = message_list_to_messagedata(expected_messages)
+
+        reader = DataLoader(path=str(data_path))
+        assert not reader.reader.have_index()
+
+        result = reader.read(message_types=[PoseMessage, EventNotificationMessage], return_in_order=True)
+        self._check_results(result, expected_result)
+        assert reader.reader.have_index()
+
+    def test_read_in_order_with_index(self, data_path):
+        messages = generate_data(data_path=str(data_path), include_binary=False, return_dict=False)
+        expected_messages = [m for m in messages if m.get_type() in (MessageType.POSE, MessageType.EVENT_NOTIFICATION)]
+        expected_result = message_list_to_messagedata(expected_messages)
+
+        MixedLogReader.generate_index_file(str(data_path))
+
+        reader = DataLoader(path=str(data_path))
+        assert reader.reader.have_index()
+
+        result = reader.read(message_types=[PoseMessage, EventNotificationMessage], return_in_order=True)
+        self._check_results(result, expected_result)
 
     # Note: TimeRange objects keep internal state, so we can't use them here since the state will remain across multiple
     # calls for different use_index values. Instead we store range strings and parse them on each call.

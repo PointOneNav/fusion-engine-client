@@ -711,6 +711,11 @@ class SetConfigMessage(MessagePayload):
         self.flags = parsed.flags
         return parsed._io.tell()
 
+    def __repr__(self):
+        result = super().__repr__()[:-1]
+        result += f', flags=0x{self.flags:02X}, type={self.config_object.GetType()}]'
+        return result
+
     def __str__(self):
         return construct_message_to_string(
             message=self, construct=self.SetConfigMessageConstruct,
@@ -754,6 +759,11 @@ class GetConfigMessage(MessagePayload):
         self.__dict__.update(parsed)
         return parsed._io.tell()
 
+    def __repr__(self):
+        result = super().__repr__()[:-1]
+        result += f', source={self.request_source}, type={self.config_type}]'
+        return result
+
     def __str__(self):
         return construct_message_to_string(
             message=self, construct=self.GetConfigMessageConstruct,
@@ -794,6 +804,11 @@ class SaveConfigMessage(MessagePayload):
         parsed = self.SaveConfigMessageConstruct.parse(buffer[offset:])
         self.action = parsed.action
         return parsed._io.tell()
+
+    def __repr__(self):
+        result = super().__repr__()[:-1]
+        result += f', action={self.action}]'
+        return result
 
     def __str__(self):
         return construct_message_to_string(message=self, construct=self.SaveConfigMessageConstruct,
@@ -852,6 +867,11 @@ class ConfigResponseMessage(MessagePayload):
         self.__dict__.update(parsed)
         self.config_object = _conf_gen.CONFIG_MAP[parsed.config_type].parse(parsed.config_data)
         return parsed._io.tell()
+
+    def __repr__(self):
+        result = super().__repr__()[:-1]
+        result += f', response={self.response}, source={self.config_source}, type={self.config_object.GetType()}]'
+        return result
 
     def __str__(self):
         return construct_message_to_string(
@@ -932,6 +952,12 @@ class SetMessageRate(MessagePayload):
         self.__dict__.update(parsed)
         return parsed._io.tell()
 
+    def __repr__(self):
+        result = super().__repr__()[:-1]
+        result += f', interface={self.output_interface}, flags=0x{self.flags:02X}, protocol={self.protocol}, ' \
+                  f'message_id={self.message_id}, rate={self.rate}]'
+        return result
+
     def __str__(self):
         return construct_message_to_string(
             message=self, construct=self.SetMessageRateConstruct,
@@ -984,6 +1010,12 @@ class GetMessageRate(MessagePayload):
         parsed = self.GetMessageRateConstruct.parse(buffer[offset:])
         self.__dict__.update(parsed)
         return parsed._io.tell()
+
+    def __repr__(self):
+        result = super().__repr__()[:-1]
+        result += f', interface={self.output_interface}, source={self.source}, protocol={self.protocol}, ' \
+                  f'message_id={self.message_id}]'
+        return result
 
     def __str__(self):
         return construct_message_to_string(
@@ -1060,6 +1092,12 @@ class MessageRateResponse(MessagePayload):
         self.__dict__.update(parsed)
         return parsed._io.tell()
 
+    def __repr__(self):
+        result = super().__repr__()[:-1]
+        result += f', response={self.response}, interface={self.output_interface}, source={self.source}, ' \
+                  f'protocol={self.protocol}]'
+        return result
+
     def __str__(self):
         return construct_message_to_string(
             message=self, construct=self.MessageRateResponseConstruct,
@@ -1130,6 +1168,12 @@ class ImportDataMessage(MessagePayload):
         self.__dict__.update(parsed)
         return parsed._io.tell()
 
+    def __repr__(self):
+        result = super().__repr__()[:-1]
+        result += f', type={self.data_type}, source={self.source}, version={self.data_version}, ' \
+                  f'size={len(self.data)} B]'
+        return result
+
     def __str__(self):
         return construct_message_to_string(
             message=self, construct=self.ImportDataMessageConstruct,
@@ -1166,6 +1210,11 @@ class ExportDataMessage(MessagePayload):
         parsed = self.ExportDataMessageConstruct.parse(buffer[offset:])
         self.__dict__.update(parsed)
         return parsed._io.tell()
+
+    def __repr__(self):
+        result = super().__repr__()[:-1]
+        result += f', type={self.data_type}, source={self.source}]'
+        return result
 
     def __str__(self):
         return construct_message_to_string(
@@ -1212,6 +1261,12 @@ class PlatformStorageDataMessage(MessagePayload):
         parsed = self.PlatformStorageDataMessageConstruct.parse(buffer[offset:])
         self.__dict__.update(parsed)
         return parsed._io.tell()
+
+    def __repr__(self):
+        result = super().__repr__()[:-1]
+        result += f', response={self.response}, type={self.data_type}, source={self.source}, ' \
+                  f'version={self.data_version}, size={len(self.data)} B]'
+        return result
 
     def __str__(self):
         return construct_message_to_string(

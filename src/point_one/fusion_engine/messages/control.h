@@ -14,6 +14,7 @@
 #  pragma warning(disable : 4200)
 #endif
 
+#include "point_one/fusion_engine/common/portability.h"
 #include "point_one/fusion_engine/messages/defs.h"
 
 namespace point_one {
@@ -383,12 +384,35 @@ struct alignas(4) VersionInfoMessage : public MessagePayload {
  */
 struct alignas(4) EventNotificationMessage : public MessagePayload {
   enum class EventType : uint8_t {
+    /**
+     * Event containing a logged message string from the device.
+     */
     LOG = 0,
+    /**
+     * Event indicating a device reset occurred. The event flags will be set to
+     * the requested reset bitmask, if applicable (see @ref ResetRequest). The
+     * payload will contain a string describing the cause of the reset.
+     */
     RESET = 1,
+    /**
+     * Notification that the user configuration has been changed. Intended for
+     * diagnostic purposes.
+     */
     CONFIG_CHANGE = 2,
+    /**
+     * Notification that the user performed a command (e.g., configuration
+     * request, fault injection enable/disable).
+     */
+    COMMAND = 3,
+    /**
+     * Record containing the response to a user command. Response events are not
+     * output on the interface on which the command was received; that interface
+     * will receive the response itself.
+     */
+    COMMAND_RESPONSE = 4,
   };
 
-  static const char* to_string(EventType type) {
+  static P1_CONSTEXPR_FUNC const char* to_string(EventType type) {
     switch (type) {
       case EventType::LOG:
         return "Log";
@@ -398,6 +422,12 @@ struct alignas(4) EventNotificationMessage : public MessagePayload {
 
       case EventType::CONFIG_CHANGE:
         return "Config Change";
+
+      case EventType::COMMAND:
+        return "Command";
+
+      case EventType::COMMAND_RESPONSE:
+        return "Command Response";
 
       default:
         return "Unknown";
@@ -426,7 +456,8 @@ struct alignas(4) EventNotificationMessage : public MessagePayload {
   /**
    * This is a dummy entry to provide a pointer to this offset.
    *
-   * This is used for populating string describing the event, where applicable.
+   * This is used for populating string describing the event, or other binary
+   * content where applicable.
    */
   char* event_description[0];
 };

@@ -16,6 +16,7 @@
 
 #include <ostream>
 
+#include "point_one/fusion_engine/common/portability.h"
 #include "point_one/fusion_engine/messages/data_version.h"
 #include "point_one/fusion_engine/messages/defs.h"
 
@@ -158,7 +159,7 @@ enum class ConfigType : uint16_t {
  *
  * @return The corresponding string name.
  */
-inline const char* to_string(ConfigType type) {
+P1_CONSTEXPR_FUNC const char* to_string(ConfigType type) {
   switch (type) {
     case ConfigType::INVALID:
       return "Invalid";
@@ -231,7 +232,7 @@ enum class ConfigurationSource : uint8_t {
  *
  * @return The corresponding string name.
  */
-inline const char* to_string(ConfigurationSource source) {
+P1_CONSTEXPR_FUNC const char* to_string(ConfigurationSource source) {
   switch (source) {
     case ConfigurationSource::ACTIVE:
       return "Active";
@@ -275,7 +276,7 @@ enum class SaveAction : uint8_t {
  *
  * @return The corresponding string name.
  */
-inline const char* to_string(SaveAction action) {
+P1_CONSTEXPR_FUNC const char* to_string(SaveAction action) {
   switch (action) {
     case SaveAction::SAVE:
       return "Save";
@@ -550,7 +551,7 @@ enum class VehicleModel : uint16_t {
  *
  * @return The corresponding string name.
  */
-inline const char* to_string(VehicleModel vehicle_model) {
+P1_CONSTEXPR_FUNC const char* to_string(VehicleModel vehicle_model) {
   switch (vehicle_model) {
     case VehicleModel::UNKNOWN_VEHICLE:
       return "UNKNOWN";
@@ -652,7 +653,7 @@ enum class WheelSensorType : uint8_t {
  *
  * @return The corresponding string name.
  */
-inline const char* to_string(WheelSensorType wheel_sensor_type) {
+P1_CONSTEXPR_FUNC const char* to_string(WheelSensorType wheel_sensor_type) {
   switch (wheel_sensor_type) {
     case WheelSensorType::NONE: {
       return "None";
@@ -715,7 +716,7 @@ enum class AppliedSpeedType : uint8_t {
  *
  * @return The corresponding string name.
  */
-inline const char* to_string(AppliedSpeedType applied_speed_type) {
+P1_CONSTEXPR_FUNC const char* to_string(AppliedSpeedType applied_speed_type) {
   switch (applied_speed_type) {
     case AppliedSpeedType::NONE: {
       return "None";
@@ -770,7 +771,7 @@ enum class SteeringType : uint8_t {
  *
  * @return The corresponding string name.
  */
-inline const char* to_string(SteeringType steering_type) {
+P1_CONSTEXPR_FUNC const char* to_string(SteeringType steering_type) {
   switch (steering_type) {
     case SteeringType::UNKNOWN: {
       return "Unknown Steering";
@@ -908,7 +909,7 @@ enum class TickMode : uint8_t {
   FALLING_EDGE = 2,
 };
 
-inline const char* to_string(TickMode tick_mode) {
+P1_CONSTEXPR_FUNC const char* to_string(TickMode tick_mode) {
   switch (tick_mode) {
     case TickMode::OFF:
       return "OFF";
@@ -950,7 +951,7 @@ enum class TickDirection : uint8_t {
   FORWARD_ACTIVE_LOW = 2,
 };
 
-inline const char* to_string(TickDirection tick_direction) {
+P1_CONSTEXPR_FUNC const char* to_string(TickDirection tick_direction) {
   switch (tick_direction) {
     case TickDirection::OFF:
       return "OFF";
@@ -1058,7 +1059,7 @@ constexpr uint16_t ALL_MESSAGES_ID = 0xFFFF;
  *
  * @return The corresponding string name.
  */
-inline const char* to_string(ProtocolType val) {
+P1_CONSTEXPR_FUNC const char* to_string(ProtocolType val) {
   switch (val) {
     case ProtocolType::INVALID:
       return "Invalid";
@@ -1113,7 +1114,7 @@ enum class TransportType : uint8_t {
  *
  * @return The corresponding string name.
  */
-inline const char* to_string(TransportType val) {
+P1_CONSTEXPR_FUNC const char* to_string(TransportType val) {
   switch (val) {
     case TransportType::INVALID:
       return "Invalid";
@@ -1163,16 +1164,16 @@ struct alignas(4) InterfaceID {
   uint8_t index = 0;
   uint8_t reserved[2] = {0};
 
-  InterfaceID() = default;
+  P1_CONSTEXPR_FUNC InterfaceID() = default;
 
-  explicit InterfaceID(TransportType type, uint8_t index = 0)
+  P1_CONSTEXPR_FUNC explicit InterfaceID(TransportType type, uint8_t index = 0)
       : type(type), index(index) {}
 
-  bool operator==(const InterfaceID& other) const {
+  P1_CONSTEXPR_FUNC bool operator==(const InterfaceID& other) const {
     return type == other.type && index == other.index;
   }
 
-  bool inline operator!=(const InterfaceID& other) const {
+  P1_CONSTEXPR_FUNC bool operator!=(const InterfaceID& other) const {
     return !(*this == other);
   }
 };
@@ -1234,7 +1235,7 @@ enum class NmeaMessageType : uint16_t {
  *
  * @return The corresponding string name.
  */
-inline const char* to_string(NmeaMessageType value) {
+P1_CONSTEXPR_FUNC const char* to_string(NmeaMessageType value) {
   switch (value) {
     case NmeaMessageType::INVALID:
       return "INVALID";
@@ -1374,7 +1375,7 @@ enum class MessageRate : uint8_t {
  *
  * @return The corresponding string name.
  */
-inline const char* to_string(MessageRate value) {
+P1_CONSTEXPR_FUNC const char* to_string(MessageRate value) {
   switch (value) {
     case MessageRate::OFF:
       return "OFF";
@@ -1675,7 +1676,7 @@ enum class DataType : uint8_t {
  *
  * @return The corresponding string name.
  */
-inline const char* to_string(DataType type) {
+P1_CONSTEXPR_FUNC const char* to_string(DataType type) {
   switch (type) {
     case DataType::CALIBRATION_STATE:
       return "CalibrationState";

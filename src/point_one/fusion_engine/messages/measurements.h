@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include "point_one/fusion_engine/common/portability.h"
 #include "point_one/fusion_engine/messages/defs.h"
 
 namespace point_one {
@@ -59,7 +60,7 @@ enum class SystemTimeSource : uint8_t {
  *
  * @return The corresponding string name.
  */
-inline const char* to_string(SystemTimeSource val) {
+P1_CONSTEXPR_FUNC const char* to_string(SystemTimeSource val) {
   switch (val) {
     case SystemTimeSource::INVALID:
       return "Invalid";
@@ -210,7 +211,7 @@ enum class GearType : uint8_t {
  *
  * @return The corresponding string name.
  */
-inline const char* to_string(GearType val) {
+P1_CONSTEXPR_FUNC const char* to_string(GearType val) {
   switch (val) {
     case GearType::UNKNOWN:
       return "Unknown";
@@ -491,7 +492,7 @@ struct alignas(4) HeadingMeasurement : public MessagePayload {
   /**
    * The heading angle (in degrees) with respect to true north, pointing from
    * the primary antenna to the secondary antenna.
-   * 
+   *
    * @note
    * Reported in the range [0, 360).
    */
