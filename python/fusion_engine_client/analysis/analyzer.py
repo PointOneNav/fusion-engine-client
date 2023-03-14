@@ -1622,7 +1622,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                 f'{system_time_ns / 1e9:.3f}' if system_time_ns is not None else 'N/A',
                 event_type.to_string(include_value=True),
                 f'0x{flags:016X}' if flags is not None else 'N/A',
-                description_str,
+                description_str.replace('\n', '<br>'),
             ])
 
         table_html = _data_to_table(table_columns, rows, row_major=True)
