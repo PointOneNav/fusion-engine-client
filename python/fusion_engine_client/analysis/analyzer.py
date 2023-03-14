@@ -49,8 +49,18 @@ _SOLUTION_TYPE_MAP = {
 }
 
 
-def _data_to_table(col_titles: List[str], col_values: List[List[Any]]):
-    table_html = '<table><tr style="background-color: #a2c4fa">'
+def _data_to_table(col_titles: List[str], values: List[List[Any]], row_major: bool = False):
+    if row_major:
+        # If values is row major (outer index is the table rows), transpose it.
+        col_values = list(map(list, zip(*values)))
+    else:
+        col_values = values
+
+    table_html = '''\
+<table>
+  <tbody style="vertical-align: top">
+    <tr style="background-color: #a2c4fa">
+'''
     for title in col_titles:
         table_html += f'<th>{title}</th>'
     table_html += '</tr>'
@@ -66,7 +76,10 @@ def _data_to_table(col_titles: List[str], col_values: List[List[Any]]):
                 table_html += f'<td>{col_data[row_idx]}</td>'
 
         table_html += '</tr>'
-    table_html += '</table>'
+    table_html += '''\
+  </tbody>
+</table>
+'''
     return table_html
 
 
@@ -2208,22 +2221,41 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             return
 
         # Read the data.
-        result = self.reader.read(message_types=[EventNotificationMessage], remove_nan_times=False, **self.params)
-        data = result[EventNotificationMessage.MESSAGE_TYPE]
+        data = self.reader.read(message_types={MessageType.EVENT_NOTIFICATION} | COMMAND_MESSAGES | RESPONSE_MESSAGES,
+                                remove_nan_times=False, return_in_order=True, return_bytes=True, **self.params)
 
         if len(data.messages) == 0:
             self.logger.info('No event notification data available.')
             return
 
         table_columns = ['Relative Time (s)', 'System Time (s)', 'Event', 'Flags', 'Description']
-        table_data = [[], [], [], [], []]
-        table_data[0] = [f'{(m.system_time_ns - self.reader.get_system_t0_ns()) / 1e9:.3f}' for m in data.messages]
-        table_data[1] = [f'{(m.system_time_ns) / 1e9:.3f}' for m in data.messages]
-        table_data[2] = [str(m.action) for m in data.messages]
-        table_data[3] = [f'0x{m.event_flags:016X}' for m in data.messages]
-        table_data[4] = [m.event_description.decode('utf-8') for m in data.messages]
+        rows = []
+        system_t0_ns = self.reader.get_system_t0_ns()
+        for message, message_bytes in zip(data.messages, data.messages_bytes):
+            system_time_ns = message.get_system_time_ns()
+            if isinstance(message, EventNotificationMessage):
+                event_type = message.event_type
+                flags = message.event_flags
+                description_str = message.event_description_to_string()
+            else:
+                flags = None
+                if message.get_type() in COMMAND_MESSAGES:
+                    event_type = EventType.COMMAND
+                else:
+                    event_type = EventType.COMMAND_RESPONSE
+                description_str = f'''\
+{repr(message)}
+Data ({len(message_bytes)} B): {" ".join("%02X" % b for b in message_bytes)}'''
 
-        table_html = _data_to_table(table_columns, table_data)
+            rows.append([
+                f'{(system_time_ns - system_t0_ns) / 1e9:.3f}' if system_time_ns is not None else 'N/A',
+                f'{system_time_ns / 1e9:.3f}' if system_time_ns is not None else 'N/A',
+                event_type.to_string(include_value=True),
+                f'0x{flags:016X}' if flags is not None else 'N/A',
+                description_str.replace('\n', '<br>'),
+            ])
+
+        table_html = _data_to_table(table_columns, rows, row_major=True)
         body_html = f"""\
 <h2>Device Event Log</h2>
 <pre>{table_html}</pre>

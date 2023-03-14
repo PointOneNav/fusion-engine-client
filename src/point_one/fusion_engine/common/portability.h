@@ -44,3 +44,17 @@ typedef int64_t p1_ssize_t;
 #  include <sys/types.h> // For ssize_t
 typedef ssize_t p1_ssize_t;
 #endif
+
+// Support for multi-statement constexpr functions was not added until C++14.
+// When compiling with C++11, we'll simply use inline instead.
+#ifndef P1_HAVE_MULTILINE_CONSTEXPR_FUNC
+#  define P1_HAVE_MULTILINE_CONSTEXPR_FUNC (__cplusplus >= 201402L)
+#endif
+
+#ifndef P1_CONSTEXPR_FUNC
+#  if P1_HAVE_MULTILINE_CONSTEXPR_FUNC
+#    define P1_CONSTEXPR_FUNC constexpr
+#  else
+#    define P1_CONSTEXPR_FUNC inline
+#  endif
+#endif

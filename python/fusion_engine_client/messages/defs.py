@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import inspect
 import math
 import struct
-from typing import Union
+from typing import Dict, Type, Union
 from zlib import crc32
 
 import numpy as np
@@ -142,6 +144,36 @@ class MessageType(IntEnum):
                 return string_name
 
 
+COMMAND_MESSAGES = {
+    MessageType.MESSAGE_REQUEST,
+    MessageType.RESET_REQUEST,
+    MessageType.SHUTDOWN_REQUEST,
+    MessageType.FAULT_CONTROL,
+    MessageType.SET_CONFIG,
+    MessageType.GET_CONFIG,
+    MessageType.SAVE_CONFIG,
+    MessageType.IMPORT_DATA,
+    MessageType.EXPORT_DATA,
+    MessageType.SET_MESSAGE_RATE,
+    MessageType.GET_MESSAGE_RATE,
+}
+
+
+def is_command(message_type: MessageType) -> bool:
+    return message_type in COMMAND_MESSAGES
+
+
+RESPONSE_MESSAGES = {
+    MessageType.COMMAND_RESPONSE,
+    MessageType.CONFIG_RESPONSE,
+    MessageType.MESSAGE_RATE_RESPONSE,
+}
+
+
+def is_response(message_type: MessageType) -> bool:
+    return message_type in RESPONSE_MESSAGES
+
+
 class MessageHeader:
     INVALID_SOURCE_ID = 0xFFFFFFFF
 
@@ -247,6 +279,7 @@ class MessageHeader:
         @param buffer A byte buffer containing a serialized message.
         @param offset The offset into the buffer (in bytes) at which the message header begins.
         @param validate_crc If `True`, validate the deserialized CRC against the data in the buffer.
+        @param warn_on_unrecognized If `True`, print a warning if the message type is not listed in @ref MessageType.
 
         @return The size of the serialized header (in bytes).
         """
@@ -269,7 +302,7 @@ class MessageHeader:
             if warn_on_unrecognized:
                 _logger.log(logging.WARNING if message_type_int < int(MessageType.RESERVED) else logging.DEBUG,
                             'Unrecognized message type %d.' % message_type_int)
-            self.message_type = message_type_int
+            self.message_type = MessageType(message_type_int, raise_on_unrecognized=False)
 
         return MessageHeader._SIZE
 
@@ -308,8 +341,19 @@ class MessagePayload:
     @brief Message payload API.
     """
 
+    message_type_to_class: Dict[MessageType, Type[MessagePayload]] = {}
+    message_type_by_name: Dict[str, MessageType] = {}
+
     def __init__(self):
         pass
+
+    def __init_subclass__(cls, **kwargs):
+        MessagePayload.message_type_to_class[cls.get_type()] = cls
+        MessagePayload.message_type_by_name[cls.__name__] = cls.get_type()
+
+    @classmethod
+    def get_message_class(cls, message_type: MessageType) -> Type[MessagePayload]:
+        return MessagePayload.message_type_to_class.get(message_type, None)
 
     @classmethod
     def get_type(cls) -> MessageType:
@@ -389,10 +433,19 @@ class MessagePayload:
             return system_time_ns * 1e-9
 
     def __repr__(self):
-        try:
-            return '%s message' % MessageType.get_type_string(self.get_type())
-        except NotImplementedError:
-            return 'Unknown message payload.'
+        result = f'[{self.get_type().to_string(include_value=True)}'
+
+        p1_time = self.get_p1_time()
+        if p1_time is not None:
+            result += f', p1_time={float(p1_time):.3f} sec'
+
+        system_time_sec = self.get_system_time_sec()
+        if system_time_sec is not None:
+            result += f', system_time={system_time_sec:.3f} sec'
+
+        result += ']'
+
+        return result
 
     def __str__(self):
         return repr(self)

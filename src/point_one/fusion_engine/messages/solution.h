@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include "point_one/fusion_engine/common/portability.h"
 #include "point_one/fusion_engine/messages/defs.h"
 
 namespace point_one {
@@ -335,7 +336,7 @@ enum class CalibrationStage : uint8_t {
  *
  * @return The corresponding string name.
  */
-inline const char* to_string(CalibrationStage val) {
+P1_CONSTEXPR_FUNC const char* to_string(CalibrationStage val) {
   switch (val) {
     case CalibrationStage::UNKNOWN:
       return "Unknown";

@@ -52,6 +52,11 @@ class CommandResponseMessage(MessagePayload):
     def calcsize(cls) -> int:
         return cls._STRUCT.size
 
+    def __repr__(self):
+        result = super().__repr__()[:-1]
+        result += f', response={self.response}, seq_num={self.source_sequence_num}]'
+        return result
+
     def __str__(self):
         string = f'Command Response\n'
         string += f'  Sequence #: {self.source_sequence_num}\n'
@@ -99,7 +104,9 @@ class MessageRequest(MessagePayload):
         return offset - initial_offset
 
     def __repr__(self):
-        return '%s' % self.MESSAGE_TYPE.name
+        result = super().__repr__()[:-1]
+        result += f', message_type={self.message_type}]'
+        return result
 
     def __str__(self):
         return 'Transmission request for message %s.' % MessageType.get_type_string(self.message_type)
@@ -334,6 +341,11 @@ class ResetRequest(MessagePayload):
     def calcsize(cls) -> int:
         return cls._STRUCT.size
 
+    def __repr__(self):
+        result = super().__repr__()[:-1]
+        result += f', mask=0x{self.reset_mask:08X}]'
+        return result
+
     def __str__(self):
         return 'Reset Request [mask=0x%08x]' % self.reset_mask
 
@@ -379,6 +391,12 @@ class VersionInfoMessage(MessagePayload):
         self.__dict__.update(parsed)
         return parsed._io.tell()
 
+    def __repr__(self):
+        result = super().__repr__()[:-1]
+        result += f', fw={self.fw_version_str}, engine={self.engine_version_str}, hw={self.hw_version_str} ' \
+                  f'rx={self.rx_version_str}]'
+        return result
+
     def __str__(self):
         string = f'Version Info @ %s\n' % system_time_to_str(self.system_time_ns)
         string += f'  Firmware: {self.fw_version_str}\n'
@@ -391,6 +409,14 @@ class VersionInfoMessage(MessagePayload):
         return len(self.pack())
 
 
+class EventType(IntEnum):
+    LOG = 0
+    RESET = 1
+    CONFIG_CHANGE = 2
+    COMMAND = 3
+    COMMAND_RESPONSE = 4
+
+
 class EventNotificationMessage(MessagePayload):
     """!
     @brief Notification of a system event for logging purposes.
@@ -398,13 +424,8 @@ class EventNotificationMessage(MessagePayload):
     MESSAGE_TYPE = MessageType.EVENT_NOTIFICATION
     MESSAGE_VERSION = 0
 
-    class Action(IntEnum):
-        LOG = 0
-        RESET = 1
-        CONFIG_CHANGE = 2
-
     EventNotificationConstruct = Struct(
-        "action" / AutoEnum(Int8ul, Action),
+        "event_type" / AutoEnum(Int8ul, EventType),
         Padding(3),
         "system_time_ns" / Int64ul,
         "event_flags" / Int64ul,
@@ -414,7 +435,7 @@ class EventNotificationMessage(MessagePayload):
     )
 
     def __init__(self):
-        self.action = self.Action.LOG
+        self.event_type = EventType.LOG
         self.system_time_ns = 0
         self.event_flags = 0
         self.event_description = bytes()
@@ -430,20 +451,69 @@ class EventNotificationMessage(MessagePayload):
     def unpack(self, buffer: bytes, offset: int = 0) -> int:
         parsed = self.EventNotificationConstruct.parse(buffer[offset:])
         self.__dict__.update(parsed)
+
+        # For logged FusionEngine commands/responses, the device intentionally offsets the preamble by 0x0101 from
+        # 0x2E31 ('.1') to 0x2F32 ('/2'). That way, the encapsulated messages within the event messages don't get
+        # parsed, but we can still identify them. We'll undo that offset here so the content in self.event_description
+        # reflects the original command/response.
+        if (self.event_type == EventType.COMMAND or self.event_type == EventType.COMMAND_RESPONSE) and \
+           len(self.event_description) >= 2 and (self.event_description[:2] == b'/2'):
+            self.event_description = bytearray(self.event_description)
+            self.event_description[0] -= 1
+            self.event_description[1] -= 1
+
         return parsed._io.tell()
 
     def __repr__(self):
-        return '%s @ %s' % (self.MESSAGE_TYPE.name, system_time_to_str(self.system_time_ns))
+        result = super().__repr__()[:-1]
+        result += f', type={self.event_type}, flags=0x{self.event_flags:X}'
+        if self.event_type == EventType.COMMAND or self.event_type == EventType.COMMAND_RESPONSE:
+            result += f', data={len(self.event_description)} B'
+        else:
+            result += f', description={self.event_description}'
+        result += ']'
+        return result
 
     def __str__(self):
         return construct_message_to_string(
             message=self, construct=self.EventNotificationConstruct,
             title=f'Event Notification @ %s' % system_time_to_str(self.system_time_ns),
-            fields=['action', 'event_flags', 'event_description'],
-            value_to_string={'event_flags': lambda x: '0x%016X' % x})
+            fields=['event_type', 'event_flags', 'event_description'],
+            value_to_string={
+                'event_flags': lambda x: '0x%016X' % x,
+                'event_description': lambda x: self.event_description_to_string(),
+            })
 
     def calcsize(self) -> int:
         return len(self.pack())
+
+    def event_description_to_string(self):
+        # For commands and responses, the payload should contain the binary FusionEngine message. Try to decode the
+        # message type.
+        if self.event_type == EventType.COMMAND or self.event_type == EventType.COMMAND_RESPONSE:
+            if len(self.event_description) >= MessageHeader.calcsize():
+                header = MessageHeader()
+                header.unpack(self.event_description, validate_crc=False, warn_on_unrecognized=False)
+                message_repr = f'[{header.message_type.to_string(include_value=True)}]'
+
+                message_cls = MessagePayload.get_message_class(header.message_type)
+                if message_cls is not None:
+                    try:
+                        message = message_cls()
+                        message.unpack(buffer=self.event_description, offset=header.calcsize())
+                        message_repr = repr(message)
+                    except ValueError as e:
+                        pass
+            else:
+                message_repr = '<Malformed>'
+
+            newline = '\n'
+            return f'{message_repr}{newline}' \
+                   f'Data ({len(self.event_description)} B): {" ".join("%02X" % b for b in self.event_description)}'
+        elif isinstance(self.event_description, str):
+            return self.event_description
+        else:
+            return repr(self.event_description)
 
 
 class ShutdownRequest(MessagePayload):
@@ -470,6 +540,11 @@ class ShutdownRequest(MessagePayload):
         parsed = self.ShutdownRequestConstruct.parse(buffer[offset:])
         self.__dict__.update(parsed)
         return parsed._io.tell()
+
+    def __repr__(self):
+        result = super().__repr__()[:-1]
+        result += f', flags=0x{self.shutdown_flags:016X}]'
+        return result
 
     def __str__(self):
         return 'Shutdown Request [flags=0x%016x]' % self.shutdown_flags

@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include "point_one/fusion_engine/common/portability.h"
 #include "point_one/fusion_engine/messages/defs.h"
 
 namespace point_one {
@@ -104,7 +105,7 @@ enum class FaultType : uint8_t {
  *
  * @return The corresponding string name.
  */
-inline const char* to_string(FaultType type) {
+P1_CONSTEXPR_FUNC const char* to_string(FaultType type) {
   switch (type) {
     case FaultType::CLEAR_ALL:
       return "Clear Faults";
@@ -161,7 +162,7 @@ enum class CoComType : uint8_t {
  *
  * @return The corresponding string name.
  */
-inline const char* to_string(CoComType type) {
+P1_CONSTEXPR_FUNC const char* to_string(CoComType type) {
   switch (type) {
     case CoComType::NONE:
       return "No Limit";
