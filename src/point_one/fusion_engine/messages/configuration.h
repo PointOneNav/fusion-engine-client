@@ -1164,16 +1164,16 @@ struct alignas(4) InterfaceID {
   uint8_t index = 0;
   uint8_t reserved[2] = {0};
 
-  InterfaceID() = default;
+  P1_CONSTEXPR_FUNC InterfaceID() = default;
 
-  explicit InterfaceID(TransportType type, uint8_t index = 0)
+  P1_CONSTEXPR_FUNC explicit InterfaceID(TransportType type, uint8_t index = 0)
       : type(type), index(index) {}
 
-  bool operator==(const InterfaceID& other) const {
+  P1_CONSTEXPR_FUNC bool operator==(const InterfaceID& other) const {
     return type == other.type && index == other.index;
   }
 
-  bool inline operator!=(const InterfaceID& other) const {
+  P1_CONSTEXPR_FUNC bool operator!=(const InterfaceID& other) const {
     return !(*this == other);
   }
 };
