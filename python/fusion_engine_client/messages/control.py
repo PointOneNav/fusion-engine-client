@@ -481,27 +481,26 @@ class EventNotificationMessage(MessagePayload):
             fields=['event_type', 'event_flags', 'event_description'],
             value_to_string={
                 'event_flags': lambda x: '0x%016X' % x,
-                'event_description': lambda x: self.event_description_to_string(self.event_type, x),
+                'event_description': lambda x: self.event_description_to_string(),
             })
 
     def calcsize(self) -> int:
         return len(self.pack())
 
-    @classmethod
-    def event_description_to_string(cls, event_type: EventType, event_description: bytes):
+    def event_description_to_string(self):
         # For commands and responses, the payload should contain the binary FusionEngine message. Try to decode the
         # message type.
-        if event_type == EventType.COMMAND or event_type == EventType.COMMAND_RESPONSE:
-            if len(event_description) >= MessageHeader.calcsize():
+        if self.event_type == EventType.COMMAND or self.event_type == EventType.COMMAND_RESPONSE:
+            if len(self.event_description) >= MessageHeader.calcsize():
                 header = MessageHeader()
-                header.unpack(event_description, ignore_sync=True, validate_crc=False, warn_on_unrecognized=False)
+                header.unpack(self.event_description, ignore_sync=True, validate_crc=False, warn_on_unrecognized=False)
                 message_repr = f'[{header.message_type.to_string(include_value=True)}]'
 
                 message_cls = MessagePayload.get_message_class(header.message_type)
                 if message_cls is not None:
                     try:
                         message = message_cls()
-                        message.unpack(buffer=event_description, offset=header.calcsize())
+                        message.unpack(buffer=self.event_description, offset=header.calcsize())
                         message_repr = repr(message)
                     except ValueError as e:
                         pass
@@ -510,11 +509,11 @@ class EventNotificationMessage(MessagePayload):
 
             newline = '\n'
             return f'{message_repr}{newline}' \
-                   f'Data ({len(event_description)} B): {" ".join("%02X" % b for b in event_description)}'
-        elif isinstance(event_description, str):
-            return event_description
+                   f'Data ({len(self.event_description)} B): {" ".join("%02X" % b for b in self.event_description)}'
+        elif isinstance(self.event_description, str):
+            return self.event_description
         else:
-            return repr(event_description)
+            return repr(self.event_description)
 
 
 class ShutdownRequest(MessagePayload):

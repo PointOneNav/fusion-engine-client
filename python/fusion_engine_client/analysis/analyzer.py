@@ -1606,16 +1606,16 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             if isinstance(message, EventNotificationMessage):
                 event_type = message.event_type
                 flags = message.event_flags
-                description_str = EventNotificationMessage.event_description_to_string(message.event_type,
-                                                                                       message.event_description)
+                description_str = message.event_description_to_string()
             else:
                 flags = None
                 if message.get_type() in COMMAND_MESSAGES:
                     event_type = EventType.COMMAND
                 else:
                     event_type = EventType.COMMAND_RESPONSE
-                description_str = EventNotificationMessage.event_description_to_string(message.event_type,
-                                                                                       message_bytes)
+                description_str = f'''\
+{repr(message)}
+Data ({len(message_bytes)} B): {" ".join("%02X" % b for b in message_bytes)}'''
 
             rows.append([
                 f'{(system_time_ns - system_t0_ns) / 1e9:.3f}' if system_time_ns is not None else 'N/A',
