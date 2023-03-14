@@ -493,7 +493,7 @@ class EventNotificationMessage(MessagePayload):
         if self.event_type == EventType.COMMAND or self.event_type == EventType.COMMAND_RESPONSE:
             if len(self.event_description) >= MessageHeader.calcsize():
                 header = MessageHeader()
-                header.unpack(self.event_description, ignore_sync=True, validate_crc=False, warn_on_unrecognized=False)
+                header.unpack(self.event_description, validate_crc=False, warn_on_unrecognized=False)
                 message_repr = f'[{header.message_type.to_string(include_value=True)}]'
 
                 message_cls = MessagePayload.get_message_class(header.message_type)

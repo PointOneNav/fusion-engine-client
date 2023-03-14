@@ -269,7 +269,7 @@ class MessageHeader:
             return self.calcsize()
 
     def unpack(self, buffer: bytes, offset: int = 0, validate_crc: bool = False,
-               warn_on_unrecognized: bool = True, ignore_sync: bool = False) -> int:
+               warn_on_unrecognized: bool = True) -> int:
         """!
         @brief Deserialize a message header and validate its sync bytes and CRC.
 
@@ -289,7 +289,7 @@ class MessageHeader:
          self.sequence_number, self.payload_size_bytes, self.source_identifier) = \
             struct.unpack_from(MessageHeader._FORMAT, buffer, offset)
 
-        if (sync0 != MessageHeader._SYNC0 or sync1 != MessageHeader._SYNC1) and not ignore_sync:
+        if sync0 != MessageHeader._SYNC0 or sync1 != MessageHeader._SYNC1:
             raise ValueError('Received invalid sync bytes. [sync0=0x%02x, sync1=0x%02x]' % (sync0, sync1))
 
         # Validate the CRC, assuming the message payload follows in the buffer.
