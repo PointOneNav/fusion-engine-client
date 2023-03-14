@@ -89,17 +89,21 @@ def generate_data(data_path=None, include_binary=False, return_dict=True):
     return encode_generated_data(messages, data_path=data_path, return_dict=return_dict)
 
 
-def message_list_to_dict(messages, return_in_order=False):
+def message_list_to_dict(messages):
     result = {}
     for message in messages:
         if isinstance(message, bytes):
             continue
 
-        cache_key = None if return_in_order else message.get_type()
+        if message.get_type() not in result:
+            result[message.get_type()] = MessageData(message.get_type(), None)
+        result[message.get_type()].messages.append(message)
+    return result
 
-        if cache_key not in result:
-            result[cache_key] = MessageData(cache_key, None)
-        result[cache_key].messages.append(message)
+
+def message_list_to_messagedata(messages):
+    result = MessageData(None, None)
+    result.messages = messages
     return result
 
 
@@ -126,26 +130,23 @@ class TestReader:
         if expected_system_time_sec is not None:
             assert float(message.get_system_time_sec()) == pytest.approx(expected_system_time_sec, 1e-6)
 
-    def _check_dict_results(self, results, expected_results):
+    def _check_dict_results(self, results: dict, expected_results: dict):
         expected_types = list(expected_results.keys())
         for message_type, message_data in results.items():
-            message_data = message_data.messages
             if message_type in expected_types:
-                expected_data = expected_results[message_type].messages
-                assert len(message_data) == len(expected_data)
-                for message, expected_message in zip(message_data, expected_data):
-                    self._check_message(message, expected_message)
+                expected_data = expected_results[message_type]
+                self._check_messagedata_results(message_data, expected_data)
             else:
-                assert len(message_data) == 0
+                assert len(message_data.messages) == 0
 
-    def _check_list_results(self, results, expected_results):
-        assert len(results) == len(expected_results)
-        for message, expected_message in zip(results, expected_results):
+    def _check_messagedata_results(self, results: MessageData, expected_results: MessageData):
+        assert len(results.messages) == len(expected_results.messages)
+        for message, expected_message in zip(results.messages, expected_results.messages):
             self._check_message(message, expected_message)
 
     def _check_results(self, results, expected_results):
-        if isinstance(results, list):
-            self._check_list_results(results, expected_results)
+        if isinstance(results, MessageData):
+            self._check_messagedata_results(results, expected_results)
         else:
             self._check_dict_results(results, expected_results)
 
@@ -247,7 +248,7 @@ class TestReader:
     def test_read_in_order(self, data_path):
         messages = generate_data(data_path=str(data_path), include_binary=False, return_dict=False)
         expected_messages = [m for m in messages if m.get_type() in (MessageType.POSE, MessageType.EVENT_NOTIFICATION)]
-        expected_result = message_list_to_dict(expected_messages, return_in_order=True)
+        expected_result = message_list_to_messagedata(expected_messages)
 
         reader = DataLoader(path=str(data_path))
         assert not reader.reader.have_index()
@@ -259,7 +260,7 @@ class TestReader:
     def test_read_in_order_with_index(self, data_path):
         messages = generate_data(data_path=str(data_path), include_binary=False, return_dict=False)
         expected_messages = [m for m in messages if m.get_type() in (MessageType.POSE, MessageType.EVENT_NOTIFICATION)]
-        expected_result = message_list_to_dict(expected_messages, return_in_order=True)
+        expected_result = message_list_to_messagedata(expected_messages)
 
         MixedLogReader.generate_index_file(str(data_path))
 

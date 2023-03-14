@@ -220,7 +220,7 @@ class DataLoader(object):
                 self.data[MessageType.POSE] = prev_data
 
     def read(self, *args, **kwargs) \
-            -> Dict[Optional[MessageType], MessageData]:
+            -> Union[Dict[MessageType, MessageData], MessageData]:
         """!
         @brief Read data for one or more desired message types.
 
@@ -266,10 +266,11 @@ class DataLoader(object):
         @param aligned_message_types A list of message types for which time alignment will be performed. Any message
                types not present in the list will be left unmodified. If `None`, all message types will be aligned.
 
-        @return - A `dict`, keyed by @ref fusion_engine_client.messages.defs.MessageType "MessageType", containing @ref
-                  MessageData objects with the data read for each of the requested message types. If
-                  `return_in_order == True`, the returned `dict` will contain a single entry with the key set to `None`.
-                  It will contain all message types in the order that they were recorded.
+        @return - If `return_in_order == False`, return a `dict`, keyed by @ref
+                  fusion_engine_client.messages.defs.MessageType "MessageType", containing @ref MessageData objects with
+                  the data read for each of the requested message types.
+                - If `return_in_order == True`, return a single @ref MessageData object containing all message types in
+                  the order that they were recorded.
         """
         return self._read(*args, **kwargs)
 
@@ -284,7 +285,7 @@ class DataLoader(object):
              time_align: TimeAlignmentMode = TimeAlignmentMode.NONE,
              aligned_message_types: Union[list, tuple, set] = None,
              quiet: bool = False) \
-            -> Dict[MessageType, MessageData]:
+            -> Union[Dict[MessageType, MessageData], MessageData]:
         if quiet:
             logger = SilentLogger(self.logger.name)
         else:
@@ -353,7 +354,8 @@ class DataLoader(object):
             data_cache = self.data
 
         for type in needed_message_types:
-            data_cache[type] = MessageData(message_type=type, params=params)
+            if not return_in_order:
+                data_cache[type] = MessageData(message_type=type, params=params)
 
             cls = message_type_to_class.get(type, None)
             if cls is None:
@@ -364,10 +366,6 @@ class DataLoader(object):
 
         needed_message_types = supported_message_types
 
-        # If returning in order, we'll use data_cache[None].messages to store all message types.
-        if return_in_order:
-            data_cache.setdefault(None, MessageData(message_type=None, params=params))
-
         # Check if the user requested any message types that use system time, not P1 time. When using an index file for
         # fast reading, messages with system times may have their index entry timestamps set to NAN since A) they can
         # occur in a log before P1 time is established, and B) there's not necessarily a direct way to convert between
@@ -376,8 +374,10 @@ class DataLoader(object):
 
         # Create a dict with references to the requested types only to be returned below. If any data was already
         # cached, it will be present in self.data and populated here.
+        #
+        # If we're returning in-order, we'll simply populate and return a MessageData object directly.
         if return_in_order:
-            result = {None: data_cache[None]}
+            result = MessageData(message_type=None, params=params)
         else:
             result = {t: data_cache[t] for t in message_types}
 
@@ -505,13 +505,13 @@ class DataLoader(object):
                 newest_messages.append((header, payload, message_bytes))
             elif max_messages is None or message_count <= abs(max_messages):
                 if return_in_order:
-                    cache_key = None
+                    result.messages.append(payload)
+                    if return_bytes:
+                        result.messages_bytes.append(message_bytes)
                 else:
-                    cache_key = header.message_type
-
-                data_cache[cache_key].messages.append(payload)
-                if return_bytes:
-                    data_cache[cache_key].messages_bytes.append(message_bytes)
+                    data_cache[header.message_type].messages.append(payload)
+                    if return_bytes:
+                        data_cache[header.message_type].messages_bytes.append(message_bytes)
 
             if max_messages is not None:
                 # If we reached the max message count but we're generating an index file, we need to read through the
@@ -530,15 +530,15 @@ class DataLoader(object):
 
         # If the user only wanted the N newest messages, take them from the circular buffer now.
         if newest_messages is not None:
-            for entry in newest_messages:
+            for header, payload, message_bytes in newest_messages:
                 if return_in_order:
-                    cache_key = None
+                    result.messages.append(payload)
+                    if return_bytes:
+                        result.messages_bytes.append(message_bytes)
                 else:
-                    cache_key = entry[0].message_type
-
-                data_cache[cache_key].messages.append(entry[1])
-                if return_bytes:
-                    data_cache[cache_key].messages_bytes.append(entry[2])
+                    data_cache[header.message_type].messages.append(payload)
+                    if return_bytes:
+                        data_cache[header.message_type].messages_bytes.append(message_bytes)
 
         # Time-align the data if requested.
         if time_align != TimeAlignmentMode.NONE:

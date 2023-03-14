@@ -1590,9 +1590,8 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             return
 
         # Read the data.
-        result = self.reader.read(message_types={MessageType.EVENT_NOTIFICATION} | COMMAND_MESSAGES | RESPONSE_MESSAGES,
-                                  remove_nan_times=False, return_in_order=True, return_bytes=True, **self.params)
-        data = result[None]  # In-order reads return data with the key None.
+        data = self.reader.read(message_types={MessageType.EVENT_NOTIFICATION} | COMMAND_MESSAGES | RESPONSE_MESSAGES,
+                                remove_nan_times=False, return_in_order=True, return_bytes=True, **self.params)
 
         if len(data.messages) == 0:
             self.logger.info('No event notification data available.')
