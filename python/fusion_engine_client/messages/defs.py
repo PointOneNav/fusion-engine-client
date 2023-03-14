@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import inspect
 import math
 import struct
-from typing import Union
+from typing import Dict, Type, Union
 from zlib import crc32
 
 import numpy as np
@@ -338,8 +340,19 @@ class MessagePayload:
     @brief Message payload API.
     """
 
+    message_type_to_class: Dict[MessageType, Type[MessagePayload]] = {}
+    message_type_by_name: Dict[str, MessageType] = {}
+
     def __init__(self):
         pass
+
+    def __init_subclass__(cls, **kwargs):
+        MessagePayload.message_type_to_class[cls.get_type()] = cls
+        MessagePayload.message_type_by_name[cls.__name__] = cls.get_type()
+
+    @classmethod
+    def get_message_class(cls, message_type: MessageType) -> Type[MessagePayload]:
+        return MessagePayload.message_type_to_class.get(message_type, None)
 
     @classmethod
     def get_type(cls) -> MessageType:
