@@ -495,12 +495,22 @@ class EventNotificationMessage(MessagePayload):
             if len(event_description) >= MessageHeader.calcsize():
                 header = MessageHeader()
                 header.unpack(event_description, ignore_sync=True, validate_crc=False, warn_on_unrecognized=False)
-                message_type_str = header.message_type.to_string(include_value=True)
-            else:
-                message_type_str = '<Malformed>'
+                message_repr = f'[{header.message_type.to_string(include_value=True)}]'
 
-            return f'{message_type_str} [{len(event_description)} B; payload=' \
-                   f'{" ".join("%02X" % b for b in event_description)}]'
+                message_cls = MessagePayload.get_message_class(header.message_type)
+                if message_cls is not None:
+                    try:
+                        message = message_cls()
+                        message.unpack(buffer=event_description, offset=header.calcsize())
+                        message_repr = repr(message)
+                    except ValueError as e:
+                        pass
+            else:
+                message_repr = '<Malformed>'
+
+            newline = '\n'
+            return f'{message_repr}{newline}' \
+                   f'Data ({len(event_description)} B): {" ".join("%02X" % b for b in event_description)}'
         elif isinstance(event_description, str):
             return event_description
         else:
