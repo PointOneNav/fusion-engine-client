@@ -202,6 +202,9 @@ class ProfileDefinitionMessage(MessagePayload):
         self.system_time_ns = 0
         self.entries: List[ProfileDefinitionEntry] = []
 
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
             buffer = bytearray(self.calcsize())
@@ -250,6 +253,31 @@ class ProfileDefinitionMessage(MessagePayload):
 
     def calcsize(self) -> int:
         return self._STRUCT.size + len(self.entries) * ProfileDefinitionEntry.calcsize()
+
+
+class ProfilePipelineDefinitionMessage(ProfileDefinitionMessage):
+    MESSAGE_TYPE = MessageType.PROFILE_PIPELINE_DEFINITION
+    MESSAGE_VERSION = 0
+
+
+class ProfileExecutionDefinitionMessage(ProfileDefinitionMessage):
+    MESSAGE_TYPE = MessageType.PROFILE_EXECUTION_DEFINITION
+    MESSAGE_VERSION = 0
+
+
+class ProfileFreeRTOSTaskDefinitionMessage(ProfileDefinitionMessage):
+    MESSAGE_TYPE = MessageType.PROFILE_FREERTOS_TASK_DEFINITION
+    MESSAGE_VERSION = 0
+
+
+class ProfileExecutionStatsDefinitionMessage(ProfileDefinitionMessage):
+    MESSAGE_TYPE = MessageType.PROFILE_EXECUTION_STATS_DEFINITION
+    MESSAGE_VERSION = 0
+
+
+class ProfileCounterDefinitionMessage(ProfileDefinitionMessage):
+    MESSAGE_TYPE = MessageType.PROFILE_COUNTER_DEFINITION
+    MESSAGE_VERSION = 0
 
 
 class ProfilePipelineEntry:

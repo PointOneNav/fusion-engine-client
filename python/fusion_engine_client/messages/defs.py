@@ -348,8 +348,11 @@ class MessagePayload:
         pass
 
     def __init_subclass__(cls, **kwargs):
-        MessagePayload.message_type_to_class[cls.get_type()] = cls
-        MessagePayload.message_type_by_name[cls.__name__] = cls.get_type()
+        try:
+            MessagePayload.message_type_to_class[cls.get_type()] = cls
+            MessagePayload.message_type_by_name[cls.__name__] = cls.get_type()
+        except AttributeError:
+            pass
 
     @classmethod
     def get_message_class(cls, message_type: MessageType) -> Type[MessagePayload]:

@@ -1,6 +1,7 @@
 from aenum import extend_enum
 
 from ..defs import *
+from ..configuration import PlatformStorageDataMessage
 
 
 class InternalMessageType(IntEnum):
@@ -34,3 +35,6 @@ class InternalMessageType(IntEnum):
 # Extend the message type enum with internal types.
 for entry in InternalMessageType:
     extend_enum(MessageType, entry.name, entry.value)
+
+# Register the deprecated legacy message type with the PlatformStorageDataMessage class.
+MessagePayload.message_type_to_class[MessageType.LEGACY_PLATFORM_STORAGE_DATA] = PlatformStorageDataMessage
