@@ -55,7 +55,11 @@ def _data_to_table(col_titles: List[str], values: List[List[Any]], row_major: bo
     else:
         col_values = values
 
-    table_html = '<table><tr style="background-color: #a2c4fa">'
+    table_html = '''\
+<table>
+  <tbody style="vertical-align: top">
+    <tr style="background-color: #a2c4fa">
+'''
     for title in col_titles:
         table_html += f'<th>{title}</th>'
     table_html += '</tr>'
@@ -71,7 +75,10 @@ def _data_to_table(col_titles: List[str], values: List[List[Any]], row_major: bo
                 table_html += f'<td>{col_data[row_idx]}</td>'
 
         table_html += '</tr>'
-    table_html += '</table>'
+    table_html += '''\
+  </tbody>
+</table>
+'''
     return table_html
 
 
