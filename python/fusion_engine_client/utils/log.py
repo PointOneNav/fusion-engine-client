@@ -85,10 +85,18 @@ def find_log_by_pattern(pattern, log_base_dir=DEFAULT_LOG_BASE_DIR, allow_multip
     # Match logs in any directory starting with the specified pattern.
     #
     # If the pattern ends with '$', treat that as the end of the match and do not append a '*'.
-    if pattern[-1] == '$':
-        match_pattern = '*/' + pattern[:-1]
+    if len(pattern) == 0:
+        raise ValueError('Search pattern not specified.')
+
+    if pattern[0] == '/':
+        match_pattern = ''
     else:
-        match_pattern = '*/' + pattern + '*'
+        match_pattern = '*/'
+
+    if pattern[-1] == '$':
+        match_pattern += pattern[:-1]
+    else:
+        match_pattern += pattern + '*'
 
     last_element = match_pattern.split('/')[-1]
 
