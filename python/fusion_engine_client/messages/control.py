@@ -433,6 +433,17 @@ class EventNotificationMessage(MessagePayload):
     def unpack(self, buffer: bytes, offset: int = 0) -> int:
         parsed = self.EventNotificationConstruct.parse(buffer[offset:])
         self.__dict__.update(parsed)
+
+        # For logged FusionEngine commands/responses, the device intentionally offsets the preamble by 0x0101 from
+        # 0x2E31 ('.1') to 0x2F32 ('/2'). That way, the encapsulated messages within the event messages don't get
+        # parsed, but we can still identify them. We'll undo that offset here so the content in self.event_description
+        # reflects the original command/response.
+        if (self.event_type == EventType.COMMAND or self.event_type == EventType.COMMAND_RESPONSE) and \
+           len(self.event_description) >= 2 and (self.event_description[:2] == b'/2'):
+            self.event_description = bytearray(self.event_description)
+            self.event_description[0] -= 1
+            self.event_description[1] -= 1
+
         return parsed._io.tell()
 
     def __repr__(self):
