@@ -296,7 +296,7 @@ class _ConfigClassGenerator:
         """!
         @brief Integer value specifier.
         """
-        value: int
+        value: int = 0
 
     # Construct to serialize different sized IntegerVal types.
     UInt64Construct = Struct(
