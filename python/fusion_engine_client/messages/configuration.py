@@ -281,9 +281,9 @@ class _ConfigClassGenerator:
         """!
         @brief 3D coordinate specifier, stored as 32-bit float values.
         """
-        x: float = 0
-        y: float = 0
-        z: float = 0
+        x: float = math.nan
+        y: float = math.nan
+        z: float = math.nan
 
     # Construct to serialize Point3F.
     Point3FConstruct = Struct(
@@ -319,7 +319,7 @@ class _ConfigClassGenerator:
         """!
         @brief Bool value specifier.
         """
-        value: bool
+        value: bool = False
 
     # Construct to serialize 8 bit boolean types.
     BoolConstruct = Struct(
@@ -411,11 +411,11 @@ class _ConfigClassGenerator:
         """
         vehicle_model: VehicleModel = VehicleModel.UNKNOWN_VEHICLE
         ## The distance between the front axle and rear axle (in meters).
-        wheelbase_m: float = 0
+        wheelbase_m: float = math.nan
         ## The distance between the two front wheels (in meters).
-        front_track_width_m: float = 0
+        front_track_width_m: float = math.nan
         ## The distance between the two rear wheels (in meters).
-        rear_track_width_m: float = 0
+        rear_track_width_m: float = math.nan
 
     VehicleDetailsConstruct = Struct(
         "vehicle_model" / AutoEnum(Int16ul, VehicleModel),
