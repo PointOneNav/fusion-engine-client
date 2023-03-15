@@ -330,8 +330,6 @@ class _ConfigClassGenerator:
         """!
         @brief Bitmask specifying enabled @ref SatelliteType%s.
         """
-        value: int
-
         def __new__(cls, *args, **kwargs):
             # Check if the user specified a single SatelliteType or a list of values, and convert to a mask.
             if len(args) == 1:
@@ -362,8 +360,6 @@ class _ConfigClassGenerator:
         """!
         @brief Bitmask specifying enabled @ref FrequencyBand%s.
         """
-        value: int
-
         def __new__(cls, *args, **kwargs):
             # Check if the user specified a single FrequencyBand or a list of values, and convert to a mask.
             if len(args) == 1:
