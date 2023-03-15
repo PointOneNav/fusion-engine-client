@@ -1013,7 +1013,7 @@ class GetMessageRate(MessagePayload):
 
     def __repr__(self):
         result = super().__repr__()[:-1]
-        result += f', interface={self.output_interface}, source={self.source}, protocol={self.protocol}, ' \
+        result += f', interface={self.output_interface}, source={self.request_source}, protocol={self.protocol}, ' \
                   f'message_id={self.message_id}]'
         return result
 
@@ -1094,7 +1094,7 @@ class MessageRateResponse(MessagePayload):
 
     def __repr__(self):
         result = super().__repr__()[:-1]
-        result += f', response={self.response}, interface={self.output_interface}, source={self.source}, ' \
+        result += f', response={self.response}, interface={self.output_interface}, source={self.config_source}, ' \
                   f'protocol={self.protocol}]'
         return result
 
