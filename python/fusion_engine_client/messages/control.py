@@ -512,7 +512,10 @@ class EventNotificationMessage(MessagePayload):
         elif isinstance(self.event_description, str):
             return self.event_description
         else:
-            return repr(self.event_description)
+            try:
+                return self.event_description.decode('utf-8')
+            except UnicodeDecodeError:
+                return repr(self.event_description)
 
     @classmethod
     def _populate_data_byte_string(cls, data: bytes, max_bytes: int = None):
