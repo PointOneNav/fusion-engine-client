@@ -40,6 +40,9 @@ class NamedTupleAdapter(Adapter):
         super().__init__(*args)
         self.tuple_cls = tuple_cls
 
+    def make_default(self):
+        return self.tuple_cls()
+
     def _decode(self, obj, context, path):
         # skip _io member
         return self.tuple_cls(*list(obj.values())[1:])
@@ -83,6 +86,9 @@ class ClassAdapter(Adapter):
         super().__init__(*args)
         self.cls = cls
 
+    def make_default(self):
+        return self.cls()
+
     def _decode(self, obj, context, path):
         val = self.cls()
         val.__dict__.update(obj)
@@ -123,6 +129,9 @@ class EnumAdapter(Adapter):
         super().__init__(*args)
         self.enum_cls = enum_cls
         self.raise_on_unrecognized = kwargs.get('raise_on_unrecognized', True)
+
+    def make_default(self):
+        return self.enum_cls('UNKNOWN', raise_on_unrecognized=self.raise_on_unrecognized)
 
     def _decode(self, obj, context, path):
         return self.enum_cls(int(obj), raise_on_unrecognized=self.raise_on_unrecognized)
