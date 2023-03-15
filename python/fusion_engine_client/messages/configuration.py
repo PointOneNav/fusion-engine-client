@@ -1095,7 +1095,7 @@ class MessageRateResponse(MessagePayload):
     def __repr__(self):
         result = super().__repr__()[:-1]
         result += f', response={self.response}, interface={self.output_interface}, source={self.config_source}, ' \
-                  f'protocol={self.protocol}]'
+                  f'protocol={self.protocol}, num_entries={len(self.rates)}]'
         return result
 
     def __str__(self):
