@@ -1078,7 +1078,6 @@ class MessageRateResponse(MessagePayload):
         self.config_source = ConfigurationSource.ACTIVE
         self.response = Response.OK
         self.output_interface = InterfaceID(TransportType.INVALID, 0)
-        self.protocol = ProtocolType.INVALID
         self.rates: List[RateResponseEntry] = []
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
@@ -1095,7 +1094,7 @@ class MessageRateResponse(MessagePayload):
     def __repr__(self):
         result = super().__repr__()[:-1]
         result += f', response={self.response}, interface={self.output_interface}, source={self.config_source}, ' \
-                  f'protocol={self.protocol}, num_entries={len(self.rates)}]'
+                  f'num_entries={len(self.rates)}]'
         return result
 
     def __str__(self):
