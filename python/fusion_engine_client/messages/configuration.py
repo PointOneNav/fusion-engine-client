@@ -865,6 +865,8 @@ class ConfigResponseMessage(MessagePayload):
     def unpack(self, buffer: bytes, offset: int = 0) -> int:
         parsed = self.ConfigResponseMessageConstruct.parse(buffer[offset:])
         self.__dict__.update(parsed)
+        del self.__dict__['config_length_bytes']
+        del self.__dict__['config_data']
         self.config_object = _conf_gen.CONFIG_MAP[parsed.config_type].parse(parsed.config_data)
         return parsed._io.tell()
 
