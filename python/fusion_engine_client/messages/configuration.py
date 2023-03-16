@@ -281,9 +281,9 @@ class _ConfigClassGenerator:
         """!
         @brief 3D coordinate specifier, stored as 32-bit float values.
         """
-        x: float = 0
-        y: float = 0
-        z: float = 0
+        x: float = math.nan
+        y: float = math.nan
+        z: float = math.nan
 
     # Construct to serialize Point3F.
     Point3FConstruct = Struct(
@@ -296,7 +296,7 @@ class _ConfigClassGenerator:
         """!
         @brief Integer value specifier.
         """
-        value: int
+        value: int = 0
 
     # Construct to serialize different sized IntegerVal types.
     UInt64Construct = Struct(
@@ -319,7 +319,7 @@ class _ConfigClassGenerator:
         """!
         @brief Bool value specifier.
         """
-        value: bool
+        value: bool = False
 
     # Construct to serialize 8 bit boolean types.
     BoolConstruct = Struct(
@@ -330,8 +330,6 @@ class _ConfigClassGenerator:
         """!
         @brief Bitmask specifying enabled @ref SatelliteType%s.
         """
-        value: int
-
         def __new__(cls, *args, **kwargs):
             # Check if the user specified a single SatelliteType or a list of values, and convert to a mask.
             if len(args) == 1:
@@ -362,8 +360,6 @@ class _ConfigClassGenerator:
         """!
         @brief Bitmask specifying enabled @ref FrequencyBand%s.
         """
-        value: int
-
         def __new__(cls, *args, **kwargs):
             # Check if the user specified a single FrequencyBand or a list of values, and convert to a mask.
             if len(args) == 1:
@@ -411,11 +407,11 @@ class _ConfigClassGenerator:
         """
         vehicle_model: VehicleModel = VehicleModel.UNKNOWN_VEHICLE
         ## The distance between the front axle and rear axle (in meters).
-        wheelbase_m: float = 0
+        wheelbase_m: float = math.nan
         ## The distance between the two front wheels (in meters).
-        front_track_width_m: float = 0
+        front_track_width_m: float = math.nan
         ## The distance between the two rear wheels (in meters).
-        rear_track_width_m: float = 0
+        rear_track_width_m: float = math.nan
 
     VehicleDetailsConstruct = Struct(
         "vehicle_model" / AutoEnum(Int16ul, VehicleModel),
@@ -846,6 +842,9 @@ class ConfigResponseMessage(MessagePayload):
         self.flags = 0
         self.config_object: _conf_gen.ConfigClass = None
 
+        # This field is intended for internal use, and may not reflect self.config_object.
+        self._config_type: ConfigType = None
+
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if not isinstance(self.config_object, _conf_gen.ConfigClass):
             raise TypeError(f'The config_object member ({str(self.config_object)}) must be set to a class decorated '
@@ -864,20 +863,39 @@ class ConfigResponseMessage(MessagePayload):
 
     def unpack(self, buffer: bytes, offset: int = 0) -> int:
         parsed = self.ConfigResponseMessageConstruct.parse(buffer[offset:])
+
         self.__dict__.update(parsed)
-        self.config_object = _conf_gen.CONFIG_MAP[parsed.config_type].parse(parsed.config_data)
+        self._config_type = parsed.config_type
+        del self.__dict__['config_type']
+        del self.__dict__['config_length_bytes']
+        del self.__dict__['config_data']
+
+        if parsed.config_length_bytes > 0:
+            self.config_object = _conf_gen.CONFIG_MAP[parsed.config_type].parse(parsed.config_data)
+        else:
+            self.config_object = None
+
         return parsed._io.tell()
+
+    def __getattr__(self, item):
+        if item == 'config_type':
+            if self.config_object is None:
+                return self._config_type
+            else:
+                return self.config_object.GetType()
+        else:
+            return super().__getattr__(item)
 
     def __repr__(self):
         result = super().__repr__()[:-1]
-        result += f', response={self.response}, source={self.config_source}, type={self.config_object.GetType()}]'
+        result += f', response={self.response}, source={self.config_source}, type={self.config_type}]'
         return result
 
     def __str__(self):
         return construct_message_to_string(
             message=self, construct=self.ConfigResponseMessageConstruct,
             title=f'Config Data',
-            fields=['flags', 'config_source', 'response', 'config_object'],
+            fields=['flags', 'config_source', 'response', 'config_type', 'config_object'],
             value_to_string={'flags': lambda x: '0x%X' % x})
 
     def calcsize(self) -> int:
@@ -1013,7 +1031,7 @@ class GetMessageRate(MessagePayload):
 
     def __repr__(self):
         result = super().__repr__()[:-1]
-        result += f', interface={self.output_interface}, source={self.source}, protocol={self.protocol}, ' \
+        result += f', interface={self.output_interface}, source={self.request_source}, protocol={self.protocol}, ' \
                   f'message_id={self.message_id}]'
         return result
 
@@ -1078,7 +1096,6 @@ class MessageRateResponse(MessagePayload):
         self.config_source = ConfigurationSource.ACTIVE
         self.response = Response.OK
         self.output_interface = InterfaceID(TransportType.INVALID, 0)
-        self.protocol = ProtocolType.INVALID
         self.rates: List[RateResponseEntry] = []
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
@@ -1094,8 +1111,8 @@ class MessageRateResponse(MessagePayload):
 
     def __repr__(self):
         result = super().__repr__()[:-1]
-        result += f', response={self.response}, interface={self.output_interface}, source={self.source}, ' \
-                  f'protocol={self.protocol}]'
+        result += f', response={self.response}, interface={self.output_interface}, source={self.config_source}, ' \
+                  f'num_entries={len(self.rates)}]'
         return result
 
     def __str__(self):
