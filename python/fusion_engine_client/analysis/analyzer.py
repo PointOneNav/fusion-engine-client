@@ -1600,28 +1600,30 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         table_columns = ['Relative Time (s)', 'System Time (s)', 'Event', 'Flags', 'Description']
         rows = []
         system_t0_ns = self.reader.get_system_t0_ns()
+        max_bytes = 128
         for message, message_bytes in zip(data.messages, data.messages_bytes):
             system_time_ns = message.get_system_time_ns()
             if isinstance(message, EventNotificationMessage):
                 event_type = message.event_type
                 flags = message.event_flags
-                description_str = message.event_description_to_string()
+                description_str = message.event_description_to_string(max_bytes=max_bytes)
             else:
                 flags = None
                 if message.get_type() in COMMAND_MESSAGES:
                     event_type = EventType.COMMAND
                 else:
                     event_type = EventType.COMMAND_RESPONSE
-                description_str = f'''\
-{repr(message)}
-Data ({len(message_bytes)} B): {" ".join("%02X" % b for b in message_bytes)}'''
+                description_str = "%s\n%s" % \
+                                  (repr(message),
+                                   EventNotificationMessage._populate_data_byte_string(message_bytes,
+                                                                                       max_bytes=max_bytes))
 
             rows.append([
                 f'{(system_time_ns - system_t0_ns) / 1e9:.3f}' if system_time_ns is not None else 'N/A',
                 f'{system_time_ns / 1e9:.3f}' if system_time_ns is not None else 'N/A',
                 event_type.to_string(include_value=True),
                 f'0x{flags:016X}' if flags is not None else 'N/A',
-                description_str.replace('\n', '<br>'),
+                description_str.replace('<', '[').replace('>', ']').replace('\n', '<br>'),
             ])
 
         table_html = _data_to_table(table_columns, rows, row_major=True)

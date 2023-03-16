@@ -487,7 +487,7 @@ class EventNotificationMessage(MessagePayload):
     def calcsize(self) -> int:
         return len(self.pack())
 
-    def event_description_to_string(self):
+    def event_description_to_string(self, max_bytes=None):
         # For commands and responses, the payload should contain the binary FusionEngine message. Try to decode the
         # message type.
         if self.event_type == EventType.COMMAND or self.event_type == EventType.COMMAND_RESPONSE:
@@ -507,13 +507,21 @@ class EventNotificationMessage(MessagePayload):
             else:
                 message_repr = '<Malformed>'
 
-            newline = '\n'
-            return f'{message_repr}{newline}' \
-                   f'Data ({len(self.event_description)} B): {" ".join("%02X" % b for b in self.event_description)}'
+            return "%s\n%s" % (message_repr,
+                               self._populate_data_byte_string(self.event_description, max_bytes=max_bytes))
         elif isinstance(self.event_description, str):
             return self.event_description
         else:
-            return repr(self.event_description)
+            try:
+                return self.event_description.decode('utf-8')
+            except UnicodeDecodeError:
+                return repr(self.event_description)
+
+    @classmethod
+    def _populate_data_byte_string(cls, data: bytes, max_bytes: int = None):
+        data_truncated = data if max_bytes is None else data[:max_bytes]
+        suffix = '' if len(data_truncated) == len(data) else '...'
+        return f'Data ({len(data)} B): {" ".join("%02X" % b for b in data_truncated)}{suffix}'
 
 
 class ShutdownRequest(MessagePayload):

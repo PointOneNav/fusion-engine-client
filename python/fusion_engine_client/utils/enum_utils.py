@@ -7,13 +7,23 @@ class DynamicEnumMeta(EnumMeta):
     UNRECOGNIZED_PREFIX = '_U'
 
     def __call__(cls, value, *args, **kwargs):
+        raise_on_unrecognized = kwargs.pop('raise_on_unrecognized', True)
+
         # If the user passed in a string, redirect the request: (Foo('bar') -> Foo.BAR). Normally, enums use [] for
         # strings and () for integers, but that can lead to confusion.
         if isinstance(value, str):
-            return cls[value]
+            name = value
+            try:
+                return cls[name]
+            except KeyError as e:
+                if raise_on_unrecognized:
+                    raise e from None
+                else:
+                    used_values = {int(v) for v in cls}
+                    unused_value = min(min(used_values), 0) - 1
+                    extend_enum(cls, name, unused_value)
+                    return cls[name]
         else:
-            raise_on_unrecognized = kwargs.pop('raise_on_unrecognized', True)
-
             try:
                 return super().__call__(value, *args, **kwargs)
             except ValueError as e:
