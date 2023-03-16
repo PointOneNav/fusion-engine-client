@@ -20,9 +20,7 @@ class DynamicEnumMeta(EnumMeta):
                     raise e from None
                 else:
                     used_values = {int(v) for v in cls}
-                    unused_value = -1
-                    while unused_value in used_values:
-                        unused_value -= 1
+                    unused_value = min(min(used_values), 0) - 1
                     extend_enum(cls, name, unused_value)
                     return cls[name]
         else:
