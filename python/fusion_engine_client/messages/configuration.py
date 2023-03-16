@@ -842,6 +842,9 @@ class ConfigResponseMessage(MessagePayload):
         self.flags = 0
         self.config_object: _conf_gen.ConfigClass = None
 
+        # This field is intended for internal use, and may not reflect self.config_object.
+        self._config_type: ConfigType = None
+
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if not isinstance(self.config_object, _conf_gen.ConfigClass):
             raise TypeError(f'The config_object member ({str(self.config_object)}) must be set to a class decorated '
@@ -862,26 +865,37 @@ class ConfigResponseMessage(MessagePayload):
         parsed = self.ConfigResponseMessageConstruct.parse(buffer[offset:])
 
         self.__dict__.update(parsed)
+        self._config_type = parsed.config_type
+        del self.__dict__['config_type']
         del self.__dict__['config_length_bytes']
         del self.__dict__['config_data']
 
         if parsed.config_length_bytes > 0:
             self.config_object = _conf_gen.CONFIG_MAP[parsed.config_type].parse(parsed.config_data)
         else:
-            self.config_object = _conf_gen.CONFIG_MAP[parsed.config_type].make_default()
+            self.config_object = None
 
         return parsed._io.tell()
 
+    def __getattr__(self, item):
+        if item == 'config_type':
+            if self.config_object is None:
+                return self._config_type
+            else:
+                return self.config_object.GetType()
+        else:
+            return super().__getattr__(item)
+
     def __repr__(self):
         result = super().__repr__()[:-1]
-        result += f', response={self.response}, source={self.config_source}, type={self.config_object.GetType()}]'
+        result += f', response={self.response}, source={self.config_source}, type={self.config_type}]'
         return result
 
     def __str__(self):
         return construct_message_to_string(
             message=self, construct=self.ConfigResponseMessageConstruct,
             title=f'Config Data',
-            fields=['flags', 'config_source', 'response', 'config_object'],
+            fields=['flags', 'config_source', 'response', 'config_type', 'config_object'],
             value_to_string={'flags': lambda x: '0x%X' % x})
 
     def calcsize(self) -> int:
