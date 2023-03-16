@@ -232,7 +232,7 @@ def construct_message_to_string(message: object, construct: Optional[Struct] = N
     string = f'{title}\n'
     newline = '\n'
     for field in fields:
-        value = message.__dict__[field]
+        value = getattr(message, field)
         to_string_func = value_to_string.get(field, _generic_value_to_string)
         string += f'  {field}: {to_string_func(value).replace(newline, newline + "    ")}\n'
     return string.rstrip()
