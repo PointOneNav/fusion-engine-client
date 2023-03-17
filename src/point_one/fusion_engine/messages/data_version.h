@@ -23,7 +23,7 @@ struct alignas(4) DataVersion {
   // The reserved bytes must be 0xFF for backward compatibility.
   uint8_t reserved = 0xFF;
   uint8_t major_version = 0xFF;
-  uint16_t minor_version = 0xFF;
+  uint16_t minor_version = 0xFFFF;
 
   constexpr DataVersion() = default;
   constexpr DataVersion(uint8_t major, uint16_t minor)
