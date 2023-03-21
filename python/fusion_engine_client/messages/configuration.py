@@ -1,7 +1,8 @@
 import re
 from typing import Iterable, NamedTuple, Optional, List
 
-from construct import (Struct, Float32l, Int64ul, Int32ul, Int16ul, Int8ul, Padding, this, Flag, Bytes, Array)
+from construct import (Struct, Padding, this, Flag, Bytes, Array,
+                       Float32l, Float64l, Int64ul, Int32ul, Int16ul, Int8ul, Int64sl, Int32sl, Int16sl, Int8sl)
 
 from ..utils.construct_utils import NamedTupleAdapter, AutoEnum, construct_message_to_string
 from ..utils.enum_utils import IntEnum
@@ -29,6 +30,7 @@ class ConfigType(IntEnum):
     HARDWARE_TICK_CONFIG = 22
     ENABLED_GNSS_SYSTEMS = 50
     ENABLED_GNSS_FREQUENCY_BANDS = 51
+    LEAP_SECOND = 52
     UART1_BAUD = 256
     UART2_BAUD = 257
     UART1_OUTPUT_DIAGNOSTICS_MESSAGES = 258
@@ -315,6 +317,22 @@ class _ConfigClassGenerator:
         "value" / Int8ul,
     )
 
+    Int64Construct = Struct(
+        "value" / Int64sl,
+    )
+
+    Int32Construct = Struct(
+        "value" / Int32sl,
+    )
+
+    Int16Construct = Struct(
+        "value" / Int16sl,
+    )
+
+    Int8Construct = Struct(
+        "value" / Int8sl,
+    )
+
     class BoolVal(NamedTuple):
         """!
         @brief Bool value specifier.
@@ -552,6 +570,18 @@ class EnabledGNSSFrequencyBandsConfig(_conf_gen.FrequencyBandMaskVal):
     @brief A bitmask indicating which GNSS frequency bands are enabled.
     """
     pass
+
+
+@_conf_gen.create_config_class(ConfigType.LEAP_SECOND, _conf_gen.Int32Construct)
+class LeapSecondConfig(_conf_gen.IntegerVal):
+    """!
+    @brief Specify a UTC leap second count override value to use for all UTC time conversions.
+
+    Setting this value will disable all internal leap second sources, including data received from the GNSS almanac
+    decoded from available signals. Set to -1 to disable leap second override and re-enable internal leap second
+    handling.
+    """
+    value: int = -1
 
 
 @_conf_gen.create_config_class(ConfigType.UART1_BAUD, _conf_gen.UInt32Construct)
