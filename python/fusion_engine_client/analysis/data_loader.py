@@ -244,6 +244,7 @@ class DataLoader(object):
 
         @param max_messages If set, read up to the specified maximum number of messages. Applies across all message
                types. If negative, read the last N messages.
+        @param max_bytes If set, read up to the specified maximum number of bytes.
         @param require_p1_time If `True`, omit messages that do not contain valid P1 timestamps.
         @param require_system_time If `True`, omit messages that do not contain valid system timestamps.
 
@@ -279,7 +280,8 @@ class DataLoader(object):
              time_range: TimeRange = None,
              show_progress: bool = False,
              ignore_cache: bool = False, disable_index_generation: bool = False,
-             max_messages: int = None, require_p1_time: bool = False, require_system_time: bool = False,
+             max_messages: int = None, max_bytes: int = None,
+              require_p1_time: bool = False, require_system_time: bool = False,
              return_in_order: bool = False, return_bytes: bool = False,
              return_numpy: bool = False, keep_messages: bool = False, remove_nan_times: bool = True,
              time_align: TimeAlignmentMode = TimeAlignmentMode.NONE,
@@ -305,6 +307,7 @@ class DataLoader(object):
         params = {
             'time_range': time_range,
             'max_messages': max_messages,
+            'max_bytes': max_bytes,
             'require_p1_time': require_p1_time,
             'require_system_time': require_system_time,
             'return_bytes': return_bytes,
@@ -395,6 +398,7 @@ class DataLoader(object):
             self.reader.rewind()
             self.reader.set_generate_index(self._generate_index and not disable_index_generation)
             self.reader.set_show_progress(show_progress)
+            self.reader.set_max_bytes(max_bytes)
 
         # If we need to establish t0 (either P1 time or system time), we will wait to apply the user's filter criteria.
         # We can get t0 from any message type.
