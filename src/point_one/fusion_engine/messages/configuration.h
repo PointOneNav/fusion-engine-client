@@ -116,6 +116,17 @@ enum class ConfigType : uint16_t {
   ENABLED_GNSS_FREQUENCY_BANDS = 51,
 
   /**
+   * Specify a UTC leap second count override value to use for all UTC time
+   * conversions. Setting this value will disable all internal leap second
+   * sources, including data received from the GNSS almanac decoded from
+   * available signals. Set to -1 to disable leap second override and re-enable
+   * internal leap second handling.
+   *
+   * Payload format: `int32_t`
+   */
+  LEAP_SECOND = 52,
+
+  /**
    * Configure the UART1 serial baud rate (in bits/second).
    *
    * Payload format: `uint32_t`
@@ -1593,7 +1604,8 @@ struct alignas(4) SetMessageRate : public MessagePayload {
  *
  * # Expected Response
  * The device will respond with a @ref MessageRateResponse containing the
- * requested values, or a @ref CommandResponseMessage on failure.
+ * requested values, or with an error @ref Response value if the request did not
+ * succeed.
  */
 struct alignas(4) GetMessageRate : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::GET_MESSAGE_RATE;

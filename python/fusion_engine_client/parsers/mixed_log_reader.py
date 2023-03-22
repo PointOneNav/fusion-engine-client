@@ -183,6 +183,15 @@ class MixedLogReader(object):
     def set_show_progress(self, show_progress):
         self.show_progress = show_progress
 
+    def set_max_bytes(self, max_bytes):
+        if max_bytes is None:
+            self.max_bytes = sys.maxsize
+        else:
+            self.max_bytes = max_bytes
+            if self.index_builder is not None:
+                self.logger.debug('Max bytes specified. Disabling index generation.')
+                self.set_generate_index(False)
+
     def get_bytes_read(self):
         return self.total_bytes_read
 
