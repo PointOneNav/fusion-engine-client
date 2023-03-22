@@ -581,7 +581,8 @@ class LeapSecondConfig(_conf_gen.IntegerVal):
     decoded from available signals. Set to -1 to disable leap second override and re-enable internal leap second
     handling.
     """
-    value: int = -1
+    def __new__(cls, value: int = -1):
+        return super().__new__(cls, value)
 
 
 @_conf_gen.create_config_class(ConfigType.UART1_BAUD, _conf_gen.UInt32Construct)
