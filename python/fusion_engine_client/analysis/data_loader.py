@@ -180,15 +180,15 @@ class DataLoader(object):
             if self.t0 is None:
                 self.logger.warning('Unable to set t0 - no P1 timestamps found in index file.')
         else:
-            self.read(require_p1_time=True, max_messages=1, disable_index_generation=True, show_progress=False,
-                      ignore_cache=True)
+            self.read(require_p1_time=True, max_messages=1, max_bytes=1 * 1024 * 1024,
+                      disable_index_generation=True, ignore_cache=True, show_progress=False)
 
         # Similarly, we also set the system t0 based on the first system-stamped (typically POSIX) message to appear in
         # the log, if any (profiling data, etc.). Unlike P1 time, since the index file does not contain system
         # timestamps, we have to do a read() even if an index exists. read() will use the index to at least speed up the
         # read operation.
-        self.read(require_system_time=True, max_messages=1, disable_index_generation=True, show_progress=False,
-                  ignore_cache=True)
+        self.read(require_system_time=True, max_messages=1, max_bytes=1 * 1024 * 1024,
+                  disable_index_generation=True, ignore_cache=True, show_progress=False)
 
     def close(self):
         """!
