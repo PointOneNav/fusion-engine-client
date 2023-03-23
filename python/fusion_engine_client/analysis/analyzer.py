@@ -1037,6 +1037,60 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
 
         self._add_figure(name=filename, figure=figure, title=figure_title)
 
+    def plot_gnss_corrections_status(self):
+        """!
+        @brief Plot GNSS corrections status (baseline distance, age, etc.).
+        """
+        result = self.reader.read(message_types=[GNSSInfoMessage], **self.params)
+        data = result[GNSSInfoMessage.MESSAGE_TYPE]
+
+        if len(data.p1_time) == 0:
+            self.logger.info('No GNSS info data available. Skipping corrections status plot.')
+            return
+
+        # Setup the figure.
+        figure = make_subplots(
+            rows=4, cols=1,  print_grid=False, shared_xaxes=True,
+            subplot_titles=['Distance To Station', 'Corrections Age'],
+            specs=[[{'rowspan': 3}],
+                   [None],
+                   [None],
+                   [{}]])
+        figure['layout'].update(showlegend=True)
+        for i in range(2):
+            figure['layout']['xaxis%d' % (i + 1)].update(title="Time (sec)", showticklabels=True, matches='x')
+        figure['layout']['yaxis1'].update(title="Baseline Distance (km)")
+        figure['layout']['yaxis2'].update(title="Age (sec)")
+
+        # Find all base stations present in the data and assign a color to each.
+        station_ids = np.unique([s for s in data.reference_station_id
+                                 if s != GNSSInfoMessage.INVALID_REFERENCE_STATION])
+        if len(station_ids) == 0:
+            # This may happen if the log has no corrections, or if the GNSSInfoMessages in the log use version 0.
+            # Baseline distance and age were added in version 1.
+            self.logger.info('GNSS corrections status details not available. Skipping plot.')
+            return
+
+        colors = self._assign_colors(station_ids)
+
+        # Now plot data for each base station.
+        for station_id in station_ids:
+            idx = data.reference_station_id == station_id
+            time = data.p1_time[idx] - float(self.t0)
+            name = f'Station {station_id}'
+            color = colors[station_id]
+            text = ["P1 Time: %.3f sec" % (t + float(self.t0)) for t in time]
+            figure.add_trace(go.Scattergl(x=time, y=data.baseline_distance_m[idx] * 1e-3, text=text,
+                                          name=name, legendgroup=int(station_id), showlegend=True,
+                                          mode='markers', marker={'color': color}),
+                             1, 1)
+            figure.add_trace(go.Scattergl(x=time, y=data.corrections_age_sec[idx], text=text,
+                                          name=name, legendgroup=int(station_id), showlegend=False,
+                                          mode='markers', marker={'color': color}),
+                             4, 1)
+
+        self._add_figure(name="gnss_corrections_status", figure=figure, title="GNSS Corrections Status")
+
     def plot_wheel_data(self):
         """!
         @brief Plot wheel tick/speed data.
@@ -2040,6 +2094,7 @@ Load and display information stored in a FusionEngine binary file.
         analyzer.plot_gnss_cn0()
         analyzer.plot_gnss_signal_status()
         analyzer.plot_gnss_skyplot()
+        analyzer.plot_gnss_corrections_status()
 
         # By default, we always plot heading measurements (i.e., output from a secondary heading device like an
         # LG69T-AH), separate from other sensor measurements controlled by --measurements.
