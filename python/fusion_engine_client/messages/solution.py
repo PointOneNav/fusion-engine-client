@@ -302,15 +302,25 @@ class GNSSInfoMessage(MessagePayload):
         offset += self.p1_time.unpack(buffer, offset)
         offset += self.gps_time.unpack(buffer, offset)
 
-        (self.leap_second, self.num_svs,
+        (leap_second, num_svs,
          corrections_age, baseline_distance, self.reference_station_id,
          self.gdop, self.pdop, self.hdop, self.vdop,
          self.gps_time_std_sec) = \
             self._STRUCT.unpack_from(buffer=buffer, offset=offset)
         offset += self._STRUCT.size
 
-        self.corrections_age_sec = np.nan if corrections_age == self.INVALID_AGE else (corrections_age * 0.1)
-        self.baseline_distance_m = np.nan if baseline_distance == self.INVALID_DISTANCE else (baseline_distance * 10.0)
+        # The following fields were added in message version 1.
+        if message_version >= 1:
+            self.leap_second = leap_second
+            self.num_svs = num_svs
+            self.corrections_age_sec = np.nan if corrections_age == self.INVALID_AGE else (corrections_age * 0.1)
+            self.baseline_distance_m = (np.nan if baseline_distance == self.INVALID_DISTANCE else
+                                        (baseline_distance * 10.0))
+        else:
+            self.leap_second = self.INVALID_LEAP_SECOND
+            self.num_svs = 0
+            self.corrections_age_sec = np.nan
+            self.baseline_distance_m = np.nan
 
         return offset - initial_offset
 
