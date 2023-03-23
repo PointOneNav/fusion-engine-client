@@ -142,3 +142,28 @@ def test_frequency_band_mask():
     assert EnabledGNSSFrequencyBandsConfig(band_strs).value == expected_mask
     assert EnabledGNSSFrequencyBandsConfig(*band_strs).value == expected_mask
     assert EnabledGNSSFrequencyBandsConfig(s.lower() for s in band_strs).value == expected_mask
+
+
+def test_default_set_config():
+    BASE_SIZE = 8
+    set_msg = SetConfigMessage()
+    set_msg.flags = SetConfigMessage.FLAG_REVERT_TO_DEFAULT
+    with pytest.raises(TypeError):
+        set_msg.pack()
+
+    set_msg.config_object = "Dummy"
+    with pytest.raises(TypeError):
+        set_msg.pack()
+
+    set_msg.config_object = GNSSLeverArmConfig()
+    data = set_msg.pack()
+    assert len(data) == BASE_SIZE
+
+    set_msg.config_object = Uart1BaudConfig()
+    uart_data = set_msg.pack()
+    assert len(uart_data) == BASE_SIZE
+
+    set_msg = SetConfigMessage()
+    set_msg.unpack(uart_data)
+    assert isinstance(set_msg.config_object, Uart1BaudConfig)
+    assert set_msg.config_object.GetType() == ConfigType.UART1_BAUD
