@@ -237,18 +237,24 @@ class GNSSInfoMessage(MessagePayload):
     @brief Information about the GNSS data used in the @ref PoseMessage with the corresponding timestamp.
     """
     MESSAGE_TYPE = MessageType.GNSS_INFO
-    MESSAGE_VERSION = 0
+    MESSAGE_VERSION = 1
 
+    INVALID_LEAP_SECOND = 0xFF
+    INVALID_AGE = 0xFFFF
+    INVALID_DISTANCE = 0xFFFF
     INVALID_REFERENCE_STATION = 0xFFFFFFFF
 
-    _STRUCT = struct.Struct('<Ifffff')
+    _STRUCT = struct.Struct('<BBxxHHIfffff')
 
     def __init__(self):
         self.p1_time = Timestamp()
         self.gps_time = Timestamp()
 
-        self.last_differential_time = Timestamp()
+        self.leap_second = self.INVALID_LEAP_SECOND
+        self.num_svs = 0
 
+        self.corrections_age_sec = np.nan
+        self.baseline_distance_m = np.nan
         self.reference_station_id = GNSSInfoMessage.INVALID_REFERENCE_STATION
 
         self.gdop = np.nan
@@ -267,11 +273,20 @@ class GNSSInfoMessage(MessagePayload):
         offset += self.p1_time.pack(buffer, offset, return_buffer=False)
         offset += self.gps_time.pack(buffer, offset, return_buffer=False)
 
-        offset += self.last_differential_time.pack(buffer, offset, return_buffer=False)
+        if np.isnan(self.corrections_age_sec):
+            corrections_age = self.INVALID_AGE
+        else:
+            corrections_age = round(self.corrections_age_sec * 10.0)
+
+        if np.isnan(self.baseline_distance_m):
+            baseline_distance = self.INVALID_DISTANCE
+        else:
+            baseline_distance = round(self.baseline_distance_m / 10.0)
 
         self._STRUCT.pack_into(
             buffer, offset,
-            self.reference_station_id,
+            self.leap_second, self.num_svs,
+            corrections_age, baseline_distance, self.reference_station_id,
             self.gdop, self.pdop, self.hdop, self.vdop,
             self.gps_time_std_sec)
         offset += self._STRUCT.size
@@ -287,30 +302,36 @@ class GNSSInfoMessage(MessagePayload):
         offset += self.p1_time.unpack(buffer, offset)
         offset += self.gps_time.unpack(buffer, offset)
 
-        offset += self.last_differential_time.unpack(buffer, offset)
-
-        (self.reference_station_id,
+        (self.leap_second, self.num_svs,
+         corrections_age, baseline_distance, self.reference_station_id,
          self.gdop, self.pdop, self.hdop, self.vdop,
          self.gps_time_std_sec) = \
             self._STRUCT.unpack_from(buffer=buffer, offset=offset)
         offset += self._STRUCT.size
+
+        self.corrections_age_sec = np.nan if corrections_age == self.INVALID_AGE else (corrections_age * 0.1)
+        self.baseline_distance_m = np.nan if baseline_distance == self.INVALID_DISTANCE else (baseline_distance * 10.0)
 
         return offset - initial_offset
 
     def __str__(self):
         string = 'GNSS Info Message @ %s\n' % str(self.p1_time)
         string += '  GPS time: %s\n' % str(self.gps_time.as_gps())
+        string += '  UTC leap second: %s\n' % \
+                  (self.leap_second if self.leap_second != self.INVALID_LEAP_SECOND else 'unknown')
+        string += '  # SVs used: %d\n' % self.num_svs
         string += ('  Reference station: %s\n' %
                    (str(self.reference_station_id)
                     if self.reference_station_id != GNSSInfoMessage.INVALID_REFERENCE_STATION
                     else 'none'))
-        string += '  Last differential time: %s\n' % str(self.last_differential_time)
+        string += '  Corrections age: %.1f sec\n' % self.corrections_age_sec
+        string += '  Baseline distance: %.2f km\n' % (self.baseline_distance_m * 1e-3)
         string += '  GDOP: %.1f  PDOP: %.1f\n' % (self.gdop, self.pdop)
         string += '  HDOP: %.1f  VDOP: %.1f' % (self.hdop, self.vdop)
         return string
 
     def calcsize(self) -> int:
-        return 3 * Timestamp.calcsize() + self._STRUCT.size
+        return 2 * Timestamp.calcsize() + self._STRUCT.size
 
 
 class SatelliteInfo:
