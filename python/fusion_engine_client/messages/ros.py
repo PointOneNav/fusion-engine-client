@@ -52,7 +52,7 @@ class ROSPoseMessage(MessagePayload):
         else:
             return offset - initial_offset
 
-    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
         initial_offset = offset
 
         offset += self.p1_time.unpack(buffer, offset)
@@ -202,7 +202,7 @@ class ROSGPSFixMessage(MessagePayload):
         else:
             return offset - initial_offset
 
-    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
         initial_offset = offset
 
         offset += self.p1_time.unpack(buffer, offset)
@@ -314,7 +314,7 @@ class ROSIMUMessage(MessagePayload):
         else:
             return offset - initial_offset
 
-    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
         initial_offset = offset
 
         offset += self.p1_time.unpack(buffer, offset)

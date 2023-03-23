@@ -40,22 +40,22 @@ def decode_message(header, data, offset):
     # We do it explicitly here for sake of example.
     if header.message_type == PoseMessage.MESSAGE_TYPE:
         contents = PoseMessage()
-        contents.unpack(buffer=data, offset=offset)
+        contents.unpack(buffer=data, offset=offset, message_version=header.message_version)
     elif header.message_type == GNSSInfoMessage.MESSAGE_TYPE:
         contents = GNSSInfoMessage()
-        contents.unpack(buffer=data, offset=offset)
+        contents.unpack(buffer=data, offset=offset, message_version=header.message_version)
     elif header.message_type == GNSSSatelliteMessage.MESSAGE_TYPE:
         contents = GNSSSatelliteMessage()
-        contents.unpack(buffer=data, offset=offset)
+        contents.unpack(buffer=data, offset=offset, message_version=header.message_version)
     elif header.message_type == ros.ROSPoseMessage.MESSAGE_TYPE:
         contents = ros.ROSPoseMessage()
-        contents.unpack(buffer=data, offset=offset)
+        contents.unpack(buffer=data, offset=offset, message_version=header.message_version)
     elif header.message_type == ros.ROSGPSFixMessage.MESSAGE_TYPE:
         contents = ros.ROSGPSFixMessage()
-        contents.unpack(buffer=data, offset=offset)
+        contents.unpack(buffer=data, offset=offset, message_version=header.message_version)
     elif header.message_type == ros.ROSIMUMessage.MESSAGE_TYPE:
         contents = ros.ROSIMUMessage()
-        contents.unpack(buffer=data, offset=offset)
+        contents.unpack(buffer=data, offset=offset, message_version=header.message_version)
     else:
         contents = None
 

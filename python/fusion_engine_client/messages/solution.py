@@ -76,7 +76,7 @@ class PoseMessage(MessagePayload):
         else:
             return offset - initial_offset
 
-    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
         initial_offset = offset
 
         offset += self.p1_time.unpack(buffer, offset)
@@ -196,7 +196,7 @@ class PoseAuxMessage(MessagePayload):
         else:
             return offset - initial_offset
 
-    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
         initial_offset = offset
 
         offset += self.p1_time.unpack(buffer, offset)
@@ -296,7 +296,7 @@ class GNSSInfoMessage(MessagePayload):
         else:
             return offset - initial_offset
 
-    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
         initial_offset = offset
 
         offset += self.p1_time.unpack(buffer, offset)
@@ -431,7 +431,7 @@ class GNSSSatelliteMessage(MessagePayload):
         else:
             return offset - initial_offset
 
-    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
         initial_offset = offset
 
         offset += self.p1_time.unpack(buffer, offset)
@@ -643,7 +643,7 @@ class CalibrationStatus(MessagePayload):
         else:
             return offset - initial_offset
 
-    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
         initial_offset = offset
 
         offset += self.p1_time.unpack(buffer, offset)
@@ -783,7 +783,7 @@ class RelativeENUPositionMessage(MessagePayload):
         packed_data = self.Construct.build(values)
         return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
 
-    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
         parsed = self.Construct.parse(buffer[offset:])
         self.__dict__.update(parsed)
         return parsed._io.tell()

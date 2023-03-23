@@ -735,7 +735,7 @@ class SetConfigMessage(MessagePayload):
         packed_data = self.SetConfigMessageConstruct.build(values)
         return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
 
-    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
         parsed = self.SetConfigMessageConstruct.parse(buffer[offset:])
         if parsed.flags & self.FLAG_REVERT_TO_DEFAULT:
             self.config_object = _conf_gen.CONFIG_MAP[parsed.config_type].tuple_cls()
@@ -787,7 +787,7 @@ class GetConfigMessage(MessagePayload):
         packed_data = self.GetConfigMessageConstruct.build(values)
         return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
 
-    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
         parsed = self.GetConfigMessageConstruct.parse(buffer[offset:])
         self.__dict__.update(parsed)
         return parsed._io.tell()
@@ -833,7 +833,7 @@ class SaveConfigMessage(MessagePayload):
         packed_data = self.SaveConfigMessageConstruct.build({"action": self.action})
         return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
 
-    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
         parsed = self.SaveConfigMessageConstruct.parse(buffer[offset:])
         self.action = parsed.action
         return parsed._io.tell()
@@ -898,7 +898,7 @@ class ConfigResponseMessage(MessagePayload):
         packed_data = self.ConfigResponseMessageConstruct.build(values)
         return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
 
-    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
         parsed = self.ConfigResponseMessageConstruct.parse(buffer[offset:])
 
         self.__dict__.update(parsed)
@@ -1002,7 +1002,7 @@ class SetMessageRate(MessagePayload):
         packed_data = self.SetMessageRateConstruct.build(self.__dict__)
         return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
 
-    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
         parsed = self.SetMessageRateConstruct.parse(buffer[offset:])
         self.__dict__.update(parsed)
         return parsed._io.tell()
@@ -1061,7 +1061,7 @@ class GetMessageRate(MessagePayload):
         packed_data = self.GetMessageRateConstruct.build(self.__dict__)
         return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
 
-    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
         parsed = self.GetMessageRateConstruct.parse(buffer[offset:])
         self.__dict__.update(parsed)
         return parsed._io.tell()
@@ -1141,7 +1141,7 @@ class MessageRateResponse(MessagePayload):
         packed_data = self.MessageRateResponseConstruct.build(values)
         return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
 
-    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
         parsed = self.MessageRateResponseConstruct.parse(buffer[offset:])
         self.__dict__.update(parsed)
         return parsed._io.tell()
@@ -1217,7 +1217,7 @@ class ImportDataMessage(MessagePayload):
         packed_data = self.ImportDataMessageConstruct.build(values)
         return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
 
-    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
         parsed = self.ImportDataMessageConstruct.parse(buffer[offset:])
         self.__dict__.update(parsed)
         return parsed._io.tell()
@@ -1260,7 +1260,7 @@ class ExportDataMessage(MessagePayload):
         packed_data = self.ExportDataMessageConstruct.build(values)
         return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
 
-    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
         parsed = self.ExportDataMessageConstruct.parse(buffer[offset:])
         self.__dict__.update(parsed)
         return parsed._io.tell()
@@ -1311,7 +1311,7 @@ class PlatformStorageDataMessage(MessagePayload):
         packed_data = self.PlatformStorageDataMessageConstruct.build(values)
         return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
 
-    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
         parsed = self.PlatformStorageDataMessageConstruct.parse(buffer[offset:])
         self.__dict__.update(parsed)
         return parsed._io.tell()
