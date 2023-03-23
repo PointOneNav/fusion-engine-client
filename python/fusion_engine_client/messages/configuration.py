@@ -721,8 +721,11 @@ class SetConfigMessage(MessagePayload):
             raise TypeError(f'The config_object member ({str(self.config_object)}) must be set to a class decorated '
                             'with create_config_class.')
         config_type = self.config_object.GetType()
-        construct_obj = _conf_gen.CONFIG_MAP[config_type]
-        data = construct_obj.build(self.config_object)
+        if self.flags & self.FLAG_REVERT_TO_DEFAULT:
+            data = bytes()
+        else:
+            construct_obj = _conf_gen.CONFIG_MAP[config_type]
+            data = construct_obj.build(self.config_object)
         values = {
             'config_type': config_type,
             'flags': self.flags,
@@ -734,7 +737,10 @@ class SetConfigMessage(MessagePayload):
 
     def unpack(self, buffer: bytes, offset: int = 0) -> int:
         parsed = self.SetConfigMessageConstruct.parse(buffer[offset:])
-        self.config_object = _conf_gen.CONFIG_MAP[parsed.config_type].parse(parsed.config_change_data)
+        if parsed.flags & self.FLAG_REVERT_TO_DEFAULT:
+            self.config_object = _conf_gen.CONFIG_MAP[parsed.config_type].tuple_cls()
+        else:
+            self.config_object = _conf_gen.CONFIG_MAP[parsed.config_type].parse(parsed.config_change_data)
         self.flags = parsed.flags
         return parsed._io.tell()
 
