@@ -343,6 +343,24 @@ class GNSSInfoMessage(MessagePayload):
     def calcsize(self) -> int:
         return 2 * Timestamp.calcsize() + self._STRUCT.size
 
+    @classmethod
+    def to_numpy(cls, messages):
+        result = {
+            'p1_time': np.array([float(m.p1_time) for m in messages]),
+            'gps_time': np.array([float(m.gps_time) for m in messages]),
+            'gps_time_std_sec': np.array([m.baseline_distance_m for m in messages]),
+            'leap_second': np.array([int(m.leap_second) for m in messages], dtype=int),
+            'num_svs': np.array([int(m.num_svs) for m in messages], dtype=int),
+            'corrections_age_sec': np.array([m.corrections_age_sec for m in messages]),
+            'baseline_distance_m': np.array([m.baseline_distance_m for m in messages]),
+            'reference_station_id': np.array([int(m.reference_station_id) for m in messages], dtype=int),
+            'gdop': np.array([m.gdop for m in messages]),
+            'pdop': np.array([m.pdop for m in messages]),
+            'hdop': np.array([m.hdop for m in messages]),
+            'vdop': np.array([m.vdop for m in messages]),
+        }
+        return result
+
 
 class SatelliteInfo:
     """!
