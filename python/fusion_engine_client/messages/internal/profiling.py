@@ -83,7 +83,7 @@ class ProfileSystemStatusMessage(MessagePayload):
         else:
             return offset - initial_offset
 
-    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
         initial_offset = offset
 
         offset += self.p1_time.unpack(buffer, offset)
@@ -171,7 +171,7 @@ class ProfileDefinitionEntry:
         else:
             return self.calcsize()
 
-    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
         initial_offset = offset
 
         (self.id, string_length) = \
@@ -222,7 +222,7 @@ class ProfileDefinitionMessage(MessagePayload):
         else:
             return offset - initial_offset
 
-    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
         initial_offset = offset
 
         (self.system_time_ns, num_entries) = \
@@ -302,7 +302,7 @@ class ProfilePipelineEntry:
         else:
             return self._STRUCT.size
 
-    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
         initial_offset = offset
 
         (self.id, self.delay_sec) = \
@@ -350,7 +350,7 @@ class ProfilePipelineMessage(MessagePayload):
         else:
             return offset - initial_offset
 
-    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
         initial_offset = offset
 
         (self.system_time_ns, num_entries) = \
@@ -435,7 +435,7 @@ class ProfileExecutionEntry:
         else:
             return self._STRUCT.size
 
-    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
         initial_offset = offset
 
         (self.id, system_time_ns) = \
@@ -487,7 +487,7 @@ class ProfileExecutionMessage(MessagePayload):
         else:
             return offset - initial_offset
 
-    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
         initial_offset = offset
 
         (self.system_time_ns, num_entries) = \
@@ -590,7 +590,7 @@ class ProfileFreeRtosSystemStatusMessage(MessagePayload):
         packed_data = ProfileFreeRtosSystemStatusMessage.ProfileFreeRtosSystemStatusMessageConstruct.build(values)
         return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
 
-    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
         parsed = ProfileFreeRtosSystemStatusMessage.ProfileFreeRtosSystemStatusMessageConstruct.parse(buffer[offset:])
         self.__dict__.update(parsed)
 
@@ -671,7 +671,7 @@ class ProfileExecutionStatsMessage(MessagePayload):
         packed_data = ProfileExecutionStatsMessage.ProfileExecutionStatsMessageConstruct.build(values)
         return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
 
-    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
         parsed = ProfileExecutionStatsMessage.ProfileExecutionStatsMessageConstruct.parse(buffer[offset:])
         self.__dict__.update(parsed)
         return parsed._io.tell()
@@ -739,7 +739,7 @@ class ProfileCounterMessage(MessagePayload):
         packed_data = ProfileCounterMessage.ProfileCounterMessageConstruct.build(values)
         return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
 
-    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
         parsed = ProfileCounterMessage.ProfileCounterMessageConstruct.parse(buffer[offset:])
         self.__dict__.update(parsed)
         return parsed._io.tell()
