@@ -250,7 +250,7 @@ class GNSSInfoMessage(MessagePayload):
         self.p1_time = Timestamp()
         self.gps_time = Timestamp()
 
-        self.leap_second = self.INVALID_LEAP_SECOND
+        self.leap_second = GNSSInfoMessage.INVALID_LEAP_SECOND
         self.num_svs = 0
 
         self.corrections_age_sec = np.nan
@@ -274,12 +274,12 @@ class GNSSInfoMessage(MessagePayload):
         offset += self.gps_time.pack(buffer, offset, return_buffer=False)
 
         if np.isnan(self.corrections_age_sec):
-            corrections_age = self.INVALID_AGE
+            corrections_age = GNSSInfoMessage.INVALID_AGE
         else:
             corrections_age = round(self.corrections_age_sec * 10.0)
 
         if np.isnan(self.baseline_distance_m):
-            baseline_distance = self.INVALID_DISTANCE
+            baseline_distance = GNSSInfoMessage.INVALID_DISTANCE
         else:
             baseline_distance = round(self.baseline_distance_m / 10.0)
 
@@ -313,11 +313,12 @@ class GNSSInfoMessage(MessagePayload):
         if message_version >= 1:
             self.leap_second = leap_second
             self.num_svs = num_svs
-            self.corrections_age_sec = np.nan if corrections_age == self.INVALID_AGE else (corrections_age * 0.1)
-            self.baseline_distance_m = (np.nan if baseline_distance == self.INVALID_DISTANCE else
+            self.corrections_age_sec = (np.nan if corrections_age == GNSSInfoMessage.INVALID_AGE else
+                                        (corrections_age * 0.1))
+            self.baseline_distance_m = (np.nan if baseline_distance == GNSSInfoMessage.INVALID_DISTANCE else
                                         (baseline_distance * 10.0))
         else:
-            self.leap_second = self.INVALID_LEAP_SECOND
+            self.leap_second = GNSSInfoMessage.INVALID_LEAP_SECOND
             self.num_svs = 0
             self.corrections_age_sec = np.nan
             self.baseline_distance_m = np.nan
@@ -328,7 +329,7 @@ class GNSSInfoMessage(MessagePayload):
         string = 'GNSS Info Message @ %s\n' % str(self.p1_time)
         string += '  GPS time: %s\n' % str(self.gps_time.as_gps())
         string += '  UTC leap second: %s\n' % \
-                  (self.leap_second if self.leap_second != self.INVALID_LEAP_SECOND else 'unknown')
+                  (self.leap_second if self.leap_second != GNSSInfoMessage.INVALID_LEAP_SECOND else 'unknown')
         string += '  # SVs used: %d\n' % self.num_svs
         string += ('  Reference station: %s\n' %
                    (str(self.reference_station_id)
