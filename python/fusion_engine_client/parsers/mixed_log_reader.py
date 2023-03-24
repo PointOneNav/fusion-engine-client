@@ -323,7 +323,7 @@ class MixedLogReader(object):
                     if cls is not None:
                         try:
                             payload = cls()
-                            payload.unpack(buffer=payload_bytes, offset=0)
+                            payload.unpack(buffer=payload_bytes, offset=0, message_version=header.message_version)
                         except Exception as e:
                             self.logger.error("Error parsing %s message: %s" % (header.get_type_string(), str(e)))
                             payload = None

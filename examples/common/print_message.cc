@@ -59,21 +59,30 @@ void PrintMessage(const MessageHeader& header, const void* payload_in) {
         contents.p1_time.seconds + (contents.p1_time.fraction_ns * 1e-9);
     double gps_time_sec =
         contents.gps_time.seconds + (contents.gps_time.fraction_ns * 1e-9);
-    double last_diff_time_sec =
-        contents.last_differential_time.seconds +
-        (contents.last_differential_time.fraction_ns * 1e-9);
 
     printf(
         "GNSS info message @ P1 time %.3f seconds. [sequence=%u, size=%zu B]\n",
         p1_time_sec, header.sequence_number, message_size);
     printf("  GPS time: %.3f\n", gps_time_sec);
     printf("  GPS time std dev: %.2e sec\n", contents.gps_time_std_sec);
+    printf("  Leap second: %d\n",
+           contents.leap_second == GNSSInfoMessage::INVALID_LEAP_SECOND
+               ? -1
+               : contents.leap_second);
+    printf("  # SVs: %d\n", contents.num_svs);
     printf("  Reference station: %s\n",
            contents.reference_station_id ==
                    GNSSInfoMessage::INVALID_REFERENCE_STATION
                ? "none"
                : std::to_string(contents.reference_station_id).c_str());
-    printf("  Last differential time: %.3f\n", last_diff_time_sec);
+    printf("  Corrections age: %.1f sec\n",
+           contents.corrections_age == GNSSInfoMessage::INVALID_AGE
+               ? NAN
+               : contents.leap_second * 0.1);
+    printf("  Baseline distance: %.2f km\n",
+           contents.baseline_distance == GNSSInfoMessage::INVALID_DISTANCE
+               ? NAN
+               : contents.baseline_distance * 0.01);
     printf("  GDOP: %.1f  PDOP: %.1f\n", contents.gdop, contents.pdop);
     printf("  HDOP: %.1f  VDOP: %.1f\n", contents.hdop, contents.vdop);
   } else if (header.message_type == MessageType::GNSS_SATELLITE) {

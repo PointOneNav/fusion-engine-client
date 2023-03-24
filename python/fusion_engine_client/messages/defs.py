@@ -341,6 +341,8 @@ class MessagePayload:
     @brief Message payload API.
     """
 
+    _UNSPECIFIED_VERSION = 0x100
+
     message_type_to_class: Dict[MessageType, Type[MessagePayload]] = {}
     message_type_by_name: Dict[str, MessageType] = {}
 
@@ -405,7 +407,7 @@ class MessagePayload:
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         raise NotImplementedError('pack() not implemented.')
 
-    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = _UNSPECIFIED_VERSION) -> int:
         raise NotImplementedError('unpack() not implemented.')
 
     def get_p1_time(self) -> Timestamp:
