@@ -181,7 +181,7 @@ class FaultControlMessage(MessagePayload):
         packed_data = self.FaultControlMessageConstruct.build(values)
         return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
 
-    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
         parsed = self.FaultControlMessageConstruct.parse(buffer[offset:])
         self.payload = _class_gen.TYPE_MAP[parsed.fault_type].parse(parsed.payload)
         return parsed._io.tell()

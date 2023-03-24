@@ -104,7 +104,8 @@ Payload: Reset Request [mask=0x01000fff]
 
                     if len(contents) >= min_message_size_bytes:
                         try:
-                            payload.unpack(buffer=contents, offset=header.calcsize())
+                            payload.unpack(buffer=contents, offset=header.calcsize(),
+                                           message_version=header.message_version)
                             logger.info("Decoded payload contents: %s" % str(payload))
                         except ValueError as e:
                             logger.warning(str(e))

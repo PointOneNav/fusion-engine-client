@@ -199,13 +199,22 @@ struct alignas(4) PoseAuxMessage : public MessagePayload {
 
 /**
  * @brief Information about the GNSS data used in the @ref PoseMessage with the
- *        corresponding timestamp (@ref MessageType::GNSS_INFO, version 1.0).
+ *        corresponding timestamp (@ref MessageType::GNSS_INFO, version 1.1).
  * @ingroup solution_messages
+ *
+ * @note
+ * The deprecated `last_differential_time` field was removed in version 1.1 of
+ * this message, and was replaced by the new @ref leap_second, @ref num_svs,
+ * @ref corrections_age, and @ref baseline_distance fields. Attempting to use
+ * those fields on version 0 messages will result in undefined behavior.
  */
 struct alignas(4) GNSSInfoMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::GNSS_INFO;
-  static constexpr uint8_t MESSAGE_VERSION = 0;
+  static constexpr uint8_t MESSAGE_VERSION = 1;
 
+  static constexpr uint16_t INVALID_LEAP_SECOND = 0xFF;
+  static constexpr uint16_t INVALID_AGE = 0xFFFF;
+  static constexpr uint16_t INVALID_DISTANCE = 0xFFFF;
   static constexpr uint32_t INVALID_REFERENCE_STATION = 0xFFFFFFFF;
 
   /** The time of the message, in P1 time (beginning at power-on). */
@@ -214,10 +223,40 @@ struct alignas(4) GNSSInfoMessage : public MessagePayload {
   /** The GPS time of the message, if available, referenced to 1980/1/6. */
   Timestamp gps_time;
 
-  /** The P1 time of the last differential GNSS update. */
-  Timestamp last_differential_time;
+  /**
+   * The current UTC leap second (offset between UTC and GPS time), if known.
+   * Set to 0xFF if invalid.
+   *
+   * Added in message version 1.
+   */
+  uint8_t leap_second = INVALID_LEAP_SECOND;
 
-  /** The ID of the differential base station, if used. */
+  /** The number of satellites used in the current position solution. */
+  uint8_t num_svs = 0;
+
+  uint8_t reserved[2];
+
+  /**
+   * The age of the most recently received GNSS corrections data (in 0.1
+   * seconds). Set to 0xFFFF if invalid.
+   *
+   * Added in message version 1.
+   */
+  uint16_t corrections_age = INVALID_AGE;
+
+  /**
+   * The distance between the device and the GNSS corrections base station.
+   * Stored in units of 10 meters:
+   * `baseline_distance_m = baseline_distance * 10`. Set to 0xFFFF if invalid.
+   *
+   * Added in message version 1.
+   */
+  uint16_t baseline_distance = INVALID_DISTANCE;
+
+  /**
+   * The ID of the GNSS corrections base station, if used. Set to 0xFFFFFFFF if
+   * invalid.
+   */
   uint32_t reference_station_id = INVALID_REFERENCE_STATION;
 
   /** The geometric dilution of precision (GDOP). */

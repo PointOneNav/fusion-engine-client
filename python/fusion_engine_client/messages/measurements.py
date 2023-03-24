@@ -45,7 +45,7 @@ class IMUMeasurement(MessagePayload):
         else:
             return offset - initial_offset
 
-    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
         initial_offset = offset
 
         offset += self.p1_time.unpack(buffer, offset)
@@ -159,7 +159,7 @@ class WheelSpeedMeasurement(MessagePayload):
         else:
             return offset - initial_offset
 
-    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
         initial_offset = offset
 
         offset += self.timestamps.unpack(buffer, offset)
@@ -267,7 +267,7 @@ class VehicleSpeedMeasurement(MessagePayload):
         else:
             return offset - initial_offset
 
-    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
         initial_offset = offset
 
         offset += self.timestamps.unpack(buffer, offset)
@@ -375,7 +375,7 @@ class WheelTickMeasurement(MessagePayload):
         else:
             return offset - initial_offset
 
-    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
         initial_offset = offset
 
         offset += self.timestamps.unpack(buffer, offset)
@@ -477,7 +477,7 @@ class VehicleTickMeasurement(MessagePayload):
         else:
             return offset - initial_offset
 
-    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
         initial_offset = offset
 
         offset += self.timestamps.unpack(buffer, offset)
@@ -599,7 +599,7 @@ class HeadingMeasurement(MessagePayload):
         else:
             return offset - initial_offset
 
-    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
         initial_offset = offset
 
         offset += self.timestamps.unpack(buffer, offset)

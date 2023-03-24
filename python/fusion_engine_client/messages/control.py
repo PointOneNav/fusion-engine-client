@@ -34,7 +34,7 @@ class CommandResponseMessage(MessagePayload):
         else:
             return offset - initial_offset
 
-    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
         initial_offset = offset
 
         (self.source_sequence_num, self.response) = \
@@ -93,7 +93,7 @@ class MessageRequest(MessagePayload):
         else:
             return offset - initial_offset
 
-    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
         initial_offset = offset
 
         (message_type,) = self._STRUCT.unpack_from(buffer=buffer, offset=offset)
@@ -328,7 +328,7 @@ class ResetRequest(MessagePayload):
         else:
             return self.calcsize()
 
-    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
         initial_offset = offset
 
         (self.reset_mask,) = \
@@ -386,7 +386,7 @@ class VersionInfoMessage(MessagePayload):
         packed_data = self.VersionInfoMessageConstruct.build(values)
         return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
 
-    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
         parsed = self.VersionInfoMessageConstruct.parse(buffer[offset:])
         self.__dict__.update(parsed)
         return parsed._io.tell()
@@ -448,7 +448,7 @@ class EventNotificationMessage(MessagePayload):
         packed_data = self.EventNotificationConstruct.build(values)
         return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
 
-    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
         parsed = self.EventNotificationConstruct.parse(buffer[offset:])
         self.__dict__.update(parsed)
 
@@ -544,7 +544,7 @@ class ShutdownRequest(MessagePayload):
         packed_data = self.ShutdownRequestConstruct.build(values)
         return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
 
-    def unpack(self, buffer: bytes, offset: int = 0) -> int:
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
         parsed = self.ShutdownRequestConstruct.parse(buffer[offset:])
         self.__dict__.update(parsed)
         return parsed._io.tell()

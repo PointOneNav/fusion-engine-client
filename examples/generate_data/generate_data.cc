@@ -3,6 +3,7 @@
 * @file
 ******************************************************************************/
 
+#include <cmath>
 #include <cstdio>
 #include <fstream>
 
@@ -106,9 +107,11 @@ Generate a binary file containing a fixed set of messages.
   gnss_info_message->gps_time.seconds = 1282677727;
   gnss_info_message->gps_time.fraction_ns = 200000000;
 
-  gnss_info_message->last_differential_time.seconds = 1282677727;
-  gnss_info_message->last_differential_time.fraction_ns = 200000000;
+  gnss_info_message->leap_second = 18;
+  gnss_info_message->num_svs = 22;
 
+  gnss_info_message->corrections_age = (uint16_t)std::lround(1.1 * 10.0);
+  gnss_info_message->baseline_distance = (uint16_t)std::lround(10300 / 10.0);
   gnss_info_message->reference_station_id = 4321;
 
   gnss_info_message->gdop = 1.6f;

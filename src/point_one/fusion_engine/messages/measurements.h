@@ -443,7 +443,8 @@ struct alignas(4) VehicleTickMeasurement : public MessagePayload {
 
 /**
  * @brief The heading angle (in degrees) with respect to true north,
- *        pointing from the primary antenna to the secondary antenna.
+ *        pointing from the primary antenna to the secondary antenna (@ref
+          MessageType::HEADING_MEASUREMENT, version 1.0).
  * @ingroup solution_messages
  *
  * @note
@@ -454,7 +455,7 @@ struct alignas(4) VehicleTickMeasurement : public MessagePayload {
  */
 struct alignas(4) HeadingMeasurement : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::HEADING_MEASUREMENT;
-  static constexpr uint8_t MESSAGE_VERSION = 1;
+  static constexpr uint8_t MESSAGE_VERSION = 0;
 
   /** Measurement timestamps, if available. See @ref measurement_messages. */
   MeasurementTimestamps timestamps;
