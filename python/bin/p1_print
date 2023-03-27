@@ -17,7 +17,7 @@ sys.path.append(root_dir)
 from fusion_engine_client.messages import *
 from fusion_engine_client.parsers import MixedLogReader
 from fusion_engine_client.utils import trace as logging
-from fusion_engine_client.utils.argument_parser import ArgumentParser, TriStateBooleanAction
+from fusion_engine_client.utils.argument_parser import ArgumentParser, ExtendedBooleanAction
 from fusion_engine_client.utils.log import locate_log, DEFAULT_LOG_BASE_DIR
 from fusion_engine_client.utils.time_range import TimeRange
 from fusion_engine_client.utils.trace import HighlightFormatter
@@ -48,7 +48,7 @@ other types of data.
 """)
 
     parser.add_argument(
-        '--absolute-time', '--abs', action=TriStateBooleanAction,
+        '--absolute-time', '--abs', action=ExtendedBooleanAction,
         help="Interpret the timestamps in --time as absolute P1 times. Otherwise, treat them as relative to the first "
              "message in the file. Ignored if --time contains a type specifier.")
     parser.add_argument(
