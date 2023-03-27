@@ -25,17 +25,34 @@ _logger = logging.getLogger('point_one.fusion_engine.applications.print_contents
 
 def print_message(header, contents, offset_bytes, one_line=False):
     if isinstance(contents, MessagePayload):
-        parts = str(contents).split('\n')
-        parts[0] += ' [sequence=%d, size=%d B, offset=%d B (0x%x)]' %\
-                    (header.sequence_number, header.get_message_size(), offset_bytes, offset_bytes)
         if one_line:
-            _logger.info(parts[0])
+            # The repr string should always start with the message type, then other contents:
+            #   [POSE (10000), p1_time=12.029 sec, gps_time=2249:528920.500 (1360724120.500 sec), ...]
+            # We want to reformat and insert the additional details as follows for consistency:
+            #   POSE (10000) [sequence=10, ... p1_time=12.029 sec, gps_time=2249:528920.500 (1360724120.500 sec), ...]
+            message_str = repr(contents).split('\n')[0]
+            message_str = message_str.replace('[', '', 1)
+            break_idx = message_str.find(',')
+            if break_idx >= 0:
+                message_str = f'{message_str[:break_idx]} [{message_str[(break_idx + 2):]}'
+            else:
+                message_str = message_str.rstrip(']')
+            parts = [message_str]
         else:
-            _logger.info('\n'.join(parts))
+            parts = str(contents).split('\n')
     else:
-        _logger.info('Decoded %s message [sequence=%d, size=%d B, offset=%d B (0x%x)]' %
-                     (header.get_type_string(), header.sequence_number, header.get_message_size(),
-                      offset_bytes, offset_bytes))
+        parts = [f'{header.get_type().to_string(include_value=True)} (unsupported)']
+
+    details = 'sequence=%d, size=%d B, offset=%d B (0x%x)' %\
+              (header.sequence_number, header.get_message_size(), offset_bytes, offset_bytes)
+
+    idx = parts[0].find('[')
+    if idx < 0:
+        parts[0] += f' [{details}]'
+    else:
+        parts[0] = f'{parts[0][:(idx + 1)]}{details}, {parts[0][(idx + 1):]}'
+
+    _logger.info('\n'.join(parts))
 
 
 if __name__ == "__main__":
