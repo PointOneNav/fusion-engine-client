@@ -31,6 +31,7 @@ class ConfigType(IntEnum):
     ENABLED_GNSS_SYSTEMS = 50
     ENABLED_GNSS_FREQUENCY_BANDS = 51
     LEAP_SECOND = 52
+    GPS_WEEK_ROLLOVER = 53
     UART1_BAUD = 256
     UART2_BAUD = 257
     UART1_OUTPUT_DIAGNOSTICS_MESSAGES = 258
@@ -578,8 +579,23 @@ class LeapSecondConfig(_conf_gen.IntegerVal):
     @brief Specify a UTC leap second count override value to use for all UTC time conversions.
 
     Setting this value will disable all internal leap second sources, including data received from the GNSS almanac
-    decoded from available signals. Set to -1 to disable leap second override and re-enable internal leap second
-    handling.
+    decoded from available signals.
+
+    Set to -1 to disable leap second override and re-enable internal leap second handling.
+    """
+    def __new__(cls, value: int = -1):
+        return super().__new__(cls, value)
+
+
+@_conf_gen.create_config_class(ConfigType.GPS_WEEK_ROLLOVER, _conf_gen.Int32Construct)
+class GPSWeekRolloverConfig(_conf_gen.IntegerVal):
+    """!
+    @brief Specify a GPS legacy week rollover count override to use when converting all legacy 10-bit GPS week numbers
+
+    Setting this value will disable all internal week rollover sources, including data received from modern GPS
+    navigation messages (CNAV, CNAV2) or non-GPS constellations.
+
+    Set to -1 to disable week rollover override and re-enable internal handling.
     """
     def __new__(cls, value: int = -1):
         return super().__new__(cls, value)
