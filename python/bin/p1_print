@@ -201,41 +201,44 @@ other types of data.
 
     def create_stats_entry(): return {'count': 1}
     message_stats = defaultdict(create_stats_entry)
-    for header, message, data, offset_bytes in reader:
-        bytes_decoded += len(data)
+    try:
+        for header, message, data, offset_bytes in reader:
+            bytes_decoded += len(data)
 
-        # Update the data summary in summary mode, or print the message contents otherwise.
-        total_messages += 1
-        if options.summary:
-            p1_time = message.get_p1_time()
-            if p1_time is not None:
-                if first_p1_time_sec is None:
-                    first_p1_time_sec = float(p1_time)
-                    last_p1_time_sec = float(p1_time)
-                    newest_p1_time = p1_time
-                else:
-                    if p1_time < newest_p1_time:
-                        _logger.warning('P1 time restart detected after %s.' % str(newest_p1_time))
-                    last_p1_time_sec = max(last_p1_time_sec, float(p1_time))
-                    newest_p1_time = p1_time
+            # Update the data summary in summary mode, or print the message contents otherwise.
+            total_messages += 1
+            if options.summary:
+                p1_time = message.get_p1_time()
+                if p1_time is not None:
+                    if first_p1_time_sec is None:
+                        first_p1_time_sec = float(p1_time)
+                        last_p1_time_sec = float(p1_time)
+                        newest_p1_time = p1_time
+                    else:
+                        if p1_time < newest_p1_time:
+                            _logger.warning('P1 time restart detected after %s.' % str(newest_p1_time))
+                        last_p1_time_sec = max(last_p1_time_sec, float(p1_time))
+                        newest_p1_time = p1_time
 
-            system_time_sec = message.get_system_time_sec()
-            if system_time_sec is not None:
-                if first_system_time_sec is None:
-                    first_system_time_sec = system_time_sec
-                    last_system_time_sec = system_time_sec
-                    newest_system_time_sec = system_time_sec
-                else:
-                    if system_time_sec < newest_system_time_sec:
-                        _logger.warning('System time restart detected after %s.' %
-                                        system_time_to_str(newest_system_time_sec, is_seconds=True))
-                    last_system_time_sec = max(last_system_time_sec, system_time_sec)
-                    newest_system_time_sec = system_time_sec
+                system_time_sec = message.get_system_time_sec()
+                if system_time_sec is not None:
+                    if first_system_time_sec is None:
+                        first_system_time_sec = system_time_sec
+                        last_system_time_sec = system_time_sec
+                        newest_system_time_sec = system_time_sec
+                    else:
+                        if system_time_sec < newest_system_time_sec:
+                            _logger.warning('System time restart detected after %s.' %
+                                            system_time_to_str(newest_system_time_sec, is_seconds=True))
+                        last_system_time_sec = max(last_system_time_sec, system_time_sec)
+                        newest_system_time_sec = system_time_sec
 
-            entry = message_stats[header.message_type]
-            entry['count'] += 1
-        else:
-            print_message(header, message, offset_bytes, one_line=options.format == 'oneline')
+                entry = message_stats[header.message_type]
+                entry['count'] += 1
+            else:
+                print_message(header, message, offset_bytes, one_line=options.format == 'oneline')
+    except (BrokenPipeError, KeyboardInterrupt):
+        sys.exit(1)
 
     # Print the data summary.
     if options.summary:
