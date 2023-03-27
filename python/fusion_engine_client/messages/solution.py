@@ -106,15 +106,24 @@ class PoseMessage(MessagePayload):
         return offset - initial_offset
 
     def __repr__(self):
-        result = super().__repr__()[:-1]
         lla_str = '(%.6f, %.6f, %.3f)' % tuple(self.lla_deg)
-        result += f', solution_type={self.solution_type}, position={lla_str}]'
+        if self.gps_time:
+            gps_str = f'{str(self.gps_time).replace("GPS: ", "")}'
+        else:
+            gps_str = 'None'
+
+        result = super().__repr__()[:-1]
+        result += f', gps_time={gps_str}, solution_type={self.solution_type}, position={lla_str}]'
         return result
 
     def __str__(self):
         string = 'Pose Message @ %s\n' % str(self.p1_time)
         string += '  Solution type: %s\n' % self.solution_type.name
-        string += '  GPS time: %s\n' % str(self.gps_time.as_gps())
+        if self.gps_time:
+            gps_str = f'{str(self.gps_time).replace("GPS: ", "")} ({str(self.gps_time.as_gps())})'
+        else:
+            gps_str = 'None'
+        string += '  GPS time: %s\n' % gps_str
         string += '  Position (LLA): %.6f, %.6f, %.3f (deg, deg, m)\n' % tuple(self.lla_deg)
         string += '  Attitude (YPR): %.2f, %.2f, %.2f (deg, deg, deg)\n' % tuple(self.ypr_deg)
         string += '  Velocity (Body): %.2f, %.2f, %.2f (m/s, m/s, m/s)\n' % tuple(self.velocity_body_mps)
@@ -324,7 +333,11 @@ class GNSSInfoMessage(MessagePayload):
 
     def __str__(self):
         string = 'GNSS Info Message @ %s\n' % str(self.p1_time)
-        string += '  GPS time: %s\n' % str(self.gps_time.as_gps())
+        if self.gps_time:
+            gps_str = f'{str(self.gps_time).replace("GPS: ", "")} ({str(self.gps_time.as_gps())})'
+        else:
+            gps_str = 'None'
+        string += '  GPS time: %s\n' % gps_str
         string += '  UTC leap second: %s\n' % \
                   (self.leap_second if self.leap_second != GNSSInfoMessage.INVALID_LEAP_SECOND else 'unknown')
         string += '  # SVs used: %d\n' % self.num_svs
