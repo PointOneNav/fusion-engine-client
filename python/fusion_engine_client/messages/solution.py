@@ -111,9 +111,6 @@ class PoseMessage(MessagePayload):
         result += f', solution_type={self.solution_type}, position={lla_str}]'
         return result
 
-    def __repr__(self):
-        return '%s @ %s' % (self.MESSAGE_TYPE.name, self.p1_time)
-
     def __str__(self):
         string = 'Pose Message @ %s\n' % str(self.p1_time)
         string += '  Solution type: %s\n' % self.solution_type.name
