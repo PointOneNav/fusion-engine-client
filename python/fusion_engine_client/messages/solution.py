@@ -331,6 +331,21 @@ class GNSSInfoMessage(MessagePayload):
 
         return offset - initial_offset
 
+    def __repr__(self):
+        if self.gps_time:
+            gps_str = f'{str(self.gps_time).replace("GPS: ", "")}'
+        else:
+            gps_str = 'None'
+        if self.reference_station_id != GNSSInfoMessage.INVALID_REFERENCE_STATION:
+            station_str = str(self.reference_station_id)
+        else:
+            station_str = 'None'
+
+        result = super().__repr__()[:-1]
+        result += f', gps_time={gps_str}, num_svs={self.num_svs}, station={station_str}, ' \
+                  f'age={self.corrections_age_sec:.1f} sec, baseline={self.baseline_distance_m * 1e-3:.1f} km]'
+        return result
+
     def __str__(self):
         string = 'GNSS Info Message @ %s\n' % str(self.p1_time)
         if self.gps_time:
