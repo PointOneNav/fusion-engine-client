@@ -23,9 +23,9 @@ from fusion_engine_client.utils.trace import HighlightFormatter
 _logger = logging.getLogger('point_one.fusion_engine.applications.print_contents')
 
 
-def print_message(header, contents, offset_bytes, one_line=False):
+def print_message(header, contents, offset_bytes, format='pretty'):
     if isinstance(contents, MessagePayload):
-        if one_line:
+        if format in ('oneline', 'oneline-detailed'):
             # The repr string should always start with the message type, then other contents:
             #   [POSE (10000), p1_time=12.029 sec, gps_time=2249:528920.500 (1360724120.500 sec), ...]
             # We want to reformat and insert the additional details as follows for consistency:
@@ -43,14 +43,15 @@ def print_message(header, contents, offset_bytes, one_line=False):
     else:
         parts = [f'{header.get_type().to_string(include_value=True)} (unsupported)']
 
-    details = 'sequence=%d, size=%d B, offset=%d B (0x%x)' %\
-              (header.sequence_number, header.get_message_size(), offset_bytes, offset_bytes)
+    if format in ('pretty', 'oneline-detailed'):
+        details = 'sequence=%d, size=%d B, offset=%d B (0x%x)' %\
+                  (header.sequence_number, header.get_message_size(), offset_bytes, offset_bytes)
 
-    idx = parts[0].find('[')
-    if idx < 0:
-        parts[0] += f' [{details}]'
-    else:
-        parts[0] = f'{parts[0][:(idx + 1)]}{details}, {parts[0][(idx + 1):]}'
+        idx = parts[0].find('[')
+        if idx < 0:
+            parts[0] += f' [{details}]'
+        else:
+            parts[0] = f'{parts[0][:(idx + 1)]}{details}, {parts[0][(idx + 1):]}'
 
     _logger.info('\n'.join(parts))
 
@@ -67,7 +68,7 @@ other types of data.
         help="Interpret the timestamps in --time as absolute P1 times. Otherwise, treat them as relative to the first "
              "message in the file. Ignored if --time contains a type specifier.")
     parser.add_argument(
-        '-f', '--format', choices=['pretty', 'oneline'], default='pretty',
+        '-f', '--format', choices=['pretty', 'oneline', 'oneline-detailed'], default='pretty',
         help="Specify the format used to print the message contents.")
     parser.add_argument(
         '-s', '--summary', action='store_true',
@@ -251,7 +252,7 @@ other types of data.
                 entry = message_stats[header.message_type]
                 entry['count'] += 1
             else:
-                print_message(header, message, offset_bytes, one_line=options.format == 'oneline')
+                print_message(header, message, offset_bytes, format=options.format)
     except (BrokenPipeError, KeyboardInterrupt):
         sys.exit(1)
 
