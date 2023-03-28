@@ -460,6 +460,7 @@ class DataLoader(object):
             p1_time = payload.get_p1_time()
             system_time_ns = payload.get_system_time_ns()
             system_time_sec = None if system_time_ns is None else (system_time_ns * 1e-9)
+            system_time_valid = system_time_ns is not None and not np.isnan(system_time_ns)
 
             # Store t0 if this is the first message with a (valid) timestamp.
             if p1_time is not None and p1_time:
@@ -468,7 +469,7 @@ class DataLoader(object):
                                  (header.get_type_string(), str(p1_time)))
                     self.t0 = p1_time
 
-            if system_time_ns is not None:
+            if system_time_valid:
                 if self.system_t0 is None:
                     logger.debug('Received first system-timestamped message. [type=%s, time=%s]' %
                                  (header.get_type_string(), system_time_to_str(system_time_ns)))
@@ -495,7 +496,7 @@ class DataLoader(object):
                 elif require_p1_time and not p1_time:
                     logger.debug('  Message does not contain P1 time. Discarding.')
                     continue
-                elif require_system_time and system_time_ns is None:
+                elif require_system_time and not system_time_valid:
                     logger.debug('  Message does not contain system time. Discarding.')
                     continue
 
