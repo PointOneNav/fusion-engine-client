@@ -449,6 +449,12 @@ class MessagePayload:
             else:
                 result.update(matched_types)
 
+        # These types both map to the same message so make sure they're both included if either is.
+        if MessageType.LEGACY_PLATFORM_STORAGE_DATA in result:
+            result.add(MessageType.PLATFORM_STORAGE_DATA)
+        elif MessageType.PLATFORM_STORAGE_DATA in result:
+            result.add(MessageType.LEGACY_PLATFORM_STORAGE_DATA)
+
         if return_class:
             result = {cls.message_type_to_class[t] for t in result}
 
