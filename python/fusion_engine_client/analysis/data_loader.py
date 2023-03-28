@@ -496,7 +496,7 @@ class DataLoader(object):
                 elif require_p1_time and not p1_time:
                     logger.debug('  Message does not contain P1 time. Discarding.')
                     continue
-                elif not system_time_valid:
+                elif require_system_time and not system_time_valid:
                     logger.debug('  Message does not contain system time. Discarding.')
                     continue
 
