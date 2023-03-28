@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import inspect
 import math
+import re
 import struct
-from typing import Dict, Type, Union
+import sys
+from typing import Dict, List, Set, Type, Union
 from zlib import crc32
 
 import numpy as np
@@ -14,6 +16,16 @@ from ..utils import trace as logging
 from ..utils.enum_utils import IntEnum
 
 _logger = logging.getLogger('point_one.fusion_engine.messages.defs')
+
+if sys.version_info >= (3, 9):
+    def _remove_suffix(s, suffix):
+        return s.removesuffix(suffix)
+else:
+    def _remove_suffix(s, suffix):
+        if s.endswith(suffix):
+            return s[:-len(suffix)]
+        else:
+            return s
 
 
 class SolutionType(IntEnum):
@@ -356,6 +368,88 @@ class MessagePayload:
     @classmethod
     def get_message_class(cls, message_type: MessageType) -> Type[MessagePayload]:
         return MessagePayload.message_type_to_class.get(message_type, None)
+
+    @classmethod
+    def find_matching_message_types(cls, pattern: Union[str, List[str]], return_class: bool = False) -> \
+        Union[Set[MessageType], Set[MessagePayload]]:
+        """!
+        @brief Find one or more @ref MessageType%s that match the specified pattern(s).
+
+        Examples:
+        ```py
+        find_matching_message_types('pose')  # {MessageType.POSE}
+        find_matching_message_types('posemessage')  # {MessageType.POSE}
+        find_matching_message_types('PoseMessage')  # {MessageType.POSE}
+        find_matching_message_types('pos')  # ValueError - multiple possible matches
+        find_matching_message_types('pos*')  # {MessageType.POSE, MessageType.POSE_AUX}
+        find_matching_message_types('pose,poseaux')  # {MessageType.POSE, MessageType.POSE_AUX}
+        find_matching_message_types(['pose', 'poseaux'])  # {MessageType.POSE, MessageType.POSE_AUX}
+        ```
+
+        @param pattern A `list` or a comma-separated string containing one or more search patterns. Patterns may match
+               part or all of a class name. Patterns may include wildcards (`*`) to match multiple classes. If no
+               wildcards are specified and multiple classes match, a single result will be returned if there is an exact
+               match (e.g., `pose` will match to @ref MessageType.POSE, not @ref MessageType.POSE_AUX). All matches are
+               case-insensitive.
+        @param return_class If `True`, return classes for each matching message type (derived from @ref MessagePayload).
+               Otherwise, return @ref MessageType enum values.
+
+        @return A set containing the matching @ref MessageType or @ref MessagePayload instances.
+        """
+        # Generate a list of requested types.
+        requested_types = []
+
+        if isinstance(pattern, str):
+            patterns = [pattern]
+        else:
+            patterns = pattern
+
+        # Split and flatten comma-separated lists of names/patterns:
+        #   ['VersionInfoMessage', 'PoseMessage,GNSS*'] ->
+        #   ['VersionInfoMessage', 'PoseMessage', 'GNSS*']
+        requested_types = [p.strip() for entry in patterns for p in entry.split(',')]
+
+        # Now find matches to each pattern.
+        result = set()
+        for pattern in requested_types:
+            allow_multiple = '*' in pattern
+            re_pattern = pattern.replace('*', '.*')
+            # if pattern[0] != '^':
+            #     re_pattern = r'.*' + re_pattern
+            # if pattern[-1] != '$':
+            #     re_pattern += '.*'
+
+            # Check for matches.
+            matched_types = [v for k, v in cls.message_type_by_name.items()
+                             if re.match(re_pattern, k, flags=re.IGNORECASE)]
+            if len(matched_types) == 0:
+                _logger.warning("No message types matching pattern '%s'." % pattern)
+                continue
+
+            # Check for exact matches with "Message" and "Measurement" suffixes removed.
+            if len(matched_types) > 1 and not allow_multiple:
+                def _remove_suffixes(s):
+                    return _remove_suffix(_remove_suffix(s.lower(), 'message'), 'measurement')
+                pattern_no_suffix = _remove_suffixes(pattern)
+                exact_matches = [t for t in matched_types
+                                 if _remove_suffixes(cls.message_type_to_class[t].__name__) == pattern_no_suffix]
+                if len(exact_matches) == 1:
+                    matched_types = exact_matches
+
+            # If there are still too many matches, fail.
+            if len(matched_types) > 1 and not allow_multiple:
+                class_names = [cls.message_type_to_class[t].__name__ for t in matched_types]
+                raise ValueError("Pattern '%s' matches multiple message types:%s\n\nAdd a wildcard (%s*) to display "
+                                 "all matching types." %
+                                 (pattern, ''.join(['\n  %s' % c for c in class_names]), pattern))
+            # Otherwise, update the set of message types.
+            else:
+                result.update(matched_types)
+
+        if return_class:
+            result = {cls.message_type_to_class[t] for t in result}
+
+        return result
 
     @classmethod
     def get_type(cls) -> MessageType:
