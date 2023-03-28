@@ -119,12 +119,27 @@ enum class ConfigType : uint16_t {
    * Specify a UTC leap second count override value to use for all UTC time
    * conversions. Setting this value will disable all internal leap second
    * sources, including data received from the GNSS almanac decoded from
-   * available signals. Set to -1 to disable leap second override and re-enable
-   * internal leap second handling.
+   * available signals.
+   *
+   * Set to -1 to disable leap second override and re-enable internal leap
+   * second handling.
    *
    * Payload format: `int32_t`
    */
   LEAP_SECOND = 52,
+
+  /**
+   * Specify a GPS legacy week rollover count override to use when converting
+   * all legacy 10-bit GPS week numbers. Setting this value will disable all
+   * internal week rollover sources, including data received from modern GPS
+   * navigation messages (CNAV, CNAV2) or non-GPS constellations.
+   *
+   * Set to -1 to disable week rollover override and re-enable internal
+   * handling.
+   *
+   * Payload format: `int32_t`
+   */
+  GPS_WEEK_ROLLOVER = 53,
 
   /**
    * Configure the UART1 serial baud rate (in bits/second).
