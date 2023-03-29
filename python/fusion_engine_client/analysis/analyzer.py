@@ -2661,7 +2661,7 @@ Load and display information stored in a FusionEngine binary file.
 
     time_group = parser.add_argument_group('Time Control')
     time_group.add_argument(
-        '--absolute-time', '--abs', action=TriStateBooleanAction,
+        '--absolute-time', '--abs', action=ExtendedBooleanAction,
         help="Interpret the timestamps in --time as absolute P1 times. Otherwise, treat them as relative to the first "
              "message in the file. Ignored if --time contains a type specifier.")
     time_group.add_argument(
