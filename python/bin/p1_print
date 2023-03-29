@@ -4,8 +4,6 @@ from collections import defaultdict
 import os
 import sys
 
-import numpy as np
-
 # Add the Python root directory (fusion-engine-client/python/) to the import search path to enable FusionEngine imports
 # if this application is being run directly out of the repository and is not installed as a pip package.
 root_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
@@ -17,7 +15,7 @@ sys.path.append(root_dir)
 from fusion_engine_client.messages import *
 from fusion_engine_client.parsers import MixedLogReader
 from fusion_engine_client.utils import trace as logging
-from fusion_engine_client.utils.argument_parser import ArgumentParser, TriStateBooleanAction
+from fusion_engine_client.utils.argument_parser import ArgumentParser, ExtendedBooleanAction
 from fusion_engine_client.utils.log import locate_log, DEFAULT_LOG_BASE_DIR
 from fusion_engine_client.utils.time_range import TimeRange
 from fusion_engine_client.utils.trace import HighlightFormatter
@@ -25,19 +23,37 @@ from fusion_engine_client.utils.trace import HighlightFormatter
 _logger = logging.getLogger('point_one.fusion_engine.applications.print_contents')
 
 
-def print_message(header, contents, offset_bytes, one_line=False):
+def print_message(header, contents, offset_bytes, format='pretty'):
     if isinstance(contents, MessagePayload):
-        parts = str(contents).split('\n')
-        parts[0] += ' [sequence=%d, size=%d B, offset=%d B (0x%x)]' %\
-                    (header.sequence_number, header.get_message_size(), offset_bytes, offset_bytes)
-        if one_line:
-            _logger.info(parts[0])
+        if format in ('oneline', 'oneline-detailed'):
+            # The repr string should always start with the message type, then other contents:
+            #   [POSE (10000), p1_time=12.029 sec, gps_time=2249:528920.500 (1360724120.500 sec), ...]
+            # We want to reformat and insert the additional details as follows for consistency:
+            #   POSE (10000) [sequence=10, ... p1_time=12.029 sec, gps_time=2249:528920.500 (1360724120.500 sec), ...]
+            message_str = repr(contents).split('\n')[0]
+            message_str = message_str.replace('[', '', 1)
+            break_idx = message_str.find(',')
+            if break_idx >= 0:
+                message_str = f'{message_str[:break_idx]} [{message_str[(break_idx + 2):]}'
+            else:
+                message_str = message_str.rstrip(']')
+            parts = [message_str]
         else:
-            _logger.info('\n'.join(parts))
+            parts = str(contents).split('\n')
     else:
-        _logger.info('Decoded %s message [sequence=%d, size=%d B, offset=%d B (0x%x)]' %
-                     (header.get_type_string(), header.sequence_number, header.get_message_size(),
-                      offset_bytes, offset_bytes))
+        parts = [f'{header.get_type().to_string(include_value=True)} (unsupported)']
+
+    if format in ('pretty', 'oneline-detailed'):
+        details = 'sequence=%d, size=%d B, offset=%d B (0x%x)' %\
+                  (header.sequence_number, header.get_message_size(), offset_bytes, offset_bytes)
+
+        idx = parts[0].find('[')
+        if idx < 0:
+            parts[0] += f' [{details}]'
+        else:
+            parts[0] = f'{parts[0][:(idx + 1)]}{details}, {parts[0][(idx + 1):]}'
+
+    _logger.info('\n'.join(parts))
 
 
 if __name__ == "__main__":
@@ -48,11 +64,11 @@ other types of data.
 """)
 
     parser.add_argument(
-        '--absolute-time', '--abs', action=TriStateBooleanAction,
+        '--absolute-time', '--abs', action=ExtendedBooleanAction,
         help="Interpret the timestamps in --time as absolute P1 times. Otherwise, treat them as relative to the first "
              "message in the file. Ignored if --time contains a type specifier.")
     parser.add_argument(
-        '-f', '--format', choices=['pretty', 'oneline'], default='pretty',
+        '-f', '--format', choices=['pretty', 'oneline', 'oneline-detailed'], default='pretty',
         help="Specify the format used to print the message contents.")
     parser.add_argument(
         '-s', '--summary', action='store_true',
@@ -60,7 +76,12 @@ other types of data.
     parser.add_argument(
         '-m', '--message-type', type=str, action='append',
         help="An optional list of class names corresponding with the message types to be displayed. May be specified "
-             "multiple times (-m Type 1 -m Type 2), or as a comma-separated list (-m Type1,Type2). "
+             "multiple times (-m Pose -m PoseAux), or as a comma-separated list (-m Pose,PoseAux). All matches are"
+             "case-insensitive.\n"
+             "\n"
+             "If a partial name is specified, the best match will be returned. Use the wildcard '*' to match multiple "
+             "message types.\n"
+             "\n"
              "Supported types:\n%s" % '\n'.join(['- %s' % c for c in message_type_by_name.keys()]))
     parser.add_argument(
         '-t', '--time', type=str, metavar='[START][:END][:{rel,abs}]',
@@ -123,37 +144,22 @@ other types of data.
 
     # If the user specified a set of message names, lookup their type values. Below, we will limit the printout to only
     # those message types.
-    message_types = []
+    message_types = set()
     if options.message_type is not None:
-        # Convert to lowercase to perform case-insensitive search.
-        type_by_name = {k.lower(): v for k, v in message_type_by_name.items()}
-
-        # Split comma-separated names. That way the user can specify multiple -m entries or comma-separated names (or
-        # a mix of the two):
-        #   -m Type1,Type2 -m Type 3
-        requested_types = []
-        for name in options.message_type:
-            requested_types.extend(name.split(','))
-
-        for name in requested_types:
-            lower_name = name.lower()
-            message_type = type_by_name.get(lower_name, None)
-            if message_type is None:
-                # If we can't find an exact match for the key, try a partial match.
-                matches = {k: v for k, v in type_by_name.items() if k.startswith(lower_name)}
-                if len(matches) == 1:
-                    message_types.append(next(iter(matches.values())))
-                elif len(matches) > 1:
-                    types = [v for v in matches.values()]
-                    class_names = [message_type_to_class[t].__name__ for t in types]
-                    _logger.info("Found multiple types matching '%s':\n  %s" % (name, '\n  '.join(class_names)))
-                    sys.exit(1)
-                else:
-                    _logger.info("Unrecognized message type '%s'." % name)
-                    sys.exit(1)
-            else:
-                message_types.append(message_type)
-        message_types = set(message_types)
+        # Pattern match to any of:
+        #   -m Type1
+        #   -m Type1 -m Type2
+        #   -m Type1,Type2
+        #   -m Type1,Type2 -m Type3
+        #   -m Type*
+        try:
+            message_types = MessagePayload.find_matching_message_types(options.message_type)
+            if len(message_types) == 0:
+                # find_matching_message_types() will print an error.
+                sys.exit(1)
+        except ValueError as e:
+            _logger.error(str(e))
+            sys.exit(1)
 
     # Check if any of the requested message types do _not_ have P1 time (e.g., profiling messages). The index file
     # does not currently contain non-P1 time messages, so if we use it to search for messages we will end up
@@ -201,41 +207,44 @@ other types of data.
 
     def create_stats_entry(): return {'count': 1}
     message_stats = defaultdict(create_stats_entry)
-    for header, message, data, offset_bytes in reader:
-        bytes_decoded += len(data)
+    try:
+        for header, message, data, offset_bytes in reader:
+            bytes_decoded += len(data)
 
-        # Update the data summary in summary mode, or print the message contents otherwise.
-        total_messages += 1
-        if options.summary:
-            p1_time = message.get_p1_time()
-            if p1_time is not None:
-                if first_p1_time_sec is None:
-                    first_p1_time_sec = float(p1_time)
-                    last_p1_time_sec = float(p1_time)
-                    newest_p1_time = p1_time
-                else:
-                    if p1_time < newest_p1_time:
-                        _logger.warning('P1 time restart detected after %s.' % str(newest_p1_time))
-                    last_p1_time_sec = max(last_p1_time_sec, float(p1_time))
-                    newest_p1_time = p1_time
+            # Update the data summary in summary mode, or print the message contents otherwise.
+            total_messages += 1
+            if options.summary:
+                p1_time = message.get_p1_time()
+                if p1_time is not None:
+                    if first_p1_time_sec is None:
+                        first_p1_time_sec = float(p1_time)
+                        last_p1_time_sec = float(p1_time)
+                        newest_p1_time = p1_time
+                    else:
+                        if p1_time < newest_p1_time:
+                            _logger.warning('P1 time restart detected after %s.' % str(newest_p1_time))
+                        last_p1_time_sec = max(last_p1_time_sec, float(p1_time))
+                        newest_p1_time = p1_time
 
-            system_time_sec = message.get_system_time_sec()
-            if system_time_sec is not None:
-                if first_system_time_sec is None:
-                    first_system_time_sec = system_time_sec
-                    last_system_time_sec = system_time_sec
-                    newest_system_time_sec = system_time_sec
-                else:
-                    if system_time_sec < newest_system_time_sec:
-                        _logger.warning('System time restart detected after %s.' %
-                                        system_time_to_str(newest_system_time_sec, is_seconds=True))
-                    last_system_time_sec = max(last_system_time_sec, system_time_sec)
-                    newest_system_time_sec = system_time_sec
+                system_time_sec = message.get_system_time_sec()
+                if system_time_sec is not None:
+                    if first_system_time_sec is None:
+                        first_system_time_sec = system_time_sec
+                        last_system_time_sec = system_time_sec
+                        newest_system_time_sec = system_time_sec
+                    else:
+                        if system_time_sec < newest_system_time_sec:
+                            _logger.warning('System time restart detected after %s.' %
+                                            system_time_to_str(newest_system_time_sec, is_seconds=True))
+                        last_system_time_sec = max(last_system_time_sec, system_time_sec)
+                        newest_system_time_sec = system_time_sec
 
-            entry = message_stats[header.message_type]
-            entry['count'] += 1
-        else:
-            print_message(header, message, offset_bytes, one_line=options.format == 'oneline')
+                entry = message_stats[header.message_type]
+                entry['count'] += 1
+            else:
+                print_message(header, message, offset_bytes, format=options.format)
+    except (BrokenPipeError, KeyboardInterrupt):
+        sys.exit(1)
 
     # Print the data summary.
     if options.summary:

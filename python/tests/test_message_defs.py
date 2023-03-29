@@ -76,3 +76,39 @@ def test_message_type_to_string():
     expected = 'RESERVED (%d)' % value
     assert MessageType.get_type_string(value) == expected
     assert MessageType.get_type_string(value, raise_on_unrecognized=True) == expected
+
+
+def test_find_message_types():
+    # Case insensitive.
+    assert MessagePayload.find_matching_message_types('posemessage') == {MessageType.POSE}
+    assert MessagePayload.find_matching_message_types('PoseMessage') == {MessageType.POSE}
+
+    # Exact matches, excluding "Message" or "Measurement" suffix, return a single type, even if multiple could fit
+    # (e.g., 'pose' does not match PoseAux but 'pos' does).
+    assert MessagePayload.find_matching_message_types('pose') == {MessageType.POSE}
+    assert MessagePayload.find_matching_message_types('poseaux') == {MessageType.POSE_AUX}
+
+    # Allow lists of patterns and comma-separated patterns.
+    assert MessagePayload.find_matching_message_types(['pose']) == {MessageType.POSE}
+    assert MessagePayload.find_matching_message_types(['pose', 'poseaux']) == {MessageType.POSE, MessageType.POSE_AUX}
+    assert MessagePayload.find_matching_message_types(['pose,poseaux']) == {MessageType.POSE, MessageType.POSE_AUX}
+
+    # Use wildcards to match multiple types.
+    assert MessagePayload.find_matching_message_types(['pose*']) == {MessageType.POSE, MessageType.POSE_AUX}
+    assert MessagePayload.find_matching_message_types(['*pose*']) == {MessageType.POSE, MessageType.POSE_AUX,
+                                                                      MessageType.ROS_POSE}
+    assert MessagePayload.find_matching_message_types(['pose*', 'gnssi*']) == {MessageType.POSE, MessageType.POSE_AUX,
+                                                                               MessageType.GNSS_INFO}
+    assert MessagePayload.find_matching_message_types(['pose*,gnssi*']) == {MessageType.POSE, MessageType.POSE_AUX,
+                                                                               MessageType.GNSS_INFO}
+
+    # Return classes instead of MessageType enums.
+    assert MessagePayload.find_matching_message_types('pose', return_class=True) == \
+           {MessagePayload.message_type_to_class[MessageType.POSE]}
+
+    # No matches return empty set.
+    assert MessagePayload.find_matching_message_types('doesntexist') == set()
+
+    # Multiple matches without a * raise an exception.
+    with pytest.raises(ValueError):
+        MessagePayload.find_matching_message_types(['pos'])
