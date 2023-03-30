@@ -734,6 +734,14 @@ class InterfaceBaudRateConfig(_conf_gen.IntegerVal):
     pass
 
 
+@_conf_gen.create_interface_config_class(InterfaceConfigType.OUTPUT_DIAGNOSTICS_MESSAGES, _conf_gen.BoolConstruct)
+class InterfaceDiagnosticMessagesEnabled(_conf_gen.BoolVal):
+    """!
+    @brief Enable/disable output of diagnostic data on this interface.
+    """
+    pass
+
+
 @_conf_gen.create_config_class(ConfigType.INVALID, _conf_gen.EmptyConstruct)
 class InvalidConfig(_conf_gen.Empty):
     """!
