@@ -142,7 +142,19 @@ enum class ConfigType : uint16_t {
   GPS_WEEK_ROLLOVER = 53,
 
   /**
+   * Change a configuration setting for a specified output interface.
+   *
+   * Payload format: `InterfaceConfigSubmessage`
+   */
+  INTERFACE_CONFIG = 200,
+
+  /**
    * Configure the UART1 serial baud rate (in bits/second).
+   *
+   * @deprecated
+   * The @ref ConfigType::INTERFACE_CONFIG type combined with @ref
+   * InterfaceConfigType::BAUD_RATE in the @ref InterfaceConfigSubmessage should
+   * be used to configure this value going forward.
    *
    * Payload format: `uint32_t`
    */
@@ -151,12 +163,23 @@ enum class ConfigType : uint16_t {
   /**
    * Configure the UART2 serial baud rate (in bits/second).
    *
+   * @deprecated
+   * The @ref ConfigType::INTERFACE_CONFIG type combined with @ref
+   * InterfaceConfigType::BAUD_RATE in the @ref InterfaceConfigSubmessage should
+   * be used to configure this value going forward.
+   *
    * Payload format: `uint32_t`
    */
   UART2_BAUD = 257,
 
   /**
    * Enable/disable output of diagnostic data on UART1.
+   *
+   * @deprecated
+   * The @ref ConfigType::INTERFACE_CONFIG type combined with @ref
+   * InterfaceConfigType::OUTPUT_DIAGNOSTICS_MESSAGES in the @ref
+   * InterfaceConfigSubmessage should be used to configure this value going
+   * forward.
    *
    * @note
    * Enabling this setting will override the message rate/off settings for some
@@ -168,6 +191,12 @@ enum class ConfigType : uint16_t {
 
   /**
    * Enable/disable output of diagnostic data on UART2.
+   *
+   * @deprecated
+   * The @ref ConfigType::INTERFACE_CONFIG type combined with @ref
+   * InterfaceConfigType::OUTPUT_DIAGNOSTICS_MESSAGES in the @ref
+   * InterfaceConfigSubmessage should be used to configure this value going
+   * forward.
    *
    * @note
    * Enabling this setting will override the message rate/off settings for some
@@ -183,13 +212,6 @@ enum class ConfigType : uint16_t {
    * Payload format: `bool`
    */
   ENABLE_WATCHDOG_TIMER = 300,
-
-  /**
-   * Change a configuration setting for a specified output interface.
-   *
-   * Payload format: `InterfaceConfigSubmessage`
-   */
-  INTERFACE_CONFIG = 1000,
 };
 
 /**
