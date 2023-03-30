@@ -1,6 +1,7 @@
 import re
-from typing import Iterable, NamedTuple, Optional, List
+from typing import Any, Iterable, NamedTuple, Optional, List, Union, Tuple
 
+import construct
 from construct import (Struct, Padding, this, Flag, Bytes, Array,
                        Float32l, Float64l, Int64ul, Int32ul, Int16ul, Int8ul, Int64sl, Int32sl, Int16sl, Int8sl)
 
@@ -37,6 +38,15 @@ class ConfigType(IntEnum):
     UART1_OUTPUT_DIAGNOSTICS_MESSAGES = 258
     UART2_OUTPUT_DIAGNOSTICS_MESSAGES = 259
     ENABLE_WATCHDOG_TIMER = 300
+    INTERFACE_CONFIG = 1000
+
+
+class InterfaceConfigType(IntEnum):
+  INVALID = 0
+  OUTPUT_DIAGNOSTICS_MESSAGES = 1
+  BAUD_RATE = 2
+  ADDRESS = 3
+  PORT = 4
 
 
 class Direction(IntEnum):
@@ -256,9 +266,22 @@ class _ConfigClassGenerator:
         def GetType(cls) -> ConfigType:
             raise ValueError('Accessing `GetType()` of base class')
 
+    class InterfaceConfigClass(ConfigClass):
+        """!
+        @brief Abstract base class for accessing configuration types.
+        """
+        @classmethod
+        def GetType(cls) -> ConfigType:
+            return ConfigType.INTERFACE_CONFIG
+
+        @classmethod
+        def GetSubtype(cls) -> InterfaceConfigType:
+            raise ValueError('Accessing `GetSubtype()` of base class')
+
     def __init__(self):
         # Gets populated with the mappings from ConfigType to constructs.
         self.CONFIG_MAP = {}
+        self.INTERFACE_CONFIG_MAP = {}
 
     def create_config_class(self, config_type, construct_class):
         """!
@@ -276,6 +299,26 @@ class _ConfigClassGenerator:
 
             # Register the construct with the MessageType.
             self.CONFIG_MAP[config_type] = NamedTupleAdapter(InnerClass, construct_class)
+
+            return InnerClass
+        return inner
+
+    def create_interface_config_class(self, config_subtype, construct_class):
+        """!
+        @brief Decorator for generating InterfaceConfigClass children.
+
+        @copydoc _ConfigClassGenerator
+        """
+        def inner(config_class):
+            # Make the decorated class a child of ConfigClass. Add the GetType method.
+            class InnerClass(config_class, self.InterfaceConfigClass):
+                @classmethod
+                def GetSubtype(cls) -> InterfaceConfigType:
+                    return config_subtype
+            InnerClass.__name__ = config_class.__name__
+
+            # Register the construct with the MessageType.
+            self.INTERFACE_CONFIG_MAP[config_subtype] = NamedTupleAdapter(InnerClass, construct_class)
 
             return InnerClass
         return inner
@@ -683,12 +726,65 @@ class HardwareTickConfig(_conf_gen.HardwareTickConfig):
     pass
 
 
+@_conf_gen.create_interface_config_class(InterfaceConfigType.BAUD_RATE, _conf_gen.UInt32Construct)
+class InterfaceBaudRateConfig(_conf_gen.IntegerVal):
+    """!
+    @brief Interface baud configuration settings.
+    """
+    pass
+
+
 @_conf_gen.create_config_class(ConfigType.INVALID, _conf_gen.EmptyConstruct)
 class InvalidConfig(_conf_gen.Empty):
     """!
     @brief Placeholder for empty invalid configuration messages.
     """
     pass
+
+
+class InterfaceID(NamedTuple):
+    type: TransportType = TransportType.INVALID
+    index: int = 0
+
+
+_InterfaceIDConstructRaw = Struct(
+    "type" / AutoEnum(Int8ul, TransportType),
+    "index" / Int8ul,
+    Padding(2)
+)
+_InterfaceIDConstruct = NamedTupleAdapter(InterfaceID, _InterfaceIDConstructRaw)
+
+
+class InterfaceConfigSubmessage(NamedTuple):
+    interface: InterfaceID = InterfaceID()
+    subtype: InterfaceConfigType = InterfaceConfigType.INVALID
+
+
+_InterfaceConfigSubmessageConstructRaw = Struct(
+    "interface" / _InterfaceIDConstruct,
+    "subtype" / AutoEnum(Int8ul, InterfaceConfigType),
+    Padding(3)
+)
+_InterfaceConfigSubmessageConstruct = NamedTupleAdapter(InterfaceConfigSubmessage, _InterfaceConfigSubmessageConstructRaw)
+
+
+def _interface_submessage_packer(config_object, interface: Optional[InterfaceID]) -> Optional[InterfaceConfigSubmessage]:
+    if isinstance(config_object, _conf_gen.InterfaceConfigClass):
+        config_subtype = config_object.GetSubtype()
+    elif isinstance(config_object, InterfaceConfigType):
+        config_subtype = config_object
+    else:
+        if interface is not None:
+            raise TypeError(
+                f'Since an interface is set, the config_object member ({str(config_object)}) must be set to a class decorated '
+                'with create_interface_config_class.')
+        else:
+            return None
+
+    if interface is None:
+        raise ValueError(f'To serialize InterfaceConfigClass, an interface must be provided.')
+    else:
+        return InterfaceConfigSubmessage(interface, config_subtype)
 
 
 class SetConfigMessage(MessagePayload):
@@ -725,27 +821,41 @@ class SetConfigMessage(MessagePayload):
         "flags" / Int8ul,
         Padding(1),
         "config_change_length_bytes" / Int32ul,
+        'interface_header' / construct.If(this.config_type == ConfigType.INTERFACE_CONFIG, _InterfaceConfigSubmessageConstruct),
         "config_change_data" / Bytes(this.config_change_length_bytes),
     )
 
-    def __init__(self, config_object: Optional[_conf_gen.ConfigClass] = None, flags=0x0):
+    def __init__(self, config_object: Optional[_conf_gen.ConfigClass]
+                 = None, flags=0x0, interface: Optional[InterfaceID] = None):
         self.config_object = config_object
         self.flags = flags
+        self.interface = interface
+        # Check that the parameters are consistent on whether this is a interface submessage.
+        _interface_submessage_packer(self.config_object, self.interface)
 
-    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+    def pack(self, buffer: Optional[bytes] = None, offset: int = 0, return_buffer: bool = True) -> Tuple[bytes, int]:
         if not isinstance(self.config_object, _conf_gen.ConfigClass):
             raise TypeError(f'The config_object member ({str(self.config_object)}) must be set to a class decorated '
                             'with create_config_class.')
+
         config_type = self.config_object.GetType()
-        if self.flags & self.FLAG_REVERT_TO_DEFAULT:
-            data = bytes()
+
+        submessage = _interface_submessage_packer(self.config_object, self.interface)
+
+        if submessage:
+            construct_obj = _conf_gen.INTERFACE_CONFIG_MAP[submessage.subtype]
         else:
             construct_obj = _conf_gen.CONFIG_MAP[config_type]
+
+        data = bytes()
+        if not (self.flags & self.FLAG_REVERT_TO_DEFAULT):
             data = construct_obj.build(self.config_object)
+
         values = {
             'config_type': config_type,
             'flags': self.flags,
             'config_change_data': data,
+            'interface_header': submessage,
             'config_change_length_bytes': len(data)
         }
         packed_data = self.SetConfigMessageConstruct.build(values)
@@ -753,23 +863,37 @@ class SetConfigMessage(MessagePayload):
 
     def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
         parsed = self.SetConfigMessageConstruct.parse(buffer[offset:])
-        if parsed.flags & self.FLAG_REVERT_TO_DEFAULT:
-            self.config_object = _conf_gen.CONFIG_MAP[parsed.config_type].tuple_cls()
+
+        if parsed.interface_header:
+            subtype = parsed.interface_header.subtype
+            self.interface = parsed.interface_header.interface
+            construct_obj = _conf_gen.INTERFACE_CONFIG_MAP[subtype]
         else:
-            self.config_object = _conf_gen.CONFIG_MAP[parsed.config_type].parse(parsed.config_change_data)
+            construct_obj = _conf_gen.CONFIG_MAP[parsed.config_type]
+
+        if parsed.flags & self.FLAG_REVERT_TO_DEFAULT:
+            self.config_object = construct_obj.tuple_cls()
+        else:
+            self.config_object = construct_obj.parse(parsed.config_change_data)
         self.flags = parsed.flags
         return parsed._io.tell()
 
     def __repr__(self):
         result = super().__repr__()[:-1]
-        result += f', flags=0x{self.flags:02X}, type={self.config_object.GetType()}]'
+        result += f', flags=0x{self.flags:02X}, type={self.config_object.GetType()}'
+        if self.config_object.GetType() == ConfigType.INTERFACE_CONFIG:
+            result += f', interface={self.interface}, subtype={self.config_object.GetSubtype()}'
+        result += ']'
         return result
 
     def __str__(self):
+        fields=['config_object', 'flags']
+        if self.interface is not None:
+            fields.append('interface')
         return construct_message_to_string(
             message=self, construct=self.SetConfigMessageConstruct,
             title=f'Set Config Command',
-            fields=['config_object', 'flags'],
+            fields=fields,
             value_to_string={'flags': lambda x: '0x%X' % x})
 
     def calcsize(self) -> int:
@@ -787,18 +911,34 @@ class GetConfigMessage(MessagePayload):
         "config_type" / AutoEnum(Int16ul, ConfigType),
         "request_source" / AutoEnum(Int8ul, ConfigurationSource),
         Padding(1),
+        'interface_header' / construct.If(this.config_type == ConfigType.INTERFACE_CONFIG, _InterfaceConfigSubmessageConstruct)
     )
+
+    def __validate_interface_header(self):
+        if self.interface_header:
+            if self.config_type != ConfigType.INVALID and self.config_type != ConfigType.INTERFACE_CONFIG:
+                raise ValueError(f"Can't specify both a config_type {str(self.config_type)} and an interface_header.")
+            else:
+                self.config_type = ConfigType.INTERFACE_CONFIG
+        elif self.config_type == ConfigType.INTERFACE_CONFIG:
+            raise ValueError(f"config_type is INTERFACE_CONFIG without specifying an interface_header.")
 
     def __init__(self,
                  config_type: Union[ConfigType, _ConfigClassGenerator.ConfigClass] = ConfigType.INVALID,
-                 request_source: ConfigurationSource = ConfigurationSource.ACTIVE):
+                 request_source: ConfigurationSource = ConfigurationSource.ACTIVE, interface_header: Optional[InterfaceConfigSubmessage]=None):
         self.request_source = request_source
+
         if isinstance(config_type, ConfigType):
             self.config_type = config_type
         else:
             self.config_type = config_type.GetType()
 
-    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        self.interface_header = interface_header
+
+        self.__validate_interface_header()
+
+    def pack(self, buffer: Optional[bytes] = None, offset: int = 0, return_buffer: bool = True) -> Tuple[bytes, int]:
+        self.__validate_interface_header()
         values = dict(self.__dict__)
         packed_data = self.GetConfigMessageConstruct.build(values)
         return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
@@ -810,14 +950,20 @@ class GetConfigMessage(MessagePayload):
 
     def __repr__(self):
         result = super().__repr__()[:-1]
-        result += f', source={self.request_source}, type={self.config_type}]'
+        result += f', source={self.request_source}, type={self.config_type}'
+        if self.interface_header:
+            result += f', interface_header={self.interface_header}'
+        result += ']'
         return result
 
     def __str__(self):
+        fields=['request_source', 'config_type']
+        if self.interface_header is not None:
+            fields.append('interface_header')
         return construct_message_to_string(
             message=self, construct=self.GetConfigMessageConstruct,
             title=f'Get Config Command',
-            fields=['request_source', 'config_type'])
+            fields=fields)
 
     @classmethod
     def calcsize(cls) -> int:
@@ -886,6 +1032,7 @@ class ConfigResponseMessage(MessagePayload):
         "response" / AutoEnum(Int8ul, Response),
         Padding(3),
         "config_length_bytes" / Int32ul,
+        'interface_header' / construct.If(this.config_type == ConfigType.INTERFACE_CONFIG, _InterfaceConfigSubmessageConstruct),
         "config_data" / Bytes(this.config_length_bytes),
     )
 
@@ -894,6 +1041,7 @@ class ConfigResponseMessage(MessagePayload):
         self.response = Response.OK
         self.flags = 0
         self.config_object: _conf_gen.ConfigClass = None
+        self.interface: Optional[InterfaceID] = None
 
         # This field is intended for internal use, and may not reflect self.config_object.
         self._config_type: ConfigType = None
@@ -902,13 +1050,22 @@ class ConfigResponseMessage(MessagePayload):
         if not isinstance(self.config_object, _conf_gen.ConfigClass):
             raise TypeError(f'The config_object member ({str(self.config_object)}) must be set to a class decorated '
                             'with create_config_class.')
+
         values = dict(self.__dict__)
         config_type = self.config_object.GetType()
-        construct_obj = _conf_gen.CONFIG_MAP[config_type]
+
+        submessage = _interface_submessage_packer(self.config_object, self.interface)
+
+        if submessage:
+            construct_obj = _conf_gen.INTERFACE_CONFIG_MAP[submessage.subtype]
+        else:
+            construct_obj = _conf_gen.CONFIG_MAP[config_type]
+
         data = construct_obj.build(self.config_object)
         values.update({
             'config_type': config_type,
             'config_data': data,
+            'interface_header': submessage,
             'config_length_bytes': len(data)
         })
         packed_data = self.ConfigResponseMessageConstruct.build(values)
@@ -917,14 +1074,22 @@ class ConfigResponseMessage(MessagePayload):
     def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
         parsed = self.ConfigResponseMessageConstruct.parse(buffer[offset:])
 
-        self.__dict__.update(parsed)
         self._config_type = parsed.config_type
-        del self.__dict__['config_type']
-        del self.__dict__['config_length_bytes']
-        del self.__dict__['config_data']
+
+        self.config_source = parsed.config_source
+        self.response = parsed.response
+        self.flags = parsed.flags
+
+        if parsed.interface_header:
+            subtype = parsed.interface_header.subtype
+            self.interface = parsed.interface_header.interface
+            construct_obj = _conf_gen.INTERFACE_CONFIG_MAP[subtype]
+        else:
+            self.interface = None
+            construct_obj = _conf_gen.CONFIG_MAP[parsed.config_type]
 
         if parsed.config_length_bytes > 0:
-            self.config_object = _conf_gen.CONFIG_MAP[parsed.config_type].parse(parsed.config_data)
+            self.config_object = construct_obj.parse(parsed.config_data)
         else:
             self.config_object = None
 
@@ -945,6 +1110,9 @@ class ConfigResponseMessage(MessagePayload):
         return result
 
     def __str__(self):
+        fields = ['flags', 'config_source', 'response', 'config_type', 'config_object']
+        if self.interface is not None:
+            fields.append('interface')
         return construct_message_to_string(
             message=self, construct=self.ConfigResponseMessageConstruct,
             title=f'Config Data',
@@ -958,19 +1126,6 @@ class ConfigResponseMessage(MessagePayload):
 ################################################################################
 # Input/Output Stream Control
 ################################################################################
-
-
-class InterfaceID(NamedTuple):
-    type: TransportType = TransportType.INVALID
-    index: int = 0
-
-
-_InterfaceIDConstructRaw = Struct(
-    "type" / AutoEnum(Int8ul, TransportType),
-    "index" / Int8ul,
-    Padding(2)
-)
-_InterfaceIDConstruct = NamedTupleAdapter(InterfaceID, _InterfaceIDConstructRaw)
 
 
 class SetMessageRate(MessagePayload):
