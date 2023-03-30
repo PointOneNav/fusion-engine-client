@@ -198,6 +198,9 @@ class Analyzer(object):
             dp1_time = np.diff(time, prepend=np.nan)
             dp1_time = np.round(dp1_time * 1e4) * 1e-4
 
+            dgps_time = np.diff(pose_data.gps_time, prepend=np.nan)
+            dgps_time = np.round(dgps_time * 1e4) * 1e-4
+
             # plotly starts to struggle with > 2 hours of data and won't display mouseover text, so decimate if
             # necessary.
             dt_sec = time[-1] - time[0]
@@ -208,8 +211,9 @@ class Analyzer(object):
 
                 time = time[idx]
                 p1_time = pose_data.p1_time[idx]
-                dp1_time = dp1_time[idx]
                 gps_time = pose_data.gps_time[idx]
+                dp1_time = dp1_time[idx]
+                dgps_time = dgps_time[idx]
 
                 figure.layout.annotations[0].text += "<br>Decimated %dx" % step
             else:
@@ -232,7 +236,10 @@ class Analyzer(object):
                                           mode='markers'),
                              1, 1)
 
-            figure.add_trace(go.Scattergl(x=time, y=dp1_time, name='P1/GPS Time', text=text,
+            figure.add_trace(go.Scattergl(x=time, y=dp1_time, name='P1 Time Interval', text=text,
+                                          mode='markers'),
+                             2, 1)
+            figure.add_trace(go.Scattergl(x=time, y=dgps_time, name='GPS Time Interval', text=text,
                                           mode='markers'),
                              2, 1)
 
