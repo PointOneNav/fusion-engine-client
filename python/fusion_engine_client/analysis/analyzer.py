@@ -193,8 +193,9 @@ class Analyzer(object):
         if len(pose_data.p1_time) > 0:
             time = pose_data.p1_time - float(self.t0)
 
+            # Calculate time intervals, rounded to the nearest 0.1 ms.
             dp1_time = np.diff(time, prepend=np.nan)
-            dp1_time = np.round(dp1_time * 1e3) * 1e-3
+            dp1_time = np.round(dp1_time * 1e4) * 1e-4
 
             # plotly starts to struggle with > 2 hours of data and won't display mouseover text, so decimate if
             # necessary.
