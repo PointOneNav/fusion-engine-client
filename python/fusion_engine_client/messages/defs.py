@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import inspect
-import math
 import re
 import struct
 import sys
-from typing import Dict, List, Set, Type, Union
+from typing import Dict, List, Optional, Set, Type, Union
 from zlib import crc32
 
 import numpy as np
@@ -654,7 +653,7 @@ class MessagePayload:
         return size
 
 
-def PackedDataToBuffer(packed_data: bytes, buffer: bytes = None, offset: int = 0,
+def PackedDataToBuffer(packed_data: bytes, buffer: Optional[bytes] = None, offset: int = 0,
                        return_buffer: bool = True) -> (bytes, int):
     if buffer is None:
         buffer = packed_data

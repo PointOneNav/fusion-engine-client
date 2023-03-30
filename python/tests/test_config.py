@@ -1,19 +1,17 @@
-from fusion_engine_client.utils import trace as logging
-
 import pytest
 from fusion_engine_client.messages import (
     ConfigurationSource, ConfigResponseMessage, ConfigType, SetConfigMessage,
-    MessageRate, MessageRateResponse, RateResponseEntry,
-    InvalidConfig,
-    DeviceCourseOrientationConfig, Direction,
-    GNSSLeverArmConfig,
-    EnabledGNSSSystemsConfig, SatelliteType, SatelliteTypeMask,
-    EnabledGNSSFrequencyBandsConfig, FrequencyBand, FrequencyBandMask,
-    AppliedSpeedType, SteeringType, VehicleDetailsConfig, VehicleModel, WheelConfig, WheelSensorType,
-    HardwareTickConfig, TickDirection, TickMode,
-    Uart1BaudConfig,
-    )
-from fusion_engine_client.messages.configuration import _RateResponseEntryConstructRaw
+    AppliedSpeedType, InterfaceBaudRateConfig, ConfigResponseMessage, ConfigType,
+    ConfigurationSource, DeviceCourseOrientationConfig, Direction, EnabledGNSSFrequencyBandsConfig,
+    EnabledGNSSSystemsConfig, FrequencyBand, FrequencyBandMask, GetConfigMessage,
+    GNSSLeverArmConfig, HardwareTickConfig, InterfaceConfigSubmessage, InterfaceID,
+    InterfaceConfigType, InvalidConfig, MessageRate, MessageRateResponse,
+    RateResponseEntry, SatelliteType, SatelliteTypeMask, SetConfigMessage,
+    SteeringType, TickDirection, TickMode, TransportType, Uart1BaudConfig,
+    VehicleDetailsConfig, VehicleModel, WheelConfig, WheelSensorType)
+from fusion_engine_client.messages.configuration import \
+    _RateResponseEntryConstructRaw
+from fusion_engine_client.utils import trace as logging
 
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -93,6 +91,36 @@ def test_config_data():
     assert data_msg.config_source == ConfigurationSource.SAVED
 
 
+def test_interface_config_data():
+    BASE_SIZE = 20
+    TEST_INTERFACE = InterfaceID(TransportType.SERIAL, 1)
+    TEST_CONFIG = InterfaceBaudRateConfig(9600)
+
+    data_msg = ConfigResponseMessage()
+    data_msg.interface = TEST_INTERFACE
+    with pytest.raises(TypeError):
+        data_msg.pack()
+
+    data_msg = ConfigResponseMessage()
+    data_msg.config_object = TEST_CONFIG
+    with pytest.raises(ValueError):
+        data_msg.pack()
+
+    data_msg = ConfigResponseMessage()
+    data_msg.interface = TEST_INTERFACE
+    data_msg.config_object = TEST_CONFIG
+    uart_data = data_msg.pack()
+    assert len(uart_data) == BASE_SIZE + 4
+
+    data_msg = ConfigResponseMessage()
+    data_msg.unpack(uart_data)
+    assert isinstance(data_msg.config_object, InterfaceBaudRateConfig)
+    assert data_msg.config_object.GetType() == ConfigType.INTERFACE_CONFIG
+    assert data_msg.config_object.GetSubtype() == InterfaceConfigType.BAUD_RATE
+    assert data_msg.config_object == TEST_CONFIG
+    assert data_msg.config_source == ConfigurationSource.ACTIVE
+
+
 def test_msg_rate_data():
     data_msg = MessageRateResponse()
     data_msg.rates = [
@@ -144,6 +172,69 @@ def test_frequency_band_mask():
     assert EnabledGNSSFrequencyBandsConfig(s.lower() for s in band_strs).value == expected_mask
 
 
+def test_interface_set_config():
+    BASE_SIZE = 16
+    TEST_INTERFACE = InterfaceID(TransportType.SERIAL, 1)
+    TEST_CONFIG = InterfaceBaudRateConfig(9600)
+    with pytest.raises(TypeError):
+        set_msg = SetConfigMessage(GNSSLeverArmConfig(), interface=TEST_INTERFACE)
+
+    with pytest.raises(ValueError):
+        set_msg = SetConfigMessage(TEST_CONFIG)
+
+    set_msg = SetConfigMessage(TEST_CONFIG, interface=TEST_INTERFACE)
+    data = set_msg.pack()
+    assert len(data) == BASE_SIZE + 4
+
+    set_msg = SetConfigMessage()
+    set_msg.unpack(data)
+    assert isinstance(set_msg.config_object, InterfaceBaudRateConfig)
+    assert set_msg.config_object.GetType() == ConfigType.INTERFACE_CONFIG
+    assert set_msg.config_object.GetSubtype() == InterfaceConfigType.BAUD_RATE
+    assert set_msg.config_object == TEST_CONFIG
+    assert set_msg.interface == TEST_INTERFACE
+
+
+def test_get_config():
+    BASE_SIZE = 4
+    get_msg = GetConfigMessage()
+    data = get_msg.pack()
+    assert len(data) == BASE_SIZE
+    assert get_msg.config_type == ConfigType.INVALID
+
+    with pytest.raises(AttributeError):
+        get_msg = GetConfigMessage("cat")
+
+    get_msg = GetConfigMessage(GNSSLeverArmConfig(), request_source=ConfigurationSource.SAVED)
+    data = get_msg.pack()
+    assert len(data) == BASE_SIZE
+    assert get_msg.config_type == GNSSLeverArmConfig.GetType()
+
+    get_msg = GetConfigMessage()
+    get_msg.unpack(data)
+    assert get_msg.config_type == GNSSLeverArmConfig.GetType()
+    assert get_msg.request_source == ConfigurationSource.SAVED
+
+
+def test_interface_get_config():
+    BASE_SIZE = 12
+    TEST_INTERFACE = InterfaceConfigSubmessage(InterfaceID(TransportType.SERIAL, 1), InterfaceConfigType.BAUD_RATE)
+
+    get_msg = GetConfigMessage(interface_header=TEST_INTERFACE)
+    data = get_msg.pack()
+    assert len(data) == BASE_SIZE
+    assert get_msg.config_type == ConfigType.INTERFACE_CONFIG
+
+    get_msg = GetConfigMessage()
+    get_msg.unpack(data)
+    assert get_msg.config_type == ConfigType.INTERFACE_CONFIG
+    assert get_msg.request_source == ConfigurationSource.ACTIVE
+    assert get_msg.interface_header == TEST_INTERFACE
+
+    with pytest.raises(ValueError):
+        get_msg = GetConfigMessage(GNSSLeverArmConfig(), interface_header=TEST_INTERFACE)
+
+
 def test_default_set_config():
     BASE_SIZE = 8
     set_msg = SetConfigMessage()
@@ -167,3 +258,19 @@ def test_default_set_config():
     set_msg.unpack(uart_data)
     assert isinstance(set_msg.config_object, Uart1BaudConfig)
     assert set_msg.config_object.GetType() == ConfigType.UART1_BAUD
+
+    BASE_SIZE += 8
+    TEST_INTERFACE = InterfaceID(TransportType.SERIAL, 1)
+    set_msg = SetConfigMessage(
+        InterfaceBaudRateConfig(9600),
+        flags=SetConfigMessage.FLAG_REVERT_TO_DEFAULT,
+        interface=TEST_INTERFACE)
+    uart_data = set_msg.pack()
+    assert len(uart_data) == BASE_SIZE
+
+    set_msg = SetConfigMessage()
+    set_msg.unpack(uart_data)
+    assert isinstance(set_msg.config_object, InterfaceBaudRateConfig)
+    assert set_msg.config_object.GetType() == ConfigType.INTERFACE_CONFIG
+    assert set_msg.config_object.GetSubtype() == InterfaceConfigType.BAUD_RATE
+    assert set_msg.interface == TEST_INTERFACE
