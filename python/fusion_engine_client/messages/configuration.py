@@ -913,7 +913,7 @@ class GetConfigMessage(MessagePayload):
     @brief Query the value of a user configuration parameter.
     """
     MESSAGE_TYPE = MessageType.GET_CONFIG
-    MESSAGE_VERSION = 0
+    MESSAGE_VERSION = 1
 
     GetConfigMessageConstruct = Struct(
         "config_type" / AutoEnum(Int16ul, ConfigType),
