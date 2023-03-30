@@ -179,7 +179,7 @@ class Analyzer(object):
                                subplot_titles=['Device Time vs. Relative Time',
                                                'Pose Message Interval vs. Relative Time'])
 
-        figure['layout'].update(showlegend=False)
+        figure['layout'].update(showlegend=True)
         for i in range(2):
             figure['layout']['xaxis%d' % (i + 1)].update(title="Relative Time (sec)", showticklabels=True)
         figure['layout']['yaxis1'].update(title="Absolute Time",
