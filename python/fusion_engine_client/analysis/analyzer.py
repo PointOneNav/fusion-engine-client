@@ -284,7 +284,7 @@ class Analyzer(object):
         pose_data = result[PoseMessage.MESSAGE_TYPE]
 
         if len(pose_data.p1_time) == 0:
-            self.logger.info('No pose data available. Skipping pose vs time plot.')
+            self.logger.info('No pose data available. Skipping pose vs. time plot.')
             return
 
         time = pose_data.p1_time - float(self.t0)
@@ -660,14 +660,14 @@ class Analyzer(object):
         relative_position_data = result[RelativeENUPositionMessage.MESSAGE_TYPE]
 
         if len(relative_position_data.p1_time) == 0:
-            self.logger.info('No relative ENU data available. Skipping relative position vs base station plots.')
+            self.logger.info('No relative ENU data available. Skipping relative position vs.base station plots.')
             return
 
         # Remove invalid solutions.
         valid_idx = ~np.isnan(relative_position_data.relative_position_enu_m[0, :])
 
         if not np.any(valid_idx):
-            self.logger.info('No valid position solutions detected. Skipping relative position vs base station plots.')
+            self.logger.info('No valid position solutions detected. Skipping relative position vs.base station plots.')
             return
 
         time = relative_position_data.p1_time[valid_idx] - float(self.t0)
@@ -675,7 +675,7 @@ class Analyzer(object):
         displacement_enu_m = relative_position_data.relative_position_enu_m[:, valid_idx]
         std_enu_m = relative_position_data.position_std_enu_m[:, valid_idx]
 
-        self._plot_displacement('Relative Position vs Base Station', time, solution_type, displacement_enu_m, std_enu_m)
+        self._plot_displacement('Relative Position vs.Base Station', time, solution_type, displacement_enu_m, std_enu_m)
 
     def plot_map(self, mapbox_token):
         """!
