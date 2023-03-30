@@ -176,15 +176,16 @@ class Analyzer(object):
 
         # Setup the figure.
         figure = make_subplots(rows=2, cols=1, print_grid=False, shared_xaxes=True,
-                               subplot_titles=['Device Time vs Relative Time', 'Delta-Time'])
+                               subplot_titles=['Device Time vs. Relative Time',
+                                               'Pose Message Interval vs. Relative Time'])
 
-        figure['layout'].update(showlegend=False)
+        figure['layout'].update(showlegend=True)
         for i in range(2):
             figure['layout']['xaxis%d' % (i + 1)].update(title="Relative Time (sec)", showticklabels=True)
         figure['layout']['yaxis1'].update(title="Absolute Time",
                                           ticktext=['P1/GPS Time', 'System Time'],
                                           tickvals=[1, 2])
-        figure['layout']['yaxis2'].update(title="Delta-Time (sec)", rangemode="tozero")
+        figure['layout']['yaxis2'].update(title="Interval (sec)", rangemode="tozero")
 
         # Read the pose data to get P1 and GPS timestamps.
         result = self.reader.read(message_types=[PoseMessage], **self.params)
@@ -193,8 +194,12 @@ class Analyzer(object):
         if len(pose_data.p1_time) > 0:
             time = pose_data.p1_time - float(self.t0)
 
+            # Calculate time intervals, rounded to the nearest 0.1 ms.
             dp1_time = np.diff(time, prepend=np.nan)
-            dp1_time = np.round(dp1_time * 1e3) * 1e-3
+            dp1_time = np.round(dp1_time * 1e4) * 1e-4
+
+            dgps_time = np.diff(pose_data.gps_time, prepend=np.nan)
+            dgps_time = np.round(dgps_time * 1e4) * 1e-4
 
             # plotly starts to struggle with > 2 hours of data and won't display mouseover text, so decimate if
             # necessary.
@@ -206,8 +211,9 @@ class Analyzer(object):
 
                 time = time[idx]
                 p1_time = pose_data.p1_time[idx]
-                dp1_time = dp1_time[idx]
                 gps_time = pose_data.gps_time[idx]
+                dp1_time = dp1_time[idx]
+                dgps_time = dgps_time[idx]
 
                 figure.layout.annotations[0].text += "<br>Decimated %dx" % step
             else:
@@ -230,7 +236,10 @@ class Analyzer(object):
                                           mode='markers'),
                              1, 1)
 
-            figure.add_trace(go.Scattergl(x=time, y=dp1_time, name='P1/GPS Time', text=text,
+            figure.add_trace(go.Scattergl(x=time, y=dp1_time, name='P1 Time Interval', text=text,
+                                          mode='markers'),
+                             2, 1)
+            figure.add_trace(go.Scattergl(x=time, y=dgps_time, name='GPS Time Interval', text=text,
                                           mode='markers'),
                              2, 1)
 
@@ -275,7 +284,7 @@ class Analyzer(object):
         pose_data = result[PoseMessage.MESSAGE_TYPE]
 
         if len(pose_data.p1_time) == 0:
-            self.logger.info('No pose data available. Skipping pose vs time plot.')
+            self.logger.info('No pose data available. Skipping pose vs. time plot.')
             return
 
         time = pose_data.p1_time - float(self.t0)
@@ -651,14 +660,14 @@ class Analyzer(object):
         relative_position_data = result[RelativeENUPositionMessage.MESSAGE_TYPE]
 
         if len(relative_position_data.p1_time) == 0:
-            self.logger.info('No relative ENU data available. Skipping relative position vs base station plots.')
+            self.logger.info('No relative ENU data available. Skipping relative position vs. base station plots.')
             return
 
         # Remove invalid solutions.
         valid_idx = ~np.isnan(relative_position_data.relative_position_enu_m[0, :])
 
         if not np.any(valid_idx):
-            self.logger.info('No valid position solutions detected. Skipping relative position vs base station plots.')
+            self.logger.info('No valid position solutions detected. Skipping relative position vs. base station plots.')
             return
 
         time = relative_position_data.p1_time[valid_idx] - float(self.t0)
@@ -666,7 +675,7 @@ class Analyzer(object):
         displacement_enu_m = relative_position_data.relative_position_enu_m[:, valid_idx]
         std_enu_m = relative_position_data.position_std_enu_m[:, valid_idx]
 
-        self._plot_displacement('Relative Position vs Base Station', time, solution_type, displacement_enu_m, std_enu_m)
+        self._plot_displacement('Relative Position vs.Base Station', time, solution_type, displacement_enu_m, std_enu_m)
 
     def plot_map(self, mapbox_token):
         """!
