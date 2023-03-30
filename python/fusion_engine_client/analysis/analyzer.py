@@ -176,7 +176,8 @@ class Analyzer(object):
 
         # Setup the figure.
         figure = make_subplots(rows=2, cols=1, print_grid=False, shared_xaxes=True,
-                               subplot_titles=['Device Time vs Relative Time', 'Delta-Time'])
+                               subplot_titles=['Device Time vs. Relative Time',
+                                               'Pose Message Interval vs. Relative Time'])
 
         figure['layout'].update(showlegend=False)
         for i in range(2):
@@ -184,7 +185,7 @@ class Analyzer(object):
         figure['layout']['yaxis1'].update(title="Absolute Time",
                                           ticktext=['P1/GPS Time', 'System Time'],
                                           tickvals=[1, 2])
-        figure['layout']['yaxis2'].update(title="Delta-Time (sec)", rangemode="tozero")
+        figure['layout']['yaxis2'].update(title="Interval (sec)", rangemode="tozero")
 
         # Read the pose data to get P1 and GPS timestamps.
         result = self.reader.read(message_types=[PoseMessage], **self.params)
