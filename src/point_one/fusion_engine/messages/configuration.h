@@ -142,7 +142,19 @@ enum class ConfigType : uint16_t {
   GPS_WEEK_ROLLOVER = 53,
 
   /**
+   * Change a configuration setting for a specified output interface.
+   *
+   * Payload format: `InterfaceConfigSubmessage`
+   */
+  INTERFACE_CONFIG = 200,
+
+  /**
    * Configure the UART1 serial baud rate (in bits/second).
+   *
+   * @deprecated
+   * The @ref ConfigType::INTERFACE_CONFIG type combined with @ref
+   * InterfaceConfigType::BAUD_RATE in the @ref InterfaceConfigSubmessage should
+   * be used to configure this value going forward.
    *
    * Payload format: `uint32_t`
    */
@@ -151,19 +163,44 @@ enum class ConfigType : uint16_t {
   /**
    * Configure the UART2 serial baud rate (in bits/second).
    *
+   * @deprecated
+   * The @ref ConfigType::INTERFACE_CONFIG type combined with @ref
+   * InterfaceConfigType::BAUD_RATE in the @ref InterfaceConfigSubmessage should
+   * be used to configure this value going forward.
+   *
    * Payload format: `uint32_t`
    */
   UART2_BAUD = 257,
 
   /**
-   * Force output the diagnostic message set on UART1.
+   * Enable/disable output of diagnostic data on UART1.
+   *
+   * @deprecated
+   * The @ref ConfigType::INTERFACE_CONFIG type combined with @ref
+   * InterfaceConfigType::OUTPUT_DIAGNOSTICS_MESSAGES in the @ref
+   * InterfaceConfigSubmessage should be used to configure this value going
+   * forward.
+   *
+   * @note
+   * Enabling this setting will override the message rate/off settings for some
+   * FusionEngine messages.
    *
    * Payload format: `bool`
    */
   UART1_OUTPUT_DIAGNOSTICS_MESSAGES = 258,
 
   /**
-   * Force output the diagnostic message set on UART2.
+   * Enable/disable output of diagnostic data on UART2.
+   *
+   * @deprecated
+   * The @ref ConfigType::INTERFACE_CONFIG type combined with @ref
+   * InterfaceConfigType::OUTPUT_DIAGNOSTICS_MESSAGES in the @ref
+   * InterfaceConfigSubmessage should be used to configure this value going
+   * forward.
+   *
+   * @note
+   * Enabling this setting will override the message rate/off settings for some
+   * FusionEngine messages.
    *
    * Payload format: `bool`
    */
@@ -226,6 +263,9 @@ P1_CONSTEXPR_FUNC const char* to_string(ConfigType type) {
     case ConfigType::ENABLE_WATCHDOG_TIMER:
       return "Watchdog Timer Enabled";
 
+    case ConfigType::INTERFACE_CONFIG:
+      return "Interface Submessage";
+
     default:
       return "Unrecognized Configuration";
   }
@@ -236,6 +276,105 @@ P1_CONSTEXPR_FUNC const char* to_string(ConfigType type) {
  * @ingroup config_and_ctrl_messages
  */
 inline std::ostream& operator<<(std::ostream& stream, ConfigType type) {
+  stream << to_string(type) << " (" << (int)type << ")";
+  return stream;
+}
+
+/**
+ * @brief An identifier for the contents of a output interface configuration
+ *        submessage.
+ * @ingroup config_and_ctrl_messages
+ *
+ * See also @ref InterfaceConfigSubmessage.
+ */
+enum class InterfaceConfigType : uint8_t {
+  INVALID = 0,
+
+  /**
+   * Enable/disable output of diagnostic data on this interface.
+   *
+   * Valid for:
+   * - All @ref TransportType
+   *
+   * @note
+   * Enabling this setting will override the message rate/off settings for some
+   * FusionEngine messages.
+   *
+   * Payload format: `bool`
+   */
+  OUTPUT_DIAGNOSTICS_MESSAGES = 1,
+
+  /**
+   * Configure the serial baud rate (in bits/second).
+   *
+   * Valid for:
+   * - @ref TransportType::SERIAL
+   *
+   * Payload format: `uint32_t`
+   */
+  BAUD_RATE = 2,
+
+  /**
+   * Configure the network address for a client to connect to.
+   *
+   * Valid for:
+   * - @ref TransportType::TCP_CLIENT
+   * - @ref TransportType::UDP_CLIENT
+   *
+   * Payload format: `char[64]` containing a NULL terminated string.
+   */
+  REMOTE_ADDRESS = 3,
+
+  /**
+   * Configure the network port.
+   *
+   * Valid for:
+   * - @ref TransportType::TCP_CLIENT
+   * - @ref TransportType::TCP_SERVER
+   * - @ref TransportType::UDP_CLIENT
+   * - @ref TransportType::UDP_SERVER
+   *
+   * Payload format: `uint16_t`
+   */
+  PORT = 4,
+};
+
+/**
+ * @brief Get a human-friendly string name for the specified @ref ConfigType.
+ * @ingroup config_and_ctrl_messages
+ *
+ * @param type The desired configuration parameter type.
+ *
+ * @return The corresponding string name.
+ */
+P1_CONSTEXPR_FUNC const char* to_string(InterfaceConfigType type) {
+  switch (type) {
+    case InterfaceConfigType::INVALID:
+      return "Invalid";
+
+    case InterfaceConfigType::OUTPUT_DIAGNOSTICS_MESSAGES:
+      return "Diagnostic Messages Enabled";
+
+    case InterfaceConfigType::BAUD_RATE:
+      return "Serial Baud Rate";
+
+    case InterfaceConfigType::REMOTE_ADDRESS:
+      return "Remote Network Address";
+
+    case InterfaceConfigType::PORT:
+      return "Network Port";
+
+    default:
+      return "Unrecognized Configuration";
+  }
+}
+
+/**
+ * @brief @ref InterfaceConfigType stream operator.
+ * @ingroup config_and_ctrl_messages
+ */
+inline std::ostream& operator<<(std::ostream& stream,
+                                InterfaceConfigType type) {
   stream << to_string(type) << " (" << (int)type << ")";
   return stream;
 }
@@ -358,8 +497,12 @@ struct alignas(4) SetConfigMessage : public MessagePayload {
   /**
    * Flag to restore the config_type back to its default value.
    *
-   * When set, the config_length_bytes should be 0 and no data should be
-   * included.
+   * When set, the @ref config_length_bytes should be 0 and no data should be
+   * included unless the config_type is @ref ConfigType::INTERFACE_CONFIG. In
+   * that case the @ref config_length_bytes should be
+   * `sizeof(InterfaceConfigSubmessage)` with a an @ref
+   * InterfaceConfigSubmessage as the @ref config_change_data without any
+   * further payload.
    */
   static constexpr uint8_t FLAG_REVERT_TO_DEFAULT = 0x02;
 
@@ -394,7 +537,7 @@ struct alignas(4) SetConfigMessage : public MessagePayload {
  */
 struct alignas(4) GetConfigMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::GET_CONFIG;
-  static constexpr uint8_t MESSAGE_VERSION = 0;
+  static constexpr uint8_t MESSAGE_VERSION = 1;
 
   /** The desired parameter. */
   ConfigType config_type = ConfigType::INVALID;
@@ -403,6 +546,13 @@ struct alignas(4) GetConfigMessage : public MessagePayload {
   ConfigurationSource request_source = ConfigurationSource::ACTIVE;
 
   uint8_t reserved[1] = {0};
+
+  /**
+   * When @ref config_type is @ref ConfigType::INTERFACE_CONFIG, a @ref
+   * InterfaceConfigSubmessage must be added to the end of this message with
+   * empty @ref InterfaceConfigSubmessage::config_data.
+   */
+  uint8_t optional_submessage_header[0];
 };
 
 /**
@@ -1116,11 +1266,17 @@ inline std::ostream& operator<<(std::ostream& stream, ProtocolType val) {
  */
 enum class TransportType : uint8_t {
   INVALID = 0,
+  /** A serial data interface (e.g. an RS232 connection). */
   SERIAL = 1,
+  /** A interface that writes to a file. */
   FILE = 2,
+  /** An interface that will try to connect to a remote TCP server. */
   TCP_CLIENT = 3,
+  /** An interface that will communicate with connected clients. */
   TCP_SERVER = 4,
+  /** An interface that will try to connect to a remote UDP server. */
   UDP_CLIENT = 5,
+  /** An interface that will communicate with connected clients. */
   UDP_SERVER = 6,
   /**
    * Set/get the configuration for the interface on which the command was
@@ -1803,7 +1959,7 @@ struct alignas(4) PlatformStorageDataMessage {
   static constexpr uint8_t MESSAGE_VERSION = 2;
 
   /**
-   * They type of data contained in this message.
+   * The type of data contained in this message.
    */
   DataType data_type = DataType::INVALID;
   /**
@@ -1827,6 +1983,53 @@ struct alignas(4) PlatformStorageDataMessage {
    * contents.
    */
   // uint8_t data[data_length_bytes]
+};
+
+/**
+ * @brief A submessage header for configuration data associated with the
+ *        @ref ConfigType::INTERFACE_CONFIG.
+ * @ingroup config_and_ctrl_messages
+ *
+ * In @ref SetConfigMessage, @ref GetConfigMessage, and @ref
+ * ConfigResponseMessage this struct can be used to access settings
+ * associated with a a particular interface. For example, to set the baudrate
+ * for serial port 1:
+ *
+ * ```
+ * {
+ *   SetConfigMessage(
+ *     config_type=INTERFACE_CONFIG),
+ *   InterfaceConfigSubmessage(
+ *     interface=InterfaceID(TransportType::SERIAL, 1),
+ *     subtype=BAUD_RATE),
+ *   uint32_t 115200
+ * }
+ * ```
+ */
+struct alignas(4) InterfaceConfigSubmessage {
+  /**
+   * The interface ID to target.
+   *
+   * @note
+   * TransportType::ALL is not supported.
+   */
+  InterfaceID interface = InterfaceID(TransportType::CURRENT, 0);
+
+  /**
+   * The interface setting to get/set/describe.
+   */
+  InterfaceConfigType subtype = InterfaceConfigType::INVALID;
+
+  uint8_t reserved[3] = {0};
+
+  /**
+   * A pointer to the beginning of the configuration parameter value if
+   * setting/describing.
+   *
+   * The size and format of the contents is specified by the @ref subtype.
+   * See @ref InterfaceConfigType.
+   */
+  uint8_t config_data[0];
 };
 
 /** @} */
