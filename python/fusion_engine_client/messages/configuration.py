@@ -734,6 +734,14 @@ class InterfaceBaudRateConfig(_conf_gen.IntegerVal):
     pass
 
 
+@_conf_gen.create_interface_config_class(InterfaceConfigType.OUTPUT_DIAGNOSTICS_MESSAGES, _conf_gen.BoolConstruct)
+class InterfaceDiagnosticMessagesEnabled(_conf_gen.BoolVal):
+    """!
+    @brief Enable/disable output of diagnostic data on this interface.
+    """
+    pass
+
+
 @_conf_gen.create_config_class(ConfigType.INVALID, _conf_gen.EmptyConstruct)
 class InvalidConfig(_conf_gen.Empty):
     """!
@@ -821,7 +829,6 @@ class SetConfigMessage(MessagePayload):
         "flags" / Int8ul,
         Padding(1),
         "config_change_length_bytes" / Int32ul,
-        'interface_header' / construct.If(this.config_type == ConfigType.INTERFACE_CONFIG, _InterfaceConfigSubmessageConstruct),
         "config_change_data" / Bytes(this.config_change_length_bytes),
     )
 
@@ -843,19 +850,19 @@ class SetConfigMessage(MessagePayload):
         submessage = _interface_submessage_packer(self.config_object, self.interface)
 
         if submessage:
+            data = _InterfaceConfigSubmessageConstruct.build(submessage)
             construct_obj = _conf_gen.INTERFACE_CONFIG_MAP[submessage.subtype]
         else:
+            data = bytes()
             construct_obj = _conf_gen.CONFIG_MAP[config_type]
 
-        data = bytes()
         if not (self.flags & self.FLAG_REVERT_TO_DEFAULT):
-            data = construct_obj.build(self.config_object)
+            data += construct_obj.build(self.config_object)
 
         values = {
             'config_type': config_type,
             'flags': self.flags,
             'config_change_data': data,
-            'interface_header': submessage,
             'config_change_length_bytes': len(data)
         }
         packed_data = self.SetConfigMessageConstruct.build(values)
@@ -864,9 +871,13 @@ class SetConfigMessage(MessagePayload):
     def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
         parsed = self.SetConfigMessageConstruct.parse(buffer[offset:])
 
-        if parsed.interface_header:
-            subtype = parsed.interface_header.subtype
-            self.interface = parsed.interface_header.interface
+        config_change_data = parsed.config_change_data
+        if parsed.config_type == ConfigType.INTERFACE_CONFIG:
+            header_data = config_change_data[:_InterfaceConfigSubmessageConstruct.sizeof()]
+            config_change_data = config_change_data[_InterfaceConfigSubmessageConstruct.sizeof():]
+            interface_header = _InterfaceConfigSubmessageConstruct.parse(header_data)
+            subtype = interface_header.subtype
+            self.interface = interface_header.interface
             construct_obj = _conf_gen.INTERFACE_CONFIG_MAP[subtype]
         else:
             construct_obj = _conf_gen.CONFIG_MAP[parsed.config_type]
@@ -874,7 +885,7 @@ class SetConfigMessage(MessagePayload):
         if parsed.flags & self.FLAG_REVERT_TO_DEFAULT:
             self.config_object = construct_obj.tuple_cls()
         else:
-            self.config_object = construct_obj.parse(parsed.config_change_data)
+            self.config_object = construct_obj.parse(config_change_data)
         self.flags = parsed.flags
         return parsed._io.tell()
 
@@ -905,7 +916,7 @@ class GetConfigMessage(MessagePayload):
     @brief Query the value of a user configuration parameter.
     """
     MESSAGE_TYPE = MessageType.GET_CONFIG
-    MESSAGE_VERSION = 0
+    MESSAGE_VERSION = 1
 
     GetConfigMessageConstruct = Struct(
         "config_type" / AutoEnum(Int16ul, ConfigType),
@@ -1032,7 +1043,6 @@ class ConfigResponseMessage(MessagePayload):
         "response" / AutoEnum(Int8ul, Response),
         Padding(3),
         "config_length_bytes" / Int32ul,
-        'interface_header' / construct.If(this.config_type == ConfigType.INTERFACE_CONFIG, _InterfaceConfigSubmessageConstruct),
         "config_data" / Bytes(this.config_length_bytes),
     )
 
@@ -1057,15 +1067,16 @@ class ConfigResponseMessage(MessagePayload):
         submessage = _interface_submessage_packer(self.config_object, self.interface)
 
         if submessage:
+            data = _InterfaceConfigSubmessageConstruct.build(submessage)
             construct_obj = _conf_gen.INTERFACE_CONFIG_MAP[submessage.subtype]
         else:
+            data = bytes()
             construct_obj = _conf_gen.CONFIG_MAP[config_type]
 
-        data = construct_obj.build(self.config_object)
+        data += construct_obj.build(self.config_object)
         values.update({
             'config_type': config_type,
             'config_data': data,
-            'interface_header': submessage,
             'config_length_bytes': len(data)
         })
         packed_data = self.ConfigResponseMessageConstruct.build(values)
@@ -1080,16 +1091,20 @@ class ConfigResponseMessage(MessagePayload):
         self.response = parsed.response
         self.flags = parsed.flags
 
-        if parsed.interface_header:
-            subtype = parsed.interface_header.subtype
-            self.interface = parsed.interface_header.interface
+        config_data = parsed.config_data
+        if parsed.config_type == ConfigType.INTERFACE_CONFIG:
+            header_data = config_data[:_InterfaceConfigSubmessageConstruct.sizeof()]
+            config_data = config_data[_InterfaceConfigSubmessageConstruct.sizeof():]
+            interface_header = _InterfaceConfigSubmessageConstruct.parse(header_data)
+            subtype = interface_header.subtype
+            self.interface = interface_header.interface
             construct_obj = _conf_gen.INTERFACE_CONFIG_MAP[subtype]
         else:
             self.interface = None
             construct_obj = _conf_gen.CONFIG_MAP[parsed.config_type]
 
         if parsed.config_length_bytes > 0:
-            self.config_object = construct_obj.parse(parsed.config_data)
+            self.config_object = construct_obj.parse(config_data)
         else:
             self.config_object = None
 
