@@ -1,14 +1,14 @@
-import struct
+import math
 
-from construct import (Struct, Int64ul, Int16ul, Int8ul, Int16sl, Padding, this, Bytes, PaddedString)
+from construct import (Struct, Int16sl, Padding)
 
-from ..utils.construct_utils import AutoEnum, construct_message_to_string
-from ..utils.enum_utils import IntEnum
+from ..utils.construct_utils import construct_message_to_string
 from .defs import *
+
 
 class SystemStatusMessage(MessagePayload):
     """!
-    @brief System status elements.
+    @brief System status message.
     """
     MESSAGE_TYPE = MessageType.SYSTEM_STATUS
     MESSAGE_VERSION = 0
@@ -18,20 +18,34 @@ class SystemStatusMessage(MessagePayload):
     SystemStatusMessageConstruct = Struct(
         "p1_time" / TimestampConstruct,
         "gnss_temperature" / Int16sl,
-        Padding(131),
+        Padding(118),
     )
 
     def __init__(self):
         self.p1_time = Timestamp()
-        self.gnss_temperature = SystemStatusMessage.INVALID_TEMPERATURE
+        self.gnss_temperature_degc = math.nan
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         values = vars(self)
+
+        if math.isnan(values['gnss_temperature_degc']):
+            values['gnss_temperature'] = SystemStatusMessage.INVALID_TEMPERATURE
+        else:
+            values['gnss_temperature'] = int(round(values['gnss_temperature_degc'] * 8))
+        del values['gnss_temperature_degc']
+
         packed_data = self.SystemStatusMessageConstruct.build(values)
         return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
 
     def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
         parsed = self.SystemStatusMessageConstruct.parse(buffer[offset:])
+
+        if parsed['gnss_temperature'] == SystemStatusMessage.INVALID_TEMPERATURE:
+            parsed['gnss_temperature_degc'] = math.nan
+        else:
+            parsed['gnss_temperature_degc'] = parsed['gnss_temperature'] / 8
+        del parsed['gnss_temperature']
+
         self.__dict__.update(parsed)
         return parsed._io.tell()
 

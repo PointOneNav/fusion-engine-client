@@ -85,6 +85,9 @@ class MessageType(IntEnum):
     CALIBRATION_STATUS = 10004
     RELATIVE_ENU_POSITION = 10005
 
+    # Device status messages.
+    SYSTEM_STATUS = 10500
+
     # Sensor measurement messages.
     IMU_MEASUREMENT = 11000
     HEADING_MEASUREMENT = 11001
@@ -121,9 +124,6 @@ class MessageType(IntEnum):
     SET_MESSAGE_RATE = 13220
     GET_MESSAGE_RATE = 13221
     MESSAGE_RATE_RESPONSE = 13222
-
-    # Device-specific status messages.
-    SYSTEM_STATUS = 13300
 
     RESERVED = 20000
 
