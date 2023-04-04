@@ -80,6 +80,8 @@ enum class MessageType : uint16_t {
   GET_MESSAGE_RATE = 13221, ///< @ref GetMessageRate
   MESSAGE_RATE_RESPONSE = 13222, ///< @ref MessageRateResponse
 
+  SYSTEM_STATUS = 13300, ///< @ref SystemStatusMessage
+
   /// The maximum defined @ref MessageType enum value.
   MAX_VALUE = MESSAGE_RATE_RESPONSE,
 };
@@ -196,6 +198,10 @@ P1_CONSTEXPR_FUNC const char* to_string(MessageType type) {
 
     case MessageType::PLATFORM_STORAGE_DATA:
       return "Platform Data Contents";
+
+    // Device-specific status messages.
+    case MessageType::SYSTEM_STATUS:
+      return "System Status";
 
     default:
       return "Unrecognized Message";

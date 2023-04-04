@@ -122,6 +122,9 @@ class MessageType(IntEnum):
     GET_MESSAGE_RATE = 13221
     MESSAGE_RATE_RESPONSE = 13222
 
+    # Device-specific status messages.
+    SYSTEM_STATUS = 13300
+
     RESERVED = 20000
 
     @classmethod
