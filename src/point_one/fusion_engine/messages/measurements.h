@@ -27,6 +27,68 @@ namespace messages {
  */
 
 /**
+ * @brief The source of received sensor measurements, if known.
+ * @ingroup measurement_messages
+ */
+enum class SensorDataSource : uint8_t {
+  /** Data source not known. */
+  UNKNOWN = 0,
+  /**
+   * Sensor data captured internal to the device (embedded IMU, GNSS receiver,
+   * etc.).
+   */
+  INTERNAL = 1,
+  /**
+   * Sensor data provided externally by user (software wheel speed data, etc.).
+   */
+  EXTERNAL = 2,
+  /**
+   * Sensor data captured from a vehicle CAN bus.
+   */
+  CAN = 3,
+  /**
+   * Sensor data generated via hardware voltage signal (wheel tick, external
+   * event, etc.).
+   */
+  HARDWARE_IO = 4,
+};
+
+/**
+ * @brief Get a human-friendly string name for the specified @ref
+ *        SensorDataSource.
+ * @ingroup measurement_messages
+ *
+ * @param val The enum to get the string name for.
+ *
+ * @return The corresponding string name.
+ */
+P1_CONSTEXPR_FUNC const char* to_string(SensorDataSource val) {
+  switch (val) {
+    case SensorDataSource::UNKNOWN:
+      return "Unknown";
+    case SensorDataSource::INTERNAL:
+      return "Internal";
+    case SensorDataSource::EXTERNAL:
+      return "External";
+    case SensorDataSource::CAN:
+      return "CAN";
+    case SensorDataSource::HARDWARE_IO:
+      return "Hardware I/O";
+    default:
+      return "Unrecognized";
+  }
+}
+
+/**
+ * @brief @ref SensorDataSource stream operator.
+ * @ingroup measurement_messages
+ */
+inline std::ostream& operator<<(std::ostream& stream, SensorDataSource val) {
+  stream << to_string(val) << " (" << (int)val << ")";
+  return stream;
+}
+
+/**
  * @brief The source of a @ref point_one::fusion_engine::messages::Timestamp
  *        used to represent the time of applicability of an incoming sensor
  *        measurement.
@@ -133,7 +195,12 @@ struct alignas(4) MeasurementTimestamps {
    */
   SystemTimeSource measurement_time_source = SystemTimeSource::INVALID;
 
-  uint8_t reserved[3] = {0};
+  /**
+   * The source of the incoming data, if known.
+   */
+  SensorDataSource data_source = SensorDataSource::UNKNOWN;
+
+  uint8_t reserved[2] = {0};
 
   /**
    * The P1 time corresponding with the measurement time of applicability, if
