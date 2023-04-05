@@ -55,6 +55,7 @@ enum class SystemTimeSource : uint8_t {
 /**
  * @brief Get a human-friendly string name for the specified @ref
  *        SystemTimeSource.
+ * @ingroup measurement_messages
  *
  * @param val The enum to get the string name for.
  *
@@ -79,6 +80,7 @@ P1_CONSTEXPR_FUNC const char* to_string(SystemTimeSource val) {
 
 /**
  * @brief @ref SystemTimeSource stream operator.
+ * @ingroup measurement_messages
  */
 inline std::ostream& operator<<(std::ostream& stream, SystemTimeSource val) {
   stream << to_string(val) << " (" << (int)val << ")";
@@ -87,6 +89,7 @@ inline std::ostream& operator<<(std::ostream& stream, SystemTimeSource val) {
 
 /**
  * @brief The time of applicability for an incoming sensor measurement.
+ * @ingroup measurement_messages
  *
  * By convention this will be the first member of any measurement definition
  * intended to be externally sent by the user to the device.
@@ -206,6 +209,7 @@ enum class GearType : uint8_t {
 
 /**
  * @brief Get a human-friendly string name for the specified @ref GearType.
+ * @ingroup measurement_messages
  *
  * @param val The enum to get the string name for.
  *
@@ -230,6 +234,7 @@ P1_CONSTEXPR_FUNC const char* to_string(GearType val) {
 
 /**
  * @brief @ref GearType stream operator.
+ * @ingroup measurement_messages
  */
 inline std::ostream& operator<<(std::ostream& stream, GearType val) {
   stream << to_string(val) << " (" << (int)val << ")";
@@ -445,7 +450,7 @@ struct alignas(4) VehicleTickMeasurement : public MessagePayload {
  * @brief The heading angle (in degrees) with respect to true north,
  *        pointing from the primary antenna to the secondary antenna (@ref
           MessageType::HEADING_MEASUREMENT, version 1.0).
- * @ingroup solution_messages
+ * @ingroup measurement_messages
  *
  * @note
  * All data is timestamped using the Point One Time, which is a monotonic
