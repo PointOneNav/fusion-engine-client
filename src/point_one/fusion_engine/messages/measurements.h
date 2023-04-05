@@ -227,9 +227,13 @@ struct alignas(4) MeasurementDetails {
   Timestamp p1_time;
 };
 
+////////////////////////////////////////////////////////////////////////////////
+// IMU Measurements
+////////////////////////////////////////////////////////////////////////////////
+
 /**
  * @brief IMU sensor measurement output with calibration and corrections applied
- *        (@ref MessageType::IMU_MEASUREMENT, version 1.0).
+ *        (@ref MessageType::IMU_OUTPUT, version 1.0).
  * @ingroup measurement_messages
  *
  * This message is an output from the device containing IMU acceleration and
@@ -237,10 +241,10 @@ struct alignas(4) MeasurementDetails {
  * scale factors, and have been rotated into the vehicle body frame from the
  * original IMU orientation, including calibrated mounting error estimates.
  *
- * See also @ref RawIMUMeasurement.
+ * See also @ref RawIMUOutput.
  */
-struct alignas(4) IMUMeasurement : public MessagePayload {
-  static constexpr MessageType MESSAGE_TYPE = MessageType::IMU_MEASUREMENT;
+struct alignas(4) IMUOutput : public MessagePayload {
+  static constexpr MessageType MESSAGE_TYPE = MessageType::IMU_OUTPUT;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
   /** The time of the measurement, in P1 time (beginning at power-on). */
@@ -273,17 +277,17 @@ struct alignas(4) IMUMeasurement : public MessagePayload {
 
 /**
  * @brief Raw (uncorrected) IMU sensor measurement output (@ref
-          MessageType::RAW_IMU_MEASUREMENT, version 1.0).
+          MessageType::RAW_IMU_OUTPUT, version 1.0).
  * @ingroup measurement_messages
  *
  * This message is an output from the device containing raw IMU acceleration and
  * rotation rate measurements. These measurements come directly from the sensor,
  * and do not have any corrections or calibration applied.
  *
- * See also @ref IMUMeasurement.
+ * See also @ref IMUOutput.
  */
-struct alignas(4) RawIMUMeasurement : public MessagePayload {
-  static constexpr MessageType MESSAGE_TYPE = MessageType::RAW_IMU_MEASUREMENT;
+struct alignas(4) RawIMUOutput : public MessagePayload {
+  static constexpr MessageType MESSAGE_TYPE = MessageType::RAW_IMU_OUTPUT;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
   /**
@@ -311,6 +315,10 @@ struct alignas(4) RawIMUMeasurement : public MessagePayload {
    */
   int32_t gyro[3] = {INT32_MAX, INT32_MAX, INT32_MAX};
 };
+
+////////////////////////////////////////////////////////////////////////////////
+// Different Wheel Speed Measurements
+////////////////////////////////////////////////////////////////////////////////
 
 /**
  * @brief The current transmission gear used by the vehicle.
@@ -363,31 +371,136 @@ inline std::ostream& operator<<(std::ostream& stream, GearType val) {
 }
 
 /**
- * @brief Differential wheel speed measurement (@ref
- *        MessageType::WHEEL_SPEED_MEASUREMENT, version 1.0).
+ * @brief Differential wheel speed measurement input (@ref
+ *        MessageType::WHEEL_SPEED_INPUT, version 1.0).
  * @ingroup measurement_messages
  *
- * This message may be used to convey the speed of each individual wheel on the
- * vehicle. The number and type of wheels expected varies by vehicle. To use
- * wheel speed data, you must first configure the device by issuing a @ref
- * SetConfigMessage message containing a @ref WheelConfig payload describing the
- * vehicle sensor configuration.
+ * This message is an input to the device, used to convey the speed of each
+ * individual wheel on the vehicle. The number and type of wheels expected
+ * varies by vehicle. For single along-track speed measurements, see @ref
+ * VehicleSpeedInput.
  *
- * Some platforms may support an additional, optional voltage signal used to
- * indicate direction of motion. Alternatively, when receiving CAN data from a
- * vehicle, direction may be conveyed explicitly in a CAN message, or may be
- * indicated based on the current transmission gear setting.
+ * To use wheel speed data, you must first configure the device by issuing a
+ * @ref SetConfigMessage message containing a @ref WheelConfig payload
+ * describing the vehicle sensor configuration (speed data signed/unsigned,
+ * etc.).
+ *
+ * Some platforms may have an additional voltage signal used to indicate
+ * direction of motion, have direction or gear information available from a
+ * vehicle CAN bus, etc. If direction/gear information is available, it may be
+ * provided in the @ref gear field.
+ *
+ * To send wheel tick counts from software, use @ref WheelTickInput instead.
+ *
+ * See also @ref WheelSpeedOutput for measurement output.
  */
-struct alignas(4) WheelSpeedMeasurement : public MessagePayload {
-  static constexpr MessageType MESSAGE_TYPE =
-      MessageType::WHEEL_SPEED_MEASUREMENT;
+struct alignas(4) WheelSpeedInput : public MessagePayload {
+  static constexpr MessageType MESSAGE_TYPE = MessageType::WHEEL_SPEED_INPUT;
   static constexpr uint8_t MESSAGE_VERSION = 0;
+
+  /**
+   * Set this flag if the measured wheel speeds are signed (positive forward,
+   * negative reverse). Otherwise, if the values are assumed to be unsigned
+   * (positive in both directions).
+   */
+  static constexpr uint8_t FLAG_SIGNED = 0x1;
 
   /**
    * Measurement timestamp and additional information, if available. See @ref
    * MeasurementDetails for details.
    */
   MeasurementDetails details;
+
+  /**
+   * The front left wheel speed (in m/s * 2^-10). Set to 0x7FFFFFFF if not
+   * available.
+   */
+  int32_t front_left_speed = INT32_MAX;
+
+  /**
+   * The front right wheel speed (in m/s * 2^-10). Set to 0x7FFFFFFF if not
+   * available.
+   */
+  int32_t front_right_speed = INT32_MAX;
+
+  /**
+   * The rear left wheel speed (in m/s * 2^-10). Set to 0x7FFFFFFF if not
+   * available.
+   */
+  int32_t rear_left_speed = INT32_MAX;
+
+  /**
+   * The rear right wheel speed (in m/s * 2^-10). Set to 0x7FFFFFFF if not
+   * available.
+   */
+  int32_t rear_right_speed = INT32_MAX;
+
+  /**
+   * The transmission gear currently in use, or direction of motion, if
+   * available.
+   *
+   * Set to @ref GearType::FORWARD or @ref GearType::REVERSE where vehicle
+   * direction information is available externally.
+   */
+  GearType gear = GearType::UNKNOWN;
+
+  /** A bitmask of flags associated with the measurement data. */
+  uint8_t flags = 0x0;
+
+  uint8_t reserved[2] = {0};
+};
+
+/**
+ * @brief Differential wheel speed measurement output with calibration and
+ *        corrections applied (@ref MessageType::WHEEL_SPEED_OUTPUT, version
+          1.0).
+ * @ingroup measurement_messages
+ *
+ * This message is an output from the device that contains the speed of each
+ * individual wheel on the vehicle, after applying any estimated corrections for
+ * wheel scale factor, sign, etc.
+ *
+ * Wheel odometry data may be received via a software input from a host machine,
+ * a vehicle CAN bus, or a hardware voltage signal (wheel ticks). The @ref
+ * data_source field will indicate which type of data source provided the
+ * measurements to the device.
+ *
+ * When odometry is provided using hardware wheel ticks, the speeds in this
+ * message reflect the tick rate over a fixed time interval. For high accuracy
+ * applications, it may be necessary to integrate tick counts over longer
+ * intervals of time.
+ *
+ * See also @ref WheelSpeedInput and @ref RawWheelSpeedOutput.
+ */
+struct alignas(4) WheelSpeedOutput : public MessagePayload {
+  static constexpr MessageType MESSAGE_TYPE = MessageType::WHEEL_SPEED_OUTPUT;
+  static constexpr uint8_t MESSAGE_VERSION = 0;
+
+  /**
+   * Set this flag if the measured wheel speeds are signed (positive forward,
+   * negative reverse). Otherwise, if the values are assumed to be unsigned
+   * (positive in both directions).
+   */
+  static constexpr uint8_t FLAG_SIGNED = 0x1;
+
+  /** The time of the measurement, in P1 time (beginning at power-on). */
+  Timestamp p1_time;
+
+  /**
+   * The source of the incoming data, if known.
+   */
+  SensorDataSource data_source = SensorDataSource::UNKNOWN;
+
+  /**
+   * The transmission gear currently in use, or direction of motion, if
+   * available.
+   */
+  GearType gear = GearType::UNKNOWN;
+
+  /** A bitmask of flags associated with the measurement data. */
+  uint8_t flags = 0x0;
+
+  uint8_t reserved = 0;
 
   /** The front left wheel speed (in m/s). Set to NAN if not available. */
   float front_left_speed_mps = NAN;
@@ -400,44 +513,30 @@ struct alignas(4) WheelSpeedMeasurement : public MessagePayload {
 
   /** The rear right wheel speed (in m/s). Set to NAN if not available. */
   float rear_right_speed_mps = NAN;
-
-  /**
-   * The transmission gear currently in use, or direction of motion, if
-   * available.
-   *
-   * Set to @ref GearType::FORWARD or @ref GearType::REVERSE where vehicle
-   * direction information is available externally.
-   */
-  GearType gear = GearType::UNKNOWN;
-
-  /**
-   * `true` if the wheel speeds are signed (positive forward, negative reverse),
-   * or `false` if the values are unsigned (positive in both directions).
-   */
-  bool is_signed = true;
-
-  uint8_t reserved[2] = {0};
 };
 
 /**
- * @brief Vehicle body speed measurement (@ref
- *        MessageType::VEHICLE_SPEED_MEASUREMENT, version 1.0).
+ * @brief Raw (uncorrected) dfferential wheel speed measurement output (@ref
+ *        MessageType::RAW_WHEEL_SPEED_OUTPUT, version 1.0).
  * @ingroup measurement_messages
  *
- * This message may be used to convey the along-track speed of the vehicle
- * (forward/backward). To use vehicle speed data, you must first configure the
- * device by issuing a @ref SetConfigMessage message containing a @ref
- * WheelConfig payload describing the vehicle sensor configuration.
+ * This message is an output from the device that contains the speed of each
+ * individual wheel on the vehicle. These measurements come directly from the
+ * sensor, and do not have any corrections or calibration applied.
  *
- * Some platforms may support an additional, optional voltage signal used to
- * indicate direction of motion. Alternatively, when receiving CAN data from a
- * vehicle, direction may be conveyed explicitly in a CAN message, or may be
- * indicated based on the current transmission gear setting.
+ * See @ref WheelSpeedOutput for more details. See also @ref WheelSpeedInput.
  */
-struct alignas(4) VehicleSpeedMeasurement : public MessagePayload {
+struct alignas(4) RawWheelSpeedOutput : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE =
-      MessageType::VEHICLE_SPEED_MEASUREMENT;
+      MessageType::RAW_WHEEL_SPEED_OUTPUT;
   static constexpr uint8_t MESSAGE_VERSION = 0;
+
+  /**
+   * Set this flag if the measured wheel speeds are signed (positive forward,
+   * negative reverse). Otherwise, if the values are assumed to be unsigned
+   * (positive in both directions).
+   */
+  static constexpr uint8_t FLAG_SIGNED = 0x1;
 
   /**
    * Measurement timestamp and additional information, if available. See @ref
@@ -445,8 +544,29 @@ struct alignas(4) VehicleSpeedMeasurement : public MessagePayload {
    */
   MeasurementDetails details;
 
-  /** The current vehicle speed estimate (in m/s). */
-  float vehicle_speed_mps = NAN;
+  /**
+   * The front left wheel speed (in m/s * 2^-10). Set to 0x7FFFFFFF if not
+   * available.
+   */
+  int32_t front_left_speed = INT32_MAX;
+
+  /**
+   * The front right wheel speed (in m/s * 2^-10). Set to 0x7FFFFFFF if not
+   * available.
+   */
+  int32_t front_right_speed = INT32_MAX;
+
+  /**
+   * The rear left wheel speed (in m/s * 2^-10). Set to 0x7FFFFFFF if not
+   * available.
+   */
+  int32_t rear_left_speed = INT32_MAX;
+
+  /**
+   * The rear right wheel speed (in m/s * 2^-10). Set to 0x7FFFFFFF if not
+   * available.
+   */
+  int32_t rear_right_speed = INT32_MAX;
 
   /**
    * The transmission gear currently in use, or direction of motion, if
@@ -457,36 +577,215 @@ struct alignas(4) VehicleSpeedMeasurement : public MessagePayload {
    */
   GearType gear = GearType::UNKNOWN;
 
+  /** A bitmask of flags associated with the measurement data. */
+  uint8_t flags = 0x0;
+
+  uint8_t reserved[2] = {0};
+};
+
+////////////////////////////////////////////////////////////////////////////////
+// Vehicle Speed Measurements
+////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * @brief Vehicle body speed measurement input (@ref
+ *        MessageType::VEHICLE_SPEED_INPUT, version 1.0).
+ * @ingroup measurement_messages
+ *
+ * This message is an input to the device, used to convey the along-track speed
+ * of the vehicle (forward/backward). For differential speed measurements for
+ * multiple wheels, see @ref WheelSpeedInput.
+ *
+ * To use vehicle speed data, you must first configure the device by issuing a
+ * @ref SetConfigMessage message containing a @ref WheelConfig payload
+ * describing the vehicle sensor configuration (speed data signed/unsigned,
+ * etc.).
+ *
+ * Some platforms may have an additional voltage signal used to indicate
+ * direction of motion, have direction or gear information available from a
+ * vehicle CAN bus, etc. If direction/gear information is available, it may be
+ * provided in the @ref gear field.
+ *
+ * To send wheel tick counts from software, use @ref VehicleTickInput instead.
+ *
+ * See also @ref VehicleSpeedOutput for measurement output.
+ */
+struct alignas(4) VehicleSpeedInput : public MessagePayload {
+  static constexpr MessageType MESSAGE_TYPE = MessageType::VEHICLE_SPEED_INPUT;
+  static constexpr uint8_t MESSAGE_VERSION = 0;
+
   /**
-   * `true` if the wheel speeds are signed (positive forward, negative reverse),
-   * or `false` if the values are unsigned (positive in both directions).
+   * Set this flag if the measured wheel speeds are signed (positive forward,
+   * negative reverse). Otherwise, if the values are assumed to be unsigned
+   * (positive in both directions).
    */
-  bool is_signed = true;
+  static constexpr uint8_t FLAG_SIGNED = 0x1;
+
+  /**
+   * Measurement timestamp and additional information, if available. See @ref
+   * MeasurementDetails for details.
+   */
+  MeasurementDetails details;
+
+  /**
+   * The current vehicle speed estimate (in m/s * 2^-10). Set to 0x7FFFFFFF if
+   * not available.
+   */
+  int32_t vehicle_speed = INT32_MAX;
+
+  /**
+   * The transmission gear currently in use, or direction of motion, if
+   * available.
+   *
+   * Set to @ref GearType::FORWARD or @ref GearType::REVERSE where vehicle
+   * direction information is available externally.
+   */
+  GearType gear = GearType::UNKNOWN;
+
+  /** A bitmask of flags associated with the measurement data. */
+  uint8_t flags = 0x0;
 
   uint8_t reserved[2] = {0};
 };
 
 /**
- * @brief Differential wheel encoder tick measurement (@ref
- *        MessageType::WHEEL_TICK_MEASUREMENT, version 1.0).
+ * @brief Vehicle body speed measurement output with calibration and corrections
+ *        applied (@ref MessageType::VEHICLE_SPEED_OUTPUT, version 1.0).
  * @ingroup measurement_messages
  *
- * This message may be used to convey a one or more wheel encoder tick counts
- * received either by software (e.g., vehicle CAN bus), or captured in hardware
- * from external voltage pulses. The number and type of wheels expected, and the
- * interpretation of the tick count values, varies by vehicle. To use wheel
- * encoder data, you ust first configure the device by issuing a @ref
- * SetConfigMessage message containing a @ref WheelConfig payload describing the
- * vehicle sensor configuration.
+ * This message is an output from the device that contains the along-track speed
+ * of the vehicle (forward/backward), after applying any estimated corrections
+ * for scale factor, etc.
  *
- * Some platforms may support an additional, optional voltage signal used to
- * indicate direction of motion. Alternatively, when receiving CAN data from a
- * vehicle, direction may be conveyed explicitly in a CAN message, or may be
- * indicated based on the current transmission gear setting.
+ * Odometry data may be received via a software input from a host machine, a
+ * vehicle CAN bus, or a hardware voltage signal (wheel ticks). The @ref
+ * data_source field will indicate which type of data source provided the
+ * measurements to the device.
+ *
+ * When odometry is provided using hardware wheel ticks, the speed in this
+ * message reflects the tick rate over a fixed time interval. For high accuracy
+ * applications, it may be necessary to integrate tick counts over longer
+ * intervals of time.
+ *
+ * See also @ref VehicleSpeedInput and @ref RawVehicleSpeedOutput.
  */
-struct alignas(4) WheelTickMeasurement : public MessagePayload {
+struct alignas(4) VehicleSpeedOutput : public MessagePayload {
+  static constexpr MessageType MESSAGE_TYPE = MessageType::VEHICLE_SPEED_OUTPUT;
+  static constexpr uint8_t MESSAGE_VERSION = 0;
+
+  /**
+   * Set this flag if the measured wheel speeds are signed (positive forward,
+   * negative reverse). Otherwise, if the values are assumed to be unsigned
+   * (positive in both directions).
+   */
+  static constexpr uint8_t FLAG_SIGNED = 0x1;
+
+  /** The time of the measurement, in P1 time (beginning at power-on). */
+  Timestamp p1_time;
+
+  /**
+   * The source of the incoming data, if known.
+   */
+  SensorDataSource data_source = SensorDataSource::UNKNOWN;
+
+  /**
+   * The transmission gear currently in use, or direction of motion, if
+   * available.
+   *
+   * Set to @ref GearType::FORWARD or @ref GearType::REVERSE where vehicle
+   * direction information is available externally.
+   */
+  GearType gear = GearType::UNKNOWN;
+
+  /** A bitmask of flags associated with the measurement data. */
+  uint8_t flags = 0x0;
+
+  uint8_t reserved = 0;
+
+  /** The current vehicle speed estimate (in m/s). */
+  float vehicle_speed_mps = NAN;
+};
+
+/**
+ * @brief Raw (uncorrected) vehicle body speed measurement output (@ref
+ *        MessageType::RAW_VEHICLE_SPEED_OUTPUT, version 1.0).
+ * @ingroup measurement_messages
+ *
+ * This message is an output from the device that contains the along-track speed
+ * of the vehicle (forward/backward). These measurements come directly from the
+ * sensor, and do not have any corrections or calibration applied.
+ *
+ * See @ref VehicleSpeedOutput for more details. See also @ref
+ * VehicleSpeedInput.
+ */
+struct alignas(4) RawVehicleSpeedOutput : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE =
-      MessageType::WHEEL_TICK_MEASUREMENT;
+      MessageType::RAW_VEHICLE_SPEED_OUTPUT;
+  static constexpr uint8_t MESSAGE_VERSION = 0;
+
+  /**
+   * Set this flag if the measured wheel speeds are signed (positive forward,
+   * negative reverse). Otherwise, if the values are assumed to be unsigned
+   * (positive in both directions).
+   */
+  static constexpr uint8_t FLAG_SIGNED = 0x1;
+
+  /**
+   * Measurement timestamp and additional information, if available. See @ref
+   * MeasurementDetails for details.
+   */
+  MeasurementDetails details;
+
+  /**
+   * The current vehicle speed estimate (in m/s * 2^-10). Set to 0x7FFFFFFF if
+   * not available.
+   */
+  int32_t vehicle_speed = INT32_MAX;
+
+  /**
+   * The transmission gear currently in use, or direction of motion, if
+   * available.
+   *
+   * Set to @ref GearType::FORWARD or @ref GearType::REVERSE where vehicle
+   * direction information is available externally.
+   */
+  GearType gear = GearType::UNKNOWN;
+
+  /** A bitmask of flags associated with the measurement data. */
+  uint8_t flags = 0x0;
+
+  uint8_t reserved[2] = {0};
+};
+
+////////////////////////////////////////////////////////////////////////////////
+// Wheel Tick Measurements
+////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * @brief Differential wheel encoder tick input (@ref
+ *        MessageType::WHEEL_TICK_INPUT, version 1.0).
+ * @ingroup measurement_messages
+ *
+ * This message is an input to the device, used to convey the wheel encoder tick
+ * counts for one or more wheels, received through software (e.g., vehicle CAN
+ * bus) or captured in hardware from external voltage pulses. The number and
+ * type of wheels expected, and the interpretation of the tick count values,
+ * varies by vehicle.
+ *
+ * To use wheel encoder data, you must first configure the device by issuing a
+ * @ref SetConfigMessage message containing a @ref WheelConfig payload
+ * describing the vehicle sensor configuration (tick counts signed/unsigned,
+ * etc.).
+ *
+ * Some platforms may have an additional voltage signal used to indicate
+ * direction of motion, have direction or gear information available from a
+ * vehicle CAN bus, etc. If direction/gear information is available, it may be
+ * provided in the @ref gear field.
+ *
+ * See also @ref RawWheelTickOutput for measurement output.
+ */
+struct alignas(4) WheelTickInput : public MessagePayload {
+  static constexpr MessageType MESSAGE_TYPE = MessageType::WHEEL_TICK_INPUT;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
   /**
@@ -532,27 +831,94 @@ struct alignas(4) WheelTickMeasurement : public MessagePayload {
 };
 
 /**
- * @brief Singular wheel encoder tick measurement, representing vehicle body
- *        speed (@ref MessageType::VEHICLE_TICK_MEASUREMENT, version 1.0).
+ * @brief Raw (uncorrected) dfferential wheel encoder tick output (@ref
+ *        MessageType::RAW_WHEEL_TICK_OUTPUT, version 1.0).
  * @ingroup measurement_messages
  *
- * This message may be used to convey a single encoder tick count received by
- * software (e.g., vehicle CAN bus), or captured in hardware from an external
- * voltage pulse, which represents the along-track speed of the vehicle
- * (forward/backward). The interpretation of the tick count values varies by
- * vehicle. To use wheel encoder data, you ust first configure the device by
- * issuing a @ref SetConfigMessage message containing either a @ref WheelConfig
- * or @ref HardwareTickConfig payload describing the vehicle sensor
- * configuration.
+ * This message is an output from the device that contains wheel encoder tick
+ * counts for each individual wheel on the vehicle. These measurements come
+ * directly from the sensor, and do not have any corrections or calibration
+ * applied.
  *
- * Some platforms may support an additional, optional voltage signal used to
- * indicate direction of motion. Alternatively, when receiving CAN data from a
- * vehicle, direction may be conveyed explicitly in a CAN message, or may be
- * indicated based on the current transmission gear setting.
+ * See also @ref WheelTickInput.
  */
-struct alignas(4) VehicleTickMeasurement : public MessagePayload {
+struct alignas(4) RawWheelTickOutput : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE =
-      MessageType::VEHICLE_TICK_MEASUREMENT;
+      MessageType::RAW_WHEEL_TICK_OUTPUT;
+  static constexpr uint8_t MESSAGE_VERSION = 0;
+
+  /**
+   * Measurement timestamp and additional information, if available. See @ref
+   * MeasurementDetails for details.
+   */
+  MeasurementDetails details;
+
+  /**
+   * The front left wheel ticks. The interpretation of these ticks is
+   * defined outside of this message.
+   */
+  uint32_t front_left_wheel_ticks = 0;
+
+  /**
+   * The front right wheel ticks. The interpretation of these ticks is
+   * defined outside of this message.
+   */
+  uint32_t front_right_wheel_ticks = 0;
+
+  /**
+   * The rear left wheel ticks. The interpretation of these ticks is
+   * defined outside of this message.
+   */
+  uint32_t rear_left_wheel_ticks = 0;
+
+  /**
+   * The rear right wheel ticks. The interpretation of these ticks is
+   * defined outside of this message.
+   */
+  uint32_t rear_right_wheel_ticks = 0;
+
+  /**
+   * The transmission gear currently in use, or direction of motion, if
+   * available.
+   *
+   * Set to @ref GearType::FORWARD or @ref GearType::REVERSE where vehicle
+   * direction information is available externally.
+   */
+  GearType gear = GearType::UNKNOWN;
+
+  uint8_t reserved[3] = {0};
+};
+
+////////////////////////////////////////////////////////////////////////////////
+// Vehicle Tick Measurements
+////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * @brief Single wheel encoder tick input, representing vehicle body speed
+ *        (@ref MessageType::VEHICLE_TICK_INPUT, version 1.0).
+ * @ingroup measurement_messages
+ *
+ * This message is an input to the device, used to convey a single wheel encoder
+ * tick count representing the along-track speed of the vehicle
+ * (forward/backward). Tick data may be received through software (e.g., vehicle
+ * CAN bus) or captured in hardware from external voltage pulses.The
+ * interpretation of the tick count values varies by vehicle.
+ *
+ * To use wheel encoder data, you must first configure the device by issuing a
+ * @ref SetConfigMessage message containing either a @ref WheelConfig payload
+ * (software source) or @ref HardwareTickConfig payload (hardware voltage)
+ * describing the vehicle sensor configuration (tick counts signed/unsigned,
+ * etc.).
+ *
+ * Some platforms may have an additional voltage signal used to indicate
+ * direction of motion, have direction or gear information available from a
+ * vehicle CAN bus, etc. If direction/gear information is available, it may be
+ * provided in the @ref gear field.
+ *
+ * See also @ref RawVehicleTickOutput for measurement output.
+ */
+struct alignas(4) VehicleTickInput : public MessagePayload {
+  static constexpr MessageType MESSAGE_TYPE = MessageType::VEHICLE_TICK_INPUT;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
   /**
@@ -578,6 +944,148 @@ struct alignas(4) VehicleTickMeasurement : public MessagePayload {
 
   uint8_t reserved[3] = {0};
 };
+
+/**
+ * @brief Raw (uncorrected) single wheel encoder tick output (@ref
+ *        MessageType::RAW_VEHICLE_TICK_OUTPUT, version 1.0).
+ * @ingroup measurement_messages
+ *
+ * This message is an output from the device that contains a wheel encoder tick
+ * count representing the along-track speed of the vehicle (forward/backward).
+ * This value comes directly from the sensor, and does not have any corrections
+ * or calibration applied.
+ *
+ * See also @ref VehicleTickInput.
+ */
+struct alignas(4) RawVehicleTickOutput : public MessagePayload {
+  static constexpr MessageType MESSAGE_TYPE =
+      MessageType::RAW_VEHICLE_TICK_OUTPUT;
+  static constexpr uint8_t MESSAGE_VERSION = 0;
+
+  /**
+   * Measurement timestamp and additional information, if available. See @ref
+   * MeasurementDetails for details.
+   */
+  MeasurementDetails details;
+
+  /**
+   * The current encoder tick count. The interpretation of these ticks is
+   * defined outside of this message.
+   */
+  uint32_t tick_count = 0;
+
+  /**
+   * The transmission gear currently in use, or direction of motion, if
+   * available.
+   *
+   * Set to @ref GearType::FORWARD or @ref GearType::REVERSE where vehicle
+   * direction information is available externally.
+   */
+  GearType gear = GearType::UNKNOWN;
+
+  uint8_t reserved[3] = {0};
+};
+
+////////////////////////////////////////////////////////////////////////////////
+// Deprecated Speed Measurement Definitions
+////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * @brief (Deprecated) Differential wheel speed measurement (@ref
+ *        MessageType::DEPRECATED_WHEEL_SPEED_MEASUREMENT, version 1.0).
+ * @ingroup measurement_messages
+ *
+ * @deprecated
+ * This message is deprecated as of version 1.18.0 and may be removed in the
+ * future. It should not used for new development. See @ref WheelSpeedInput and
+ * @ref WheelSpeedOutput instead.
+ */
+struct alignas(4) DeprecatedWheelSpeedMeasurement : public MessagePayload {
+  static constexpr MessageType MESSAGE_TYPE =
+      MessageType::DEPRECATED_WHEEL_SPEED_MEASUREMENT;
+  static constexpr uint8_t MESSAGE_VERSION = 0;
+
+  /**
+   * Measurement timestamp and additional information, if available. See @ref
+   * MeasurementDetails for details.
+   */
+  MeasurementDetails details;
+
+  /** The front left wheel speed (in m/s). Set to NAN if not available. */
+  float front_left_speed_mps = NAN;
+
+  /** The front right wheel speed (in m/s). Set to NAN if not available. */
+  float front_right_speed_mps = NAN;
+
+  /** The rear left wheel speed (in m/s). Set to NAN if not available. */
+  float rear_left_speed_mps = NAN;
+
+  /** The rear right wheel speed (in m/s). Set to NAN if not available. */
+  float rear_right_speed_mps = NAN;
+
+  /**
+   * The transmission gear currently in use, or direction of motion, if
+   * available.
+   *
+   * Set to @ref GearType::FORWARD or @ref GearType::REVERSE where vehicle
+   * direction information is available externally.
+   */
+  GearType gear = GearType::UNKNOWN;
+
+  /**
+   * `true` if the wheel speeds are signed (positive forward, negative reverse),
+   * or `false` if the values are unsigned (positive in both directions).
+   */
+  bool is_signed = true;
+
+  uint8_t reserved[2] = {0};
+};
+
+/**
+ * @brief (Deprecated) Vehicle body speed measurement (@ref
+ *        MessageType::DEPRECATED_VEHICLE_SPEED_MEASUREMENT, version 1.0).
+ * @ingroup measurement_messages
+ *
+ * @deprecated
+ * This message is deprecated as of version 1.18.0 and may be removed in the
+ * future. It should not used for new development. See @ref VehicleSpeedInput
+ * and @ref VehicleSpeedOutput instead.
+ */
+struct alignas(4) DeprecatedVehicleSpeedMeasurement : public MessagePayload {
+  static constexpr MessageType MESSAGE_TYPE =
+      MessageType::DEPRECATED_VEHICLE_SPEED_MEASUREMENT;
+  static constexpr uint8_t MESSAGE_VERSION = 0;
+
+  /**
+   * Measurement timestamp and additional information, if available. See @ref
+   * MeasurementDetails for details.
+   */
+  MeasurementDetails details;
+
+  /** The current vehicle speed estimate (in m/s). */
+  float vehicle_speed_mps = NAN;
+
+  /**
+   * The transmission gear currently in use, or direction of motion, if
+   * available.
+   *
+   * Set to @ref GearType::FORWARD or @ref GearType::REVERSE where vehicle
+   * direction information is available externally.
+   */
+  GearType gear = GearType::UNKNOWN;
+
+  /**
+   * `true` if the wheel speeds are signed (positive forward, negative reverse),
+   * or `false` if the values are unsigned (positive in both directions).
+   */
+  bool is_signed = true;
+
+  uint8_t reserved[2] = {0};
+};
+
+////////////////////////////////////////////////////////////////////////////////
+// Heading Measurements
+////////////////////////////////////////////////////////////////////////////////
 
 /**
  * @brief The heading angle (in degrees) with respect to true north,

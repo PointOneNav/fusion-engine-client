@@ -47,15 +47,28 @@ enum class MessageType : uint16_t {
   SYSTEM_STATUS = 10500, ///< @ref SystemStatusMessage
 
   // Sensor measurement messages.
-  IMU_MEASUREMENT = 11000, ///< @ref IMUMeasurement
+  IMU_OUTPUT = 11000, ///< @ref IMUOutput
   HEADING_MEASUREMENT = 11001, ///< @ref HeadingMeasurement
-  RAW_IMU_MEASUREMENT = 11002, ///< @ref RawIMUMeasurement
+  RAW_IMU_OUTPUT = 11002, ///< @ref RawIMUOutput
 
   // Vehicle measurement messages.
-  WHEEL_SPEED_MEASUREMENT = 11101, ///< @ref WheelSpeedMeasurement
-  VEHICLE_SPEED_MEASUREMENT = 11102, ///< @ref VehicleSpeedMeasurement
-  WHEEL_TICK_MEASUREMENT = 11103, ///< @ref WheelTickMeasurement
-  VEHICLE_TICK_MEASUREMENT = 11104, ///< @ref VehicleTickMeasurement
+  DEPRECATED_WHEEL_SPEED_MEASUREMENT =
+      11101, ///< @ref DeprecatedWheelSpeedMeasurement
+  DEPRECATED_VEHICLE_SPEED_MEASUREMENT =
+      11102, ///< @ref DeprecatedVehicleSpeedMeasurement
+
+  WHEEL_TICK_INPUT = 11103, ///< @ref WheelTickInput
+  VEHICLE_TICK_INPUT = 11104, ///< @ref VehicleTickInput
+  WHEEL_SPEED_INPUT = 11105, ///< @ref WheelSpeedInput
+  VEHICLE_SPEED_INPUT = 11106, ///< @ref VehicleSpeedInput
+
+  RAW_WHEEL_TICK_OUTPUT = 11123, ///< @ref RawWheelTickOutput
+  RAW_VEHICLE_TICK_OUTPUT = 11124, ///< @ref RawVehicleTickOutput
+  RAW_WHEEL_SPEED_OUTPUT = 11125, ///< @ref RawWheelSpeedOutput
+  RAW_VEHICLE_SPEED_OUTPUT = 11126, ///< @ref RawVehicleSpeedOutput
+
+  WHEEL_SPEED_OUTPUT = 11135, ///< @ref WheelSpeedOutput
+  VEHICLE_SPEED_OUTPUT = 11136, ///< @ref VehicleSpeedOutput
 
   // ROS messages.
   ROS_POSE = 12000, ///< @ref ros::PoseMessage
@@ -125,26 +138,50 @@ P1_CONSTEXPR_FUNC const char* to_string(MessageType type) {
       return "System Status";
 
     // Sensor measurement messages.
-    case MessageType::IMU_MEASUREMENT:
-      return "IMU Measurement";
+    case MessageType::IMU_OUTPUT:
+      return "IMU Output";
 
     case MessageType::HEADING_MEASUREMENT:
       return "Heading Measurement";
 
-    case MessageType::RAW_IMU_MEASUREMENT:
-      return "Raw IMU Measurement";
+    case MessageType::RAW_IMU_OUTPUT:
+      return "Raw IMU Output";
 
-    case MessageType::WHEEL_SPEED_MEASUREMENT:
+    case MessageType::DEPRECATED_WHEEL_SPEED_MEASUREMENT:
       return "Wheel Speed Measurement";
 
-    case MessageType::VEHICLE_SPEED_MEASUREMENT:
+    case MessageType::DEPRECATED_VEHICLE_SPEED_MEASUREMENT:
       return "Vehicle Speed Measurement";
 
-    case MessageType::WHEEL_TICK_MEASUREMENT:
-      return "Wheel Tick Measurement";
+    case MessageType::WHEEL_TICK_INPUT:
+      return "Wheel Tick Input";
 
-    case MessageType::VEHICLE_TICK_MEASUREMENT:
-      return "Vehicle Tick Measurement";
+    case MessageType::VEHICLE_TICK_INPUT:
+      return "Vehicle Tick Input";
+
+    case MessageType::WHEEL_SPEED_INPUT:
+      return "Wheel Speed Input";
+
+    case MessageType::VEHICLE_SPEED_INPUT:
+      return "Vehicle Speed Input";
+
+    case MessageType::RAW_WHEEL_TICK_OUTPUT:
+      return "Raw Wheel Tick Output";
+
+    case MessageType::RAW_VEHICLE_TICK_OUTPUT:
+      return "Raw Vehicle Tick Output";
+
+    case MessageType::RAW_WHEEL_SPEED_OUTPUT:
+      return "Raw Wheel Speed Output";
+
+    case MessageType::RAW_VEHICLE_SPEED_OUTPUT:
+      return "Raw Vehicle Speed Output";
+
+    case MessageType::WHEEL_SPEED_OUTPUT:
+      return "Wheel Speed Output";
+
+    case MessageType::VEHICLE_SPEED_OUTPUT:
+      return "Vehicle Speed Output";
 
     // ROS messages.
     case MessageType::ROS_POSE:
