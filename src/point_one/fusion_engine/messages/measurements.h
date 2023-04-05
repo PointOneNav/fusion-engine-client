@@ -150,43 +150,52 @@ inline std::ostream& operator<<(std::ostream& stream, SystemTimeSource val) {
 }
 
 /**
- * @brief The time of applicability for an incoming sensor measurement.
+ * @brief The time of applicability and additional information for an incoming
+ *        sensor measurement.
  * @ingroup measurement_messages
  *
- * By convention this will be the first member of any measurement definition
- * intended to be externally sent by the user to the device.
+ * By convention this will be the first member of any message containing
+ * input measurements by the host to the device, as well as raw measurement
+ * outputs from the device.
  *
  * The @ref measurement_time field stores time of applicability/reception for
  * the measurement data, expressed in one of the available source time bases
  * (see @ref SystemTimeSource). The timestamp will be converted to P1 time
- * automatically by FusionEngine using an internal model of P1 vs source time.
- * The converted value will be assigned to @ref p1_time for usage and logging
- * purposes.
+ * automatically by FusionEngine using an internal model of P1 vs. the specified
+ * source time.
+ *
+ * @section meas_details_on_arrival Timestamp On Arrival
  *
  * On most platforms, incoming sensor measurements are timestamped automatically
  * by FusionEngine when they arrive. To request timestamp on arrival, set @ref
- * measurement_time to invalid, and set the @ref measurement_time_source to
- * @ref SystemTimeSource::INVALID.
+ * measurement_time_source to either @ref
+ * SystemTimeSource::TIMESTAMPED_ON_RECEPTION or @ref SystemTimeSource::INVALID.
+ *
+ * @section meas_details_external_time Timestamp Externally
  *
  * On some platforms, incoming sensor measurements may be timestamped
- * externally by the user prior to arrival, either in GPS time (@ref
+ * externally by the host prior to arrival, either in GPS time (@ref
  * SystemTimeSource::GPS_TIME), or using a monotonic clock controlled by the
- * user system (@ref SystemTimeSource::SENDER_SYSTEM_TIME).
+ * host system (@ref SystemTimeSource::SENDER_SYSTEM_TIME). For those platforms,
+ * the @ref measurement_time field should be specified in the incoming message.
  *
  * @note
  * Use of an external monotonic clock requires additional coordination with the
  * target FusionEngine device.
  *
+ * @section meas_details_p1_time Timestamp With External P1 Time
+ *
  * Measurements may only be timestamped externally using P1 time (@ref
  * SystemTimeSource::P1_TIME) if the external system supports remote
- * synchronization of the P1 time clock model.
+ * synchronization of the P1 time clock model. This is intended for internal
+ * use only.
  */
-struct alignas(4) MeasurementTimestamps {
+struct alignas(4) MeasurementDetails {
   /**
    * The measurement time of applicability, if available, in a user-specified
    * time base. The source of this value is specified in @ref
    * measurement_time_source. The timestamp will be converted to P1 time
-   * automatically before use.
+   * internally by the device before use.
    */
   Timestamp measurement_time;
 
@@ -206,12 +215,14 @@ struct alignas(4) MeasurementTimestamps {
    * The P1 time corresponding with the measurement time of applicability, if
    * available.
    *
-   * @note
-   * Do not modify this field when sending measurements to FusionEngine. It will
-   * be populated automatically on arrival. Any previously specified value will
+   * For inputs to the device, this field will be populated automatically by the
+   * device on arrival based on @ref measurement_time. Any existing value will
    * be overwritten. To specify a known P1 time, specify the value in @ref
    * measurement_time and set @ref measurement_time_source to @ref
    * SystemTimeSource::P1_TIME.
+   *
+   * For outputs from the device, this field will always be populated with the
+   * P1 time corresponding with the measurement.
    */
   Timestamp p1_time;
 };
@@ -277,9 +288,9 @@ struct alignas(4) RawIMUMeasurement : public MessagePayload {
 
   /**
    * Measurement timestamp and additional information, if available. See @ref
-   * MeasurementTimestamps for details.
+   * MeasurementDetails for details.
    */
-  MeasurementTimestamps timestamps;
+  MeasurementDetails details;
 
   uint8_t reserved[6] = {0};
 
@@ -372,8 +383,11 @@ struct alignas(4) WheelSpeedMeasurement : public MessagePayload {
       MessageType::WHEEL_SPEED_MEASUREMENT;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
-  /** Measurement timestamps, if available. See @ref measurement_messages. */
-  MeasurementTimestamps timestamps;
+  /**
+   * Measurement timestamp and additional information, if available. See @ref
+   * MeasurementDetails for details.
+   */
+  MeasurementDetails details;
 
   /** The front left wheel speed (in m/s). Set to NAN if not available. */
   float front_left_speed_mps = NAN;
@@ -425,8 +439,11 @@ struct alignas(4) VehicleSpeedMeasurement : public MessagePayload {
       MessageType::VEHICLE_SPEED_MEASUREMENT;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
-  /** Measurement timestamps, if available. See @ref measurement_messages. */
-  MeasurementTimestamps timestamps;
+  /**
+   * Measurement timestamp and additional information, if available. See @ref
+   * MeasurementDetails for details.
+   */
+  MeasurementDetails details;
 
   /** The current vehicle speed estimate (in m/s). */
   float vehicle_speed_mps = NAN;
@@ -472,8 +489,11 @@ struct alignas(4) WheelTickMeasurement : public MessagePayload {
       MessageType::WHEEL_TICK_MEASUREMENT;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
-  /** Measurement timestamps, if available. See @ref measurement_messages. */
-  MeasurementTimestamps timestamps;
+  /**
+   * Measurement timestamp and additional information, if available. See @ref
+   * MeasurementDetails for details.
+   */
+  MeasurementDetails details;
 
   /**
    * The front left wheel ticks. The interpretation of these ticks is
@@ -535,8 +555,11 @@ struct alignas(4) VehicleTickMeasurement : public MessagePayload {
       MessageType::VEHICLE_TICK_MEASUREMENT;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
-  /** Measurement timestamps, if available. See @ref measurement_messages. */
-  MeasurementTimestamps timestamps;
+  /**
+   * Measurement timestamp and additional information, if available. See @ref
+   * MeasurementDetails for details.
+   */
+  MeasurementDetails details;
 
   /**
    * The current encoder tick count. The interpretation of these ticks is
@@ -566,14 +589,17 @@ struct alignas(4) VehicleTickMeasurement : public MessagePayload {
  * All data is timestamped using the Point One Time, which is a monotonic
  * timestamp referenced to the start of the device. Corresponding messages (@ref
  * PoseMessage, @ref GNSSSatelliteMessage, etc.) may be associated using
- * their @ref timestamps.
+ * their P1 timestamps.
  */
 struct alignas(4) HeadingMeasurement : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::HEADING_MEASUREMENT;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
-  /** Measurement timestamps, if available. See @ref measurement_messages. */
-  MeasurementTimestamps timestamps;
+  /**
+   * Measurement timestamp and additional information, if available. See @ref
+   * MeasurementDetails for details.
+   */
+  MeasurementDetails details;
 
   /** The type of this position solution. */
   SolutionType solution_type = SolutionType::Invalid;
