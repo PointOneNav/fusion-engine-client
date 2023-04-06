@@ -6,6 +6,18 @@ from construct import Adapter, Enum, Struct
 from .enum_utils import IntEnum
 
 
+class FixedPointAdapter(Adapter):
+    def __init__(self, scale, *args):
+        super().__init__(*args)
+        self.scale = scale
+
+    def _decode(self, obj, context, path):
+        return obj * self.scale
+
+    def _encode(self, obj, context, path):
+        return int(round(obj / self.scale))
+
+
 class NamedTupleAdapter(Adapter):
     """!
     @brief Adapter for automatically converting between construct streams and
