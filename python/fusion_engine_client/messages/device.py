@@ -55,7 +55,9 @@ class SystemStatusMessage(MessagePayload):
         return result
 
     def __str__(self):
-        return construct_message_to_string(message=self, title='System Status')
+        string = 'System Status Message @ %s\n' % str(self.p1_time)
+        string += f'  GNSS Temperature: %.1f deg C' % self.gnss_temperature_degc
+        return string
 
     def calcsize(self) -> int:
         return self.SystemStatusMessageConstruct.sizeof()
