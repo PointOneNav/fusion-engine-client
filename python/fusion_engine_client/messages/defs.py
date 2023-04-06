@@ -9,6 +9,7 @@ from zlib import crc32
 
 import numpy as np
 
+from .measurement_details import *
 from .signal_defs import *
 from .timestamp import *
 from ..utils import trace as logging
