@@ -1767,7 +1767,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
 
         self._add_figure(name="profile_execution_stats", figure=figure, title="Profiling: Execution Stats")
 
-    def plot_eigen_profiling(self, id_to_name, data):
+    def _plot_eigen_profiling(self, id_to_name, data):
         eigen_min_maps = []
         eigen_overflow_maps = []
         eigen_low_maps = []
@@ -1923,7 +1923,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
 
         self._add_figure(name="host_dropped_data", figure=figure, title="WARNING: Serial Data Dropped By Host")
 
-    def plot_serial_profiling(self, id_to_name, data):
+    def _plot_serial_profiling(self, id_to_name, data):
         tx_buffer_free_maps = []
         tx_error_counts_maps = []
         tx_sent_counts_maps = []
@@ -2040,14 +2040,14 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             self.logger.warning('No execution profiling stats names received.')
             id_to_name = {}
 
-        self.plot_serial_profiling(id_to_name, data)
+        self._plot_serial_profiling(id_to_name, data)
 
         reader_index = self.reader.reader.get_index()
         if reader_index is not None:
             self.logger.debug("Checking index file against '%s'." % device_uart)
             self.plot_host_side_serial_dropouts(id_to_name, data, reader_index, device_uart)
 
-        self.plot_eigen_profiling(id_to_name, data)
+        self._plot_eigen_profiling(id_to_name, data)
 
         delay_queue_count_idx = None
         delay_queue_ns_idx = None
@@ -2817,6 +2817,8 @@ Load and display information stored in a FusionEngine binary file.
                 analyzer.plot_map(mapbox_token=options.mapbox_token)
             elif func == 'plot_skyplot':
                 analyzer.plot_gnss_skyplot(decimate=False)
+            elif func == 'plot_counter_profiling':
+                analyzer.plot_counter_profiling(options.device_uart)
             else:
                 getattr(analyzer, func)()
 
