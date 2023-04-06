@@ -190,6 +190,22 @@ class TimestampAdapter(Adapter):
 TimestampConstruct = TimestampAdapter(TimestampRawConstruct)
 
 
+class SensorDataSource(IntEnum):
+    """!
+    @brief The source of received sensor measurements, if known.
+    """
+    ## Data source not known.
+    UNKNOWN = 0
+    ## Sensor data captured internal to the device (embedded IMU, GNSS receiver, etc.).
+    INTERNAL = 1
+    ## Sensor data provided externally by user (software wheel speed data, etc.).
+    EXTERNAL = 2
+    ## Sensor data captured from a vehicle CAN bus.
+    CAN = 3
+    ## Sensor data generated via hardware voltage signal (wheel tick, external event, etc.).
+    HARDWARE_IO = 4,
+
+
 class SystemTimeSource(IntEnum):
     """!
     @brief The source of a @ref point_one::fusion_engine::messages::Timestamp used to represent the time of
@@ -209,35 +225,14 @@ class SystemTimeSource(IntEnum):
 
 class MeasurementDetails(object):
     """!
-    @brief The time of applicability for an incoming sensor measurement.
-
-    By convention this will be the first member of any measurement definition intended to be externally sent by the user
-    to the device.
-
-    The @ref measurement_time field stores time of applicability/reception for the measurement data, expressed in one of
-    the available source time bases (see @ref SystemTimeSource). The timestamp will be converted to P1 time
-    automatically by FusionEngine using an internal model of P1 vs source time. The converted value will be assigned to
-    @ref p1_time for usage and logging purposes.
-
-    On most platforms, incoming sensor measurements are timestamped automatically by FusionEngine when they arrive. To
-    request timestamp on arrival, set @ref measurement_time to invalid, and set the @ref measurement_time_source to
-    @ref SystemTimeSource::INVALID.
-
-    On some platforms, incoming sensor measurements may be timestamped externally by the user prior to arrival, either
-    in GPS time (@ref SystemTimeSource::GPS_TIME), or using a monotonic clock controlled by the user system (@ref
-    SystemTimeSource::SENDER_SYSTEM_TIME).
-
-    @note
-    Use of an external monotonic clock requires additional coordination with the target FusionEngine device.
-
-    Measurements may only be timestamped externally using P1 time (@ref SystemTimeSource::P1_TIME) if the external
-    system supports remote synchronization of the P1 time clock model.
+    @brief The time of applicability and additional information for an incoming sensor measurement.
     """
-    _STRUCT = struct.Struct('<B3x')
+    _STRUCT = struct.Struct('<BB2x')
 
     def __init__(self):
         self.measurement_time = Timestamp()
         self.measurement_time_source = SystemTimeSource.INVALID
+        self.data_source = SensorDataSource.UNKNOWN
         self.p1_time = Timestamp()
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
@@ -247,7 +242,7 @@ class MeasurementDetails(object):
         initial_offset = offset
 
         offset += self.measurement_time.pack(buffer, offset, return_buffer=False)
-        self._STRUCT.pack_into(buffer, offset, int(self.measurement_time_source))
+        self._STRUCT.pack_into(buffer, offset, int(self.measurement_time_source), int(self.data_source))
         offset += self._STRUCT.size
         offset += self.p1_time.pack(buffer, offset, return_buffer=False)
 
@@ -260,11 +255,12 @@ class MeasurementDetails(object):
         initial_offset = offset
 
         offset += self.measurement_time.unpack(buffer, offset)
-        (measurement_time_source_int,) = self._STRUCT.unpack_from(buffer, offset)
+        (measurement_time_source_int, data_source_int) = self._STRUCT.unpack_from(buffer, offset)
         offset += self._STRUCT.size
         offset += self.p1_time.unpack(buffer, offset)
 
         self.measurement_time_source = SystemTimeSource(measurement_time_source_int)
+        self.data_source = SensorDataSource(data_source_int)
 
         return offset - initial_offset
 
@@ -275,11 +271,13 @@ class MeasurementDetails(object):
     def __str__(self):
         string = f'Measurement time: {str(self.measurement_time)} (source: {str(self.measurement_time_source)})\n'
         string += f'P1 time: {str(self.p1_time)}'
+        string += f'Data source: {str(self.data_source)}'
         return string
 
     @classmethod
     def to_numpy(cls, messages):
-        source = np.array([int(m.measurement_time_source) for m in messages], dtype=int)
+        time_source = np.array([int(m.measurement_time_source) for m in messages], dtype=int)
+        data_source = np.array([int(m.data_source) for m in messages], dtype=int)
         measurement_time = np.array([float(m.measurement_time) for m in messages])
 
         # If the p1_time field is not set _and_ the incoming measurement time source is explicitly set to P1 time (i.e.,
@@ -287,18 +285,19 @@ class MeasurementDetails(object):
         # p1_time value if it is present -- the value in measurement_time may be adjusted internally by the device, and
         # the adjusted result will be stored in p1_time (measurement_time will never be modified).
         p1_time = np.array([float(m.p1_time) for m in messages])
-        idx = np.logical_and(source == SystemTimeSource.P1_TIME, np.isnan(p1_time))
+        idx = np.logical_and(time_source == SystemTimeSource.P1_TIME, np.isnan(p1_time))
         p1_time[idx] = measurement_time[idx]
 
         result = {
             'measurement_time': measurement_time,
-            'measurement_time_source': source,
+            'measurement_time_source': time_source,
+            'data_source': data_source,
             'p1_time': p1_time,
         }
 
-        idx = source == SystemTimeSource.TIMESTAMPED_ON_RECEPTION
+        idx = time_source == SystemTimeSource.TIMESTAMPED_ON_RECEPTION
         if np.any(idx):
-            system_time = np.full_like(source, np.nan)
+            system_time = np.full_like(time_source, np.nan)
             system_time[idx] = measurement_time[idx]
             result['system_time'] = system_time
 
