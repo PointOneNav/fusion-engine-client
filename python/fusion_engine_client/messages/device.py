@@ -47,6 +47,7 @@ class SystemStatusMessage(MessagePayload):
         del parsed['gnss_temperature']
 
         self.__dict__.update(parsed)
+        del self.__dict__['_io']
         return parsed._io.tell()
 
     def __repr__(self):
