@@ -111,7 +111,7 @@ class WheelSpeedMeasurement(MessagePayload):
 
     def __init__(self):
         ## Measurement timestamps, if available. See @ref measurement_messages.
-        self.timestamps = MeasurementTimestamps()
+        self.details = MeasurementDetails()
 
         ## The front left wheel speed (in m/s). Set to NAN if not available.
         self.front_left_speed_mps = np.nan
@@ -143,7 +143,7 @@ class WheelSpeedMeasurement(MessagePayload):
 
         initial_offset = offset
 
-        offset += self.timestamps.pack(buffer, offset, return_buffer=False)
+        offset += self.details.pack(buffer, offset, return_buffer=False)
 
         offset += self.pack_values(
             self._STRUCT, buffer, offset,
@@ -162,7 +162,7 @@ class WheelSpeedMeasurement(MessagePayload):
     def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
         initial_offset = offset
 
-        offset += self.timestamps.unpack(buffer, offset)
+        offset += self.details.unpack(buffer, offset)
 
         (self.front_left_speed_mps,
          self.front_right_speed_mps,
@@ -179,16 +179,16 @@ class WheelSpeedMeasurement(MessagePayload):
 
     @classmethod
     def calcsize(cls) -> int:
-        return MeasurementTimestamps.calcsize() + cls._STRUCT.size
+        return MeasurementDetails.calcsize() + cls._STRUCT.size
 
     def __repr__(self):
-        return '%s @ %s' % (self.MESSAGE_TYPE.name, self.timestamps.p1_time)
+        return '%s @ %s' % (self.MESSAGE_TYPE.name, self.details.p1_time)
 
     def __str__(self):
         newline = '\n'
         return f"""\
-Wheel Speed Measurement @ {str(self.timestamps.p1_time)}
-  {str(self.timestamps).replace(newline, '  ' + newline)}
+Wheel Speed Measurement @ {str(self.details.p1_time)}
+  {str(self.details).replace(newline, '  ' + newline)}
   Gear: {GearType(self.gear).to_string()}
   Type: {'signed' if self.is_signed else 'unsigned'}
   Front left: {self.front_left_speed_mps:.2f} m/s
@@ -206,7 +206,7 @@ Wheel Speed Measurement @ {str(self.timestamps.p1_time)}
             'gear': np.array([m.gear for m in messages], dtype=int),
             'is_signed': np.array([m.is_signed for m in messages], dtype=int),
         }
-        result.update(MeasurementTimestamps.to_numpy([m.timestamps for m in messages]))
+        result.update(MeasurementDetails.to_numpy([m.details for m in messages]))
         return result
 
 
@@ -231,7 +231,7 @@ class VehicleSpeedMeasurement(MessagePayload):
 
     def __init__(self):
         ## Measurement timestamps, if available. See @ref measurement_messages.
-        self.timestamps = MeasurementTimestamps()
+        self.details = MeasurementDetails()
 
         ## The current vehicle speed estimate (in m/s).
         self.vehicle_speed_mps = np.nan
@@ -254,7 +254,7 @@ class VehicleSpeedMeasurement(MessagePayload):
 
         initial_offset = offset
 
-        offset += self.timestamps.pack(buffer, offset, return_buffer=False)
+        offset += self.details.pack(buffer, offset, return_buffer=False)
 
         offset += self.pack_values(
             self._STRUCT, buffer, offset,
@@ -270,7 +270,7 @@ class VehicleSpeedMeasurement(MessagePayload):
     def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
         initial_offset = offset
 
-        offset += self.timestamps.unpack(buffer, offset)
+        offset += self.details.unpack(buffer, offset)
 
         (self.vehicle_speed_mps,
          gear_int,
@@ -284,16 +284,16 @@ class VehicleSpeedMeasurement(MessagePayload):
 
     @classmethod
     def calcsize(cls) -> int:
-        return MeasurementTimestamps.calcsize() + cls._STRUCT.size
+        return MeasurementDetails.calcsize() + cls._STRUCT.size
 
     def __repr__(self):
-        return '%s @ %s' % (self.MESSAGE_TYPE.name, self.timestamps.p1_time)
+        return '%s @ %s' % (self.MESSAGE_TYPE.name, self.details.p1_time)
 
     def __str__(self):
         newline = '\n'
         return f"""\
-Vehicle Speed Measurement @ {str(self.timestamps.p1_time)}
-  {str(self.timestamps).replace(newline, '  ' + newline)}
+Vehicle Speed Measurement @ {str(self.details.p1_time)}
+  {str(self.details).replace(newline, '  ' + newline)}
   Gear: {GearType(self.gear).to_string()}
   Type: {'signed' if self.is_signed else 'unsigned'}
   Speed: {self.vehicle_speed_mps:.2f} m/s"""
@@ -305,7 +305,7 @@ Vehicle Speed Measurement @ {str(self.timestamps.p1_time)}
             'is_signed': np.array([m.is_signed for m in messages], dtype=bool),
             'gear': np.array([m.gear for m in messages], dtype=int),
         }
-        result.update(MeasurementTimestamps.to_numpy([m.timestamps for m in messages]))
+        result.update(MeasurementDetails.to_numpy([m.details for m in messages]))
         return result
 
 
@@ -333,7 +333,7 @@ class WheelTickMeasurement(MessagePayload):
 
     def __init__(self):
         ## Measurement timestamps, if available. See @ref measurement_messages.
-        self.timestamps = MeasurementTimestamps()
+        self.details = MeasurementDetails()
 
         ## The front left wheel tick count.
         self.front_left_wheel_ticks = 0
@@ -360,7 +360,7 @@ class WheelTickMeasurement(MessagePayload):
 
         initial_offset = offset
 
-        offset += self.timestamps.pack(buffer, offset, return_buffer=False)
+        offset += self.details.pack(buffer, offset, return_buffer=False)
 
         offset += self.pack_values(
             self._STRUCT, buffer, offset,
@@ -378,7 +378,7 @@ class WheelTickMeasurement(MessagePayload):
     def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
         initial_offset = offset
 
-        offset += self.timestamps.unpack(buffer, offset)
+        offset += self.details.unpack(buffer, offset)
 
         (self.front_left_wheel_ticks,
          self.front_right_wheel_ticks,
@@ -394,16 +394,16 @@ class WheelTickMeasurement(MessagePayload):
 
     @classmethod
     def calcsize(cls) -> int:
-        return MeasurementTimestamps.calcsize() + cls._STRUCT.size
+        return MeasurementDetails.calcsize() + cls._STRUCT.size
 
     def __repr__(self):
-        return '%s @ %s' % (self.MESSAGE_TYPE.name, self.timestamps.p1_time)
+        return '%s @ %s' % (self.MESSAGE_TYPE.name, self.details.p1_time)
 
     def __str__(self):
         newline = '\n'
         return f"""\
-Wheel Tick Measurement @ {str(self.timestamps.p1_time)}
-  {str(self.timestamps).replace(newline, '  ' + newline)}
+Wheel Tick Measurement @ {str(self.details.p1_time)}
+  {str(self.details).replace(newline, '  ' + newline)}
   Gear: {GearType(self.gear).to_string()}
   Front left: {self.front_left_wheel_ticks}
   Front right: {self.front_right_wheel_ticks}
@@ -419,7 +419,7 @@ Wheel Tick Measurement @ {str(self.timestamps.p1_time)}
             'rear_right_wheel_ticks': np.array([m.rear_right_wheel_ticks for m in messages], dtype=int),
             'gear': np.array([m.gear for m in messages], dtype=int),
         }
-        result.update(MeasurementTimestamps.to_numpy([m.timestamps for m in messages]))
+        result.update(MeasurementDetails.to_numpy([m.details for m in messages]))
         return result
 
 
@@ -447,7 +447,7 @@ class VehicleTickMeasurement(MessagePayload):
 
     def __init__(self):
         ## Measurement timestamps, if available. See @ref measurement_messages.
-        self.timestamps = MeasurementTimestamps()
+        self.details = MeasurementDetails()
 
         ## The current encoder tick count. The interpretation of these ticks is defined outside of this message.
         self.tick_count = 0
@@ -465,7 +465,7 @@ class VehicleTickMeasurement(MessagePayload):
 
         initial_offset = offset
 
-        offset += self.timestamps.pack(buffer, offset, return_buffer=False)
+        offset += self.details.pack(buffer, offset, return_buffer=False)
 
         offset += self.pack_values(
             self._STRUCT, buffer, offset,
@@ -480,7 +480,7 @@ class VehicleTickMeasurement(MessagePayload):
     def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
         initial_offset = offset
 
-        offset += self.timestamps.unpack(buffer, offset)
+        offset += self.details.unpack(buffer, offset)
 
         (self.tick_count,
          gear_int) = \
@@ -493,16 +493,16 @@ class VehicleTickMeasurement(MessagePayload):
 
     @classmethod
     def calcsize(cls) -> int:
-        return MeasurementTimestamps.calcsize() + cls._STRUCT.size
+        return MeasurementDetails.calcsize() + cls._STRUCT.size
 
     def __repr__(self):
-        return '%s @ %s' % (self.MESSAGE_TYPE.name, self.timestamps.p1_time)
+        return '%s @ %s' % (self.MESSAGE_TYPE.name, self.details.p1_time)
 
     def __str__(self):
         newline = '\n'
         return f"""\
-Vehicle Tick Measurement @ {str(self.timestamps.p1_time)}
-  {str(self.timestamps).replace(newline, '  ' + newline)}
+Vehicle Tick Measurement @ {str(self.details.p1_time)}
+  {str(self.details).replace(newline, '  ' + newline)}
   Gear: {GearType(self.gear).to_string()}
   Ticks: {self.tick_count}"""
 
@@ -512,7 +512,7 @@ Vehicle Tick Measurement @ {str(self.timestamps.p1_time)}
             'tick_count': np.array([m.tick_count for m in messages], dtype=int),
             'gear': np.array([m.gear for m in messages], dtype=int),
         }
-        result.update(MeasurementTimestamps.to_numpy([m.timestamps for m in messages]))
+        result.update(MeasurementDetails.to_numpy([m.details for m in messages]))
         return result
 
 
@@ -535,7 +535,7 @@ class HeadingMeasurement(MessagePayload):
 
     def __init__(self):
         ## Measurement timestamps, if available. See @ref measurement_messages.
-        self.timestamps = MeasurementTimestamps()
+        self.details = MeasurementDetails()
 
         # The type of this position solution.
         self.solution_type = SolutionType.Invalid
@@ -580,8 +580,8 @@ class HeadingMeasurement(MessagePayload):
         initial_offset = offset
         if (buffer is None):
             buffer = bytearray(self.calcsize())
-        buffer = self.timestamps.pack(buffer)
-        offset += self.timestamps.calcsize()
+        buffer = self.details.pack(buffer)
+        offset += self.details.calcsize()
         self._STRUCT.pack_into(buffer, offset,
             self.solution_type,
             self.flags,
@@ -602,7 +602,7 @@ class HeadingMeasurement(MessagePayload):
     def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
         initial_offset = offset
 
-        offset += self.timestamps.unpack(buffer, offset)
+        offset += self.details.unpack(buffer, offset)
         (solution_type_int,
             self.flags,
             self.relative_position_enu_m[0],
@@ -619,7 +619,7 @@ class HeadingMeasurement(MessagePayload):
 
     def __str__(self):
         return f"""\
-HeadingMeasurement @ {str(self.timestamps.p1_time)}
+HeadingMeasurement @ {str(self.details.p1_time)}
   Solution Type: {SolutionType(self.solution_type).to_string()}
   Relative position (ENU) (m): {self.relative_position_enu_m[0]:.2f}, {self.relative_position_enu_m[1]:.2f}, {self.relative_position_enu_m[2]:.2f}
   Position std (ENU) (m): {self.position_std_enu_m[0]:.2f}, {self.position_std_enu_m[1]:.2f}, {self.position_std_enu_m[2]:.2f}
@@ -628,7 +628,7 @@ HeadingMeasurement @ {str(self.timestamps.p1_time)}
 
     @classmethod
     def calcsize(cls) -> int:
-        return cls._STRUCT.size + MeasurementTimestamps.calcsize()
+        return cls._STRUCT.size + MeasurementDetails.calcsize()
 
     @classmethod
     def to_numpy(cls, messages: Sequence['HeadingMeasurement']):
@@ -640,5 +640,5 @@ HeadingMeasurement @ {str(self.timestamps.p1_time)}
             'heading_true_north_deg': np.array([float(m.heading_true_north_deg) for m in messages]),
             'baseline_distance_m': np.array([float(m.baseline_distance_m) for m in messages]),
         }
-        result.update(MeasurementTimestamps.to_numpy([m.timestamps for m in messages]))
+        result.update(MeasurementDetails.to_numpy([m.details for m in messages]))
         return result

@@ -207,7 +207,7 @@ class SystemTimeSource(IntEnum):
     GPS_TIME = 4
 
 
-class MeasurementTimestamps(object):
+class MeasurementDetails(object):
     """!
     @brief The time of applicability for an incoming sensor measurement.
 

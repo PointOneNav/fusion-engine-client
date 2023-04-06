@@ -507,17 +507,17 @@ class MessagePayload:
         raise NotImplementedError('unpack() not implemented.')
 
     def get_p1_time(self) -> Timestamp:
-        measurement_timestamps = getattr(self, 'timestamps', None)
-        if isinstance(measurement_timestamps, MeasurementTimestamps):
-            return measurement_timestamps.p1_time
+        measurement_details = getattr(self, 'details', None)
+        if isinstance(measurement_details, MeasurementDetails):
+            return measurement_details.p1_time
         else:
             return getattr(self, 'p1_time', None)
 
     def get_system_time_ns(self) -> float:
-        measurement_timestamps = getattr(self, 'timestamps', None)
-        if isinstance(measurement_timestamps, MeasurementTimestamps):
-            if measurement_timestamps.measurement_time_source == SystemTimeSource.TIMESTAMPED_ON_RECEPTION:
-                return float(measurement_timestamps.measurement_time)
+        measurement_details = getattr(self, 'details', None)
+        if isinstance(measurement_details, MeasurementDetails):
+            if measurement_details.measurement_time_source == SystemTimeSource.TIMESTAMPED_ON_RECEPTION:
+                return float(measurement_details.measurement_time)
             else:
                 return np.nan
         else:
