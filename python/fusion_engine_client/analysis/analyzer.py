@@ -1209,6 +1209,15 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             else:
                 titles = ['%s Speed (Unsigned)' % speed_type, 'Gear/Direction']
 
+        if wheel_data is not None:
+            titles[0] += f'<br>{wheel_measurement_type.__name__}'
+        if vehicle_data is not None:
+           if wheel_data is not None:
+               titles[0] += ', '
+           else:
+               titles[0] += '<br>'
+           titles[0] += f'{vehicle_measurement_type.__name__}'
+
         figure = make_subplots(rows=len(titles), cols=1, print_grid=False, shared_xaxes=True, subplot_titles=titles)
 
         figure['layout'].update(showlegend=True, modebar_add=['v1hovermode', 'toggleSpikelines'])
