@@ -97,9 +97,9 @@ class RawIMUOutput(MessagePayload):
     Construct = Struct(
         "details" / MeasurementDetailsConstruct,
         Padding(6),
-        "temperature_degc" / FixedPointAdapter(2 ** -7, Int16sl),
-        "accel_mps2" / Array(3, FixedPointAdapter(2 ** -16, Int32sl)),
-        "gyro_rps" / Array(3, FixedPointAdapter(2 ** -20, Int32sl)),
+        "temperature_degc" / FixedPointAdapter(2 ** -7, Int16sl, invalid=0x7FFF),
+        "accel_mps2" / Array(3, FixedPointAdapter(2 ** -16, Int32sl, invalid=0x7FFFFFFF)),
+        "gyro_rps" / Array(3, FixedPointAdapter(2 ** -20, Int32sl, invalid=0x7FFFFFFF)),
     )
 
     def __init__(self):
@@ -233,10 +233,10 @@ class RawWheelSpeedOutput(MessagePayload):
 
     Construct = Struct(
         "details" / MeasurementDetailsConstruct,
-        "front_left_speed_mps" / FixedPointAdapter(2 ** -10, Int32sl),
-        "front_right_speed_mps" / FixedPointAdapter(2 ** -10, Int32sl),
-        "rear_left_speed_mps" / FixedPointAdapter(2 ** -10, Int32sl),
-        "rear_right_speed_mps" / FixedPointAdapter(2 ** -10, Int32sl),
+        "front_left_speed_mps" / FixedPointAdapter(2 ** -10, Int32sl, invalid=0x7FFFFFFF),
+        "front_right_speed_mps" / FixedPointAdapter(2 ** -10, Int32sl, invalid=0x7FFFFFFF),
+        "rear_left_speed_mps" / FixedPointAdapter(2 ** -10, Int32sl, invalid=0x7FFFFFFF),
+        "rear_right_speed_mps" / FixedPointAdapter(2 ** -10, Int32sl, invalid=0x7FFFFFFF),
         "gear" / AutoEnum(Int8ul, GearType),
         "flags" / Int8ul,
         Padding(2),
@@ -386,7 +386,7 @@ class RawVehicleSpeedOutput(MessagePayload):
 
     Construct = Struct(
         "details" / MeasurementDetailsConstruct,
-        "vehicle_speed_mps" / FixedPointAdapter(2 ** -10, Int32sl),
+        "vehicle_speed_mps" / FixedPointAdapter(2 ** -10, Int32sl, invalid=0x7FFFFFFF),
         "gear" / AutoEnum(Int8ul, GearType),
         "flags" / Int8ul,
         Padding(2),
