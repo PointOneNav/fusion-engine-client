@@ -1,9 +1,35 @@
+import math
 import re
 from typing import Optional
 
 from construct import Adapter, Enum, Struct
 
 from .enum_utils import IntEnum
+
+
+class FixedPointAdapter(Adapter):
+    def __init__(self, scale, *args, invalid=None):
+        super().__init__(*args)
+        self.scale = scale
+        self.invalid = invalid
+
+        is_signed = self.subcon.fmtstr.islower()
+        if self.invalid is not None and is_signed:
+            max_negative_mag = 2 ** (self.subcon.sizeof() * 8 - 1)
+            if self.invalid == max_negative_mag:
+                self.invalid = -self.invalid
+
+    def _decode(self, obj, context, path):
+        if obj == self.invalid:
+            return math.nan
+        else:
+            return float(obj * self.scale)
+
+    def _encode(self, obj, context, path):
+        if math.isnan(obj) and self.invalid is not None:
+            return self.invalid
+        else:
+            return int(round(obj / self.scale))
 
 
 class NamedTupleAdapter(Adapter):
@@ -92,6 +118,7 @@ class ClassAdapter(Adapter):
     def _decode(self, obj, context, path):
         val = self.cls()
         val.__dict__.update(obj)
+        del val.__dict__['_io']
         return val
 
     def _encode(self, obj, context, path):

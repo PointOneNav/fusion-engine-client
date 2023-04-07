@@ -332,7 +332,8 @@ class DataLoader(object):
         elif MessagePayload.is_subclass(message_types):
             message_types = set((message_types.get_type(),))
         else:
-            message_types = set([(t.get_type() if MessagePayload.is_subclass(t) else t) for t in message_types])
+            message_types = set([(t.get_type() if MessagePayload.is_subclass(t) else t) for t in message_types
+                                 if t is not None])
             if len(message_types) == 0:
                 message_types = None
 
@@ -583,7 +584,7 @@ class DataLoader(object):
                - `datetime` - A UTC or local timezone date and time
                - `gpstime` - A GPS timestamp
                - A @ref fusion_engine_client.messages.timestamps.Timestamp containing GPS time or P1 time
-               - A @ref fusion_engine_client.messages.timestamps.MeasurementTimestamps containing GPS time or P1 time
+               - A @ref fusion_engine_client.messages.timestamps.MeasurementDetails containing GPS time or P1 time
                - `float` - A GPS or P1 time value (in seconds)
                  - Note that UTC timestamps cannot be specified `float` unless `assume_utc == True`
         @param assume_utc If `True`:

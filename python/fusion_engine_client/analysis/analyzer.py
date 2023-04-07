@@ -1114,28 +1114,45 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         """!
         @brief Plot wheel speed or tick data.
         """
-        # Read the data.
+        # Read the data. Try to determine which type of wheel output is present in the log (if any).
+        def _auto_detect(types):
+            params = copy.deepcopy(self.params)
+            params['max_messages'] = 1
+            selected_type = None
+            for cls in types:
+                result = self.reader.read(message_types=cls, remove_nan_times=False, **params)
+                data = result[cls.MESSAGE_TYPE]
+                if len(data.p1_time) > 0:
+                    selected_type = cls
+                    break
+            return selected_type
+
         if type == 'tick':
-            wheel_measurement_type = WheelTickMeasurement
-            vehicle_measurement_type = VehicleTickMeasurement
+            wheel_measurement_type = _auto_detect([RawWheelTickOutput, WheelTickInput])
+            vehicle_measurement_type = _auto_detect([RawVehicleTickOutput, VehicleTickInput])
             filename = 'wheel_ticks'
             figure_title = 'Measurements: Wheel Encoder Ticks'
         else:
-            wheel_measurement_type = WheelSpeedMeasurement
-            vehicle_measurement_type = VehicleSpeedMeasurement
+            wheel_measurement_type = _auto_detect([WheelSpeedOutput, RawWheelSpeedOutput,
+                                                   DeprecatedWheelSpeedMeasurement])
+            vehicle_measurement_type = _auto_detect([VehicleSpeedOutput, RawVehicleSpeedOutput,
+                                                     DeprecatedVehicleSpeedMeasurement])
             filename = 'wheel_speed'
             figure_title = 'Measurements: Wheel Speed'
 
         # If the measurement data is very high rate, this plot may be very slow to generate for a multi-hour log.
-        if self.truncate_data:
+        if self.long_log_detected and self.truncate_data:
             params = copy.deepcopy(self.params)
             params['max_messages'] = 2
             dt_sec = None
-            result = self.reader.read(message_types=wheel_measurement_type, remove_nan_times=False, **params)
-            data = result[wheel_measurement_type.MESSAGE_TYPE]
-            if len(data.measurement_time) == 2:
-                dt_sec = data.measurement_time[1] - data.measurement_time[0]
-            else:
+
+            if wheel_measurement_type is not None:
+                result = self.reader.read(message_types=wheel_measurement_type, remove_nan_times=False, **params)
+                data = result[wheel_measurement_type.MESSAGE_TYPE]
+                if len(data.measurement_time) == 2:
+                    dt_sec = data.measurement_time[1] - data.measurement_time[0]
+
+            if dt_sec is None and vehicle_measurement_type is not None:
                 result = self.reader.read(message_types=vehicle_measurement_type, remove_nan_times=False, **params)
                 data = result[vehicle_measurement_type.MESSAGE_TYPE]
                 if len(data.measurement_time) == 2:
@@ -1152,19 +1169,27 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         result = self.reader.read(message_types=[wheel_measurement_type, vehicle_measurement_type],
                                   remove_nan_times=False, **self.params)
 
-        wheel_data = result[wheel_measurement_type.MESSAGE_TYPE]
-        wheel_data_signed = False
-        if len(wheel_data.p1_time) == 0:
+        if wheel_measurement_type is not None:
+            wheel_data = result[wheel_measurement_type.MESSAGE_TYPE]
+            wheel_data_signed = False
+            if len(wheel_data.p1_time) == 0:
+                wheel_data = None
+            elif type == 'speed':
+                wheel_data_signed = np.any(wheel_data.is_signed)
+        else:
             wheel_data = None
-        elif type == 'speed':
-            wheel_data_signed = np.any(wheel_data.is_signed)
+            wheel_data_signed = False
 
-        vehicle_data = result[vehicle_measurement_type.MESSAGE_TYPE]
-        vehicle_data_signed = False
-        if len(vehicle_data.p1_time) == 0:
+        if vehicle_measurement_type is not None:
+            vehicle_data = result[vehicle_measurement_type.MESSAGE_TYPE]
+            vehicle_data_signed = False
+            if len(vehicle_data.p1_time) == 0:
+                vehicle_data = None
+            elif type == 'speed':
+                vehicle_data_signed = np.any(vehicle_data.is_signed)
+        else:
             vehicle_data = None
-        elif type == 'speed':
-            vehicle_data_signed = np.any(vehicle_data.is_signed)
+            vehicle_data_signed = False
 
         if wheel_data is None and vehicle_data is None:
             self.logger.info('No wheel %s data available. Skipping plot.' % type)
@@ -1183,6 +1208,15 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                 titles = ['%s Speed (Signed)' % speed_type, 'Gear/Direction']
             else:
                 titles = ['%s Speed (Unsigned)' % speed_type, 'Gear/Direction']
+
+        if wheel_data is not None:
+            titles[0] += f'<br>{wheel_measurement_type.__name__}'
+        if vehicle_data is not None:
+           if wheel_data is not None:
+               titles[0] += ', '
+           else:
+               titles[0] += '<br>'
+           titles[0] += f'{vehicle_measurement_type.__name__}'
 
         figure = make_subplots(rows=len(titles), cols=1, print_grid=False, shared_xaxes=True, subplot_titles=titles)
 
@@ -1386,8 +1420,8 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         if self.truncate_data:
             params = copy.deepcopy(self.params)
             params['max_messages'] = 2
-            result = self.reader.read(message_types=[IMUMeasurement], **params)
-            data = result[IMUMeasurement.MESSAGE_TYPE]
+            result = self.reader.read(message_types=[IMUOutput], **params)
+            data = result[IMUOutput.MESSAGE_TYPE]
             if len(data.p1_time) == 2:
                 dt_sec = data.p1_time[1] - data.p1_time[0]
                 data_rate_hz = round(1.0 / dt_sec)
@@ -1398,8 +1432,8 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                     return
 
         # Read the data.
-        result = self.reader.read(message_types=[IMUMeasurement], **self.params)
-        data = result[IMUMeasurement.MESSAGE_TYPE]
+        result = self.reader.read(message_types=[IMUOutput], **self.params)
+        data = result[IMUOutput.MESSAGE_TYPE]
 
         if len(data.p1_time) == 0:
             self.logger.info('No IMU data available. Skipping plot.')

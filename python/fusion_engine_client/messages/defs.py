@@ -9,6 +9,7 @@ from zlib import crc32
 
 import numpy as np
 
+from .measurement_details import *
 from .signal_defs import *
 from .timestamp import *
 from ..utils import trace as logging
@@ -25,6 +26,13 @@ else:
             return s[:-len(suffix)]
         else:
             return s
+
+
+def _remove_suffixes(s, suffixes):
+    result = s
+    for suffix in suffixes:
+        result = _remove_suffix(result, suffix)
+    return result
 
 
 class SolutionType(IntEnum):
@@ -89,14 +97,26 @@ class MessageType(IntEnum):
     SYSTEM_STATUS = 10500
 
     # Sensor measurement messages.
-    IMU_MEASUREMENT = 11000
+    IMU_OUTPUT = 11000
     HEADING_MEASUREMENT = 11001
+    RAW_IMU_MEASUREMENT = 11002
 
     # Vehicle measurement messages.
-    WHEEL_SPEED_MEASUREMENT = 11101
-    VEHICLE_SPEED_MEASUREMENT = 11102
-    WHEEL_TICK_MEASUREMENT = 11103
-    VEHICLE_TICK_MEASUREMENT = 11104
+    DEPRECATED_WHEEL_SPEED_MEASUREMENT = 11101
+    DEPRECATED_VEHICLE_SPEED_MEASUREMENT = 11102
+
+    WHEEL_TICK_INPUT = 11103
+    VEHICLE_TICK_INPUT = 11104
+    WHEEL_SPEED_INPUT = 11105
+    VEHICLE_SPEED_INPUT = 11106
+
+    RAW_WHEEL_TICK_OUTPUT = 11123
+    RAW_VEHICLE_TICK_OUTPUT = 11124
+    RAW_WHEEL_SPEED_OUTPUT = 11125
+    RAW_VEHICLE_SPEED_OUTPUT = 11126
+
+    WHEEL_SPEED_OUTPUT = 11135
+    VEHICLE_SPEED_OUTPUT = 11136
 
     # ROS messages.
     ROS_POSE = 12000
@@ -430,11 +450,12 @@ class MessagePayload:
 
             # Check for exact matches with "Message" and "Measurement" suffixes removed.
             if len(matched_types) > 1 and not allow_multiple:
-                def _remove_suffixes(s):
-                    return _remove_suffix(_remove_suffix(s.lower(), 'message'), 'measurement')
-                pattern_no_suffix = _remove_suffixes(pattern)
+                def _remove_message_suffixes(s):
+                    return _remove_suffixes(s.lower(), ['message', 'measurement', 'input', 'output'])
+                pattern_no_suffix = _remove_message_suffixes(pattern)
                 exact_matches = [t for t in matched_types
-                                 if _remove_suffixes(cls.message_type_to_class[t].__name__) == pattern_no_suffix]
+                                 if _remove_message_suffixes(cls.message_type_to_class[t].__name__) ==
+                                 pattern_no_suffix]
                 if len(exact_matches) == 1:
                     matched_types = exact_matches
 
@@ -507,17 +528,17 @@ class MessagePayload:
         raise NotImplementedError('unpack() not implemented.')
 
     def get_p1_time(self) -> Timestamp:
-        measurement_timestamps = getattr(self, 'timestamps', None)
-        if isinstance(measurement_timestamps, MeasurementTimestamps):
-            return measurement_timestamps.p1_time
+        measurement_details = getattr(self, 'details', None)
+        if isinstance(measurement_details, MeasurementDetails):
+            return measurement_details.p1_time
         else:
             return getattr(self, 'p1_time', None)
 
     def get_system_time_ns(self) -> float:
-        measurement_timestamps = getattr(self, 'timestamps', None)
-        if isinstance(measurement_timestamps, MeasurementTimestamps):
-            if measurement_timestamps.measurement_time_source == SystemTimeSource.TIMESTAMPED_ON_RECEPTION:
-                return float(measurement_timestamps.measurement_time)
+        measurement_details = getattr(self, 'details', None)
+        if isinstance(measurement_details, MeasurementDetails):
+            if measurement_details.measurement_time_source == SystemTimeSource.TIMESTAMPED_ON_RECEPTION:
+                return float(measurement_details.measurement_time)
             else:
                 return np.nan
         else:
