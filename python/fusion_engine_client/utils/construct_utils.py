@@ -1,3 +1,4 @@
+import math
 import re
 from typing import Optional
 
@@ -7,15 +8,22 @@ from .enum_utils import IntEnum
 
 
 class FixedPointAdapter(Adapter):
-    def __init__(self, scale, *args):
+    def __init__(self, scale, *args, invalid=None):
         super().__init__(*args)
         self.scale = scale
+        self.invalid = invalid
 
     def _decode(self, obj, context, path):
-        return obj * self.scale
+        if obj == self.invalid:
+            return math.nan
+        else:
+            return obj * self.scale
 
     def _encode(self, obj, context, path):
-        return int(round(obj / self.scale))
+        if math.isnan(obj) and self.invalid is not None:
+            return self.invalid
+        else:
+            return int(round(obj / self.scale))
 
 
 class NamedTupleAdapter(Adapter):
