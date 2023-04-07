@@ -92,6 +92,7 @@ class MessageType(IntEnum):
     # Sensor measurement messages.
     IMU_MEASUREMENT = 11000
     HEADING_MEASUREMENT = 11001
+    RAW_IMU_MEASUREMENT = 11002
 
     # Vehicle measurement messages.
     WHEEL_SPEED_MEASUREMENT = 11101

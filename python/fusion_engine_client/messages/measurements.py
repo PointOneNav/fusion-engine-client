@@ -1,9 +1,11 @@
 import struct
 from typing import Sequence
 
+from construct import Array, Struct, Padding, Int16sl, Int32sl
 import numpy as np
 
 from .defs import *
+from ..utils.construct_utils import FixedPointAdapter, construct_message_to_string
 from ..utils.enum_utils import IntEnum
 
 
@@ -79,6 +81,47 @@ class IMUMeasurement(MessagePayload):
     @classmethod
     def calcsize(cls) -> int:
         return Timestamp.calcsize() + cls._STRUCT.size
+
+
+class RawIMUOutput(MessagePayload):
+    """!
+    @brief Raw (uncorrected) IMU sensor measurement output.
+    """
+    MESSAGE_TYPE = MessageType.RAW_IMU_MEASUREMENT
+    MESSAGE_VERSION = 0
+
+    Construct = Struct(
+        "details" / MeasurementDetailsConstruct,
+        Padding(6),
+        "temperature_degc" / FixedPointAdapter(2 ** -7, Int16sl),
+        "accel_mps2" / Array(3, FixedPointAdapter(2 ** -16, Int32sl)),
+        "gyro_rps" / Array(3, FixedPointAdapter(2 ** -20, Int32sl)),
+    )
+
+    def __init__(self):
+        self.details = MeasurementDetails()
+        self.temperature_degc = np.nan
+        self.accel_mps2 = np.full((3,), np.nan)
+        self.gyro_rps = np.full((3,), np.nan)
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        values = dict(self.__dict__)
+        packed_data = self.Construct.build(values)
+        return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
+
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
+        parsed = self.Construct.parse(buffer[offset:])
+        self.__dict__.update(parsed)
+        del self.__dict__['_io']
+        return parsed._io.tell()
+
+    @classmethod
+    def calcsize(cls) -> int:
+        return cls.Construct.sizeof()
+
+    def __str__(self):
+        return construct_message_to_string(message=self, construct=self.Construct, title='Raw IMU Output',
+                                           fields=['details', 'accel_mps2', 'gyro_rps', 'temperature_degc'])
 
 
 class GearType(IntEnum):
