@@ -28,6 +28,13 @@ else:
             return s
 
 
+def _remove_suffixes(s, suffixes):
+    result = s
+    for suffix in suffixes:
+        result = _remove_suffix(result, suffix)
+    return result
+
+
 class SolutionType(IntEnum):
     # Invalid, no position available.
     Invalid = 0
@@ -443,11 +450,12 @@ class MessagePayload:
 
             # Check for exact matches with "Message" and "Measurement" suffixes removed.
             if len(matched_types) > 1 and not allow_multiple:
-                def _remove_suffixes(s):
-                    return _remove_suffix(_remove_suffix(s.lower(), 'message'), 'measurement')
-                pattern_no_suffix = _remove_suffixes(pattern)
+                def _remove_message_suffixes(s):
+                    return _remove_suffixes(s.lower(), ['message', 'measurement', 'input', 'output'])
+                pattern_no_suffix = _remove_message_suffixes(pattern)
                 exact_matches = [t for t in matched_types
-                                 if _remove_suffixes(cls.message_type_to_class[t].__name__) == pattern_no_suffix]
+                                 if _remove_message_suffixes(cls.message_type_to_class[t].__name__) ==
+                                 pattern_no_suffix]
                 if len(exact_matches) == 1:
                     matched_types = exact_matches
 
