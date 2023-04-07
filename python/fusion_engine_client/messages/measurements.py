@@ -1,12 +1,16 @@
 import struct
 from typing import Sequence
 
-from construct import Array, Struct, Padding, Int16sl, Int32sl
+from construct import Array, Struct, Padding, Float32l, Int16sl, Int32sl
 import numpy as np
 
 from .defs import *
 from ..utils.construct_utils import FixedPointAdapter, construct_message_to_string
 from ..utils.enum_utils import IntEnum
+
+################################################################################
+# IMU Measurements
+################################################################################
 
 
 class IMUOutput(MessagePayload):
@@ -123,6 +127,10 @@ class RawIMUOutput(MessagePayload):
         return construct_message_to_string(message=self, construct=self.Construct, title='Raw IMU Output',
                                            fields=['details', 'accel_mps2', 'gyro_rps', 'temperature_degc'])
 
+################################################################################
+# Different Wheel Speed Measurements
+################################################################################
+
 
 class GearType(IntEnum):
   UNKNOWN = 0 ##< The transmission gear is not known, or does not map to a supported GearType.
@@ -132,22 +140,515 @@ class GearType(IntEnum):
   NEUTRAL = 4 ##< The vehicle is in neutral.
 
 
-class WheelSpeedMeasurement(MessagePayload):
+class WheelSpeedOutput(MessagePayload):
     """!
-    @brief Differential wheel speed measurement.
-
-    This message may be used to convey the speed of each individual wheel on the
-    vehicle. The number and type of wheels expected varies by vehicle. To use
-    wheel speed data, you must first configure the device by issuing a @ref
-    SetConfigMessage message containing a @ref WheelConfig payload describing the
-    vehicle sensor configuration.
-
-    Some platforms may support an additional, optional voltage signal used to
-    indicate direction of motion. Alternatively, when receiving CAN data from a
-    vehicle, direction may be conveyed explicitly in a CAN message, or may be
-    indicated based on the current transmission gear setting.
+    @brief Differential wheel speed output with calibration and corrections applied.
     """
-    MESSAGE_TYPE = MessageType.WHEEL_SPEED_MEASUREMENT
+    MESSAGE_TYPE = MessageType.WHEEL_SPEED_OUTPUT
+    MESSAGE_VERSION = 0
+
+    FLAG_SIGNED = 0x1
+
+    Construct = Struct(
+        "p1_time" / TimestampConstruct,
+        "data_source" / AutoEnum(Int8ul, SensorDataSource),
+        "gear" / AutoEnum(Int8ul, GearType),
+        "flags" / Int8ul,
+        Padding(1),
+        "front_left_speed_mps" / Float32l,
+        "front_right_speed_mps" / Float32l,
+        "rear_left_speed_mps" / Float32l,
+        "rear_right_speed_mps" / Float32l,
+    )
+
+    def __init__(self):
+        self.p1_time = Timestamp()
+        self.data_source = SensorDataSource.UNKNOWN
+        self.gear = GearType.UNKNOWN
+        self.flags = 0x0
+
+        self.front_left_speed_mps = np.nan
+        self.front_right_speed_mps = np.nan
+        self.rear_left_speed_mps = np.nan
+        self.rear_right_speed_mps = np.nan
+
+    def is_signed(self) -> bool:
+        return (self.flags & self.FLAG_SIGNED) != 0
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        values = dict(self.__dict__)
+        packed_data = self.Construct.build(values)
+        return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
+
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
+        parsed = self.Construct.parse(buffer[offset:])
+        self.__dict__.update(parsed)
+        del self.__dict__['_io']
+        return parsed._io.tell()
+
+    @classmethod
+    def calcsize(cls) -> int:
+        return cls.Construct.sizeof()
+
+    def __repr__(self):
+        result = super().__repr__()[:-1]
+        result += f', gear={self.gear}, speed=[{self.front_left_speed_mps:.1f}, {self.front_right_speed_mps:.1f}, ' \
+                  f'{self.rear_left_speed_mps:.1f}, {self.rear_right_speed_mps:.1f}] m/s]'
+        return result
+
+    def __str__(self):
+        newline = '\n'
+        return f"""\
+Wheel Speed Output @ {str(self.p1_time)}
+  Gear: {self.gear.to_string(include_value=True)}
+  Type: {'signed' if self.is_signed() else 'unsigned'}
+  Front left: {self.front_left_speed_mps:.2f} m/s
+  Front right: {self.front_right_speed_mps:.2f} m/s
+  Rear left: {self.rear_left_speed_mps:.2f} m/s
+  Rear right: {self.rear_right_speed_mps:.2f} m/s"""
+
+    @classmethod
+    def to_numpy(cls, messages):
+        result = {
+            'p1_time': np.array([float(m.p1_time) for m in messages]),
+            'data_source': np.array([m.gear for m in messages], dtype=int),
+            'gear': np.array([m.gear for m in messages], dtype=int),
+            'is_signed': np.array([m.is_signed() for m in messages], dtype=bool),
+            'front_left_speed_mps': np.array([m.front_left_speed_mps for m in messages]),
+            'front_right_speed_mps': np.array([m.front_right_speed_mps for m in messages]),
+            'rear_left_speed_mps': np.array([m.rear_left_speed_mps for m in messages]),
+            'rear_right_speed_mps': np.array([m.rear_right_speed_mps for m in messages]),
+        }
+        return result
+
+
+class RawWheelSpeedOutput(MessagePayload):
+    """!
+    @brief Raw (uncorrected) dfferential wheel speed measurement output
+    """
+    MESSAGE_TYPE = MessageType.RAW_WHEEL_SPEED_OUTPUT
+    MESSAGE_VERSION = 0
+
+    FLAG_SIGNED = 0x1
+
+    Construct = Struct(
+        "details" / MeasurementDetailsConstruct,
+        "front_left_speed_mps" / FixedPointAdapter(2 ** -10, Int32sl),
+        "front_right_speed_mps" / FixedPointAdapter(2 ** -10, Int32sl),
+        "rear_left_speed_mps" / FixedPointAdapter(2 ** -10, Int32sl),
+        "rear_right_speed_mps" / FixedPointAdapter(2 ** -10, Int32sl),
+        "gear" / AutoEnum(Int8ul, GearType),
+        "flags" / Int8ul,
+        Padding(2),
+    )
+
+    def __init__(self):
+        self.details = MeasurementDetails()
+        self.gear = GearType.UNKNOWN
+        self.flags = 0x0
+
+        self.front_left_speed_mps = np.nan
+        self.front_right_speed_mps = np.nan
+        self.rear_left_speed_mps = np.nan
+        self.rear_right_speed_mps = np.nan
+
+    def is_signed(self) -> bool:
+        return (self.flags & self.FLAG_SIGNED) != 0
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        values = dict(self.__dict__)
+        packed_data = self.Construct.build(values)
+        return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
+
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
+        parsed = self.Construct.parse(buffer[offset:])
+        self.__dict__.update(parsed)
+        del self.__dict__['_io']
+        return parsed._io.tell()
+
+    @classmethod
+    def calcsize(cls) -> int:
+        return cls.Construct.sizeof()
+
+    def __repr__(self):
+        result = super().__repr__()[:-1]
+        result += f', gear={self.gear}, speed=[{self.front_left_speed_mps:.1f}, {self.front_right_speed_mps:.1f}, ' \
+                  f'{self.rear_left_speed_mps:.1f}, {self.rear_right_speed_mps:.1f}] m/s]'
+        return result
+
+    def __str__(self):
+        newline = '\n'
+        return f"""\
+Raw Wheel Speed Output @ {str(self.details.p1_time)}
+  {str(self.details).replace(newline, '  ' + newline)}
+  Gear: {self.gear.to_string(include_value=True)}
+  Type: {'signed' if self.is_signed() else 'unsigned'}
+  Front left: {self.front_left_speed_mps:.2f} m/s
+  Front right: {self.front_right_speed_mps:.2f} m/s
+  Rear left: {self.rear_left_speed_mps:.2f} m/s
+  Rear right: {self.rear_right_speed_mps:.2f} m/s"""
+
+    @classmethod
+    def to_numpy(cls, messages):
+        result = {
+            'gear': np.array([m.gear for m in messages], dtype=int),
+            'is_signed': np.array([m.is_signed() for m in messages], dtype=bool),
+            'front_left_speed_mps': np.array([m.front_left_speed_mps for m in messages]),
+            'front_right_speed_mps': np.array([m.front_right_speed_mps for m in messages]),
+            'rear_left_speed_mps': np.array([m.rear_left_speed_mps for m in messages]),
+            'rear_right_speed_mps': np.array([m.rear_right_speed_mps for m in messages]),
+        }
+        result.update(MeasurementDetails.to_numpy([m.details for m in messages]))
+        return result
+
+################################################################################
+# Vehicle Speed Measurements
+################################################################################
+
+
+class VehicleSpeedOutput(MessagePayload):
+    """!
+    @brief Vehicle body speed measurement output with calibration and corrections applied.
+    """
+    MESSAGE_TYPE = MessageType.VEHICLE_SPEED_OUTPUT
+    MESSAGE_VERSION = 0
+
+    FLAG_SIGNED = 0x1
+
+    Construct = Struct(
+        "p1_time" / TimestampConstruct,
+        "data_source" / AutoEnum(Int8ul, SensorDataSource),
+        "gear" / AutoEnum(Int8ul, GearType),
+        "flags" / Int8ul,
+        Padding(1),
+        "vehicle_speed_mps" / Float32l,
+    )
+
+    def __init__(self):
+        self.p1_time = Timestamp()
+        self.data_source = SensorDataSource.UNKNOWN
+        self.gear = GearType.UNKNOWN
+        self.flags = 0x0
+
+        self.vehicle_speed_mps = np.nan
+
+    def is_signed(self) -> bool:
+        return (self.flags & self.FLAG_SIGNED) != 0
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        values = dict(self.__dict__)
+        packed_data = self.Construct.build(values)
+        return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
+
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
+        parsed = self.Construct.parse(buffer[offset:])
+        self.__dict__.update(parsed)
+        del self.__dict__['_io']
+        return parsed._io.tell()
+
+    @classmethod
+    def calcsize(cls) -> int:
+        return cls.Construct.sizeof()
+
+    def __repr__(self):
+        result = super().__repr__()[:-1]
+        result += f', gear={self.gear}, speed={self.vehicle_speed_mps:.1f} m/s]'
+        return result
+
+    def __str__(self):
+        newline = '\n'
+        return f"""\
+Vehicle Speed Output @ {str(self.p1_time)}
+  Gear: {self.gear.to_string(include_value=True)}
+  Type: {'signed' if self.is_signed() else 'unsigned'}
+  Speed: {self.vehicle_speed_mps:.2f} m/s"""
+
+    @classmethod
+    def to_numpy(cls, messages):
+        result = {
+            'p1_time': np.array([float(m.p1_time) for m in messages]),
+            'data_source': np.array([m.gear for m in messages], dtype=int),
+            'gear': np.array([m.gear for m in messages], dtype=int),
+            'is_signed': np.array([m.is_signed() for m in messages], dtype=bool),
+            'vehicle_speed_mps': np.array([m.vehicle_speed_mps for m in messages]),
+        }
+        return result
+
+
+class RawVehicleSpeedOutput(MessagePayload):
+    """!
+    @brief Raw (uncorrected) vehicle body speed measurement output.
+    """
+    MESSAGE_TYPE = MessageType.RAW_VEHICLE_SPEED_OUTPUT
+    MESSAGE_VERSION = 0
+
+    FLAG_SIGNED = 0x1
+
+    Construct = Struct(
+        "details" / MeasurementDetailsConstruct,
+        "vehicle_speed_mps" / FixedPointAdapter(2 ** -10, Int32sl),
+        "gear" / AutoEnum(Int8ul, GearType),
+        "flags" / Int8ul,
+        Padding(2),
+    )
+
+    def __init__(self):
+        self.details = MeasurementDetails()
+        self.gear = GearType.UNKNOWN
+        self.flags = 0x0
+        self.vehicle_speed = np.nan
+
+    def is_signed(self) -> bool:
+        return (self.flags & self.FLAG_SIGNED) != 0
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        values = dict(self.__dict__)
+        packed_data = self.Construct.build(values)
+        return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
+
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
+        parsed = self.Construct.parse(buffer[offset:])
+        self.__dict__.update(parsed)
+        del self.__dict__['_io']
+        return parsed._io.tell()
+
+    @classmethod
+    def calcsize(cls) -> int:
+        return cls.Construct.sizeof()
+
+    def __repr__(self):
+        result = super().__repr__()[:-1]
+        result += f', gear={self.gear}, speed={self.vehicle_speed_mps:.1f} m/s]'
+        return result
+
+    def __str__(self):
+        newline = '\n'
+        return f"""\
+Raw Vehicle Speed Output @ {str(self.details.p1_time)}
+  {str(self.details).replace(newline, '  ' + newline)}
+  Gear: {self.gear.to_string(include_value=True)}
+  Type: {'signed' if self.is_signed() else 'unsigned'}
+  Speed: {self.vehicle_speed_mps:.2f} m/s"""
+
+    @classmethod
+    def to_numpy(cls, messages):
+        result = {
+            'gear': np.array([m.gear for m in messages], dtype=int),
+            'is_signed': np.array([m.is_signed() for m in messages], dtype=bool),
+            'vehicle_speed_mps': np.array([m.vehicle_speed_mps for m in messages]),
+        }
+        result.update(MeasurementDetails.to_numpy([m.details for m in messages]))
+        return result
+
+################################################################################
+# Wheel Tick Measurements
+################################################################################
+
+
+class WheelTickInput(MessagePayload):
+    """!
+    @brief Differential wheel encoder tick input.
+    """
+    MESSAGE_TYPE = MessageType.WHEEL_TICK_INPUT
+    MESSAGE_VERSION = 0
+
+    _STRUCT = struct.Struct('<4I B 3x')
+
+    def __init__(self):
+        ## Measurement timestamps, if available. See @ref measurement_messages.
+        self.details = MeasurementDetails()
+
+        ## The front left wheel tick count.
+        self.front_left_wheel_ticks = 0
+
+        ## The front right wheel tick count.
+        self.front_right_wheel_ticks = 0
+
+        ## The rear left wheel tick count.
+        self.rear_left_wheel_ticks = 0
+
+        ## The rear right wheel tick count.
+        self.rear_right_wheel_ticks = 0
+
+        ##
+        # The transmission gear currently in use, or direction of motion, if available.
+        #
+        # Set to @ref GearType::FORWARD or @ref GearType::REVERSE where vehicle direction information is available
+        # externally.
+        self.gear = GearType.UNKNOWN
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        if buffer is None:
+            buffer = bytearray(self.calcsize())
+
+        initial_offset = offset
+
+        offset += self.details.pack(buffer, offset, return_buffer=False)
+
+        offset += self.pack_values(
+            self._STRUCT, buffer, offset,
+            self.front_left_wheel_ticks,
+            self.front_right_wheel_ticks,
+            self.rear_left_wheel_ticks,
+            self.rear_right_wheel_ticks,
+            int(self.gear))
+
+        if return_buffer:
+            return buffer
+        else:
+            return offset - initial_offset
+
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
+        initial_offset = offset
+
+        offset += self.details.unpack(buffer, offset)
+
+        (self.front_left_wheel_ticks,
+         self.front_right_wheel_ticks,
+         self.rear_left_wheel_ticks,
+         self.rear_right_wheel_ticks,
+         gear_int) = \
+            self._STRUCT.unpack_from(buffer=buffer, offset=offset)
+        offset += self._STRUCT.size
+
+        self.gear = GearType(gear_int)
+
+        return offset - initial_offset
+
+    @classmethod
+    def calcsize(cls) -> int:
+        return MeasurementDetails.calcsize() + cls._STRUCT.size
+
+    def __str__(self):
+        newline = '\n'
+        return f"""\
+Wheel Tick Input @ {str(self.details.p1_time)}
+  {str(self.details).replace(newline, '  ' + newline)}
+  Gear: {GearType(self.gear).to_string()}
+  Front left: {self.front_left_wheel_ticks}
+  Front right: {self.front_right_wheel_ticks}
+  Rear left: {self.rear_left_wheel_ticks}
+  Rear right: {self.rear_right_wheel_ticks}"""
+
+    @classmethod
+    def to_numpy(cls, messages):
+        result = {
+            'front_left_wheel_ticks': np.array([m.front_left_wheel_ticks for m in messages], dtype=int),
+            'front_right_wheel_ticks': np.array([m.front_right_wheel_ticks for m in messages], dtype=int),
+            'rear_left_wheel_ticks': np.array([m.rear_left_wheel_ticks for m in messages], dtype=int),
+            'rear_right_wheel_ticks': np.array([m.rear_right_wheel_ticks for m in messages], dtype=int),
+            'gear': np.array([m.gear for m in messages], dtype=int),
+        }
+        result.update(MeasurementDetails.to_numpy([m.details for m in messages]))
+        return result
+
+
+class RawWheelTickOutput(WheelTickInput):
+    MESSAGE_TYPE = MessageType.RAW_WHEEL_TICK_OUTPUT
+    MESSAGE_VERSION = 0
+
+    def __str__(self):
+        return super().__str__().replace('Tick Input', 'Tick Output')
+
+################################################################################
+# Vehicle Tick Measurements
+################################################################################
+
+
+class VehicleTickInput(MessagePayload):
+    """!
+    @brief Singular wheel encoder tick input, representing vehicle body speed.
+    """
+    MESSAGE_TYPE = MessageType.VEHICLE_TICK_INPUT
+    MESSAGE_VERSION = 0
+
+    _STRUCT = struct.Struct('<I B 3x')
+
+    def __init__(self):
+        ## Measurement timestamps, if available. See @ref measurement_messages.
+        self.details = MeasurementDetails()
+
+        ## The current encoder tick count. The interpretation of these ticks is defined outside of this message.
+        self.tick_count = 0
+
+        ##
+        # The transmission gear currently in use, or direction of motion, if available.
+        #
+        # Set to @ref GearType::FORWARD or @ref GearType::REVERSE where vehicle direction information is available
+        # externally.
+        self.gear = GearType.UNKNOWN
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        if buffer is None:
+            buffer = bytearray(self.calcsize())
+
+        initial_offset = offset
+
+        offset += self.details.pack(buffer, offset, return_buffer=False)
+
+        offset += self.pack_values(
+            self._STRUCT, buffer, offset,
+            self.tick_count,
+            int(self.gear))
+
+        if return_buffer:
+            return buffer
+        else:
+            return offset - initial_offset
+
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
+        initial_offset = offset
+
+        offset += self.details.unpack(buffer, offset)
+
+        (self.tick_count,
+         gear_int) = \
+            self._STRUCT.unpack_from(buffer=buffer, offset=offset)
+        offset += self._STRUCT.size
+
+        self.gear = GearType(gear_int)
+
+        return offset - initial_offset
+
+    @classmethod
+    def calcsize(cls) -> int:
+        return MeasurementDetails.calcsize() + cls._STRUCT.size
+
+    def __str__(self):
+        newline = '\n'
+        return f"""\
+Vehicle Tick Input @ {str(self.details.p1_time)}
+  {str(self.details).replace(newline, '  ' + newline)}
+  Gear: {GearType(self.gear).to_string()}
+  Ticks: {self.tick_count}"""
+
+    @classmethod
+    def to_numpy(cls, messages):
+        result = {
+            'tick_count': np.array([m.tick_count for m in messages], dtype=int),
+            'gear': np.array([m.gear for m in messages], dtype=int),
+        }
+        result.update(MeasurementDetails.to_numpy([m.details for m in messages]))
+        return result
+
+
+class RawVehicleTickOutput(VehicleTickInput):
+    MESSAGE_TYPE = MessageType.RAW_VEHICLE_TICK_OUTPUT
+    MESSAGE_VERSION = 0
+
+    def __str__(self):
+        return super().__str__().replace('Tick Input', 'Tick Output')
+
+################################################################################
+# Deprecated Speed Measurement Definitions
+################################################################################
+
+
+class DeprecatedWheelSpeedMeasurement(MessagePayload):
+    """!
+    @brief (Deprecated) Differential wheel speed measurement.
+    """
+    MESSAGE_TYPE = MessageType.DEPRECATED_WHEEL_SPEED_MEASUREMENT
     MESSAGE_VERSION = 0
 
     _STRUCT = struct.Struct('<4f B ? 2x')
@@ -224,9 +725,6 @@ class WheelSpeedMeasurement(MessagePayload):
     def calcsize(cls) -> int:
         return MeasurementDetails.calcsize() + cls._STRUCT.size
 
-    def __repr__(self):
-        return '%s @ %s' % (self.MESSAGE_TYPE.name, self.details.p1_time)
-
     def __str__(self):
         newline = '\n'
         return f"""\
@@ -253,21 +751,11 @@ Wheel Speed Measurement @ {str(self.details.p1_time)}
         return result
 
 
-class VehicleSpeedMeasurement(MessagePayload):
+class DeprecatedVehicleSpeedMeasurement(MessagePayload):
     """!
-    @brief Vehicle body speed measurement.
-
-    This message may be used to convey the along-track speed of the vehicle
-    (forward/backward). To use vehicle speed data, you must first configure the
-    device by issuing a @ref SetConfigMessage message containing a @ref
-    WheelConfig payload describing the vehicle sensor configuration.
-
-    Some platforms may support an additional, optional voltage signal used to
-    indicate direction of motion. Alternatively, when receiving CAN data from a
-    vehicle, direction may be conveyed explicitly in a CAN message, or may be
-    indicated based on the current transmission gear setting.
+    @brief (Deprecated) Vehicle body speed measurement.
     """
-    MESSAGE_TYPE = MessageType.VEHICLE_SPEED_MEASUREMENT
+    MESSAGE_TYPE = MessageType.DEPRECATED_VEHICLE_SPEED_MEASUREMENT
     MESSAGE_VERSION = 0
 
     _STRUCT = struct.Struct('<f B ? 2x')
@@ -329,9 +817,6 @@ class VehicleSpeedMeasurement(MessagePayload):
     def calcsize(cls) -> int:
         return MeasurementDetails.calcsize() + cls._STRUCT.size
 
-    def __repr__(self):
-        return '%s @ %s' % (self.MESSAGE_TYPE.name, self.details.p1_time)
-
     def __str__(self):
         newline = '\n'
         return f"""\
@@ -351,212 +836,9 @@ Vehicle Speed Measurement @ {str(self.details.p1_time)}
         result.update(MeasurementDetails.to_numpy([m.details for m in messages]))
         return result
 
-
-class WheelTickInput(MessagePayload):
-    """!
-    @brief Differential wheel encoder tick input.
-
-    This message may be used to convey a one or more wheel encoder tick counts
-    received either by software (e.g., vehicle CAN bus), or captured in hardware
-    from external voltage pulses. The number and type of wheels expected, and the
-    interpretation of the tick count values, varies by vehicle. To use wheel
-    encoder data, you ust first configure the device by issuing a @ref
-    SetConfigMessage message containing a @ref WheelConfig payload describing the
-    vehicle sensor configuration.
-
-    Some platforms may support an additional, optional voltage signal used to
-    indicate direction of motion. Alternatively, when receiving CAN data from a
-    vehicle, direction may be conveyed explicitly in a CAN message, or may be
-    indicated based on the current transmission gear setting.
-    """
-    MESSAGE_TYPE = MessageType.WHEEL_TICK_INPUT
-    MESSAGE_VERSION = 0
-
-    _STRUCT = struct.Struct('<4I B 3x')
-
-    def __init__(self):
-        ## Measurement timestamps, if available. See @ref measurement_messages.
-        self.details = MeasurementDetails()
-
-        ## The front left wheel tick count.
-        self.front_left_wheel_ticks = 0
-
-        ## The front right wheel tick count.
-        self.front_right_wheel_ticks = 0
-
-        ## The rear left wheel tick count.
-        self.rear_left_wheel_ticks = 0
-
-        ## The rear right wheel tick count.
-        self.rear_right_wheel_ticks = 0
-
-        ##
-        # The transmission gear currently in use, or direction of motion, if available.
-        #
-        # Set to @ref GearType::FORWARD or @ref GearType::REVERSE where vehicle direction information is available
-        # externally.
-        self.gear = GearType.UNKNOWN
-
-    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
-        if buffer is None:
-            buffer = bytearray(self.calcsize())
-
-        initial_offset = offset
-
-        offset += self.details.pack(buffer, offset, return_buffer=False)
-
-        offset += self.pack_values(
-            self._STRUCT, buffer, offset,
-            self.front_left_wheel_ticks,
-            self.front_right_wheel_ticks,
-            self.rear_left_wheel_ticks,
-            self.rear_right_wheel_ticks,
-            int(self.gear))
-
-        if return_buffer:
-            return buffer
-        else:
-            return offset - initial_offset
-
-    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
-        initial_offset = offset
-
-        offset += self.details.unpack(buffer, offset)
-
-        (self.front_left_wheel_ticks,
-         self.front_right_wheel_ticks,
-         self.rear_left_wheel_ticks,
-         self.rear_right_wheel_ticks,
-         gear_int) = \
-            self._STRUCT.unpack_from(buffer=buffer, offset=offset)
-        offset += self._STRUCT.size
-
-        self.gear = GearType(gear_int)
-
-        return offset - initial_offset
-
-    @classmethod
-    def calcsize(cls) -> int:
-        return MeasurementDetails.calcsize() + cls._STRUCT.size
-
-    def __repr__(self):
-        return '%s @ %s' % (self.MESSAGE_TYPE.name, self.details.p1_time)
-
-    def __str__(self):
-        newline = '\n'
-        return f"""\
-Wheel Tick Measurement @ {str(self.details.p1_time)}
-  {str(self.details).replace(newline, '  ' + newline)}
-  Gear: {GearType(self.gear).to_string()}
-  Front left: {self.front_left_wheel_ticks}
-  Front right: {self.front_right_wheel_ticks}
-  Rear left: {self.rear_left_wheel_ticks}
-  Rear right: {self.rear_right_wheel_ticks}"""
-
-    @classmethod
-    def to_numpy(cls, messages):
-        result = {
-            'front_left_wheel_ticks': np.array([m.front_left_wheel_ticks for m in messages], dtype=int),
-            'front_right_wheel_ticks': np.array([m.front_right_wheel_ticks for m in messages], dtype=int),
-            'rear_left_wheel_ticks': np.array([m.rear_left_wheel_ticks for m in messages], dtype=int),
-            'rear_right_wheel_ticks': np.array([m.rear_right_wheel_ticks for m in messages], dtype=int),
-            'gear': np.array([m.gear for m in messages], dtype=int),
-        }
-        result.update(MeasurementDetails.to_numpy([m.details for m in messages]))
-        return result
-
-
-class VehicleTickInput(MessagePayload):
-    """!
-    @brief Singular wheel encoder tick input, representing vehicle body speed.
-
-    This message may be used to convey a one or more wheel encoder tick counts
-    received either by software (e.g., vehicle CAN bus), or captured in hardware
-    from external voltage pulses. The number and type of wheels expected, and the
-    interpretation of the tick count values, varies by vehicle. To use wheel
-    encoder data, you ust first configure the device by issuing a @ref
-    SetConfigMessage message containing a @ref WheelConfig payload describing the
-    vehicle sensor configuration.
-
-    Some platforms may support an additional, optional voltage signal used to
-    indicate direction of motion. Alternatively, when receiving CAN data from a
-    vehicle, direction may be conveyed explicitly in a CAN message, or may be
-    indicated based on the current transmission gear setting.
-    """
-    MESSAGE_TYPE = MessageType.VEHICLE_TICK_INPUT
-    MESSAGE_VERSION = 0
-
-    _STRUCT = struct.Struct('<I B 3x')
-
-    def __init__(self):
-        ## Measurement timestamps, if available. See @ref measurement_messages.
-        self.details = MeasurementDetails()
-
-        ## The current encoder tick count. The interpretation of these ticks is defined outside of this message.
-        self.tick_count = 0
-
-        ##
-        # The transmission gear currently in use, or direction of motion, if available.
-        #
-        # Set to @ref GearType::FORWARD or @ref GearType::REVERSE where vehicle direction information is available
-        # externally.
-        self.gear = GearType.UNKNOWN
-
-    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
-        if buffer is None:
-            buffer = bytearray(self.calcsize())
-
-        initial_offset = offset
-
-        offset += self.details.pack(buffer, offset, return_buffer=False)
-
-        offset += self.pack_values(
-            self._STRUCT, buffer, offset,
-            self.tick_count,
-            int(self.gear))
-
-        if return_buffer:
-            return buffer
-        else:
-            return offset - initial_offset
-
-    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
-        initial_offset = offset
-
-        offset += self.details.unpack(buffer, offset)
-
-        (self.tick_count,
-         gear_int) = \
-            self._STRUCT.unpack_from(buffer=buffer, offset=offset)
-        offset += self._STRUCT.size
-
-        self.gear = GearType(gear_int)
-
-        return offset - initial_offset
-
-    @classmethod
-    def calcsize(cls) -> int:
-        return MeasurementDetails.calcsize() + cls._STRUCT.size
-
-    def __repr__(self):
-        return '%s @ %s' % (self.MESSAGE_TYPE.name, self.details.p1_time)
-
-    def __str__(self):
-        newline = '\n'
-        return f"""\
-Vehicle Tick Input @ {str(self.details.p1_time)}
-  {str(self.details).replace(newline, '  ' + newline)}
-  Gear: {GearType(self.gear).to_string()}
-  Ticks: {self.tick_count}"""
-
-    @classmethod
-    def to_numpy(cls, messages):
-        result = {
-            'tick_count': np.array([m.tick_count for m in messages], dtype=int),
-            'gear': np.array([m.gear for m in messages], dtype=int),
-        }
-        result.update(MeasurementDetails.to_numpy([m.details for m in messages]))
-        return result
+################################################################################
+# Meading Measurements
+################################################################################
 
 
 class HeadingMeasurement(MessagePayload):

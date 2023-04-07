@@ -1116,13 +1116,13 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         """
         # Read the data.
         if type == 'tick':
-            wheel_measurement_type = WheelTickInput
-            vehicle_measurement_type = VehicleTickInput
+            wheel_measurement_type = RawWheelTickOutput
+            vehicle_measurement_type = RawVehicleTickOutput
             filename = 'wheel_ticks'
             figure_title = 'Measurements: Wheel Encoder Ticks'
         else:
-            wheel_measurement_type = WheelSpeedMeasurement
-            vehicle_measurement_type = VehicleSpeedMeasurement
+            wheel_measurement_type = WheelSpeedOutput
+            vehicle_measurement_type = VehicleSpeedOutput
             filename = 'wheel_speed'
             figure_title = 'Measurements: Wheel Speed'
 
