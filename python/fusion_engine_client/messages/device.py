@@ -15,7 +15,7 @@ class SystemStatusMessage(MessagePayload):
 
     SystemStatusMessageConstruct = Struct(
         "p1_time" / TimestampConstruct,
-        "gnss_temperature_degc" / FixedPointAdapter(2 ** -3, Int16sl, invalid=0x8000),
+        "gnss_temperature_degc" / FixedPointAdapter(2 ** -7, Int16sl, invalid=0x7FFF),
         Padding(118),
     )
 
