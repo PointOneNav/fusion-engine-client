@@ -86,7 +86,8 @@ class MeasurementDetails(object):
 
     def __str__(self):
         string = f'Measurement time: {str(self.measurement_time)} (source: {str(self.measurement_time_source)})\n'
-        string += f'P1 time: {str(self.p1_time)}'
+        if self.measurement_time_source != SystemTimeSource.P1_TIME:
+            string += f'P1 time: {str(self.p1_time)}\n'
         string += f'Data source: {str(self.data_source)}'
         return string
 
