@@ -1116,8 +1116,8 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         """
         # Read the data.
         if type == 'tick':
-            wheel_measurement_type = WheelTickMeasurement
-            vehicle_measurement_type = VehicleTickMeasurement
+            wheel_measurement_type = WheelTickInput
+            vehicle_measurement_type = VehicleTickInput
             filename = 'wheel_ticks'
             figure_title = 'Measurements: Wheel Encoder Ticks'
         else:
@@ -1386,8 +1386,8 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         if self.truncate_data:
             params = copy.deepcopy(self.params)
             params['max_messages'] = 2
-            result = self.reader.read(message_types=[IMUMeasurement], **params)
-            data = result[IMUMeasurement.MESSAGE_TYPE]
+            result = self.reader.read(message_types=[IMUOutput], **params)
+            data = result[IMUOutput.MESSAGE_TYPE]
             if len(data.p1_time) == 2:
                 dt_sec = data.p1_time[1] - data.p1_time[0]
                 data_rate_hz = round(1.0 / dt_sec)
@@ -1398,8 +1398,8 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                     return
 
         # Read the data.
-        result = self.reader.read(message_types=[IMUMeasurement], **self.params)
-        data = result[IMUMeasurement.MESSAGE_TYPE]
+        result = self.reader.read(message_types=[IMUOutput], **self.params)
+        data = result[IMUOutput.MESSAGE_TYPE]
 
         if len(data.p1_time) == 0:
             self.logger.info('No IMU data available. Skipping plot.')

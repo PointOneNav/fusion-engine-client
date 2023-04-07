@@ -9,11 +9,11 @@ from ..utils.construct_utils import FixedPointAdapter, construct_message_to_stri
 from ..utils.enum_utils import IntEnum
 
 
-class IMUMeasurement(MessagePayload):
+class IMUOutput(MessagePayload):
     """!
     @brief IMU sensor measurement data.
     """
-    MESSAGE_TYPE = MessageType.IMU_MEASUREMENT
+    MESSAGE_TYPE = MessageType.IMU_OUTPUT
     MESSAGE_VERSION = 0
 
     _STRUCT = struct.Struct('<3d 3d 3d 3d')
@@ -65,7 +65,7 @@ class IMUMeasurement(MessagePayload):
         return '%s @ %s' % (self.MESSAGE_TYPE.name, self.p1_time)
 
     def __str__(self):
-        return 'IMU Measurement @ %s' % str(self.p1_time)
+        return 'IMU Output @ %s' % str(self.p1_time)
 
     @classmethod
     def to_numpy(cls, messages):
@@ -352,9 +352,9 @@ Vehicle Speed Measurement @ {str(self.details.p1_time)}
         return result
 
 
-class WheelTickMeasurement(MessagePayload):
+class WheelTickInput(MessagePayload):
     """!
-    @brief Differential wheel encoder tick measurement.
+    @brief Differential wheel encoder tick input.
 
     This message may be used to convey a one or more wheel encoder tick counts
     received either by software (e.g., vehicle CAN bus), or captured in hardware
@@ -369,7 +369,7 @@ class WheelTickMeasurement(MessagePayload):
     vehicle, direction may be conveyed explicitly in a CAN message, or may be
     indicated based on the current transmission gear setting.
     """
-    MESSAGE_TYPE = MessageType.WHEEL_TICK_MEASUREMENT
+    MESSAGE_TYPE = MessageType.WHEEL_TICK_INPUT
     MESSAGE_VERSION = 0
 
     _STRUCT = struct.Struct('<4I B 3x')
@@ -466,9 +466,9 @@ Wheel Tick Measurement @ {str(self.details.p1_time)}
         return result
 
 
-class VehicleTickMeasurement(MessagePayload):
+class VehicleTickInput(MessagePayload):
     """!
-    @brief Singular wheel encoder tick measurement, representing vehicle body speed.
+    @brief Singular wheel encoder tick input, representing vehicle body speed.
 
     This message may be used to convey a one or more wheel encoder tick counts
     received either by software (e.g., vehicle CAN bus), or captured in hardware
@@ -483,7 +483,7 @@ class VehicleTickMeasurement(MessagePayload):
     vehicle, direction may be conveyed explicitly in a CAN message, or may be
     indicated based on the current transmission gear setting.
     """
-    MESSAGE_TYPE = MessageType.VEHICLE_TICK_MEASUREMENT
+    MESSAGE_TYPE = MessageType.VEHICLE_TICK_INPUT
     MESSAGE_VERSION = 0
 
     _STRUCT = struct.Struct('<I B 3x')
@@ -544,7 +544,7 @@ class VehicleTickMeasurement(MessagePayload):
     def __str__(self):
         newline = '\n'
         return f"""\
-Vehicle Tick Measurement @ {str(self.details.p1_time)}
+Vehicle Tick Input @ {str(self.details.p1_time)}
   {str(self.details).replace(newline, '  ' + newline)}
   Gear: {GearType(self.gear).to_string()}
   Ticks: {self.tick_count}"""

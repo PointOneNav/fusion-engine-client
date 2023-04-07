@@ -49,8 +49,8 @@ Extract IMU accelerometer and gyroscope measurements.
 
     # Read satellite data from the file.
     reader = DataLoader(input_path)
-    result = reader.read(message_types=[IMUMeasurement], show_progress=True)
-    imu_data = result[IMUMeasurement.MESSAGE_TYPE]
+    result = reader.read(message_types=[IMUOutput], show_progress=True)
+    imu_data = result[IMUOutput.MESSAGE_TYPE]
     if len(imu_data.messages) == 0:
         logger.warning('No IMU data found in log file.')
         sys.exit(2)
