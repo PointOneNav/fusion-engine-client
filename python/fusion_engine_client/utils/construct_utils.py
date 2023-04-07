@@ -13,6 +13,12 @@ class FixedPointAdapter(Adapter):
         self.scale = scale
         self.invalid = invalid
 
+        is_signed = self.subcon.fmtstr.islower()
+        if self.invalid is not None and is_signed:
+            max_negative_mag = 2 ** (self.subcon.sizeof() * 8 - 1)
+            if self.invalid == max_negative_mag:
+                self.invalid = -self.invalid
+
     def _decode(self, obj, context, path):
         if obj == self.invalid:
             return math.nan
