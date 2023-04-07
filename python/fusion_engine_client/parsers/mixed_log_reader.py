@@ -523,14 +523,14 @@ class MixedLogReader(object):
                 self.filtered_message_types = True
             # Return entries for a list of message types.
             elif isinstance(key, (set, list, tuple)) and len(key) > 0 and isinstance(next(iter(key)), MessageType):
-                new_message_types = set(key)
+                new_message_types = {t for t in key if t is not None}
                 if self.message_types is None:
                     self.message_types = new_message_types
                 else:
                     self.message_types = self.message_types & new_message_types
                 self.filtered_message_types = True
             elif isinstance(key, (set, list, tuple)) and len(key) > 0 and MessagePayload.is_subclass(next(iter(key))):
-                new_message_types = set([t.get_type() for t in key])
+                new_message_types = set([t.get_type() for t in key if t is not None])
                 if self.message_types is None:
                     self.message_types = new_message_types
                 else:

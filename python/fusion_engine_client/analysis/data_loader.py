@@ -332,7 +332,8 @@ class DataLoader(object):
         elif MessagePayload.is_subclass(message_types):
             message_types = set((message_types.get_type(),))
         else:
-            message_types = set([(t.get_type() if MessagePayload.is_subclass(t) else t) for t in message_types])
+            message_types = set([(t.get_type() if MessagePayload.is_subclass(t) else t) for t in message_types
+                                 if t is not None])
             if len(message_types) == 0:
                 message_types = None
 
