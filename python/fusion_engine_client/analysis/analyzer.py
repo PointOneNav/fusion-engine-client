@@ -1114,15 +1114,29 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         """!
         @brief Plot wheel speed or tick data.
         """
-        # Read the data.
+        # Read the data. Try to determine which type of wheel output is present in the log (if any).
+        def _auto_detect(types):
+            params = copy.deepcopy(self.params)
+            params['max_messages'] = 1
+            selected_type = types[0]
+            for cls in types:
+                result = self.reader.read(message_types=cls, remove_nan_times=False, **params)
+                data = result[cls.MESSAGE_TYPE]
+                if len(data.p1_time) > 0:
+                    selected_type = cls
+                    break
+            return selected_type
+
         if type == 'tick':
-            wheel_measurement_type = RawWheelTickOutput
-            vehicle_measurement_type = RawVehicleTickOutput
+            wheel_measurement_type = _auto_detect([RawWheelTickOutput, WheelTickInput])
+            vehicle_measurement_type = _auto_detect([RawVehicleTickOutput, VehicleTickInput])
             filename = 'wheel_ticks'
             figure_title = 'Measurements: Wheel Encoder Ticks'
         else:
-            wheel_measurement_type = WheelSpeedOutput
-            vehicle_measurement_type = VehicleSpeedOutput
+            wheel_measurement_type = _auto_detect([WheelSpeedOutput, RawWheelSpeedOutput,
+                                                   DeprecatedWheelSpeedMeasurement])
+            vehicle_measurement_type = _auto_detect([VehicleSpeedOutput, RawVehicleSpeedOutput,
+                                                     DeprecatedVehicleSpeedMeasurement])
             filename = 'wheel_speed'
             figure_title = 'Measurements: Wheel Speed'
 
