@@ -19,7 +19,7 @@ class SensorDataSource(IntEnum):
     ## Sensor data captured from a vehicle CAN bus.
     CAN = 3
     ## Sensor data generated via hardware voltage signal (wheel tick, external event, etc.).
-    HARDWARE_IO = 4,
+    HARDWARE_IO = 4
 
 
 class SystemTimeSource(IntEnum):
