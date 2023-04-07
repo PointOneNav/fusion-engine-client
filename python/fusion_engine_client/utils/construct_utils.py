@@ -104,6 +104,7 @@ class ClassAdapter(Adapter):
     def _decode(self, obj, context, path):
         val = self.cls()
         val.__dict__.update(obj)
+        del val.__dict__['_io']
         return val
 
     def _encode(self, obj, context, path):
