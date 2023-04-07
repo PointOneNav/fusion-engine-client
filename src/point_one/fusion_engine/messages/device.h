@@ -41,16 +41,14 @@ struct alignas(4) SystemStatusMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::SYSTEM_STATUS;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
-  static constexpr int16_t INVALID_TEMPERATURE = INT16_MIN;
+  static constexpr int16_t INVALID_TEMPERATURE = INT16_MAX;
 
   /** The time of the message, in P1 time (beginning at power-on). */
   Timestamp p1_time;
 
   /**
-   * The temperature of the GNSS receiver.
-   *
-   * Stored in units of 1/8 degrees Celsius: `gnss_temperature_degc =
-   * gnss_temperature * 1/8`. Set to `-32768` if invalid.
+   * The temperature of the GNSS receiver (in deg Celcius * 2^-7). Set to
+   * 0x7FFF if invalid.
    */
   int16_t gnss_temperature = INVALID_TEMPERATURE;
 

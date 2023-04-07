@@ -528,7 +528,7 @@ struct alignas(4) SetConfigMessage : public MessagePayload {
 
 /**
  * @brief Query the value of a user configuration parameter (@ref
- *        MessageType::GET_CONFIG, version 1.0).
+ *        MessageType::GET_CONFIG, version 1.1).
  * @ingroup config_and_ctrl_messages
  *
  * # Expected Response
@@ -992,10 +992,10 @@ inline std::ostream& operator<<(std::ostream& stream,
  * which is used to describe the vehicle dimensions and make/model.
  *
  * See also:
- * - @ref WheelSpeedMeasurement
- * - @ref VehicleSpeedMeasurement
- * - @ref WheelTickMeasurement
- * - @ref VehicleTickMeasurement
+ * - @ref WheelSpeedInput
+ * - @ref VehicleSpeedInput
+ * - @ref WheelTickInput
+ * - @ref VehicleTickInput
  */
 struct alignas(4) WheelConfig {
   /**
@@ -1169,7 +1169,7 @@ inline std::ostream& operator<<(std::ostream& stream,
  * @ref tick_direction setting MUST be set to `OFF` otherwise there will be
  * substantial errors in dead reckoning.
  *
- * See also @ref VehicleTickMeasurement.
+ * See also @ref VehicleTickInput.
  */
 struct alignas(4) HardwareTickConfig {
   /**

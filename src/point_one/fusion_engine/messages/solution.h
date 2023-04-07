@@ -398,7 +398,7 @@ inline std::ostream& operator<<(std::ostream& stream, CalibrationStage val) {
 
 /**
  * @brief Device calibration status update. (@ref
- *        MessageType::CALIBRATION_STATUS, version 1).
+ *        MessageType::CALIBRATION_STATUS, version 1.1).
  * @brief
  * @ingroup solution_messages
  */
@@ -492,7 +492,7 @@ struct alignas(4) CalibrationStatusMessage : public MessagePayload {
 
 /**
  * @brief Relative ENU position to base station (@ref
- *        MessageType::RELATIVE_ENU_POSITION, version 1).
+ *        MessageType::RELATIVE_ENU_POSITION, version 1.1).
  * @ingroup solution_messages
  *
  * @note

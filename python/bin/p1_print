@@ -180,7 +180,7 @@ other types of data.
                     continue
                 else:
                     timestamps = getattr(message, 'timestamps', None)
-                    if isinstance(timestamps, MeasurementTimestamps):
+                    if isinstance(timestamps, MeasurementDetails):
                         continue
                     else:
                         need_system_time = True
