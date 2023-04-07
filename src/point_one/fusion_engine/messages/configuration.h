@@ -528,7 +528,7 @@ struct alignas(4) SetConfigMessage : public MessagePayload {
 
 /**
  * @brief Query the value of a user configuration parameter (@ref
- *        MessageType::GET_CONFIG, version 1.0).
+ *        MessageType::GET_CONFIG, version 1.1).
  * @ingroup config_and_ctrl_messages
  *
  * # Expected Response
