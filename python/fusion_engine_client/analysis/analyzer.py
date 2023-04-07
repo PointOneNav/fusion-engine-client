@@ -1118,7 +1118,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         def _auto_detect(types):
             params = copy.deepcopy(self.params)
             params['max_messages'] = 1
-            selected_type = types[0]
+            selected_type = None
             for cls in types:
                 result = self.reader.read(message_types=cls, remove_nan_times=False, **params)
                 data = result[cls.MESSAGE_TYPE]
@@ -1145,11 +1145,14 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             params = copy.deepcopy(self.params)
             params['max_messages'] = 2
             dt_sec = None
-            result = self.reader.read(message_types=wheel_measurement_type, remove_nan_times=False, **params)
-            data = result[wheel_measurement_type.MESSAGE_TYPE]
-            if len(data.measurement_time) == 2:
-                dt_sec = data.measurement_time[1] - data.measurement_time[0]
-            else:
+
+            if wheel_measurement_type is not None:
+                result = self.reader.read(message_types=wheel_measurement_type, remove_nan_times=False, **params)
+                data = result[wheel_measurement_type.MESSAGE_TYPE]
+                if len(data.measurement_time) == 2:
+                    dt_sec = data.measurement_time[1] - data.measurement_time[0]
+
+            if dt_sec is None and vehicle_measurement_type is not None:
                 result = self.reader.read(message_types=vehicle_measurement_type, remove_nan_times=False, **params)
                 data = result[vehicle_measurement_type.MESSAGE_TYPE]
                 if len(data.measurement_time) == 2:
@@ -1166,19 +1169,27 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         result = self.reader.read(message_types=[wheel_measurement_type, vehicle_measurement_type],
                                   remove_nan_times=False, **self.params)
 
-        wheel_data = result[wheel_measurement_type.MESSAGE_TYPE]
-        wheel_data_signed = False
-        if len(wheel_data.p1_time) == 0:
+        if wheel_measurement_type is not None:
+            wheel_data = result[wheel_measurement_type.MESSAGE_TYPE]
+            wheel_data_signed = False
+            if len(wheel_data.p1_time) == 0:
+                wheel_data = None
+            elif type == 'speed':
+                wheel_data_signed = np.any(wheel_data.is_signed)
+        else:
             wheel_data = None
-        elif type == 'speed':
-            wheel_data_signed = np.any(wheel_data.is_signed)
+            wheel_data_signed = False
 
-        vehicle_data = result[vehicle_measurement_type.MESSAGE_TYPE]
-        vehicle_data_signed = False
-        if len(vehicle_data.p1_time) == 0:
+        if vehicle_measurement_type is not None:
+            vehicle_data = result[vehicle_measurement_type.MESSAGE_TYPE]
+            vehicle_data_signed = False
+            if len(vehicle_data.p1_time) == 0:
+                vehicle_data = None
+            elif type == 'speed':
+                vehicle_data_signed = np.any(vehicle_data.is_signed)
+        else:
             vehicle_data = None
-        elif type == 'speed':
-            vehicle_data_signed = np.any(vehicle_data.is_signed)
+            vehicle_data_signed = False
 
         if wheel_data is None and vehicle_data is None:
             self.logger.info('No wheel %s data available. Skipping plot.' % type)
