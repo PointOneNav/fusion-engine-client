@@ -170,7 +170,7 @@ class TimestampAdapter(Adapter):
     def _decode(self, obj, context, path):
         # skip _io member
         if obj.int_part == Timestamp._INVALID or obj.frac_part_ns == Timestamp._INVALID:
-           seconds = math.nan
+            seconds = math.nan
         else:
             seconds = obj.int_part + (obj.frac_part_ns * 1e-9)
         return Timestamp(seconds)
