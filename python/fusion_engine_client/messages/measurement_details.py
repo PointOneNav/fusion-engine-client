@@ -16,12 +16,14 @@ class SensorDataSource(IntEnum):
     UNKNOWN = 0
     ## Sensor data captured internal to the device (embedded IMU, GNSS receiver, etc.).
     INTERNAL = 1
-    ## Sensor data provided externally by user (software wheel speed data, etc.).
-    EXTERNAL = 2
+    ## Sensor data generated via hardware voltage signal (wheel tick, external event, etc.).
+    HARDWARE_IO = 2
     ## Sensor data captured from a vehicle CAN bus.
     CAN = 3
-    ## Sensor data generated via hardware voltage signal (wheel tick, external event, etc.).
-    HARDWARE_IO = 4
+    ## Sensor data provided over a serial connection.
+    SERIAL = 4
+    ## Sensor data provided over a network connection.
+    NETWORK = 5
 
 
 class SystemTimeSource(IntEnum):

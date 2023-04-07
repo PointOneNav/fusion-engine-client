@@ -39,18 +39,16 @@ enum class SensorDataSource : uint8_t {
    */
   INTERNAL = 1,
   /**
-   * Sensor data provided externally by user (software wheel speed data, etc.).
-   */
-  EXTERNAL = 2,
-  /**
-   * Sensor data captured from a vehicle CAN bus.
-   */
-  CAN = 3,
-  /**
    * Sensor data generated via hardware voltage signal (wheel tick, external
    * event, etc.).
    */
-  HARDWARE_IO = 4,
+  HARDWARE_IO = 2,
+  /** Sensor data captured from a vehicle CAN bus. */
+  CAN = 3,
+  /** Sensor data provided over a serial connection. */
+  SERIAL = 4,
+  /** Sensor data provided over a network connection. */
+  NETWORK = 5,
 };
 
 /**
@@ -68,12 +66,14 @@ P1_CONSTEXPR_FUNC const char* to_string(SensorDataSource val) {
       return "Unknown";
     case SensorDataSource::INTERNAL:
       return "Internal";
-    case SensorDataSource::EXTERNAL:
-      return "External";
-    case SensorDataSource::CAN:
-      return "CAN";
     case SensorDataSource::HARDWARE_IO:
       return "Hardware I/O";
+    case SensorDataSource::CAN:
+      return "CAN";
+    case SensorDataSource::SERIAL:
+      return "Serial";
+    case SensorDataSource::NETWORK:
+      return "Network";
     default:
       return "Unrecognized";
   }
