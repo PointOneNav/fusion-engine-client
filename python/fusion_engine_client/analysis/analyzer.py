@@ -1141,7 +1141,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             figure_title = 'Measurements: Wheel Speed'
 
         # If the measurement data is very high rate, this plot may be very slow to generate for a multi-hour log.
-        if self.truncate_data:
+        if self.long_log_detected and self.truncate_data:
             params = copy.deepcopy(self.params)
             params['max_messages'] = 2
             dt_sec = None
