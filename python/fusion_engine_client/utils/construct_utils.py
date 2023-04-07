@@ -23,7 +23,7 @@ class FixedPointAdapter(Adapter):
         if obj == self.invalid:
             return math.nan
         else:
-            return obj * self.scale
+            return float(obj * self.scale)
 
     def _encode(self, obj, context, path):
         if math.isnan(obj) and self.invalid is not None:
