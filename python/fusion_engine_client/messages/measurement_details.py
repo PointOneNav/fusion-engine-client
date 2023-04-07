@@ -1,8 +1,10 @@
 import struct
 
+from construct import Adapter, Struct, Int8ul, Padding
 import numpy as np
 
-from .timestamp import Timestamp
+from .timestamp import Timestamp, TimestampConstruct
+from ..utils.construct_utils import AutoEnum, ClassAdapter
 from ..utils.enum_utils import IntEnum
 
 
@@ -43,6 +45,14 @@ class MeasurementDetails(object):
     """!
     @brief The time of applicability and additional information for an incoming sensor measurement.
     """
+    Construct = Struct(
+        "measurement_time" / TimestampConstruct,
+        "measurement_time_source" / AutoEnum(Int8ul, SystemTimeSource),
+        "data_source" / AutoEnum(Int8ul, SensorDataSource),
+        Padding(2),
+        "p1_time" / TimestampConstruct,
+    )
+
     _STRUCT = struct.Struct('<BB2x')
 
     def __init__(self):
@@ -119,3 +129,6 @@ class MeasurementDetails(object):
             result['system_time'] = system_time
 
         return result
+
+
+MeasurementDetailsConstruct = ClassAdapter(MeasurementDetails, MeasurementDetails.Construct)
