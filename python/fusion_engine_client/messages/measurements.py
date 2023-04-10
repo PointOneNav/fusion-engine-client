@@ -123,6 +123,17 @@ class RawIMUOutput(MessagePayload):
     def calcsize(cls) -> int:
         return cls.Construct.sizeof()
 
+    @classmethod
+    def to_numpy(cls, messages):
+        result = {
+            'p1_time': np.array([float(m.p1_time) for m in messages]),
+            'accel_mps2': np.array([m.accel_mps2 for m in messages]).T,
+            'gyro_rps': np.array([m.gyro_rps for m in messages]).T,
+            'temperature_degc': np.array([m.temperature_degc for m in messages]),
+        }
+        result.update(MeasurementDetails.to_numpy([m.details for m in messages]))
+        return result
+
     def __getattr__(self, item):
         if item == 'p1_time':
             return self.details.p1_time
