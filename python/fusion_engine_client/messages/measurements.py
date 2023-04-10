@@ -123,6 +123,12 @@ class RawIMUOutput(MessagePayload):
     def calcsize(cls) -> int:
         return cls.Construct.sizeof()
 
+    def __getattr__(self, item):
+        if item == 'p1_time':
+            return self.details.p1_time
+        else:
+            return super().__getattr__(item)
+
     def __str__(self):
         return construct_message_to_string(message=self, construct=self.Construct, title='Raw IMU Output',
                                            fields=['details', 'accel_mps2', 'gyro_rps', 'temperature_degc'])
@@ -270,6 +276,14 @@ class RawWheelSpeedOutput(MessagePayload):
     def calcsize(cls) -> int:
         return cls.Construct.sizeof()
 
+    def __getattr__(self, item):
+        if item == 'p1_time':
+            return self.details.p1_time
+        elif item == 'is_signed':
+            return self.is_signed()
+        else:
+            return super().__getattr__(item)
+
     def __repr__(self):
         result = super().__repr__()[:-1]
         result += f', gear={self.gear}, speed=[{self.front_left_speed_mps:.1f}, {self.front_right_speed_mps:.1f}, ' \
@@ -415,6 +429,22 @@ class RawVehicleSpeedOutput(MessagePayload):
     @classmethod
     def calcsize(cls) -> int:
         return cls.Construct.sizeof()
+
+    def __getattr__(self, item):
+        if item == 'p1_time':
+            return self.details.p1_time
+        elif item == 'is_signed':
+            return self.is_signed()
+        else:
+            return super().__getattr__(item)
+
+    def __getattr__(self, item):
+        if item == 'p1_time':
+            return self.details.p1_time
+        elif item == 'is_signed':
+            return self.is_signed()
+        else:
+            return super().__getattr__(item)
 
     def __repr__(self):
         result = super().__repr__()[:-1]
@@ -614,6 +644,12 @@ class VehicleTickInput(MessagePayload):
     def calcsize(cls) -> int:
         return MeasurementDetails.calcsize() + cls._STRUCT.size
 
+    def __getattr__(self, item):
+        if item == 'p1_time':
+            return self.details.p1_time
+        else:
+            return super().__getattr__(item)
+
     def __str__(self):
         newline = '\n'
         return f"""\
@@ -724,6 +760,12 @@ class DeprecatedWheelSpeedMeasurement(MessagePayload):
     @classmethod
     def calcsize(cls) -> int:
         return MeasurementDetails.calcsize() + cls._STRUCT.size
+
+    def __getattr__(self, item):
+        if item == 'p1_time':
+            return self.details.p1_time
+        else:
+            return super().__getattr__(item)
 
     def __str__(self):
         newline = '\n'
