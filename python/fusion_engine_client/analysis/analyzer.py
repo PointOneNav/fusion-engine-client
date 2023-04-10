@@ -1462,15 +1462,17 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         if self.output_dir is None:
             return
 
-        filename ='imu'
-        figure_title ='Measurements: IMU'
+        self._plot_imu_data(message_cls=IMUOutput, filename='imu', figure_title='Measurements: IMU')
+        self._plot_imu_data(message_cls=RawIMUOutput, filename='raw_imu',
+                            figure_title='Measurements: IMU (Uncorrected)')
 
+    def _plot_imu_data(self, message_cls, filename, figure_title):
         # If the measurement data is very high rate, this plot may be very slow to generate for a multi-hour log.
         if self.truncate_data:
             params = copy.deepcopy(self.params)
             params['max_messages'] = 2
-            result = self.reader.read(message_types=[IMUOutput], **params)
-            data = result[IMUOutput.MESSAGE_TYPE]
+            result = self.reader.read(message_types=[message_cls], **params)
+            data = result[message_cls.MESSAGE_TYPE]
             if len(data.p1_time) == 2:
                 dt_sec = data.p1_time[1] - data.p1_time[0]
                 data_rate_hz = round(1.0 / dt_sec)
@@ -1481,8 +1483,8 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                     return
 
         # Read the data.
-        result = self.reader.read(message_types=[IMUOutput], **self.params)
-        data = result[IMUOutput.MESSAGE_TYPE]
+        result = self.reader.read(message_types=[message_cls], **self.params)
+        data = result[message_cls.MESSAGE_TYPE]
 
         if len(data.p1_time) == 0:
             self.logger.info('No IMU data available. Skipping plot.')
@@ -1490,8 +1492,13 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
 
         time = data.p1_time - float(self.t0)
 
-        figure = make_subplots(rows=2, cols=1, print_grid=False, shared_xaxes=True,
-                               subplot_titles=['Acceleration', 'Gyro'])
+        titles = ['Acceleration', 'Gyro']
+        if message_cls == RawIMUOutput:
+            titles = [t + ' (Uncorrected)' for t in titles]
+        else:
+            titles = [t + ' (Corrected)' for t in titles]
+
+        figure = make_subplots(rows=2, cols=1, print_grid=False, shared_xaxes=True, subplot_titles=titles)
 
         figure['layout'].update(showlegend=True)
         figure['layout']['xaxis1'].update(title="Time (sec)", showticklabels=True)
