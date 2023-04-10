@@ -4,6 +4,7 @@ from typing import Tuple, Union, List, Any
 
 from collections import namedtuple, defaultdict
 import copy
+import inspect
 import os
 import sys
 import webbrowser
@@ -1115,28 +1116,16 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         @brief Plot wheel speed or tick data.
         """
         # Read the data. Try to determine which type of wheel output is present in the log (if any).
-        def _auto_detect(types):
-            params = copy.deepcopy(self.params)
-            params['max_messages'] = 1
-            selected_type = None
-            for cls in types:
-                result = self.reader.read(message_types=cls, remove_nan_times=False, **params)
-                data = result[cls.MESSAGE_TYPE]
-                if len(data.p1_time) > 0:
-                    selected_type = cls
-                    break
-            return selected_type
-
         if type == 'tick':
-            wheel_measurement_type = _auto_detect([RawWheelTickOutput, WheelTickInput])
-            vehicle_measurement_type = _auto_detect([RawVehicleTickOutput, VehicleTickInput])
+            wheel_measurement_type = self._auto_detect_message_type([RawWheelTickOutput, WheelTickInput])
+            vehicle_measurement_type = self._auto_detect_message_type([RawVehicleTickOutput, VehicleTickInput])
             filename = 'wheel_ticks'
             figure_title = 'Measurements: Wheel Encoder Ticks'
         else:
-            wheel_measurement_type = _auto_detect([WheelSpeedOutput, RawWheelSpeedOutput,
-                                                   DeprecatedWheelSpeedMeasurement])
-            vehicle_measurement_type = _auto_detect([VehicleSpeedOutput, RawVehicleSpeedOutput,
-                                                     DeprecatedVehicleSpeedMeasurement])
+            wheel_measurement_type = self._auto_detect_message_type(
+                [WheelSpeedOutput, RawWheelSpeedOutput, DeprecatedWheelSpeedMeasurement])
+            vehicle_measurement_type = self._auto_detect_message_type(
+                [VehicleSpeedOutput, RawVehicleSpeedOutput, DeprecatedVehicleSpeedMeasurement])
             filename = 'wheel_speed'
             figure_title = 'Measurements: Wheel Speed'
 
@@ -1968,6 +1957,20 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             return 0.0
         elif time_source == SystemTimeSource.TIMESTAMPED_ON_RECEPTION:
             return float(self.system_t0)
+
+    def _auto_detect_message_type(self, types: List[MessageType]):
+        types = [t.MESSAGE_TYPE if inspect.isclass(t) else t for t in types]
+
+        params = copy.deepcopy(self.params)
+        params['max_messages'] = 1
+        selected_type = None
+        for message_type in types:
+            result = self.reader.read(message_types=message_type, remove_nan_times=False, **params)
+            data = result[message_type]
+            if len(data.p1_time) > 0:
+                selected_type = message_type_to_class[message_type]
+                break
+        return selected_type
 
     @classmethod
     def _get_measurement_time(cls, data, time_source: SystemTimeSource) -> np.ndarray:
