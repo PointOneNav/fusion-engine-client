@@ -1117,17 +1117,30 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         """
         # Read the data. Try to determine which type of wheel output is present in the log (if any).
         if type == 'tick':
-            wheel_measurement_type = self._auto_detect_message_type([RawWheelTickOutput, WheelTickInput])
-            vehicle_measurement_type = self._auto_detect_message_type([RawVehicleTickOutput, VehicleTickInput])
             filename = 'wheel_ticks'
             figure_title = 'Measurements: Wheel Encoder Ticks'
+
+            wheel_measurement_type = self._auto_detect_message_type([RawWheelTickOutput, WheelTickInput])
+            vehicle_measurement_type = self._auto_detect_message_type([RawVehicleTickOutput, VehicleTickInput])
+
+            # Wheel ticks are raw (uncorrected) by definition.
+            raw_wheel_measurement_type = wheel_measurement_type
+            raw_vehicle_measurement_type = vehicle_measurement_type
         else:
-            wheel_measurement_type = self._auto_detect_message_type(
-                [WheelSpeedOutput, RawWheelSpeedOutput, DeprecatedWheelSpeedMeasurement])
-            vehicle_measurement_type = self._auto_detect_message_type(
-                [VehicleSpeedOutput, RawVehicleSpeedOutput, DeprecatedVehicleSpeedMeasurement])
             filename = 'wheel_speed'
             figure_title = 'Measurements: Wheel Speed'
+
+            wheel_measurement_type = self._auto_detect_message_type([WheelSpeedOutput, DeprecatedWheelSpeedMeasurement])
+            vehicle_measurement_type = self._auto_detect_message_type([VehicleSpeedOutput,
+                                                                       DeprecatedVehicleSpeedMeasurement])
+
+            raw_wheel_measurement_type = self._auto_detect_message_type([RawWheelSpeedOutput])
+            raw_vehicle_measurement_type = self._auto_detect_message_type([RawVehicleSpeedOutput])
+
+            if wheel_measurement_type is None:
+                wheel_measurement_type = raw_wheel_measurement_type
+            if vehicle_measurement_type is None:
+                vehicle_measurement_type = raw_vehicle_measurement_type
 
         # If the measurement data is very high rate, this plot may be very slow to generate for a multi-hour log.
         if self.long_log_detected and self.truncate_data:
@@ -1155,30 +1168,28 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                     self._add_figure(name=filename, title=f'{figure_title} (Skipped - Long Log Detected)')
                     return
 
-        result = self.reader.read(message_types=[wheel_measurement_type, vehicle_measurement_type],
+        # Read the data.
+        result = self.reader.read(message_types=[wheel_measurement_type, vehicle_measurement_type,
+                                                 raw_wheel_measurement_type, raw_vehicle_measurement_type],
                                   remove_nan_times=False, **self.params)
 
-        if wheel_measurement_type is not None:
-            wheel_data = result[wheel_measurement_type.MESSAGE_TYPE]
-            wheel_data_signed = False
-            if len(wheel_data.p1_time) == 0:
-                wheel_data = None
-            elif type == 'speed':
-                wheel_data_signed = np.any(wheel_data.is_signed)
-        else:
-            wheel_data = None
-            wheel_data_signed = False
+        def _extract_data(measurement_type):
+            if measurement_type is not None:
+                data = result[measurement_type.MESSAGE_TYPE]
+                data_signed = False
+                if len(data.p1_time) == 0:
+                    data = None
+                elif type == 'speed':
+                    data_signed = np.any(data.is_signed)
+            else:
+                data = None
+                data_signed = False
+            return data, data_signed
 
-        if vehicle_measurement_type is not None:
-            vehicle_data = result[vehicle_measurement_type.MESSAGE_TYPE]
-            vehicle_data_signed = False
-            if len(vehicle_data.p1_time) == 0:
-                vehicle_data = None
-            elif type == 'speed':
-                vehicle_data_signed = np.any(vehicle_data.is_signed)
-        else:
-            vehicle_data = None
-            vehicle_data_signed = False
+        wheel_data, wheel_data_signed = _extract_data(wheel_measurement_type)
+        raw_wheel_data, raw_wheel_data_signed = _extract_data(raw_wheel_measurement_type)
+        vehicle_data, vehicle_data_signed = _extract_data(vehicle_measurement_type)
+        raw_vehicle_data, raw_vehicle_data_signed = _extract_data(raw_vehicle_measurement_type)
 
         if wheel_data is None and vehicle_data is None:
             self.logger.info('No wheel %s data available. Skipping plot.' % type)
@@ -1199,13 +1210,18 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                 titles = ['%s Speed (Unsigned)' % speed_type, 'Gear/Direction']
 
         if wheel_data is not None:
-            titles[0] += f'<br>{wheel_measurement_type.__name__}'
+            titles[0] += f'<br>Messages: {wheel_measurement_type.__name__}'
+        if raw_wheel_data is not None and wheel_measurement_type != raw_wheel_measurement_type:
+            titles[0] += f', {raw_wheel_measurement_type.__name__}'
+
         if vehicle_data is not None:
            if wheel_data is not None:
                titles[0] += ', '
            else:
-               titles[0] += '<br>'
+               titles[0] += '<br>Messages: '
            titles[0] += f'{vehicle_measurement_type.__name__}'
+        if raw_vehicle_data is not None and vehicle_measurement_type != raw_vehicle_measurement_type:
+            titles[0] += f', {raw_vehicle_measurement_type.__name__}'
 
         figure = make_subplots(rows=len(titles), cols=1, print_grid=False, shared_xaxes=True, subplot_titles=titles)
 
@@ -1224,6 +1240,9 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                                                            tickvals=[e.value for e in GearType])
 
         # Check if the data has P1 time available. If not, we'll plot in the original source time.
+        #
+        # All output messages from the device should contain P1 time. We should only ever use a non-P1 time source when
+        # plotting logged input messages (uncommon).
         wheel_time_source = None
         vehicle_time_source = None
 
@@ -1275,29 +1294,6 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         p1_time_present = (wheel_time_source == SystemTimeSource.P1_TIME or
                            vehicle_time_source == SystemTimeSource.P1_TIME)
 
-        # Plot the data.
-        def _plot_trace(time, data, name, color, text):
-            if type == 'tick':
-                figure.add_trace(go.Scattergl(x=time, y=data, text=text,
-                                              name=name, hoverlabel={'namelength': -1},
-                                              legendgroup=name,
-                                              mode='lines', marker={'color': color}),
-                                 1, 1)
-
-                dt_sec = np.diff(time)
-                ticks_per_sec = np.diff(data) / dt_sec
-                figure.add_trace(go.Scattergl(x=time[1:], y=ticks_per_sec, text=text,
-                                              name=name, hoverlabel={'namelength': -1},
-                                              legendgroup=name, showlegend=False,
-                                              mode='lines', marker={'color': color}),
-                                 2, 1)
-            else:
-                figure.add_trace(go.Scattergl(x=time, y=data, text=text,
-                                              name=name, hoverlabel={'namelength': -1},
-                                              legendgroup=name,
-                                              mode='lines', marker={'color': color}),
-                                 1, 1)
-
         # If plotting speed data, try to plot the navigation engine's speed estimate for reference.
         #
         # Note: Pose data is not read when plotting ticks (ticks do not plot in meters/second). If the wheel data is not
@@ -1341,57 +1337,121 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                                               mode='lines', line={'color': 'black', 'dash': 'dash'}),
                                  1, 1)
 
-        if wheel_data is not None:
-            abs_time_sec = self._get_measurement_time(wheel_data, wheel_time_source)
+        # Plot the data.
+        def _plot_trace(time, data, name, color, text, style=None):
+            if style is None:
+                style = {}
+            style.setdefault('mode', 'lines')
+            style.setdefault('line', {}).setdefault('color', color)
+
+            if type == 'tick':
+                figure.add_trace(go.Scattergl(x=time, y=data, text=text,
+                                              name=name, hoverlabel={'namelength': -1},
+                                              legendgroup=name,
+                                              **style),
+                                 1, 1)
+
+                dt_sec = np.diff(time)
+                ticks_per_sec = np.diff(data) / dt_sec
+                figure.add_trace(go.Scattergl(x=time[1:], y=ticks_per_sec, text=text,
+                                              name=name, hoverlabel={'namelength': -1},
+                                              legendgroup=name, showlegend=False,
+                                              **style),
+                                 2, 1)
+            else:
+                figure.add_trace(go.Scattergl(x=time, y=data, text=text,
+                                              name=name, hoverlabel={'namelength': -1},
+                                              legendgroup=name,
+                                              **style),
+                                 1, 1)
+
+        def _plot_wheel_data(data, time_source, is_raw=False, show_gear=False, style=None):
+            if data is None:
+                return
+
+            if style is None:
+                style = {}
+            style.setdefault('mode', 'lines')
+            if is_raw:
+                style.setdefault('line', {}).setdefault('dash', 'dash')
+
+            if type == 'tick':
+                var_suffix = 'wheel_ticks'
+                name_suffix = ''
+            else:
+                var_suffix = 'speed_mps'
+                name_suffix = ' (Uncorrected)' if is_raw else ' (Corrected)'
+
+            abs_time_sec = self._get_measurement_time(data, time_source)
             idx = ~np.isnan(abs_time_sec)
             abs_time_sec = abs_time_sec[idx]
 
-            t0 = self._get_t0_for_time_source(wheel_time_source)
+            t0 = self._get_t0_for_time_source(time_source)
             time = abs_time_sec - t0
-            time_name = self._time_source_to_display_name(wheel_time_source)
+            time_name = self._time_source_to_display_name(time_source)
             text = ["%s Time: %.3f sec" % (time_name, t) for t in abs_time_sec]
 
+            _plot_trace(time=time, data=getattr(data, 'front_left_' + var_suffix)[idx], text=text,
+                        name='Front Left Wheel' + name_suffix, color='red', style=style)
+            _plot_trace(time=time, data=getattr(data, 'front_right_' + var_suffix)[idx], text=text,
+                        name='Front Right Wheel' + name_suffix, color='green', style=style)
+            _plot_trace(time=time, data=getattr(data, 'rear_left_' + var_suffix)[idx], text=text,
+                        name='Rear Left Wheel' + name_suffix, color='blue', style=style)
+            _plot_trace(time=time, data=getattr(data, 'rear_right_' + var_suffix)[idx], text=text,
+                        name='Rear Right Wheel' + name_suffix, color='purple', style=style)
+
+            if show_gear:
+                figure.add_trace(go.Scattergl(x=time, y=wheel_data.gear[idx], text=text,
+                                              name='Gear (Wheel Data)', hoverlabel={'namelength': -1},
+                                              mode='markers', marker={'color': 'red'}),
+                                 3 if type == 'tick' else 2, 1)
+
+        # Plot the wheel speed data. If we have both corrected and uncorrected (raw) data, plot them both.
+        _plot_wheel_data(wheel_data, wheel_time_source, is_raw=wheel_measurement_type == raw_wheel_measurement_type,
+                         show_gear=True)
+        if wheel_measurement_type != raw_wheel_measurement_type:
+            _plot_wheel_data(raw_wheel_data, wheel_time_source, is_raw=True, show_gear=False)
+
+        def _plot_vehicle_data(data, time_source, is_raw=False, show_gear=False, style=None):
+            if data is None:
+                return
+
+            if style is None:
+                style = {}
+            style.setdefault('mode', 'lines')
+            if is_raw:
+                style.setdefault('line', {}).setdefault('dash', 'dash')
+
             if type == 'tick':
-                suffix = 'wheel_ticks'
+                var_suffix = 'tick_count'
+                name_suffix = ''
             else:
-                suffix = 'speed_mps'
+                var_suffix = 'vehicle_speed_mps'
+                name_suffix = ' (Uncorrected)' if is_raw else ' (Corrected)'
 
-            _plot_trace(time=time, data=getattr(wheel_data, 'front_left_' + suffix)[idx], text=text,
-                        name='Front Left Wheel', color='red')
-            _plot_trace(time=time, data=getattr(wheel_data, 'front_right_' + suffix)[idx], text=text,
-                        name='Front Right Wheel', color='green')
-            _plot_trace(time=time, data=getattr(wheel_data, 'rear_left_' + suffix)[idx], text=text,
-                        name='Rear Left Wheel', color='blue')
-            _plot_trace(time=time, data=getattr(wheel_data, 'rear_right_' + suffix)[idx], text=text,
-                        name='Rear Right Wheel', color='purple')
-
-            figure.add_trace(go.Scattergl(x=time, y=wheel_data.gear[idx], text=text,
-                                          name='Gear (Wheel Data)', hoverlabel={'namelength': -1},
-                                          mode='markers', marker={'color': 'red'}),
-                             3 if type == 'tick' else 2, 1)
-
-        if vehicle_data is not None:
-            abs_time_sec = self._get_measurement_time(vehicle_data, vehicle_time_source)
+            abs_time_sec = self._get_measurement_time(data, time_source)
             idx = ~np.isnan(abs_time_sec)
             abs_time_sec = abs_time_sec[idx]
 
-            t0 = self._get_t0_for_time_source(vehicle_time_source)
+            t0 = self._get_t0_for_time_source(time_source)
             time = abs_time_sec - t0
-            time_name = self._time_source_to_display_name(vehicle_time_source)
+            time_name = self._time_source_to_display_name(time_source)
             text = ["%s Time: %.3f sec" % (time_name, t) for t in abs_time_sec]
 
-            if type == 'tick':
-                attr = 'tick_count'
-            else:
-                attr = 'vehicle_speed_mps'
+            _plot_trace(time=time, data=getattr(data, var_suffix)[idx], text=text,
+                        name='Speed Measurement' + name_suffix, color='orange', style=style)
 
-            _plot_trace(time=time, data=getattr(vehicle_data, attr)[idx], text=text,
-                        name='Speed Measurement', color='orange')
+            if show_gear:
+                figure.add_trace(go.Scattergl(x=time, y=data.gear[idx], text=text,
+                                              name='Gear (Vehicle Data)', hoverlabel={'namelength': -1},
+                                              mode='markers', marker={'color': 'orange'}),
+                                 3 if type == 'tick' else 2, 1)
 
-            figure.add_trace(go.Scattergl(x=time, y=vehicle_data.gear[idx], text=text,
-                                          name='Gear (Vehicle Data)', hoverlabel={'namelength': -1},
-                                          mode='markers', marker={'color': 'orange'}),
-                             3 if type == 'tick' else 2, 1)
+        # Plot the vehicle speed data. If we have both corrected and uncorrected (raw) data, plot them both.
+        _plot_vehicle_data(vehicle_data, vehicle_time_source,
+                           is_raw=vehicle_measurement_type == raw_vehicle_measurement_type, show_gear=True)
+        if vehicle_measurement_type != raw_vehicle_measurement_type:
+            _plot_vehicle_data(raw_vehicle_data, vehicle_time_source, is_raw=True, show_gear=False)
 
         self._add_figure(name=filename, figure=figure, title=figure_title)
 
