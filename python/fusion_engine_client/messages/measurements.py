@@ -123,6 +123,23 @@ class RawIMUOutput(MessagePayload):
     def calcsize(cls) -> int:
         return cls.Construct.sizeof()
 
+    @classmethod
+    def to_numpy(cls, messages):
+        result = {
+            'p1_time': np.array([float(m.p1_time) for m in messages]),
+            'accel_mps2': np.array([m.accel_mps2 for m in messages]).T,
+            'gyro_rps': np.array([m.gyro_rps for m in messages]).T,
+            'temperature_degc': np.array([m.temperature_degc for m in messages]),
+        }
+        result.update(MeasurementDetails.to_numpy([m.details for m in messages]))
+        return result
+
+    def __getattr__(self, item):
+        if item == 'p1_time':
+            return self.details.p1_time
+        else:
+            return super().__getattr__(item)
+
     def __str__(self):
         return construct_message_to_string(message=self, construct=self.Construct, title='Raw IMU Output',
                                            fields=['details', 'accel_mps2', 'gyro_rps', 'temperature_degc'])
@@ -270,6 +287,14 @@ class RawWheelSpeedOutput(MessagePayload):
     def calcsize(cls) -> int:
         return cls.Construct.sizeof()
 
+    def __getattr__(self, item):
+        if item == 'p1_time':
+            return self.details.p1_time
+        elif item == 'is_signed':
+            return self.is_signed()
+        else:
+            return super().__getattr__(item)
+
     def __repr__(self):
         result = super().__repr__()[:-1]
         result += f', gear={self.gear}, speed=[{self.front_left_speed_mps:.1f}, {self.front_right_speed_mps:.1f}, ' \
@@ -280,7 +305,7 @@ class RawWheelSpeedOutput(MessagePayload):
         newline = '\n'
         return f"""\
 Raw Wheel Speed Output @ {str(self.details.p1_time)}
-  {str(self.details).replace(newline, '  ' + newline)}
+  {str(self.details).replace(newline, newline + '  ')}
   Gear: {self.gear.to_string(include_value=True)}
   Type: {'signed' if self.is_signed() else 'unsigned'}
   Front left: {self.front_left_speed_mps:.2f} m/s
@@ -416,6 +441,22 @@ class RawVehicleSpeedOutput(MessagePayload):
     def calcsize(cls) -> int:
         return cls.Construct.sizeof()
 
+    def __getattr__(self, item):
+        if item == 'p1_time':
+            return self.details.p1_time
+        elif item == 'is_signed':
+            return self.is_signed()
+        else:
+            return super().__getattr__(item)
+
+    def __getattr__(self, item):
+        if item == 'p1_time':
+            return self.details.p1_time
+        elif item == 'is_signed':
+            return self.is_signed()
+        else:
+            return super().__getattr__(item)
+
     def __repr__(self):
         result = super().__repr__()[:-1]
         result += f', gear={self.gear}, speed={self.vehicle_speed_mps:.1f} m/s]'
@@ -425,7 +466,7 @@ class RawVehicleSpeedOutput(MessagePayload):
         newline = '\n'
         return f"""\
 Raw Vehicle Speed Output @ {str(self.details.p1_time)}
-  {str(self.details).replace(newline, '  ' + newline)}
+  {str(self.details).replace(newline, newline + '  ')}
   Gear: {self.gear.to_string(include_value=True)}
   Type: {'signed' if self.is_signed() else 'unsigned'}
   Speed: {self.vehicle_speed_mps:.2f} m/s"""
@@ -523,7 +564,7 @@ class WheelTickInput(MessagePayload):
         newline = '\n'
         return f"""\
 Wheel Tick Input @ {str(self.details.p1_time)}
-  {str(self.details).replace(newline, '  ' + newline)}
+  {str(self.details).replace(newline, newline + '  ')}
   Gear: {GearType(self.gear).to_string()}
   Front left: {self.front_left_wheel_ticks}
   Front right: {self.front_right_wheel_ticks}
@@ -614,11 +655,17 @@ class VehicleTickInput(MessagePayload):
     def calcsize(cls) -> int:
         return MeasurementDetails.calcsize() + cls._STRUCT.size
 
+    def __getattr__(self, item):
+        if item == 'p1_time':
+            return self.details.p1_time
+        else:
+            return super().__getattr__(item)
+
     def __str__(self):
         newline = '\n'
         return f"""\
 Vehicle Tick Input @ {str(self.details.p1_time)}
-  {str(self.details).replace(newline, '  ' + newline)}
+  {str(self.details).replace(newline, newline + '  ')}
   Gear: {GearType(self.gear).to_string()}
   Ticks: {self.tick_count}"""
 
@@ -725,11 +772,17 @@ class DeprecatedWheelSpeedMeasurement(MessagePayload):
     def calcsize(cls) -> int:
         return MeasurementDetails.calcsize() + cls._STRUCT.size
 
+    def __getattr__(self, item):
+        if item == 'p1_time':
+            return self.details.p1_time
+        else:
+            return super().__getattr__(item)
+
     def __str__(self):
         newline = '\n'
         return f"""\
 Wheel Speed Measurement @ {str(self.details.p1_time)}
-  {str(self.details).replace(newline, '  ' + newline)}
+  {str(self.details).replace(newline, newline + '  ')}
   Gear: {GearType(self.gear).to_string()}
   Type: {'signed' if self.is_signed else 'unsigned'}
   Front left: {self.front_left_speed_mps:.2f} m/s
@@ -821,7 +874,7 @@ class DeprecatedVehicleSpeedMeasurement(MessagePayload):
         newline = '\n'
         return f"""\
 Vehicle Speed Measurement @ {str(self.details.p1_time)}
-  {str(self.details).replace(newline, '  ' + newline)}
+  {str(self.details).replace(newline, newline + '  ')}
   Gear: {GearType(self.gear).to_string()}
   Type: {'signed' if self.is_signed else 'unsigned'}
   Speed: {self.vehicle_speed_mps:.2f} m/s"""
