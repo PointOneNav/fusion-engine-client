@@ -2014,33 +2014,26 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         self._add_figure(name="host_dropped_data", figure=figure, title="WARNING: Serial Data Dropped By Host")
 
     def _plot_serial_profiling(self, id_to_name, data):
-        tx_buffer_free_maps = []
-        tx_error_counts_maps = []
-        tx_sent_counts_maps = []
-        rx_received_counts_maps = []
-        rx_error_counts_maps = []
-        name_map = {
-            'corr': 'NMEA',
-            'user': 'Sensors/FusionEngine',
-        }
+        buffer_free_maps = []
+        error_counts_maps = []
+        data_counts_maps = []
         for k, v in id_to_name.items():
-            if v.startswith('tx_'):
-                serial_name = 'tx_' + v.split('_')[-1]
-                serial_name = name_map.get(serial_name, serial_name)
-                if v.startswith('tx_errs'):
-                    tx_error_counts_maps.append((k, serial_name))
-                elif v.startswith('tx_buff'):
-                    tx_buffer_free_maps.append((k, serial_name))
-                else:
-                    tx_sent_counts_maps.append((k, serial_name))
-            elif v.startswith('rx_'):
-                serial_name = 'rx_' + v.split('_')[-1]
-                if  v.startswith('rx_errs'):
-                    rx_error_counts_maps.append((k, serial_name))
-                else:
-                    rx_received_counts_maps.append((k, serial_name))
+            if not (v.startswith('tx_') or v.startswith('rx_')):
+                continue
 
-        if len(tx_buffer_free_maps) +  len(tx_error_counts_maps) + len(tx_sent_counts_maps) + len(rx_received_counts_maps) + len(rx_error_counts_maps) == 0:
+            if '_buff' in v:
+                serial_name = v.replace('_buff', '')
+                buffer_free_maps.append((k, serial_name))
+            elif '_errs' in v:
+                serial_name = v.replace('_errs', '')
+                error_counts_maps.append((k, serial_name))
+            elif '_errors' in v:
+                serial_name = v.replace('_errors', '')
+                error_counts_maps.append((k, serial_name))
+            else:
+                data_counts_maps.append((k, v))
+
+        if len(buffer_free_maps) +  len(error_counts_maps) + len(data_counts_maps) == 0:
             self.logger.warning('No serial profiling stats names received.')
             return
 
@@ -2059,45 +2052,35 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         figure['layout']['yaxis3'].update(title="Message Rate (bps)", rangemode="nonnegative")
         figure.update_layout(legend_title_text="Serial Port")
 
-        for i in range(len(tx_error_counts_maps)):
+        name_set = set()
+        for i in range(len(error_counts_maps)):
             color = plotly.colors.DEFAULT_PLOTLY_COLORS[i % len(
                 plotly.colors.DEFAULT_PLOTLY_COLORS)]
-            idx, serial_name = tx_error_counts_maps[i]
-            figure.add_trace(go.Scattergl(x=time, y=data.counters[idx], name=f'{serial_name}',
-                                          mode='lines', showlegend=False, legendgroup=serial_name, line={'color': color}),
+            idx, serial_name = error_counts_maps[i]
+            name_set.add(serial_name)
+            figure.add_trace(go.Scattergl(x=time, y=data.counters[idx], name=serial_name,
+                                          mode='lines', legendgroup=serial_name, line={'color': color}),
                              1, 1)
 
-        for i in range(len(rx_error_counts_maps)):
-            color = plotly.colors.DEFAULT_PLOTLY_COLORS[(i + len(tx_error_counts_maps)) % len(
-                plotly.colors.DEFAULT_PLOTLY_COLORS)]
-            idx, serial_name = rx_error_counts_maps[i]
-            figure.add_trace(go.Scattergl(x=time, y=data.counters[idx], name=f'{serial_name}',
-                                          mode='lines', showlegend=False, legendgroup=serial_name, line={'color': color}),
-                             1, 1)
-
-        for i in range(len(tx_buffer_free_maps)):
+        for i in range(len(buffer_free_maps)):
             color = plotly.colors.DEFAULT_PLOTLY_COLORS[i % len(
                 plotly.colors.DEFAULT_PLOTLY_COLORS)]
-            idx, serial_name = tx_buffer_free_maps[i]
-            figure.add_trace(go.Scattergl(x=time, y=data.counters[idx] / 1024.0, name=f'{serial_name}',
-                                          mode='lines', showlegend=False, legendgroup=serial_name,
+            idx, serial_name = buffer_free_maps[i]
+            showlegend = serial_name not in name_set
+            name_set.add(serial_name)
+            figure.add_trace(go.Scattergl(x=time, y=data.counters[idx] / 1024.0, name=serial_name,
+                                          mode='lines', showlegend=showlegend, legendgroup=serial_name,
                                           line={'color': color}),
                              2, 1)
 
-        for i in range(len(tx_sent_counts_maps)):
+        for i in range(len(data_counts_maps)):
             color = plotly.colors.DEFAULT_PLOTLY_COLORS[i % len(
                 plotly.colors.DEFAULT_PLOTLY_COLORS)]
-            idx, serial_name = tx_sent_counts_maps[i]
+            idx, serial_name = data_counts_maps[i]
+            showlegend = serial_name not in name_set
+            name_set.add(serial_name)
             figure.add_trace(go.Scattergl(x=time, y=np.diff(data.counters[idx]) * 8 / np.diff(time),
-                                          name=f'{serial_name}',
-                                          legendgroup=serial_name, mode='lines', line={'color': color}),
-                             3, 1)
-        for i in range(len(rx_received_counts_maps)):
-            color = plotly.colors.DEFAULT_PLOTLY_COLORS[(i + len(tx_sent_counts_maps)) % len(
-                plotly.colors.DEFAULT_PLOTLY_COLORS)]
-            idx, serial_name = rx_received_counts_maps[i]
-            figure.add_trace(go.Scattergl(x=time, y=np.diff(data.counters[idx]) * 8 / np.diff(time),
-                                          name=f'{serial_name}',
+                                          name=serial_name, showlegend=showlegend,
                                           legendgroup=serial_name, mode='lines', line={'color': color}),
                              3, 1)
 
