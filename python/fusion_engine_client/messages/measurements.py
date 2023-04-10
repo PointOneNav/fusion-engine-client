@@ -280,7 +280,7 @@ class RawWheelSpeedOutput(MessagePayload):
         newline = '\n'
         return f"""\
 Raw Wheel Speed Output @ {str(self.details.p1_time)}
-  {str(self.details).replace(newline, '  ' + newline)}
+  {str(self.details).replace(newline, newline + '  ')}
   Gear: {self.gear.to_string(include_value=True)}
   Type: {'signed' if self.is_signed() else 'unsigned'}
   Front left: {self.front_left_speed_mps:.2f} m/s
@@ -425,7 +425,7 @@ class RawVehicleSpeedOutput(MessagePayload):
         newline = '\n'
         return f"""\
 Raw Vehicle Speed Output @ {str(self.details.p1_time)}
-  {str(self.details).replace(newline, '  ' + newline)}
+  {str(self.details).replace(newline, newline + '  ')}
   Gear: {self.gear.to_string(include_value=True)}
   Type: {'signed' if self.is_signed() else 'unsigned'}
   Speed: {self.vehicle_speed_mps:.2f} m/s"""
@@ -523,7 +523,7 @@ class WheelTickInput(MessagePayload):
         newline = '\n'
         return f"""\
 Wheel Tick Input @ {str(self.details.p1_time)}
-  {str(self.details).replace(newline, '  ' + newline)}
+  {str(self.details).replace(newline, newline + '  ')}
   Gear: {GearType(self.gear).to_string()}
   Front left: {self.front_left_wheel_ticks}
   Front right: {self.front_right_wheel_ticks}
@@ -618,7 +618,7 @@ class VehicleTickInput(MessagePayload):
         newline = '\n'
         return f"""\
 Vehicle Tick Input @ {str(self.details.p1_time)}
-  {str(self.details).replace(newline, '  ' + newline)}
+  {str(self.details).replace(newline, newline + '  ')}
   Gear: {GearType(self.gear).to_string()}
   Ticks: {self.tick_count}"""
 
@@ -729,7 +729,7 @@ class DeprecatedWheelSpeedMeasurement(MessagePayload):
         newline = '\n'
         return f"""\
 Wheel Speed Measurement @ {str(self.details.p1_time)}
-  {str(self.details).replace(newline, '  ' + newline)}
+  {str(self.details).replace(newline, newline + '  ')}
   Gear: {GearType(self.gear).to_string()}
   Type: {'signed' if self.is_signed else 'unsigned'}
   Front left: {self.front_left_speed_mps:.2f} m/s
@@ -821,7 +821,7 @@ class DeprecatedVehicleSpeedMeasurement(MessagePayload):
         newline = '\n'
         return f"""\
 Vehicle Speed Measurement @ {str(self.details.p1_time)}
-  {str(self.details).replace(newline, '  ' + newline)}
+  {str(self.details).replace(newline, newline + '  ')}
   Gear: {GearType(self.gear).to_string()}
   Type: {'signed' if self.is_signed else 'unsigned'}
   Speed: {self.vehicle_speed_mps:.2f} m/s"""
