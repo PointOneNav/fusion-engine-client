@@ -62,8 +62,8 @@ EMSCRIPTEN_BINDINGS(control) {
   static auto ResetRequest_RESET_CALIBRATION_DATA =
       ResetRequest::RESET_CALIBRATION_DATA;
   static auto ResetRequest_RESET_CONFIG = ResetRequest::RESET_CONFIG;
-  static auto ResetRequest_RESTART_GNSS_MEASUREMENT_ENGINE =
-      ResetRequest::RESTART_GNSS_MEASUREMENT_ENGINE;
+  static auto ResetRequest_REBOOT_GNSS_MEASUREMENT_ENGINE =
+      ResetRequest::REBOOT_GNSS_MEASUREMENT_ENGINE;
   static auto ResetRequest_REBOOT_NAVIGATION_PROCESSOR =
       ResetRequest::REBOOT_NAVIGATION_PROCESSOR;
   static auto ResetRequest_HOT_START = ResetRequest::HOT_START;
@@ -87,8 +87,8 @@ EMSCRIPTEN_BINDINGS(control) {
       .class_property("RESET_CALIBRATION_DATA",
                       &ResetRequest_RESET_CALIBRATION_DATA)
       .class_property("RESET_CONFIG", &ResetRequest_RESET_CONFIG)
-      .class_property("RESTART_GNSS_MEASUREMENT_ENGINE",
-                      &ResetRequest_RESTART_GNSS_MEASUREMENT_ENGINE)
+      .class_property("REBOOT_GNSS_MEASUREMENT_ENGINE",
+                      &ResetRequest_REBOOT_GNSS_MEASUREMENT_ENGINE)
       .class_property("REBOOT_NAVIGATION_PROCESSOR",
                       &ResetRequest_REBOOT_NAVIGATION_PROCESSOR)
       .class_property("HOT_START", &ResetRequest_HOT_START)

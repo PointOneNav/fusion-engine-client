@@ -23,6 +23,12 @@ EMSCRIPTEN_BINDINGS(configuration) {
       .value("VEHICLE_DETAILS", ConfigType::VEHICLE_DETAILS)
       .value("WHEEL_CONFIG", ConfigType::WHEEL_CONFIG)
       .value("HARDWARE_TICK_CONFIG", ConfigType::HARDWARE_TICK_CONFIG)
+      .value("ENABLED_GNSS_SYSTEMS", ConfigType::ENABLED_GNSS_SYSTEMS)
+      .value("ENABLED_GNSS_FREQUENCY_BANDS",
+             ConfigType::ENABLED_GNSS_FREQUENCY_BANDS)
+      .value("LEAP_SECOND", ConfigType::LEAP_SECOND)
+      .value("GPS_WEEK_ROLLOVER", ConfigType::GPS_WEEK_ROLLOVER)
+      .value("INTERFACE_CONFIG", ConfigType::INTERFACE_CONFIG)
       .value("UART1_BAUD", ConfigType::UART1_BAUD)
       .value("UART2_BAUD", ConfigType::UART2_BAUD)
       .value("UART1_OUTPUT_DIAGNOSTICS_MESSAGES",
@@ -30,6 +36,13 @@ EMSCRIPTEN_BINDINGS(configuration) {
       .value("UART2_OUTPUT_DIAGNOSTICS_MESSAGES",
              ConfigType::UART2_OUTPUT_DIAGNOSTICS_MESSAGES)
       .value("ENABLE_WATCHDOG_TIMER", ConfigType::ENABLE_WATCHDOG_TIMER);
+
+  enum_<InterfaceConfigType>("InterfaceConfigType")
+      .value("INVALID", InterfaceConfigType::INVALID)
+      .value("OUTPUT_DIAGNOSTICS_MESSAGES", InterfaceConfigType::OUTPUT_DIAGNOSTICS_MESSAGES)
+      .value("BAUD_RATE", InterfaceConfigType::BAUD_RATE)
+      .value("REMOTE_ADDRESS", InterfaceConfigType::REMOTE_ADDRESS)
+      .value("PORT", InterfaceConfigType::PORT);
 
   enum_<ConfigurationSource>("ConfigurationSource")
       .value("ACTIVE", ConfigurationSource::ACTIVE)
@@ -45,16 +58,21 @@ EMSCRIPTEN_BINDINGS(configuration) {
       SetConfigMessage::MESSAGE_VERSION;
   static auto SetConfigMessage_FLAG_APPLY_AND_SAVE =
       SetConfigMessage::FLAG_APPLY_AND_SAVE;
+  static auto SetConfigMessage_FLAG_REVERT_TO_DEFAULT =
+        SetConfigMessage::FLAG_REVERT_TO_DEFAULT;
   class_<SetConfigMessage>("SetConfigMessage")
       .constructor<>()
       .class_property("MESSAGE_TYPE", &SetConfigMessage_MESSAGE_TYPE)
       .class_property("MESSAGE_VERSION", &SetConfigMessage_MESSAGE_VERSION)
       .class_property("FLAG_APPLY_AND_SAVE",
                       &SetConfigMessage_FLAG_APPLY_AND_SAVE)
+      .class_property("FLAG_APPLY_AND_SAVE",
+                      &SetConfigMessage_FLAG_APPLY_AND_SAVE)
       .property("config_type", &SetConfigMessage::config_type)
       .property("flags", &SetConfigMessage::flags)
       .ARRAY_PROPERTY(SetConfigMessage, reserved)
       .property("config_length_bytes", &SetConfigMessage::config_length_bytes)
+      .ARRAY_PROPERTY(SetConfigMessage, config_change_data)
       .STRUCT_FUNCTIONS(SetConfigMessage);
 
   static auto GetConfigMessage_MESSAGE_TYPE = GetConfigMessage::MESSAGE_TYPE;
@@ -67,6 +85,7 @@ EMSCRIPTEN_BINDINGS(configuration) {
       .property("config_type", &GetConfigMessage::config_type)
       .property("request_source", &GetConfigMessage::request_source)
       .ARRAY_PROPERTY(GetConfigMessage, reserved)
+      .ARRAY_PROPERTY(GetConfigMessage, optional_submessage_header)
       .STRUCT_FUNCTIONS(GetConfigMessage);
 
   static auto SaveConfigMessage_MESSAGE_TYPE = SaveConfigMessage::MESSAGE_TYPE;
@@ -77,6 +96,7 @@ EMSCRIPTEN_BINDINGS(configuration) {
       .class_property("MESSAGE_TYPE", &SaveConfigMessage_MESSAGE_TYPE)
       .class_property("MESSAGE_VERSION", &SaveConfigMessage_MESSAGE_VERSION)
       .property("action", &SaveConfigMessage::action)
+      .ARRAY_PROPERTY(SaveConfigMessage, reserved)
       .STRUCT_FUNCTIONS(SaveConfigMessage);
 
   static auto ConfigResponseMessage_MESSAGE_TYPE =
@@ -96,6 +116,7 @@ EMSCRIPTEN_BINDINGS(configuration) {
       .ARRAY_PROPERTY(ConfigResponseMessage, reserved)
       .property("config_length_bytes",
                 &ConfigResponseMessage::config_length_bytes)
+      .ARRAY_PROPERTY(ConfigResponseMessage, reserved)
       .STRUCT_FUNCTIONS(ConfigResponseMessage);
 
   class_<Point3f>("Point3f")
@@ -141,6 +162,7 @@ EMSCRIPTEN_BINDINGS(configuration) {
   class_<VehicleDetails>("VehicleDetails")
       .constructor<>()
       .property("vehicle_model", &VehicleDetails::vehicle_model)
+      .ARRAY_PROPERTY(VehicleDetails, reserved)
       .property("wheelbase_m", &VehicleDetails::wheelbase_m)
       .property("front_track_width_m", &VehicleDetails::front_track_width_m)
       .property("rear_track_width_m", &VehicleDetails::rear_track_width_m)
@@ -171,6 +193,7 @@ EMSCRIPTEN_BINDINGS(configuration) {
       .property("wheel_sensor_type", &WheelConfig::wheel_sensor_type)
       .property("applied_speed_type", &WheelConfig::applied_speed_type)
       .property("steering_type", &WheelConfig::steering_type)
+      .ARRAY_PROPERTY(WheelConfig, reserved1)
       .property("wheel_update_interval_sec",
                 &WheelConfig::wheel_update_interval_sec)
       .property("wheel_tick_output_interval_sec",
@@ -197,6 +220,7 @@ EMSCRIPTEN_BINDINGS(configuration) {
       .constructor<>()
       .property("tick_mode", &HardwareTickConfig::tick_mode)
       .property("tick_direction", &HardwareTickConfig::tick_direction)
+      .ARRAY_PROPERTY(HardwareTickConfig, reserved1)
       .property("wheel_ticks_to_m", &HardwareTickConfig::wheel_ticks_to_m)
       .STRUCT_FUNCTIONS(HardwareTickConfig);
 
@@ -219,6 +243,7 @@ EMSCRIPTEN_BINDINGS(configuration) {
       .class_property("MAX_RATE", &MsgRate_MAX_RATE)
       .property("type", &MsgRate::type)
       .property("update_period_ms", &MsgRate::update_period_ms)
+      .ARRAY_PROPERTY(MsgRate, reserved)
       .STRUCT_FUNCTIONS(MsgRate);
 
   enum_<TransportType>("TransportType")
@@ -282,6 +307,8 @@ EMSCRIPTEN_BINDINGS(configuration) {
       .constructor<>()
       .class_property("MESSAGE_TYPE", &SetMessageRate_MESSAGE_TYPE)
       .class_property("MESSAGE_VERSION", &SetMessageRate_MESSAGE_VERSION)
+      .class_property("FLAG_APPLY_AND_SAVE", &SetMessageRate_FLAG_APPLY_AND_SAVE)
+      .class_property("FLAG_INCLUDE_DISABLED_MESSAGES", &SetMessageRate_FLAG_INCLUDE_DISABLED_MESSAGES)
       .property("output_interface", &SetMessageRate::output_interface)
       .property("protocol", &SetMessageRate::protocol)
       .property("flags", &SetMessageRate::flags)
@@ -337,6 +364,21 @@ EMSCRIPTEN_BINDINGS(configuration) {
       .value("USER_CONFIG", DataType::USER_CONFIG)
       .value("INVALID", DataType::INVALID);
 
+  static auto ImportDataMessage_MESSAGE_TYPE = ImportDataMessage::MESSAGE_TYPE;
+  static auto ImportDataMessage_MESSAGE_VERSION =
+      ImportDataMessage::MESSAGE_VERSION;
+  class_<ImportDataMessage>("ImportDataMessage")
+      .constructor<>()
+      .class_property("MESSAGE_TYPE", &ImportDataMessage_MESSAGE_TYPE)
+      .class_property("MESSAGE_VERSION", &ImportDataMessage_MESSAGE_VERSION)
+      .property("data_type", &ImportDataMessage::data_type)
+      .property("source", &ImportDataMessage::source)
+      .ARRAY_PROPERTY(ImportDataMessage, reserved1)
+      .property("data_version", &ImportDataMessage::data_version)
+      .ARRAY_PROPERTY(ImportDataMessage, reserved2)
+      .property("data_length_bytes", &ImportDataMessage::data_length_bytes)
+      .STRUCT_FUNCTIONS(ImportDataMessage);
+
   static auto ExportDataMessage_MESSAGE_TYPE = ExportDataMessage::MESSAGE_TYPE;
   static auto ExportDataMessage_MESSAGE_VERSION =
       ExportDataMessage::MESSAGE_VERSION;
@@ -365,4 +407,12 @@ EMSCRIPTEN_BINDINGS(configuration) {
       .property("data_length_bytes",
                 &PlatformStorageDataMessage::data_length_bytes)
       .STRUCT_FUNCTIONS(PlatformStorageDataMessage);
+
+  class_<InterfaceConfigSubmessage>("InterfaceConfigSubmessage")
+      .constructor<>()
+      .property("interface", &InterfaceConfigSubmessage::interface)
+      .property("subtype", &InterfaceConfigSubmessage::subtype)
+      .ARRAY_PROPERTY(InterfaceConfigSubmessage, reserved)
+      .ARRAY_PROPERTY(InterfaceConfigSubmessage, config_data)
+      .STRUCT_FUNCTIONS(InterfaceConfigSubmessage);
 }

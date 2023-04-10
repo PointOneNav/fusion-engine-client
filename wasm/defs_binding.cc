@@ -38,16 +38,30 @@ EMSCRIPTEN_BINDINGS(defs) {
       .value("CALIBRATION_STATUS", MessageType::CALIBRATION_STATUS)
       .value("RELATIVE_ENU_POSITION", MessageType::RELATIVE_ENU_POSITION)
 
+       // Device status messages
+       .value("SYSTEM_STATUS", MessageType::SYSTEM_STATUS)
+
       // Sensor measurement messages.
-      .value("IMU_MEASUREMENT", MessageType::IMU_MEASUREMENT)
+      .value("IMU_OUTPUT", MessageType::IMU_OUTPUT)
       .value("HEADING_MEASUREMENT", MessageType::HEADING_MEASUREMENT)
+      .value("RAW_IMU_OUTPUT", MessageType::RAW_IMU_OUTPUT)
 
       // Vehicle measurement messages.
-      .value("WHEEL_SPEED_MEASUREMENT", MessageType::WHEEL_SPEED_MEASUREMENT)
-      .value("VEHICLE_SPEED_MEASUREMENT",
-             MessageType::VEHICLE_SPEED_MEASUREMENT)
-      .value("WHEEL_TICK_MEASUREMENT", MessageType::WHEEL_TICK_MEASUREMENT)
-      .value("VEHICLE_TICK_MEASUREMENT", MessageType::VEHICLE_TICK_MEASUREMENT)
+      .value("DEPRECATED_WHEEL_SPEED_MEASUREMENT", MessageType::DEPRECATED_WHEEL_SPEED_MEASUREMENT)
+      .value("DEPRECATED_VEHICLE_SPEED_MEASUREMENT", MessageType::DEPRECATED_VEHICLE_SPEED_MEASUREMENT)
+
+      .value("WHEEL_TICK_INPUT", MessageType::WHEEL_TICK_INPUT)
+      .value("VEHICLE_TICK_INPUT", MessageType::VEHICLE_TICK_INPUT)
+      .value("WHEEL_SPEED_INPUT", MessageType::WHEEL_SPEED_INPUT)
+      .value("VEHICLE_SPEED_INPUT", MessageType::VEHICLE_SPEED_INPUT)
+
+      .value("RAW_WHEEL_TICK_OUTPUT", MessageType::RAW_WHEEL_TICK_OUTPUT)
+      .value("RAW_VEHICLE_TICK_OUTPUT", MessageType::RAW_VEHICLE_TICK_OUTPUT)
+      .value("RAW_WHEEL_SPEED_OUTPUT", MessageType::RAW_WHEEL_SPEED_OUTPUT)
+      .value("RAW_VEHICLE_SPEED_OUTPUT", MessageType::RAW_VEHICLE_SPEED_OUTPUT)
+
+      .value("WHEEL_SPEED_OUTPUT", MessageType::WHEEL_SPEED_OUTPUT)
+      .value("VEHICLE_SPEED_OUTPUT", MessageType::VEHICLE_SPEED_OUTPUT)
 
       // ROS messages.
       .value("ROS_POSE", MessageType::ROS_POSE)
@@ -61,11 +75,16 @@ EMSCRIPTEN_BINDINGS(defs) {
       .value("VERSION_INFO", MessageType::VERSION_INFO)
       .value("EVENT_NOTIFICATION", MessageType::EVENT_NOTIFICATION)
       .value("SHUTDOWN_REQUEST", MessageType::SHUTDOWN_REQUEST)
+      .value("FAULT_CONTROL", MessageType::FAULT_CONTROL)
 
       .value("SET_CONFIG", MessageType::SET_CONFIG)
       .value("GET_CONFIG", MessageType::GET_CONFIG)
       .value("SAVE_CONFIG", MessageType::SAVE_CONFIG)
       .value("CONFIG_RESPONSE", MessageType::CONFIG_RESPONSE)
+
+      .value("IMPORT_DATA", MessageType::IMPORT_DATA)
+      .value("EXPORT_DATA", MessageType::EXPORT_DATA)
+      .value("PLATFORM_STORAGE_DATA", MessageType::PLATFORM_STORAGE_DATA)
 
       .value("SET_MESSAGE_RATE", MessageType::SET_MESSAGE_RATE)
       .value("GET_MESSAGE_RATE", MessageType::GET_MESSAGE_RATE)
@@ -92,7 +111,9 @@ EMSCRIPTEN_BINDINGS(defs) {
       .value("EXECUTION_FAILURE", Response::EXECUTION_FAILURE)
       .value("INCONSISTENT_PAYLOAD_LENGTH",
              Response::INCONSISTENT_PAYLOAD_LENGTH)
-      .value("DATA_CORRUPTED", Response::DATA_CORRUPTED);
+      .value("DATA_CORRUPTED", Response::DATA_CORRUPTED)
+      .value("NO_DATA_STORED", Response::NO_DATA_STORED)
+      .value("UNAVAILABLE", Response::UNAVAILABLE);
 
   enum_<SolutionType>("SolutionType")
       .value("Invalid", SolutionType::Invalid)
