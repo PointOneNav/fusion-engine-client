@@ -30,7 +30,7 @@ const char* to_string_wrapper_frequency_band(int val) {
   return to_string(static_cast<FrequencyBand>(val));
 }
 
-EMSCRIPTEN_BINDINGS(device) {
+EMSCRIPTEN_BINDINGS(signal_defs) {
   enum_<SatelliteType>("SatelliteType")
       .value("UNKNOWN", SatelliteType::UNKNOWN)
       .value("GPS", SatelliteType::GPS)
@@ -60,7 +60,6 @@ EMSCRIPTEN_BINDINGS(device) {
       .value("L2", FrequencyBand::L2)
       .value("L5", FrequencyBand::L5)
       .value("L6", FrequencyBand::L6);
-
 
   static auto FREQUENCY_BAND_MASK_L1 = FrequencyBand::L1;
   static auto FREQUENCY_BAND_MASK_L2 = FrequencyBand::L2;

@@ -90,18 +90,6 @@ EMSCRIPTEN_BINDINGS(defs) {
       .value("GET_MESSAGE_RATE", MessageType::GET_MESSAGE_RATE)
       .value("MESSAGE_RATE_RESPONSE", MessageType::MESSAGE_RATE_RESPONSE);
 
-  enum_<SatelliteType>("SatelliteType")
-      .value("UNKNOWN", SatelliteType::UNKNOWN)
-      .value("GPS", SatelliteType::GPS)
-      .value("GLONASS", SatelliteType::GLONASS)
-      .value("LEO", SatelliteType::LEO)
-      .value("GALILEO", SatelliteType::GALILEO)
-      .value("BEIDOU", SatelliteType::BEIDOU)
-      .value("QZSS", SatelliteType::QZSS)
-      .value("MIXED", SatelliteType::MIXED)
-      .value("SBAS", SatelliteType::SBAS)
-      .value("IRNSS", SatelliteType::IRNSS);
-
   enum_<Response>("Response")
       .value("OK", Response::OK)
       .value("UNSUPPORTED_CMD_VERSION", Response::UNSUPPORTED_CMD_VERSION)
