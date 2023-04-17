@@ -204,6 +204,7 @@ EMSCRIPTEN_BINDINGS(configuration) {
       .property("wheel_ticks_signed", &WheelConfig::wheel_ticks_signed)
       .property("wheel_ticks_always_increase",
                 &WheelConfig::wheel_ticks_always_increase)
+      .ARRAY_PROPERTY(WheelConfig, reserved2)
       .STRUCT_FUNCTIONS(WheelConfig);
 
   enum_<TickMode>("TickMode")
