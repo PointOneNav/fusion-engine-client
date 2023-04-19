@@ -33,6 +33,7 @@ class ConfigType(IntEnum):
     ENABLED_GNSS_FREQUENCY_BANDS = 51
     LEAP_SECOND = 52
     GPS_WEEK_ROLLOVER = 53
+    ATMOSPHERIC_DELAY_MODEL = 54
     INTERFACE_CONFIG = 200
     UART1_BAUD = 256
     UART2_BAUD = 257
@@ -207,6 +208,13 @@ class NmeaMessageType(IntEnum):
     PQTMVER_SUB = 1204
     PQTMTXT = 1205
 
+class IonoDelayModel(IntEnum):
+    OFF = 0
+    KLOBUCHAR = 1
+
+class TropoDelayModel(IntEnum):
+    OFF = 0
+    SAASTAMOINEN = 1
 
 def get_message_type_string(protocol: ProtocolType, message_id: int):
     if message_id == ALL_MESSAGES_ID:
@@ -560,6 +568,24 @@ class _ConfigClassGenerator:
         "wheel_ticks_to_m" / Float32l,
     )
 
+    class AtmosphericDelayModelConfig(NamedTuple):
+        """!
+        @brief Atmospheric delay model configuration settings.
+
+        See @ref VehicleTickMeasurement.
+        """
+
+        ## If not OFF -- the ionospheric delay model to be used.
+        iono_delay_model: IonoDelayModel = IonoDelayModel.KLOBUCHAR
+        ## If not OFF -- the tropospheric delay model to be used.
+        tropo_delay_model: TropoDelayModel = TropoDelayModel.SAASTAMOINEN
+
+    AtmosphericDelayModelConfigConstruct = Struct(
+        "iono_delay_model" / AutoEnum(Int8ul, IonoDelayModel),
+        "tropo_delay_model" / AutoEnum(Int8ul, TropoDelayModel),
+        Padding(2),
+    )
+
     class Empty(NamedTuple):
         """!
         @brief Dummy specifier for empty config.
@@ -642,6 +668,14 @@ class GPSWeekRolloverConfig(_conf_gen.IntegerVal):
     """
     def __new__(cls, value: int = -1):
         return super().__new__(cls, value)
+
+
+@_conf_gen.create_config_class(ConfigType.ATMOSPHERIC_DELAY_MODEL, _conf_gen.AtmosphericDelayModelConfigConstruct)
+class AtmosphericDelayModelConfig(_conf_gen.AtmosphericDelayModelConfig):
+    """!
+    @brief Information including ionospheric delay model and troposheric delay model.
+    """
+    pass
 
 
 @_conf_gen.create_config_class(ConfigType.UART1_BAUD, _conf_gen.UInt32Construct)
