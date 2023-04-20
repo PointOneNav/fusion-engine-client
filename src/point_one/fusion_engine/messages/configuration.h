@@ -142,6 +142,13 @@ enum class ConfigType : uint16_t {
   GPS_WEEK_ROLLOVER = 53,
 
   /**
+   * Information including ionospheric delay model and tropospheric delay model.
+   *
+   * Payload format: @ref AtmosphericDelayModelConfig
+   */
+  ATMOSPHERIC_DELAY_MODEL = 54,
+
+  /**
    * Change a configuration setting for a specified output interface.
    *
    * Payload format: `InterfaceConfigSubmessage`
@@ -1202,6 +1209,89 @@ struct alignas(4) HardwareTickConfig {
    * @ref WheelSensorType::TICK_RATE.
    */
   float wheel_ticks_to_m = NAN;
+};
+
+/**
+ * @brief The ionospheric delay model to be used.
+ * @ingroup config_and_ctrl_messages
+ */
+enum class IonoDelayModel : uint8_t {
+  /** Ionospheric delay model disabled. */
+  OFF = 0,
+  /** Use the Klobuchar ionospheric model. */
+  KLOBUCHAR = 1,
+};
+
+P1_CONSTEXPR_FUNC const char* to_string(IonoDelayModel iono_delay_model) {
+  switch (iono_delay_model) {
+    case IonoDelayModel::OFF:
+      return "OFF";
+    case IonoDelayModel::KLOBUCHAR:
+      return "KLOBUCHAR";
+    default:
+      return "UNRECOGNIZED";
+  }
+}
+
+/**
+ * @brief @ref IonoDelayModel stream operator.
+ * @ingroup config_and_ctrl_messages
+ */
+inline std::ostream& operator<<(std::ostream& stream,
+                                IonoDelayModel iono_delay_model) {
+  stream << to_string(iono_delay_model) << " (" << (int)iono_delay_model << ")";
+  return stream;
+}
+
+/**
+ * @brief The troposhpheric delay model to be used.
+ * @ingroup config_and_ctrl_messages
+ */
+enum class TropoDelayModel : uint8_t {
+  /** Tropospheric delay model disabled. */
+  OFF = 0,
+  /** Use the Saastamoinen ionospheric model. */
+  SAASTAMOINEN = 1,
+};
+
+P1_CONSTEXPR_FUNC const char* to_string(TropoDelayModel tropo_delay_model) {
+  switch (tropo_delay_model) {
+    case TropoDelayModel::OFF:
+      return "OFF";
+    case TropoDelayModel::SAASTAMOINEN:
+      return "SAASTAMOINEN";
+    default:
+      return "UNRECOGNIZED";
+  }
+}
+
+/**
+ * @brief @ref TropoDelayModel stream operator.
+ * @ingroup config_and_ctrl_messages
+ */
+inline std::ostream& operator<<(std::ostream& stream,
+                                TropoDelayModel tropo_delay_model) {
+  stream << to_string(tropo_delay_model) << " (" << (int)tropo_delay_model
+         << ")";
+  return stream;
+}
+
+/**
+ * @brief Ionospheric and tropospheric delay model configuration.
+ * @ingroup config_and_ctrl_messages
+ *
+ * @note
+ * If either model is disabled (set to `OFF`), then that model will not be
+ * used in downstream calculations.
+ */
+struct alignas(4) AtmosphericDelayModelConfig {
+  /** If not OFF -- the ionospheric delay model to be used. */
+  IonoDelayModel iono_delay_model = IonoDelayModel::KLOBUCHAR;
+
+  /** If not OFF -- the ionospheric delay model to be used. */
+  TropoDelayModel tropo_delay_model = TropoDelayModel::SAASTAMOINEN;
+
+  uint8_t reserved[2] = {0};
 };
 
 /** @} */

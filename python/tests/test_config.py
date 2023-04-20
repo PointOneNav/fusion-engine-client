@@ -1,14 +1,12 @@
 import pytest
 from fusion_engine_client.messages import (
-    ConfigurationSource, ConfigResponseMessage, ConfigType, SetConfigMessage,
-    AppliedSpeedType, InterfaceBaudRateConfig, ConfigResponseMessage, ConfigType,
-    ConfigurationSource, DeviceCourseOrientationConfig, Direction, EnabledGNSSFrequencyBandsConfig,
-    EnabledGNSSSystemsConfig, FrequencyBand, FrequencyBandMask, GetConfigMessage,
-    GNSSLeverArmConfig, HardwareTickConfig, InterfaceConfigSubmessage, InterfaceID,
-    InterfaceConfigType, InvalidConfig, MessageRate, MessageRateResponse,
-    RateResponseEntry, SatelliteType, SatelliteTypeMask, SetConfigMessage,
-    SteeringType, TickDirection, TickMode, TransportType, Uart1BaudConfig,
-    VehicleDetailsConfig, VehicleModel, WheelConfig, WheelSensorType)
+    AppliedSpeedType, AtmosphericDelayModelConfig, ConfigurationSource, ConfigResponseMessage, ConfigType,
+    InterfaceBaudRateConfig, ConfigResponseMessage, ConfigType, ConfigurationSource, DeviceCourseOrientationConfig,
+    Direction, EnabledGNSSFrequencyBandsConfig,EnabledGNSSSystemsConfig, FrequencyBand, FrequencyBandMask,
+    GetConfigMessage, GNSSLeverArmConfig, HardwareTickConfig, IonoDelayModel, InterfaceConfigSubmessage, InterfaceID,
+    InterfaceConfigType, InvalidConfig, MessageRate, MessageRateResponse, RateResponseEntry, SatelliteType,
+    SatelliteTypeMask, SetConfigMessage,SteeringType, TickDirection, TickMode, TransportType, TropoDelayModel,
+    Uart1BaudConfig, VehicleDetailsConfig, VehicleModel, WheelConfig, WheelSensorType)
 from fusion_engine_client.messages.configuration import \
     _RateResponseEntryConstructRaw
 from fusion_engine_client.utils import trace as logging
@@ -33,6 +31,9 @@ def test_set_config():
 
     set_msg = SetConfigMessage(HardwareTickConfig(TickMode.OFF, TickDirection.OFF, 0.1))
     assert len(set_msg.pack()) == BASE_SIZE + 8
+
+    set_msg = SetConfigMessage(AtmosphericDelayModelConfig(IonoDelayModel.OFF, TropoDelayModel.OFF))
+    assert len(set_msg.pack()) == BASE_SIZE + 4
 
     set_msg = SetConfigMessage(GNSSLeverArmConfig(1, 2, 3))
     assert len(set_msg.pack()) == BASE_SIZE + 12
