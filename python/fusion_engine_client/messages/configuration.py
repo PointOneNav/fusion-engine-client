@@ -570,9 +570,7 @@ class _ConfigClassGenerator:
 
     class AtmosphericDelayModelConfig(NamedTuple):
         """!
-        @brief Atmospheric delay model configuration settings.
-
-        See @ref VehicleTickMeasurement.
+        @brief Ionospheric and tropospheric delay model configuration.
         """
 
         ## If not OFF -- the ionospheric delay model to be used.

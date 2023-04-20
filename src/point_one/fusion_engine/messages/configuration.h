@@ -1277,7 +1277,7 @@ inline std::ostream& operator<<(std::ostream& stream,
 }
 
 /**
- * @brief Atmospheric delay model configuration settings.
+ * @brief Ionospheric and tropospheric delay model configuration.
  * @ingroup config_and_ctrl_messages
  *
  * @note
