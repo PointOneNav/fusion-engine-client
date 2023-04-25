@@ -1219,7 +1219,7 @@ struct alignas(4) HardwareTickConfig {
 };
 
 /**
- * @brief The ionospheric delay model to be used.
+ * @brief The ionospheric delay model to use.
  * @ingroup config_and_ctrl_messages
  */
 enum class IonoDelayModel : uint8_t {
@@ -1257,21 +1257,16 @@ inline std::ostream& operator<<(std::ostream& stream,
 /**
  * @brief Ionospheric delay model configuration.
  * @ingroup config_and_ctrl_messages
- *
- * @note
- * If model is disabled (set to `OFF`), then that model will not be
- * used in downstream calculations. If set to `AUTO`, the device will select
- * the best available option.
  */
 struct alignas(4) IonosphereConfig {
-  /** If not OFF -- the ionospheric delay model to be used. */
+  /** The ionospheric delay model to use. */
   IonoDelayModel iono_delay_model = IonoDelayModel::AUTO;
 
   uint8_t reserved[3] = {0};
 };
 
 /**
- * @brief The troposhpheric delay model to be used.
+ * @brief The tropospheric delay model to use.
  * @ingroup config_and_ctrl_messages
  */
 enum class TropoDelayModel : uint8_t {
@@ -1279,7 +1274,7 @@ enum class TropoDelayModel : uint8_t {
   AUTO = 0,
   /** Tropospheric delay model disabled. */
   OFF = 1,
-  /** Use the Saastamoinen ionospheric model. */
+  /** Use the Saastamoinen tropospheric model. */
   SAASTAMOINEN = 2,
 };
 
@@ -1310,14 +1305,9 @@ inline std::ostream& operator<<(std::ostream& stream,
 /**
  * @brief Tropospheric delay model configuration.
  * @ingroup config_and_ctrl_messages
- *
- * @note
- * If model is disabled (set to `OFF`), then that model will not be
- * used in downstream calculations. If set to `AUTO`, the device will select
- * the best available option.
  */
 struct alignas(4) TroposphereConfig {
-  /** If not OFF -- the ionospheric delay model to be used. */
+  /** The tropospheric delay model to use. */
   TropoDelayModel tropo_delay_model = TropoDelayModel::AUTO;
 
   uint8_t reserved[3] = {0};

@@ -575,9 +575,7 @@ class _ConfigClassGenerator:
         """!
         @brief Ionospheric delay model configuration.
         """
-        ##
-        # If not OFF -- the ionospheric delay model to be used. If set to AUTO, the device will select the best
-        # available option.
+        ## The ionospheric delay model to use.
         iono_delay_model: IonoDelayModel = IonoDelayModel.AUTO
 
     IonosphereConfigConstruct = Struct(
@@ -589,9 +587,7 @@ class _ConfigClassGenerator:
         """!
         @brief Tropospheric delay model configuration.
         """
-        ##
-        # If not OFF -- the tropospheric delay model to be used. If set to AUTO, the device will select the best
-        # available option.
+        ## The tropospheric delay model to use.
         tropo_delay_model: TropoDelayModel = TropoDelayModel.AUTO
 
     TroposphereConfigConstruct = Struct(
