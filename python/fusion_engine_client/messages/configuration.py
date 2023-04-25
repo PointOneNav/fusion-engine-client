@@ -33,7 +33,8 @@ class ConfigType(IntEnum):
     ENABLED_GNSS_FREQUENCY_BANDS = 51
     LEAP_SECOND = 52
     GPS_WEEK_ROLLOVER = 53
-    ATMOSPHERIC_DELAY_MODEL = 54
+    IONOSPHERE_CONFIG = 54
+    TROPOSPHERE_CONFIG = 55
     INTERFACE_CONFIG = 200
     UART1_BAUD = 256
     UART2_BAUD = 257
@@ -209,12 +210,14 @@ class NmeaMessageType(IntEnum):
     PQTMTXT = 1205
 
 class IonoDelayModel(IntEnum):
-    OFF = 0
-    KLOBUCHAR = 1
+    AUTO = 0
+    OFF = 1
+    KLOBUCHAR = 2
 
 class TropoDelayModel(IntEnum):
-    OFF = 0
-    SAASTAMOINEN = 1
+    AUTO = 0
+    OFF = 1
+    SAASTAMOINEN = 2
 
 def get_message_type_string(protocol: ProtocolType, message_id: int):
     if message_id == ALL_MESSAGES_ID:
@@ -568,20 +571,32 @@ class _ConfigClassGenerator:
         "wheel_ticks_to_m" / Float32l,
     )
 
-    class AtmosphericDelayModelConfig(NamedTuple):
+    class IonosphereConfig(NamedTuple):
         """!
-        @brief Ionospheric and tropospheric delay model configuration.
+        @brief Ionospheric delay model configuration.
         """
+        ##
+        # If not OFF -- the ionospheric delay model to be used. If set to AUTO, the device will select the best
+        # available option.
+        iono_delay_model: IonoDelayModel = IonoDelayModel.AUTO
 
-        ## If not OFF -- the ionospheric delay model to be used.
-        iono_delay_model: IonoDelayModel = IonoDelayModel.KLOBUCHAR
-        ## If not OFF -- the tropospheric delay model to be used.
-        tropo_delay_model: TropoDelayModel = TropoDelayModel.SAASTAMOINEN
-
-    AtmosphericDelayModelConfigConstruct = Struct(
+    IonosphereConfigConstruct = Struct(
         "iono_delay_model" / AutoEnum(Int8ul, IonoDelayModel),
+        Padding(3),
+    )
+
+    class TroposphereConfig(NamedTuple):
+        """!
+        @brief Tropospheric delay model configuration.
+        """
+        ##
+        # If not OFF -- the tropospheric delay model to be used. If set to AUTO, the device will select the best
+        # available option.
+        tropo_delay_model: TropoDelayModel = TropoDelayModel.AUTO
+
+    TroposphereConfigConstruct = Struct(
         "tropo_delay_model" / AutoEnum(Int8ul, TropoDelayModel),
-        Padding(2),
+        Padding(3),
     )
 
     class Empty(NamedTuple):
@@ -668,10 +683,17 @@ class GPSWeekRolloverConfig(_conf_gen.IntegerVal):
         return super().__new__(cls, value)
 
 
-@_conf_gen.create_config_class(ConfigType.ATMOSPHERIC_DELAY_MODEL, _conf_gen.AtmosphericDelayModelConfigConstruct)
-class AtmosphericDelayModelConfig(_conf_gen.AtmosphericDelayModelConfig):
+@_conf_gen.create_config_class(ConfigType.IONOSPHERE_CONFIG, _conf_gen.IonosphereConfigConstruct)
+class IonosphereConfig(_conf_gen.IonosphereConfig):
     """!
-    @brief Information including ionospheric delay model and troposheric delay model.
+    @brief Ionospheric delay model configuration.
+    """
+    pass
+
+@_conf_gen.create_config_class(ConfigType.TROPOSPHERE_CONFIG, _conf_gen.TroposphereConfigConstruct)
+class TroposphereConfig(_conf_gen.TroposphereConfig):
+    """!
+    @brief Tropospheric delay model configuration.
     """
     pass
 
