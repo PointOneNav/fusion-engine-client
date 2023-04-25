@@ -262,6 +262,18 @@ P1_CONSTEXPR_FUNC const char* to_string(ConfigType type) {
     case ConfigType::HARDWARE_TICK_CONFIG:
       return "Hardware Tick Config";
 
+    case ConfigType::ENABLED_GNSS_SYSTEMS:
+      return "Enabled GNSS Systems";
+
+    case ConfigType::ENABLED_GNSS_FREQUENCY_BANDS:
+      return "Enabled GNSS Frequency Bands";
+
+    case ConfigType::LEAP_SECOND:
+      return "Leap Second";
+
+    case ConfigType::GPS_WEEK_ROLLOVER:
+      return "GPS Week Rollover";
+
     case ConfigType::UART1_BAUD:
       return "UART1 Baud Rate";
 
