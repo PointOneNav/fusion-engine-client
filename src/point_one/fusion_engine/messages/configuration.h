@@ -547,7 +547,8 @@ struct alignas(4) SetConfigMessage : public MessagePayload {
  *
  * # Expected Response
  * The device will respond with a @ref ConfigResponseMessage containing the
- * requested parameter value, or a @ref CommandResponseMessage on failure.
+ * requested parameter value or an error @ref Response value if the request did
+ * not succeed.
  */
 struct alignas(4) GetConfigMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::GET_CONFIG;
@@ -1884,7 +1885,7 @@ struct alignas(4) SetMessageRate : public MessagePayload {
  *
  * # Expected Response
  * The device will respond with a @ref MessageRateResponse containing the
- * requested values, or with an error @ref Response value if the request did not
+ * requested values or an error @ref Response value if the request did not
  * succeed.
  */
 struct alignas(4) GetMessageRate : public MessagePayload {
