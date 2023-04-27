@@ -209,15 +209,18 @@ class NmeaMessageType(IntEnum):
     PQTMVER_SUB = 1204
     PQTMTXT = 1205
 
+
 class IonoDelayModel(IntEnum):
     AUTO = 0
     OFF = 1
     KLOBUCHAR = 2
 
+
 class TropoDelayModel(IntEnum):
     AUTO = 0
     OFF = 1
     SAASTAMOINEN = 2
+
 
 def get_message_type_string(protocol: ProtocolType, message_id: int):
     if message_id == ALL_MESSAGES_ID:
@@ -1254,7 +1257,10 @@ class SetMessageRate(MessagePayload):
             message=self, construct=self.SetMessageRateConstruct,
             title=f'Set Message Output Rate Command',
             fields=['output_interface', 'protocol', 'message_id', 'rate', 'flags'],
-            value_to_string={'flags': lambda x: '0x%X' % x})
+            value_to_string={
+                'message_id': lambda x: get_message_type_string(protocol=self.protocol, message_id=x),
+                'flags': lambda x: '0x%X' % x
+            })
 
     @classmethod
     def calcsize(cls) -> int:
@@ -1312,7 +1318,10 @@ class GetMessageRate(MessagePayload):
         return construct_message_to_string(
             message=self, construct=self.GetMessageRateConstruct,
             title=f'Get Message Output Rate Command',
-            fields=['output_interface', 'protocol', 'request_source', 'message_id'])
+            fields=['output_interface', 'protocol', 'request_source', 'message_id'],
+            value_to_string={
+                'message_id': lambda x: get_message_type_string(protocol=self.protocol, message_id=x)
+            })
 
     @classmethod
     def calcsize(cls) -> int:
