@@ -274,6 +274,12 @@ P1_CONSTEXPR_FUNC const char* to_string(ConfigType type) {
     case ConfigType::GPS_WEEK_ROLLOVER:
       return "GPS Week Rollover";
 
+    case ConfigType::IONOSPHERE_CONFIG:
+      return "Ionosphere Config";
+
+    case ConfigType::TROPOSPHERE_CONFIG:
+      return "Troposphere Config";
+
     case ConfigType::UART1_BAUD:
       return "UART1 Baud Rate";
 
