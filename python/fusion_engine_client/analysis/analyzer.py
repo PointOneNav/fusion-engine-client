@@ -80,7 +80,7 @@ def _data_to_table(col_titles: List[str], values: List[List[Any]], row_major: bo
   </tbody>
 </table>
 '''
-    return table_html
+    return table_html.replace('\n', '')
 
 
 _page_template = '''\
