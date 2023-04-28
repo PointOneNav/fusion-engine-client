@@ -297,10 +297,9 @@ P1_CONSTEXPR_FUNC const char* to_string(ConfigType type) {
 
     case ConfigType::INTERFACE_CONFIG:
       return "Interface Submessage";
-
-    default:
-      return "Unrecognized Configuration";
   }
+
+  return "Unrecognized Configuration";
 }
 
 /**
