@@ -10,9 +10,11 @@ def find_first(arr: np.ndarray):
     """
     if arr.dtype != bool:
         raise ValueError('Input array is not a boolean array.')
-
-    idx = np.argmax(arr)
-    if idx == 0 and not arr[0]:
+    elif len(arr) == 0:
         return -1
     else:
-        return idx
+        idx = np.argmax(arr)
+        if idx == 0 and not arr[0]:
+            return -1
+        else:
+            return idx

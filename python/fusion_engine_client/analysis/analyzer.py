@@ -80,7 +80,7 @@ def _data_to_table(col_titles: List[str], values: List[List[Any]], row_major: bo
   </tbody>
 </table>
 '''
-    return table_html
+    return table_html.replace('\n', '')
 
 
 _page_template = '''\
@@ -139,7 +139,12 @@ class Analyzer(object):
         }
 
         self.t0 = self.reader.t0
+        if self.t0 is None:
+            self.t0 = Timestamp()
+
         self.system_t0 = self.reader.get_system_t0()
+        if self.system_t0 is None:
+            self.system_t0 = np.nan
 
         self.plots = {}
         self.summary = ''
@@ -221,18 +226,7 @@ class Analyzer(object):
                 p1_time = pose_data.p1_time
                 gps_time = pose_data.gps_time
 
-            def gps_sec_to_string(gps_time_sec):
-                if np.isnan(gps_time_sec):
-                    return "GPS: N/A<br>UTC: N/A"
-                else:
-                    SECS_PER_WEEK = 7 * 24 * 3600.0
-                    week = int(gps_time_sec / SECS_PER_WEEK)
-                    tow_sec = gps_time_sec - week * SECS_PER_WEEK
-                    utc_time = gpstime.fromgps(gps_time_sec)
-                    return "GPS: %d:%.3f (%.3f sec)<br>UTC: %s" %\
-                           (week, tow_sec, gps_time_sec, utc_time.strftime('%Y-%m-%d %H:%M:%S %Z'))
-
-            text = ['P1: %.3f sec<br>%s' % (p, gps_sec_to_string(g)) for p, g in zip(p1_time, gps_time)]
+            text = ['P1: %.3f sec<br>%s' % (p, self._gps_sec_to_string(g)) for p, g in zip(p1_time, gps_time)]
             figure.add_trace(go.Scattergl(x=time, y=np.full_like(time, 1), name='P1/GPS Time', text=text,
                                           mode='markers'),
                              1, 1)
@@ -1893,15 +1887,41 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         counts.append('%d' % num_pose_messages)
         percents.append('')
 
-        types.append('Processed Duration')
-        counts.append('%.1f seconds' % processing_duration_sec)
-        percents.append('')
-
-        types.append('Total Log Duration')
-        counts.append('%.1f seconds' % log_duration_sec)
-        percents.append('')
-
         solution_type_table = _data_to_table(['Position Type', 'Count', 'Percent'], [types, counts, percents])
+
+        # Determine the GPS start time if pose data is present. GPS time may not appear in the first pose update, and
+        # even if it does, t0 may not correspond with the first pose message if something else was output first. So just
+        # in case, we'll approximate the GPS time _at_ t0 if needed.
+        idx = find_first(~np.isnan(pose_data.gps_time))
+        if idx >= 0:
+            dt_p1_sec = pose_data.p1_time[idx] - float(self.t0)
+            t0_gps = Timestamp(pose_data.gps_time[idx]) - dt_p1_sec
+            # If the first pose is pretty close to t0, we'll assume the approximation is reasonably accurate and not
+            # bother reporting it.
+            t0_is_approx = dt_p1_sec > 10.0
+        else:
+            t0_gps = Timestamp()
+            t0_is_approx = False
+
+        # Create a table with log times and durations.
+        descriptions = [
+            'Start Time',
+            '',
+            '',
+            'Processed Duration',
+            'Total Log Duration',
+        ]
+        times = [
+            str(self.t0),
+            system_time_to_str(self.system_t0, is_seconds=True).replace(' time', ':'),
+            # Note: Temporarily replacing <br> so it doesn't get stripped by _data_to_table().
+            self._gps_sec_to_string(t0_gps) \
+                .replace('<br>', (' (approximated)' if t0_is_approx else '') + '<brbak>') \
+                .replace('<brbak>', '<br>'),
+            '%.1f seconds' % processing_duration_sec,
+            log_duration_sec,
+        ]
+        time_table = _data_to_table(['Description', 'Time'], [descriptions, times])
 
         # Create a table with the types and counts of each FusionEngine message type in the log.
         message_types, message_counts = np.unique(reduced_index['type'], return_counts=True)
@@ -1935,10 +1955,13 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             'message_table': message_table,
             'version_table': version_table,
             'solution_type_table': solution_type_table,
+            'time_table': time_table,
         }
 
         self.summary += """
 %(version_table)s
+
+%(time_table)s
 
 %(solution_type_table)s
 
@@ -2038,6 +2061,25 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                 selected_type = message_type_to_class[message_type]
                 break
         return selected_type
+
+    @classmethod
+    def _gps_sec_to_string(cls, gps_time_sec):
+        if isinstance(gps_time_sec, Timestamp):
+            gps_time_sec = float(gps_time_sec)
+
+        if np.isnan(gps_time_sec):
+            return "GPS: N/A<br>UTC: N/A"
+        else:
+            SECS_PER_WEEK = 7 * 24 * 3600.0
+            week = int(gps_time_sec / SECS_PER_WEEK)
+            tow_sec = gps_time_sec - week * SECS_PER_WEEK
+            utc_time = gpstime.fromgps(gps_time_sec)
+
+            utc_time_str = utc_time.strftime('%Y-%m-%d %H:%M:%S')
+            utc_time_str += ('%.03f' % (utc_time.microsecond * 1e-6))[1:]
+
+            return "GPS: %d:%.3f (%.3f sec)<br>UTC: %s" %\
+                   (week, tow_sec, gps_time_sec, utc_time_str)
 
     @classmethod
     def _get_measurement_time(cls, data, time_source: SystemTimeSource) -> np.ndarray:
