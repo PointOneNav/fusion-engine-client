@@ -139,7 +139,12 @@ class Analyzer(object):
         }
 
         self.t0 = self.reader.t0
+        if self.t0 is None:
+            self.t0 = Timestamp()
+
         self.system_t0 = self.reader.get_system_t0()
+        if self.system_t0 is None:
+            self.system_t0 = np.nan
 
         self.plots = {}
         self.summary = ''
