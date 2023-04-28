@@ -2075,8 +2075,8 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             tow_sec = gps_time_sec - week * SECS_PER_WEEK
             utc_time = gpstime.fromgps(gps_time_sec)
 
-            utc_time_str = utc_time.strftime('%Y-%m-%d %H:%M:%S.<ms> %Z')
-            utc_time_str = utc_time_str.replace('<ms>', ('%.03f' % (utc_time.microsecond * 1e-6))[2:])
+            utc_time_str = utc_time.strftime('%Y-%m-%d %H:%M:%S')
+            utc_time_str += ('%.03f' % (utc_time.microsecond * 1e-6))[1:]
 
             return "GPS: %d:%.3f (%.3f sec)<br>UTC: %s" %\
                    (week, tow_sec, gps_time_sec, utc_time_str)
