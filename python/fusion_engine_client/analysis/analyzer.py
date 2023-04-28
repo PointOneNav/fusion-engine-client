@@ -1887,15 +1887,41 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         counts.append('%d' % num_pose_messages)
         percents.append('')
 
-        types.append('Processed Duration')
-        counts.append('%.1f seconds' % processing_duration_sec)
-        percents.append('')
-
-        types.append('Total Log Duration')
-        counts.append('%.1f seconds' % log_duration_sec)
-        percents.append('')
-
         solution_type_table = _data_to_table(['Position Type', 'Count', 'Percent'], [types, counts, percents])
+
+        # Determine the GPS start time if pose data is present. GPS time may not appear in the first pose update, and
+        # even if it does, t0 may not correspond with the first pose message if something else was output first. So just
+        # in case, we'll approximate the GPS time _at_ t0 if needed.
+        idx = find_first(~np.isnan(pose_data.gps_time))
+        if idx >= 0:
+            dt_p1_sec = pose_data.p1_time[idx] - float(self.t0)
+            t0_gps = Timestamp(pose_data.gps_time[idx]) - dt_p1_sec
+            # If the first pose is pretty close to t0, we'll assume the approximation is reasonably accurate and not
+            # bother reporting it.
+            t0_is_approx = dt_p1_sec > 10.0
+        else:
+            t0_gps = Timestamp()
+            t0_is_approx = False
+
+        # Create a table with log times and durations.
+        descriptions = [
+            'Start Time',
+            '',
+            '',
+            'Processed Duration',
+            'Total Log Duration',
+        ]
+        times = [
+            str(self.t0),
+            system_time_to_str(self.system_t0, is_seconds=True).replace(' time', ':'),
+            # Note: Temporarily replacing <br> so it doesn't get stripped by _data_to_table().
+            self._gps_sec_to_string(t0_gps) \
+                .replace('<br>', (' (approximated)' if t0_is_approx else '') + '<brbak>') \
+                .replace('<brbak>', '<br>'),
+            '%.1f seconds' % processing_duration_sec,
+            log_duration_sec,
+        ]
+        time_table = _data_to_table(['Description', 'Time'], [descriptions, times])
 
         # Create a table with the types and counts of each FusionEngine message type in the log.
         message_types, message_counts = np.unique(reduced_index['type'], return_counts=True)
@@ -1929,10 +1955,13 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             'message_table': message_table,
             'version_table': version_table,
             'solution_type_table': solution_type_table,
+            'time_table': time_table,
         }
 
         self.summary += """
 %(version_table)s
+
+%(time_table)s
 
 %(solution_type_table)s
 
