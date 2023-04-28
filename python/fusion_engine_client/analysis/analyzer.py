@@ -226,18 +226,7 @@ class Analyzer(object):
                 p1_time = pose_data.p1_time
                 gps_time = pose_data.gps_time
 
-            def gps_sec_to_string(gps_time_sec):
-                if np.isnan(gps_time_sec):
-                    return "GPS: N/A<br>UTC: N/A"
-                else:
-                    SECS_PER_WEEK = 7 * 24 * 3600.0
-                    week = int(gps_time_sec / SECS_PER_WEEK)
-                    tow_sec = gps_time_sec - week * SECS_PER_WEEK
-                    utc_time = gpstime.fromgps(gps_time_sec)
-                    return "GPS: %d:%.3f (%.3f sec)<br>UTC: %s" %\
-                           (week, tow_sec, gps_time_sec, utc_time.strftime('%Y-%m-%d %H:%M:%S %Z'))
-
-            text = ['P1: %.3f sec<br>%s' % (p, gps_sec_to_string(g)) for p, g in zip(p1_time, gps_time)]
+            text = ['P1: %.3f sec<br>%s' % (p, self._gps_sec_to_string(g)) for p, g in zip(p1_time, gps_time)]
             figure.add_trace(go.Scattergl(x=time, y=np.full_like(time, 1), name='P1/GPS Time', text=text,
                                           mode='markers'),
                              1, 1)
@@ -2043,6 +2032,21 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                 selected_type = message_type_to_class[message_type]
                 break
         return selected_type
+
+    @classmethod
+    def _gps_sec_to_string(cls, gps_time_sec):
+        if isinstance(gps_time_sec, Timestamp):
+            gps_time_sec = float(gps_time_sec)
+
+        if np.isnan(gps_time_sec):
+            return "GPS: N/A<br>UTC: N/A"
+        else:
+            SECS_PER_WEEK = 7 * 24 * 3600.0
+            week = int(gps_time_sec / SECS_PER_WEEK)
+            tow_sec = gps_time_sec - week * SECS_PER_WEEK
+            utc_time = gpstime.fromgps(gps_time_sec)
+            return "GPS: %d:%.3f (%.3f sec)<br>UTC: %s" %\
+                   (week, tow_sec, gps_time_sec, utc_time.strftime('%Y-%m-%d %H:%M:%S %Z'))
 
     @classmethod
     def _get_measurement_time(cls, data, time_source: SystemTimeSource) -> np.ndarray:
