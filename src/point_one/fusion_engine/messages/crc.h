@@ -31,6 +31,18 @@ namespace messages {
 P1_EXPORT uint32_t CalculateCRC(const void* buffer);
 
 /**
+ * @brief Calculate the CRC for the message (payload) contained in the buffer.
+ *
+ * @param buffer A byte buffer containing a payload.
+ * @param length The length of the buffer.
+ * @param initial_value The seed value of the CRC calculation.
+ *
+ * @return The calculated CRC value.
+ */
+P1_EXPORT uint32_t CalculateCRC(const void* buffer, size_t length,
+                                uint32_t initial_value = 0);
+
+/**
  * @brief Check if the message contained in the buffer has a valid CRC.
  *
  * @param buffer A byte buffer containing a @ref MessageHeader and payload.
