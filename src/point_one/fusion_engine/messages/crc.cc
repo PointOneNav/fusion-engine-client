@@ -35,18 +35,6 @@ const uint32_t* GetCRCTable() {
 
   return crc_table;
 }
-
-/******************************************************************************/
-uint32_t CalculateCRC(const void* buffer, size_t length,
-                      uint32_t initial_value = 0) {
-  static const uint32_t* crc_table = GetCRCTable();
-  uint32_t c = initial_value ^ 0xFFFFFFFF;
-  const uint8_t* u = static_cast<const uint8_t*>(buffer);
-  for (size_t i = 0; i < length; ++i) {
-    c = crc_table[(c ^ u[i]) & 0xFF] ^ (c >> 8);
-  }
-  return c ^ 0xFFFFFFFF;
-}
 } // namespace
 
 namespace point_one {
@@ -54,13 +42,25 @@ namespace fusion_engine {
 namespace messages {
 
 /******************************************************************************/
+uint32_t CalculateCRC(const void* buffer, size_t length,
+                      uint32_t initial_value) {
+  static const uint32_t* crc_table = ::GetCRCTable();
+  uint32_t c = initial_value ^ 0xFFFFFFFF;
+  const uint8_t* u = static_cast<const uint8_t*>(buffer);
+  for (size_t i = 0; i < length; ++i) {
+    c = crc_table[(c ^ u[i]) & 0xFF] ^ (c >> 8);
+  }
+  return c ^ 0xFFFFFFFF;
+}
+
+/******************************************************************************/
 uint32_t CalculateCRC(const void* buffer) {
   static constexpr size_t offset = offsetof(MessageHeader, protocol_version);
   const MessageHeader& header = *static_cast<const MessageHeader*>(buffer);
   size_t size_bytes =
       (sizeof(MessageHeader) - offset) + header.payload_size_bytes;
-  return ::CalculateCRC(reinterpret_cast<const uint8_t*>(&header) + offset,
-                        size_bytes);
+  return CalculateCRC(reinterpret_cast<const uint8_t*>(&header) + offset,
+                      size_bytes);
 }
 
 } // namespace messages
