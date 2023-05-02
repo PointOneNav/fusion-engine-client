@@ -2576,7 +2576,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                                   **self.params)
         if len(result[VersionInfoMessage.MESSAGE_TYPE].messages) != 0:
             version = result[VersionInfoMessage.MESSAGE_TYPE].messages[-1]
-            version_types = {'fw': 'Firmware', 'engine': 'FusionEngine', 'hw': 'Hardware', 'rx': 'GNSS Receiver'}
+            version_types = {'fw': 'Firmware', 'engine': 'FusionEngine', 'os': 'OS', 'rx': 'GNSS Receiver'}
             version_values = [str(vars(version)[k + '_version_str']) for k in version_types.keys()]
             version_table = _data_to_table(['Type', 'Version'], [list(version_types.values()), version_values])
         else:
