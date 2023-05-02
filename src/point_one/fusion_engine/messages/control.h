@@ -320,7 +320,7 @@ struct alignas(4) ResetRequest : public MessagePayload {
 };
 
 /**
- * @brief Software and hardware version information, (@ref
+ * @brief Software version information, (@ref
  *        MessageType::VERSION_INFO, version 1.0).
  * @ingroup config_and_ctrl_messages
  *
@@ -328,7 +328,7 @@ struct alignas(4) ResetRequest : public MessagePayload {
  * available:
  * - Firmware - The current version of the platform software/firmware being used
  * - Engine - The version of Point One FusionEngine being used
- * - Hardware - The version of the platform hardware being used
+ * - OS - The version of the operating system/kernel/bootloader being used
  * - GNSS Receiver - The version of firmware being used by the device's GNSS
  *   receiver
  *
@@ -338,7 +338,7 @@ struct alignas(4) ResetRequest : public MessagePayload {
  *
  * ```
  * {MessageHeader, VersionInfoMessage, "Firmware Version", "Engine Version",
- *  "Hardware Version", "Receiver Version"}
+ *  "OS Version", "Receiver Version"}
  * ```
  */
 struct alignas(4) VersionInfoMessage : public MessagePayload {
@@ -354,8 +354,8 @@ struct alignas(4) VersionInfoMessage : public MessagePayload {
   /** The length of the FusionEngine version string (in bytes). */
   uint8_t engine_version_length = 0;
 
-  /** The length of the hardware version string (in bytes). */
-  uint8_t hw_version_length = 0;
+  /** The length of the OS version string (in bytes). */
+  uint8_t os_version_length = 0;
 
   /** The length of the GNSS receiver version string (in bytes). */
   uint8_t rx_version_length = 0;

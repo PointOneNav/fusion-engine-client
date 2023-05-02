@@ -361,12 +361,12 @@ class VersionInfoMessage(MessagePayload):
         "system_time_ns" / Int64ul,
         "fw_version_length" / Int8ul,
         "engine_version_length" / Int8ul,
-        "hw_version_length" / Int8ul,
+        "os_version_length" / Int8ul,
         "rx_version_length" / Int8ul,
         Padding(4),
         "fw_version_str" / PaddedString(this.fw_version_length, 'utf8'),
         "engine_version_str" / PaddedString(this.engine_version_length, 'utf8'),
-        "hw_version_str" / PaddedString(this.hw_version_length, 'utf8'),
+        "os_version_str" / PaddedString(this.os_version_length, 'utf8'),
         "rx_version_str" / PaddedString(this.rx_version_length, 'utf8'),
     )
 
@@ -374,14 +374,14 @@ class VersionInfoMessage(MessagePayload):
         self.system_time_ns = 0
         self.fw_version_str = ""
         self.engine_version_str = ""
-        self.hw_version_str = ""
+        self.os_version_str = ""
         self.rx_version_str = ""
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         values = dict(self.__dict__)
         values['fw_version_length'] = len(self.fw_version_str)
         values['engine_version_length'] = len(self.engine_version_str)
-        values['hw_version_length'] = len(self.hw_version_str)
+        values['os_version_length'] = len(self.os_version_str)
         values['rx_version_length'] = len(self.rx_version_str)
         packed_data = self.VersionInfoMessageConstruct.build(values)
         return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
@@ -393,7 +393,7 @@ class VersionInfoMessage(MessagePayload):
 
     def __repr__(self):
         result = super().__repr__()[:-1]
-        result += f', fw={self.fw_version_str}, engine={self.engine_version_str}, hw={self.hw_version_str} ' \
+        result += f', fw={self.fw_version_str}, engine={self.engine_version_str}, os={self.os_version_str} ' \
                   f'rx={self.rx_version_str}]'
         return result
 
@@ -401,7 +401,7 @@ class VersionInfoMessage(MessagePayload):
         string = f'Version Info @ %s\n' % system_time_to_str(self.system_time_ns)
         string += f'  Firmware: {self.fw_version_str}\n'
         string += f'  FusionEngine: {self.engine_version_str}\n'
-        string += f'  Hardware: {self.hw_version_str}\n'
+        string += f'  OS: {self.os_version_str}\n'
         string += f'  GNSS receiver: {self.rx_version_str}'
         return string
 
