@@ -252,11 +252,11 @@ other types of data.
         _logger.info('Input file: %s' % input_path)
         _logger.info('Log ID: %s' % log_id)
         if first_p1_time_sec is not None:
-            _logger.info('Duration (P1): %d seconds' % (last_p1_time_sec - first_p1_time_sec))
+            _logger.info('Duration (P1): %.1f seconds' % (last_p1_time_sec - first_p1_time_sec))
         else:
             _logger.info('Duration (P1): unknown')
         if first_system_time_sec is not None:
-            _logger.info('Duration (system): %d seconds' % (last_system_time_sec - first_system_time_sec))
+            _logger.info('Duration (system): %.1f seconds' % (last_system_time_sec - first_system_time_sec))
         else:
             _logger.info('Duration (system): unknown')
         _logger.info('Total data read: %d B' % reader.get_bytes_read())
