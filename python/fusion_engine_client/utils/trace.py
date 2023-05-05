@@ -3,7 +3,9 @@
 #   import fusion_engine_client.utils.trace as logging
 from logging import *
 
+import errno
 import logging
+import os
 import sys
 
 try:
@@ -17,6 +19,29 @@ try:
         colorama.init()
 except ImportError:
     colorama = None
+
+# BrokenPipeError manifests differently in Windows and non-Windows.
+#
+# Reference: https://github.com/pypa/pip/pull/5907
+if os.name == 'nt':
+    # In Windows, a broken pipe can show up as EINVAL rather than EPIPE:
+    # https://bugs.python.org/issue19612
+    # https://bugs.python.org/issue30418
+    def _is_broken_pipe_error(exc_class, exc):
+        """See the docstring for non-Windows Python 3 below."""
+        return ((exc_class is BrokenPipeError) or  # noqa: F821
+                (exc_class is OSError and
+                 exc.errno in (errno.EINVAL, errno.EPIPE)))
+else:
+    # Then we are in the non-Windows Python 3 case.
+    def _is_broken_pipe_error(exc_class, exc):
+        """
+        Return whether an exception is a broken pipe error.
+        Args:
+          exc_class: an exception class.
+          exc: an exception instance.
+        """
+        return (exc_class is BrokenPipeError)  # noqa: F821
 
 
 class HighlightFormatter(logging.Formatter):
@@ -75,6 +100,50 @@ class HighlightFormatter(logging.Formatter):
             if isinstance(h, logging.StreamHandler) and h.stream in streams:
                 formatter = HighlightFormatter(parent_formatter=h.formatter, *args, **kwargs)
                 h.setFormatter(formatter)
+
+
+class BrokenPipeStreamHandler(logging.StreamHandler):
+    def __init__(self, parent_handler=None, disable_stream=True, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if parent_handler is not None:
+            for key, value in parent_handler.__dict__.items():
+                setattr(self, key, value)
+
+        self.disable_stream = disable_stream
+
+    # Reference: https://github.com/pypa/pip/pull/5907
+    def handleError(self, record):
+        # If a broken pipe occurred while calling write() or flush() on the
+        # stdout stream in logging's Handler.emit(), then raise our special
+        # exception so we can handle it in main() instead of logging the
+        # broken pipe error and continuing.
+        exc_class, exc = sys.exc_info()[:2]
+        if exc_class and _is_broken_pipe_error(exc_class, exc):
+            # After a broken pipe, we must explicitly disable the stream in sys, otherwise Python will try to flush it
+            # on exit and that will print the following:
+            #   Exception ignored in: <_io.TextIOWrapper name='<stdout>' mode='w' encoding='utf-8'>
+            #   BrokenPipeError: [Errno 32] Broken pipe
+            if self.disable_stream:
+                if self.stream is sys.stdout:
+                    sys.stdout = None
+                elif self.stream is sys.stderr:
+                    sys.stderr = None
+
+            raise BrokenPipeError()
+        else:
+            return super().handleError(record)
+
+    @classmethod
+    def install(cls, streams=None, *args, **kwargs):
+        if streams is None:
+            streams = (sys.stdout, sys.stderr)
+
+        streams = [sys.stdout if s == 'stdout' else s for s in streams]
+        streams = [sys.stderr if s == 'stderr' else s for s in streams]
+
+        for i, h in enumerate(logging.root.handlers):
+            if isinstance(h, logging.StreamHandler) and h.stream in streams:
+                logging.root.handlers[i] = BrokenPipeStreamHandler(parent_handler=h)
 
 
 class SilentLogger(logging.Logger):
