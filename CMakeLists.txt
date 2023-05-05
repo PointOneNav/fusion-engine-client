@@ -17,7 +17,7 @@ endif()
 # Define the project and setup the compiler toolchain. This will establish
 # default compiler/linker flags. If the user specifies a cross-compilation
 # toolchain (-DCMAKE_TOOLCHAIN_FILE=...), it will be applied now.
-project(p1_fusion_engine_client VERSION 1.18.1)
+project(p1_fusion_engine_client VERSION 1.19.0)
 
 # Set additional compilation flags.
 if (MSVC)
