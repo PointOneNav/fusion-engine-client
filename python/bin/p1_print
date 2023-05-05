@@ -215,33 +215,34 @@ other types of data.
             # Update the data summary in summary mode, or print the message contents otherwise.
             total_messages += 1
             if options.summary:
-                p1_time = message.get_p1_time()
-                if p1_time is not None:
-                    if first_p1_time_sec is None:
-                        first_p1_time_sec = float(p1_time)
-                        last_p1_time_sec = float(p1_time)
-                        newest_p1_time = p1_time
-                    else:
-                        if p1_time < newest_p1_time:
-                            _logger.warning('P1 time restart detected after %s.' % str(newest_p1_time))
-                        last_p1_time_sec = max(last_p1_time_sec, float(p1_time))
-                        newest_p1_time = p1_time
-
-                system_time_sec = message.get_system_time_sec()
-                if system_time_sec is not None:
-                    if first_system_time_sec is None:
-                        first_system_time_sec = system_time_sec
-                        last_system_time_sec = system_time_sec
-                        newest_system_time_sec = system_time_sec
-                    else:
-                        if system_time_sec < newest_system_time_sec:
-                            _logger.warning('System time restart detected after %s.' %
-                                            system_time_to_str(newest_system_time_sec, is_seconds=True))
-                        last_system_time_sec = max(last_system_time_sec, system_time_sec)
-                        newest_system_time_sec = system_time_sec
-
                 entry = message_stats[header.message_type]
                 entry['count'] += 1
+
+                if message is not None:
+                    p1_time = message.get_p1_time()
+                    if p1_time is not None:
+                        if first_p1_time_sec is None:
+                            first_p1_time_sec = float(p1_time)
+                            last_p1_time_sec = float(p1_time)
+                            newest_p1_time = p1_time
+                        else:
+                            if p1_time < newest_p1_time:
+                                _logger.warning('P1 time restart detected after %s.' % str(newest_p1_time))
+                            last_p1_time_sec = max(last_p1_time_sec, float(p1_time))
+                            newest_p1_time = p1_time
+
+                    system_time_sec = message.get_system_time_sec()
+                    if system_time_sec is not None:
+                        if first_system_time_sec is None:
+                            first_system_time_sec = system_time_sec
+                            last_system_time_sec = system_time_sec
+                            newest_system_time_sec = system_time_sec
+                        else:
+                            if system_time_sec < newest_system_time_sec:
+                                _logger.warning('System time restart detected after %s.' %
+                                                system_time_to_str(newest_system_time_sec, is_seconds=True))
+                            last_system_time_sec = max(last_system_time_sec, system_time_sec)
+                            newest_system_time_sec = system_time_sec
             else:
                 print_message(header, message, offset_bytes, format=options.format)
     except (BrokenPipeError, KeyboardInterrupt) as e:
@@ -252,11 +253,11 @@ other types of data.
         _logger.info('Input file: %s' % input_path)
         _logger.info('Log ID: %s' % log_id)
         if first_p1_time_sec is not None:
-            _logger.info('Duration (P1): %d seconds' % (last_p1_time_sec - first_p1_time_sec))
+            _logger.info('Duration (P1): %.1f seconds' % (last_p1_time_sec - first_p1_time_sec))
         else:
             _logger.info('Duration (P1): unknown')
         if first_system_time_sec is not None:
-            _logger.info('Duration (system): %d seconds' % (last_system_time_sec - first_system_time_sec))
+            _logger.info('Duration (system): %.1f seconds' % (last_system_time_sec - first_system_time_sec))
         else:
             _logger.info('Duration (system): unknown')
         _logger.info('Total data read: %d B' % reader.get_bytes_read())
