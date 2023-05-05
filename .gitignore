@@ -12,9 +12,15 @@ bazel-*
 # Default cmake build directory.
 build/
 
-# CLion/Pycharm project settings.
+# Python files.
+venv*/
+*.pyc
+
+# IDE project settings.
 .clwb/
 .idea/
+.vscode
+*.code-workspace
 
 # P1 binary files.
 *.p1bin

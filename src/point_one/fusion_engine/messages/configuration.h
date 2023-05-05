@@ -1513,6 +1513,26 @@ struct alignas(4) InterfaceID {
   P1_CONSTEXPR_FUNC bool operator!=(const InterfaceID& other) const {
     return !(*this == other);
   }
+
+  P1_CONSTEXPR_FUNC bool operator<(const InterfaceID& other) const {
+    if (type == other.type) {
+      return index < other.index;
+    } else {
+      return type < other.type;
+    }
+  }
+
+  P1_CONSTEXPR_FUNC bool operator>(const InterfaceID& other) const {
+    return other < *this;
+  }
+
+  P1_CONSTEXPR_FUNC bool operator>=(const InterfaceID& other) const {
+    return !(*this < other);
+  }
+
+  P1_CONSTEXPR_FUNC bool operator<=(const InterfaceID& other) const {
+    return !(*this > other);
+  }
 };
 
 /**
