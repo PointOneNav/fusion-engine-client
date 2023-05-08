@@ -185,7 +185,7 @@ class Analyzer(object):
                                subplot_titles=['Device Time vs. Relative Time',
                                                'Pose Message Interval vs. Relative Time'])
 
-        figure['layout'].update(showlegend=True)
+        figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
         for i in range(2):
             figure['layout']['xaxis%d' % (i + 1)].update(title="Relative Time (sec)", showticklabels=True)
         figure['layout']['yaxis1'].update(title="Absolute Time",
@@ -301,7 +301,7 @@ class Analyzer(object):
                                subplot_titles=['Attitude (YPR)', 'ENU Displacement', 'Body Velocity',
                                                'Attitude Std', 'ENU Position Std', 'Velocity Std'])
 
-        figure['layout'].update(showlegend=True)
+        figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
         for i in range(6):
             figure['layout']['xaxis%d' % (i + 1)].update(title="Time (sec)", showticklabels=True, matches='x')
         figure['layout']['yaxis1'].update(title="Degrees")
@@ -408,7 +408,7 @@ class Analyzer(object):
                                                'Mounting Angle Standard Deviation', 'Travel Distance'],
                                specs=[[{"secondary_y": True}], [{}], [{}], [{}]])
 
-        figure['layout'].update(showlegend=True)
+        figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
         for i in range(4):
             figure['layout']['xaxis%d' % (i + 1)].update(title="Time (sec)", showticklabels=True)
         figure['layout']['yaxis1'].update(title="Percent Complete", range=[0, 100])
@@ -528,7 +528,7 @@ class Analyzer(object):
 
         time_figure = make_subplots(rows=4, cols=1, print_grid=False, shared_xaxes=True,
                                     subplot_titles=['3D', 'East', 'North', 'Up'])
-        time_figure['layout'].update(showlegend=True)
+        time_figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
         for i in range(4):
             time_figure['layout']['xaxis%d' % (i + 1)].update(title="Time (sec)", showticklabels=True)
         time_figure['layout']['yaxis1'].update(title="Displacement (m)")
@@ -1060,7 +1060,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                    [None],
                    [None],
                    [{}]])
-        figure['layout'].update(showlegend=True)
+        figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
         for i in range(2):
             figure['layout']['xaxis%d' % (i + 1)].update(title="Time (sec)", showticklabels=True, matches='x')
         figure['layout']['yaxis1'].update(title="Baseline Distance (km)")
@@ -1219,7 +1219,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
 
         figure = make_subplots(rows=len(titles), cols=1, print_grid=False, shared_xaxes=True, subplot_titles=titles)
 
-        figure['layout'].update(showlegend=True, modebar_add=['v1hovermode', 'toggleSpikelines'])
+        figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
         for i in range(len(titles)):
             figure['layout']['xaxis%d' % (i + 1)].update(title="Time (sec)", showticklabels=True)
 
@@ -1494,7 +1494,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
 
         figure = make_subplots(rows=2, cols=1, print_grid=False, shared_xaxes=True, subplot_titles=titles)
 
-        figure['layout'].update(showlegend=True)
+        figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
         figure['layout']['xaxis1'].update(title="Time (sec)", showticklabels=True)
         figure['layout']['xaxis2'].update(title="Time (sec)", showticklabels=True)
         figure['layout']['yaxis1'].update(title="Acceleration (m/s^2)")
