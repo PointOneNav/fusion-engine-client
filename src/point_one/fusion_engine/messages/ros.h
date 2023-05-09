@@ -247,9 +247,16 @@ struct alignas(4) GPSFixMessage : public MessagePayload {
  * @brief ROS `Imu` message (MessageType::ROS_IMU, version 1.0).
  * @ingroup ros_messages
  *
- * If any of the data elements are not available (e.g., IMU doesn't produce an
- * orientation estimate), they will be set to 0 and their associated covariance
- * matrices will be set to -1.
+ * Per the ROS IMU message specification:
+ * - If the a value is known but its covariance is not, its covariance matrix
+ *   will be set to 0.0
+ * - If a value is not known or not available, its covariance matrix will be set
+ *   to -1.0
+ *   - The value itself will be set to `NAN`, as this is not specified in the
+ *     ROS message definition
+ *
+ * Note that the ROS IMU message does not use `NAN` in the covariance matrix to
+ * represent either data or covariance not known.
  *
  * See http://docs.ros.org/api/sensor_msgs/html/msg/Imu.html.
  *
@@ -275,7 +282,7 @@ struct alignas(4) IMUMessage : public MessagePayload {
   /**
    * Orientation covariance matrix. Set to -1 if not available.
    */
-  double orientation_covariance[9] = {-1};
+  double orientation_covariance[9] = {-1, -1, -1, -1, -1, -1, -1, -1, -1};
 
   /**
    * Vehicle x/y/z rate of rotation (in radians/second), resolved in the body
@@ -286,7 +293,7 @@ struct alignas(4) IMUMessage : public MessagePayload {
   /**
    * Vehicle rate of rotation covariance matrix. Set to -1 if not available.
    */
-  double angular_velocity_covariance[9] = {-1};
+  double angular_velocity_covariance[9] = {-1, -1, -1, -1, -1, -1, -1, -1, -1};
 
   /**
    * Vehicle x/y/z linear acceleration (in meters/second^2), resolved in the
@@ -297,7 +304,7 @@ struct alignas(4) IMUMessage : public MessagePayload {
   /**
    * Vehicle x/y/z acceleration covariance matrix. Set to -1 if not available.
    */
-  double acceleration_covariance[9] = {-1};
+  double acceleration_covariance[9] = {-1, -1, -1, -1, -1, -1, -1, -1, -1};
 };
 
 #pragma pack(pop)
