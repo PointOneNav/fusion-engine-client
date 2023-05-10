@@ -1913,8 +1913,8 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             'Total Log Duration',
         ]
         times = [
-            str(self.t0),
-            system_time_to_str(self.system_t0, is_seconds=True).replace(' time', ':'),
+            str(self.reader.t0),
+            system_time_to_str(self.reader.get_system_t0(), is_seconds=True).replace(' time', ':'),
             # Note: Temporarily replacing <br> so it doesn't get stripped by _data_to_table().
             self._gps_sec_to_string(t0_gps) \
                 .replace('<br>', (' (approximated)' if t0_is_approx else '') + '<brbak>') \
