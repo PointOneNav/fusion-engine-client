@@ -139,10 +139,9 @@ def find_log_by_pattern(pattern, log_base_dir=DEFAULT_LOG_BASE_DIR, allow_multip
         if len(exact_matches) == 1:
             matches = exact_matches
         else:
-            e = RuntimeError("Found multiple logs that match pattern '%s'. Please be more specific." % pattern)
-            _logger.error(str(e))
-            _logger.error('Matches:\n  %s' % ('\n  '.join([m[0] for m in matches])))
-            raise e
+            raise RuntimeError(
+                "Found multiple logs that match pattern '%s'. Please be more specific.\n  %s" %
+                (pattern, '\n  '.join([m[0] for m in matches])))
     elif len(matches) == 0:
         message = "Found no logs that match pattern '%s'." % pattern
         if not allow_multiple:
