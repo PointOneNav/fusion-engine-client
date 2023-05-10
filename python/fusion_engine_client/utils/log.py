@@ -145,7 +145,7 @@ def find_log_by_pattern(pattern, log_base_dir=DEFAULT_LOG_BASE_DIR, allow_multip
 
 
 def find_log_file(input_path, candidate_files=None, return_output_dir=False, return_log_id=False,
-                  log_base_dir=DEFAULT_LOG_BASE_DIR, check_exact_match=True):
+                  log_base_dir=DEFAULT_LOG_BASE_DIR, check_exact_match=True, check_pattern_match=True):
     """!
     @brief Locate a log directory containing the specified file(s).
 
@@ -179,6 +179,8 @@ def find_log_file(input_path, candidate_files=None, return_output_dir=False, ret
     @param log_base_dir The base directory to be searched when performing a pattern match for a log directory.
     @param check_exact_match If `True`, check if `input_path` is the path to a data file. Otherwise, skip this check and
            only perform a pattern search.
+    @param check_pattern_match If `True` and `input_path` does not refer to a log file or directory, perform a pattern
+           match using `input_path` as the pattern.
 
     @return The path to the located file or a tuple containing:
             - The path to the located file.
@@ -226,7 +228,7 @@ def find_log_file(input_path, candidate_files=None, return_output_dir=False, ret
         # If the user didn't specify a directory, or the directory wasn't considered a valid log (i.e., didn't have any
         # of the candidate files in it), check if they provided a pattern match to a log (i.e., a partial log ID or a
         # search pattern (foo*/partial_id*)).
-        if log_dir is None:
+        if log_dir is None and check_pattern_match:
             if check_exact_match:
                 if dir_exists:
                     _logger.info("Directory '%s' does not contain a data file. Attempting a pattern match." %
