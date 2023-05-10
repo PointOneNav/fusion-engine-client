@@ -1481,7 +1481,8 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         data = result[message_cls.MESSAGE_TYPE]
 
         if len(data.p1_time) == 0:
-            self.logger.info('No IMU data available. Skipping plot.')
+            self.logger.info('No %s data available. Skipping plot.' %
+                             ('IMU' if message_cls is IMUOutput else 'raw IMU'))
             return
 
         time = data.p1_time - float(self.t0)
