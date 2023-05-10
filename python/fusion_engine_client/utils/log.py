@@ -425,7 +425,7 @@ def locate_log(input_path, log_base_dir=DEFAULT_LOG_BASE_DIR, return_output_dir=
         try:
             result = find_log_file(input_path, candidate_files=CANDIDATE_MIXED_FILES, log_base_dir=log_base_dir,
                                    return_output_dir=return_output_dir, return_log_id=return_log_id,
-                                   check_exact_match=False)
+                                   check_exact_match=True)
             if isinstance(result, tuple):
                 mixed_file_path = result[0]
             else:
