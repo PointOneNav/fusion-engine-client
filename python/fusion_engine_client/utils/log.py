@@ -1,4 +1,5 @@
 import fnmatch
+import glob
 import os
 
 from . import trace as logging
@@ -209,26 +210,60 @@ def find_log_file(input_path, candidate_files=None, return_output_dir=False, ret
         log_dir = None
         log_id = None
 
+        def _search_directory(dir_path):
+            for f in candidate_files:
+                if f is None:
+                    continue
+
+                test_path = os.path.join(dir_path, f)
+                if os.path.exists(test_path):
+                    return test_path, dir_path, os.path.basename(dir_path)
+            return None, None, None
+
         if check_exact_match:
             dir_exists = os.path.isdir(input_path)
             if dir_exists:
-                for f in candidate_files:
-                    if f is None:
-                        continue
-
-                    test_path = os.path.join(input_path, f)
-                    if os.path.exists(test_path):
-                        log_dir = input_path
-                        log_id = os.path.basename(log_dir)
-                        input_path = test_path
-                        break
+                matching_input_path, log_dir, log_id = _search_directory(input_path)
+                if matching_input_path is not None:
+                    input_path = matching_input_path
         else:
             dir_exists = False
+
+        # If we didn't find an exact match and the path contains a *, try a glob search in the current directory first.
+        # For example, if they specified 'abc*', search for './abc*'.
+        if log_dir is None and '*' in input_path:
+            pattern = input_path
+            matches = glob.glob(pattern)
+            matching_input_path = None
+            matching_log_dir = None
+            matching_log_id = None
+            for m in matches:
+                if os.path.isdir(m):
+                    matching_input_path, matching_log_dir, matching_log_id = _search_directory(m)
+                    if matching_input_path is not None:
+                        break
+                else:
+                    matching_input_path = m
+                    matching_log_dir = os.path.dirname(matching_input_path)
+                    if matching_log_dir == "":
+                        matching_log_dir = "."
+                    matching_log_id = None
+                    break
+
+            if matching_input_path is not None:
+                if len(matches) == 1:
+                    input_path = matching_input_path
+                    log_dir = matching_log_dir
+                    log_id = matching_log_id
+                else:
+                    raise RuntimeError(
+                        "Found multiple logs that match pattern '%s'. Please be more specific.\n  %s" %
+                        (pattern, '\n  '.join(matches)))
 
         # If the user didn't specify a directory, or the directory wasn't considered a valid log (i.e., didn't have any
         # of the candidate files in it), check if they provided a pattern match to a log (i.e., a partial log ID or a
         # search pattern (foo*/partial_id*)).
-        if log_dir is None and check_pattern_match:
+        if log_dir is None and check_pattern_match and not (input_path.startswith('./') or input_path.startswith('/')):
             if check_exact_match:
                 if dir_exists:
                     _logger.info("Directory '%s' does not contain a data file. Attempting a pattern match." %
