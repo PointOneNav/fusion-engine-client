@@ -893,7 +893,7 @@ Vehicle Speed Measurement @ {str(self.details.p1_time)}
 # Orientation sensor definitions
 ################################################################################
 
-class RawOrientationSensorOutput(MessagePayload):
+class RawHeadingOutput(MessagePayload):
     """!
      @brief The heading angle (in degrees) with respect to true north,
             pointing from the primary antenna to the secondary antenna.
@@ -905,7 +905,7 @@ class RawOrientationSensorOutput(MessagePayload):
      PoseMessage, @ref GNSSSatelliteMessage, etc.) may be associated using
      their @ref timestamps.
     """
-    MESSAGE_TYPE = MessageType.RAW_ORIENTATION_SENSOR_OUTPUT
+    MESSAGE_TYPE = MessageType.RAW_HEADING_OUTPUT
     MESSAGE_VERSION = 0
 
     _STRUCT = struct.Struct('<B3xL3f3fff')
@@ -996,7 +996,7 @@ class RawOrientationSensorOutput(MessagePayload):
 
     def __str__(self):
         return f"""\
-RawOrientationSensorOutput @ {str(self.details.p1_time)}
+RawHeadingOutput @ {str(self.details.p1_time)}
   Solution Type: {SolutionType(self.solution_type).to_string()}
   Relative position (ENU) (m): {self.relative_position_enu_m[0]:.2f}, {self.relative_position_enu_m[1]:.2f}, {self.relative_position_enu_m[2]:.2f}
   Position std (ENU) (m): {self.position_std_enu_m[0]:.2f}, {self.position_std_enu_m[1]:.2f}, {self.position_std_enu_m[2]:.2f}
@@ -1008,7 +1008,7 @@ RawOrientationSensorOutput @ {str(self.details.p1_time)}
         return cls._STRUCT.size + MeasurementDetails.calcsize()
 
     @classmethod
-    def to_numpy(cls, messages: Sequence['RawOrientationSensorOutput']):
+    def to_numpy(cls, messages: Sequence['RawHeadingOutput']):
         result = {
             'solution_type': np.array([int(m.solution_type) for m in messages], dtype=int),
             'flags': np.array([int(m.flags) for m in messages], dtype=int),
@@ -1020,7 +1020,7 @@ RawOrientationSensorOutput @ {str(self.details.p1_time)}
         result.update(MeasurementDetails.to_numpy([m.details for m in messages]))
         return result
 
-class OrientationSensorOutput(MessagePayload):
+class HeadingOutput(MessagePayload):
     """!
      @brief The corrected yaw and pitch (in degrees),
             using the horizontal / vertical configuration values set.
@@ -1032,10 +1032,10 @@ class OrientationSensorOutput(MessagePayload):
      PoseMessage, @ref GNSSSatelliteMessage, etc.) may be associated using
      their @ref timestamps.
     """
-    MESSAGE_TYPE = MessageType.ORIENTATION_SENSOR_OUTPUT
+    MESSAGE_TYPE = MessageType.HEADING_OUTPUT
     MESSAGE_VERSION = 0
 
-    _STRUCT = struct.Struct('<B4xL3f')
+    _STRUCT = struct.Struct('<B4xL3ff')
 
     def __init__(self):
         ## Measurement timestamps, if available. See @ref measurement_messages.
@@ -1049,7 +1049,7 @@ class OrientationSensorOutput(MessagePayload):
         #
         # @note
         # When pitch (vertical) and yaw (horizontal) are set in the configuration file,
-        # they are applied to the RawOrientationSensorOutput message.
+        # they are applied to the RawHeadingOutput message.
         # This is the result of that correction.
         # If the configuration is not set, this will be INVALID.
         ##
@@ -1088,20 +1088,23 @@ class OrientationSensorOutput(MessagePayload):
 
     def __str__(self):
         return f"""\
-RawOrientationSensorOutput @ {str(self.details.p1_time)}
+HeadingOutput @ {str(self.details.p1_time)}
   Solution Type: {SolutionType(self.solution_type).to_string()}
-  Corrected YPR (ENU) (deg): {self.corrected_ypr_vector[0]:.2f}, {self.corrected_ypr_vector[1]:.2f}, {self.corrected_ypr_vector[2]:.2f}"""
+  Corrected YPR (ENU) (deg): {self.corrected_ypr_vector[0]:.2f}, {self.corrected_ypr_vector[1]:.2f}, {self.corrected_ypr_vector[2]:.2f}
+  Corrected Heading (deg): {self.headinig_true_north_deg:.2f}
+  """
 
     @classmethod
     def calcsize(cls) -> int:
         return cls._STRUCT.size + MeasurementDetails.calcsize()
 
     @classmethod
-    def to_numpy(cls, messages: Sequence['RawOrientationSensorOutput']):
+    def to_numpy(cls, messages: Sequence['HeadingOutput']):
         result = {
             'solution_type': np.array([int(m.solution_type) for m in messages], dtype=int),
             'flags': np.array([int(m.flags) for m in messages], dtype=int),
-            'corrected_ypr_vector': np.array([m.corrected_ypr_vector for m in messages]).T,
+            'corrected_ypr_vector_deg': np.array([m.corrected_ypr_vector for m in messages]).T,
+            'heading_true_north_deg': np.array([m.heading_true_north_deg for m in messages], dtype=float).T,
         }
         result.update(MeasurementDetails.to_numpy([m.details for m in messages]))
         return result

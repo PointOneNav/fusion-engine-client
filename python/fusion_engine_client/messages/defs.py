@@ -98,9 +98,9 @@ class MessageType(IntEnum):
 
     # Sensor measurement messages.
     IMU_OUTPUT = 11000
-    RAW_ORIENTATION_SENSOR_OUTPUT = 11001
+    RAW_HEADING_OUTPUT = 11001
     RAW_IMU_MEASUREMENT = 11002
-    ORIENTATION_SENSOR_OUTPUT = 11003
+    HEADING_OUTPUT = 11003
 
     # Vehicle measurement messages.
     DEPRECATED_WHEEL_SPEED_MEASUREMENT = 11101
