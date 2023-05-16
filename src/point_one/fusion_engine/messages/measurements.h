@@ -1100,7 +1100,8 @@ struct alignas(4) DeprecatedVehicleSpeedMeasurement : public MessagePayload {
  * their P1 timestamps.
  */
 struct alignas(4) RawOrientationSensorOutput : public MessagePayload {
-  static constexpr MessageType MESSAGE_TYPE = MessageType::RAW_ORIENTATION_SENSOR_OUTPUT;
+  static constexpr MessageType MESSAGE_TYPE =
+      MessageType::RAW_ORIENTATION_SENSOR_OUTPUT;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
   /**
@@ -1155,7 +1156,8 @@ struct alignas(4) RawOrientationSensorOutput : public MessagePayload {
 };
 
 struct alignas(4) OrientationSensorOutput : public MessagePayload {
-  static constexpr MessageType MESSAGE_TYPE = MessageType::ORIENTATION_SENSOR_OUTPUT;
+  static constexpr MessageType MESSAGE_TYPE =
+      MessageType::ORIENTATION_SENSOR_OUTPUT;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
   /**
