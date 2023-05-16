@@ -1539,8 +1539,8 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             return
 
         # Read the heading measurement data.
-        result = self.reader.read(message_types=[RawOrientationSensorOutput], **self.params)
-        heading_data = result[RawOrientationSensorOutput.MESSAGE_TYPE]
+        result = self.reader.read(message_types=[RawHeadingOutput], **self.params)
+        heading_data = result[RawHeadingOutput.MESSAGE_TYPE]
 
         result = self.reader.read(message_types=[PoseMessage], **self.params)
         primary_pose_data = result[PoseMessage.MESSAGE_TYPE]

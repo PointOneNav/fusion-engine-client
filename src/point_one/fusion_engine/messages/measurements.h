@@ -1099,9 +1099,9 @@ struct alignas(4) DeprecatedVehicleSpeedMeasurement : public MessagePayload {
  * PoseMessage, @ref GNSSSatelliteMessage, etc.) may be associated using
  * their P1 timestamps.
  */
-struct alignas(4) RawOrientationSensorOutput : public MessagePayload {
+struct alignas(4) RawHeadingOutput : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE =
-      MessageType::RAW_ORIENTATION_SENSOR_OUTPUT;
+      MessageType::RAW_HEADING_OUTPUT;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
   /**
@@ -1155,9 +1155,9 @@ struct alignas(4) RawOrientationSensorOutput : public MessagePayload {
   float baseline_distance_m = NAN;
 };
 
-struct alignas(4) OrientationSensorOutput : public MessagePayload {
+struct alignas(4) HeadingOutput : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE =
-      MessageType::ORIENTATION_SENSOR_OUTPUT;
+      MessageType::HEADING_OUTPUT;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
   /**
@@ -1179,11 +1179,20 @@ struct alignas(4) OrientationSensorOutput : public MessagePayload {
    * 
    * @note
    * When pitch (vertical) and yaw (horizontal) are set in the configuration,
-   * they are applied to the RawOrientationSensorOutput message.
+   * they are applied to the RawHeadingOutput message.
    * This is the result of that correction.
    * If the configuration is not set, this will be INVALID.
    */
-  float corrected_ypr_vector[3] = {NAN, NAN, NAN};
+  float corrected_ypr_vector_deg[3] = {NAN, NAN, NAN};
+
+  /**
+   * The corrected heading angle (in degrees) with respect to true north, pointing from
+   * the primary antenna to the secondary antenna.
+   *
+   * @note
+   * Reported in the range [0, 360).
+   */
+  float heading_true_north_deg = NAN;
 };
 
 #pragma pack(pop)
