@@ -48,8 +48,9 @@ enum class MessageType : uint16_t {
 
   // Sensor measurement messages.
   IMU_OUTPUT = 11000, ///< @ref IMUOutput
-  HEADING_MEASUREMENT = 11001, ///< @ref HeadingMeasurement
+  RAW_ORIENTATION_SENSOR_OUTPUT = 11001, ///< @ref RawOrientationSensorOutput
   RAW_IMU_OUTPUT = 11002, ///< @ref RawIMUOutput
+  ORIENTATION_SENSOR_OUTPUT = 11003, ///< @ref OrientationSensorOutput
 
   // Vehicle measurement messages.
   DEPRECATED_WHEEL_SPEED_MEASUREMENT =
@@ -142,8 +143,8 @@ P1_CONSTEXPR_FUNC const char* to_string(MessageType type) {
     case MessageType::IMU_OUTPUT:
       return "IMU Output";
 
-    case MessageType::HEADING_MEASUREMENT:
-      return "Heading Measurement";
+    case MessageType::RAW_ORIENTATION_SENSOR_OUTPUT:
+      return "Raw Orientation Sensor Output";
 
     case MessageType::RAW_IMU_OUTPUT:
       return "Raw IMU Output";
