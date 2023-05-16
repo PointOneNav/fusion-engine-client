@@ -1084,7 +1084,7 @@ struct alignas(4) DeprecatedVehicleSpeedMeasurement : public MessagePayload {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-// Heading Measurements
+// Orientation sensor outputs
 ////////////////////////////////////////////////////////////////////////////////
 
 /**
@@ -1099,8 +1099,8 @@ struct alignas(4) DeprecatedVehicleSpeedMeasurement : public MessagePayload {
  * PoseMessage, @ref GNSSSatelliteMessage, etc.) may be associated using
  * their P1 timestamps.
  */
-struct alignas(4) HeadingMeasurement : public MessagePayload {
-  static constexpr MessageType MESSAGE_TYPE = MessageType::HEADING_MEASUREMENT;
+struct alignas(4) RawOrientationSensorOutput : public MessagePayload {
+  static constexpr MessageType MESSAGE_TYPE = MessageType::RAW_ORIENTATION_SENSOR_OUTPUT;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
   /**
@@ -1152,6 +1152,36 @@ struct alignas(4) HeadingMeasurement : public MessagePayload {
    * The estimated distance between primary and secondary antennas (in meters).
    */
   float baseline_distance_m = NAN;
+};
+
+struct alignas(4) OrientationSensorOutput : public MessagePayload {
+  static constexpr MessageType MESSAGE_TYPE = MessageType::ORIENTATION_SENSOR_OUTPUT;
+  static constexpr uint8_t MESSAGE_VERSION = 0;
+
+  /**
+   * Measurement timestamp and additional information, if available. See @ref
+   * MeasurementDetails for details.
+   */
+  MeasurementDetails details;
+
+  /** The type of this position solution. */
+  SolutionType solution_type = SolutionType::Invalid;
+
+  uint8_t reserved[4] = {0};
+
+  /** A bitmask of flags associated with the solution. */
+  uint32_t flags = 0;
+
+  /**
+   * Corrected ypr vector in the ENU frame.
+   * 
+   * @note
+   * When pitch (vertical) and yaw (horizontal) are set in the configuration,
+   * they are applied to the RawOrientationSensorOutput message.
+   * This is the result of that correction.
+   * If the configuration is not set, this will be INVALID.
+   */
+  float corrected_ypr_vector[3] = {NAN, NAN, NAN};
 };
 
 #pragma pack(pop)
