@@ -29,8 +29,7 @@ class ConfigType(IntEnum):
     VEHICLE_DETAILS = 20
     WHEEL_CONFIG = 21
     HARDWARE_TICK_CONFIG = 22
-    VERTICAL_HEADING_BIAS = 23
-    HORIZONTAL_HEADING_BIAS = 24
+    HEADING_BIAS = 23
     ENABLED_GNSS_SYSTEMS = 50
     ENABLED_GNSS_FREQUENCY_BANDS = 51
     LEAP_SECOND = 52
@@ -576,30 +575,18 @@ class _ConfigClassGenerator:
         "wheel_ticks_to_m" / Float32l,
     )
 
-    class VerticalHeadingBias(NamedTuple):
+    class HeadingBias(NamedTuple):
         """!
-        @brief Vertical heading bias configuration settings.
+        @brief Horizontal and vertical heading bias configuration settings.
 
-        See @ref VerticalHeadingBiasMeasurement.
         """
-        ## The vertical heading bias value (in degrees).
+        horizontal_heading_bias: float = 0.0
         vertical_heading_bias: float = 0.0
 
-    VerticalHeadingBiasConstruct = Struct(
-        "vertical_heading_bias" / Float32l
-    )
 
-    class HorizontalHeadingBias(NamedTuple):
-        """!
-        @brief Horizontal heading bias configuration settings.
-
-        See @ref HorizontalHeadingBiasMeasurement.
-        """
-        ## The horizontal heading bias value (in degrees).
-        horizontal_heading_bias: float = 0.0
-
-    HorizontalHeadingBiasConstruct = Struct(
-        "horizontal_heading_bias" / Float32l
+    HeadingBiasConstruct = Struct(
+        "horizontal_heading_bias" / Float32l,
+        "vertical_heading_bias" / Float32l,
     )
 
     class IonosphereConfig(NamedTuple):
@@ -807,17 +794,10 @@ class HardwareTickConfig(_conf_gen.HardwareTickConfig):
     pass
 
 
-@_conf_gen.create_config_class(ConfigType.VERTICAL_HEADING_BIAS, _conf_gen.VerticalHeadingBiasConstruct)
-class VerticalHeadingBias(_conf_gen.VerticalHeadingBias):
+@_conf_gen.create_config_class(ConfigType.HEADING_BIAS, _conf_gen.HeadingBiasConstruct)
+class HeadingBias(_conf_gen.HeadingBias):
     """!
-    @brief Vertical heading bias.
-    """
-    pass
-
-@_conf_gen.create_config_class(ConfigType.HORIZONTAL_HEADING_BIAS, _conf_gen.HorizontalHeadingBiasConstruct)
-class HorizontalHeadingBias(_conf_gen.HorizontalHeadingBias):
-    """!
-    @brief Horizontal heading bias.
+    @brief Horizontal and vertical heading bias.
     """
     pass
 
