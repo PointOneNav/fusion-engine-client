@@ -102,6 +102,22 @@ enum class ConfigType : uint16_t {
   HARDWARE_TICK_CONFIG = 22,
 
   /**
+   * Used to set a vertical bias (in degrees) on an AH/A(P/M) configuration.
+   * Vertical here being the pitch.
+   *
+   * Payload format: @ref VerticalHeadingBias
+   */
+  VERTICAL_HEADING_BIAS = 23,
+
+  /**
+   * Used to set a horizontal bias (in degrees) on an AH/A(P/M) configuration.
+   * Horizontal here being the yaw.
+   *
+   * Payload format: @ref HorizontalHeadingBias
+   */
+  HORIZONTAL_HEADING_BIAS = 24,
+
+  /**
    * A bitmask indicating which GNSS constellations are enabled.
    *
    * Payload format: `uint32_t` (see @ref sat_type_masks)

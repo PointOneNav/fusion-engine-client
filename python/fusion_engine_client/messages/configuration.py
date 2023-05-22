@@ -29,6 +29,8 @@ class ConfigType(IntEnum):
     VEHICLE_DETAILS = 20
     WHEEL_CONFIG = 21
     HARDWARE_TICK_CONFIG = 22
+    VERTICAL_HEADING_BIAS = 23
+    HORIZONTAL_HEADING_BIAS = 24
     ENABLED_GNSS_SYSTEMS = 50
     ENABLED_GNSS_FREQUENCY_BANDS = 51
     LEAP_SECOND = 52
@@ -574,6 +576,32 @@ class _ConfigClassGenerator:
         "wheel_ticks_to_m" / Float32l,
     )
 
+    class VerticalHeadingBias(NamedTuple):
+        """!
+        @brief Vertical heading bias configuration settings.
+
+        See @ref VerticalHeadingBiasMeasurement.
+        """
+        ## The vertical heading bias value (in degrees).
+        vertical_heading_bias: float = 0.0
+
+    VerticalHeadingBiasConstruct = Struct(
+        "vertical_heading_bias" / Float32l
+    )
+
+    class HorizontalHeadingBias(NamedTuple):
+        """!
+        @brief Horizontal heading bias configuration settings.
+
+        See @ref HorizontalHeadingBiasMeasurement.
+        """
+        ## The horizontal heading bias value (in degrees).
+        horizontal_heading_bias: float = 0.0
+
+    HorizontalHeadingBiasConstruct = Struct(
+        "horizontal_heading_bias" / Float32l
+    )
+
     class IonosphereConfig(NamedTuple):
         """!
         @brief Ionospheric delay model configuration.
@@ -778,6 +806,20 @@ class HardwareTickConfig(_conf_gen.HardwareTickConfig):
     """
     pass
 
+
+@_conf_gen.create_config_class(ConfigType.VERTICAL_HEADING_BIAS, _conf_gen.VerticalHeadingBiasConstruct)
+class VerticalHeadingBias(_conf_gen.VerticalHeadingBias):
+    """!
+    @brief Vertical heading bias.
+    """
+    pass
+
+@_conf_gen.create_config_class(ConfigType.HORIZONTAL_HEADING_BIAS, _conf_gen.HorizontalHeadingBiasConstruct)
+class HorizontalHeadingBias(_conf_gen.HorizontalHeadingBias):
+    """!
+    @brief Horizontal heading bias.
+    """
+    pass
 
 @_conf_gen.create_interface_config_class(InterfaceConfigType.BAUD_RATE, _conf_gen.UInt32Construct)
 class InterfaceBaudRateConfig(_conf_gen.IntegerVal):
