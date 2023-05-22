@@ -1054,6 +1054,16 @@ class HeadingOutput(MessagePayload):
         # If the configuration is not set, this will be INVALID.
         ##
         self.corrected_ypr_vector = np.full((3,), np.nan)
+        
+        ##
+        # The corrected heading between the primary device antenna and the secondary (in degrees) with
+        # respect to true north.
+        #
+        # @note
+        # Reported in the range [0, 360).
+        #
+        ##
+        self.heading_true_north_deg = np.nan
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         initial_offset = offset
@@ -1066,7 +1076,8 @@ class HeadingOutput(MessagePayload):
             self.flags,
             self.corrected_ypr_vector[0],
             self.corrected_ypr_vector[1],
-            self.corrected_ypr_vector[2])
+            self.corrected_ypr_vector[2],
+            self.heading_true_north_deg)
         offset += self._STRUCT.size
         if return_buffer:
             return buffer
@@ -1081,7 +1092,8 @@ class HeadingOutput(MessagePayload):
             self.flags,
             self.corrected_ypr_vector[0],
             self.corrected_ypr_vector[1],
-            self.corrected_ypr_vector[2]) = self._STRUCT.unpack_from(buffer, offset)
+            self.corrected_ypr_vector[2],
+            self.heading_true_north_deg) = self._STRUCT.unpack_from(buffer, offset)
         offset += self._STRUCT.size
         self.solution_type = SolutionType(solution_type_int)
         return offset - initial_offset
@@ -1091,7 +1103,7 @@ class HeadingOutput(MessagePayload):
 HeadingOutput @ {str(self.details.p1_time)}
   Solution Type: {SolutionType(self.solution_type).to_string()}
   Corrected YPR (ENU) (deg): {self.corrected_ypr_vector[0]:.2f}, {self.corrected_ypr_vector[1]:.2f}, {self.corrected_ypr_vector[2]:.2f}
-  Corrected Heading (deg): {self.headinig_true_north_deg:.2f}
+  Corrected Heading (deg): {self.heading_true_north_deg:.2f}
   """
 
     @classmethod
