@@ -270,6 +270,9 @@ P1_CONSTEXPR_FUNC const char* to_string(ConfigType type) {
     case ConfigType::HARDWARE_TICK_CONFIG:
       return "Hardware Tick Config";
 
+    case ConfigType::HEADING_BIAS:
+      return "Heading Bias";
+
     case ConfigType::ENABLED_GNSS_SYSTEMS:
       return "Enabled GNSS Systems";
 
@@ -1242,6 +1245,21 @@ struct alignas(4) HardwareTickConfig {
    * @ref WheelSensorType::TICK_RATE.
    */
   float wheel_ticks_to_m = NAN;
+};
+
+/**
+ * @brief Heading bias horizontal/vertical configurations.
+*/
+struct alignas(4) HeadingBias{
+  /**
+   * The horizontal heading bias in degrees.
+   */
+  float horizontal_heading_bias_deg = NAN;
+
+  /**
+   * The horizontal heading bias in degrees.
+   */
+  float vertical_heading_bias_deg = NAN;
 };
 
 /**
