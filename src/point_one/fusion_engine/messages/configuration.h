@@ -1250,7 +1250,7 @@ struct alignas(4) HardwareTickConfig {
 /**
  * @brief Heading bias horizontal/vertical configurations.
 */
-struct alignas(4) HeadingBias{
+struct alignas(4) HeadingBias {
   /**
    * The horizontal heading bias in degrees.
    */
