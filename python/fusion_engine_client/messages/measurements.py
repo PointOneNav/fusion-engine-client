@@ -890,7 +890,7 @@ Vehicle Speed Measurement @ {str(self.details.p1_time)}
         return result
 
 ################################################################################
-# Orientation sensor definitions
+# Heading Sensor Definitions
 ################################################################################
 
 class RawHeadingOutput(MessagePayload):
@@ -914,7 +914,8 @@ class RawHeadingOutput(MessagePayload):
         ## Measurement timestamps, if available. See @ref measurement_messages.
         self.details = MeasurementDetails()
 
-        # The type of this position solution.
+        # When heading is available this is set to RTKFixed,
+        # when it isn't this is set to Invalid.
         self.solution_type = SolutionType.Invalid
         # A bitmask of flags associated with the solution
         self.flags = 0
@@ -1035,13 +1036,14 @@ class HeadingOutput(MessagePayload):
     MESSAGE_TYPE = MessageType.HEADING_OUTPUT
     MESSAGE_VERSION = 0
 
-    _STRUCT = struct.Struct('<B4xL3ff')
+    _STRUCT = struct.Struct('<B3xL3ff')
 
     def __init__(self):
         ## Measurement timestamps, if available. See @ref measurement_messages.
         self.details = MeasurementDetails()
 
-        # The type of this position solution.
+        # When heading is available this is set to RTKFixed,
+        # when it isn't this is set to Invalid.
         self.solution_type = SolutionType.Invalid
         # A bitmask of flags associated with the solution
         self.flags = 0

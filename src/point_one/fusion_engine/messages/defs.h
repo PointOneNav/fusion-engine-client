@@ -143,7 +143,7 @@ P1_CONSTEXPR_FUNC const char* to_string(MessageType type) {
       return "IMU Output";
 
     case MessageType::RAW_HEADING_OUTPUT:
-      return "Raw Orientation Sensor Output";
+      return "Raw heading output";
 
     case MessageType::RAW_IMU_OUTPUT:
       return "Raw IMU Output";
