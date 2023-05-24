@@ -102,10 +102,10 @@ enum class ConfigType : uint16_t {
   HARDWARE_TICK_CONFIG = 22,
 
   /**
-   * Used to set vertical (pitch) & horizontal (yaw) biases (in degrees) on an
-   * AH/A(P/M) configuration.
+   * Used to set horizontal (yaw) & vertical (pitch) biases (in degrees) on
+   * a dual-antenna heading platform configuration.
    *
-   * Payload format: @ref heading bias
+   * Payload format: @ref HeadingBias
    */
   HEADING_BIAS = 23,
 
@@ -1252,14 +1252,30 @@ struct alignas(4) HardwareTickConfig {
 */
 struct alignas(4) HeadingBias {
   /**
-   * The horizontal heading bias in degrees.
-   */
-  float horizontal_heading_bias_deg = NAN;
+   * The angle between the vector from the primary GNSS antenna
+   * to the secondary heading antenna and the vector from the
+   * primary antenna pointing in the forward direction of the vehicle.
+   * A positive angle means the secondary antenna is offset in a
+   * counter-clockwise direction from the forward vector
+   * (positive yaw rotation). For example, if the primary antenna is in
+   * the back of the vehicle and the secondary antenna is in the front,
+   * a positive angle would indicate that the secondary antenna is offset
+   * to the left side of the vehicle.
+  */
+  float horizontal_bias_deg = NAN;
 
   /**
-   * The horizontal heading bias in degrees.
-   */
-  float vertical_heading_bias_deg = NAN;
+   * The angle between the vector from the primary GNSS antenna
+   * to the secondary heading antenna and the vector from the
+   * primary antenna pointing in the forward direction of the vehicle.
+   * A positive angle means the secondary antenna is offset in a
+   * counter-clockwise direction from the forward vector
+   * (positive pitch rotation). For example, if the primary antenna is in
+   * the back of the vehicle and the secondary antenna is in the front,
+   * a positive angle would indicate that the secondary antenna is offset
+   * to the down side of the vehicle.
+  */
+  float vertical_bias_deg = NAN;
 };
 
 /**
