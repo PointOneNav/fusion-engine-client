@@ -578,15 +578,14 @@ class _ConfigClassGenerator:
     class HeadingBias(NamedTuple):
         """!
         @brief Horizontal and vertical heading bias configuration settings.
-
         """
-        horizontal_heading_bias: float = 0.0
-        vertical_heading_bias: float = 0.0
+        horizontal_bias_deg: float = math.nan
+        vertical_bias_deg: float = math.nan
 
 
     HeadingBiasConstruct = Struct(
-        "horizontal_heading_bias" / Float32l,
-        "vertical_heading_bias" / Float32l,
+        "horizontal_bias_deg" / Float32l,
+        "vertical_bias_deg" / Float32l,
     )
 
     class IonosphereConfig(NamedTuple):
