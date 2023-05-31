@@ -378,6 +378,75 @@ struct alignas(4) VersionInfoMessage : public MessagePayload {
 };
 
 /**
+ * @brief Device identifier information, (@ref MessageType::DEVICE_ID, version
+ *        1.0).
+ * @ingroup config_and_ctrl_messages
+ *
+ * This message contains ID data for each of the following, where available:
+ * - HW - A unique ROM identifier pulled from the device HW
+ * - User - A value set by the user to identify a device
+ * - Receiver - A unique ROM identifier pulled from the GNSS receiver
+ *
+ * The message payload specifies the length of each string (in bytes). It is
+ * followed by each of the listed ids consecutively. The values are _not_ null
+ * terminated and aren't necessarily strings. The interpretation of the strings
+ * can be distinguished based on the `device_type`.
+ *
+ * ```
+ * {MessageHeader, VersionInfoMessage, "HW ID", "User ID", "Receiver ID"}
+ * ```
+ */
+struct alignas(4) DeviceIDMessage : public MessagePayload {
+  static constexpr MessageType MESSAGE_TYPE = MessageType::DEVICE_ID;
+  static constexpr uint8_t MESSAGE_VERSION = 0;
+
+  /** The type of device this message originated from. */
+  enum class DeviceType : uint8_t {
+    /**
+     * Unable to map device to a defined entry.
+     */
+    UNKNOWN = 0,
+    /** Device is a PointOne Atlas. */
+    ATLAS = 1,
+    /** Device is a Quectel LG69T-AM system. */
+    LG69T_AM = 2,
+    /** Device is a Quectel LG69T-AP system. */
+    LG69T_AP = 3,
+    /** Device is a Quectel LG69T-AH system. */
+    LG69T_AH = 4,
+  };
+
+  /** The current system timestamp (in ns).*/
+  int64_t system_time_ns = 0;
+
+  DeviceType device_type = DeviceType::UNKNOWN;
+
+  /** The length of the HW ID (in bytes). */
+  uint8_t hw_id_length = 0;
+
+  /** The length of the user specified ID (in bytes). */
+  uint8_t user_id_length = 0;
+
+  /** The length of the user receiver ID (in bytes). */
+  uint8_t receiver_id_length = 0;
+
+  uint8_t reserved[4] = {0};
+
+  /**
+   * The beginning of the hw id data.
+   *
+   * All other id strings follow immediately after this one in the data buffer.
+   * For example, the user id can be obtained as follows:
+   * ```cpp
+   * std::vector<uint8_t> user_id_data(
+   *     hw_id_data + message.hw_id_length,
+   *     hw_id_data + message.hw_id_length + message.user_id_length);
+   * ```
+   */
+  uint8_t hw_id_data[0];
+};
+
+/**
  * @brief Notification of a system event for logging purposes (@ref
  *        MessageType::EVENT_NOTIFICATION, version 1.0).
  * @ingroup config_and_ctrl_messages
