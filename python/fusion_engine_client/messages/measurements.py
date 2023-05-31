@@ -890,11 +890,10 @@ Vehicle Speed Measurement @ {str(self.details.p1_time)}
         return result
 
 ################################################################################
-# Meading Measurements
+# Heading Sensor Definitions
 ################################################################################
 
-
-class HeadingMeasurement(MessagePayload):
+class RawHeadingOutput(MessagePayload):
     """!
      @brief The heading angle (in degrees) with respect to true north,
             pointing from the primary antenna to the secondary antenna.
@@ -906,7 +905,7 @@ class HeadingMeasurement(MessagePayload):
      PoseMessage, @ref GNSSSatelliteMessage, etc.) may be associated using
      their @ref timestamps.
     """
-    MESSAGE_TYPE = MessageType.HEADING_MEASUREMENT
+    MESSAGE_TYPE = MessageType.RAW_HEADING_OUTPUT
     MESSAGE_VERSION = 0
 
     _STRUCT = struct.Struct('<B3xL3f3fff')
@@ -915,7 +914,8 @@ class HeadingMeasurement(MessagePayload):
         ## Measurement timestamps, if available. See @ref measurement_messages.
         self.details = MeasurementDetails()
 
-        # The type of this position solution.
+        # When heading is available this is set to RTKFixed,
+        # when it isn't this is set to Invalid.
         self.solution_type = SolutionType.Invalid
         # A bitmask of flags associated with the solution
         self.flags = 0
@@ -997,7 +997,7 @@ class HeadingMeasurement(MessagePayload):
 
     def __str__(self):
         return f"""\
-HeadingMeasurement @ {str(self.details.p1_time)}
+RawHeadingOutput @ {str(self.details.p1_time)}
   Solution Type: {SolutionType(self.solution_type).to_string()}
   Relative position (ENU) (m): {self.relative_position_enu_m[0]:.2f}, {self.relative_position_enu_m[1]:.2f}, {self.relative_position_enu_m[2]:.2f}
   Position std (ENU) (m): {self.position_std_enu_m[0]:.2f}, {self.position_std_enu_m[1]:.2f}, {self.position_std_enu_m[2]:.2f}
@@ -1009,7 +1009,7 @@ HeadingMeasurement @ {str(self.details.p1_time)}
         return cls._STRUCT.size + MeasurementDetails.calcsize()
 
     @classmethod
-    def to_numpy(cls, messages: Sequence['HeadingMeasurement']):
+    def to_numpy(cls, messages: Sequence['RawHeadingOutput']):
         result = {
             'solution_type': np.array([int(m.solution_type) for m in messages], dtype=int),
             'flags': np.array([int(m.flags) for m in messages], dtype=int),
@@ -1017,6 +1017,108 @@ HeadingMeasurement @ {str(self.details.p1_time)}
             'position_std_enu_m': np.array([m.position_std_enu_m for m in messages]).T,
             'heading_true_north_deg': np.array([float(m.heading_true_north_deg) for m in messages]),
             'baseline_distance_m': np.array([float(m.baseline_distance_m) for m in messages]),
+        }
+        result.update(MeasurementDetails.to_numpy([m.details for m in messages]))
+        return result
+
+class HeadingOutput(MessagePayload):
+    """!
+     @brief The corrected yaw and pitch (in degrees),
+            using the horizontal / vertical configuration values set.
+     @ingroup solution_messages
+
+     @note
+     All data is timestamped using the P1 Time values, which is a monotonic
+     timestamp referenced to the start of the device. Corresponding messages (@ref
+     PoseMessage, @ref GNSSSatelliteMessage, etc.) may be associated using
+     their @ref timestamps.
+    """
+    MESSAGE_TYPE = MessageType.HEADING_OUTPUT
+    MESSAGE_VERSION = 0
+
+    _STRUCT = struct.Struct('<B3xL3ff')
+
+    def __init__(self):
+        ## Measurement timestamps, if available. See @ref measurement_messages.
+        self.details = MeasurementDetails()
+
+        # When heading is available this is set to RTKFixed,
+        # when it isn't this is set to Invalid.
+        self.solution_type = SolutionType.Invalid
+        # A bitmask of flags associated with the solution
+        self.flags = 0
+        # Corrected ypr vector in the ENU frame.
+        #
+        # @note
+        # When pitch (vertical) and yaw (horizontal) are set in the configuration file,
+        # they are applied to the RawHeadingOutput message.
+        # This is the result of that correction.
+        # If the configuration is not set, this will be INVALID.
+        ##
+        self.corrected_ypr_vector = np.full((3,), np.nan)
+        
+        ##
+        # The corrected heading between the primary device antenna and the secondary (in degrees) with
+        # respect to true north.
+        #
+        # @note
+        # Reported in the range [0, 360).
+        #
+        ##
+        self.heading_true_north_deg = np.nan
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        initial_offset = offset
+        if (buffer is None):
+            buffer = bytearray(self.calcsize())
+        buffer = self.details.pack(buffer)
+        offset += self.details.calcsize()
+        self._STRUCT.pack_into(buffer, offset,
+            self.solution_type,
+            self.flags,
+            self.corrected_ypr_vector[0],
+            self.corrected_ypr_vector[1],
+            self.corrected_ypr_vector[2],
+            self.heading_true_north_deg)
+        offset += self._STRUCT.size
+        if return_buffer:
+            return buffer
+        else:
+            return offset - initial_offset
+
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
+        initial_offset = offset
+
+        offset += self.details.unpack(buffer, offset)
+        (solution_type_int,
+            self.flags,
+            self.corrected_ypr_vector[0],
+            self.corrected_ypr_vector[1],
+            self.corrected_ypr_vector[2],
+            self.heading_true_north_deg) = self._STRUCT.unpack_from(buffer, offset)
+        offset += self._STRUCT.size
+        self.solution_type = SolutionType(solution_type_int)
+        return offset - initial_offset
+
+    def __str__(self):
+        return f"""\
+HeadingOutput @ {str(self.details.p1_time)}
+  Solution Type: {SolutionType(self.solution_type).to_string()}
+  Corrected YPR (ENU) (deg): {self.corrected_ypr_vector[0]:.2f}, {self.corrected_ypr_vector[1]:.2f}, {self.corrected_ypr_vector[2]:.2f}
+  Corrected Heading (deg): {self.heading_true_north_deg:.2f}
+  """
+
+    @classmethod
+    def calcsize(cls) -> int:
+        return cls._STRUCT.size + MeasurementDetails.calcsize()
+
+    @classmethod
+    def to_numpy(cls, messages: Sequence['HeadingOutput']):
+        result = {
+            'solution_type': np.array([int(m.solution_type) for m in messages], dtype=int),
+            'flags': np.array([int(m.flags) for m in messages], dtype=int),
+            'corrected_ypr_vector_deg': np.array([m.corrected_ypr_vector for m in messages]).T,
+            'heading_true_north_deg': np.array([m.heading_true_north_deg for m in messages], dtype=float).T,
         }
         result.update(MeasurementDetails.to_numpy([m.details for m in messages]))
         return result

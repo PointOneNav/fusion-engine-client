@@ -1084,13 +1084,14 @@ struct alignas(4) DeprecatedVehicleSpeedMeasurement : public MessagePayload {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-// Heading Measurements
+// Heading Sensor Definitions
 ////////////////////////////////////////////////////////////////////////////////
 
 /**
- * @brief The heading angle (in degrees) with respect to true north,
- *        pointing from the primary antenna to the secondary antenna (@ref
-          MessageType::HEADING_MEASUREMENT, version 1.0).
+ * @brief The raw (uncorrected) heading angle in degrees with respect
+ *        to true north, pointing from the primary antenna to the
+ *        secondary antenna.
+ *        (@ref MessageType::RAW_HEADING_OUTPUT, version 1.0).
  * @ingroup measurement_messages
  *
  * @note
@@ -1098,9 +1099,11 @@ struct alignas(4) DeprecatedVehicleSpeedMeasurement : public MessagePayload {
  * timestamp referenced to the start of the device. Corresponding messages (@ref
  * PoseMessage, @ref GNSSSatelliteMessage, etc.) may be associated using
  * their P1 timestamps.
+ * 
+ * See also @ref HeadingOutput.
  */
-struct alignas(4) HeadingMeasurement : public MessagePayload {
-  static constexpr MessageType MESSAGE_TYPE = MessageType::HEADING_MEASUREMENT;
+struct alignas(4) RawHeadingOutput : public MessagePayload {
+  static constexpr MessageType MESSAGE_TYPE = MessageType::RAW_HEADING_OUTPUT;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
   /**
@@ -1109,7 +1112,10 @@ struct alignas(4) HeadingMeasurement : public MessagePayload {
    */
   MeasurementDetails details;
 
-  /** The type of this position solution. */
+  /**
+   * When heading is available this is set to RTKFixed,
+   * when it isn't this is set to Invalid.
+  */
   SolutionType solution_type = SolutionType::Invalid;
 
   uint8_t reserved[3] = {0};
@@ -1152,6 +1158,68 @@ struct alignas(4) HeadingMeasurement : public MessagePayload {
    * The estimated distance between primary and secondary antennas (in meters).
    */
   float baseline_distance_m = NAN;
+};
+
+/**
+ * @brief The corrected heading angle ( i.e., with heading sensor bias
+ *        corrections applied to rotate the heading into the vehicle body frame) 
+ *        in degrees with respect to true north,
+ *        pointing from the primary antenna to the secondary antenna (@ref
+          MessageType::HEADING_OUTPUT, version 1.0).
+ * @ingroup measurement_messages
+ *
+ * @note
+ * All data is timestamped using the Point One Time, which is a monotonic
+ * timestamp referenced to the start of the device. Corresponding messages (@ref
+ * PoseMessage, @ref GNSSSatelliteMessage, etc.) may be associated using
+ * their P1 timestamps.
+ * See also @ref RawHeadingOutput.
+ */
+struct alignas(4) HeadingOutput : public MessagePayload {
+  static constexpr MessageType MESSAGE_TYPE = MessageType::HEADING_OUTPUT;
+  static constexpr uint8_t MESSAGE_VERSION = 0;
+
+  /**
+   * Measurement timestamp and additional information, if available. See @ref
+   * MeasurementDetails for details.
+   */
+  MeasurementDetails details;
+
+  /**
+   * When heading is available this is set to RTKFixed,
+   * when it isn't this is set to Invalid.
+  */
+  SolutionType solution_type = SolutionType::Invalid;
+
+  uint8_t reserved[3] = {0};
+
+  /** A bitmask of flags associated with the solution. */
+  uint32_t flags = 0;
+
+  /**
+   * The measured YPR vector in the ENU frame.
+   * 
+   * @details
+   * YPR is defined as an intrinsic Euler-321 rotation, i.e., yaw, pitch, then roll.
+   * 
+   * @note
+   * This field contains the measured attitude information from
+   * @ref RawHeadingOutput from a secondary heading device after
+   * applying @ref ConfigType::HEADING_BIAS configuration settings
+   * for yaw (horizontal) and pitch (vertical) offsets between
+   * the primary and secondary GNSS antennas. If either bias value is
+   * not specified, the corresponding measurement values will be set to NAN.
+   */
+  float corrected_ypr_vector_deg[3] = {NAN, NAN, NAN};
+
+  /**
+   * The corrected heading angle (in degrees) with respect to true north, pointing from
+   * the primary antenna to the secondary antenna.
+   *
+   * @note
+   * Reported in the range [0, 360).
+   */
+  float heading_true_north_deg = NAN;
 };
 
 #pragma pack(pop)
