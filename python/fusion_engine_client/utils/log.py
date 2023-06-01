@@ -1,4 +1,5 @@
 import fnmatch
+import glob
 import os
 
 from . import trace as logging
@@ -10,6 +11,14 @@ _logger = logging.getLogger('point_one.utils.log')
 
 # Note: The spelling here is intentional.
 MANIFEST_FILE_NAME = 'maniphest.json'
+
+# The following files are listed order of priority. The first located file will be returned.
+CANDIDATE_P1LOG_FILES = [
+    # v- Typically captured at the time the log is recorded, or embedded in a mixed-binary log file and extracted
+    # by extract_fusion_engine_log().
+    'input.p1log',
+    'fusion_engine.p1log',
+]
 
 CANDIDATE_MIXED_FILES = ['input.raw', 'input.bin', 'input.rtcm3']
 
@@ -130,10 +139,9 @@ def find_log_by_pattern(pattern, log_base_dir=DEFAULT_LOG_BASE_DIR, allow_multip
         if len(exact_matches) == 1:
             matches = exact_matches
         else:
-            e = RuntimeError("Found multiple logs that match pattern '%s'. Please be more specific." % pattern)
-            _logger.error(str(e))
-            _logger.error('Matches:\n  %s' % ('\n  '.join([m[0] for m in matches])))
-            raise e
+            raise RuntimeError(
+                "Found multiple logs that match pattern '%s'. Please be more specific.\n  %s" %
+                (pattern, '\n  '.join([m[0] for m in matches])))
     elif len(matches) == 0:
         message = "Found no logs that match pattern '%s'." % pattern
         if not allow_multiple:
@@ -145,7 +153,7 @@ def find_log_by_pattern(pattern, log_base_dir=DEFAULT_LOG_BASE_DIR, allow_multip
 
 
 def find_log_file(input_path, candidate_files=None, return_output_dir=False, return_log_id=False,
-                  log_base_dir=DEFAULT_LOG_BASE_DIR, check_exact_match=True):
+                  log_base_dir=DEFAULT_LOG_BASE_DIR, check_exact_match=True, check_pattern_match=True):
     """!
     @brief Locate a log directory containing the specified file(s).
 
@@ -179,6 +187,8 @@ def find_log_file(input_path, candidate_files=None, return_output_dir=False, ret
     @param log_base_dir The base directory to be searched when performing a pattern match for a log directory.
     @param check_exact_match If `True`, check if `input_path` is the path to a data file. Otherwise, skip this check and
            only perform a pattern search.
+    @param check_pattern_match If `True` and `input_path` does not refer to a log file or directory, perform a pattern
+           match using `input_path` as the pattern.
 
     @return The path to the located file or a tuple containing:
             - The path to the located file.
@@ -207,26 +217,60 @@ def find_log_file(input_path, candidate_files=None, return_output_dir=False, ret
         log_dir = None
         log_id = None
 
+        def _search_directory(dir_path):
+            for f in candidate_files:
+                if f is None:
+                    continue
+
+                test_path = os.path.join(dir_path, f)
+                if os.path.exists(test_path):
+                    return test_path, dir_path, os.path.basename(dir_path)
+            return None, None, None
+
         if check_exact_match:
             dir_exists = os.path.isdir(input_path)
             if dir_exists:
-                for f in candidate_files:
-                    if f is None:
-                        continue
-
-                    test_path = os.path.join(input_path, f)
-                    if os.path.exists(test_path):
-                        log_dir = input_path
-                        log_id = os.path.basename(log_dir)
-                        input_path = test_path
-                        break
+                matching_input_path, log_dir, log_id = _search_directory(input_path)
+                if matching_input_path is not None:
+                    input_path = matching_input_path
         else:
             dir_exists = False
+
+        # If we didn't find an exact match and the path contains a *, try a glob search in the current directory first.
+        # For example, if they specified 'abc*', search for './abc*'.
+        if log_dir is None and '*' in input_path:
+            pattern = input_path
+            matches = glob.glob(pattern)
+            matching_input_path = None
+            matching_log_dir = None
+            matching_log_id = None
+            for m in matches:
+                if os.path.isdir(m):
+                    matching_input_path, matching_log_dir, matching_log_id = _search_directory(m)
+                    if matching_input_path is not None:
+                        break
+                else:
+                    matching_input_path = m
+                    matching_log_dir = os.path.dirname(matching_input_path)
+                    if matching_log_dir == "":
+                        matching_log_dir = "."
+                    matching_log_id = None
+                    break
+
+            if matching_input_path is not None:
+                if len(matches) == 1:
+                    input_path = matching_input_path
+                    log_dir = matching_log_dir
+                    log_id = matching_log_id
+                else:
+                    raise RuntimeError(
+                        "Found multiple logs that match pattern '%s'. Please be more specific.\n  %s" %
+                        (pattern, '\n  '.join(matches)))
 
         # If the user didn't specify a directory, or the directory wasn't considered a valid log (i.e., didn't have any
         # of the candidate files in it), check if they provided a pattern match to a log (i.e., a partial log ID or a
         # search pattern (foo*/partial_id*)).
-        if log_dir is None:
+        if log_dir is None and check_pattern_match and not (input_path.startswith('./') or input_path.startswith('/')):
             if check_exact_match:
                 if dir_exists:
                     _logger.info("Directory '%s' does not contain a data file. Attempting a pattern match." %
@@ -290,13 +334,7 @@ def find_p1log_file(input_path, return_output_dir=False, return_log_id=False, lo
               `return_log_id` is `True`.
     """
     # The following files are listed order of priority. The first located file will be returned.
-    candidate_files = [
-        # v- Typically captured at the time the log is recorded, or embedded in a mixed-binary log file and extracted
-        # by extract_fusion_engine_log().
-        'fusion_engine.p1log',
-        # Legacy path, maintained for backwards compatibility.
-        'filter/output/fe_service/output.p1bin',
-    ]
+    candidate_files = CANDIDATE_P1LOG_FILES
     result = find_log_file(input_path, candidate_files=candidate_files, return_output_dir=return_output_dir,
                            return_log_id=return_log_id, log_base_dir=log_base_dir)
     if isinstance(result, tuple):
@@ -398,81 +436,62 @@ def locate_log(input_path, log_base_dir=DEFAULT_LOG_BASE_DIR, return_output_dir=
     """
     input_path = os.path.expanduser(input_path)
 
-    # Try to find the log normally (look for a directory containing a .p1log file).
+    def _populate_result(input_file, output_dir, log_id):
+        result = [input_file]
+        if return_output_dir:
+            result.append(output_dir)
+        if return_log_id:
+            result.append(log_id)
+
+        if len(result) == 1:
+            return result[0]
+        else:
+            return tuple(result)
+
+    # Look for a log file/directory in the following order of priority:
+    # 1. A file referred to by `input_path`.
+    # 2. A directory referred to by `input_path` containing one of the possible candidate filenames (input.p1log,
+    #    input.raw, etc.).
+    # 3. If `input_path` contains a `*`, a file the specified pattern (e.g., `abc*` matches
+    #    `abc123.p1log`, `/home/**/abc*` matches `/home/user/abc123.p1log`).
+    # 4. If `input_path` contains a `*`, a directory matching the specified pattern and containing one of the candidate
+    #    filenames (e.g., `abc*` matches `abc123/input.p1log`, `/home/**/abc*` matches `/home/user/abc123/input.p1log`).
+    # 5. A directory under `log_base_dir` matching a pattern specified by `input_path` and containing one of the
+    #    candidate filenames (e.g., `<log_base_dir>/<input_path>*/input.p1log`).
+    #
+    # The log file may contain exclusively FusionEngine messages, or may contain mixed binary content.
     try:
-        result = find_p1log_file(input_path, log_base_dir=log_base_dir,
-                                 return_output_dir=return_output_dir, return_log_id=return_log_id)
-        return result
-    except FileNotFoundError as e:
-        is_mixed_file = False
-    except RuntimeError as e:
-        is_mixed_file = False
+        candidate_files = CANDIDATE_P1LOG_FILES
+        candidate_files += CANDIDATE_MIXED_FILES
+        log_file_path, output_dir, log_id = find_log_file(
+            input_path, candidate_files=candidate_files, log_base_dir=log_base_dir,
+            return_output_dir=True, return_log_id=True)
+    except (FileNotFoundError, RuntimeError) as e:
         _logger.error(str(e))
-    except FileExistsError as e:
-        is_mixed_file = True
+        return _populate_result(None, None, None)
 
-    # If that fails, see if we can find a directory containing a mixed content binary file. If found, try to extract
-    # FusionEngine messages from it.
-    if is_mixed_file:
-        # We already know where the file is, but we call find_log_file() anyway just to populate a result tuple for us.
-        result = find_log_file(input_path, return_output_dir=return_output_dir, return_log_id=return_log_id)
-        mixed_file_path = input_path
-    else:
-        _logger.info('Could not find a FusionEngine log directory containing a .p1log file. Searching for a P1 log '
-                     'with mixed binary data.')
-        try:
-            result = find_log_file(input_path, candidate_files=CANDIDATE_MIXED_FILES, log_base_dir=log_base_dir,
-                                   return_output_dir=return_output_dir, return_log_id=return_log_id,
-                                   check_exact_match=False)
-            if isinstance(result, tuple):
-                mixed_file_path = result[0]
-            else:
-                mixed_file_path = result
-        except (FileNotFoundError, RuntimeError) as e:
-            _logger.error(str(e))
-            result = [None]
-            if return_output_dir:
-                result.append(None)
-            if return_log_id:
-                result.append(None)
-
-            if len(result) == 1:
-                return result[0]
-            else:
-                return tuple(result)
+    # Found a log file.
+    _logger.info("Found log file '%s'." % log_file_path)
 
     # Now, search for and extract FusionEngine messages within the mixed binary data to create a *.p1log file if
     # requested, or simply return the path to the mixed content file.
-    _logger.info("Found mixed-content log file '%s'." % mixed_file_path)
-    if extract_fusion_engine_data:
+    parts = os.path.splitext(log_file_path)
+    if parts[1] != '.p1log' and extract_fusion_engine_data:
         # If the user specified an actual file, use its name to set the *.p1log file name.
-        if is_mixed_file:
-            fe_path = os.path.splitext(mixed_file_path)[0] + '.p1log'
+        if os.path.isfile(input_path):
+            fe_path = parts[0] + '.p1log'
         # Otherwise, if they specified a pattern and searched for a log directory, save the output as
         # fusion_engine.p1log.
         else:
-            log_dir = os.path.dirname(mixed_file_path)
-            fe_path = os.path.join(log_dir, "fusion_engine.p1log")
+            fe_path = os.path.join(output_dir, "fusion_engine.p1log")
 
         _logger.info("Extracting FusionEngine content to '%s'." % fe_path)
-        num_messages = extract_fusion_engine_log(input_path=mixed_file_path, output_path=fe_path)
+        num_messages = extract_fusion_engine_log(input_path=log_file_path, output_path=fe_path)
         if num_messages > 0:
-            if isinstance(result, tuple):
-                result = list(result)
-                result[0] = fe_path
-                return tuple(result)
-            else:
-                return result
+            log_file_path = fe_path
         else:
             _logger.warning('No FusionEngine data extracted from mixed data file.')
-            if isinstance(result, tuple):
-                return [None for _ in result]
-            else:
-                return None
-    else:
-        if isinstance(result, tuple):
-            result = list(result)
-            result[0] = mixed_file_path
-            return tuple(result)
-        else:
-            return result
+            return _populate_result(None, None, None)
+
+    # Search successful.
+    return _populate_result(log_file_path, output_dir, log_id)
