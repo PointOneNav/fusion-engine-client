@@ -1270,7 +1270,8 @@ class SetMessageRate(MessagePayload):
     def __repr__(self):
         result = super().__repr__()[:-1]
         result += f', interface={self.output_interface}, flags=0x{self.flags:02X}, protocol={self.protocol}, ' \
-                  f'message_id={self.message_id}, rate={self.rate}]'
+                  f'message_id={get_message_type_string(protocol=self.protocol, message_id=self.message_id)}, ' \
+                  f'rate={self.rate}]'
         return result
 
     def __str__(self):
@@ -1290,7 +1291,7 @@ class SetMessageRate(MessagePayload):
 
 class GetMessageRate(MessagePayload):
     """!
-    @brief Get the configured output rate for the he requested message type on  the specified interface.
+    @brief Get the configured output rate for the requested message type on  the specified interface.
     """
     MESSAGE_TYPE = MessageType.GET_MESSAGE_RATE
     MESSAGE_VERSION = 0
@@ -1332,7 +1333,7 @@ class GetMessageRate(MessagePayload):
     def __repr__(self):
         result = super().__repr__()[:-1]
         result += f', interface={self.output_interface}, source={self.request_source}, protocol={self.protocol}, ' \
-                  f'message_id={self.message_id}]'
+                  f'message_id={get_message_type_string(protocol=self.protocol, message_id=self.message_id)}]'
         return result
 
     def __str__(self):
