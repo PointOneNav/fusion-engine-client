@@ -226,8 +226,13 @@ other types of data.
                             last_p1_time_sec = float(p1_time)
                             newest_p1_time = p1_time
                         else:
-                            if p1_time < newest_p1_time:
-                                _logger.warning('P1 time restart detected after %s.' % str(newest_p1_time))
+                            # For P1 time, we allow a small tolerance to account for normal latency between measurements
+                            # and computed data like pose solutions.
+                            dt_sec = float(newest_p1_time - p1_time)
+                            if dt_sec < -0.2:
+                                _logger.warning(
+                                    'P1 time restart detected after %s. [message=%s, p1_time=%s, offset=%d B]' %
+                                    (str(newest_p1_time), header.get_type_string(), str(p1_time), offset_bytes))
                             last_p1_time_sec = max(last_p1_time_sec, float(p1_time))
                             newest_p1_time = p1_time
 
@@ -239,8 +244,12 @@ other types of data.
                             newest_system_time_sec = system_time_sec
                         else:
                             if system_time_sec < newest_system_time_sec:
-                                _logger.warning('System time restart detected after %s.' %
-                                                system_time_to_str(newest_system_time_sec, is_seconds=True))
+                                _logger.warning(
+                                    'System time restart detected after %s. [message=%s, system_time=%s, offset=%d B]' %
+                                    (system_time_to_str(newest_system_time_sec, is_seconds=True),
+                                     header.get_type_string(),
+                                     system_time_to_str(system_time_sec, is_seconds=True),
+                                     offset_bytes))
                             last_system_time_sec = max(last_system_time_sec, system_time_sec)
                             newest_system_time_sec = system_time_sec
             else:
