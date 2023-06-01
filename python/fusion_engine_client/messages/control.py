@@ -464,7 +464,7 @@ class DeviceIDMessage(MessagePayload):
         if is_printable:
             return msg.decode('ascii')
         else:
-            return '[' + ', '.join(f'0x{b:02X}' for b in msg) + ']'
+            return '[' + ' '.join(f'{b:02X}' for b in msg) + ']'
 
     def __repr__(self):
         result = super().__repr__()[:-1]
