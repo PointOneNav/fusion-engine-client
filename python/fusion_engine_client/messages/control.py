@@ -1,3 +1,4 @@
+import string
 import struct
 
 from construct import (Struct, Int64ul, Int16ul, Int8ul, Padding, this, Bytes, PaddedString)
@@ -403,6 +404,80 @@ class VersionInfoMessage(MessagePayload):
         string += f'  FusionEngine: {self.engine_version_str}\n'
         string += f'  OS: {self.os_version_str}\n'
         string += f'  GNSS receiver: {self.rx_version_str}'
+        return string
+
+    def calcsize(self) -> int:
+        return len(self.pack())
+
+
+class DeviceType(IntEnum):
+    UNKNOWN = 0
+    ATLAS = 1
+    LG69T_AM = 2
+    LG69T_AP = 3
+    LG69T_AH = 4
+
+
+class DeviceIDMessage(MessagePayload):
+    """!
+    @brief Device identifiers.
+    """
+    MESSAGE_TYPE = MessageType.DEVICE_ID
+    MESSAGE_VERSION = 0
+    _PRINTABLE_CHARS = bytes(string.printable, 'ascii')
+
+    DeviceIDMessageConstruct = Struct(
+        "system_time_ns" / Int64ul,
+        "device_type" / AutoEnum(Int8ul, DeviceType),
+        "hw_id_length" / Int8ul,
+        "user_id_length" / Int8ul,
+        "receiver_id_length" / Int8ul,
+        Padding(4),
+        "hw_id_data" / Bytes(this.hw_id_length),
+        "user_id_data" / Bytes(this.user_id_length),
+        "receiver_id_data" / Bytes(this.receiver_id_length),
+    )
+
+    def __init__(self):
+        self.system_time_ns = 0
+        self.device_type = DeviceType.UNKNOWN
+        self.hw_id_data = b""
+        self.user_id_data = b""
+        self.receiver_id_data = b""
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        values = dict(self.__dict__)
+        values['hw_id_length'] = len(self.hw_id_length)
+        values['user_id_length'] = len(self.user_id_length)
+        values['receiver_id_length'] = len(self.receiver_id_length)
+        packed_data = self.DeviceIDMessageConstruct.build(values)
+        return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
+
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
+        parsed = self.DeviceIDMessageConstruct.parse(buffer[offset:])
+        self.__dict__.update(parsed)
+        return parsed._io.tell()
+
+    @staticmethod
+    def _get_str(msg: bytes) -> str:
+        is_printable = all(b in DeviceIDMessage.__PRINTABLE_CHARS for b in msg)
+        if is_printable:
+            return msg.decode('ascii')
+        else:
+            return '[' + ' '.join(f'{b:02X}' for b in msg) + ']'
+
+    def __repr__(self):
+        result = super().__repr__()[:-1]
+        result += f'type={self.device_type}, hw={self._get_str(self.hw_id_data)}, user={self._get_str(self.user_id_data)},\
+            rx={self._get_str(self.receiver_id_data)}'
+        return result
+
+    def __str__(self):
+        string = f'Device ID Info @ %s\n' % system_time_to_str(self.system_time_ns)
+        string += f'  Device Type: {device_type}\n'
+        string += f'  HW ID: {self._get_str(self.hw_id_data)}\n'
+        string += f'  User ID: {self._get_str(self.user_id_data)}\n'
+        string += f'  Receiver ID: {self._get_str(self.receiver_id_data)}'
         return string
 
     def calcsize(self) -> int:
