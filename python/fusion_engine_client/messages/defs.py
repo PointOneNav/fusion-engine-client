@@ -213,10 +213,10 @@ def is_response(message_type: MessageType) -> bool:
 class MessageHeader:
     INVALID_SOURCE_ID = 0xFFFFFFFF
 
-    _SYNC0 = 0x2E  # '.'
-    _SYNC1 = 0x31  # '1'
+    SYNC0 = 0x2E  # '.'
+    SYNC1 = 0x31  # '1'
 
-    SYNC = bytes((_SYNC0, _SYNC1))
+    SYNC = bytes((SYNC0, SYNC1))
 
     _FORMAT = '<BB2xIBBHIII'
     _SIZE: int = struct.calcsize(_FORMAT)
@@ -287,7 +287,7 @@ class MessageHeader:
         if payload is not None:
             self.calculate_crc(payload)
 
-        args = (MessageHeader._SYNC0, MessageHeader._SYNC1, self.crc, self.protocol_version, self.message_version,
+        args = (MessageHeader.SYNC0, MessageHeader.SYNC1, self.crc, self.protocol_version, self.message_version,
                 int(self.message_type), self.sequence_number, self.payload_size_bytes, self.source_identifier)
         if buffer is None:
             buffer = struct.pack(MessageHeader._FORMAT, *args)
@@ -325,7 +325,7 @@ class MessageHeader:
          self.sequence_number, self.payload_size_bytes, self.source_identifier) = \
             struct.unpack_from(MessageHeader._FORMAT, buffer, offset)
 
-        if sync0 != MessageHeader._SYNC0 or sync1 != MessageHeader._SYNC1:
+        if sync0 != MessageHeader.SYNC0 or sync1 != MessageHeader.SYNC1:
             raise ValueError('Received invalid sync bytes. [sync0=0x%02x, sync1=0x%02x]' % (sync0, sync1))
 
         # Validate the CRC, assuming the message payload follows in the buffer.

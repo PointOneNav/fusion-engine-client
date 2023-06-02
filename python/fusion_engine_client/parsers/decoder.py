@@ -144,11 +144,11 @@ class FusionEngineDecoder:
             elif self._header is None:
                 # Explicitly check for the first two sync bytes to be a bit more efficient than doing it inside the @ref
                 # MessageHeader.unpack() with an exception.
-                if self._buffer[0] != MessageHeader._SYNC0:
+                if self._buffer[0] != MessageHeader.SYNC0:
                     self._buffer.pop(0)
                     self._bytes_processed += 1
                     continue
-                if self._buffer[1] != MessageHeader._SYNC1:
+                elif self._buffer[1] != MessageHeader.SYNC1:
                     self._buffer.pop(0)
                     self._bytes_processed += 1
                     continue
