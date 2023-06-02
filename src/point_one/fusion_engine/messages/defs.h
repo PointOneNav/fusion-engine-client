@@ -84,6 +84,7 @@ enum class MessageType : uint16_t {
   EVENT_NOTIFICATION = 13004, ///< @ref EventNotificationMessage
   SHUTDOWN_REQUEST = 13005, ///< @ref ShutdownRequest
   FAULT_CONTROL = 13006, ///< @ref FaultControlMessage
+  DEVICE_ID = 13007, ///< @ref DeviceIDMessage
 
   SET_CONFIG = 13100, ///< @ref SetConfigMessage
   GET_CONFIG = 13101, ///< @ref GetConfigMessage

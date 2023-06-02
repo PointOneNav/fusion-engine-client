@@ -893,17 +893,109 @@ Vehicle Speed Measurement @ {str(self.details.p1_time)}
 # Heading Sensor Definitions
 ################################################################################
 
+
+class HeadingOutput(MessagePayload):
+    """!
+     @brief Corrected heading sensor measurement output.
+    """
+    MESSAGE_TYPE = MessageType.HEADING_OUTPUT
+    MESSAGE_VERSION = 0
+
+    _STRUCT = struct.Struct('<B3xL3ff')
+
+    def __init__(self):
+        ## Measurement timestamps, if available. See @ref measurement_messages.
+        self.details = MeasurementDetails()
+
+        ## Set to @ref SolutionType::RTKFixed when heading is available, or @ref SolutionType::Invalid otherwise.
+        self.solution_type = SolutionType.Invalid
+        ## A bitmask of flags associated with the solution
+        self.flags = 0
+        ## The measured YPR vector (in degrees), resolved in the ENU frame.
+        self.ypr_deg = np.full((3,), np.nan)
+
+        ##
+        # The corrected heading between the primary device antenna and the secondary (in degrees) with
+        # respect to true north.
+        #
+        # @note
+        # Reported in the range [0, 360).
+        self.heading_true_north_deg = np.nan
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        if buffer is None:
+            buffer = bytearray(self.calcsize())
+
+        initial_offset = offset
+
+        buffer = self.details.pack(buffer)
+        offset += self.details.calcsize()
+
+        self._STRUCT.pack_into(
+            buffer, offset,
+            int(self.solution_type),
+            self.flags,
+            self.ypr_deg[0],
+            self.ypr_deg[1],
+            self.ypr_deg[2],
+            self.heading_true_north_deg)
+        offset += self._STRUCT.size
+
+        if return_buffer:
+            return buffer
+        else:
+            return offset - initial_offset
+
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
+        initial_offset = offset
+
+        offset += self.details.unpack(buffer, offset)
+
+        (solution_type_int,
+         self.flags,
+         self.ypr_deg[0],
+         self.ypr_deg[1],
+         self.ypr_deg[2],
+         self.heading_true_north_deg) = self._STRUCT.unpack_from(buffer, offset)
+        offset += self._STRUCT.size
+
+        self.solution_type = SolutionType(solution_type_int)
+
+        return offset - initial_offset
+
+    def __repr__(self):
+        result = super().__repr__()[:-1]
+        ypr_str = ['%.1f' % v for v in self.ypr_deg]
+        result += f', solution_type={self.solution_type}, ypr=[{ypr_str}] deg]'
+        return result
+
+    def __str__(self):
+        return f"""\
+Heading Output @ {str(self.details.p1_time)}
+  Solution Type: {self.solution_type}
+  YPR (ENU) (deg): {self.ypr_deg[0]:.2f}, {self.ypr_deg[1]:.2f}, {self.ypr_deg[2]:.2f}
+  Heading (deg): {self.heading_true_north_deg:.2f}
+  """
+
+    @classmethod
+    def calcsize(cls) -> int:
+        return cls._STRUCT.size + MeasurementDetails.calcsize()
+
+    @classmethod
+    def to_numpy(cls, messages: Sequence['HeadingOutput']):
+        result = {
+            'solution_type': np.array([int(m.solution_type) for m in messages], dtype=int),
+            'flags': np.array([int(m.flags) for m in messages], dtype=int),
+            'ypr_deg': np.array([m.ypr_deg for m in messages]).T,
+            'heading_true_north_deg': np.array([m.heading_true_north_deg for m in messages], dtype=float).T,
+        }
+        result.update(MeasurementDetails.to_numpy([m.details for m in messages]))
+        return result
+
+
 class RawHeadingOutput(MessagePayload):
     """!
-     @brief The heading angle (in degrees) with respect to true north,
-            pointing from the primary antenna to the secondary antenna.
-     @ingroup solution_messages
-
-     @note
-     All data is timestamped using the P1 Time values, which is a monotonic
-     timestamp referenced to the start of the device. Corresponding messages (@ref
-     PoseMessage, @ref GNSSSatelliteMessage, etc.) may be associated using
-     their @ref timestamps.
+     @brief Raw (uncorrected) heading sensor measurement output.
     """
     MESSAGE_TYPE = MessageType.RAW_HEADING_OUTPUT
     MESSAGE_VERSION = 0
@@ -914,28 +1006,18 @@ class RawHeadingOutput(MessagePayload):
         ## Measurement timestamps, if available. See @ref measurement_messages.
         self.details = MeasurementDetails()
 
-        # When heading is available this is set to RTKFixed,
-        # when it isn't this is set to Invalid.
+        ## Set to @ref SolutionType::RTKFixed when heading is available, or @ref SolutionType::Invalid otherwise.
         self.solution_type = SolutionType.Invalid
-        # A bitmask of flags associated with the solution
+        ## A bitmask of flags associated with the solution.
         self.flags = 0
-        # The ID of the differential base station, if used.
+
         ##
-        # The relative position (in meters), resolved in the local ENU frame.
-        #
-        # @note
-        # If a differential solution to the base station is not available, these
-        # values will be `NAN`.
-        ##
+        # The position of the secondary GNSS antenna relative to the primary antenna (in meters), resolved with respect
+        # to the local ENU tangent plane: east, north, up.
         self.relative_position_enu_m = np.full((3,), np.nan)
         ##
         # The position standard deviation (in meters), resolved with respect to the
         # local ENU tangent plane: east, north, up.
-        #
-        # @note
-        # If a differential solution to the base station is not available, these
-        # values will be `NAN`.
-        ##
         self.position_std_enu_m = np.full((3,), np.nan)
 
         ##
@@ -944,24 +1026,24 @@ class RawHeadingOutput(MessagePayload):
         #
         # @note
         # Reported in the range [0, 360).
-        #
-        ##
         self.heading_true_north_deg = np.nan
 
         ##
-        # The estmated distance between primary and secondary antennas (in meters)
-        #
-        ##
+        # The estimated distance between primary and secondary antennas (in meters).
         self.baseline_distance_m = np.nan
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
-        initial_offset = offset
-        if (buffer is None):
+        if buffer is None:
             buffer = bytearray(self.calcsize())
+
+        initial_offset = offset
+
         buffer = self.details.pack(buffer)
         offset += self.details.calcsize()
-        self._STRUCT.pack_into(buffer, offset,
-            self.solution_type,
+
+        self._STRUCT.pack_into(
+            buffer, offset,
+            int(self.solution_type),
             self.flags,
             self.relative_position_enu_m[0],
             self.relative_position_enu_m[1],
@@ -972,6 +1054,7 @@ class RawHeadingOutput(MessagePayload):
             self.heading_true_north_deg,
             self.baseline_distance_m)
         offset += self._STRUCT.size
+
         if return_buffer:
             return buffer
         else:
@@ -981,24 +1064,33 @@ class RawHeadingOutput(MessagePayload):
         initial_offset = offset
 
         offset += self.details.unpack(buffer, offset)
+
         (solution_type_int,
-            self.flags,
-            self.relative_position_enu_m[0],
-            self.relative_position_enu_m[1],
-            self.relative_position_enu_m[2],
-            self.position_std_enu_m[0],
-            self.position_std_enu_m[1],
-            self.position_std_enu_m[2],
-            self.heading_true_north_deg,
-            self.baseline_distance_m) = self._STRUCT.unpack_from(buffer, offset)
+         self.flags,
+         self.relative_position_enu_m[0],
+         self.relative_position_enu_m[1],
+         self.relative_position_enu_m[2],
+         self.position_std_enu_m[0],
+         self.position_std_enu_m[1],
+         self.position_std_enu_m[2],
+         self.heading_true_north_deg,
+         self.baseline_distance_m) = self._STRUCT.unpack_from(buffer, offset)
         offset += self._STRUCT.size
+
         self.solution_type = SolutionType(solution_type_int)
+
         return offset - initial_offset
+
+    def __repr__(self):
+        result = super().__repr__()[:-1]
+        result += f', solution_type={self.solution_type}, heading={self.heading_true_north_deg:.1f} deg, ' \
+                  f'baseline={self.baseline_distance_m} m]'
+        return result
 
     def __str__(self):
         return f"""\
-RawHeadingOutput @ {str(self.details.p1_time)}
-  Solution Type: {SolutionType(self.solution_type).to_string()}
+Raw Heading Output @ {str(self.details.p1_time)}
+  Solution Type: {self.solution_type}
   Relative position (ENU) (m): {self.relative_position_enu_m[0]:.2f}, {self.relative_position_enu_m[1]:.2f}, {self.relative_position_enu_m[2]:.2f}
   Position std (ENU) (m): {self.position_std_enu_m[0]:.2f}, {self.position_std_enu_m[1]:.2f}, {self.position_std_enu_m[2]:.2f}
   Heading (deg): {self.heading_true_north_deg:.2f}
@@ -1056,7 +1148,7 @@ class HeadingOutput(MessagePayload):
         # If the configuration is not set, this will be INVALID.
         ##
         self.corrected_ypr_vector = np.full((3,), np.nan)
-        
+
         ##
         # The corrected heading between the primary device antenna and the secondary (in degrees) with
         # respect to true north.

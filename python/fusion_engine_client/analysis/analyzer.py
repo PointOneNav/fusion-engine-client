@@ -1572,7 +1572,6 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
 
         fig.update_layout(title='Heading Plots', legend_traceorder='normal')
 
-
         # Display the navigation engine's heading estimate, if available, for comparison with the heading sensor
         # measurement.
         if primary_pose_data is not None:
@@ -1590,7 +1589,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                         line={'color': 'yellow'},
                         name='Primary Device Heading Estimate',
                         hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
-                                    '<br><b>Heading</b>: %{y:.2f} deg'
+                                      '<br><b>Heading</b>: %{y:.2f} deg'
                     ),
                     row=1, col=1
                 )
@@ -1607,12 +1606,12 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                     marker={'size': 2, "color": "green"},
                     name='Corrected Heading Data',
                     hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
-                                '<br><b>Heading</b>: %{y:.2f} deg',
+                                  '<br><b>Heading</b>: %{y:.2f} deg',
                     legendgroup='heading'
                 ),
                 row=1, col=1
             )
-        
+
         # Uncorrected heading plot
         if len(raw_heading_data.p1_time) > 0:
             raw_heading_time = raw_heading_data.p1_time - float(self.t0)
@@ -1639,7 +1638,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                     marker={'size': 2, "color": "red"},
                     name='Uncorrected Heading Data',
                     hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
-                                '<br><b>Heading</b>: %{y:.2f} deg',
+                                  '<br><b>Heading</b>: %{y:.2f} deg',
                     legendgroup='heading'
                 ),
                 row=1, col=1
@@ -1683,7 +1682,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                     y=raw_heading_data.relative_position_enu_m[0],
                     customdata=raw_heading_data.p1_time,
                     hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
-                                '<br><b>East</b>: %{y:.2f} m',
+                                  '<br><b>East</b>: %{y:.2f} m',
                     name='East'
                 ),
                 row=2, col=1
@@ -1695,7 +1694,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                     y=raw_heading_data.relative_position_enu_m[1],
                     customdata=raw_heading_data.p1_time,
                     hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
-                                '<br><b>North</b>: %{y:.2f} m',
+                                  '<br><b>North</b>: %{y:.2f} m',
                     name='North'
                 ),
                 row=2, col=1
@@ -1707,7 +1706,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                     y=raw_heading_data.relative_position_enu_m[2],
                     customdata=raw_heading_data.p1_time,
                     hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
-                                '<br><b>Up</b>: %{y:.2f} m',
+                                  '<br><b>Up</b>: %{y:.2f} m',
                     name='Up'
                 ),
                 row=2, col=1
@@ -1720,7 +1719,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                     customdata=raw_heading_data.p1_time,
                     marker={'size': 2, "color": "red"},
                     hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
-                                '<br><b>Baseline</b>: %{y:.2f} m',
+                                  '<br><b>Baseline</b>: %{y:.2f} m',
                     name='Baseline'
                 ),
                 row=2, col=1
@@ -1751,7 +1750,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                     customdata=raw_heading_data.p1_time,
                     marker={'color': 'red'},
                     hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
-                                '<br><b>Solution</b>: %{text}',
+                                  '<br><b>Solution</b>: %{text}',
                     text=[str(SolutionType(s)) for s in raw_heading_data.solution_type],
                     name='Uncorrected Heading Solution Type'
                 ),
@@ -1766,7 +1765,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                     customdata=heading_data.p1_time,
                     marker={'color': 'green'},
                     hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
-                                '<br><b>Solution</b>: %{text}',
+                                  '<br><b>Solution</b>: %{text}',
                     text=[str(SolutionType(s)) for s in raw_heading_data.solution_type],
                     name='Corrected Heading Solution Type'
                 ),
