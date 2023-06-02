@@ -1196,7 +1196,7 @@ struct alignas(4) HeadingOutput : public MessagePayload {
    * If either bias value is not specified, the corresponding measurement values
    * will be set to `NAN`.
    */
-  float corrected_ypr_vector_deg[3] = {NAN, NAN, NAN};
+  float ypr_deg[3] = {NAN, NAN, NAN};
 
   /**
    * The corrected heading angle (in degrees) with respect to true north,
