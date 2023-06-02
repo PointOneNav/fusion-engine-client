@@ -2,6 +2,7 @@ from collections import defaultdict
 from typing import List, Dict, Callable, Optional, Tuple, Union
 
 from ..messages import MessageHeader, MessageType, MessagePayload, message_type_to_class
+from ..messages.internal import InternalSync
 from ..utils import trace as logging
 from ..utils.bin_utils import bytes_to_hex
 from ..utils.enum_utils import IntEnum
@@ -144,11 +145,13 @@ class FusionEngineDecoder:
             elif self._header is None:
                 # Explicitly check for the first two sync bytes to be a bit more efficient than doing it inside the @ref
                 # MessageHeader.unpack() with an exception.
-                if self._buffer[0] != MessageHeader.SYNC0:
+                if self._buffer[0] != MessageHeader.SYNC0 and self._buffer[0] != InternalSync.SYNC0:
                     self._buffer.pop(0)
                     self._bytes_processed += 1
                     continue
-                elif self._buffer[1] != MessageHeader.SYNC1:
+                # INTERNAL: Also check for internally wrapped messages, which use a different sync sequence.
+                elif ((self._buffer[0] == MessageHeader.SYNC0 and self._buffer[1] != MessageHeader.SYNC1) or
+                      (self._buffer[0] == InternalSync.SYNC0 and self._buffer[1] != InternalSync.SYNC1)):
                     self._buffer.pop(0)
                     self._bytes_processed += 1
                     continue

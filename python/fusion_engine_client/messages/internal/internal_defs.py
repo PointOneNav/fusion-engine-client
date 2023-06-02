@@ -4,6 +4,12 @@ from ..defs import *
 from ..configuration import PlatformStorageDataMessage
 
 
+class InternalSync:
+    SYNC0 = MessageHeader.SYNC0 - 0x20
+    SYNC1 = MessageHeader.SYNC1 - 0x20
+    SYNC = bytes((SYNC0, SYNC1))
+
+
 class InternalMessageType(IntEnum):
     # Internal message types.
     SHUTTER_CMD = 20000
