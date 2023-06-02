@@ -1084,23 +1084,21 @@ struct alignas(4) DeprecatedVehicleSpeedMeasurement : public MessagePayload {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-// Heading Measurements
+// Heading Sensor Definitions
 ////////////////////////////////////////////////////////////////////////////////
 
 /**
- * @brief The heading angle (in degrees) with respect to true north,
- *        pointing from the primary antenna to the secondary antenna (@ref
-          MessageType::HEADING_MEASUREMENT, version 1.0).
+ * @brief Raw (uncorrected) heading sensor measurement output (@ref
+ *        MessageType::RAW_HEADING_OUTPUT, version 1.0).
  * @ingroup measurement_messages
  *
- * @note
- * All data is timestamped using the Point One Time, which is a monotonic
- * timestamp referenced to the start of the device. Corresponding messages (@ref
- * PoseMessage, @ref GNSSSatelliteMessage, etc.) may be associated using
- * their P1 timestamps.
+ * This message contains raw heading sensor measurements that have not been
+ * corrected for mounting angle biases.
+ *
+ * See also @ref HeadingOutput.
  */
-struct alignas(4) HeadingMeasurement : public MessagePayload {
-  static constexpr MessageType MESSAGE_TYPE = MessageType::HEADING_MEASUREMENT;
+struct alignas(4) RawHeadingOutput : public MessagePayload {
+  static constexpr MessageType MESSAGE_TYPE = MessageType::RAW_HEADING_OUTPUT;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
   /**
@@ -1109,7 +1107,10 @@ struct alignas(4) HeadingMeasurement : public MessagePayload {
    */
   MeasurementDetails details;
 
-  /** The type of this position solution. */
+  /**
+   * Set to @ref SolutionType::RTKFixed when heading is available, or @ref
+   * SolutionType::Invalid otherwise.
+   */
   SolutionType solution_type = SolutionType::Invalid;
 
   uint8_t reserved[3] = {0};
@@ -1118,30 +1119,26 @@ struct alignas(4) HeadingMeasurement : public MessagePayload {
   uint32_t flags = 0;
 
   /**
+   * The position of the secondary GNSS antenna relative to the primary antenna
+   * (in meters), resolved with respect to the local ENU tangent plane: east,
+   * north, up.
+   *
    * Position is measured with respect to the primary antenna as follows:
    * @f[
    * \Delta r_{ENU} = C^{ENU}_{ECEF} (r_{Secondary, ECEF} - r_{Primary, ECEF})
    * @f]
-   *
-   * @note
-   * If a differential solution to the secondary antenna is not available, these
-   * values will be `NAN`.
    */
   float relative_position_enu_m[3] = {NAN, NAN, NAN};
 
   /**
    * The position standard deviation (in meters), resolved with respect to the
    * local ENU tangent plane: east, north, up.
-   *
-   * @note
-   * If a differential solution to the secondary antenna is not available, these
-   * values will be `NAN`.
    */
   float position_std_enu_m[3] = {NAN, NAN, NAN};
 
   /**
-   * The heading angle (in degrees) with respect to true north, pointing from
-   * the primary antenna to the secondary antenna.
+   * The measured heading angle (in degrees) with respect to true north,
+   * pointing from the primary antenna to the secondary antenna.
    *
    * @note
    * Reported in the range [0, 360).
@@ -1152,6 +1149,63 @@ struct alignas(4) HeadingMeasurement : public MessagePayload {
    * The estimated distance between primary and secondary antennas (in meters).
    */
   float baseline_distance_m = NAN;
+};
+
+/**
+ * @brief Heading sensor measurement output (@ref MessageType::HEADING_OUTPUT,
+ *        version 1.0).
+ * @ingroup measurement_messages
+ *
+ * The measurements in this message have been corrected for sensor mounting
+ * angle biases.
+ *
+ * See also @ref RawHeadingOutput.
+ */
+struct alignas(4) HeadingOutput : public MessagePayload {
+  static constexpr MessageType MESSAGE_TYPE = MessageType::HEADING_OUTPUT;
+  static constexpr uint8_t MESSAGE_VERSION = 0;
+
+  /**
+   * Measurement timestamp and additional information, if available. See @ref
+   * MeasurementDetails for details.
+   */
+  MeasurementDetails details;
+
+  /**
+   * Set to @ref SolutionType::RTKFixed when heading is available, or @ref
+   * SolutionType::Invalid otherwise.
+   */
+  SolutionType solution_type = SolutionType::Invalid;
+
+  uint8_t reserved[3] = {0};
+
+  /** A bitmask of flags associated with the solution. */
+  uint32_t flags = 0;
+
+  /**
+   * The measured YPR vector (in degrees), resolved in the ENU frame.
+   *
+   * YPR is defined as an intrinsic Euler-321 rotation, i.e., yaw, pitch, then
+   * roll.
+   *
+   * @note
+   * This field contains the measured attitude information (@ref
+   * RawHeadingOutput) from a secondary heading device after applying @ref
+   * ConfigType::HEADING_BIAS configuration settings for yaw (horizontal) and
+   * pitch (vertical) offsets between the primary and secondary GNSS antennas.
+   * If either bias value is not specified, the corresponding measurement values
+   * will be set to `NAN`.
+   */
+  float ypr_deg[3] = {NAN, NAN, NAN};
+
+  /**
+   * The corrected heading angle (in degrees) with respect to true north,
+   * pointing from the primary antenna to the secondary antenna.
+   *
+   * @note
+   * Reported in the range [0, 360).
+   */
+  float heading_true_north_deg = NAN;
 };
 
 #pragma pack(pop)

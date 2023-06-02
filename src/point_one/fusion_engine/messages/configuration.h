@@ -102,6 +102,14 @@ enum class ConfigType : uint16_t {
   HARDWARE_TICK_CONFIG = 22,
 
   /**
+   * Used to set horizontal (yaw) & vertical (pitch) biases (in degrees) on
+   * a dual-antenna heading platform configuration.
+   *
+   * Payload format: @ref HeadingBias
+   */
+  HEADING_BIAS = 23,
+
+  /**
    * A bitmask indicating which GNSS constellations are enabled.
    *
    * Payload format: `uint32_t` (see @ref sat_type_masks)
@@ -261,6 +269,9 @@ P1_CONSTEXPR_FUNC const char* to_string(ConfigType type) {
 
     case ConfigType::HARDWARE_TICK_CONFIG:
       return "Hardware Tick Config";
+
+    case ConfigType::HEADING_BIAS:
+      return "Heading Bias";
 
     case ConfigType::ENABLED_GNSS_SYSTEMS:
       return "Enabled GNSS Systems";
@@ -1234,6 +1245,41 @@ struct alignas(4) HardwareTickConfig {
    * @ref WheelSensorType::TICK_RATE.
    */
   float wheel_ticks_to_m = NAN;
+};
+
+/**
+ * @brief Heading bias horizontal/vertical configuration settings.
+ * @ingroup config_and_ctrl_messages
+ */
+struct alignas(4) HeadingBias {
+  /**
+   * The offset between the heading measured by a secondary GNSS device and the
+   * vehicle's direction of motion in the horizontal plane (defined by the
+   * vehicle's forward and left axes).
+   *
+   * Bias is defined as the angle between the vector pointing from the primary
+   * GNSS antenna to the secondary heading antenna, and the vector pointing from
+   * the primary antenna pointing in the forward direction of the vehicle. A
+   * positive angle means the secondary antenna is offset in a counter-clockwise
+   * direction from the forward vector (positive yaw rotation).
+   *
+   * For example, if the primary antenna is in the back of the vehicle and the
+   * secondary antenna is in the front, a positive angle would indicate that the
+   * secondary antenna is offset to the left side of the vehicle.
+   */
+  float horizontal_bias_deg = NAN;
+
+  /**
+   * The offset between the heading measured by a secondary GNSS device and the
+   * vehicle's direction of motion in the vertical plane (defined by the
+   * vehicle's forward and up axes).
+   *
+   * A positive angle means the secondary antenna is offset in the downward
+   * direction. For example, if the primary antenna is in the back of the
+   * vehicle and the secondary antenna is in the front, a positive angle would
+   * indicate that the secondary antenna is mounted below the primary antenna.
+   */
+  float vertical_bias_deg = NAN;
 };
 
 /**
