@@ -1774,7 +1774,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
 
         self._add_figure(name='heading_measurement', figure=fig, title='Measurements: Heading')
 
-    def plot_system_status_profiling(self):
+    def plot_legacy_atlas_system_status_profiling(self):
         """!
         @brief Plot system status profiling data.
         """
@@ -1826,7 +1826,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                                       mode='lines', line={'color': 'blue'}),
                          3, 1)
 
-        self._add_figure(name="profile_system_status", figure=figure, title="Profiling: System Status")
+        self._add_figure(name="profile_atlas_system_status", figure=figure, title="Profiling: Atlas System Status")
 
     def plot_execution_stats_profiling(self):
         """!
@@ -2944,7 +2944,7 @@ Load and display information stored in a FusionEngine binary file.
 
         analyzer.plot_events()
 
-        analyzer.plot_system_status_profiling()
+        analyzer.plot_legacy_atlas_system_status_profiling()
         analyzer.plot_free_rtos_system_status_profiling()
         analyzer.plot_measurement_pipeline_profiling()
         analyzer.plot_execution_profiling()
