@@ -44,6 +44,6 @@ class SystemStatusMessage(MessagePayload):
         return result
 
     def __str__(self):
-        string = 'System Status Message @ %s\n' % str(self.p1_time)
-        string += f'  GNSS Temperature: %.1f deg C' % self.gnss_temperature_degc
-        return string
+        return f"""\
+System Status Message @ %{self.p1_time}
+  GNSS Temperature: {self.gnss_temperature_degc:.1f} deg C"""
