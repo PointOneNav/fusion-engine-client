@@ -13,7 +13,7 @@ class SystemStatusMessage(MessagePayload):
     MESSAGE_TYPE = MessageType.SYSTEM_STATUS
     MESSAGE_VERSION = 0
 
-    SystemStatusMessageConstruct = Struct(
+    Construct = Struct(
         "p1_time" / TimestampConstruct,
         "gnss_temperature_degc" / FixedPointAdapter(2 ** -7, Int16sl, invalid=0x7FFF),
         Padding(118),
@@ -25,14 +25,18 @@ class SystemStatusMessage(MessagePayload):
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         values = vars(self)
-        packed_data = self.SystemStatusMessageConstruct.build(values)
+        packed_data = self.Construct.build(values)
         return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
 
     def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
-        parsed = self.SystemStatusMessageConstruct.parse(buffer[offset:])
+        parsed = self.Construct.parse(buffer[offset:])
         self.__dict__.update(parsed)
         del self.__dict__['_io']
         return parsed._io.tell()
+
+    @classmethod
+    def calcsize(cls) -> int:
+        return cls.Construct.sizeof()
 
     def __repr__(self):
         result = super().__repr__()[:-1]
@@ -43,6 +47,3 @@ class SystemStatusMessage(MessagePayload):
         string = 'System Status Message @ %s\n' % str(self.p1_time)
         string += f'  GNSS Temperature: %.1f deg C' % self.gnss_temperature_degc
         return string
-
-    def calcsize(self) -> int:
-        return self.SystemStatusMessageConstruct.sizeof()
