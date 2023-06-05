@@ -1,6 +1,7 @@
 import math
 
 from construct import (Struct, Int16sl, Padding)
+import numpy as np
 
 from ..utils.construct_utils import FixedPointAdapter, construct_message_to_string
 from .defs import *
@@ -47,3 +48,11 @@ class SystemStatusMessage(MessagePayload):
         return f"""\
 System Status Message @ %{self.p1_time}
   GNSS Temperature: {self.gnss_temperature_degc:.1f} deg C"""
+
+    @classmethod
+    def to_numpy(cls, messages):
+        result = {
+            'p1_time': np.array([float(m.p1_time) for m in messages]),
+            'gnss_temperature_degc': np.array([m.gnss_temperature_degc for m in messages]),
+        }
+        return result
