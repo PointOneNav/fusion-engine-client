@@ -2272,7 +2272,9 @@ Load and display information stored in a FusionEngine binary file.
                         truncate_long_logs=options.truncate and options.plot is None)
 
     if options.plot is None:
+        analyzer.plot_events()
         analyzer.plot_time_scale()
+
         analyzer.plot_solution_type()
         analyzer.plot_pose()
         analyzer.plot_pose_displacement()
@@ -2291,8 +2293,6 @@ Load and display information stored in a FusionEngine binary file.
         if options.measurements:
             analyzer.plot_imu()
             analyzer.plot_wheel_data()
-
-        analyzer.plot_events()
     else:
         if len(options.plot) == 0:
             _logger.error('No plot names specified.')
