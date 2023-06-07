@@ -238,7 +238,9 @@ enum class ConfigType : uint16_t {
   /**
    * A string for identifying a device.
    *
-   * Payload format: `char[24]`
+   * This is a string of ASCII characters padded to 32 bytes with `NULL`.
+   *
+   * Payload format: `char[32]`
    */
   USER_DEVICE_ID = 301,
 };

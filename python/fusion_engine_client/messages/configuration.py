@@ -764,7 +764,7 @@ class WatchdogTimerEnabled(_conf_gen.BoolVal):
     pass
 
 
-@_conf_gen.create_config_class(ConfigType.USER_DEVICE_ID, _conf_gen.StringConstruct(24))
+@_conf_gen.create_config_class(ConfigType.USER_DEVICE_ID, _conf_gen.StringConstruct(32))
 class UserDeviceID(_conf_gen.StringVal):
     """!
     @brief A string for identifying a device.
