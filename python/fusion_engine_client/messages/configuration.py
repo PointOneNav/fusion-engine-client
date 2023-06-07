@@ -3,7 +3,7 @@ from typing import Any, Iterable, NamedTuple, Optional, List, Union, Tuple
 
 import construct
 from construct import (Struct, Padding, this, Flag, Bytes, Array,
-                       Float32l, Float64l, Int64ul, Int32ul, Int16ul, Int8ul, Int64sl, Int32sl, Int16sl, Int8sl)
+                       Float32l, Float64l, Int64ul, Int32ul, Int16ul, Int8ul, Int64sl, Int32sl, Int16sl, Int8sl, PaddedString)
 
 from ..utils.construct_utils import NamedTupleAdapter, AutoEnum, construct_message_to_string
 from ..utils.enum_utils import IntEnum
@@ -42,6 +42,7 @@ class ConfigType(IntEnum):
     UART1_OUTPUT_DIAGNOSTICS_MESSAGES = 258
     UART2_OUTPUT_DIAGNOSTICS_MESSAGES = 259
     ENABLE_WATCHDOG_TIMER = 300
+    USER_DEVICE_ID = 301
 
 
 class InterfaceConfigType(IntEnum):
@@ -403,6 +404,18 @@ class _ConfigClassGenerator:
         "value" / Flag,
     )
 
+    class StringVal(NamedTuple):
+        """!
+        @brief String value specifier.
+        """
+        value: str = ""
+
+    @staticmethod
+    def StringConstruct(max_len):
+        return Struct(
+            "value" / PaddedString(max_len, 'utf8'),
+        )
+
     class SatelliteTypeMaskVal(IntegerVal):
         """!
         @brief Bitmask specifying enabled @ref SatelliteType%s.
@@ -747,6 +760,14 @@ class Uart2DiagnosticMessagesEnabled(_conf_gen.BoolVal):
 class WatchdogTimerEnabled(_conf_gen.BoolVal):
     """!
     @brief Enable watchdog timer to restart device after fatal errors.
+    """
+    pass
+
+
+@_conf_gen.create_config_class(ConfigType.USER_DEVICE_ID, _conf_gen.StringConstruct(32))
+class UserDeviceID(_conf_gen.StringVal):
+    """!
+    @brief A string for identifying a device.
     """
     pass
 
