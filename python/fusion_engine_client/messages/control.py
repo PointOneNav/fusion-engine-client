@@ -460,7 +460,7 @@ class DeviceIDMessage(MessagePayload):
 
     @staticmethod
     def _get_str(msg: bytes) -> str:
-        is_printable = all(b in DeviceIDMessage.__PRINTABLE_CHARS for b in msg)
+        is_printable = all(b in DeviceIDMessage._PRINTABLE_CHARS for b in msg)
         if is_printable:
             return msg.decode('ascii')
         else:
@@ -474,7 +474,7 @@ class DeviceIDMessage(MessagePayload):
 
     def __str__(self):
         string = f'Device ID Info @ %s\n' % system_time_to_str(self.system_time_ns)
-        string += f'  Device Type: {device_type}\n'
+        string += f'  Device Type: {self.device_type}\n'
         string += f'  HW ID: {self._get_str(self.hw_id_data)}\n'
         string += f'  User ID: {self._get_str(self.user_id_data)}\n'
         string += f'  Receiver ID: {self._get_str(self.receiver_id_data)}'

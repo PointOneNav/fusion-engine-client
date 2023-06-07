@@ -234,6 +234,15 @@ enum class ConfigType : uint16_t {
    * Payload format: `bool`
    */
   ENABLE_WATCHDOG_TIMER = 300,
+
+  /**
+   * A string for identifying a device.
+   *
+   * This is a string of ASCII characters padded to 32 bytes with `NULL`.
+   *
+   * Payload format: `char[32]`
+   */
+  USER_DEVICE_ID = 301,
 };
 
 /**
@@ -305,6 +314,9 @@ P1_CONSTEXPR_FUNC const char* to_string(ConfigType type) {
 
     case ConfigType::ENABLE_WATCHDOG_TIMER:
       return "Watchdog Timer Enabled";
+
+    case ConfigType::USER_DEVICE_ID:
+      return "User Device ID";
 
     case ConfigType::INTERFACE_CONFIG:
       return "Interface Submessage";
