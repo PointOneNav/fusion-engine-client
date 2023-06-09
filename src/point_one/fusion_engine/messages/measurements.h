@@ -1156,9 +1156,10 @@ struct alignas(4) RawHeadingOutput : public MessagePayload {
  *        version 1.0).
  * @ingroup measurement_messages
  *
- * The measurements in this message have been corrected for sensor mounting
- * angle biases.
- *
+ * The HeadingOutput message behaves similarly to the RawHeadingOutput,
+ * however, if no biases have been set AND the message
+ * is enabled the output will ALWAYS be Invalid.
+ * 
  * See also @ref RawHeadingOutput.
  */
 struct alignas(4) HeadingOutput : public MessagePayload {
