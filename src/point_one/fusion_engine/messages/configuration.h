@@ -1262,6 +1262,13 @@ struct alignas(4) HardwareTickConfig {
 /**
  * @brief Heading bias horizontal/vertical configuration settings.
  * @ingroup config_and_ctrl_messages
+ * 
+ * @note
+ * Both HeadingBias values must be set for the system to use them.
+ * If one value is NOT set, the system will not output the corrected
+ * heading message.
+ * 
+ * @ref HeadingOutput
  */
 struct alignas(4) HeadingBias {
   /**
@@ -1855,6 +1862,11 @@ inline std::ostream& operator<<(std::ostream& stream, MessageRate val) {
  * also restore the default `*_OUTPUT_DIAGNOSTICS_MESSAGES` configuration option
  * value for that interface. See @ref ConfigType.
  *
+ * @note
+ * When specifying @ref ProtocolType::ALL, message ID @ref ALL_MESSAGES_ID must
+ * also be specified. Further, the rate must be set to either
+ * @ref MessageRate::OFF or @ref MessageRate::DEFAULT.
+ *
  * @section set_rate_examples Typical Use Cases
  *
  * @subsection set_rate_restore Restore Default Settings For All Messages
@@ -1877,13 +1889,13 @@ inline std::ostream& operator<<(std::ostream& stream, MessageRate val) {
  * - Message ID: @ref ALL_MESSAGES_ID
  * - Rate: @ref MessageRate::DEFAULT
  *
- * @subsection set_rate_change_enabled_rate Change UART1 Output Rate To 1 Hz:
+ * @subsection set_rate_change_nmea Change UART1 Output Rate To 1 Hz:
  *
- * To change the rate of all rate-controlled messages (e.g., FusionEngine @ref
- * PoseMessage, NMEA GGA) to 1 Hz on UART1, specify the following:
+ * To change the rate of all NMEA message types to 1 Hz on UART1, specify the
+ * following:
  * - Interface transport type: @ref TransportType::SERIAL
  * - Interface index: 1
- * - Protocol: @ref ProtocolType::ALL
+ * - Protocol: @ref ProtocolType::NMEA
  * - Message ID: @ref ALL_MESSAGES_ID
  * - Rate: @ref MessageRate::INTERVAL_1_S
  *
@@ -1891,7 +1903,7 @@ inline std::ostream& operator<<(std::ostream& stream, MessageRate val) {
  * Note that this will not affect any message types that are not rate controlled
  * (e.g., @ref MessageType::EVENT_NOTIFICATION).
  *
- * @subsection set_rate_max_all Change The Uart1 Output Rates For All Messages To Their Max:
+ * @subsection set_rate_off_all Change The Uart1 Output Rates For All Messages To Be Off:
  *
  * To change the rate of all messages to their max rate on UART1, specify the
  * following:
@@ -1900,13 +1912,12 @@ inline std::ostream& operator<<(std::ostream& stream, MessageRate val) {
  * - Protocol: @ref ProtocolType::ALL
  * - flags: @ref FLAG_INCLUDE_DISABLED_MESSAGES
  * - Message ID: @ref ALL_MESSAGES_ID
- * - Rate: @ref MessageRate::ON_CHANGE
+ * - Rate: @ref MessageRate::OFF
  *
  * @note
- * This will enabled every message regardless of whether it's @ref
- * MessageRate::OFF or whether or not it's rate controlled.
+ * This will disable every message.
  *
- * @subsection set_and_save_rate_max_all Change And Save The UART1 Output Rates For All Messages To Their Max:
+ * @subsection set_and_save_rate_off_all Change And Save The UART1 Output Rates For All Messages To Be Off:
  *
  * To change the rate of all messages to their max rate on UART1, specify the
  * following:
@@ -1915,7 +1926,7 @@ inline std::ostream& operator<<(std::ostream& stream, MessageRate val) {
  * - Protocol: @ref ProtocolType::ALL
  * - flags: 0x03 (@ref FLAG_INCLUDE_DISABLED_MESSAGES | @ref FLAG_APPLY_AND_SAVE)
  * - Message ID: @ref ALL_MESSAGES_ID
- * - Rate: @ref MessageRate::ON_CHANGE
+ * - Rate: @ref MessageRate::OFF
  *
  * @note
  * Both of the bit flags are set for this message. This will cause the
@@ -1948,7 +1959,7 @@ struct alignas(4) SetMessageRate : public MessagePayload {
 
   /**
    * The message protocol being configured. If @ref ProtocolType::ALL, set rates
-   * on all supported protocols and @ref message_id is ignored.
+   * on all supported protocols.
    */
   ProtocolType protocol = ProtocolType::INVALID;
 
@@ -1997,7 +2008,7 @@ struct alignas(4) GetMessageRate : public MessagePayload {
 
   /**
    * The desired message protocol. If @ref ProtocolType::ALL, return the current
-   * settings for all supported protocols and @ref message_id is ignored.
+   * settings for all supported protocols.
    */
   ProtocolType protocol = ProtocolType::INVALID;
 

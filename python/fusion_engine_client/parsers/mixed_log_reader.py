@@ -417,14 +417,14 @@ class MixedLogReader(object):
                     byte0 = self.input_file.read(1)[0]
                     self.total_bytes_read += 1
                     while True:
-                        if byte0 == MessageHeader._SYNC0:
+                        if byte0 == MessageHeader.SYNC0:
                             if self.total_bytes_read + 1 >= self.max_bytes:
                                 self.logger.debug('Max read length exceeded (%d B).' % self.max_bytes)
                                 return False
 
                             byte1 = self.input_file.read(1)[0]
                             self.total_bytes_read += 1
-                            if byte1 == MessageHeader._SYNC1:
+                            if byte1 == MessageHeader.SYNC1:
                                 self.input_file.seek(-2, os.SEEK_CUR)
                                 self.total_bytes_read -= 2
                                 if self.logger.isEnabledFor(logging.getTraceLevel(depth=3)):
