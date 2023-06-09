@@ -108,7 +108,8 @@ class PoseMessage(MessagePayload):
     def __repr__(self):
         lla_str = '(%.6f, %.6f, %.3f)' % tuple(self.lla_deg)
         if self.gps_time:
-            gps_str = f'{str(self.gps_time).replace("GPS: ", "")}'
+            gps_str = f'{str(self.gps_time).replace("GPS: ", "")} ' \
+                      f'({datetime_to_string(self.gps_time.as_utc())} UTC)'
         else:
             gps_str = 'None'
 
@@ -120,10 +121,15 @@ class PoseMessage(MessagePayload):
         string = 'Pose Message @ %s\n' % str(self.p1_time)
         string += '  Solution type: %s\n' % self.solution_type.name
         if self.gps_time:
-            gps_str = f'{str(self.gps_time).replace("GPS: ", "")} ({str(self.gps_time.as_gps())})'
+            gps_str = f'{str(self.gps_time).replace("GPS: ", "")}'
         else:
             gps_str = 'None'
         string += '  GPS time: %s\n' % gps_str
+        if self.utc_time:
+            utc_str = f'{datetime_to_string(self.gps_time.as_utc())}'
+        else:
+            utc_str = 'None'
+        string += '  UTC time: %s\n' % utc_str
         string += '  Position (LLA): %.6f, %.6f, %.3f (deg, deg, m)\n' % tuple(self.lla_deg)
         string += '  Attitude (YPR): %.2f, %.2f, %.2f (deg, deg, deg)\n' % tuple(self.ypr_deg)
         string += '  Velocity (Body): %.2f, %.2f, %.2f (m/s, m/s, m/s)\n' % tuple(self.velocity_body_mps)
@@ -333,7 +339,8 @@ class GNSSInfoMessage(MessagePayload):
 
     def __repr__(self):
         if self.gps_time:
-            gps_str = f'{str(self.gps_time).replace("GPS: ", "")}'
+            gps_str = f'{str(self.gps_time).replace("GPS: ", "")} ' \
+                      f'({datetime_to_string(self.gps_time.as_utc())} UTC)'
         else:
             gps_str = 'None'
         if self.reference_station_id != GNSSInfoMessage.INVALID_REFERENCE_STATION:
@@ -349,10 +356,15 @@ class GNSSInfoMessage(MessagePayload):
     def __str__(self):
         string = 'GNSS Info Message @ %s\n' % str(self.p1_time)
         if self.gps_time:
-            gps_str = f'{str(self.gps_time).replace("GPS: ", "")} ({str(self.gps_time.as_gps())})'
+            gps_str = f'{str(self.gps_time).replace("GPS: ", "")}'
         else:
             gps_str = 'None'
         string += '  GPS time: %s\n' % gps_str
+        if self.utc_time:
+            utc_str = f'{datetime_to_string(self.gps_time.as_utc())}'
+        else:
+            utc_str = 'None'
+        string += '  UTC time: %s\n' % utc_str
         string += '  UTC leap second: %s\n' % \
                   (self.leap_second if self.leap_second != GNSSInfoMessage.INVALID_LEAP_SECOND else 'unknown')
         string += '  # SVs used: %d\n' % self.num_svs

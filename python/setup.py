@@ -17,7 +17,6 @@ version = find_version('fusion_engine_client', '__init__.py')
 
 tools_requirements = set([
     'argparse-formatter>=1.4',
-    'gpstime>=0.6.2',
     'scipy>=1.6.0',
 ])
 
@@ -79,6 +78,7 @@ for the latest FusionEngine message specification.
     ],
     install_requires=[
         'aenum>=3.1.1',
+        'gpstime>=0.6.2',
         'numpy>=1.16.0',
         'construct>=2.10.0',
     ],
