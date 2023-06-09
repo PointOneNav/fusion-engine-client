@@ -1157,8 +1157,8 @@ struct alignas(4) RawHeadingOutput : public MessagePayload {
  * @ingroup measurement_messages
  *
  * The HeadingOutput message behaves similarly to the RawHeadingOutput,
- * however, if no biases have been set AND the message
- * is enabled the output will ALWAYS be Invalid.
+ * however, if no biases have been set AND the message is enabled,
+ * then the message will not be published.
  * 
  * See also @ref RawHeadingOutput and @ref SolutionType::Invalid.
  */
