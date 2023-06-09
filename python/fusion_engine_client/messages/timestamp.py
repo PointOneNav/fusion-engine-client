@@ -5,6 +5,7 @@ import math
 import struct
 
 from construct import Adapter, Struct, Int32ul
+from gpstime import gpstime
 import numpy as np
 
 
@@ -20,6 +21,16 @@ GPS_POSIX_EPOCH_SEC = GPS_POSIX_EPOCH.timestamp()
 # - System CPU/MCU monotonic timestamps (0 at time of boot) vs POSIX timestamps (referenced to 1/1/1970)
 Y2K_POSIX_SEC = datetime(2000, 1, 1, tzinfo=timezone.utc).timestamp()
 Y2K_GPS_SEC = (Y2K_POSIX_SEC - GPS_POSIX_EPOCH_SEC) + 13
+
+
+def datetime_to_string(time: datetime, decimals=3) -> str:
+    if time is None:
+        return 'None'
+    else:
+        time_str = time.strftime('%Y-%m-%d %H:%M:%S')
+        if decimals > 0:
+            time_str += (('%%.0%df' % decimals) % (time.microsecond * 1e-6))[1:]
+        return time_str
 
 
 def is_gps_time(value_sec: Union[float, np.ndarray]) -> Union[bool, np.ndarray]:
@@ -50,6 +61,12 @@ class Timestamp:
     def as_gps(self) -> datetime:
         if self.is_gps():
             return GPS_POSIX_EPOCH + timedelta(seconds=self.seconds)
+        else:
+            return None
+
+    def as_utc(self) -> datetime:
+        if self.is_gps():
+            return gpstime.fromgps(self.seconds)
         else:
             return None
 
