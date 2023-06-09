@@ -1262,9 +1262,13 @@ struct alignas(4) HardwareTickConfig {
 /**
  * @brief Heading bias horizontal/vertical configuration settings.
  * @ingroup config_and_ctrl_messages
+ * 
  * @note
  * Both HeadingBias values must be set for the system to use them.
- * If one value is NOT set, the system will just output Invalid.
+ * If one value is NOT set, the system will not output the corrected
+ * heading message.
+ * 
+ * @ref HeadingOutput
  */
 struct alignas(4) HeadingBias {
   /**

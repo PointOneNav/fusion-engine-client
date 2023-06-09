@@ -1160,7 +1160,7 @@ struct alignas(4) RawHeadingOutput : public MessagePayload {
  * however, if no biases have been set AND the message
  * is enabled the output will ALWAYS be Invalid.
  * 
- * See also @ref RawHeadingOutput.
+ * See also @ref RawHeadingOutput and @ref SolutionType::Invalid.
  */
 struct alignas(4) HeadingOutput : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::HEADING_OUTPUT;
