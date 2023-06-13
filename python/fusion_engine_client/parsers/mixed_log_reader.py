@@ -261,7 +261,8 @@ class MixedLogReader(object):
                 # Check if the payload is too big. If so, we most likely found an invalid header -- message sync bytes
                 # occurring randomly in non-FusionEngine binary data in the file.
                 if header.payload_size_bytes > MessageHeader._MAX_EXPECTED_SIZE_BYTES:
-                    raise ValueError('Payload size (%d) too large.' % header.payload_size_bytes)
+                    raise ValueError('Payload size (%d) too large. [message_type=%s]' %
+                                     (header.payload_size_bytes, header.get_type_string()))
 
                 # Read and validate the payload.
                 #
@@ -280,7 +281,8 @@ class MixedLogReader(object):
                 read_len += len(payload_bytes)
                 self.total_bytes_read += len(payload_bytes)
                 if len(payload_bytes) != header.payload_size_bytes:
-                    raise ValueError('Not enough data - likely not a valid FusionEngine header.')
+                    raise ValueError('Not enough data - likely not a valid FusionEngine header. [message_type=%s]' %
+                                     header.get_type_string())
 
                 data += payload_bytes
                 header.validate_crc(data)
