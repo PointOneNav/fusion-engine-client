@@ -323,6 +323,9 @@ class DataLoader(object):
             ignore_cache = True
             return_numpy = False
             time_align = TimeAlignmentMode.NONE
+            empty_result = MessageData(None, None)
+        else:
+            empty_result = {}
 
         # Parse the message types argument into a list of MessageType elements.
         if message_types is None:
@@ -331,11 +334,11 @@ class DataLoader(object):
             message_types = set((message_types,))
         elif MessagePayload.is_subclass(message_types):
             message_types = set((message_types.get_type(),))
-        else:
+        elif len(message_types) > 0:
             message_types = set([(t.get_type() if MessagePayload.is_subclass(t) else t) for t in message_types
                                  if t is not None])
             if len(message_types) == 0:
-                message_types = None
+                return empty_result
 
         # If the message type list is empty, read all messages.
         if message_types is None or len(message_types) == 0:
