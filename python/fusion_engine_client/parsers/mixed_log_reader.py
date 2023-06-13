@@ -418,6 +418,7 @@ class MixedLogReader(object):
                     byte0 = self.input_file.read(1)[0]
                     self.total_bytes_read += 1
                     while True:
+                        # INTERNAL: Also check for internally wrapped messages, which use a different sync sequence.
                         if byte0 == MessageHeader.SYNC0 or byte0 == InternalSync.SYNC0:
                             if self.total_bytes_read + 1 >= self.max_bytes:
                                 self.logger.debug('Max read length exceeded (%d B).' % self.max_bytes)
@@ -425,6 +426,7 @@ class MixedLogReader(object):
 
                             byte1 = self.input_file.read(1)[0]
                             self.total_bytes_read += 1
+                            # INTERNAL: Here too.
                             if ((byte0 == MessageHeader.SYNC0 and byte1 == MessageHeader.SYNC1) or
                                 (byte0 == InternalSync.SYNC0 and byte1 == InternalSync.SYNC1)):
                                 self.input_file.seek(-2, os.SEEK_CUR)
