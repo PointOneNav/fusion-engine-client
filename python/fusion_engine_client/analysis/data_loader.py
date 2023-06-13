@@ -417,9 +417,19 @@ class DataLoader(object):
             self.reader.filter_in_place(time_range)
             self.reader.filter_in_place(message_types)
 
+            # If the user is requiring (valid) P1 timestamps, filter to those now.
+            if require_p1_time and not system_time_messages_requested:
+                self.reader.filter_out_invalid_p1_times()
+
             # If the user requested max messages, tell the reader to return max N results. The reader only supports this
             # if it has an index file, so we still check for N ourselves below.
-            if max_messages is not None and self.reader.have_index():
+            #
+            # Additionally, if the caller requires the results to have (valid) system timestamps, we'll skip this here
+            # since we need to decode the messages to see if they have valid timestamps. The index only stores P1 time,
+            # not system time. The read_next() call below will apply this condition and only return messages with valid
+            # system time.
+            if (max_messages is not None and self.reader.have_index() and
+                not (require_system_time and system_time_messages_requested)):
                 reader_max_messages_applied = True
                 if max_messages >= 0:
                     self.reader.filter_in_place(slice(None, max_messages))
@@ -444,8 +454,8 @@ class DataLoader(object):
         while True:
             try:
                 header, payload, message_bytes = \
-                    self.reader.read_next(require_p1_time=require_p1_time and filters_applied,
-                                          require_system_time=require_system_time and filters_applied)
+                    self.reader.read_next(require_p1_time=require_p1_time,
+                                          require_system_time=require_system_time)
             except StopIteration:
                 break
 
