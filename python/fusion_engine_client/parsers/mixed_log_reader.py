@@ -9,6 +9,7 @@ import numpy as np
 
 from . import file_index
 from ..messages import MessageType, MessageHeader, MessagePayload, Timestamp, message_type_to_class
+from ..messages.internal import InternalSync
 from ..utils import trace as logging
 from ..utils.time_range import TimeRange
 
@@ -417,14 +418,17 @@ class MixedLogReader(object):
                     byte0 = self.input_file.read(1)[0]
                     self.total_bytes_read += 1
                     while True:
-                        if byte0 == MessageHeader.SYNC0:
+                        # INTERNAL: Also check for internally wrapped messages, which use a different sync sequence.
+                        if byte0 == MessageHeader.SYNC0 or byte0 == InternalSync.SYNC0:
                             if self.total_bytes_read + 1 >= self.max_bytes:
                                 self.logger.debug('Max read length exceeded (%d B).' % self.max_bytes)
                                 return False
 
                             byte1 = self.input_file.read(1)[0]
                             self.total_bytes_read += 1
-                            if byte1 == MessageHeader.SYNC1:
+                            # INTERNAL: Here too.
+                            if ((byte0 == MessageHeader.SYNC0 and byte1 == MessageHeader.SYNC1) or
+                                (byte0 == InternalSync.SYNC0 and byte1 == InternalSync.SYNC1)):
                                 self.input_file.seek(-2, os.SEEK_CUR)
                                 self.total_bytes_read -= 2
                                 if self.logger.isEnabledFor(logging.getTraceLevel(depth=3)):
