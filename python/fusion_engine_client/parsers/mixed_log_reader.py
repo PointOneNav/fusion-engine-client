@@ -120,7 +120,7 @@ class MixedLogReader(object):
                     self._original_index = file_index.FileIndex(index_path=self.index_path, data_path=input_path,
                                                                 delete_on_error=generate_index)
                     self.index = self._original_index[self.message_types][self.time_range]
-                    self.filtered_message_types = len(np.unique(self._original_index.type)) !=\
+                    self.filtered_message_types = len(np.unique(self._original_index.type)) != \
                                                   len(np.unique(self.index.type))
                 except ValueError as e:
                     self.logger.error("Error loading index file: %s" % str(e))
@@ -510,7 +510,7 @@ class MixedLogReader(object):
         # If we have an index file available, reduce the index to the requested criteria.
         elif self.index is not None:
             self.index = self.index[key]
-            self.filtered_message_types = len(np.unique(self._original_index.type)) !=\
+            self.filtered_message_types = len(np.unique(self._original_index.type)) != \
                                           len(np.unique(self.index.type))
         # Otherwise, store the criteria and apply them while reading.
         else:
