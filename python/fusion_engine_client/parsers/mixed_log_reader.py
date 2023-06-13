@@ -470,6 +470,9 @@ class MixedLogReader(object):
                              elapsed_sec, (self.total_bytes_read / elapsed_sec / 1e6) if elapsed_sec > 0 else np.nan))
             self.last_print_bytes = self.total_bytes_read
 
+    def clear_filters(self):
+        self.filter_in_place(key=None, clear_existing=True)
+
     def filter_in_place(self, key, clear_existing: bool = False):
         """!
         @brief Limit the returned messages by type or time.

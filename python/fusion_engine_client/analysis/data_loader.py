@@ -400,6 +400,7 @@ class DataLoader(object):
             raise IOError("File not open.")
         else:
             self.reader.rewind()
+            self.reader.clear_filters()
             self.reader.set_generate_index(self._generate_index and not disable_index_generation)
             self.reader.set_show_progress(show_progress)
             self.reader.set_max_bytes(max_bytes)
@@ -413,17 +414,17 @@ class DataLoader(object):
         else:
             filters_applied = True
 
-            self.reader.filter_in_place(message_types, clear_existing=True)
-            self.reader.filter_in_place(time_range, clear_existing=False)
+            self.reader.filter_in_place(message_types)
+            self.reader.filter_in_place(time_range)
 
             # If the user requested max messages, tell the reader to return max N results. The reader only supports this
             # if it has an index file, so we still check for N ourselves below.
             if max_messages is not None and self.reader.have_index():
                 reader_max_messages_applied = True
                 if max_messages >= 0:
-                    self.reader.filter_in_place(slice(None, max_messages), clear_existing=False)
+                    self.reader.filter_in_place(slice(None, max_messages))
                 else:
-                    self.reader.filter_in_place(slice(max_messages, None), clear_existing=False)
+                    self.reader.filter_in_place(slice(max_messages, None))
 
         # When the user requests max_messages < 0, they would like the _last_ N messages in the file. If the reader does
         # not have an index file, so we can't do a slice above, we will create a circular buffer and store the last N
