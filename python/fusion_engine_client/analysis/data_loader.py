@@ -414,8 +414,8 @@ class DataLoader(object):
         else:
             filters_applied = True
 
-            self.reader.filter_in_place(message_types)
             self.reader.filter_in_place(time_range)
+            self.reader.filter_in_place(message_types)
 
             # If the user requested max messages, tell the reader to return max N results. The reader only supports this
             # if it has an index file, so we still check for N ourselves below.
