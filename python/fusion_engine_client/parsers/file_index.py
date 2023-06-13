@@ -292,6 +292,8 @@ class FileIndex(object):
                - `include_nans` - Include nan elements within the requested time range (default)
                - `remove_nans` - Do not return nan elements; remove elements falling within the requested time range
         @param time_range A @ref TimeRange object to use instead of `start` and `stop`.
+
+        @return Returns a _copy_ of this class, limited to the requested range.
         """
         if hint is None:
             hint = 'include_nans'

@@ -486,6 +486,8 @@ class MixedLogReader(object):
                - A `slice` specifying the start/end of the desired absolute (P1) or relative time range
                - A @ref TimeRange object
         @param clear_existing If `True`, clear any previous filter criteria.
+
+        @return A reference to this class.
         """
         # If we're reading using an index, determine the offset within the data file of the most recent message we have
         # read. Then below, after we filter the index down (or clear existing filtering), we'll locate the next entry to
