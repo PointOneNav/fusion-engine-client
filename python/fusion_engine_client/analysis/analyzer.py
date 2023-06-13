@@ -1974,23 +1974,53 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             t0_gps = Timestamp()
             t0_is_approx = False
 
+        # Find the _processed_ t0, i.e., the first P1 and system times within the requested time range.
+        params = copy.deepcopy(self.params)
+        params['max_messages'] = 1
+        params['return_in_order'] = True
+
+        result = self.reader.read(message_types=None, require_p1_time=True, **params)
+        if len(result.messages) > 0:
+            processed_t0 = result.messages[0].get_p1_time()
+        else:
+            processed_t0 = Timestamp()
+
+        result = self.reader.read(message_types=None, require_system_time=True, **params)
+        if len(result.messages) > 0:
+            processed_system_t0 = result.messages[0].get_system_time_sec()
+        else:
+            processed_system_t0 = None
+
         # Create a table with log times and durations.
         descriptions = [
-            'Start Time',
+            'Log Start Time',
+            '',
+            '',
+            'Total Log Duration',
+            '',
+            'Processed Start Time',
             '',
             '',
             'Processed Duration',
-            'Total Log Duration',
         ]
         times = [
+            # Log summary.
             str(self.reader.t0),
             system_time_to_str(self.reader.get_system_t0(), is_seconds=True).replace(' time', ':'),
             # Note: Temporarily replacing <br> so it doesn't get stripped by _data_to_table().
             self._gps_sec_to_string(t0_gps) \
                 .replace('<br>', (' (approximated)' if t0_is_approx else '') + '<brbak>') \
                 .replace('<brbak>', '<br>'),
-            '%.1f seconds' % processing_duration_sec,
             log_duration_sec,
+            '',
+            # Processed data summary.
+            str(processed_t0),
+            system_time_to_str(processed_system_t0, is_seconds=True).replace(' time', ':'),
+            # Note: Temporarily replacing <br> so it doesn't get stripped by _data_to_table().
+            self._gps_sec_to_string(t0_gps) \
+                .replace('<br>', (' (approximated)' if t0_is_approx else '') + '<brbak>') \
+                .replace('<brbak>', '<br>'),
+            '%.1f seconds' % processing_duration_sec,
         ]
         time_table = _data_to_table(['Description', 'Time'], [descriptions, times])
 
