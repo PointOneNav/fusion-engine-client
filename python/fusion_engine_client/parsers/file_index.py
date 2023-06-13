@@ -331,8 +331,9 @@ class FileIndex(object):
 
             # If self._data['time'] ends _before_ `start``, use 0 as start_idx. If self._data['time'] ends _after_
             # `end`, use len(self._data['time']) as end_idx.
-            start_idx = find_first(self._data['time'] >= np.floor(start)) if start is not None else 0
-            end_idx = find_first(self._data['time'] >= stop) if stop is not None else len(self._data)
+            with np.errstate(invalid='ignore'):
+                start_idx = find_first(self._data['time'] >= np.floor(start)) if start is not None else 0
+                end_idx = find_first(self._data['time'] >= stop) if stop is not None else len(self._data)
 
             if start_idx < 0:
                 start_idx = 0
