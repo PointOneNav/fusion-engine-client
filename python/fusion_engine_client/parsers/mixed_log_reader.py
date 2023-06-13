@@ -61,6 +61,8 @@ class MixedLogReader(object):
         self._original_time_range = copy.deepcopy(time_range)
         self.time_range = copy.deepcopy(self._original_time_range)
 
+        self.remove_invalid_p1_time = False
+
         if message_types is None:
             self.message_types = None
         elif isinstance(message_types, MessageType):
@@ -339,9 +341,11 @@ class MixedLogReader(object):
                         self.logger.trace("Skipping %s message. System time requested." % header.get_type_string())
                         continue
 
+                # Extract P1 time if available.
+                p1_time = payload.get_p1_time() if payload is not None else Timestamp()
+
                 # Add this message to the index file.
                 if self.index_builder is not None and generate_index:
-                    p1_time = payload.get_p1_time() if payload is not None else None
                     self.index_builder.append(message_type=header.message_type, offset_bytes=start_offset_bytes,
                                               p1_time=p1_time)
 
@@ -354,6 +358,9 @@ class MixedLogReader(object):
                 if self.index is None:
                     if self.message_types is not None and header.message_type not in self.message_types:
                         self.logger.trace("Message type not requested. Skipping.", depth=1)
+                        continue
+                    elif self.remove_invalid_p1_time and not p1_time:
+                        self.logger.trace("Message does not have valid P1 time. Skipping.", depth=1)
                         continue
                     elif self.time_range is not None and not self.time_range.is_in_range(payload):
                         if self.time_range.in_range_started() and (self.index_builder is None or not generate_index):
@@ -394,6 +401,8 @@ class MixedLogReader(object):
             self.index_builder = None
 
             self.index = self._original_index[self.message_types][self.time_range]
+            if self.remove_invalid_p1_time:
+                self.index = self.index.get_time_range(hint='remove_nans')
             self.message_types = None
             self.time_range = None
             self.next_index_elem = len(self.index)
@@ -508,6 +517,7 @@ class MixedLogReader(object):
             if self.index is None:
                 self.message_types = copy.deepcopy(self._original_message_types)
                 self.time_range = copy.deepcopy(self._original_time_range)
+                self.remove_invalid_p1_time = False
             else:
                 self.index = self._original_index
 
@@ -575,6 +585,26 @@ class MixedLogReader(object):
                     self.next_index_elem = len(self.index)
                 else:
                     self.next_index_elem = idx
+
+        return self
+
+    def filter_out_invalid_p1_times(self, clear_existing: bool = False):
+        """!
+        @brief Limit the returned messages, removing any messages that do not have valid P1 time.
+
+        @param clear_existing If `True`, clear any previous filter criteria.
+
+        @return A reference to this class.
+        """
+        self.filter_in_place(key=None, clear_existing=clear_existing)
+
+        # If we have an index file available, reduce the index to the requested criteria.
+        if self.index is not None:
+            self.index = self.index.get_time_range(hint='remove_nans')
+            self.filtered_message_types = len(np.unique(self._original_index.type)) != \
+                                          len(np.unique(self.index.type))
+        else:
+            self.remove_invalid_p1_time = True
 
         return self
 
