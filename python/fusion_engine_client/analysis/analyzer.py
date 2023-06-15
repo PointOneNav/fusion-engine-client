@@ -1766,6 +1766,40 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
 
         self._add_figure(name='heading_measurement', figure=fig, title='Measurements: Heading')
 
+    def plot_system_status_profiling(self):
+        """!
+        @brief Plot system status profiling data.
+        """
+        if self.output_dir is None:
+            return
+
+        # Read the data.
+        result = self.reader.read(message_types=[SystemStatusMessage], remove_nan_times=False, **self.params)
+        data = result[SystemStatusMessage.MESSAGE_TYPE]
+
+        if len(data.p1_time) == 0:
+            self.logger.info('No system status data available. Skipping plot.')
+            return
+
+        # Setup the figure.
+        figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=True,
+                               subplot_titles=['GNSS Temperature'])
+
+        figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
+        for i in range(1):
+            figure['layout']['xaxis%d' % (i + 1)].update(title="Time (sec)", showticklabels=True)
+        figure['layout']['yaxis1'].update(title="Temp (deg C)")
+
+        # Plot the data.
+        time = data.p1_time - float(self.t0)
+        figure.add_trace(go.Scattergl(x=time, y=data.gnss_temperature_degc, customdata=data.p1_time,
+                                      name='GNSS Temperature',
+                                      hovertemplate='Time: %{x:.3f} sec (%{customdata:.3f} sec)',
+                                      mode='markers', line={'color': 'red'}),
+                         1, 1)
+
+        self._add_figure(name="profile_system_status", figure=figure, title="Profiling: System Status")
+
     def plot_events(self):
         """!
         @brief Generate a table of event notifications.
@@ -2272,7 +2306,9 @@ Load and display information stored in a FusionEngine binary file.
                         truncate_long_logs=options.truncate and options.plot is None)
 
     if options.plot is None:
+        analyzer.plot_events()
         analyzer.plot_time_scale()
+
         analyzer.plot_solution_type()
         analyzer.plot_pose()
         analyzer.plot_pose_displacement()
@@ -2292,7 +2328,7 @@ Load and display information stored in a FusionEngine binary file.
             analyzer.plot_imu()
             analyzer.plot_wheel_data()
 
-        analyzer.plot_events()
+        analyzer.plot_system_status_profiling()
     else:
         if len(options.plot) == 0:
             _logger.error('No plot names specified.')
