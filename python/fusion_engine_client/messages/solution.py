@@ -868,7 +868,7 @@ class RelativeENUPositionMessage(MessagePayload):
 
     @classmethod
     def calcsize(cls) -> int:
-        return cls.GetConfigMessageConstruct.sizeof()
+        return cls.Construct.sizeof()
 
     @classmethod
     def to_numpy(cls, messages: Sequence['RelativeENUPositionMessage']):

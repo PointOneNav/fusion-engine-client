@@ -13,7 +13,7 @@ def find_first(arr: np.ndarray):
     elif len(arr) == 0:
         return -1
     else:
-        idx = np.argmax(arr)
+        idx = np.nanargmax(arr)
         if idx == 0 and not arr[0]:
             return -1
         else:

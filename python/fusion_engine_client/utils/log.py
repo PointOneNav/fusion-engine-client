@@ -221,12 +221,16 @@ def find_log_file(input_path, candidate_files=None, return_output_dir=False, ret
             - The log ID string, or `None` if the requested file is not part of a FusionEngine log. Only provided if
               `return_log_id` is `True`.
     """
+    def _get_log_id(file_path):
+        parent_dir = os.path.dirname(os.path.abspath(input_path))
+        return os.path.basename(parent_dir)
+
     # Check if the input path is a file. If so, return it and set the output directory to its parent directory.
     if os.path.isfile(input_path) and check_exact_match:
         output_dir = os.path.dirname(input_path)
         if output_dir == "":
             output_dir = "."
-        log_id = None
+        log_id = _get_log_id(input_path)
     # If the input path is a directory, see if it's a P1 log. If it is not a directory, see if it pattern matches to a
     # log directory within `log_base_dir`. If so for either case, set the output directory to the log directory (note
     # that the .p1log may be contained within a subdirectory).
@@ -249,7 +253,7 @@ def find_log_file(input_path, candidate_files=None, return_output_dir=False, ret
 
                 test_path = os.path.join(dir_path, f)
                 if os.path.exists(test_path):
-                    return test_path, dir_path, os.path.basename(dir_path)
+                    return test_path, dir_path, _get_log_id(test_path)
             return None, None, None
 
         if check_exact_match:

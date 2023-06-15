@@ -1774,9 +1774,47 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
 
         self._add_figure(name='heading_measurement', figure=fig, title='Measurements: Heading')
 
-    def plot_legacy_atlas_system_status_profiling(self):
+    def plot_system_status_profiling(self):
         """!
         @brief Plot system status profiling data.
+        """
+        if self.output_dir is None:
+            return
+
+        # Read the data.
+        result = self.reader.read(message_types=[SystemStatusMessage], remove_nan_times=False, **self.params)
+        data = result[SystemStatusMessage.MESSAGE_TYPE]
+
+        if len(data.p1_time) == 0:
+            self.logger.info('No system status data available. Skipping plot.')
+            return
+
+        # Setup the figure.
+        figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=True,
+                               subplot_titles=['GNSS Temperature'])
+
+        figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
+        for i in range(1):
+            figure['layout']['xaxis%d' % (i + 1)].update(title="Time (sec)", showticklabels=True)
+        figure['layout']['yaxis1'].update(title="Temp (deg C)")
+
+        # Plot the data.
+        time = data.p1_time - float(self.t0)
+        figure.add_trace(go.Scattergl(x=time, y=data.gnss_temperature_degc, customdata=data.p1_time,
+                                      name='GNSS Temperature',
+                                      hovertemplate='Time: %{x:.3f} sec (%{customdata:.3f} sec)',
+                                      mode='markers', line={'color': 'red'}),
+                         1, 1)
+
+        self._add_figure(name="profile_system_status", figure=figure, title="Profiling: System Status")
+
+    ####################################################################################################################
+    # INTERNAL: Internal plotting functions below.
+    ####################################################################################################################
+
+    def plot_legacy_atlas_system_status_profiling(self):
+        """!
+        @brief Plot Atlas system status profiling data.
         """
         if self.output_dir is None:
             return
@@ -2574,23 +2612,53 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             t0_gps = Timestamp()
             t0_is_approx = False
 
+        # Find the _processed_ t0, i.e., the first P1 and system times within the requested time range.
+        params = copy.deepcopy(self.params)
+        params['max_messages'] = 1
+        params['return_in_order'] = True
+
+        result = self.reader.read(message_types=None, require_p1_time=True, **params)
+        if len(result.messages) > 0:
+            processed_t0 = result.messages[0].get_p1_time()
+        else:
+            processed_t0 = Timestamp()
+
+        result = self.reader.read(message_types=None, require_system_time=True, **params)
+        if len(result.messages) > 0:
+            processed_system_t0 = result.messages[0].get_system_time_sec()
+        else:
+            processed_system_t0 = None
+
         # Create a table with log times and durations.
         descriptions = [
-            'Start Time',
+            'Log Start Time',
+            '',
+            '',
+            'Total Log Duration',
+            '',
+            'Processed Start Time',
             '',
             '',
             'Processed Duration',
-            'Total Log Duration',
         ]
         times = [
+            # Log summary.
             str(self.reader.t0),
             system_time_to_str(self.reader.get_system_t0(), is_seconds=True).replace(' time', ':'),
             # Note: Temporarily replacing <br> so it doesn't get stripped by _data_to_table().
             self._gps_sec_to_string(t0_gps) \
                 .replace('<br>', (' (approximated)' if t0_is_approx else '') + '<brbak>') \
                 .replace('<brbak>', '<br>'),
-            '%.1f seconds' % processing_duration_sec,
             log_duration_sec,
+            '',
+            # Processed data summary.
+            str(processed_t0),
+            system_time_to_str(processed_system_t0, is_seconds=True).replace(' time', ':'),
+            # Note: Temporarily replacing <br> so it doesn't get stripped by _data_to_table().
+            self._gps_sec_to_string(t0_gps) \
+                .replace('<br>', (' (approximated)' if t0_is_approx else '') + '<brbak>') \
+                .replace('<brbak>', '<br>'),
+            '%.1f seconds' % processing_duration_sec,
         ]
         time_table = _data_to_table(['Description', 'Time'], [descriptions, times])
 
@@ -2922,7 +2990,9 @@ Load and display information stored in a FusionEngine binary file.
                         truncate_long_logs=options.truncate and options.plot is None)
 
     if options.plot is None:
+        analyzer.plot_events()
         analyzer.plot_time_scale()
+
         analyzer.plot_solution_type()
         analyzer.plot_pose()
         analyzer.plot_pose_displacement()
@@ -2942,8 +3012,9 @@ Load and display information stored in a FusionEngine binary file.
             analyzer.plot_imu()
             analyzer.plot_wheel_data()
 
-        analyzer.plot_events()
+        analyzer.plot_system_status_profiling()
 
+        # INTERNAL: These profiling messages are not currently published publicly.
         analyzer.plot_legacy_atlas_system_status_profiling()
         analyzer.plot_free_rtos_system_status_profiling()
         analyzer.plot_measurement_pipeline_profiling()

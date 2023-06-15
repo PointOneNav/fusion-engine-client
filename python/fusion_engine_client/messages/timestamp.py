@@ -155,6 +155,9 @@ class Timestamp:
 
 
 def system_time_to_str(system_time, is_seconds=False):
+    if system_time is None:
+        return 'None'
+
     if is_seconds:
         system_time_sec = system_time
     else:
