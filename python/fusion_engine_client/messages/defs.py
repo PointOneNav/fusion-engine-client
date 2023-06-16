@@ -147,6 +147,8 @@ class MessageType(IntEnum):
     GET_MESSAGE_RATE = 13221
     MESSAGE_RATE_RESPONSE = 13222
 
+    LBAND_FRAME = 14000
+
     RESERVED = 20000
 
     @classmethod
