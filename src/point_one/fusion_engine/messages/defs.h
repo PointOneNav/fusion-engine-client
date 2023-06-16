@@ -99,8 +99,10 @@ enum class MessageType : uint16_t {
   GET_MESSAGE_RATE = 13221, ///< @ref GetMessageRate
   MESSAGE_RATE_RESPONSE = 13222, ///< @ref MessageRateResponse
 
+  LBAND_FRAME = 14000, ///< @ref LBandFrameMessage
+
   /// The maximum defined @ref MessageType enum value.
-  MAX_VALUE = MESSAGE_RATE_RESPONSE,
+  MAX_VALUE = LBAND_FRAME,
 };
 
 /**
@@ -249,6 +251,9 @@ P1_CONSTEXPR_FUNC const char* to_string(MessageType type) {
 
     case MessageType::PLATFORM_STORAGE_DATA:
       return "Platform Data Contents";
+
+    case MessageType::LBAND_FRAME:
+      return "L-Band Frame Contents";
 
     default:
       return "Unrecognized Message";
