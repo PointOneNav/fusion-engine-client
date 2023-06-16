@@ -5,7 +5,6 @@
 
 #pragma once
 
-#include "point_one/fusion_engine/common/portability.h"
 #include "point_one/fusion_engine/messages/defs.h"
 
 namespace point_one {
@@ -20,7 +19,7 @@ namespace messages {
 
 /**
  * @defgroup gnss_corrections GNSS Corrections Message Definitions
- * @brief Output messages containing GNSS corrections.
+ * @brief Messages containing GNSS corrections.
  * @ingroup messages
  *
  * See also @ref messages.
@@ -53,7 +52,7 @@ struct alignas(4) LBandFrameMessage : public MessagePayload {
 
   /**
    * The offset from the center frequency (Hz). This includes effects from user
-   * motion, receiver clock and satellite clock errors.
+   * motion, receiver clock, and satellite clock errors.
    */
   float doppler_hz = 0;
 
