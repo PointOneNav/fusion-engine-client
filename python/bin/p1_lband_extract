@@ -15,9 +15,6 @@ import sys
 root_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, root_dir)
 
-root_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
-sys.path.append(root_dir)
-
 
 _logger = logging.getLogger('point_one.fusion_engine.applications.lband_extract')
 
@@ -86,8 +83,8 @@ Extract L-Band corrections data from a log containing FusionEngine L-Band frame 
     BrokenPipeStreamHandler.install()
 
     # Locate the input file and set the output directory.
-    input_path, output_dir, log_id = locate_log(input_path=options.log, log_base_dir=options.log_base_dir, return_log_id=True, return_output_dir=True,
-                                                extract_fusion_engine_data=False)
+    input_path, output_dir, log_id = locate_log(input_path=options.log, log_base_dir=options.log_base_dir,
+                                                return_log_id=True, return_output_dir=True, extract_fusion_engine_data=False)
     if input_path is None:
         # locate_log() will log an error.
         sys.exit(1)
@@ -97,13 +94,12 @@ Extract L-Band corrections data from a log containing FusionEngine L-Band frame 
 
     # Read through the data file, searching for valid LBandFrame messages to extract and store in
     # 'output_dir/<prefix>.p1log'.
+    message_types = set([MessageType.LBAND_FRAME])
     if options.prefix is not None:
         prefix = options.prefix
-    elif log_id is not None:
-        prefix = 'lband'
     else:
         prefix = os.path.splitext(os.path.basename(input_path))[0]
-    output_path = os.path.join(output_dir, prefix + '.rtcm')
+    output_path = os.path.join(output_dir, prefix + '.lband.bin')
 
     _logger.info("Processing input file '%s'." % input_path)
 
@@ -111,17 +107,15 @@ Extract L-Band corrections data from a log containing FusionEngine L-Band frame 
     time_range = TimeRange.parse(options.time, absolute=options.absolute_time)
 
     if options.time is not None:
-        _logger.info('Non-P1 time messages requested and time range specified. Disabling index file.')
+        _logger.info('L-band messages do not use P1 time. Disabling index file when applying time range to system timestamps.')
         read_index = False
 
-    message_types = MessageType.LBAND_FRAME
-
-    # Process all data in the file.
+    # Process all LBandFrameMessage data in the file.
     reader = MixedLogReader(input_path, return_bytes=True, return_offset=True, show_progress=options.progress,
                             ignore_index=not read_index, generate_index=generate_index,
                             message_types=message_types, time_range=time_range)
 
-    if reader.generating_index() and (len(message_types) > 0 or options.time is not None):
+    if reader.generating_index():
         _logger.info('Generating index file - processing complete file. This may take some time.')
 
     total_messages = 0
@@ -130,6 +124,7 @@ Extract L-Band corrections data from a log containing FusionEngine L-Band frame 
     with open(output_path, 'wb') as fd:
         try:
             for header, message, data, offset_bytes in reader:
+                # This check is purely for type inference.
                 if isinstance(message, LBandFrameMessage):
                     bytes_decoded += len(message.data_payload)
                     total_messages += 1
@@ -139,9 +134,10 @@ Extract L-Band corrections data from a log containing FusionEngine L-Band frame 
 
     # Print the data summary.
     if total_messages > 0:
-        _logger.info('Input file: %s' % input_path)
+        _logger.info('Input File: %s' % input_path)
+        _logger.info('Output File: %s' % output_path)
         _logger.info('Log ID: %s' % log_id)
         _logger.info('Total Messages: %d' % total_messages)
-        _logger.info('L-Band Bytes Decided: %d' % bytes_decoded)
+        _logger.info('L-Band Bytes Decoded: %d' % bytes_decoded)
     elif total_messages == 0:
         _logger.warning('No valid L-Band frame messages found.')
