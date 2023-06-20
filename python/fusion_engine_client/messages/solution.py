@@ -122,13 +122,11 @@ class PoseMessage(MessagePayload):
         string += '  Solution type: %s\n' % self.solution_type.name
         if self.gps_time:
             gps_str = f'{str(self.gps_time).replace("GPS: ", "")}'
-        else:
-            gps_str = 'None'
-        string += '  GPS time: %s\n' % gps_str
-        if self.utc_time:
             utc_str = f'{datetime_to_string(self.gps_time.as_utc())}'
         else:
+            gps_str = 'None'
             utc_str = 'None'
+        string += '  GPS time: %s\n' % gps_str
         string += '  UTC time: %s\n' % utc_str
         string += '  Position (LLA): %.6f, %.6f, %.3f (deg, deg, m)\n' % tuple(self.lla_deg)
         string += '  Attitude (YPR): %.2f, %.2f, %.2f (deg, deg, deg)\n' % tuple(self.ypr_deg)
