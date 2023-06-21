@@ -634,3 +634,40 @@ class ShutdownRequest(MessagePayload):
 
     def calcsize(self) -> int:
         return self.ShutdownRequestConstruct.sizeof()
+
+
+class StartupRequest(MessagePayload):
+    """!
+    @brief Perform a device startup.
+    """
+    MESSAGE_TYPE = MessageType.STARTUP_REQUEST
+    MESSAGE_VERSION = 0
+
+    StartupRequestConstruct = Struct(
+        "startup_flags" / Int64ul,
+        Padding(8),
+    )
+
+    def __init__(self, startup_flags = 0):
+        self.startup_flags = startup_flags
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        values = vars(self)
+        packed_data = self.StartupRequestConstruct.build(values)
+        return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
+
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
+        parsed = self.StartupRequestConstruct.parse(buffer[offset:])
+        self.__dict__.update(parsed)
+        return parsed._io.tell()
+
+    def __repr__(self):
+        result = super().__repr__()[:-1]
+        result += f', flags=0x{self.startup_flags:016X}]'
+        return result
+
+    def __str__(self):
+        return 'Startup Request [flags=0x%016x]' % self.startup_flags
+
+    def calcsize(self) -> int:
+        return self.StartupRequestConstruct.sizeof()
