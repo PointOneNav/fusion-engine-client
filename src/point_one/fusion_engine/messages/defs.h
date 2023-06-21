@@ -223,6 +223,9 @@ P1_CONSTEXPR_FUNC const char* to_string(MessageType type) {
     case MessageType::STARTUP_REQUEST:
       return "Startup Request";
 
+    case MessageType::DEVICE_ID:
+      return "Device ID Information";
+
     case MessageType::FAULT_CONTROL:
       return "Fault Control";
 
