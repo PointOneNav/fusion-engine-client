@@ -150,6 +150,7 @@ class TransportType(IntEnum):
     TCP_SERVER = 4,
     UDP_CLIENT = 5,
     UDP_SERVER = 6,
+    WEBSOCKET_SERVER = 7,
     ## Set/get the configuration for the interface on which the command was received.
     CURRENT = 254,
     ## Set/get the configuration for the all I/O interfaces.
