@@ -387,6 +387,7 @@ enum class InterfaceConfigType : uint8_t {
    * - @ref TransportType::TCP_SERVER
    * - @ref TransportType::UDP_CLIENT
    * - @ref TransportType::UDP_SERVER
+   * - @ref TransportType::WEBSOCKET_SERVER
    *
    * Payload format: `uint16_t`
    */
@@ -1470,6 +1471,8 @@ enum class TransportType : uint8_t {
   UDP_CLIENT = 5,
   /** An interface that will communicate with connected clients. */
   UDP_SERVER = 6,
+  /** An interface that will communicate with connected clients. */
+  WEBSOCKET_SERVER = 7,
   /**
    * Set/get the configuration for the interface on which the command was
    * received.
@@ -1504,13 +1507,14 @@ P1_CONSTEXPR_FUNC const char* to_string(TransportType val) {
       return "UDP Client";
     case TransportType::UDP_SERVER:
       return "UDP Server";
+    case TransportType::WEBSOCKET_SERVER:
+      return "Websocket Server";
     case TransportType::CURRENT:
       return "Current";
     case TransportType::ALL:
       return "All";
-    default:
-      return "Unrecognized";
   }
+  return "Unrecognized";
 }
 
 /**
