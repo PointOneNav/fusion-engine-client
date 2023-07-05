@@ -1860,7 +1860,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
 
         figure['layout'].update(showlegend=True)
         for i in range(3):
-            figure['layout']['xaxis%d' % (i + 1)].update(title="System Time (sec)", showticklabels=True)
+            figure['layout']['xaxis%d' % (i + 1)].update(title=self.system_time_label, showticklabels=True)
         figure['layout']['yaxis1'].update(title="CPU (%)", range=[0, 100])
         figure['layout']['yaxis2'].update(title="Memory (MB)")
         figure['layout']['yaxis3'].update(title="# Entries", rangemode="tozero")
@@ -1927,7 +1927,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
 
         figure['layout'].update(showlegend=True)
         for i in range(3):
-            figure['layout']['xaxis%d' % (i + 1)].update(title="System Time (sec)", showticklabels=True)
+            figure['layout']['xaxis%d' % (i + 1)].update(title=self.system_time_label, showticklabels=True)
         figure['layout']['yaxis1'].update(title="Processing Time (ms)")
         figure['layout']['yaxis2'].update(title="Processing Time (ms)")
         figure['layout']['yaxis3'].update(title="Number of Executions", rangemode="nonnegative")
@@ -1988,7 +1988,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
 
         figure['layout'].update(showlegend=True)
         for i in range(3):
-            figure['layout']['xaxis%d' % (i + 1)].update(title="System Time (sec)", showticklabels=True)
+            figure['layout']['xaxis%d' % (i + 1)].update(title=self.system_time_label, showticklabels=True)
         figure['layout']['yaxis1'].update(title="Lowest Pool Capacity", rangemode="tozero")
         figure['layout']['yaxis2'].update(title="Number of Pool Overflows", rangemode="tozero")
         figure['layout']['yaxis3'].update(title="Number of Free Slots", rangemode="tozero")
@@ -2100,7 +2100,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                                                f'used for data collection or use --device-uart to set the correct '
                                                f'port.'])
 
-        figure['layout']['xaxis'].update(title="Time (sec)")
+        figure['layout']['xaxis'].update(title=self.system_time_label)
         figure['layout']['yaxis1'].update(title="Dropped Data (Bytes)")
 
         figure.add_trace(go.Scattergl(x=time[good_idx][1:], y=dropped_data_diff, mode='markers'), 1, 1)
@@ -2140,7 +2140,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
 
         figure['layout'].update(showlegend=True)
         for i in range(2):
-            figure['layout']['xaxis%d' % (i + 1)].update(title="System Time (sec)", showticklabels=True)
+            figure['layout']['xaxis%d' % (i + 1)].update(title=self.system_time_label, showticklabels=True)
         figure['layout']['yaxis1'].update(title="Error Count", rangemode="nonnegative")
         figure['layout']['yaxis2'].update(title="Buffer Free (kB)", rangemode="tozero")
         figure['layout']['yaxis3'].update(title="Message Rate (bps)", rangemode="nonnegative")
@@ -2238,7 +2238,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
 
         figure['layout'].update(showlegend=True)
         for i in range(2):
-            figure['layout']['xaxis%d' % (i + 1)].update(title="System Time (sec)", showticklabels=True)
+            figure['layout']['xaxis%d' % (i + 1)].update(title=self.system_time_label, showticklabels=True)
         figure['layout']['yaxis1'].update(title="Queue Depth (measurements)", rangemode="nonnegative")
         figure['layout']['yaxis2'].update(title="Queue Age (ms)", rangemode="nonnegative")
         figure['layout']['yaxis3'].update(title="Buffer Free (bytes)", rangemode="tozero")
@@ -2308,7 +2308,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
 
         figure['layout'].update(showlegend=True)
         for i in range(4):
-            figure['layout']['xaxis%d' % (i + 1)].update(title="System Time (sec)", showticklabels=True)
+            figure['layout']['xaxis%d' % (i + 1)].update(title=self.system_time_label, showticklabels=True)
         figure['layout']['yaxis1'].update(title="CPU (%)", range=[0, 100])
         figure['layout']['yaxis2'].update(title="Memory Free (B)", rangemode="tozero")
         figure['layout']['yaxis3'].update(title="Memory Free (KB)", rangemode="tozero")
@@ -2370,7 +2370,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                                subplot_titles=['Pipeline Delay'])
 
         figure['layout'].update(showlegend=True)
-        figure['layout']['xaxis'].update(title="System Time (sec)")
+        figure['layout']['xaxis'].update(title=self.system_time_label)
         figure['layout']['yaxis1'].update(title="Delay (sec)")
 
         for id, point_data in data.points.items():
@@ -2411,7 +2411,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                                subplot_titles=['Code Execution'])
 
         figure['layout'].update(showlegend=True)
-        figure['layout']['xaxis'].update(title="System Time (sec)")
+        figure['layout']['xaxis'].update(title=self.system_time_label)
         figure['layout']['yaxis1'].update(title="Event")
 
         if len(id_to_name) != 0:
