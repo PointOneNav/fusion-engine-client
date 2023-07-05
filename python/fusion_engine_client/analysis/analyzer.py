@@ -107,6 +107,7 @@ class Analyzer(object):
                  file: Union[DataLoader, str], ignore_index: bool = False,
                  output_dir: str = None, prefix: str = '',
                  time_range: TimeRange = None, max_messages: int = None,
+                 time_axis: str = 'relative',
                  truncate_long_logs: bool = True):
         """!
         @brief Create an analyzer for the specified log.
@@ -120,6 +121,9 @@ class Analyzer(object):
                be read. See @ref TimeRange for more details.
         @param max_messages If set, read up to the specified maximum number of messages. Applies across all message
                types.
+        @param time_axis Specify the way in which time will be plotted:
+               - `absolute`, `abs` - Absolute P1 or system timestamps
+               - `relative`, `rel` - Elapsed time since the start of the log
         @param truncate_long_logs If `True`, reduce or skip certain plots if the log extremely long (as defined by
                @ref LONG_LOG_DURATION_SEC).
         """
@@ -138,13 +142,26 @@ class Analyzer(object):
             'return_numpy': True
         }
 
-        self.t0 = self.reader.t0
-        if self.t0 is None:
-            self.t0 = Timestamp()
+        if time_axis in ('relative', 'rel'):
+            self.time_axis = 'relative'
+            self.t0 = self.reader.t0
+            if self.t0 is None:
+                self.t0 = Timestamp()
 
-        self.system_t0 = self.reader.get_system_t0()
-        if self.system_t0 is None:
-            self.system_t0 = np.nan
+            self.system_t0 = self.reader.get_system_t0()
+            if self.system_t0 is None:
+                self.system_t0 = np.nan
+
+            self.p1_time_label = 'Relative Time (sec)'
+            self.system_time_label = 'Relative Time (sec)'
+        elif time_axis in ('absolute', 'abs'):
+            self.time_axis = 'absolute'
+            self.t0 = Timestamp(0.0)
+            self.system_t0 = 0.0
+            self.p1_time_label = 'P1 Time (sec)'
+            self.system_time_label = 'System Time (sec)'
+        else:
+            raise ValueError(f"Unsupported time axis specifier '{time_axis}'.")
 
         self.plots = {}
         self.summary = ''
@@ -181,13 +198,15 @@ class Analyzer(object):
             return
 
         # Setup the figure.
+        time_axis_str = 'Relative Time' if self.time_axis == 'relative' else 'P1/System Time'
+        p1_time_axis_str = 'Relative Time' if self.time_axis == 'relative' else 'P1 Time'
         figure = make_subplots(rows=2, cols=1, print_grid=False, shared_xaxes=True,
-                               subplot_titles=['Device Time vs. Relative Time',
-                                               'Pose Message Interval vs. Relative Time'])
+                               subplot_titles=[f'Device Time vs. {time_axis_str}',
+                                               f'Pose Message Interval vs. {p1_time_axis_str}'])
 
         figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
-        for i in range(2):
-            figure['layout']['xaxis%d' % (i + 1)].update(title="Relative Time (sec)", showticklabels=True)
+        figure['layout']['xaxis1'].update(title=f"{time_axis_str} (sec)", showticklabels=True)
+        figure['layout']['xaxis2'].update(title=f"{p1_time_axis_str} (sec)", showticklabels=True)
         figure['layout']['yaxis1'].update(title="Absolute Time",
                                           ticktext=['P1/GPS Time', 'System Time'],
                                           tickvals=[1, 2])
@@ -303,7 +322,7 @@ class Analyzer(object):
 
         figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
         for i in range(6):
-            figure['layout']['xaxis%d' % (i + 1)].update(title="Time (sec)", showticklabels=True, matches='x')
+            figure['layout']['xaxis%d' % (i + 1)].update(title=self.p1_time_label, showticklabels=True, matches='x')
         figure['layout']['yaxis1'].update(title="Degrees")
         figure['layout']['yaxis2'].update(title="Meters")
         figure['layout']['yaxis3'].update(title="Meters/Second")
@@ -410,7 +429,7 @@ class Analyzer(object):
 
         figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
         for i in range(4):
-            figure['layout']['xaxis%d' % (i + 1)].update(title="Time (sec)", showticklabels=True)
+            figure['layout']['xaxis%d' % (i + 1)].update(title=self.p1_time_label, showticklabels=True)
         figure['layout']['yaxis1'].update(title="Percent Complete", range=[0, 100])
         figure['layout']['yaxis2'].update(ticktext=['%s' % e.name for e in CalibrationStage],
                                           tickvals=list(range(len(stage_map))))
@@ -500,7 +519,7 @@ class Analyzer(object):
         # Setup the figure.
         figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=True, subplot_titles=['Solution Type'])
 
-        figure['layout']['xaxis'].update(title="Time (sec)")
+        figure['layout']['xaxis'].update(title=self.p1_time_label)
         figure['layout']['yaxis1'].update(title="Solution Type",
                                           ticktext=['%s (%d)' % (e.name, e.value) for e in SolutionType],
                                           tickvals=[e.value for e in SolutionType])
@@ -530,7 +549,7 @@ class Analyzer(object):
                                     subplot_titles=['3D', 'East', 'North', 'Up'])
         time_figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
         for i in range(4):
-            time_figure['layout']['xaxis%d' % (i + 1)].update(title="Time (sec)", showticklabels=True)
+            time_figure['layout']['xaxis%d' % (i + 1)].update(title=self.p1_time_label, showticklabels=True)
         time_figure['layout']['yaxis1'].update(title="Displacement (m)")
         time_figure['layout']['yaxis2'].update(title="Displacement (m)")
         time_figure['layout']['yaxis3'].update(title="Displacement (m)")
@@ -868,7 +887,7 @@ class Analyzer(object):
             subplot_titles=['C/N0 (L1 Only)'])
 
         figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
-        figure['layout']['xaxis1'].update(title="Time (sec)", showticklabels=True)
+        figure['layout']['xaxis1'].update(title=self.p1_time_label, showticklabels=True)
         figure['layout']['yaxis1'].update(title="C/N0 (dB-Hz)")
 
         # Assign colors to each satellite.
@@ -964,7 +983,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                    [None],
                    [{}]])
         figure['layout'].update(showlegend=False, modebar_add=['v1hovermode'])
-        figure['layout']['xaxis1'].update(title="Time (sec)")
+        figure['layout']['xaxis1'].update(title=self.p1_time_label)
         figure['layout']['yaxis1'].update(title=entry_type)
         figure['layout']['yaxis2'].update(title=f"# {entry_type}s", rangemode='tozero')
 
@@ -1062,7 +1081,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                    [{}]])
         figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
         for i in range(2):
-            figure['layout']['xaxis%d' % (i + 1)].update(title="Time (sec)", showticklabels=True, matches='x')
+            figure['layout']['xaxis%d' % (i + 1)].update(title=self.p1_time_label, showticklabels=True, matches='x')
         figure['layout']['yaxis1'].update(title="Baseline Distance (km)")
         figure['layout']['yaxis2'].update(title="Age (sec)")
 
@@ -1220,8 +1239,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         figure = make_subplots(rows=len(titles), cols=1, print_grid=False, shared_xaxes=True, subplot_titles=titles)
 
         figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
-        for i in range(len(titles)):
-            figure['layout']['xaxis%d' % (i + 1)].update(title="Time (sec)", showticklabels=True)
+        # Note: X-axis title set below after determining time source.
 
         if type == 'tick':
             figure['layout']['yaxis1'].update(title="Tick Count")
@@ -1277,13 +1295,21 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                 common_time_source = None
 
         if same_time_source:
-            figure['layout']['annotations'][0]['text'] += \
-                '<br>Time Source: %s' % self._time_source_to_display_name(common_time_source)
+            time_name = self._time_source_to_display_name(common_time_source)
+            figure['layout']['annotations'][0]['text'] += '<br>Time Source: %s' % time_name
+
+            time_label = f'{time_name} Time (sec)'
+            for i in range(len(titles)):
+                figure['layout']['xaxis%d' % (i + 1)].update(title=time_label, showticklabels=True)
         else:
-            figure['layout']['annotations'][0]['text'] += \
-                '<br>Time Source: %s (Wheel), %s (Vehicle)' % \
-                                                          (self._time_source_to_display_name(wheel_time_source),
-                                                           self._time_source_to_display_name(vehicle_time_source))
+            wheel_time_name = self._time_source_to_display_name(wheel_time_source)
+            vehicle_time_name = self._time_source_to_display_name(vehicle_time_source)
+            figure['layout']['annotations'][0]['text'] += '<br>Time Source: %s (Wheel), %s (Vehicle)' % \
+                                                          (wheel_time_name, vehicle_time_name)
+
+            time_label = f'{wheel_time_name}/{vehicle_time_name} Time (sec)'
+            for i in range(len(titles)):
+                figure['layout']['xaxis%d' % (i + 1)].update(title=time_label, showticklabels=True)
 
         p1_time_present = (wheel_time_source == SystemTimeSource.P1_TIME or
                            vehicle_time_source == SystemTimeSource.P1_TIME)
@@ -1496,8 +1522,8 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         figure = make_subplots(rows=2, cols=1, print_grid=False, shared_xaxes=True, subplot_titles=titles)
 
         figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
-        figure['layout']['xaxis1'].update(title="Time (sec)", showticklabels=True)
-        figure['layout']['xaxis2'].update(title="Time (sec)", showticklabels=True)
+        figure['layout']['xaxis1'].update(title=self.p1_time_label, showticklabels=True)
+        figure['layout']['xaxis2'].update(title=self.p1_time_label, showticklabels=True)
         figure['layout']['yaxis1'].update(title="Acceleration (m/s^2)")
         figure['layout']['yaxis2'].update(title="Rotation Rate (rad/s)")
 
@@ -1787,7 +1813,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
 
         figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
         for i in range(1):
-            figure['layout']['xaxis%d' % (i + 1)].update(title="Time (sec)", showticklabels=True)
+            figure['layout']['xaxis%d' % (i + 1)].update(title=self.p1_time_label, showticklabels=True)
         figure['layout']['yaxis1'].update(title="Temp (deg C)")
 
         # Plot the data.
@@ -2228,6 +2254,11 @@ Load and display information stored in a FusionEngine binary file.
         '-m', '--measurements', action=ExtendedBooleanAction,
         help="Plot incoming measurement data (slow). Ignored if --plot is specified.")
     plot_group.add_argument(
+        '--time-axis', choices=('absolute', 'abs', 'relative', 'rel'), default='relative',
+        help="Specify the way in which time will be plotted:"
+             "\n- absolute, abs - Absolute P1 or system timestamps"
+             "\n- relative, rel - Elapsed time since the start of the log")
+    plot_group.add_argument(
         '--truncate', '--trunc', action=ExtendedBooleanAction, default=True,
         help="When processing a very long log (>%.1f hours), reduce or skip some plots that may be very slow to "
              "generate or display. This includes:"
@@ -2332,7 +2363,7 @@ Load and display information stored in a FusionEngine binary file.
     # Read pose data from the file.
     analyzer = Analyzer(file=input_path, output_dir=output_dir, ignore_index=options.ignore_index,
                         prefix=options.prefix + '.' if options.prefix is not None else '',
-                        time_range=time_range,
+                        time_range=time_range, time_axis=options.time_axis,
                         truncate_long_logs=options.truncate and options.plot is None)
 
     if options.plot is None:
