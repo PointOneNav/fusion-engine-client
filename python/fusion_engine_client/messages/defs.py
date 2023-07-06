@@ -552,7 +552,7 @@ class MessagePayload:
         measurement_details = getattr(self, 'details', None)
         if isinstance(measurement_details, MeasurementDetails):
             if measurement_details.measurement_time_source == SystemTimeSource.TIMESTAMPED_ON_RECEPTION:
-                return float(measurement_details.measurement_time)
+                return float(measurement_details.measurement_time) * 1e9
             else:
                 return np.nan
         else:
