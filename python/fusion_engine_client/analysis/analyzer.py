@@ -2033,19 +2033,13 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             # Log summary.
             str(self.reader.t0),
             system_time_to_str(self.reader.get_system_t0(), is_seconds=True).replace(' time', ':'),
-            # Note: Temporarily replacing <br> so it doesn't get stripped by _data_to_table().
-            self._gps_sec_to_string(t0_gps) \
-                .replace('<br>', (' (approximated)' if t0_is_approx else '') + '<brbak>') \
-                .replace('<brbak>', '<br>'),
+            self._gps_sec_to_string(t0_gps, is_approx=t0_is_approx),
             log_duration_sec,
             '',
             # Processed data summary.
             str(processed_t0),
             system_time_to_str(processed_system_t0, is_seconds=True).replace(' time', ':'),
-            # Note: Temporarily replacing <br> so it doesn't get stripped by _data_to_table().
-            self._gps_sec_to_string(t0_gps) \
-                .replace('<br>', (' (approximated)' if t0_is_approx else '') + '<brbak>') \
-                .replace('<brbak>', '<br>'),
+            self._gps_sec_to_string(t0_gps, is_approx=t0_is_approx),
             '%.1f seconds' % processing_duration_sec,
         ]
         time_table = _data_to_table(['Description', 'Time'], [descriptions, times])
@@ -2190,7 +2184,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         return selected_type
 
     @classmethod
-    def _gps_sec_to_string(cls, gps_time_sec):
+    def _gps_sec_to_string(cls, gps_time_sec, is_approx: bool = False):
         if isinstance(gps_time_sec, Timestamp):
             gps_time_sec = float(gps_time_sec)
 
@@ -2201,8 +2195,10 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             week = int(gps_time_sec / SECS_PER_WEEK)
             tow_sec = gps_time_sec - week * SECS_PER_WEEK
             utc_time = gpstime.fromgps(gps_time_sec)
-            return "GPS: %d:%.3f (%.3f sec)<br>UTC: %s" %\
-                   (week, tow_sec, gps_time_sec, datetime_to_string(utc_time, decimals=3))
+            approx_str = ' (approximated)' if is_approx else ''
+            return "GPS: %d:%.3f (%.3f sec)%s<br>UTC: %s%s" %\
+                   (week, tow_sec, gps_time_sec, approx_str,
+                    datetime_to_string(utc_time, decimals=3), approx_str)
 
     @classmethod
     def _get_measurement_time(cls, data, time_source: SystemTimeSource) -> np.ndarray:

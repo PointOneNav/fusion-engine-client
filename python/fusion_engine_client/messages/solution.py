@@ -355,13 +355,11 @@ class GNSSInfoMessage(MessagePayload):
         string = 'GNSS Info Message @ %s\n' % str(self.p1_time)
         if self.gps_time:
             gps_str = f'{str(self.gps_time).replace("GPS: ", "")}'
-        else:
-            gps_str = 'None'
-        string += '  GPS time: %s\n' % gps_str
-        if self.utc_time:
             utc_str = f'{datetime_to_string(self.gps_time.as_utc())}'
         else:
+            gps_str = 'None'
             utc_str = 'None'
+        string += '  GPS time: %s\n' % gps_str
         string += '  UTC time: %s\n' % utc_str
         string += '  UTC leap second: %s\n' % \
                   (self.leap_second if self.leap_second != GNSSInfoMessage.INVALID_LEAP_SECOND else 'unknown')
