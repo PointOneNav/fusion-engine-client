@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import copy
 import math
 from typing import Optional, Tuple, Union
@@ -141,7 +139,7 @@ class TimeRange(object):
         self._in_range_started = False
         self._in_range_ended = False
 
-    def make_absolute(self, p1_t0: Timestamp = None, in_place: bool = True) -> TimeRange:
+    def make_absolute(self, p1_t0: Timestamp = None, in_place: bool = True) -> 'TimeRange':
         if not in_place:
             return copy.deepcopy(self).make_absolute(p1_t0=p1_t0)
 
@@ -159,7 +157,7 @@ class TimeRange(object):
 
         return self
 
-    def intersect(self, other: TimeRange, in_place: bool = True) -> TimeRange:
+    def intersect(self, other: 'TimeRange', in_place: bool = True) -> 'TimeRange':
         if not in_place:
             return copy.copy(self).intersect(other)
 

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from typing import Union
 
 from collections import namedtuple
@@ -281,7 +279,7 @@ class FileIndex(object):
             raw_data.tofile(index_path)
 
     def get_time_range(self, start: Union[Timestamp, float] = None, stop: Union[Timestamp, float] = None,
-                       hint: str = None, time_range: TimeRange = None) -> FileIndex:
+                       hint: str = None, time_range: TimeRange = None) -> 'FileIndex':
         """!
         @brief Get a subset of the contents for a specified time range.
 
