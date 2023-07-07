@@ -17,7 +17,7 @@ version = find_version('fusion_engine_client', '__init__.py')
 
 tools_requirements = set([
     'argparse-formatter>=1.4',
-    'scipy>=1.6.0',
+    'scipy>=1.5.0',
 ])
 
 display_requirements = set([
@@ -28,7 +28,7 @@ display_requirements = set([
 ]) | tools_requirements
 
 dev_requirements = set([
-    'packaging>=23.0.0',
+    'packaging>=21.0.0',
 ]) | tools_requirements
 
 all_requirements = tools_requirements | display_requirements | dev_requirements
