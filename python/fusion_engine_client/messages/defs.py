@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import inspect
 import re
 import struct
@@ -382,7 +380,7 @@ class MessagePayload:
 
     _UNSPECIFIED_VERSION = 0x100
 
-    message_type_to_class: Dict[MessageType, Type[MessagePayload]] = {}
+    message_type_to_class: Dict[MessageType, Type['MessagePayload']] = {}
     message_type_by_name: Dict[str, MessageType] = {}
 
     def __init__(self):
@@ -393,12 +391,12 @@ class MessagePayload:
         MessagePayload.message_type_by_name[cls.__name__] = cls.get_type()
 
     @classmethod
-    def get_message_class(cls, message_type: MessageType) -> Type[MessagePayload]:
+    def get_message_class(cls, message_type: MessageType) -> Type['MessagePayload']:
         return MessagePayload.message_type_to_class.get(message_type, None)
 
     @classmethod
     def find_matching_message_types(cls, pattern: Union[str, List[str]], return_class: bool = False) -> \
-        Union[Set[MessageType], Set[MessagePayload]]:
+        Union[Set[MessageType], Set['MessagePayload']]:
         """!
         @brief Find one or more @ref MessageType%s that match the specified pattern(s).
 
