@@ -584,6 +584,23 @@ struct alignas(4) ShutdownRequest : public MessagePayload {
   uint8_t reserved1[8] = {0};
 };
 
+/**
+ * @brief Start up a device (@ref
+ *        MessageType::STARTUP_REQUEST, version 1.0).
+ * @ingroup config_and_ctrl_messages
+ *
+ * # Expected Response
+ * The device will respond with a @ref CommandResponseMessage indicating whether
+ * or not the request succeeded.
+ */
+struct alignas(4) StartupRequest : public MessagePayload {
+  static constexpr MessageType MESSAGE_TYPE = MessageType::STARTUP_REQUEST;
+  static constexpr uint8_t MESSAGE_VERSION = 0;
+  /** A bitmask of flags associated with the event. */
+  uint64_t startup_flags = 0;
+  uint8_t reserved1[8] = {0};
+};
+
 #pragma pack(pop)
 
 } // namespace messages
