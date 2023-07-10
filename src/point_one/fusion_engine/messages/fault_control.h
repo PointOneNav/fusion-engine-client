@@ -95,6 +95,13 @@ enum class FaultType : uint8_t {
    * Payload format: `uint8_t` (0=disable, 1=enable)
    */
   REGION_BLACKOUT = 5,
+  /**
+   * Enable/disable Quectel test features (intended for factory test purposes
+   * only).
+   *
+   * Payload format: `uint8_t` (0=disable, 1=enable)
+   */
+  QUECTEL_TEST = 6,
 };
 
 /**
@@ -124,6 +131,9 @@ P1_CONSTEXPR_FUNC const char* to_string(FaultType type) {
 
     case FaultType::REGION_BLACKOUT:
       return "Region Blackout";
+
+    case FaultType::QUECTEL_TEST:
+      return "Quectel Test";
 
     default:
       return "Unrecognized";
