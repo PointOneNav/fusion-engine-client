@@ -85,6 +85,7 @@ enum class MessageType : uint16_t {
   SHUTDOWN_REQUEST = 13005, ///< @ref ShutdownRequest
   FAULT_CONTROL = 13006, ///< @ref FaultControlMessage
   DEVICE_ID = 13007, ///< @ref DeviceIDMessage
+  STARTUP_REQUEST = 13008, ///< @ref StartupRequest
 
   SET_CONFIG = 13100, ///< @ref SetConfigMessage
   GET_CONFIG = 13101, ///< @ref GetConfigMessage
@@ -219,6 +220,12 @@ P1_CONSTEXPR_FUNC const char* to_string(MessageType type) {
     case MessageType::SHUTDOWN_REQUEST:
       return "Shutdown Request";
 
+    case MessageType::STARTUP_REQUEST:
+      return "Startup Request";
+
+    case MessageType::DEVICE_ID:
+      return "Device ID Information";
+
     case MessageType::FAULT_CONTROL:
       return "Fault Control";
 
@@ -254,10 +261,8 @@ P1_CONSTEXPR_FUNC const char* to_string(MessageType type) {
 
     case MessageType::LBAND_FRAME:
       return "L-Band Frame Contents";
-
-    default:
-      return "Unrecognized Message";
   }
+  return "Unrecognized Message";
 }
 
 /**
