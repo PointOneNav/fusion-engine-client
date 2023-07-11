@@ -63,22 +63,22 @@ p1_ostream& operator<<(p1_ostream& stream,
 
 /**
  * @brief Wrap an integer so it will be output to a stream as its hex
- * representation.
+ *        representation.
  *
  * For example:
  *
  * ```cpp
- *   std::cout << PrintableValue((int16_t)-255) << std::endl;
- *   std::cout << PrintableValue((uint32_t)255) << std::endl;
- *   std::cout << PrintableValue((uint8_t)48) << std::endl;
+ * std::cout << HexPrintableValue((int16_t)-255) << std::endl;
+ * std::cout << HexPrintableValue((uint32_t)255) << std::endl;
+ * std::cout << HexPrintableValue((uint8_t)48) << std::endl;
  * ```
  *
  * generates the following output:
  *
  * ```
- *   0xff01
- *   0x000000ff
- *   0x30 ('0')
+ * 0xff01
+ * 0x000000ff
+ * 0x30 ('0')
  * ```
  *
  * @tparam T The type of the value parameter (inferred implicitly).

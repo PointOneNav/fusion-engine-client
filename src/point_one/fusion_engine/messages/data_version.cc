@@ -7,7 +7,11 @@ namespace fusion_engine {
 namespace messages {
 
 p1_ostream& operator<<(p1_ostream& stream, const DataVersion& ver) {
-  return stream << ToString(ver);
+  if (ver.IsValid()) {
+    return stream << (int)ver.major_version << "." << ver.minor_version;
+  } else {
+    return stream << "<invalid>";
+  }
 }
 
 std::string ToString(const DataVersion& ver) {
