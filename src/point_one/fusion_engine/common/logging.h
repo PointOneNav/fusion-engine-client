@@ -28,6 +28,8 @@
 // Disable logging support at compile time.
 #else // Logging disabled
 
+#  include <stdlib.h> // For abort().
+
 #  if !P1_NO_LOGGING
 #    undef P1_NO_LOGGING
 #    define P1_NO_LOGGING 1
@@ -68,7 +70,9 @@ class NullMessage {
 #  define COMPACT_GOOGLE_LOG_INFO P1_NULL_MESSAGE
 #  define COMPACT_GOOGLE_LOG_WARNING P1_NULL_MESSAGE
 #  define COMPACT_GOOGLE_LOG_ERROR P1_NULL_MESSAGE
-#  define COMPACT_GOOGLE_LOG_FATAL P1_NULL_MESSAGE
+#  define COMPACT_GOOGLE_LOG_FATAL \
+    abort();                       \
+    P1_NULL_MESSAGE
 
 #  define LOG(severity) COMPACT_GOOGLE_LOG_##severity.stream()
 #  define LOG_IF(severity, condition) COMPACT_GOOGLE_LOG_##severity.stream()
