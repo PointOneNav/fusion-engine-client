@@ -37,7 +37,7 @@ namespace messages {
  * SystemStatusMessage) may be associated using their @ref p1_time values.
  */
 
-struct alignas(4) SystemStatusMessage : public MessagePayload {
+struct P1_ALIGNAS(4) SystemStatusMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::SYSTEM_STATUS;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 

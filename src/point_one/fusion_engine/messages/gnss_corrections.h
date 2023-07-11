@@ -29,7 +29,7 @@ namespace messages {
  * @brief L-Band frame contents (@ref MessageType::LBAND_FRAME, version 1.0).
  * @ingroup gnss_corrections
  */
-struct alignas(4) LBandFrameMessage : public MessagePayload {
+struct P1_ALIGNAS(4) LBandFrameMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::LBAND_FRAME;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
@@ -57,9 +57,9 @@ struct alignas(4) LBandFrameMessage : public MessagePayload {
   float doppler_hz = 0;
 
   /**
-   * A pointer to the beginning of the demodulated L-Band frame data.
+   * The beginning of the demodulated L-Band frame data.
    */
-  uint8_t data_payload[0];
+  // uint8_t data_payload[0];
 };
 
 #pragma pack(pop)

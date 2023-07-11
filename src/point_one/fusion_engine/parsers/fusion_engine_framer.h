@@ -44,6 +44,13 @@ namespace parsers {
  */
 class FusionEngineFramer {
  public:
+#if P1_HAVE_STD_FUNCTION
+  using MessageCallback =
+      std::function<void(const messages::MessageHeader&, const void*)>;
+#else
+  using MessageCallback = void (*)(const messages::MessageHeader&, const void*);
+#endif
+
   /**
    * @brief Construct a framer instance with no buffer allocated.
    *
@@ -103,11 +110,7 @@ class FusionEngineFramer {
    * @param callback The function to be called with the message header and a
    *        pointer to the message payload.
    */
-  void SetMessageCallback(
-      std::function<void(const messages::MessageHeader&, const void*)>
-          callback) {
-    callback_ = callback;
-  }
+  void SetMessageCallback(MessageCallback callback) { callback_ = callback; }
 
   /**
    * @brief Reset the framer and discard all pending data.
@@ -133,11 +136,16 @@ class FusionEngineFramer {
     DATA = 3,
   };
 
-  std::function<void(const messages::MessageHeader&, const void*)> callback_;
+#if P1_HAVE_STD_FUNCTION
+  MessageCallback callback_;
+#else
+  MessageCallback callback_ = nullptr;
+#endif
 
   bool warn_on_error_ = true;
-
+#if P1_HAVE_STD_SMART_PTR
   std::unique_ptr<uint8_t[]> managed_buffer_;
+#endif
   uint8_t* buffer_{nullptr};
   uint32_t capacity_bytes_{0};
 

@@ -15,6 +15,8 @@
 
 #pragma once
 
+#include "point_one/fusion_engine/common/portability.h"
+
 // Use Google Logging Library (glog).
 #if P1_HAVE_GLOG && !P1_NO_LOGGING
 #  include <glog/logging.h>
@@ -26,8 +28,6 @@
 // Disable logging support at compile time.
 #else // Logging disabled
 
-#  include <ostream>
-
 #  if !P1_NO_LOGGING
 #    undef P1_NO_LOGGING
 #    define P1_NO_LOGGING 1
@@ -37,9 +37,11 @@ namespace point_one {
 namespace fusion_engine {
 namespace common {
 
-class NullStream : public std::ostream {
+class NullStream : public p1_ostream {
  public:
-  NullStream() : std::ostream(nullptr) {}
+#  if P1_HAVE_STD_OSTREAM
+  NullStream() : p1_ostream(nullptr) {}
+#  endif
 };
 
 template <class T>

@@ -37,7 +37,7 @@ namespace messages {
  * GNSSInfoMessage, @ref GNSSSatelliteMessage, etc.) may be associated using
  * their @ref p1_time values.
  */
-struct alignas(4) PoseMessage : public MessagePayload {
+struct P1_ALIGNAS(4) PoseMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::POSE;
   static constexpr uint8_t MESSAGE_VERSION = 1;
   static constexpr int16_t INVALID_UNDULATION = INT16_MIN;
@@ -159,7 +159,7 @@ struct alignas(4) PoseMessage : public MessagePayload {
  *        version 1.0).
  * @ingroup solution_messages
  */
-struct alignas(4) PoseAuxMessage : public MessagePayload {
+struct P1_ALIGNAS(4) PoseAuxMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::POSE_AUX;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
@@ -208,7 +208,7 @@ struct alignas(4) PoseAuxMessage : public MessagePayload {
  * @ref corrections_age, and @ref baseline_distance fields. Attempting to use
  * those fields on version 0 messages will result in undefined behavior.
  */
-struct alignas(4) GNSSInfoMessage : public MessagePayload {
+struct P1_ALIGNAS(4) GNSSInfoMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::GNSS_INFO;
   static constexpr uint8_t MESSAGE_VERSION = 1;
 
@@ -286,7 +286,7 @@ struct alignas(4) GNSSInfoMessage : public MessagePayload {
  * {MessageHeader, GNSSSatelliteMessage, SatelliteInfo, SatelliteInfo, ...}
  * ```
  */
-struct alignas(4) GNSSSatelliteMessage : public MessagePayload {
+struct P1_ALIGNAS(4) GNSSSatelliteMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::GNSS_SATELLITE;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
@@ -310,7 +310,7 @@ struct alignas(4) GNSSSatelliteMessage : public MessagePayload {
  * tracked by the receiver but not used for navigation, or may just be expected
  * according to available ephemeris data.
  */
-struct alignas(4) SatelliteInfo {
+struct P1_ALIGNAS(4) SatelliteInfo {
   /**
    * @defgroup satellite_usage Bit definitions for the satellite usage bitmask
    *           (@ref SatelliteInfo::usage).
@@ -391,7 +391,7 @@ P1_CONSTEXPR_FUNC const char* to_string(CalibrationStage val) {
 /**
  * @brief @ref CalibrationStage stream operator.
  */
-inline std::ostream& operator<<(std::ostream& stream, CalibrationStage val) {
+inline p1_ostream& operator<<(p1_ostream& stream, CalibrationStage val) {
   stream << to_string(val) << " (" << (int)val << ")";
   return stream;
 }
@@ -402,7 +402,7 @@ inline std::ostream& operator<<(std::ostream& stream, CalibrationStage val) {
  * @brief
  * @ingroup solution_messages
  */
-struct alignas(4) CalibrationStatusMessage : public MessagePayload {
+struct P1_ALIGNAS(4) CalibrationStatusMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::CALIBRATION_STATUS;
   static constexpr uint8_t MESSAGE_VERSION = 1;
 
@@ -501,7 +501,7 @@ struct alignas(4) CalibrationStatusMessage : public MessagePayload {
  * PoseMessage, @ref GNSSSatelliteMessage, etc.) may be associated using
  * their @ref p1_time values.
  */
-struct alignas(4) RelativeENUPositionMessage : public MessagePayload {
+struct P1_ALIGNAS(4) RelativeENUPositionMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE =
       MessageType::RELATIVE_ENU_POSITION;
   static constexpr uint8_t MESSAGE_VERSION = 1;

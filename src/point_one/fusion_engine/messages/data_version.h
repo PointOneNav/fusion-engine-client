@@ -1,7 +1,8 @@
 #pragma once
 
-#include <iostream>
 #include <string>
+
+#include "point_one/fusion_engine/common/portability.h"
 
 namespace point_one {
 namespace fusion_engine {
@@ -19,7 +20,7 @@ namespace messages {
  * The version is considered invalid if @ref major_version is 0xFF and @ref minor_version is
  * 0xFFFF.
  */
-struct alignas(4) DataVersion {
+struct P1_ALIGNAS(4) DataVersion {
   // The reserved bytes must be 0xFF for backward compatibility.
   uint8_t reserved = 0xFF;
   uint8_t major_version = 0xFF;
@@ -79,7 +80,7 @@ inline constexpr bool operator>=(const DataVersion& a, const DataVersion& b) {
  * // Ver: 3.2
  * ```
  */
-std::ostream& operator<<(std::ostream& stream, const DataVersion& ver);
+p1_ostream& operator<<(p1_ostream& stream, const DataVersion& ver);
 
 std::string ToString(const DataVersion& ver);
 

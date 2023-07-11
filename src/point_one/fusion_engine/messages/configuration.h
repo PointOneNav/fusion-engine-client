@@ -14,8 +14,6 @@
 #  pragma warning(disable : 4200)
 #endif
 
-#include <ostream>
-
 #include "point_one/fusion_engine/common/portability.h"
 #include "point_one/fusion_engine/messages/data_version.h"
 #include "point_one/fusion_engine/messages/defs.h"
@@ -329,7 +327,7 @@ P1_CONSTEXPR_FUNC const char* to_string(ConfigType type) {
  * @brief @ref ConfigType stream operator.
  * @ingroup config_and_ctrl_messages
  */
-inline std::ostream& operator<<(std::ostream& stream, ConfigType type) {
+inline p1_ostream& operator<<(p1_ostream& stream, ConfigType type) {
   stream << to_string(type) << " (" << (int)type << ")";
   return stream;
 }
@@ -428,8 +426,7 @@ P1_CONSTEXPR_FUNC const char* to_string(InterfaceConfigType type) {
  * @brief @ref InterfaceConfigType stream operator.
  * @ingroup config_and_ctrl_messages
  */
-inline std::ostream& operator<<(std::ostream& stream,
-                                InterfaceConfigType type) {
+inline p1_ostream& operator<<(p1_ostream& stream, InterfaceConfigType type) {
   stream << to_string(type) << " (" << (int)type << ")";
   return stream;
 }
@@ -469,8 +466,7 @@ P1_CONSTEXPR_FUNC const char* to_string(ConfigurationSource source) {
  * @brief @ref ConfigurationSource stream operator.
  * @ingroup config_and_ctrl_messages
  */
-inline std::ostream& operator<<(std::ostream& stream,
-                                ConfigurationSource source) {
+inline p1_ostream& operator<<(p1_ostream& stream, ConfigurationSource source) {
   stream << to_string(source) << " (" << (int)source << ")";
   return stream;
 }
@@ -516,7 +512,7 @@ P1_CONSTEXPR_FUNC const char* to_string(SaveAction action) {
  * @brief @ref SaveAction stream operator.
  * @ingroup config_and_ctrl_messages
  */
-inline std::ostream& operator<<(std::ostream& stream, SaveAction action) {
+inline p1_ostream& operator<<(p1_ostream& stream, SaveAction action) {
   stream << to_string(action) << " (" << (int)action << ")";
   return stream;
 }
@@ -526,11 +522,11 @@ inline std::ostream& operator<<(std::ostream& stream, SaveAction action) {
  *        version 1.0).
  * @ingroup config_and_ctrl_messages
  *
- * The format of the parameter value, @ref config_change_data, is defined by the
- * the specified @ref config_type (@ref ConfigType). For example, an antenna
- * lever arm definition may require three 32-bit `float` values, one for each
- * axis, while a serial port baud rate may be specified as single 32-bit
- * unsigned integer (`uint32_t`).
+ * The format of the parameter value is defined by the the specified @ref
+ * config_type (@ref ConfigType). For example, an antenna lever arm definition
+ * may require three 32-bit `float` values, one for each axis, while a serial
+ * port baud rate may be specified as single 32-bit unsigned integer
+ * (`uint32_t`).
  *
  * Not all parameters defined in @ref ConfigType are supported on all devices.
  *
@@ -543,7 +539,7 @@ inline std::ostream& operator<<(std::ostream& stream, SaveAction action) {
  * The device will respond with a @ref CommandResponseMessage indicating whether
  * or not the request succeeded.
  */
-struct alignas(4) SetConfigMessage : public MessagePayload {
+struct P1_ALIGNAS(4) SetConfigMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::SET_CONFIG;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
@@ -556,8 +552,8 @@ struct alignas(4) SetConfigMessage : public MessagePayload {
    * included unless the config_type is @ref ConfigType::INTERFACE_CONFIG. In
    * that case the @ref config_length_bytes should be
    * `sizeof(InterfaceConfigSubmessage)` with a an @ref
-   * InterfaceConfigSubmessage as the @ref config_change_data without any
-   * further payload.
+   * InterfaceConfigSubmessage as the parameter value without any further
+   * payload.
    */
   static constexpr uint8_t FLAG_REVERT_TO_DEFAULT = 0x02;
 
@@ -569,7 +565,7 @@ struct alignas(4) SetConfigMessage : public MessagePayload {
 
   uint8_t reserved[1] = {0};
 
-  /** The size of the parameter value, @ref config_change_data (in bytes). */
+  /** The size of the parameter value (in bytes). */
   uint32_t config_length_bytes = 0;
 
   /**
@@ -578,7 +574,7 @@ struct alignas(4) SetConfigMessage : public MessagePayload {
    * The size and format of the contents is specified by the @ref config_type.
    * See @ref ConfigType.
    */
-  uint8_t config_change_data[0];
+  // uint8_t config_change_data[0];
 };
 
 /**
@@ -591,7 +587,7 @@ struct alignas(4) SetConfigMessage : public MessagePayload {
  * requested parameter value or an error @ref Response value if the request did
  * not succeed.
  */
-struct alignas(4) GetConfigMessage : public MessagePayload {
+struct P1_ALIGNAS(4) GetConfigMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::GET_CONFIG;
   static constexpr uint8_t MESSAGE_VERSION = 1;
 
@@ -608,7 +604,7 @@ struct alignas(4) GetConfigMessage : public MessagePayload {
    * InterfaceConfigSubmessage must be added to the end of this message with
    * empty @ref InterfaceConfigSubmessage::config_data.
    */
-  uint8_t optional_submessage_header[0];
+  //uint8_t optional_submessage_header[0];
 };
 
 /**
@@ -620,7 +616,7 @@ struct alignas(4) GetConfigMessage : public MessagePayload {
  * The device will respond with a @ref CommandResponseMessage indicating whether
  * or not the request succeeded.
  */
-struct alignas(4) SaveConfigMessage : public MessagePayload {
+struct P1_ALIGNAS(4) SaveConfigMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::SAVE_CONFIG;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
@@ -651,7 +647,7 @@ struct alignas(4) SaveConfigMessage : public MessagePayload {
  * rejected requests, will receive a @ref ConfigResponseMessage, not a
  * @ref CommandResponseMessage.
  */
-struct alignas(4) ConfigResponseMessage : public MessagePayload {
+struct P1_ALIGNAS(4) ConfigResponseMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::CONFIG_RESPONSE;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
@@ -675,7 +671,7 @@ struct alignas(4) ConfigResponseMessage : public MessagePayload {
 
   uint8_t reserved[3] = {0};
 
-  /** The size of the parameter value, @ref config_change_data (in bytes). */
+  /** The size of the parameter value (in bytes). */
   uint32_t config_length_bytes = 0;
 
   /**
@@ -684,7 +680,7 @@ struct alignas(4) ConfigResponseMessage : public MessagePayload {
    * The size and format of the contents is specified by the @ref config_type.
    * See @ref ConfigType.
    */
-  uint8_t config_change_data[0];
+  //uint8_t config_change_data[0];
 };
 
 /**************************************************************************/ /**
@@ -695,7 +691,7 @@ struct alignas(4) ConfigResponseMessage : public MessagePayload {
 /**
  * @brief A 3-dimensional vector (used for lever arms, etc.).
  */
-struct alignas(4) Point3f {
+struct P1_ALIGNAS(4) Point3f {
   float x = NAN;
   float y = NAN;
   float z = NAN;
@@ -714,7 +710,7 @@ struct alignas(4) Point3f {
  *   IMU pointed vertically upward, with the top of the IMU pointed towards the
  *   trunk)
  */
-struct alignas(4) CoarseOrientation {
+struct P1_ALIGNAS(4) CoarseOrientation {
   enum class Direction : uint8_t {
     FORWARD = 0, ///< Aligned with vehicle +x axis.
     BACKWARD = 1, ///< Aligned with vehicle -x axis.
@@ -826,8 +822,7 @@ P1_CONSTEXPR_FUNC const char* to_string(VehicleModel vehicle_model) {
  * @brief @ref VehicleModel stream operator.
  * @ingroup config_and_ctrl_messages
  */
-inline std::ostream& operator<<(std::ostream& stream,
-                                VehicleModel vehicle_model) {
+inline p1_ostream& operator<<(p1_ostream& stream, VehicleModel vehicle_model) {
   stream << to_string(vehicle_model) << " (" << (int)vehicle_model << ")";
   return stream;
 }
@@ -836,7 +831,7 @@ inline std::ostream& operator<<(std::ostream& stream,
  * @brief Information about the vehicle including model and dimensions.
  * @ingroup config_and_ctrl_messages
  */
-struct alignas(4) VehicleDetails {
+struct P1_ALIGNAS(4) VehicleDetails {
   VehicleModel vehicle_model = VehicleModel::UNKNOWN_VEHICLE;
   uint8_t reserved[10] = {0};
 
@@ -915,8 +910,8 @@ P1_CONSTEXPR_FUNC const char* to_string(WheelSensorType wheel_sensor_type) {
  * @brief @ref WheelSensorType stream operator.
  * @ingroup config_and_ctrl_messages
  */
-inline std::ostream& operator<<(std::ostream& stream,
-                                WheelSensorType wheel_sensor_type) {
+inline p1_ostream& operator<<(p1_ostream& stream,
+                              WheelSensorType wheel_sensor_type) {
   stream << to_string(wheel_sensor_type) << " (" << (int)wheel_sensor_type
          << ")";
   return stream;
@@ -975,8 +970,8 @@ P1_CONSTEXPR_FUNC const char* to_string(AppliedSpeedType applied_speed_type) {
  * @brief @ref AppliedSpeedType stream operator.
  * @ingroup config_and_ctrl_messages
  */
-inline std::ostream& operator<<(std::ostream& stream,
-                                AppliedSpeedType applied_speed_type) {
+inline p1_ostream& operator<<(p1_ostream& stream,
+                              AppliedSpeedType applied_speed_type) {
   stream << to_string(applied_speed_type) << " (" << (int)applied_speed_type
          << ")";
   return stream;
@@ -1024,8 +1019,7 @@ P1_CONSTEXPR_FUNC const char* to_string(SteeringType steering_type) {
  * @brief @ref SteeringType stream operator.
  * @ingroup config_and_ctrl_messages
  */
-inline std::ostream& operator<<(std::ostream& stream,
-                                SteeringType steering_type) {
+inline p1_ostream& operator<<(p1_ostream& stream, SteeringType steering_type) {
   stream << to_string(steering_type) << " (" << (int)steering_type << ")";
   return stream;
 }
@@ -1053,7 +1047,7 @@ inline std::ostream& operator<<(std::ostream& stream,
  * - @ref WheelTickInput
  * - @ref VehicleTickInput
  */
-struct alignas(4) WheelConfig {
+struct P1_ALIGNAS(4) WheelConfig {
   /**
    * The type of vehicle/wheel speed measurements produced by the vehicle.
    */
@@ -1158,7 +1152,7 @@ P1_CONSTEXPR_FUNC const char* to_string(TickMode tick_mode) {
  * @brief @ref TickMode stream operator.
  * @ingroup config_and_ctrl_messages
  */
-inline std::ostream& operator<<(std::ostream& stream, TickMode tick_mode) {
+inline p1_ostream& operator<<(p1_ostream& stream, TickMode tick_mode) {
   stream << to_string(tick_mode) << " (" << (int)tick_mode << ")";
   return stream;
 }
@@ -1200,8 +1194,8 @@ P1_CONSTEXPR_FUNC const char* to_string(TickDirection tick_direction) {
  * @brief @ref TickDirection stream operator.
  * @ingroup config_and_ctrl_messages
  */
-inline std::ostream& operator<<(std::ostream& stream,
-                                TickDirection tick_direction) {
+inline p1_ostream& operator<<(p1_ostream& stream,
+                              TickDirection tick_direction) {
   stream << to_string(tick_direction) << " (" << (int)tick_direction << ")";
   return stream;
 }
@@ -1227,7 +1221,7 @@ inline std::ostream& operator<<(std::ostream& stream,
  *
  * See also @ref VehicleTickInput.
  */
-struct alignas(4) HardwareTickConfig {
+struct P1_ALIGNAS(4) HardwareTickConfig {
   /**
    * If enabled -- tick mode is not @ref TickMode::OFF -- the device will
    * accumulate ticks received on the I/O pin, and use them as an indication of
@@ -1271,7 +1265,7 @@ struct alignas(4) HardwareTickConfig {
  * 
  * @ref HeadingOutput
  */
-struct alignas(4) HeadingBias {
+struct P1_ALIGNAS(4) HeadingBias {
   /**
    * The offset between the heading measured by a secondary GNSS device and the
    * vehicle's direction of motion in the horizontal plane (defined by the
@@ -1332,8 +1326,8 @@ P1_CONSTEXPR_FUNC const char* to_string(IonoDelayModel iono_delay_model) {
  * @brief @ref IonoDelayModel stream operator.
  * @ingroup config_and_ctrl_messages
  */
-inline std::ostream& operator<<(std::ostream& stream,
-                                IonoDelayModel iono_delay_model) {
+inline p1_ostream& operator<<(p1_ostream& stream,
+                              IonoDelayModel iono_delay_model) {
   stream << to_string(iono_delay_model) << " (" << (int)iono_delay_model << ")";
   return stream;
 }
@@ -1342,7 +1336,7 @@ inline std::ostream& operator<<(std::ostream& stream,
  * @brief Ionospheric delay model configuration.
  * @ingroup config_and_ctrl_messages
  */
-struct alignas(4) IonosphereConfig {
+struct P1_ALIGNAS(4) IonosphereConfig {
   /** The ionospheric delay model to use. */
   IonoDelayModel iono_delay_model = IonoDelayModel::AUTO;
 
@@ -1379,8 +1373,8 @@ P1_CONSTEXPR_FUNC const char* to_string(TropoDelayModel tropo_delay_model) {
  * @brief @ref TropoDelayModel stream operator.
  * @ingroup config_and_ctrl_messages
  */
-inline std::ostream& operator<<(std::ostream& stream,
-                                TropoDelayModel tropo_delay_model) {
+inline p1_ostream& operator<<(p1_ostream& stream,
+                              TropoDelayModel tropo_delay_model) {
   stream << to_string(tropo_delay_model) << " (" << (int)tropo_delay_model
          << ")";
   return stream;
@@ -1390,7 +1384,7 @@ inline std::ostream& operator<<(std::ostream& stream,
  * @brief Tropospheric delay model configuration.
  * @ingroup config_and_ctrl_messages
  */
-struct alignas(4) TroposphereConfig {
+struct P1_ALIGNAS(4) TroposphereConfig {
   /** The tropospheric delay model to use. */
   TropoDelayModel tropo_delay_model = TropoDelayModel::AUTO;
 
@@ -1449,7 +1443,7 @@ P1_CONSTEXPR_FUNC const char* to_string(ProtocolType val) {
  * @brief @ref ProtocolType stream operator.
  * @ingroup config_and_ctrl_messages
  */
-inline std::ostream& operator<<(std::ostream& stream, ProtocolType val) {
+inline p1_ostream& operator<<(p1_ostream& stream, ProtocolType val) {
   stream << to_string(val) << " (" << (int)val << ")";
   return stream;
 }
@@ -1521,7 +1515,7 @@ P1_CONSTEXPR_FUNC const char* to_string(TransportType val) {
  * @brief @ref TransportType stream operator.
  * @ingroup config_and_ctrl_messages
  */
-inline std::ostream& operator<<(std::ostream& stream, TransportType val) {
+inline p1_ostream& operator<<(p1_ostream& stream, TransportType val) {
   stream << to_string(val) << " (" << (int)val << ")";
   return stream;
 }
@@ -1535,7 +1529,7 @@ inline std::ostream& operator<<(std::ostream& stream, TransportType val) {
  * On most devices, serial ports (UARTs) use 1-based numbering: the first serial
  * port is typically index 1 (UART1).
  */
-struct alignas(4) InterfaceID {
+struct P1_ALIGNAS(4) InterfaceID {
   /** The interface's transport type. **/
   TransportType type = TransportType::INVALID;
   /** An identifier for the instance of this transport. */
@@ -1580,7 +1574,7 @@ struct alignas(4) InterfaceID {
  * @brief @ref InterfaceID stream operator.
  * @ingroup config_and_ctrl_messages
  */
-inline std::ostream& operator<<(std::ostream& stream, InterfaceID val) {
+inline p1_ostream& operator<<(p1_ostream& stream, InterfaceID val) {
   stream << "[type=" << val.type << ", index=" << (int)val.index << "]";
   return stream;
 }
@@ -1674,7 +1668,7 @@ P1_CONSTEXPR_FUNC const char* to_string(NmeaMessageType value) {
  * @brief @ref NmeaMessageType stream operator.
  * @ingroup config_and_ctrl_messages
  */
-inline std::ostream& operator<<(std::ostream& stream, NmeaMessageType val) {
+inline p1_ostream& operator<<(p1_ostream& stream, NmeaMessageType val) {
   stream << to_string(val) << " (" << (int)val << ")";
   return stream;
 }
@@ -1816,7 +1810,7 @@ P1_CONSTEXPR_FUNC const char* to_string(MessageRate value) {
  * @brief @ref MessageRate stream operator.
  * @ingroup config_and_ctrl_messages
  */
-inline std::ostream& operator<<(std::ostream& stream, MessageRate val) {
+inline p1_ostream& operator<<(p1_ostream& stream, MessageRate val) {
   stream << to_string(val) << " (" << (int)val << ")";
   return stream;
 }
@@ -1914,7 +1908,7 @@ inline std::ostream& operator<<(std::ostream& stream, MessageRate val) {
  * The device will respond with a @ref CommandResponseMessage indicating whether
  * or not the request succeeded.
  */
-struct alignas(4) SetMessageRate : public MessagePayload {
+struct P1_ALIGNAS(4) SetMessageRate : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::SET_MESSAGE_RATE;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
@@ -1970,7 +1964,7 @@ struct alignas(4) SetMessageRate : public MessagePayload {
  * requested values or an error @ref Response value if the request did not
  * succeed.
  */
-struct alignas(4) GetMessageRate : public MessagePayload {
+struct P1_ALIGNAS(4) GetMessageRate : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::GET_MESSAGE_RATE;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
@@ -2004,7 +1998,7 @@ struct alignas(4) GetMessageRate : public MessagePayload {
  * @brief An element of a @ref MessageRateResponse message.
  * @ingroup config_and_ctrl_messages
  */
-struct alignas(4) MessageRateResponseEntry {
+struct P1_ALIGNAS(4) MessageRateResponseEntry {
   /**
    * Flag to indicate the active value for this configuration differs from the
    * value saved to persistent memory.
@@ -2042,7 +2036,7 @@ struct alignas(4) MessageRateResponseEntry {
  *        MessageType::MESSAGE_RATE_RESPONSE, version 1.1).
  * @ingroup config_and_ctrl_messages
  */
-struct alignas(4) MessageRateResponse : public MessagePayload {
+struct P1_ALIGNAS(4) MessageRateResponse : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE =
       MessageType::MESSAGE_RATE_RESPONSE;
   static constexpr uint8_t MESSAGE_VERSION = 1;
@@ -2098,7 +2092,7 @@ P1_CONSTEXPR_FUNC const char* to_string(DataType type) {
  * @brief @ref DataType stream operator.
  * @ingroup config_and_ctrl_messages
  */
-inline std::ostream& operator<<(std::ostream& stream, DataType val) {
+inline p1_ostream& operator<<(p1_ostream& stream, DataType val) {
   stream << to_string(val) << " (" << (int)val << ")";
   return stream;
 }
@@ -2112,7 +2106,7 @@ inline std::ostream& operator<<(std::ostream& stream, DataType val) {
  * The device will respond with a @ref CommandResponseMessage indicating whether
  * or not the request succeeded.
  */
-struct alignas(4) ImportDataMessage {
+struct P1_ALIGNAS(4) ImportDataMessage {
   static constexpr MessageType MESSAGE_TYPE = MessageType::IMPORT_DATA;
   static constexpr uint8_t MESSAGE_VERSION = 0;
   /**
@@ -2146,7 +2140,7 @@ struct alignas(4) ImportDataMessage {
  * # Expected Response
  * The device will respond with a @ref PlatformStorageDataMessage.
  */
-struct alignas(4) ExportDataMessage {
+struct P1_ALIGNAS(4) ExportDataMessage {
   static constexpr MessageType MESSAGE_TYPE = MessageType::EXPORT_DATA;
   static constexpr uint8_t MESSAGE_VERSION = 0;
   /**
@@ -2173,7 +2167,7 @@ struct alignas(4) ExportDataMessage {
  * - Version 2: Changed data_validity to a @ref Response enum and added
  *              @ref source field.
  */
-struct alignas(4) PlatformStorageDataMessage {
+struct P1_ALIGNAS(4) PlatformStorageDataMessage {
   static constexpr MessageType MESSAGE_TYPE =
       MessageType::PLATFORM_STORAGE_DATA;
   static constexpr uint8_t MESSAGE_VERSION = 2;
@@ -2226,7 +2220,7 @@ struct alignas(4) PlatformStorageDataMessage {
  * }
  * ```
  */
-struct alignas(4) InterfaceConfigSubmessage {
+struct P1_ALIGNAS(4) InterfaceConfigSubmessage {
   /**
    * The interface ID to target.
    *
@@ -2249,7 +2243,7 @@ struct alignas(4) InterfaceConfigSubmessage {
    * The size and format of the contents is specified by the @ref subtype.
    * See @ref InterfaceConfigType.
    */
-  uint8_t config_data[0];
+  //uint8_t config_data[0];
 };
 
 /** @} */

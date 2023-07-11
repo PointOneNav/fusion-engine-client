@@ -8,8 +8,11 @@
 #include "point_one/fusion_engine/parsers/fusion_engine_framer.h"
 
 #include <cstring> // For memmove()
-#include <iomanip>
-#include <ostream>
+#if P1_HAVE_STD_OSTREAM
+#  include <iomanip>
+#  include <ostream>
+#  include <type_traits>
+#endif
 
 #include "point_one/fusion_engine/common/logging.h"
 #include "point_one/fusion_engine/messages/crc.h"
@@ -18,24 +21,75 @@ using namespace point_one::fusion_engine::messages;
 using namespace point_one::fusion_engine::parsers;
 
 /******************************************************************************/
-class PrintableByte {
+template <typename T>
+class HexPrintableIntegerInst {
  public:
-  uint8_t byte_;
+  HexPrintableIntegerInst(T value) : value_(value) {}
 
-  PrintableByte(uint8_t byte) : byte_(byte) {}
+  template <typename U> // all instantiations of this template are my friends
+  friend p1_ostream& operator<<(p1_ostream&, const HexPrintableIntegerInst<U>&);
 
-  friend std::ostream& operator<<(std::ostream& stream,
-                                  const PrintableByte& obj) {
-    stream << "0x" << std::hex << std::setfill('0') << std::setw(2)
-           << (unsigned)obj.byte_ << std::dec;
-    if (obj.byte_ >= 0x20 && obj.byte_ <= 0x7E) {
-      stream << " ('" << (char)obj.byte_ << "')";
+ private:
+  const T value_;
+};
+
+/******************************************************************************/
+template <typename T>
+p1_ostream& operator<<(p1_ostream& stream,
+                       const HexPrintableIntegerInst<T>& obj) {
+#if P1_HAVE_STD_OSTREAM
+  static_assert(std::is_integral<T>::value, "Integer required.");
+
+  stream << "0x" << std::hex << std::setfill('0') << std::setw(sizeof(obj) * 2);
+
+  if (sizeof(T) == 1) {
+    stream << (((unsigned)obj.value_) & 0xFF);
+  } else {
+    stream << obj.value_;
+  }
+
+  stream << std::dec;
+
+  if (sizeof(obj) == 1) {
+    if (obj.value_ >= 0x20 && obj.value_ <= 0x7E) {
+      stream << " ('" << (char)obj.value_ << "')";
     } else {
       stream << " (---)";
     }
-    return stream;
   }
-};
+#endif
+  return stream;
+}
+
+/**
+ * @brief Wrap an integer so it will be output to a stream as its hex
+ * representation.
+ *
+ * For example:
+ *
+ * ```cpp
+ *   std::cout << PrintableValue((int16_t)-255) << std::endl;
+ *   std::cout << PrintableValue((uint32_t)255) << std::endl;
+ *   std::cout << PrintableValue((uint8_t)48) << std::endl;
+ * ```
+ *
+ * generates the following output:
+ *
+ * ```
+ *   0xff01
+ *   0x000000ff
+ *   0x30 ('0')
+ * ```
+ *
+ * @tparam T The type of the value parameter (inferred implicitly).
+ * @param value The integer value to wrap.
+ *
+ * @return The wrapped integer that can be used in an @ref p1_ostream.
+ */
+template <typename T>
+HexPrintableIntegerInst<T> HexPrintableInteger(T value) {
+  return HexPrintableIntegerInst<T>(value);
+}
 
 /******************************************************************************/
 FusionEngineFramer::FusionEngineFramer(void* buffer, size_t capacity_bytes) {
@@ -70,12 +124,18 @@ void FusionEngineFramer::SetBuffer(void* buffer, size_t capacity_bytes) {
     capacity_bytes = 0x7FFFFFFF;
   }
 
+#if P1_HAVE_STD_SMART_PTR
   if (buffer == nullptr) {
     managed_buffer_.reset(new uint8_t[capacity_bytes]);
     buffer = managed_buffer_.get();
   } else if (buffer != managed_buffer_.get()) {
     managed_buffer_.reset(nullptr);
   }
+#else
+  if (buffer == nullptr) {
+    LOG(FATAL) << "P1_HAVE_STD_SMART_PTR required for dynamic memory.";
+  }
+#endif
 
   // Enforce 4B alignment at the beginning of the buffer.
   uint8_t* buffer_unaligned = static_cast<uint8_t*>(buffer);
@@ -162,7 +222,7 @@ int32_t FusionEngineFramer::OnByte(bool quiet) {
   // message will always be 4B aligned.
   bool crc_check_needed = false;
   if (state_ == State::SYNC0) {
-    VLOG(4) << "Searching for sync byte 0. [byte=" << PrintableByte(byte)
+    VLOG(4) << "Searching for sync byte 0. [byte=" << HexPrintableInteger(byte)
             << "]";
     if (byte == MessageHeader::SYNC0) {
       VLOG(4) << "Found sync byte 0.";
@@ -173,7 +233,7 @@ int32_t FusionEngineFramer::OnByte(bool quiet) {
   }
   // Look for the second sync byte.
   else if (state_ == State::SYNC1) {
-    VLOG(4) << "Searching for sync byte 1. [byte=" << PrintableByte(byte)
+    VLOG(4) << "Searching for sync byte 1. [byte=" << HexPrintableInteger(byte)
             << "]";
     if (byte == MessageHeader::SYNC0) {
       VLOG(4) << "Found duplicate sync byte 0.";
@@ -184,7 +244,7 @@ int32_t FusionEngineFramer::OnByte(bool quiet) {
       state_ = State::HEADER;
     } else {
       VLOG(4) << "Did not find sync byte 1. Resetting. [byte="
-              << PrintableByte(byte) << "]";
+              << HexPrintableInteger(byte) << "]";
       state_ = State::SYNC0;
       next_byte_index_ = 0;
       current_message_size_ = 0;
@@ -193,7 +253,7 @@ int32_t FusionEngineFramer::OnByte(bool quiet) {
   // Search for a message header.
   else if (state_ == State::HEADER) {
     VLOG(4) << "Received " << next_byte_index_ << "/" << sizeof(MessageHeader)
-            << " header bytes. [byte=" << PrintableByte(byte) << "]";
+            << " header bytes. [byte=" << HexPrintableInteger(byte) << "]";
 
     // Check if the header is complete.
     if (next_byte_index_ == sizeof(MessageHeader)) {
@@ -254,7 +314,7 @@ int32_t FusionEngineFramer::OnByte(bool quiet) {
     VLOG(4) << "Received " << next_byte_index_ << "/" << current_message_size_
             << " message bytes (" << next_byte_index_ - sizeof(MessageHeader)
             << "/" << current_message_size_ - sizeof(MessageHeader)
-            << " payload bytes). [byte=" << PrintableByte(byte) << "]";
+            << " payload bytes). [byte=" << HexPrintableInteger(byte) << "]";
 
     // If we received the full payload, check the CRC and dispatch it.
     if (next_byte_index_ == current_message_size_) {
@@ -277,8 +337,8 @@ int32_t FusionEngineFramer::OnByte(bool quiet) {
       VLOG(1) << "CRC passed. Dispatching message. [message="
               << header->message_type << " (" << (unsigned)header->message_type
               << "), seq=" << header->sequence_number
-              << ", size=" << current_message_size_ << " B, crc=0x" << std::hex
-              << std::setfill('0') << std::setw(8) << crc << "]";
+              << ", size=" << current_message_size_
+              << " B, crc=" << HexPrintableInteger(crc) << "]";
       if (callback_) {
         auto* payload = reinterpret_cast<uint8_t*>(header + 1);
         callback_(*header, payload);
@@ -290,16 +350,16 @@ int32_t FusionEngineFramer::OnByte(bool quiet) {
         VLOG(2) << "CRC check failed. [message=" << header->message_type << " ("
                 << (unsigned)header->message_type
                 << "), seq=" << header->sequence_number
-                << ", size=" << current_message_size_ << " B, crc=0x"
-                << std::hex << std::setfill('0') << std::setw(8) << crc
-                << ", expected_crc=0x" << std::setw(8) << header->crc << "]";
+                << ", size=" << current_message_size_
+                << " B, crc=" << HexPrintableInteger(crc)
+                << ", expected_crc=" << HexPrintableInteger(header->crc) << "]";
       } else {
         LOG(WARNING) << "CRC check failed. [message=" << header->message_type
                      << " (" << (unsigned)header->message_type
                      << "), seq=" << header->sequence_number
-                     << ", size=" << current_message_size_ << " B, crc=0x"
-                     << std::hex << std::setfill('0') << std::setw(8) << crc
-                     << ", expected_crc=0x" << std::setw(8) << header->crc
+                     << ", size=" << current_message_size_
+                     << " B, crc=" << HexPrintableInteger(crc)
+                     << ", expected_crc=" << HexPrintableInteger(header->crc)
                      << "]";
       }
       state_ = State::SYNC0;
@@ -356,8 +416,8 @@ uint32_t FusionEngineFramer::Resync() {
         offset = 0;
       } else {
         VLOG(4) << "Skipping non-sync byte 0 @ offset " << offset << "/"
-                << available_bytes << ". [byte=" << PrintableByte(current_byte)
-                << "]";
+                << available_bytes
+                << ". [byte=" << HexPrintableInteger(current_byte) << "]";
         continue;
       }
     }
