@@ -241,6 +241,16 @@ enum class ConfigType : uint16_t {
    * Payload format: `char[32]`
    */
   USER_DEVICE_ID = 301,
+
+  /**
+   * Configuration of LBand Demodulator Parameters.
+   *
+   * @note
+   * This setting is only available on devices with an LBand receiver.
+   *
+   * Payload format: @ref LBandConfig
+   */
+  LBAND_PARAMETERS = 1024,
 };
 
 /**
@@ -318,6 +328,9 @@ P1_CONSTEXPR_FUNC const char* to_string(ConfigType type) {
 
     case ConfigType::INTERFACE_CONFIG:
       return "Interface Submessage";
+
+    case ConfigType::LBAND_PARAMETERS:
+      return "LBand Parameters";
   }
 
   return "Unrecognized Configuration";
@@ -1389,6 +1402,29 @@ struct P1_ALIGNAS(4) TroposphereConfig {
   TropoDelayModel tropo_delay_model = TropoDelayModel::AUTO;
 
   uint8_t reserved[3] = {0};
+};
+
+/**
+ * @brief Configuration of the LBand demodulator parameters.
+ * @ingroup config_and_ctrl_messages
+ */
+struct P1_ALIGNAS(4) LBandConfig {
+  /** The center frequency of the Lband beam (Hz). */
+  float center_frequency_hz = NAN;
+
+  /** Maximum search to look around the center frequency (Hz). */
+  float search_window_hz = NAN;
+
+  /** Service ID of the provider. */
+  uint32_t pmp_service_id = 0;
+
+  /** Data rate of the provider (bps). */
+  uint16_t pmp_data_rate_bps = 0;
+
+  uint8_t reserved[2] = {0};
+
+  /** Unique word of the provider. */
+  uint32_t pmp_unique_word = 0;
 };
 
 /** @} */
