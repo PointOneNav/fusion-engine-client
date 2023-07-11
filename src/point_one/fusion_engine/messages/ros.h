@@ -40,7 +40,7 @@ namespace ros {
  *
  * See http://docs.ros.org/api/geometry_msgs/html/msg/Pose.html.
  */
-struct alignas(4) PoseMessage : public MessagePayload {
+struct P1_ALIGNAS(4) PoseMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::ROS_POSE;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
@@ -77,7 +77,7 @@ struct alignas(4) PoseMessage : public MessagePayload {
  *
  * See http://docs.ros.org/api/gps_common/html/msg/GPSFix.html.
  */
-struct alignas(4) GPSFixMessage : public MessagePayload {
+struct P1_ALIGNAS(4) GPSFixMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::ROS_GPS_FIX;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
@@ -266,7 +266,7 @@ struct alignas(4) GPSFixMessage : public MessagePayload {
  * frame from the original IMU orientation using the FusionEngine sensor
  * calibration data.
  */
-struct alignas(4) IMUMessage : public MessagePayload {
+struct P1_ALIGNAS(4) IMUMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::ROS_IMU;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 

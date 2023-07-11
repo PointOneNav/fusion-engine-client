@@ -134,7 +134,7 @@ P1_CONSTEXPR_FUNC const char* to_string(FaultType type) {
  * @brief @ref ConfigurationSource stream operator.
  * @ingroup fault_control_messages
  */
-inline std::ostream& operator<<(std::ostream& stream, FaultType type) {
+inline p1_ostream& operator<<(p1_ostream& stream, FaultType type) {
   stream << to_string(type) << " (" << (int)type << ")";
   return stream;
 }
@@ -181,7 +181,7 @@ P1_CONSTEXPR_FUNC const char* to_string(CoComType type) {
  * @brief @ref CoComType stream operator.
  * @ingroup fault_control_messages
  */
-inline std::ostream& operator<<(std::ostream& stream, CoComType type) {
+inline p1_ostream& operator<<(p1_ostream& stream, CoComType type) {
   stream << to_string(type) << " (" << (int)type << ")";
   return stream;
 }
@@ -204,7 +204,7 @@ inline std::ostream& operator<<(std::ostream& stream, CoComType type) {
  * The device will respond with a @ref CommandResponseMessage indicating whether
  * or not the request succeeded.
  */
-struct alignas(4) FaultControlMessage : public MessagePayload {
+struct P1_ALIGNAS(4) FaultControlMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::FAULT_CONTROL;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 

@@ -5,7 +5,6 @@
 #pragma once
 
 #include <cstdint>
-#include <ostream>
 
 #include "point_one/fusion_engine/common/portability.h"
 
@@ -89,7 +88,7 @@ P1_CONSTEXPR_FUNC const char* to_string(SatelliteType type) {
  * @brief @ref SatelliteType stream operator.
  * @ingroup enum_definitions
  */
-inline std::ostream& operator<<(std::ostream& stream, SatelliteType type) {
+inline p1_ostream& operator<<(p1_ostream& stream, SatelliteType type) {
   stream << to_string(type) << " (" << (int)type << ")";
   return stream;
 }
@@ -269,7 +268,7 @@ P1_CONSTEXPR_FUNC const char* to_string(FrequencyBand type) {
  * @brief @ref FrequencyBand stream operator.
  * @ingroup enum_definitions
  */
-inline std::ostream& operator<<(std::ostream& stream, FrequencyBand type) {
+inline p1_ostream& operator<<(p1_ostream& stream, FrequencyBand type) {
   stream << to_string(type) << " (" << (int)type << ")";
   return stream;
 }

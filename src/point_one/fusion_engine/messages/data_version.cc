@@ -6,7 +6,7 @@ namespace point_one {
 namespace fusion_engine {
 namespace messages {
 
-std::ostream& operator<<(std::ostream& stream, const DataVersion& ver) {
+p1_ostream& operator<<(p1_ostream& stream, const DataVersion& ver) {
   if (ver.IsValid()) {
     return stream << (int)ver.major_version << "." << ver.minor_version;
   } else {
@@ -15,9 +15,12 @@ std::ostream& operator<<(std::ostream& stream, const DataVersion& ver) {
 }
 
 std::string ToString(const DataVersion& ver) {
-  std::stringstream ss;
-  ss << ver;
-  return ss.str();
+  if (ver.IsValid()) {
+    return std::to_string(ver.major_version) + "." +
+           std::to_string(ver.minor_version);
+  } else {
+    return "<invalid>";
+  }
 }
 
 DataVersion FromString(const char* str) {

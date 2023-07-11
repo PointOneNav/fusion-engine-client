@@ -35,14 +35,58 @@
 #  endif
 #endif
 
-// ssize_t is a POSIX extension and is not supported on Windows.
-#if defined(_WIN32)
+// Support ARM CC quirks
+#ifdef __CC_ARM
+#  include "typedefs.h"
+// ARM CC bug http://www.keil.com/forum/60227/
+#  define __ESCAPE__(__x) (__x)
+#  define P1_HAVE_STD_FUNCTION 0
+#  define P1_HAVE_STD_OSTREAM 0
+#  define P1_HAVE_STD_SMART_PTR 0
+#  define P1_NO_LOGGING 1
+#endif
+
+// Different compilers support different ways of specifying default struct
+// alignment. Since there's no universal method, a macro is used instead.
+#ifdef __CC_ARM
+#  define P1_ALIGNAS(N) __attribute__((aligned(N)))
+#else
+#  define P1_ALIGNAS(N) alignas(N)
+#endif
+
+// ssize_t is a POSIX extension and is not supported on Windows/ARM CC.
+#if defined(_WIN32) || defined(__CC_ARM)
 typedef int32_t p1_ssize_t;
 #elif defined(_MSC_VER)
 typedef int64_t p1_ssize_t;
 #else
 #  include <sys/types.h> // For ssize_t
 typedef ssize_t p1_ssize_t;
+#endif
+
+#ifndef P1_HAVE_STD_OSTREAM
+#  define P1_HAVE_STD_OSTREAM 1
+#endif
+#if P1_HAVE_STD_OSTREAM
+#  include <ostream>
+using p1_ostream = std::ostream;
+#else
+class p1_ostream {
+ public:
+  p1_ostream() = default;
+};
+template <class T>
+inline p1_ostream& operator<<(p1_ostream& stream, const T&) {
+  return stream;
+}
+#endif
+
+#ifndef P1_HAVE_STD_FUNCTION
+#  define P1_HAVE_STD_FUNCTION 1
+#endif
+
+#ifndef P1_HAVE_STD_SMART_PTR
+#  define P1_HAVE_STD_SMART_PTR 1
 #endif
 
 // Support for multi-statement constexpr functions was not added until C++14.

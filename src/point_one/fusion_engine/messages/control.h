@@ -48,7 +48,7 @@ namespace messages {
  *        MessageType::COMMAND_RESPONSE, version 1.0).
  * @ingroup config_and_ctrl_messages
  */
-struct alignas(4) CommandResponseMessage : public MessagePayload {
+struct P1_ALIGNAS(4) CommandResponseMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::COMMAND_RESPONSE;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
@@ -79,7 +79,7 @@ struct alignas(4) CommandResponseMessage : public MessagePayload {
  * # Expected Response
  * The requested message type, or @ref CommandResponseMessage on error.
  */
-struct alignas(4) MessageRequest : public MessagePayload {
+struct P1_ALIGNAS(4) MessageRequest : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::MESSAGE_REQUEST;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
@@ -101,7 +101,7 @@ struct alignas(4) MessageRequest : public MessagePayload {
  * The device will respond with a @ref CommandResponseMessage indicating whether
  * or not the request succeeded.
  */
-struct alignas(4) ResetRequest : public MessagePayload {
+struct P1_ALIGNAS(4) ResetRequest : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::RESET_REQUEST;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
@@ -341,7 +341,7 @@ struct alignas(4) ResetRequest : public MessagePayload {
  *  "OS Version", "Receiver Version"}
  * ```
  */
-struct alignas(4) VersionInfoMessage : public MessagePayload {
+struct P1_ALIGNAS(4) VersionInfoMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::VERSION_INFO;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
@@ -374,7 +374,7 @@ struct alignas(4) VersionInfoMessage : public MessagePayload {
    *     message.engine_version_length);
    * ```
    */
-  char fw_version_str[0];
+  //char fw_version_str[0];
 };
 
 /**
@@ -422,7 +422,7 @@ P1_CONSTEXPR_FUNC const char* to_string(DeviceType val) {
  * @brief @ref DeviceType stream operator.
  * @ingroup measurement_messages
  */
-inline std::ostream& operator<<(std::ostream& stream, DeviceType val) {
+inline p1_ostream& operator<<(p1_ostream& stream, DeviceType val) {
   stream << to_string(val) << " (" << (int)val << ")";
   return stream;
 }
@@ -447,7 +447,7 @@ inline std::ostream& operator<<(std::ostream& stream, DeviceType val) {
  * {MessageHeader, VersionInfoMessage, "HW ID", "User ID", "Receiver ID"}
  * ```
  */
-struct alignas(4) DeviceIDMessage : public MessagePayload {
+struct P1_ALIGNAS(4) DeviceIDMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::DEVICE_ID;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
@@ -479,7 +479,7 @@ struct alignas(4) DeviceIDMessage : public MessagePayload {
    *     hw_id_data + message.hw_id_length + message.user_id_length);
    * ```
    */
-  uint8_t hw_id_data[0];
+  //uint8_t hw_id_data[0];
 };
 
 /**
@@ -487,7 +487,7 @@ struct alignas(4) DeviceIDMessage : public MessagePayload {
  *        MessageType::EVENT_NOTIFICATION, version 1.0).
  * @ingroup config_and_ctrl_messages
  */
-struct alignas(4) EventNotificationMessage : public MessagePayload {
+struct P1_ALIGNAS(4) EventNotificationMessage : public MessagePayload {
   enum class EventType : uint8_t {
     /**
      * Event containing a logged message string from the device.
@@ -553,7 +553,7 @@ struct alignas(4) EventNotificationMessage : public MessagePayload {
   /** A bitmask of flags associated with the event. */
   uint64_t event_flags = 0;
 
-  /** The number of bytes in the @ref event_description string. */
+  /** The number of bytes in the event description string. */
   uint16_t event_description_len_bytes = 0;
 
   uint8_t reserved2[2] = {0};
@@ -564,7 +564,7 @@ struct alignas(4) EventNotificationMessage : public MessagePayload {
    * This is used for populating string describing the event, or other binary
    * content where applicable.
    */
-  char* event_description[0];
+  //char* event_description[0];
 };
 
 /**
@@ -576,7 +576,7 @@ struct alignas(4) EventNotificationMessage : public MessagePayload {
  * The device will respond with a @ref CommandResponseMessage indicating whether
  * or not the request succeeded.
  */
-struct alignas(4) ShutdownRequest : public MessagePayload {
+struct P1_ALIGNAS(4) ShutdownRequest : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::SHUTDOWN_REQUEST;
   static constexpr uint8_t MESSAGE_VERSION = 0;
   /** A bitmask of flags associated with the event. */
@@ -593,7 +593,7 @@ struct alignas(4) ShutdownRequest : public MessagePayload {
  * The device will respond with a @ref CommandResponseMessage indicating whether
  * or not the request succeeded.
  */
-struct alignas(4) StartupRequest : public MessagePayload {
+struct P1_ALIGNAS(4) StartupRequest : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::STARTUP_REQUEST;
   static constexpr uint8_t MESSAGE_VERSION = 0;
   /** A bitmask of flags associated with the event. */
