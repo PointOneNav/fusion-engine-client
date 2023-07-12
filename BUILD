@@ -130,4 +130,7 @@ cc_library(
         "src/point_one/fusion_engine/messages/data_version.h",
     ],
     includes = ["src"],
+    deps = [
+        ":common",
+    ],
 )

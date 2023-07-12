@@ -7,7 +7,6 @@
 
 #include <cmath> // For NAN
 #include <cstdint>
-#include <ostream>
 #include <string>
 
 #include "point_one/fusion_engine/common/portability.h"
@@ -269,7 +268,7 @@ P1_CONSTEXPR_FUNC const char* to_string(MessageType type) {
  * @brief @ref MessageType stream operator.
  * @ingroup enum_definitions
  */
-inline std::ostream& operator<<(std::ostream& stream, MessageType type) {
+inline p1_ostream& operator<<(p1_ostream& stream, MessageType type) {
   stream << to_string(type) << " (" << (int)type << ")";
   return stream;
 }
@@ -408,7 +407,7 @@ P1_CONSTEXPR_FUNC const char* to_string(Response val) {
 /**
  * @brief @ref Response stream operator.
  */
-inline std::ostream& operator<<(std::ostream& stream, Response val) {
+inline p1_ostream& operator<<(p1_ostream& stream, Response val) {
   stream << to_string(val) << " (" << (int)val << ")";
   return stream;
 }
@@ -487,7 +486,7 @@ P1_CONSTEXPR_FUNC const char* to_string(SolutionType type) {
  * @brief @ref SolutionType stream operator.
  * @ingroup enum_definitions
  */
-inline std::ostream& operator<<(std::ostream& stream, SolutionType type) {
+inline p1_ostream& operator<<(p1_ostream& stream, SolutionType type) {
   stream << to_string(type) << " (" << (int)type << ")";
   return stream;
 }
@@ -501,7 +500,7 @@ inline std::ostream& operator<<(std::ostream& stream, SolutionType type) {
  * to the start of the device), UNIX times (referenced to January 1, 1970), or
  * GPS times (referenced to January 6, 1980).
  */
-struct alignas(4) Timestamp {
+struct P1_ALIGNAS(4) Timestamp {
   static constexpr uint32_t INVALID = 0xFFFFFFFF;
 
   /**
@@ -521,7 +520,7 @@ struct alignas(4) Timestamp {
  * The header is followed immediately in the binary stream by the message
  * payload specified by @ref message_type.
  */
-struct alignas(4) MessageHeader {
+struct P1_ALIGNAS(4) MessageHeader {
   static constexpr uint8_t SYNC0 = 0x2E; // '.'
   static constexpr uint8_t SYNC1 = 0x31; // '1'
 

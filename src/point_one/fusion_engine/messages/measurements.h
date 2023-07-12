@@ -83,7 +83,7 @@ P1_CONSTEXPR_FUNC const char* to_string(SensorDataSource val) {
  * @brief @ref SensorDataSource stream operator.
  * @ingroup measurement_messages
  */
-inline std::ostream& operator<<(std::ostream& stream, SensorDataSource val) {
+inline p1_ostream& operator<<(p1_ostream& stream, SensorDataSource val) {
   stream << to_string(val) << " (" << (int)val << ")";
   return stream;
 }
@@ -144,7 +144,7 @@ P1_CONSTEXPR_FUNC const char* to_string(SystemTimeSource val) {
  * @brief @ref SystemTimeSource stream operator.
  * @ingroup measurement_messages
  */
-inline std::ostream& operator<<(std::ostream& stream, SystemTimeSource val) {
+inline p1_ostream& operator<<(p1_ostream& stream, SystemTimeSource val) {
   stream << to_string(val) << " (" << (int)val << ")";
   return stream;
 }
@@ -190,7 +190,7 @@ inline std::ostream& operator<<(std::ostream& stream, SystemTimeSource val) {
  * synchronization of the P1 time clock model. This is intended for internal
  * use only.
  */
-struct alignas(4) MeasurementDetails {
+struct P1_ALIGNAS(4) MeasurementDetails {
   /**
    * The measurement time of applicability, if available, in a user-specified
    * time base. The source of this value is specified in @ref
@@ -243,7 +243,7 @@ struct alignas(4) MeasurementDetails {
  *
  * See also @ref RawIMUOutput.
  */
-struct alignas(4) IMUOutput : public MessagePayload {
+struct P1_ALIGNAS(4) IMUOutput : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::IMU_OUTPUT;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
@@ -286,7 +286,7 @@ struct alignas(4) IMUOutput : public MessagePayload {
  *
  * See also @ref IMUOutput.
  */
-struct alignas(4) RawIMUOutput : public MessagePayload {
+struct P1_ALIGNAS(4) RawIMUOutput : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::RAW_IMU_OUTPUT;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
@@ -365,7 +365,7 @@ P1_CONSTEXPR_FUNC const char* to_string(GearType val) {
  * @brief @ref GearType stream operator.
  * @ingroup measurement_messages
  */
-inline std::ostream& operator<<(std::ostream& stream, GearType val) {
+inline p1_ostream& operator<<(p1_ostream& stream, GearType val) {
   stream << to_string(val) << " (" << (int)val << ")";
   return stream;
 }
@@ -394,7 +394,7 @@ inline std::ostream& operator<<(std::ostream& stream, GearType val) {
  *
  * See also @ref WheelSpeedOutput for measurement output.
  */
-struct alignas(4) WheelSpeedInput : public MessagePayload {
+struct P1_ALIGNAS(4) WheelSpeedInput : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::WHEEL_SPEED_INPUT;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
@@ -472,7 +472,7 @@ struct alignas(4) WheelSpeedInput : public MessagePayload {
  *
  * See also @ref WheelSpeedInput and @ref RawWheelSpeedOutput.
  */
-struct alignas(4) WheelSpeedOutput : public MessagePayload {
+struct P1_ALIGNAS(4) WheelSpeedOutput : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::WHEEL_SPEED_OUTPUT;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
@@ -526,7 +526,7 @@ struct alignas(4) WheelSpeedOutput : public MessagePayload {
  *
  * See @ref WheelSpeedOutput for more details. See also @ref WheelSpeedInput.
  */
-struct alignas(4) RawWheelSpeedOutput : public MessagePayload {
+struct P1_ALIGNAS(4) RawWheelSpeedOutput : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE =
       MessageType::RAW_WHEEL_SPEED_OUTPUT;
   static constexpr uint8_t MESSAGE_VERSION = 0;
@@ -610,7 +610,7 @@ struct alignas(4) RawWheelSpeedOutput : public MessagePayload {
  *
  * See also @ref VehicleSpeedOutput for measurement output.
  */
-struct alignas(4) VehicleSpeedInput : public MessagePayload {
+struct P1_ALIGNAS(4) VehicleSpeedInput : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::VEHICLE_SPEED_INPUT;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
@@ -669,7 +669,7 @@ struct alignas(4) VehicleSpeedInput : public MessagePayload {
  *
  * See also @ref VehicleSpeedInput and @ref RawVehicleSpeedOutput.
  */
-struct alignas(4) VehicleSpeedOutput : public MessagePayload {
+struct P1_ALIGNAS(4) VehicleSpeedOutput : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::VEHICLE_SPEED_OUTPUT;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
@@ -718,7 +718,7 @@ struct alignas(4) VehicleSpeedOutput : public MessagePayload {
  * See @ref VehicleSpeedOutput for more details. See also @ref
  * VehicleSpeedInput.
  */
-struct alignas(4) RawVehicleSpeedOutput : public MessagePayload {
+struct P1_ALIGNAS(4) RawVehicleSpeedOutput : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE =
       MessageType::RAW_VEHICLE_SPEED_OUTPUT;
   static constexpr uint8_t MESSAGE_VERSION = 0;
@@ -784,7 +784,7 @@ struct alignas(4) RawVehicleSpeedOutput : public MessagePayload {
  *
  * See also @ref RawWheelTickOutput for measurement output.
  */
-struct alignas(4) WheelTickInput : public MessagePayload {
+struct P1_ALIGNAS(4) WheelTickInput : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::WHEEL_TICK_INPUT;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
@@ -842,7 +842,7 @@ struct alignas(4) WheelTickInput : public MessagePayload {
  *
  * See also @ref WheelTickInput.
  */
-struct alignas(4) RawWheelTickOutput : public MessagePayload {
+struct P1_ALIGNAS(4) RawWheelTickOutput : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE =
       MessageType::RAW_WHEEL_TICK_OUTPUT;
   static constexpr uint8_t MESSAGE_VERSION = 0;
@@ -917,7 +917,7 @@ struct alignas(4) RawWheelTickOutput : public MessagePayload {
  *
  * See also @ref RawVehicleTickOutput for measurement output.
  */
-struct alignas(4) VehicleTickInput : public MessagePayload {
+struct P1_ALIGNAS(4) VehicleTickInput : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::VEHICLE_TICK_INPUT;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
@@ -957,7 +957,7 @@ struct alignas(4) VehicleTickInput : public MessagePayload {
  *
  * See also @ref VehicleTickInput.
  */
-struct alignas(4) RawVehicleTickOutput : public MessagePayload {
+struct P1_ALIGNAS(4) RawVehicleTickOutput : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE =
       MessageType::RAW_VEHICLE_TICK_OUTPUT;
   static constexpr uint8_t MESSAGE_VERSION = 0;
@@ -1000,7 +1000,7 @@ struct alignas(4) RawVehicleTickOutput : public MessagePayload {
  * future. It should not used for new development. See @ref WheelSpeedInput and
  * @ref WheelSpeedOutput instead.
  */
-struct alignas(4) DeprecatedWheelSpeedMeasurement : public MessagePayload {
+struct P1_ALIGNAS(4) DeprecatedWheelSpeedMeasurement : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE =
       MessageType::DEPRECATED_WHEEL_SPEED_MEASUREMENT;
   static constexpr uint8_t MESSAGE_VERSION = 0;
@@ -1051,7 +1051,7 @@ struct alignas(4) DeprecatedWheelSpeedMeasurement : public MessagePayload {
  * future. It should not used for new development. See @ref VehicleSpeedInput
  * and @ref VehicleSpeedOutput instead.
  */
-struct alignas(4) DeprecatedVehicleSpeedMeasurement : public MessagePayload {
+struct P1_ALIGNAS(4) DeprecatedVehicleSpeedMeasurement : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE =
       MessageType::DEPRECATED_VEHICLE_SPEED_MEASUREMENT;
   static constexpr uint8_t MESSAGE_VERSION = 0;
@@ -1097,7 +1097,7 @@ struct alignas(4) DeprecatedVehicleSpeedMeasurement : public MessagePayload {
  *
  * See also @ref HeadingOutput.
  */
-struct alignas(4) RawHeadingOutput : public MessagePayload {
+struct P1_ALIGNAS(4) RawHeadingOutput : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::RAW_HEADING_OUTPUT;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
@@ -1162,7 +1162,7 @@ struct alignas(4) RawHeadingOutput : public MessagePayload {
  * 
  * See also @ref RawHeadingOutput and @ref SolutionType::Invalid.
  */
-struct alignas(4) HeadingOutput : public MessagePayload {
+struct P1_ALIGNAS(4) HeadingOutput : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::HEADING_OUTPUT;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
