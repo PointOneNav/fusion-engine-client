@@ -116,6 +116,18 @@ if git describe --tags --abbrev=0 --match ${TAG} >/dev/null 2>/dev/null; then
   fi
 fi
 
+# If this is a release candidate or dev tag, check if there is an N-1 tag
+# (1.20.3rc2 for TAG=1.20.3rc3). If so, we'll use its tag message as an initial
+# template for this one.
+if [[ "${TAG}" =~ (.*(rc|dev))([0-9]+)$ ]]; then
+  PREV_TAG="${BASH_REMATCH[1]}$((${BASH_REMATCH[3]} - 1))";
+  if git describe --tags --abbrev=0 --match ${PREV_TAG} >/dev/null 2>/dev/null; then
+    echo "Found previous tag ${PREV_TAG}. Using it as a template for ${TAG}."
+  else
+    PREV_TAG=""
+  fi
+fi
+
 # Checkout the requested commit.
 if [[ "${COMMIT}" != "HEAD" ]]; then
   echo "Checking out requested commit."
@@ -218,7 +230,8 @@ fi
 
 # Tag the updated git commit.
 echo "Tagging commit ${COMMIT} as '${TAG}'."
-cat <<EOF | git tag -a ${TAG} ${COMMIT} --edit -F -
+if [[ -z "${PREV_TAG}" ]]; then
+  cat <<EOF | git tag -a ${TAG} ${COMMIT} --edit -F -
 Release version ${VERSION}.
 
 New Features
@@ -227,3 +240,8 @@ Changes
 
 Fixes
 EOF
+else
+  git tag -l --format='%(contents)' ${PREV_TAG} | \
+      perl -pe 'chomp if eof' | \
+      git tag -a ${TAG} ${COMMIT} --edit -F -
+fi
