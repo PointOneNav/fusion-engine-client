@@ -14,6 +14,7 @@ class FaultType(IntEnum):
     COCOM = 3
     ENABLE_GNSS = 4
     REGION_BLACKOUT = 5
+    QUECTEL_TEST = 6
 
 
 class CoComType(IntEnum):
@@ -153,6 +154,13 @@ class FaultControlMessage(MessagePayload):
     class RegionBlackout(_class_gen.Bool):
         """!
         @brief Simulate a region blackout (intended for factory test purposes only).
+        """
+        pass
+
+    @_class_gen.create_payload_class(FaultType.QUECTEL_TEST, _class_gen.BoolConstruct)
+    class QuectelTest(_class_gen.Bool):
+        """!
+        @brief Enable/disable Quectel test features (intended for factory test purposes only).
         """
         pass
 
