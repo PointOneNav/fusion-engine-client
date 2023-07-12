@@ -18,7 +18,6 @@ get_parent_dir() {
 
 SCRIPT_DIR=$(get_parent_dir)
 
-# TODO HACK
 REPO_ROOT=$(git rev-parse --show-toplevel)
 
 # Print help details.
