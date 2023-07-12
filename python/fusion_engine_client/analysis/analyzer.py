@@ -918,7 +918,7 @@ class Analyzer(object):
                 continue
             visible = np.full((num_traces,), False)
             visible[indices] = True
-            buttons.append(dict(label=str(system), method='restyle', args=['visible', list(visible)]))
+            buttons.append(dict(label=f'{str(system)} ({len(indices)})', method='restyle', args=['visible', visible]))
         figure['layout']['updatemenus'] = [{
             'type': 'buttons',
             'direction': 'left',
@@ -1004,11 +1004,13 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         # Plot each satellite. Plot in reverse order so G01 is at the top of the Y axis.
         data_by_sv = GNSSSatelliteMessage.group_by_sv(data)
         svs = list(data_by_sv.keys())
+        svs_by_system = defaultdict(set)
         indices_by_system = defaultdict(list)
         for i, sv in enumerate(svs[::-1]):
             sv = int(sv)
             system = get_system(sv)
             name = satellite_to_string(sv, short=True)
+            svs_by_system[system].add(sv)
 
             sv_data = data_by_sv[sv]
             time = sv_data['p1_time'] - float(self.t0)
@@ -1047,7 +1049,8 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             visible = np.full((num_traces,), False)
             visible[:num_count_traces] = True
             visible[indices] = True
-            buttons.append(dict(label=str(system), method='restyle', args=['visible', list(visible)]))
+            buttons.append(dict(label=f'{str(system)} ({len(svs_by_system[system])})', method='restyle',
+                                args=['visible', visible]))
         figure['layout']['updatemenus'] = [{
             'type': 'buttons',
             'direction': 'left',
