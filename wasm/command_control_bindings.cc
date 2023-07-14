@@ -106,7 +106,7 @@ EMSCRIPTEN_BINDINGS(control) {
       .property("fw_version_length", &VersionInfoMessage::fw_version_length)
       .property("engine_version_length",
                 &VersionInfoMessage::engine_version_length)
-      .property("hw_version_length", &VersionInfoMessage::hw_version_length)
+      .property("os_version_length", &VersionInfoMessage::os_version_length)
       .property("rx_version_length", &VersionInfoMessage::rx_version_length)
       .ARRAY_PROPERTY(VersionInfoMessage, reserved)
       .ARRAY_PROPERTY(VersionInfoMessage, fw_version_str)

@@ -172,22 +172,39 @@ EMSCRIPTEN_BINDINGS(measurements) {
       .ARRAY_PROPERTY(DeprecatedVehicleSpeedMeasurement, reserved)
       .STRUCT_FUNCTIONS(DeprecatedVehicleSpeedMeasurement);
 
-  static auto HeadingMeasurement_MESSAGE_TYPE =
-      HeadingMeasurement::MESSAGE_TYPE;
-  static auto HeadingMeasurement_MESSAGE_VERSION =
-      HeadingMeasurement::MESSAGE_VERSION;
-  class_<HeadingMeasurement>("HeadingMeasurement")
+  static auto RawHeadingOutput_MESSAGE_TYPE =
+      RawHeadingOutput::MESSAGE_TYPE;
+  static auto RawHeadingOutput_MESSAGE_VERSION =
+      RawHeadingOutput::MESSAGE_VERSION;
+  class_<RawHeadingOutput>("RawHeadingOutput")
       .constructor<>()
-      .class_property("MESSAGE_TYPE", &HeadingMeasurement_MESSAGE_TYPE)
-      .class_property("MESSAGE_VERSION", &HeadingMeasurement_MESSAGE_VERSION)
-      .property("details", &HeadingMeasurement::details)
-      .property("solution_type", &HeadingMeasurement::solution_type)
-      .ARRAY_PROPERTY(HeadingMeasurement, reserved)
-      .property("flags", &HeadingMeasurement::flags)
-      .ARRAY_PROPERTY(HeadingMeasurement, relative_position_enu_m)
-      .ARRAY_PROPERTY(HeadingMeasurement, position_std_enu_m)
+      .class_property("MESSAGE_TYPE", &RawHeadingOutput_MESSAGE_TYPE)
+      .class_property("MESSAGE_VERSION", &RawHeadingOutput_MESSAGE_VERSION)
+      .property("details", &RawHeadingOutput::details)
+      .property("solution_type", &RawHeadingOutput::solution_type)
+      .ARRAY_PROPERTY(RawHeadingOutput, reserved)
+      .property("flags", &RawHeadingOutput::flags)
+      .ARRAY_PROPERTY(RawHeadingOutput, relative_position_enu_m)
+      .ARRAY_PROPERTY(RawHeadingOutput, position_std_enu_m)
       .property("heading_true_north_deg",
-                &HeadingMeasurement::heading_true_north_deg)
-      .property("baseline_distance_m", &HeadingMeasurement::baseline_distance_m)
-      .STRUCT_FUNCTIONS(HeadingMeasurement);
+                &RawHeadingOutput::heading_true_north_deg)
+      .property("baseline_distance_m", &RawHeadingOutput::baseline_distance_m)
+      .STRUCT_FUNCTIONS(RawHeadingOutput);
+
+  static auto HeadingOutput_MESSAGE_TYPE =
+      HeadingOutput::MESSAGE_TYPE;
+  static auto HeadingOutput_MESSAGE_VERSION =
+      HeadingOutput::MESSAGE_VERSION;
+  class_<HeadingOutput>("HeadingOutput")
+      .constructor<>()
+      .class_property("MESSAGE_TYPE", &HeadingOutput_MESSAGE_TYPE)
+      .class_property("MESSAGE_VERSION", &HeadingOutput_MESSAGE_VERSION)
+      .property("details", &HeadingOutput::details)
+      .property("solution_type", &HeadingOutput::solution_type)
+      .ARRAY_PROPERTY(HeadingOutput, reserved)
+      .property("flags", &HeadingOutput::flags)
+      .ARRAY_PROPERTY(HeadingOutput, ypr_deg)
+      .property("heading_true_north_deg",
+                &HeadingOutput::heading_true_north_deg)
+      .STRUCT_FUNCTIONS(HeadingOutput);
 }
