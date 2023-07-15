@@ -2233,8 +2233,8 @@ struct P1_ALIGNAS(4) PlatformStorageDataMessage {
   DataVersion data_version;
   /** Number of bytes in data contents. */
   uint32_t data_length_bytes = 0;
-
   /**
+
    * This in then followed by an array of data_length_bytes bytes for the data
    * contents.
    */
