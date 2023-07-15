@@ -2083,7 +2083,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
     def plot_host_side_serial_dropouts(self, id_to_name, data, raw_file_index, device_uart):
         host_serial_interface = 'tx_' + device_uart
 
-        # Get the ProfileCounterMessage that corrasponds to the interface the host was listening to.
+        # Get the ProfileCounterMessage that corresponds to the interface the host was listening to.
         connected_port_idx = None
         for k, val in id_to_name.items():
             if host_serial_interface == val:
