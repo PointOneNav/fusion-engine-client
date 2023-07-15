@@ -2181,7 +2181,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                                                'Serial Data Rates'])
 
         figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
-        for i in range(2):
+        for i in range(3):
             figure['layout']['xaxis%d' % (i + 1)].update(title=self.system_time_label, showticklabels=True)
         figure['layout']['yaxis1'].update(title="Error Count", rangemode="nonnegative")
         figure['layout']['yaxis2'].update(title="Buffer Free (kB)", rangemode="tozero")
