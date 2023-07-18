@@ -1412,7 +1412,13 @@ struct P1_ALIGNAS(4) LBandConfig {
   /** The center frequency of the L-band beam (Hz). */
   float center_frequency_hz = NAN;
 
-  /** Maximum search to look around the center frequency (Hz). */
+  /**
+   * The size of the signal acquisition search space (in Hz) around the center
+   * frequency.
+   *
+   * For example, a value of 6000 will search +/- 3 kHz around the center
+   * frequency.
+   */
   float search_window_hz = NAN;
 
   /** Service ID of the provider. */

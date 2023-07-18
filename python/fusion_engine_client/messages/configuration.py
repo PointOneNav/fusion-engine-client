@@ -633,7 +633,12 @@ class _ConfigClassGenerator:
         """
         ## The center frequency of the L-band beam (Hz).
         center_frequency_hz: float
-        ## Maximum search to look around the center frequency (Hz).
+
+        ## The size of the signal acquisition search space (in Hz) around the center
+        ## frequency.
+        ##
+        ## For example, a value of 6000 will search +/- 3 kHz around the center
+        ## frequency.
         search_window_hz: float
         ## Service ID of the provider.
         pmp_service_id: int
