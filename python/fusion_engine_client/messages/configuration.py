@@ -629,9 +629,9 @@ class _ConfigClassGenerator:
 
     class LBandConfig(NamedTuple):
         """!
-        @brief Configuration of the LBand demodulator parameters.
+        @brief Configuration of the L-band demodulator parameters.
         """
-        ## The center frequency of the Lband beam (Hz).
+        ## The center frequency of the L-band beam (Hz).
         center_frequency_hz: float
         ## Maximum search to look around the center frequency (Hz).
         search_window_hz: float
@@ -754,7 +754,7 @@ class TroposphereConfig(_conf_gen.TroposphereConfig):
 @_conf_gen.create_config_class(ConfigType.LBAND_PARAMETERS, _conf_gen.LBandConfigConstruct)
 class LBandConfig(_conf_gen.LBandConfig):
     """!
-    @brief Configuration of the LBand demodulator parameters.
+    @brief Configuration of the L-band demodulator parameters.
     """
     pass
 

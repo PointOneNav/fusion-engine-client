@@ -243,10 +243,10 @@ enum class ConfigType : uint16_t {
   USER_DEVICE_ID = 301,
 
   /**
-   * Configuration of LBand Demodulator Parameters.
+   * Configuration of L-band Demodulator Parameters.
    *
    * @note
-   * This setting is only available on devices with an LBand receiver.
+   * This setting is only available on devices with an L-band receiver.
    *
    * Payload format: @ref LBandConfig
    */
@@ -1405,11 +1405,11 @@ struct P1_ALIGNAS(4) TroposphereConfig {
 };
 
 /**
- * @brief Configuration of the LBand demodulator parameters.
+ * @brief Configuration of the L-band demodulator parameters.
  * @ingroup config_and_ctrl_messages
  */
 struct P1_ALIGNAS(4) LBandConfig {
-  /** The center frequency of the Lband beam (Hz). */
+  /** The center frequency of the L-band beam (Hz). */
   float center_frequency_hz = NAN;
 
   /** Maximum search to look around the center frequency (Hz). */

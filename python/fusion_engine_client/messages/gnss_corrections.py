@@ -8,7 +8,7 @@ from .defs import *
 
 class LBandFrameMessage(MessagePayload):
     """!
-    @brief L-Band frame message.
+    @brief L-band frame message.
     """
     MESSAGE_TYPE = MessageType.LBAND_FRAME
     MESSAGE_VERSION = 0
@@ -49,7 +49,7 @@ class LBandFrameMessage(MessagePayload):
         return result
 
     def __str__(self):
-        string = f'L-Band Frame @ %s\n' % system_time_to_str(self.system_time_ns)
+        string = f'L-band Frame @ %s\n' % system_time_to_str(self.system_time_ns)
         string += f'  Bit Error Count: {self.bit_error_count}\n'
         string += f'  Signal Power: {self.signal_power_db} dB\n'
         string += f'  Doppler: {self.doppler_hz} Hz'

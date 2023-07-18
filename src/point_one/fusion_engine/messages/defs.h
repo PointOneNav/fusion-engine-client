@@ -259,7 +259,7 @@ P1_CONSTEXPR_FUNC const char* to_string(MessageType type) {
       return "Platform Data Contents";
 
     case MessageType::LBAND_FRAME:
-      return "L-Band Frame Contents";
+      return "L-band Frame Contents";
   }
   return "Unrecognized Message";
 }
