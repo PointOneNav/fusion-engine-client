@@ -43,6 +43,7 @@ class ConfigType(IntEnum):
     UART2_OUTPUT_DIAGNOSTICS_MESSAGES = 259
     ENABLE_WATCHDOG_TIMER = 300
     USER_DEVICE_ID = 301
+    LBAND_PARAMETERS = 1024
 
 
 class InterfaceConfigType(IntEnum):
@@ -626,6 +627,35 @@ class _ConfigClassGenerator:
         Padding(3),
     )
 
+    class LBandConfig(NamedTuple):
+        """!
+        @brief Configuration of the L-band demodulator parameters.
+        """
+        ## The center frequency of the L-band beam (Hz).
+        center_frequency_hz: float
+
+        ## The size of the signal acquisition search space (in Hz) around the center
+        ## frequency.
+        ##
+        ## For example, a value of 6000 will search +/- 3 kHz around the center
+        ## frequency.
+        search_window_hz: float
+        ## Service ID of the provider.
+        pmp_service_id: int
+        ## Data rate of the provider (bps).
+        pmp_data_rate_bps: int
+        ## Unique word of the provider.
+        pmp_unique_word: int
+
+    LBandConfigConstruct = Struct(
+        "center_frequency_hz" / Float32l,
+        "search_window_hz" / Float32l,
+        "pmp_service_id" / Int32ul,
+        "pmp_data_rate_bps" / Int16ul,
+        Padding(2),
+        "pmp_unique_word" / Int32ul,
+    )
+
     class Empty(NamedTuple):
         """!
         @brief Dummy specifier for empty config.
@@ -717,10 +747,19 @@ class IonosphereConfig(_conf_gen.IonosphereConfig):
     """
     pass
 
+
 @_conf_gen.create_config_class(ConfigType.TROPOSPHERE_CONFIG, _conf_gen.TroposphereConfigConstruct)
 class TroposphereConfig(_conf_gen.TroposphereConfig):
     """!
     @brief Tropospheric delay model configuration.
+    """
+    pass
+
+
+@_conf_gen.create_config_class(ConfigType.LBAND_PARAMETERS, _conf_gen.LBandConfigConstruct)
+class LBandConfig(_conf_gen.LBandConfig):
+    """!
+    @brief Configuration of the L-band demodulator parameters.
     """
     pass
 

@@ -20,7 +20,7 @@ _logger = logging.getLogger('point_one.fusion_engine.applications.lband_extract'
 
 if __name__ == "__main__":
     parser = ArgumentParser(description="""\
-Extract L-Band corrections data from a log containing FusionEngine L-Band frame messages.
+Extract L-band corrections data from a log containing FusionEngine L-band frame messages.
 """)
 
     parser.add_argument(
@@ -138,6 +138,6 @@ Extract L-Band corrections data from a log containing FusionEngine L-Band frame 
         _logger.info('Output File: %s' % output_path)
         _logger.info('Log ID: %s' % log_id)
         _logger.info('Total Messages: %d' % total_messages)
-        _logger.info('L-Band Bytes Decoded: %d' % bytes_decoded)
+        _logger.info('L-band Bytes Decoded: %d' % bytes_decoded)
     elif total_messages == 0:
-        _logger.warning('No valid L-Band frame messages found.')
+        _logger.warning('No valid L-band frame messages found.')
