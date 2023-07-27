@@ -1063,6 +1063,45 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
 
         self._add_figure(name=filename, figure=figure, title=figure_title)
 
+    def plot_dop(self):
+        """!
+        @brief Plot dilution of precision (DOP).
+
+        This includes geometric, position, horizontal, and vertical DOP.
+        """
+        result = self.reader.read(message_types=[GNSSInfoMessage], **self.params)
+        data = result[GNSSInfoMessage.MESSAGE_TYPE]
+
+        if len(data.p1_time) == 0:
+            self.logger.info('No GNSS info data available. Skipping dilution of precision plot.')
+            return
+
+        # # Setup the figure.
+        figure = make_subplots(
+            rows=1, cols=1,  print_grid=False, shared_xaxes=True,
+            subplot_titles=['Dilution of Precision (DOP)'])
+
+        figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
+        figure['layout']['xaxis'].update(title=self.p1_time_label)
+
+        dops = [('GDOP', data.gdop), ('PDOP', data.pdop), ('HDOP', data.hdop), ('VDOP', data.vdop)]
+
+        # Assign colors to each DOP type.
+        color_by_dop = self._assign_colors([entry[0] for entry in dops])
+
+        # Plot each DOP type.
+        for entry in dops:
+            name, dop = entry
+
+            text = ['P1: %.1f sec' % t for t in data.p1_time]
+            time = data.p1_time - float(self.t0)
+            figure.add_trace(go.Scattergl(x=time, y=dop, text=text,
+                                          name=name, hoverlabel={'namelength': -1},
+                                          mode='markers', marker={'color': color_by_dop[name]}),
+                             1, 1)
+
+        self._add_figure(name='dilution_of_precision', figure=figure, title='Dilution of Precision vs. Time')
+
     def plot_gnss_corrections_status(self):
         """!
         @brief Plot GNSS corrections status (baseline distance, age, etc.).
@@ -2379,6 +2418,7 @@ Load and display information stored in a FusionEngine binary file.
         analyzer.plot_gnss_signal_status()
         analyzer.plot_gnss_skyplot()
         analyzer.plot_gnss_corrections_status()
+        analyzer.plot_dop()
 
         # By default, we always plot heading measurements (i.e., output from a secondary heading device like an
         # LG69T-AH), separate from other sensor measurements controlled by --measurements.
