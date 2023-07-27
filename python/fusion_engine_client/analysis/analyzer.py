@@ -1065,7 +1065,9 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
 
     def plot_dop(self):
         """!
-        @brief Plot dilution of precision (DOP). This includes geometric, position, horizontal, and vertical DOP.
+        @brief Plot dilution of precision (DOP).
+
+        This includes geometric, position, horizontal, and vertical DOP.
         """
         result = self.reader.read(message_types=[GNSSInfoMessage], **self.params)
         data = result[GNSSInfoMessage.MESSAGE_TYPE]
@@ -1082,16 +1084,14 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
         figure['layout']['xaxis'].update(title=self.p1_time_label)
 
-        dops = [data.gdop, data.pdop, data.hdop, data.vdop]
-        names = ['GDOP', 'PDOP', 'HDOP', 'VDOP']
+        dops = [('GDOP', data.gdop), ('PDOP', data.pdop), ('HDOP', data.hdop), ('VDOP', data.vdop)]
 
         # Assign colors to each DOP type.
-        color_by_dop = self._assign_colors(names)
+        color_by_dop = self._assign_colors([entry[0] for entry in dops])
 
         # Plot each DOP type.
-        for i in range(len(dops)):
-            dop = dops[i]
-            name = names[i]
+        for entry in dops:
+            name, dop = entry
 
             text = ['P1: %.1f sec' % t for t in data.p1_time]
             time = data.p1_time - float(self.t0)
