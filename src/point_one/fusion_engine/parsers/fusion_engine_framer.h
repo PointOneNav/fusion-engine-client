@@ -42,14 +42,9 @@ namespace parsers {
  * framer.OnData(my_data, my_data_size);
  * ```
  */
-class FusionEngineFramer {
+class P1_EXPORT FusionEngineFramer {
  public:
-#if P1_HAVE_STD_FUNCTION
-  using MessageCallback =
-      std::function<void(const messages::MessageHeader&, const void*)>;
-#else
   using MessageCallback = void (*)(const messages::MessageHeader&, const void*);
-#endif
 
   /**
    * @brief Construct a framer instance with no buffer allocated.
@@ -79,6 +74,14 @@ class FusionEngineFramer {
    * @param capacity_bytes The maximum framing buffer capacity (in bytes).
    */
   FusionEngineFramer(void* buffer, size_t capacity_bytes);
+
+  ~FusionEngineFramer();
+
+  // Don't allow copying or moving to avoid issues with managed buffer_.
+  FusionEngineFramer(const FusionEngineFramer&) = delete;               // Copy constructor
+  FusionEngineFramer(FusionEngineFramer&&) = delete;                    // Move constructor
+  FusionEngineFramer& operator=(const FusionEngineFramer&) = delete;  // Copy assignment operator
+  FusionEngineFramer& operator=(FusionEngineFramer&&) = delete;       // Move assignment operator
 
   /**
    * @brief Set the buffer to use for message framing.
@@ -136,16 +139,10 @@ class FusionEngineFramer {
     DATA = 3,
   };
 
-#if P1_HAVE_STD_FUNCTION
-  MessageCallback callback_;
-#else
   MessageCallback callback_ = nullptr;
-#endif
 
   bool warn_on_error_ = true;
-#if P1_HAVE_STD_SMART_PTR
-  std::unique_ptr<uint8_t[]> managed_buffer_;
-#endif
+  bool is_buffer_managed_ = false;
   uint8_t* buffer_{nullptr};
   uint32_t capacity_bytes_{0};
 
@@ -173,6 +170,11 @@ class FusionEngineFramer {
    *         were completed.
    */
   uint32_t Resync();
+
+  /**
+   * @brief Free the @ref buffer_ if it's being managed internally.
+   */
+  void ClearManagedBuffer();
 };
 
 } // namespace parsers
