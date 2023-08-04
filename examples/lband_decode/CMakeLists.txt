@@ -1,0 +1,2 @@
+add_executable(lband_decode lband_decode.cc)
+target_link_libraries(lband_decode PUBLIC fusion_engine_client)
