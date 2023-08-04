@@ -106,9 +106,7 @@ FusionEngineFramer::FusionEngineFramer(void* buffer, size_t capacity_bytes) {
 }
 
 /******************************************************************************/
-FusionEngineFramer::~FusionEngineFramer() {
-  ClearManagedBuffer();
-}
+FusionEngineFramer::~FusionEngineFramer() { ClearManagedBuffer(); }
 
 /******************************************************************************/
 void FusionEngineFramer::SetBuffer(void* buffer, size_t capacity_bytes) {

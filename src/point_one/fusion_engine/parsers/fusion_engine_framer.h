@@ -78,10 +78,12 @@ class P1_EXPORT FusionEngineFramer {
   ~FusionEngineFramer();
 
   // Don't allow copying or moving to avoid issues with managed buffer_.
-  FusionEngineFramer(const FusionEngineFramer&) = delete;               // Copy constructor
-  FusionEngineFramer(FusionEngineFramer&&) = delete;                    // Move constructor
-  FusionEngineFramer& operator=(const FusionEngineFramer&) = delete;  // Copy assignment operator
-  FusionEngineFramer& operator=(FusionEngineFramer&&) = delete;       // Move assignment operator
+  FusionEngineFramer(const FusionEngineFramer&) = delete; // Copy constructor
+  FusionEngineFramer(FusionEngineFramer&&) = delete; // Move constructor
+  FusionEngineFramer& operator=(const FusionEngineFramer&) =
+      delete; // Copy assignment operator
+  FusionEngineFramer& operator=(FusionEngineFramer&&) =
+      delete; // Move assignment operator
 
   /**
    * @brief Set the buffer to use for message framing.
