@@ -9,11 +9,15 @@
 
 #include <point_one/fusion_engine/messages/gnss_corrections.h>
 #include <point_one/fusion_engine/parsers/fusion_engine_framer.h>
+#include <point_one/rtcm/rtcm_framer.h>
 
 using namespace point_one::fusion_engine::messages;
 using namespace point_one::fusion_engine::parsers;
+using namespace point_one::rtcm;
 
-static std::ofstream out_stream;
+static constexpr size_t READ_SIZE_BYTES = 1024;
+static constexpr size_t FRAMER_BUFFER_BYTES = 10240;
+static RTCMFramer rtcm_framer(FRAMER_BUFFER_BYTES);
 
 // This is the callback for handling decoded FusionEngine messages.
 /******************************************************************************/
@@ -22,10 +26,19 @@ void OnFEMessage(const MessageHeader& header, const void* data) {
   if (header.message_type == LBandFrameMessage::MESSAGE_TYPE) {
     auto frame = reinterpret_cast<const LBandFrameMessage*>(data);
     auto lband_data =
-        static_cast<const char*>(data) + sizeof(LBandFrameMessage);
+        static_cast<const uint8_t*>(data) + sizeof(LBandFrameMessage);
     printf("Decoded %u L-band bytes.\n", frame->user_data_size_bytes);
-    out_stream.write(lband_data, frame->user_data_size_bytes);
+    rtcm_framer.OnData(lband_data, frame->user_data_size_bytes);
   }
+}
+
+// This is the callback for handling decoded RTCM messages.
+/******************************************************************************/
+void OnRTCMMessage(uint16_t message_type, const void* data, size_t data_len) {
+  // Don't warn unused.
+  (void)data;
+  printf("Decoded RTCM bytes message. [type=%hu, size=%zu]\n", message_type,
+         data_len);
 }
 
 /******************************************************************************/
@@ -36,33 +49,31 @@ int main(int argc, const char* argv[]) {
     return 0;
   }
 
-  char buffer[2048];
-  static constexpr size_t FRAME_BUFFER_BYTES = 1024;
-  FusionEngineFramer framer(FRAME_BUFFER_BYTES);
+  char buffer[READ_SIZE_BYTES];
+  FusionEngineFramer fe_framer(FRAMER_BUFFER_BYTES);
+  // Set a callback to handle the decoded L-band data.
+  fe_framer.SetMessageCallback(&OnFEMessage);
+
+  // Set a callback to handle the decoded RTCM in the decoded L-band data.
+  rtcm_framer.SetMessageCallback(&OnRTCMMessage);
 
   std::ifstream in_stream(argv[1], std::ifstream::binary);
   if (!in_stream.is_open()) {
     printf("Error opening file '%s'.\n", argv[1]);
     return 1;
   }
-  out_stream.open("lband.bin", std::ifstream::binary);
-  if (!out_stream.is_open()) {
-    printf("Error opening file 'lband.bin'.\n");
-    return 1;
-  }
-
-  // Set a callback to handle the decoded L-band data.
-  framer.SetMessageCallback(&OnFEMessage);
 
   while (true) {
-    in_stream.read(buffer, sizeof(buffer));
+    in_stream.read(buffer, READ_SIZE_BYTES);
     if (in_stream.eof()) {
       break;
     }
 
     // Feed the FusionEngine data into the decoder.
-    framer.OnData(reinterpret_cast<uint8_t*>(buffer), sizeof(buffer));
+    fe_framer.OnData(reinterpret_cast<uint8_t*>(buffer), sizeof(buffer));
   }
+  printf("Decoded %u messages successfully and had %u decoding errors.\n",
+         rtcm_framer.GetNumDecodedMessages(), rtcm_framer.GetNumErrors());
 
   return 0;
 }

@@ -1,5 +1,5 @@
 /**************************************************************************/ /**
- * @brief FusionEngine message framer.
+ * @brief RTCM3 message framer.
  * @file
  ******************************************************************************/
 
@@ -8,18 +8,17 @@
 #include <cstddef> // For size_t
 #include <cstdint>
 
-#include "point_one/fusion_engine/messages/defs.h"
+#include "point_one/fusion_engine/common/portability.h" // For macros.
 
 namespace point_one {
-namespace fusion_engine {
-namespace parsers {
+namespace rtcm {
 
 /**
- * @brief Frame and validate incoming FusionEngine messages.
+ * @brief Frame and validate incoming RTCM3 messages.
  *
- * This class locates and validates FusionEngine messages within a stream of
- * binary data. Data may be stored in an internally allocated buffer, or in an
- * external buffer supplied by the user.
+ * This class locates and validates RTCM3 messages within a stream of binary
+ * data. Data may be stored in an internally allocated buffer, or in an external
+ * buffer supplied by the user.
  *
  * The callback function provided to @ref SetMessageCallback() will be called
  * each time a complete message is received. Any messages that do not pass the
@@ -28,21 +27,18 @@ namespace parsers {
  *
  * Example usage:
  * ```cpp
- * void MessageReceived(const MessageHeader& header, const void* payload) {
- *   if (header.message_type == MessageType::POSE) {
- *     auto& contents = *static_cast<const PoseMessage*>(payload);
- *     ...
- *   }
+ * void MessageReceived(uint16_t message_type, const void* data, size_t data_len) {
+ *   ...
  * }
  *
- * FusionEngineFramer framer(1024);
+ * RTCMFramer framer(1024);
  * framer.SetMessageCallback(MessageReceived);
  * framer.OnData(my_data, my_data_size);
  * ```
  */
-class P1_EXPORT FusionEngineFramer {
+class P1_EXPORT RTCMFramer {
  public:
-  using MessageCallback = void (*)(const messages::MessageHeader&, const void*);
+  using MessageCallback = void (*)(uint16_t, const void*, size_t);
 
   /**
    * @brief Construct a framer instance with no buffer allocated.
@@ -51,15 +47,15 @@ class P1_EXPORT FusionEngineFramer {
    * You must call @ref SetBuffer() to assign a buffer, otherwise all incoming
    * data will be discarded.
    */
-  FusionEngineFramer() = default;
+  RTCMFramer() = default;
 
   /**
    * @brief Construct a framer instance with an internally allocated buffer.
    *
    * @param capacity_bytes The maximum framing buffer capacity (in bytes).
    */
-  explicit FusionEngineFramer(size_t capacity_bytes)
-      : FusionEngineFramer(nullptr, capacity_bytes) {}
+  explicit RTCMFramer(size_t capacity_bytes)
+      : RTCMFramer(nullptr, capacity_bytes) {}
 
   /**
    * @brief Construct a framer instance with a user-specified buffer.
@@ -71,17 +67,15 @@ class P1_EXPORT FusionEngineFramer {
    *        buffer internally.
    * @param capacity_bytes The maximum framing buffer capacity (in bytes).
    */
-  FusionEngineFramer(void* buffer, size_t capacity_bytes);
+  RTCMFramer(void* buffer, size_t capacity_bytes);
 
-  ~FusionEngineFramer();
+  ~RTCMFramer();
 
   // Don't allow copying or moving to avoid issues with managed buffer_.
-  FusionEngineFramer(const FusionEngineFramer&) = delete; // Copy constructor
-  FusionEngineFramer(FusionEngineFramer&&) = delete; // Move constructor
-  FusionEngineFramer& operator=(const FusionEngineFramer&) =
-      delete; // Copy assignment operator
-  FusionEngineFramer& operator=(FusionEngineFramer&&) =
-      delete; // Move assignment operator
+  RTCMFramer(const RTCMFramer&) = delete; // Copy constructor
+  RTCMFramer(RTCMFramer&&) = delete; // Move constructor
+  RTCMFramer& operator=(const RTCMFramer&) = delete; // Copy assignment operator
+  RTCMFramer& operator=(RTCMFramer&&) = delete; // Move assignment operator
 
   /**
    * @brief Set the buffer to use for message framing.
@@ -100,8 +94,8 @@ class P1_EXPORT FusionEngineFramer {
    *
    * This is typically used when the incoming stream has multiple types of
    * binary content (e.g., interleaved FusionEngine and RTCM messages), and the
-   * FusionEngine message preamble is expected to appear in the non-FusionEngine
-   * content occasionally.
+   * RTCM message preamble is expected to appear in the non-RTCM content
+   * occasionally.
    *
    * @param enabled If `true`, issue warnings on errors.
    */
@@ -131,12 +125,28 @@ class P1_EXPORT FusionEngineFramer {
    */
   size_t OnData(const uint8_t* buffer, size_t length_bytes);
 
+  /**
+   * @brief Get the number of decoded messages.
+   *
+   * @return The number of RTCM messages successfully decoded.
+   */
+  uint32_t GetNumDecodedMessages() const { return decoded_msg_count_; }
+
+  /**
+   * @brief Get the number of preamble synchronizations that resulted in errors.
+   *
+   * This is not an accurate count of failed messages, but gives an approximate
+   * count.
+   *
+   * @return The number of length or CRC failures found in decoding so far.
+   */
+  uint32_t GetNumErrors() const { return error_count_; }
+
  private:
   enum class State {
-    SYNC0 = 0,
-    SYNC1 = 1,
-    HEADER = 2,
-    DATA = 3,
+    SYNC = 0,
+    HEADER = 1,
+    DATA = 2,
   };
 
   MessageCallback callback_ = nullptr;
@@ -146,9 +156,12 @@ class P1_EXPORT FusionEngineFramer {
   uint8_t* buffer_{nullptr};
   uint32_t capacity_bytes_{0};
 
-  State state_{State::SYNC0};
+  State state_{State::SYNC};
   uint32_t next_byte_index_{0};
-  uint32_t current_message_size_{0};
+  size_t current_message_size_{0};
+
+  uint32_t error_count_{0};
+  uint32_t decoded_msg_count_{0};
 
   /**
    * @brief Process a single byte.
@@ -177,6 +190,5 @@ class P1_EXPORT FusionEngineFramer {
   void ClearManagedBuffer();
 };
 
-} // namespace parsers
-} // namespace fusion_engine
+} // namespace rtcm
 } // namespace point_one

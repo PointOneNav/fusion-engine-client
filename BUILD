@@ -7,6 +7,7 @@ cc_library(
         ":core",
         ":messages",
         ":parsers",
+        ":rtcm",
     ],
 )
 
@@ -130,6 +131,21 @@ cc_library(
         "src/point_one/fusion_engine/messages/data_version.h",
     ],
     includes = ["src"],
+    deps = [
+        ":common",
+    ],
+)
+
+# Message encode/decode support.
+cc_library(
+    name = "rtcm",
+    srcs = [
+        "src/point_one/rtcm/rtcm_framer.cc",
+        "src/point_one/rtcm/crc.h",
+    ],
+    hdrs = [
+        "src/point_one/rtcm/rtcm_framer.h",
+    ],
     deps = [
         ":common",
     ],
