@@ -106,6 +106,9 @@ FusionEngineFramer::FusionEngineFramer(void* buffer, size_t capacity_bytes) {
 }
 
 /******************************************************************************/
+FusionEngineFramer::~FusionEngineFramer() { ClearManagedBuffer(); }
+
+/******************************************************************************/
 void FusionEngineFramer::SetBuffer(void* buffer, size_t capacity_bytes) {
   if (capacity_bytes < sizeof(MessageHeader)) {
     LOG(ERROR) << "FusionEngine framing buffer too small. [capacity="
@@ -124,18 +127,11 @@ void FusionEngineFramer::SetBuffer(void* buffer, size_t capacity_bytes) {
     capacity_bytes = 0x7FFFFFFF;
   }
 
-#if P1_HAVE_STD_SMART_PTR
+  ClearManagedBuffer();
   if (buffer == nullptr) {
-    managed_buffer_.reset(new uint8_t[capacity_bytes]);
-    buffer = managed_buffer_.get();
-  } else if (buffer != managed_buffer_.get()) {
-    managed_buffer_.reset(nullptr);
+    buffer = new uint8_t[capacity_bytes];
+    is_buffer_managed_ = true;
   }
-#else
-  if (buffer == nullptr) {
-    LOG(FATAL) << "P1_HAVE_STD_SMART_PTR required for dynamic memory.";
-  }
-#endif
 
   // Enforce 4B alignment at the beginning of the buffer.
   uint8_t* buffer_unaligned = static_cast<uint8_t*>(buffer);
@@ -466,4 +462,13 @@ uint32_t FusionEngineFramer::Resync() {
           << " bytes remaining in buffer.";
 
   return total_message_size;
+}
+
+/******************************************************************************/
+void FusionEngineFramer::ClearManagedBuffer() {
+  if (is_buffer_managed_ && buffer_ != nullptr) {
+    delete[] buffer_;
+    is_buffer_managed_ = false;
+    buffer_ = nullptr;
+  }
 }
