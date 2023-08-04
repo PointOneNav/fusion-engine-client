@@ -16,8 +16,11 @@ using namespace point_one::fusion_engine::parsers;
 using namespace point_one::rtcm;
 
 static constexpr size_t READ_SIZE_BYTES = 1024;
-static constexpr size_t FRAMER_BUFFER_BYTES = 10240;
-static RTCMFramer rtcm_framer(FRAMER_BUFFER_BYTES);
+// The max FE L-band message is (FE header + message) + 504 B.
+static constexpr size_t FE_FRAMER_BUFFER_BYTES = 600;
+// The max RTCM message size is (RTCM header) + 1023 B.
+static constexpr size_t RTCM_FRAMER_BUFFER_BYTES = 1030;
+static RTCMFramer rtcm_framer(RTCM_FRAMER_BUFFER_BYTES);
 
 // This is the callback for handling decoded FusionEngine messages.
 /******************************************************************************/
@@ -37,7 +40,7 @@ void OnFEMessage(const MessageHeader& header, const void* data) {
 void OnRTCMMessage(uint16_t message_type, const void* data, size_t data_len) {
   // Don't warn unused.
   (void)data;
-  printf("Decoded RTCM bytes message. [type=%hu, size=%zu]\n", message_type,
+  printf("Decoded RTCM message. [type=%hu, size=%zu B]\n", message_type,
          data_len);
 }
 
@@ -50,7 +53,7 @@ int main(int argc, const char* argv[]) {
   }
 
   char buffer[READ_SIZE_BYTES];
-  FusionEngineFramer fe_framer(FRAMER_BUFFER_BYTES);
+  FusionEngineFramer fe_framer(FE_FRAMER_BUFFER_BYTES);
   // Set a callback to handle the decoded L-band data.
   fe_framer.SetMessageCallback(&OnFEMessage);
 

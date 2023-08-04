@@ -1,5 +1,5 @@
 /**************************************************************************/ /**
- * @brief RTCM3 message framer.
+ * @brief RTCM 3 message framer.
  * @file
  ******************************************************************************/
 
@@ -14,9 +14,9 @@ namespace point_one {
 namespace rtcm {
 
 /**
- * @brief Frame and validate incoming RTCM3 messages.
+ * @brief Frame and validate incoming RTCM 3 messages.
  *
- * This class locates and validates RTCM3 messages within a stream of binary
+ * This class locates and validates RTCM 3 messages within a stream of binary
  * data. Data may be stored in an internally allocated buffer, or in an external
  * buffer supplied by the user.
  *
@@ -135,8 +135,9 @@ class P1_EXPORT RTCMFramer {
   /**
    * @brief Get the number of preamble synchronizations that resulted in errors.
    *
-   * This is not an accurate count of failed messages, but gives an approximate
-   * count.
+   * This is not an accurate count of failed messages since the RTCM preamble is
+   * not unique and may appear anywhere in the data stream, but gives an
+   * approximate count.
    *
    * @return The number of length or CRC failures found in decoding so far.
    */

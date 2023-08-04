@@ -141,7 +141,6 @@ cc_library(
     name = "rtcm",
     srcs = [
         "src/point_one/rtcm/rtcm_framer.cc",
-        "src/point_one/rtcm/crc.h",
     ],
     hdrs = [
         "src/point_one/rtcm/rtcm_framer.h",
