@@ -335,7 +335,7 @@ int32_t RTCMFramer::OnByte(bool quiet) {
        *   Message Length = 10 bits
        */
       uint16_t header_byte_1_2_le = EndianSwap16(buffer_ + 1);
-      uint16_t payload_size_bytes = header_byte_1_2_le & 0x3F;
+      uint16_t payload_size_bytes = header_byte_1_2_le & 0x3FF;
       current_message_size_ = payload_size_bytes + RTCM_OVERHEAD_BYTES;
       VLOG(3) << "Header complete. Waiting for payload. [payload_size="
               << payload_size_bytes << " B]";
