@@ -19,6 +19,7 @@ CANDIDATE_P1LOG_FILES = [
     # by extract_fusion_engine_log().
     'input.p1log',
     'fusion_engine.p1log',
+    'output/diagnostics.p1log',
 ]
 
 CANDIDATE_P1LOG_FILES_WITH_PLAYBACK = [
@@ -28,6 +29,7 @@ CANDIDATE_P1LOG_FILES_WITH_PLAYBACK = [
     # by extract_fusion_engine_log().
     'input.p1log',
     'fusion_engine.p1log',
+    'output/diagnostics.p1log',
     # Legacy path, maintained for backwards compatibility.
     'filter/output/fe_service/output.playback.p1bin',
     'filter/output/fe_service/output.p1bin',
