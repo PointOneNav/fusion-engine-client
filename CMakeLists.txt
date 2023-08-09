@@ -35,7 +35,8 @@ add_library(fusion_engine_client
             src/point_one/fusion_engine/common/logging.cc
             src/point_one/fusion_engine/messages/crc.cc
             src/point_one/fusion_engine/messages/data_version.cc
-            src/point_one/fusion_engine/parsers/fusion_engine_framer.cc)
+            src/point_one/fusion_engine/parsers/fusion_engine_framer.cc
+            src/point_one/rtcm/rtcm_framer.cc)
 target_include_directories(fusion_engine_client PUBLIC ${PROJECT_SOURCE_DIR}/src)
 if (MSVC)
     target_compile_definitions(fusion_engine_client PRIVATE BUILDING_DLL)
