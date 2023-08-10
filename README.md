@@ -99,7 +99,8 @@ FetchContent_Declare(
     GIT_TAG v1.15.2
 )
 FetchContent_Populate(fusion_engine_client)
-add_subdirectory(${fusion_engine_client_SOURCE_DIR})
+add_subdirectory(${fusion_engine_client_SOURCE_DIR}
+                 ${fusion_engine_client_BINARY_DIR})
 
 add_executable(example_app main.cc)
 target_link_libraries(example_app PUBLIC fusion_engine_client)

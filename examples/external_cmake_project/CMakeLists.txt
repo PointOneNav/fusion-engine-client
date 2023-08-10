@@ -49,7 +49,8 @@ FetchContent_Declare(
     GIT_TAG v1.16.0
 )
 FetchContent_Populate(fusion_engine_client)
-add_subdirectory(${fusion_engine_client_SOURCE_DIR})
+add_subdirectory(${fusion_engine_client_SOURCE_DIR}
+                 ${fusion_engine_client_BINARY_DIR})
 
 # Now we define an example application that uses the fusion-engine-client
 # library. In your own code, you can link any add_executable() or add_library()

@@ -37,9 +37,9 @@
 
 // Support ARM CC quirks
 #ifdef __CC_ARM
-#  include "typedefs.h"
-// ARM CC bug http://www.keil.com/forum/60227/
-#  define __ESCAPE__(__x) (__x)
+// The cstdint included with Keil ARM CC does not appear to include stdint.h
+// or to define most of the stdint types (uint8_t, etc.), even though it should.
+#  include <stdint.h>
 #  define P1_HAVE_STD_FUNCTION 0
 #  define P1_HAVE_STD_OSTREAM 0
 #  define P1_HAVE_STD_SMART_PTR 0
