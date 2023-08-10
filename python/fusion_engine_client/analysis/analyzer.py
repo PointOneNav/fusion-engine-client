@@ -1900,7 +1900,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         figure = make_subplots(rows=3, cols=1, print_grid=False, shared_xaxes=True,
                                subplot_titles=['CPU Usage', 'Memory Usage', 'Queue Depth'])
 
-        figure['layout'].update(showlegend=True)
+        figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
         for i in range(3):
             figure['layout']['xaxis%d' % (i + 1)].update(title=self.system_time_label, showticklabels=True)
         figure['layout']['yaxis1'].update(title="CPU (%)", range=[0, 100])
@@ -1967,7 +1967,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                                subplot_titles=['Average Processing Time', 'Max Processing Time',
                                                'Number of Executions Per Update'])
 
-        figure['layout'].update(showlegend=True)
+        figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
         for i in range(3):
             figure['layout']['xaxis%d' % (i + 1)].update(title=self.system_time_label, showticklabels=True)
         figure['layout']['yaxis1'].update(title="Processing Time (ms)")
@@ -2028,7 +2028,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                                                'Eigen Pool Free After Update',
                                                'Eigen Pool Interval Low Point'])
 
-        figure['layout'].update(showlegend=True)
+        figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
         for i in range(3):
             figure['layout']['xaxis%d' % (i + 1)].update(title=self.system_time_label, showticklabels=True)
         figure['layout']['yaxis1'].update(title="Lowest Pool Capacity", rangemode="tozero")
@@ -2083,7 +2083,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
     def plot_host_side_serial_dropouts(self, id_to_name, data, raw_file_index, device_uart):
         host_serial_interface = 'tx_' + device_uart
 
-        # Get the ProfileCounterMessage that corrasponds to the interface the host was listening to.
+        # Get the ProfileCounterMessage that corresponds to the interface the host was listening to.
         connected_port_idx = None
         for k, val in id_to_name.items():
             if host_serial_interface == val:
@@ -2180,8 +2180,8 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                                                'Serial Message Buffer Free Space',
                                                'Serial Data Rates'])
 
-        figure['layout'].update(showlegend=True)
-        for i in range(2):
+        figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
+        for i in range(3):
             figure['layout']['xaxis%d' % (i + 1)].update(title=self.system_time_label, showticklabels=True)
         figure['layout']['yaxis1'].update(title="Error Count", rangemode="nonnegative")
         figure['layout']['yaxis2'].update(title="Buffer Free (kB)", rangemode="tozero")
@@ -2278,7 +2278,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                                subplot_titles=['Delay Queue Depth Measurements', 'Delay Queue Depth Age',
                                                'Message Buffer Free Space', 'Measurement Rates'])
 
-        figure['layout'].update(showlegend=True)
+        figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
         for i in range(2):
             figure['layout']['xaxis%d' % (i + 1)].update(title=self.system_time_label, showticklabels=True)
         figure['layout']['yaxis1'].update(title="Queue Depth (measurements)", rangemode="nonnegative")
@@ -2346,9 +2346,10 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         time = data.system_time_sec - self.system_t0
 
         figure = make_subplots(rows=4, cols=1, print_grid=False, shared_xaxes=True,
-                               subplot_titles=['CPU Usage', 'Stack High Water Marks', 'Dynamic Memory Free', 'Missed Task Switches'])
+                               subplot_titles=['CPU Usage', 'Stack High Water Marks', 'Dynamic Memory Free',
+                                               'Missed Task Switches'])
 
-        figure['layout'].update(showlegend=True)
+        figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
         for i in range(4):
             figure['layout']['xaxis%d' % (i + 1)].update(title=self.system_time_label, showticklabels=True)
         figure['layout']['yaxis1'].update(title="CPU (%)", range=[0, 100])
@@ -2411,7 +2412,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=True,
                                subplot_titles=['Pipeline Delay'])
 
-        figure['layout'].update(showlegend=True)
+        figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
         figure['layout']['xaxis'].update(title=self.system_time_label)
         figure['layout']['yaxis1'].update(title="Delay (sec)")
 
@@ -2452,7 +2453,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=True,
                                subplot_titles=['Code Execution'])
 
-        figure['layout'].update(showlegend=True)
+        figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
         figure['layout']['xaxis'].update(title=self.system_time_label)
         figure['layout']['yaxis1'].update(title="Event")
 
