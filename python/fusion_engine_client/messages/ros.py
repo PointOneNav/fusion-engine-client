@@ -273,17 +273,17 @@ class ROSIMUMessage(MessagePayload):
         # component last (x, y, z, w)
         self.orientation = np.full((4,), 0.0)
         # Orientation covariance matrix. Set to -1 if not available
-        self.orientation_covariance = np.full((9,), -1)
+        self.orientation_covariance = np.full((9,), -1.0)
         # Vehicle x/y/z rate of rotation (in radians/second), resolved in the body
         # frame
         self.angular_velocity_rps = np.full((3,), 0.0)
         # Vehicle rate of rotation covariance matrix. Set to -1 if not available
-        self.angular_velocity_covariance = np.full((9,), -1)
+        self.angular_velocity_covariance = np.full((9,), -1.0)
         # Vehicle x/y/z linear acceleration (in meters/second^2), resolved in the
         # body frame
         self.acceleration_mps2 = np.full((3,), 0.0)
         # Vehicle x/y/z acceleration covariance matrix. Set to -1 if not available
-        self.acceleration_covariance = np.full((9,), -1)
+        self.acceleration_covariance = np.full((9,), -1.0)
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
