@@ -5,15 +5,6 @@
 
 #pragma once
 
-// If we are compiling under MSVC, disable warning C4200:
-//   nonstandard extension used: zero-sized array in struct/union
-// Zero-sized arrays are supported by MSVC, GCC, and Clang, and we use them as
-// convenience placeholders for variable sized message payloads.
-#ifdef _MSC_VER
-#  pragma warning(push)
-#  pragma warning(disable : 4200)
-#endif
-
 #include "point_one/fusion_engine/common/portability.h"
 #include "point_one/fusion_engine/messages/data_version.h"
 #include "point_one/fusion_engine/messages/defs.h"
@@ -2295,7 +2286,3 @@ struct P1_ALIGNAS(4) InterfaceConfigSubmessage {
 } // namespace messages
 } // namespace fusion_engine
 } // namespace point_one
-
-#ifdef _MSC_VER
-#  pragma warning(pop)
-#endif
