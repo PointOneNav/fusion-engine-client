@@ -1913,7 +1913,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             rows.append([
                 f'{(system_time_ns - system_t0_ns) / 1e9:.3f}' if system_time_ns is not None else 'N/A',
                 f'{system_time_ns / 1e9:.3f}' if system_time_ns is not None else 'N/A',
-                'N/A',
+                '',
                 event_type.to_string(include_value=True),
                 f'0x{flags:016X}' if flags is not None else 'N/A',
                 description_str.replace('<', '[').replace('>', ']').replace('\n', '<br>'),
@@ -1942,16 +1942,18 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             if entry.type == MessageType.EVENT_NOTIFICATION or get_time_before_reset:
                 # Parse entry at index for payload.
                 header, payload = self.reader.reader.parse_entry_at_index(entry)
-                system_time_ns = payload.get_system_time_ns()
+                # If entry at index is of a class that isn't recognized, then skip it.
+                try:
+                    if get_time_before_reset and payload.get_p1_time() is not None:
+                        times_before_resets[curr_reset_time] = float(payload.get_p1_time())
+                        get_time_before_reset = False
 
-                if get_time_before_reset and payload.get_p1_time() is not None:
-                    times_before_resets[curr_reset_time] = payload.get_p1_time().seconds
-                    get_time_before_reset = False
-
-                # Check if event is a reset.
-                if entry.type == MessageType.EVENT_NOTIFICATION and payload.event_type == EventType.RESET:
-                    curr_reset_time = system_time_ns
-                    get_time_before_reset = True
+                    # Check if event is a reset.
+                    if entry.type == MessageType.EVENT_NOTIFICATION and payload.event_type == EventType.RESET:
+                        curr_reset_time = payload.get_system_time_ns()
+                        get_time_before_reset = True
+                except Exception as e:
+                    continue
 
         return times_before_resets
 

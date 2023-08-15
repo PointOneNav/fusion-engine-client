@@ -496,11 +496,15 @@ class MixedLogReader(object):
         header = MessageHeader()
         header.unpack(data, warn_on_unrecognized=False)
         payload_bytes = self.input_file.read(header.payload_size_bytes)
-        cls = message_type_to_class.get(header.message_type, None)
-        payload = cls()
-        payload.unpack(buffer=payload_bytes, offset=0, message_version=header.message_version)
 
-        return header, payload
+        try:
+            cls = message_type_to_class.get(header.message_type, None)
+            payload = cls()
+            payload.unpack(buffer=payload_bytes, offset=0, message_version=header.message_version)
+            return header, payload
+        # If class is not recognized, return payload_bytes.
+        except Exception as e:
+            return header, payload_bytes
 
     def clear_filters(self):
         self.filter_in_place(key=None, clear_existing=True)
