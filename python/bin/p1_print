@@ -200,10 +200,12 @@ other types of data.
     first_p1_time_sec = None
     last_p1_time_sec = None
     newest_p1_time = None
+    newest_p1_message_type = None
 
     first_system_time_sec = None
     last_system_time_sec = None
     newest_system_time_sec = None
+    newest_system_message_type = None
 
     total_messages = 0
     bytes_decoded = 0
@@ -227,16 +229,20 @@ other types of data.
                             first_p1_time_sec = float(p1_time)
                             last_p1_time_sec = float(p1_time)
                             newest_p1_time = p1_time
+                            newest_p1_message_type = header.message_type
                         else:
                             # For P1 time, we allow a small tolerance to account for normal latency between measurements
                             # and computed data like pose solutions.
-                            dt_sec = float(newest_p1_time - p1_time)
+                            dt_sec = float(p1_time - newest_p1_time)
                             if dt_sec < -0.2:
                                 _logger.warning(
-                                    'P1 time restart detected after %s. [message=%s, p1_time=%s, offset=%d B]' %
-                                    (str(newest_p1_time), header.get_type_string(), str(p1_time), offset_bytes))
+                                    'Backwards/restarted P1 time detected after %s (%s). [new_message=%s, '
+                                    'new_p1_time=%s, offset=%d B]' %
+                                    (str(newest_p1_time), str(newest_p1_message_type), header.get_type_string(),
+                                     str(p1_time), offset_bytes))
                             last_p1_time_sec = max(last_p1_time_sec, float(p1_time))
                             newest_p1_time = p1_time
+                            newest_p1_message_type = header.message_type
 
                     system_time_sec = message.get_system_time_sec()
                     if system_time_sec is not None:
@@ -244,16 +250,19 @@ other types of data.
                             first_system_time_sec = system_time_sec
                             last_system_time_sec = system_time_sec
                             newest_system_time_sec = system_time_sec
+                            newest_system_message_type = header.message_type
                         else:
                             if system_time_sec < newest_system_time_sec:
                                 _logger.warning(
-                                    'System time restart detected after %s. [message=%s, system_time=%s, offset=%d B]' %
+                                    'Backwards/restarted system time detected after %s (%s). [new_message=%s, '
+                                    'new_system_time=%s, offset=%d B]' %
                                     (system_time_to_str(newest_system_time_sec, is_seconds=True),
-                                     header.get_type_string(),
+                                     str(newest_system_message_type), header.get_type_string(),
                                      system_time_to_str(system_time_sec, is_seconds=True),
                                      offset_bytes))
                             last_system_time_sec = max(last_system_time_sec, system_time_sec)
                             newest_system_time_sec = system_time_sec
+                            newest_system_message_type = header.message_type
             else:
                 print_message(header, message, offset_bytes, format=options.format)
     except (BrokenPipeError, KeyboardInterrupt) as e:
