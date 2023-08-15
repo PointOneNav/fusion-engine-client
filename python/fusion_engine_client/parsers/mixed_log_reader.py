@@ -479,6 +479,29 @@ class MixedLogReader(object):
                              elapsed_sec, (self.total_bytes_read / elapsed_sec / 1e6) if elapsed_sec > 0 else np.nan))
             self.last_print_bytes = self.total_bytes_read
 
+    def parse_entry_at_index(self, index: file_index.FileIndexEntry):
+        """!
+        @brief Generate header and payload from index entry.
+
+        @param index The index entry at which to parse the class's input file.
+
+        @return header The @ref MessageHeader at the index entry.
+        @return payload The class located at the index entry.
+        """
+        # Jump to offset governed by index.
+        self.input_file.seek(index.offset, os.SEEK_SET)
+
+        # Generate header and payload.
+        data = self.input_file.read(MessageHeader.calcsize())
+        header = MessageHeader()
+        header.unpack(data, warn_on_unrecognized=False)
+        payload_bytes = self.input_file.read(header.payload_size_bytes)
+        cls = message_type_to_class.get(header.message_type, None)
+        payload = cls()
+        payload.unpack(buffer=payload_bytes, offset=0, message_version=header.message_version)
+
+        return header, payload
+
     def clear_filters(self):
         self.filter_in_place(key=None, clear_existing=True)
 
