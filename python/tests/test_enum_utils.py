@@ -52,8 +52,8 @@ def test_unrecognized(Enum):
 
     value = Enum(10, raise_on_unrecognized=False)
     assert int(value) == 10
-    assert str(value) == '<Unrecognized>'
-    assert repr(value) == '<TestEnum.<Unrecognized>: 10>'
+    assert str(value) == '(Unrecognized)'
+    assert repr(value) == '<TestEnum.(Unrecognized): 10>'
     assert value == 10
 
     with pytest.raises(ValueError):

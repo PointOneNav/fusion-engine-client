@@ -77,7 +77,7 @@ class IntEnum(IntEnumBase, metaclass=DynamicEnumMeta):
         #
         #   print(Foo.BAR)   # Prints "BAR", not "Foo.BAR"
         if self.name.startswith(IntEnum.UNRECOGNIZED_PREFIX):
-            return "<Unrecognized>"
+            return "(Unrecognized)"
         else:
             return self.name
 
