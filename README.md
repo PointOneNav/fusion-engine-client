@@ -90,18 +90,19 @@ The `examples/` directory contains example applications demonstrating how to use
 To include this library as part of your CMake project, we recommend using the CMake `FetchContent` feature as shown
 below, rather than compiling and installing the library manually as in the sections above:
 ```cmake
-set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
-set(P1_FE_BUILD_EXAMPLES OFF)
+# Download the specified version of the FusionEngine client library and make it
+# available.
 include(FetchContent)
 FetchContent_Declare(
     fusion_engine_client
     GIT_REPOSITORY https://github.com/PointOneNav/fusion-engine-client.git
     GIT_TAG v1.15.2
 )
-FetchContent_Populate(fusion_engine_client)
-add_subdirectory(${fusion_engine_client_SOURCE_DIR}
-                 ${fusion_engine_client_BINARY_DIR})
+set(P1_FE_BUILD_EXAMPLES OFF CACHE INTERNAL "")
+FetchContent_MakeAvailable(fusion_engine_client)
 
+# Define your application and add a dependency for the FusionEngine client
+# library.
 add_executable(example_app main.cc)
 target_link_libraries(example_app PUBLIC fusion_engine_client)
 ```

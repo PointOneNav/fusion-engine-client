@@ -12,24 +12,7 @@
 
 cmake_minimum_required(VERSION 3.12)
 
-# We explicitly set the CMake CMP0077 policy to NEW before calling FetchContent
-# below. This policy was adding in CMake 3.12. Setting it to NEW makes it so
-# set() calls here are not overridden by option() definitions in the external
-# library. With default value (OLD), the option() value will be used.
-
-# Specifically, here we want to set(P1_FE_BUILD_EXAMPLES OFF). If we do not set
-# CMP0077 to NEW, the option(P1_FE_BUILD_EXAMPLES ON) definition inside the
-# fusion-engine-client CMake file will ignore that value and set it to ON.
-set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
-
 set(CMAKE_CXX_STANDARD 14)
-
-# Disable example applications from the fusion-engine-client library imported
-# below. We want to build the library and make the fusion_engine_client CMake
-# target available here. If we do not do this, teh add_subdirectory() call below
-# will also import all of the example applications in
-# fusion-engine-client/examples/.
-set(P1_FE_BUILD_EXAMPLES OFF)
 
 project(fusion_engine_usage_example C CXX)
 
@@ -38,19 +21,28 @@ project(fusion_engine_usage_example C CXX)
 # Note that we always recommend using a specific version of the library in your
 # code by specifying a git tag (e.g., `GIT_TAG v1.15.2`), and updating that as
 # new versions are released. That way, you can be sure that your code is always
-# built with a known version of fusion-engine-client.
+# built with a known version of fusion-engine-client. If you prefer, however,
+# you can set the GIT_TAG to track the latest changes by setting
+# `GIT_TAG master` below.
 #
-# If you prefer, however, you can set the GIT_TAG to track the latest changes by
-# setting `GIT_TAG master` below.
+# We explicitly disable example applications from the fusion-engine-client
+# library by setting P1_FE_BUILD_EXAMPLES to OFF below. We only want to build
+# the library and make the fusion_engine_client CMake target available here. By
+# default, if we do not tell it otherwise, FetchContent_MakeAvailable() will
+# also import all of the example applications in fusion-engine-client/examples/.
+#
+# It is important to specify it as an INTERNAL variable. If you do not do this,
+# the option definition in the fusion-engine-client CMakeLists.txt file will
+# override this value and enable the example applications anyway. This is a
+# result of CMP0077, which was added in CMake 3.13.
 include(FetchContent)
 FetchContent_Declare(
     fusion_engine_client
     GIT_REPOSITORY https://github.com/PointOneNav/fusion-engine-client.git
     GIT_TAG v1.16.0
 )
-FetchContent_Populate(fusion_engine_client)
-add_subdirectory(${fusion_engine_client_SOURCE_DIR}
-                 ${fusion_engine_client_BINARY_DIR})
+set(P1_FE_BUILD_EXAMPLES OFF CACHE INTERNAL "")
+FetchContent_MakeAvailable(fusion_engine_client)
 
 # Now we define an example application that uses the fusion-engine-client
 # library. In your own code, you can link any add_executable() or add_library()
