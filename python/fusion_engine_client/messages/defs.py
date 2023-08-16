@@ -336,7 +336,7 @@ class MessageHeader:
 
         try:
             self.message_type = MessageType(message_type_int)
-        except ValueError:
+        except (ValueError, KeyError):
             if warn_on_unrecognized:
                 _logger.log(logging.WARNING if message_type_int < int(MessageType.RESERVED) else logging.DEBUG,
                             'Unrecognized message type %d.' % message_type_int)
