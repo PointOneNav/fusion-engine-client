@@ -207,6 +207,14 @@ jobs:
         cp cmake_build/examples/generate_data/generate_data.exe ./test/
         cp examples/message_decode/example_data.p1log ./test/
 
+    - name: Build External Project Example (CMake, Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        mkdir examples/external_cmake_project/build
+        cd examples/external_cmake_project/build
+        cmake ..
+        make
+
     # Run unit tests.
     - name: Test Message Decoding
       run: |
