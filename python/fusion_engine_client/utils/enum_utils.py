@@ -14,7 +14,11 @@ class DynamicEnumMeta(EnumMeta):
         if isinstance(value, str):
             name = value
             try:
-                return cls[name]
+                result = cls[name]
+                if raise_on_unrecognized and result.name.startswith(cls.UNRECOGNIZED_PREFIX):
+                    raise KeyError("Unrecognized enum name '%s'." % name)
+                else:
+                    return result
             except KeyError as e:
                 if raise_on_unrecognized:
                     raise e from None
@@ -25,7 +29,11 @@ class DynamicEnumMeta(EnumMeta):
                     return cls[name]
         else:
             try:
-                return super().__call__(value, *args, **kwargs)
+                result = super().__call__(value, *args, **kwargs)
+                if raise_on_unrecognized and result.name.startswith(cls.UNRECOGNIZED_PREFIX):
+                    raise ValueError("Unrecognized enum value %d." % int(result))
+                else:
+                    return result
             except ValueError as e:
                 # If the user specified an integer value that is not recognized, add a new hidden enum value:
                 #   6 --> MyEnum._UNRECOGNIZED_6 = 6
@@ -69,7 +77,7 @@ class IntEnum(IntEnumBase, metaclass=DynamicEnumMeta):
         #
         #   print(Foo.BAR)   # Prints "BAR", not "Foo.BAR"
         if self.name.startswith(IntEnum.UNRECOGNIZED_PREFIX):
-            return "<Unrecognized>"
+            return "(Unrecognized)"
         else:
             return self.name
 

@@ -745,7 +745,7 @@ class CalibrationStatus(MessagePayload):
                    self.mounting_angle_percent_complete)
         string += '  Distance traveled: %.3f km (min: %.1f km)%s\n' % \
                   (self.travel_distance_m, self.min_travel_distance_m,
-                   ' [OK]' if self.travel_distance_m < self.min_travel_distance_m else '')
+                   ' [OK]' if self.travel_distance_m >= self.min_travel_distance_m else '')
         string += '  Yaw: %.1f deg (std dev: %.1f deg, max: %.1f deg)%s\n' % \
                   (self.ypr_deg[0], self.ypr_std_dev_deg[0], self.mounting_angle_max_std_dev_deg[0],
                    ' [OK]' if self.ypr_std_dev_deg[0] < self.mounting_angle_max_std_dev_deg[0] else '')
