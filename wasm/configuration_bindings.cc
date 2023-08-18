@@ -72,7 +72,6 @@ EMSCRIPTEN_BINDINGS(configuration) {
       .property("flags", &SetConfigMessage::flags)
       .ARRAY_PROPERTY(SetConfigMessage, reserved)
       .property("config_length_bytes", &SetConfigMessage::config_length_bytes)
-      .ARRAY_PROPERTY(SetConfigMessage, config_change_data)
       .STRUCT_FUNCTIONS(SetConfigMessage);
 
   static auto GetConfigMessage_MESSAGE_TYPE = GetConfigMessage::MESSAGE_TYPE;
@@ -85,7 +84,6 @@ EMSCRIPTEN_BINDINGS(configuration) {
       .property("config_type", &GetConfigMessage::config_type)
       .property("request_source", &GetConfigMessage::request_source)
       .ARRAY_PROPERTY(GetConfigMessage, reserved)
-      .ARRAY_PROPERTY(GetConfigMessage, optional_submessage_header)
       .STRUCT_FUNCTIONS(GetConfigMessage);
 
   static auto SaveConfigMessage_MESSAGE_TYPE = SaveConfigMessage::MESSAGE_TYPE;
@@ -414,6 +412,5 @@ EMSCRIPTEN_BINDINGS(configuration) {
       .property("interface", &InterfaceConfigSubmessage::interface)
       .property("subtype", &InterfaceConfigSubmessage::subtype)
       .ARRAY_PROPERTY(InterfaceConfigSubmessage, reserved)
-      .ARRAY_PROPERTY(InterfaceConfigSubmessage, config_data)
       .STRUCT_FUNCTIONS(InterfaceConfigSubmessage);
 }

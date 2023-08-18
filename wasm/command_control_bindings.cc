@@ -109,7 +109,6 @@ EMSCRIPTEN_BINDINGS(control) {
       .property("os_version_length", &VersionInfoMessage::os_version_length)
       .property("rx_version_length", &VersionInfoMessage::rx_version_length)
       .ARRAY_PROPERTY(VersionInfoMessage, reserved)
-      .ARRAY_PROPERTY(VersionInfoMessage, fw_version_str)
       .STRUCT_FUNCTIONS(VersionInfoMessage);
 
   static auto EventNotificationMessage_MESSAGE_TYPE =
@@ -128,7 +127,6 @@ EMSCRIPTEN_BINDINGS(control) {
       .property("event_description_len_bytes",
                 &EventNotificationMessage::event_description_len_bytes)
       .ARRAY_PROPERTY(EventNotificationMessage, reserved2)
-      .ARRAY_PROPERTY(EventNotificationMessage, event_description)
       .STRUCT_FUNCTIONS(EventNotificationMessage);
 
   enum_<EventNotificationMessage::EventType>("EventType")
@@ -151,4 +149,16 @@ EMSCRIPTEN_BINDINGS(control) {
       .property("shutdown_flags", &ShutdownRequest::shutdown_flags)
       .ARRAY_PROPERTY(ShutdownRequest, reserved1)
       .STRUCT_FUNCTIONS(ShutdownRequest);
+
+  static auto StartupRequest_MESSAGE_TYPE =
+      StartupRequest::MESSAGE_TYPE;
+  static auto StartupRequest_MESSAGE_VERSION =
+      StartupRequest::MESSAGE_VERSION;
+  class_<StartupRequest>("StartupRequest")
+      .constructor<>()
+      .class_property("MESSAGE_TYPE", &StartupRequest_MESSAGE_TYPE)
+      .class_property("MESSAGE_VERSION", &StartupRequest_MESSAGE_VERSION)
+      .property("shutdown_flags", &StartupRequest::startup_flags)
+      .ARRAY_PROPERTY(StartupRequest, reserved1)
+      .STRUCT_FUNCTIONS(StartupRequest);
 }
