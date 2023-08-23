@@ -485,11 +485,20 @@ struct P1_ALIGNAS(4) EventNotificationMessage : public MessagePayload {
      */
     LOG = 0,
     /**
-     * Event indicating a device reset occurred. The event flags will be set to
-     * the requested reset bitmask, if applicable (see @ref ResetRequest). The
-     * payload will contain a string describing the cause of the reset.
+     * Event indicating a device reset has been requested.
+     *
+     * For certain devices and types of resets, it may take time to fully apply
+     * all reset actions and it may not be possible to complete immediately. A
+     * `RESET_REQUESTED` event indicates the start of the reset process, and
+     * `RESET_COMPLETE` indicates when all actions have finished. Other types
+     * of reset may complete immediately, in which case both `RESET_REQUESTED`
+     * and `RESET_COMPLETE` messages will be sent at the same time.
+     *
+     * The `flags` field in the message will be set to the requested reset
+     * bitmask, if applicable (see @ref ResetRequest). The payload will contain
+     * a string describing the cause of the reset.
      */
-    RESET = 1,
+    RESET_REQUESTED = 1,
     /**
      * Notification that the user configuration has been changed. Intended for
      * diagnostic purposes.
@@ -506,6 +515,11 @@ struct P1_ALIGNAS(4) EventNotificationMessage : public MessagePayload {
      * will receive the response itself.
      */
     COMMAND_RESPONSE = 4,
+    /**
+     * Event indicating a requested reset has finished. See `RESET_REQUESTED`
+     * for more details.
+     */
+    RESET_COMPLETE = 5,
   };
 
   static P1_CONSTEXPR_FUNC const char* to_string(EventType type) {
@@ -513,8 +527,8 @@ struct P1_ALIGNAS(4) EventNotificationMessage : public MessagePayload {
       case EventType::LOG:
         return "Log";
 
-      case EventType::RESET:
-        return "Reset";
+      case EventType::RESET_REQUESTED:
+        return "Reset Requested";
 
       case EventType::CONFIG_CHANGE:
         return "Config Change";
@@ -524,6 +538,9 @@ struct P1_ALIGNAS(4) EventNotificationMessage : public MessagePayload {
 
       case EventType::COMMAND_RESPONSE:
         return "Command Response";
+
+      case EventType::RESET_COMPLETE:
+        return "Reset Complete";
 
       default:
         return "Unknown";

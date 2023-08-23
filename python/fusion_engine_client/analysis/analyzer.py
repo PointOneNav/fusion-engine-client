@@ -2095,7 +2095,8 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                 description_str.replace('<', '[').replace('>', ']').replace('\n', '<br>'),
             ])
 
-            if isinstance(message, EventNotificationMessage) and message.event_type == EventType.RESET:
+            if (isinstance(message, EventNotificationMessage) and
+                message.event_type in (EventType.RESET_REQUESTED, EventType.RESET_COMPLETE)):
                 if system_time_ns in times_before_resets:
                     rows[-1][2] = f'{(times_before_resets[system_time_ns]):.3f}'
 
@@ -2125,7 +2126,8 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                         get_time_before_reset = False
 
                     # Check if event is a reset.
-                    if entry.type == MessageType.EVENT_NOTIFICATION and payload.event_type == EventType.RESET:
+                    if (entry.type == MessageType.EVENT_NOTIFICATION and
+                        payload.event_type in (EventType.RESET_REQUESTED, EventType.RESET_COMPLETE)):
                         curr_reset_time = payload.get_system_time_ns()
                         get_time_before_reset = True
                 except Exception as e:

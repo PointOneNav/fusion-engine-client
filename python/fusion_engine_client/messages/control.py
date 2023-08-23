@@ -487,10 +487,11 @@ class DeviceIDMessage(MessagePayload):
 
 class EventType(IntEnum):
     LOG = 0
-    RESET = 1
+    RESET_REQUESTED = 1
     CONFIG_CHANGE = 2
     COMMAND = 3
     COMMAND_RESPONSE = 4
+    RESET_COMPLETE = 1
 
 
 class EventNotificationMessage(MessagePayload):
