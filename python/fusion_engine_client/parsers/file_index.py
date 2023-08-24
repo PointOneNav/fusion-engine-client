@@ -24,7 +24,8 @@ class FileIndexIterator(object):
             raise StopIteration()
         else:
             entry = next(self.np_iterator)
-            return FileIndexEntry(time=Timestamp(entry[0]), type=MessageType(entry[1]), offset=entry[2])
+            return FileIndexEntry(time=Timestamp(entry[0]), type=MessageType(entry[1], raise_on_unrecognized=False),
+                                  offset=entry[2])
 
 
 class FileIndex(object):
