@@ -30,11 +30,6 @@
 
 #  include <stdlib.h> // For abort().
 
-#  if !P1_NO_LOGGING
-#    undef P1_NO_LOGGING
-#    define P1_NO_LOGGING 1
-#  endif // !P1_NO_LOGGING
-
 namespace point_one {
 namespace fusion_engine {
 namespace common {

@@ -46,7 +46,6 @@
 #  define P1_HAVE_STD_FUNCTION 0
 #  define P1_HAVE_STD_OSTREAM 0
 #  define P1_HAVE_STD_SMART_PTR 0
-#  define P1_NO_LOGGING 1
 #endif
 
 // Different compilers support different ways of specifying default struct
