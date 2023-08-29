@@ -1599,14 +1599,18 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             return
 
         # Read the heading measurement data.
-        result = self.reader.read(message_types=[RawHeadingOutput, HeadingOutput, PoseMessage], **self.params)
+        result = self.reader.read(message_types=[RawHeadingOutput, HeadingOutput], **self.params)
         raw_heading_data = result[RawHeadingOutput.MESSAGE_TYPE]
         heading_data = result[HeadingOutput.MESSAGE_TYPE]
-        primary_pose_data = result[PoseMessage.MESSAGE_TYPE]
 
         if (len(heading_data.p1_time) == 0) and (len(raw_heading_data.p1_time) == 0):
             self.logger.info('No heading measurement data available. Skipping plot.')
             return
+
+        # Note that we read the pose data after heading, that way we don't bother reading pose data from disk if there's
+        # no heading data in the log.
+        result = self.reader.read(message_types=[PoseMessage], **self.params)
+        primary_pose_data = result[PoseMessage.MESSAGE_TYPE]
 
         # Setup the figure.
         fig = make_subplots(
