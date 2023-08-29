@@ -18,7 +18,7 @@ class TestClass:
         messages = []
         prev_p1_time_sec = None
         prev_system_time_sec = None
-        for message_cls, time_sec in message_types:
+        for i, (message_cls, time_sec) in enumerate(message_types):
             if isinstance(message_cls, bytes):
                 messages.append(message_cls)
                 continue
@@ -48,6 +48,9 @@ class TestClass:
                         dt_sec = time_sec - prev_system_time_sec
                         prev_p1_time_sec += dt_sec
                     prev_system_time_sec = time_sec
+
+            setattr(message, '_message_index', i)
+
             messages.append(message)
 
         encoder = FusionEngineEncoder()
@@ -102,11 +105,18 @@ class TestClass:
             assert float(message.get_system_time_sec()) == pytest.approx(expected_system_time_sec, 1e-6), \
                    "System time mismatch."
 
-    def _check_results(self, reader, expected_messages):
+    def _check_results(self, reader, expected_messages, check_message_index=False):
         num_matches = 0
-        for header, payload in reader:
+        for entry in reader:
+            if check_message_index:
+                header, payload, message_index = entry
+            else:
+                header, payload = entry
+
             assert num_matches < len(expected_messages), "Number of returned messages exceeds expected."
             expected_message = expected_messages[num_matches]
+            if check_message_index:
+                assert message_index == expected_message._message_index
             self._check_message(payload, expected_message)
             num_matches += 1
         assert num_matches == len(expected_messages), "Number of returned messages does not match expected."
@@ -172,6 +182,30 @@ class TestClass:
         # Verify that we successfully generated an index file, _and_ that the index was filtered to just pose messages.
         assert reader.index is not None and len(reader.index) == len(expected_messages)
         assert len(reader._original_index) == len(messages)
+
+    def test_return_message_index(self, data_path):
+        messages = self._generate_mixed_data(data_path)
+
+        # Read and return message index generated _without_ a file index.
+        reader = MixedLogReader(str(data_path), return_message_index=True)
+        self._check_results(reader, messages, check_message_index=True)
+
+        # Now rewind and read again. This time, it should read from the index and produce the same results.
+        reader.rewind()
+        self._check_results(reader, messages, check_message_index=True)
+
+    def test_return_message_index_pose(self, data_path):
+        messages = self._generate_mixed_data(data_path)
+        expected_messages = [m for m in messages if isinstance(m, PoseMessage)]
+
+        # Read and return message index generated _without_ a file index.
+        reader = MixedLogReader(str(data_path), return_message_index=True)
+        reader.filter_in_place((PoseMessage,))
+        self._check_results(reader, expected_messages, check_message_index=True)
+
+        # Now rewind and read again. This time, it should read from the index and produce the same results.
+        reader.rewind()
+        self._check_results(reader, expected_messages, check_message_index=True)
 
     def test_read_events(self, data_path):
         messages = self._generate_mixed_data(data_path)

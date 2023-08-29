@@ -27,6 +27,7 @@ class MessageData(object):
         self.params = params
         self.messages = []
         self.messages_bytes = []
+        self.message_index = []
 
     def to_numpy(self, remove_nan_times: bool = True):
         """!
@@ -63,6 +64,8 @@ class MessageData(object):
 
             if do_conversion:
                 self.__dict__.update(self.message_class.to_numpy(self.messages))
+                self.messages_bytes = np.array(self.messages_bytes, dtype=int)
+                self.message_index = np.array(self.message_index, dtype=int)
 
                 if remove_nan_times and 'p1_time' in self.__dict__:
                     is_nan = np.isnan(self.p1_time)
@@ -166,7 +169,7 @@ class DataLoader(object):
         self.close()
 
         self.reader = MixedLogReader(input_file=path, generate_index=generate_index, ignore_index=ignore_index,
-                                     return_bytes=True)
+                                     return_bytes=True, return_message_index=True)
         if self.reader.have_index():
             self.logger.debug("Using index file '%s'." % self.reader.index_path)
 
@@ -268,6 +271,7 @@ class DataLoader(object):
                `ignore_cache = True`.
         @param return_bytes If `True`, store the encoded messages as `bytes` objects in the returned @ref MessageData
                objects.
+        @param return_message_index If `True`, return the 0-based index of the message within the file.
         @param return_numpy If `True`, convert the results to numpy arrays for analysis.
         @param keep_messages If `return_numpy == True` and `keep_messages == False`, the raw data in the `messages`
                field will be cleared for each @ref MessagePayload object for which numpy conversion is supported.
@@ -297,7 +301,7 @@ class DataLoader(object):
              ignore_cache: bool = False, disable_index_generation: bool = False,
              max_messages: int = None, max_bytes: int = None,
               require_p1_time: bool = False, require_system_time: bool = False,
-             return_in_order: bool = False, return_bytes: bool = False,
+             return_in_order: bool = False, return_bytes: bool = False, return_message_index: bool = False,
              return_numpy: bool = False, keep_messages: bool = False, remove_nan_times: bool = True,
              time_align: TimeAlignmentMode = TimeAlignmentMode.NONE,
              aligned_message_types: Union[list, tuple, set] = None,
@@ -326,6 +330,7 @@ class DataLoader(object):
             'require_p1_time': require_p1_time,
             'require_system_time': require_system_time,
             'return_bytes': return_bytes,
+            'return_message_index': return_message_index,
             'remove_nan_times': remove_nan_times,
         }
 
@@ -481,7 +486,7 @@ class DataLoader(object):
         message_count = 0
         while True:
             try:
-                header, payload, message_bytes = \
+                header, payload, message_bytes, message_index = \
                     self.reader.read_next(require_p1_time=require_p1_time,
                                           require_system_time=require_system_time)
             except StopIteration:
@@ -552,16 +557,20 @@ class DataLoader(object):
             # an N-length circular buffer and pick off the newest ones when we're done with the file.
             message_count += 1
             if newest_messages is not None:
-                newest_messages.append((header, payload, message_bytes))
+                newest_messages.append((header, payload, message_bytes, message_index))
             elif max_messages is None or message_count <= abs(max_messages):
                 if return_in_order:
                     result.messages.append(payload)
                     if return_bytes:
                         result.messages_bytes.append(message_bytes)
+                    if return_message_index:
+                        result.message_index.append(message_index)
                 else:
                     data_cache[header.message_type].messages.append(payload)
                     if return_bytes:
                         data_cache[header.message_type].messages_bytes.append(message_bytes)
+                    if return_message_index:
+                        data_cache[header.message_type].message_index.append(message_index)
 
             if max_messages is not None:
                 # If we reached the max message count but we're generating an index file, we need to read through the
@@ -588,15 +597,19 @@ class DataLoader(object):
 
         # If the user only wanted the N newest messages, take them from the circular buffer now.
         if newest_messages is not None:
-            for header, payload, message_bytes in newest_messages:
+            for header, payload, message_bytes, message_index in newest_messages:
                 if return_in_order:
                     result.messages.append(payload)
                     if return_bytes:
                         result.messages_bytes.append(message_bytes)
+                    if return_message_index:
+                        result.message_index.append(message_index)
                 else:
                     data_cache[header.message_type].messages.append(payload)
                     if return_bytes:
                         data_cache[header.message_type].messages_bytes.append(message_bytes)
+                    if return_message_index:
+                        data_cache[header.message_type].message_index.append(message_index)
 
         # Time-align the data if requested.
         if time_align != TimeAlignmentMode.NONE:

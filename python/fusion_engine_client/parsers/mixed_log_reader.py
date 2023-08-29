@@ -25,7 +25,7 @@ class MixedLogReader(object):
                  generate_index: bool = True, ignore_index: bool = False, max_bytes: int = None,
                  time_range: TimeRange = None, message_types: Union[Iterable[MessageType], MessageType] = None,
                  return_header: bool = True, return_payload: bool = True,
-                 return_bytes: bool = False, return_offset: bool = False):
+                 return_bytes: bool = False, return_offset: bool = False, return_message_index: bool = False):
         """!
         @brief Construct a new generator instance.
 
@@ -50,6 +50,7 @@ class MixedLogReader(object):
                MessagePayload. Will return `None` if the payload cannot be parsed.
         @param return_bytes If `True`, return a `bytes` object containing the serialized message header and payload.
         @param return_offset If `True`, return the offset into the file (in bytes) at which the message began.
+        @param return_message_index If `True`, return the 0-based index of the message within the file.
         """
         self.warn_on_gaps = warn_on_gaps
 
@@ -57,6 +58,7 @@ class MixedLogReader(object):
         self.return_payload = return_payload
         self.return_bytes = return_bytes
         self.return_offset = return_offset
+        self.return_message_index = return_message_index
 
         self._original_time_range = copy.deepcopy(time_range)
         self.time_range = copy.deepcopy(self._original_time_range)
@@ -81,6 +83,7 @@ class MixedLogReader(object):
         self.message_counts = {}
         self.prev_sequence_number = None
         self.total_bytes_read = 0
+        self.current_message_index = 0
 
         self.show_progress = show_progress
         self.last_print_bytes = 0
@@ -300,6 +303,9 @@ class MixedLogReader(object):
                     self.logger.debug('Max read length exceeded (%d B).' % self.max_bytes)
                     break
 
+                current_message_index = self.current_message_index
+                self.current_message_index += 1
+
                 self.valid_count += 1
                 self.message_counts.setdefault(header.message_type, 0)
                 self.message_counts[header.message_type] += 1
@@ -380,6 +386,8 @@ class MixedLogReader(object):
                     result.append(data)
                 if self.return_offset:
                     result.append(start_offset_bytes)
+                if self.return_message_index:
+                    result.append(current_message_index)
                 return result
             except ValueError as e:
                 start_offset_bytes += 1
@@ -453,6 +461,7 @@ class MixedLogReader(object):
                 return False
             else:
                 offset_bytes = self.index.offset[self.next_index_elem]
+                self.current_message_index = self.index.message_index[self.next_index_elem]
                 self.next_index_elem += 1
                 self.input_file.seek(offset_bytes, os.SEEK_SET)
                 self.total_bytes_read = offset_bytes
