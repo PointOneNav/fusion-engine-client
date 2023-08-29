@@ -158,6 +158,18 @@ class MixedLogReader(object):
         if self.index_builder is not None:
             self.index_builder = file_index.FileIndexBuilder()
 
+    def seek_to_message(self, message_index: int, is_filtered_index: bool = False):
+        if self.index is None:
+            raise NotImplemented('A file index is required to seek by message index.')
+
+        max_index = len(self.index) if is_filtered_index else len(self._original_index)
+        if message_index < 0 or message_index >= max_index:
+            raise ValueError('Invalid message index.')
+
+        if not is_filtered_index:
+            self.clear_filters()
+        self.next_index_elem = message_index
+
     def seek_to_eof(self):
         self._read_next(force_eof=True)
 
