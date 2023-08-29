@@ -16,6 +16,7 @@ RAW_DATA = [
     (Timestamp(3.0), MessageType.POSE, 50),
     (Timestamp(4.0), MessageType.POSE, 60),
 ]
+RAW_DATA = [(*entry, i) for i, entry in enumerate(RAW_DATA)]
 
 
 def _test_time(time, raw_data):
@@ -34,11 +35,13 @@ def test_index():
     assert np.sum(idx) == len(raw)
     assert _test_time(index.time[idx], raw)
     assert (index.offset[idx] == [e[2] for e in raw]).all()
+    assert (index.message_index[idx] == [e[3] for e in raw]).all()
 
     raw = [e for e in RAW_DATA if e[1] == MessageType.VERSION_INFO]
     idx = index.type == MessageType.VERSION_INFO
     assert _test_time(index.time[idx], raw)
     assert (index.offset[idx] == [e[2] for e in raw]).all()
+    assert (index.message_index[idx] == [e[3] for e in raw]).all()
 
 
 def test_iterator():
@@ -54,11 +57,13 @@ def test_type_slice():
     raw = [e for e in RAW_DATA if e[1] == MessageType.POSE]
     assert len(pose_index) == len(raw)
     assert (pose_index.offset == [e[2] for e in raw]).all()
+    assert (pose_index.message_index == [e[3] for e in raw]).all()
 
     pose_index = index[(MessageType.POSE, MessageType.GNSS_INFO)]
     raw = [e for e in RAW_DATA if e[1] == MessageType.POSE or e[1] == MessageType.GNSS_INFO]
     assert len(pose_index) == len(raw)
     assert (pose_index.offset == [e[2] for e in raw]).all()
+    assert (pose_index.message_index == [e[3] for e in raw]).all()
 
 
 def test_index_slice():
@@ -69,36 +74,42 @@ def test_index_slice():
     raw = [RAW_DATA[3]]
     assert _test_time(sliced_index.time, raw)
     assert (sliced_index.offset == [e[2] for e in raw]).all()
+    assert (sliced_index.message_index == [e[3] for e in raw]).all()
 
     # Access to the end.
     sliced_index = index[3:]
     raw = RAW_DATA[3:]
     assert _test_time(sliced_index.time, raw)
     assert (sliced_index.offset == [e[2] for e in raw]).all()
+    assert (sliced_index.message_index == [e[3] for e in raw]).all()
 
     # Access from the beginning.
     sliced_index = index[:3]
     raw = RAW_DATA[:3]
     assert _test_time(sliced_index.time, raw)
     assert (sliced_index.offset == [e[2] for e in raw]).all()
+    assert (sliced_index.message_index == [e[3] for e in raw]).all()
 
     # Access a range.
     sliced_index = index[2:4]
     raw = RAW_DATA[2:4]
     assert _test_time(sliced_index.time, raw)
     assert (sliced_index.offset == [e[2] for e in raw]).all()
+    assert (sliced_index.message_index == [e[3] for e in raw]).all()
 
     # Access individual indices.
     sliced_index = index[(2, 3, 5)]
     raw = [RAW_DATA[i] for i in (2, 3, 5)]
     assert _test_time(sliced_index.time, raw)
     assert (sliced_index.offset == [e[2] for e in raw]).all()
+    assert (sliced_index.message_index == [e[3] for e in raw]).all()
 
     # Pass empty set -- remove all elements.
     sliced_index = index[set()]
     raw = []
     assert _test_time(sliced_index.time, raw)
     assert (sliced_index.offset == [e[2] for e in raw]).all()
+    assert (sliced_index.message_index == [e[3] for e in raw]).all()
 
 
 def test_time_slice():
@@ -112,24 +123,28 @@ def test_time_slice():
     raw = RAW_DATA[_lower_bound(2.0):]
     assert _test_time(sliced_index.time, raw)
     assert (sliced_index.offset == [e[2] for e in raw]).all()
+    assert (sliced_index.message_index == [e[3] for e in raw]).all()
 
     # Access from the beginning.
     sliced_index = index[:3.0]
     raw = RAW_DATA[:_lower_bound(3.0)]
     assert _test_time(sliced_index.time, raw)
     assert (sliced_index.offset == [e[2] for e in raw]).all()
+    assert (sliced_index.message_index == [e[3] for e in raw]).all()
 
     # Access a range.
     sliced_index = index[2.0:3.0]
     raw = RAW_DATA[_lower_bound(2.0):_lower_bound(3.0)]
     assert _test_time(sliced_index.time, raw)
     assert (sliced_index.offset == [e[2] for e in raw]).all()
+    assert (sliced_index.message_index == [e[3] for e in raw]).all()
 
     # Access by Timestamp.
     sliced_index = index[Timestamp(2.0):Timestamp(3.0)]
     raw = RAW_DATA[_lower_bound(2.0):_lower_bound(3.0)]
     assert _test_time(sliced_index.time, raw)
     assert (sliced_index.offset == [e[2] for e in raw]).all()
+    assert (sliced_index.message_index == [e[3] for e in raw]).all()
 
 
 def test_time_range_slice():
@@ -143,30 +158,35 @@ def test_time_range_slice():
     raw = RAW_DATA[_lower_bound(2.0):]
     assert _test_time(sliced_index.time, raw)
     assert (sliced_index.offset == [e[2] for e in raw]).all()
+    assert (sliced_index.message_index == [e[3] for e in raw]).all()
 
     # Access from the beginning.
     sliced_index = index[TimeRange(end=3.0, absolute=True)]
     raw = RAW_DATA[:_lower_bound(3.0)]
     assert _test_time(sliced_index.time, raw)
     assert (sliced_index.offset == [e[2] for e in raw]).all()
+    assert (sliced_index.message_index == [e[3] for e in raw]).all()
 
     # Access a range.
     sliced_index = index[TimeRange(start=2.0, end=3.0, absolute=True)]
     raw = RAW_DATA[_lower_bound(2.0):_lower_bound(3.0)]
     assert _test_time(sliced_index.time, raw)
     assert (sliced_index.offset == [e[2] for e in raw]).all()
+    assert (sliced_index.message_index == [e[3] for e in raw]).all()
 
     # Relative time range, assuming the first P1 time is 1.0.
     sliced_index = index[TimeRange(start=1.0, end=2.0, absolute=False)]
     raw = RAW_DATA[_lower_bound(2.0):_lower_bound(3.0)]
     assert _test_time(sliced_index.time, raw)
     assert (sliced_index.offset == [e[2] for e in raw]).all()
+    assert (sliced_index.message_index == [e[3] for e in raw]).all()
 
     # Relative time range with an explicit t0 that differs from the actual index data: use the t0 in the range.
     sliced_index = index[TimeRange(start=1.0, end=2.0, absolute=False, p1_t0=Timestamp(0.0))]
     raw = RAW_DATA[_lower_bound(1.0):_lower_bound(2.0)]
     assert _test_time(sliced_index.time, raw)
     assert (sliced_index.offset == [e[2] for e in raw]).all()
+    assert (sliced_index.message_index == [e[3] for e in raw]).all()
 
 
 def test_time_slice_no_p1_time():
