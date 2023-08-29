@@ -373,6 +373,15 @@ class DataLoader(object):
 
         needed_message_types = supported_message_types
 
+        # If P1 or system time is required, filter out message types that we know don't have it.
+        if require_p1_time and require_system_time:
+            needed_message_types = [t for t in needed_message_types
+                                    if t in (messages_with_p1_time | messages_with_system_time)]
+        elif require_p1_time:
+            needed_message_types = [t for t in needed_message_types if t in messages_with_p1_time]
+        elif require_system_time:
+            needed_message_types = [t for t in needed_message_types if t in messages_with_system_time]
+
         # Check if the user requested any message types that use system time, not P1 time. When using an index file for
         # fast reading, messages with system times may have their index entry timestamps set to NAN since A) they can
         # occur in a log before P1 time is established, and B) there's not necessarily a direct way to convert between
