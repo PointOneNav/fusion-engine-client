@@ -631,8 +631,11 @@ class DataLoader(object):
     def get_system_t0_ns(self):
         return self.system_t0_ns
 
-    def get_index(self):
+    def get_index(self) -> FileIndex:
         return self.reader.get_index()
+
+    def get_log_reader(self) -> MixedLogReader:
+        return self.reader
 
     def get_input_path(self):
         return self.reader.input_file.name
