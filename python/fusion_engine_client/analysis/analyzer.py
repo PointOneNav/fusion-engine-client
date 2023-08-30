@@ -340,6 +340,111 @@ class Analyzer(object):
 
         self._add_figure(name="time_scale", figure=figure, title="Time Scale")
 
+    def plot_reset_timing(self):
+        if self.output_dir is None:
+            return
+
+        # Find reset events.
+        result = self.reader.read(message_types=[EventNotificationMessage], return_message_index=True, **self.params)
+        event_data = result[EventNotificationMessage.MESSAGE_TYPE]
+
+        reset_idx = event_data.event_type == EventType.RESET
+        if not np.any(reset_idx):
+            self.logger.info('No reset events detected. Skipping reset timing type plot.')
+            return
+
+        self.logger.info('Calculating reset recovery times...')
+
+        # Note that events contain system time, not P1 time. We'll assume system time is close enough to P1 time for
+        # purposes of calculating elapsed reset time below. In the future, we'll have a mechanism for accurately
+        # converting between system and P1 time.
+        reset_system_time_sec = event_data.system_time[reset_idx]
+
+        reset_idx = np.where(reset_idx)[0]
+        reset_message_indices = [event_data.message_index[i] for i in reset_idx]
+
+        # For each reset in the log, try to find the pose messages immediately following the reset where the solution
+        # type first goes invalid, and then where it goes valid again.
+        dt_reset_to_valid = np.full(reset_idx.shape, np.nan)
+        dt_reset_to_invalid = np.full(reset_idx.shape, np.nan)
+        dt_invalid_to_valid = np.full(reset_idx.shape, np.nan)
+
+        log_reader = self.reader.get_log_reader()
+        for i, reset_index in enumerate(reset_message_indices):
+            next_reset_index = reset_message_indices[i + 1] if i < len(reset_message_indices) - 1 else None
+
+            # Filter to all pose messages _after_ the reset event.
+            log_reader.clear_filters()
+            log_reader.rewind()
+            log_reader.filter_in_place(slice(reset_index + 1, next_reset_index, 1))
+            log_reader.filter_in_place(self.params['time_range'])
+            log_reader.filter_in_place(PoseMessage)
+            log_reader.set_show_progress(False)
+
+            # Find the pose where the solution went invalid after the reset, then where it went valid after that.
+            invalid_p1_time = None
+            valid_p1_time = None
+            while True:
+                try:
+                    _, message, pose_index = self.reader.read_next(return_message_index=True)
+                except StopIteration:
+                    break
+
+                if next_reset_index is not None and pose_index >= next_reset_index:
+                    break
+                elif invalid_p1_time is None:
+                    if message.solution_type == SolutionType.Invalid:
+                        invalid_p1_time = message.get_p1_time()
+                else:
+                    if message.solution_type != SolutionType.Invalid:
+                        valid_p1_time = message.get_p1_time()
+                        valid_p1_time_sec = float(valid_p1_time)
+                        invalid_p1_time_sec = float(invalid_p1_time)
+
+                        if valid_p1_time_sec >= reset_system_time_sec[i]:
+                            dt_reset_to_valid[i] = valid_p1_time_sec - reset_system_time_sec[i]
+                        else:
+                            dt_reset_to_valid[i] = 0.0
+
+                        if invalid_p1_time_sec >= reset_system_time_sec[i]:
+                            dt_reset_to_invalid[i] = invalid_p1_time_sec - reset_system_time_sec[i]
+                        else:
+                            dt_reset_to_invalid[i] = 0.0
+
+                        dt_invalid_to_valid[i] = valid_p1_time_sec - invalid_p1_time_sec
+                        self.logger.info('  Processed %d/%d resets.' % (i + 1, len(reset_message_indices)))
+                        break
+
+            if valid_p1_time is None:
+                self.logger.warning('Unable to calculate recovery time for reset %d at system time %.3f sec.' %
+                                    (i, reset_system_time_sec[i]))
+
+        # Setup the figure.
+        figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=True,
+                               subplot_titles=['Reset Recovery Time'])
+
+        figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
+        figure['layout']['xaxis1'].update(title=self.system_time_label, showticklabels=True)
+        figure['layout']['yaxis1'].update(title="Elapsed Time (sec)", rangemode="tozero")
+
+        time = reset_system_time_sec - self.system_t0
+
+        text = ["System Time: %.3f sec" % (t + self.system_t0) for t in time]
+        figure.add_trace(go.Scattergl(x=time, y=dt_reset_to_valid, text=text,
+                                      name='Command -> Valid', hoverlabel={'namelength': -1},
+                                      mode='markers'),
+                         1, 1)
+        figure.add_trace(go.Scattergl(x=time, y=dt_reset_to_invalid, text=text,
+                                      name='Command -> Invalid', hoverlabel={'namelength': -1},
+                                      mode='markers'),
+                         1, 1)
+        figure.add_trace(go.Scattergl(x=time, y=dt_invalid_to_valid, text=text,
+                                      name='Invalid -> Valid', hoverlabel={'namelength': -1},
+                                      mode='markers'),
+                         1, 1)
+
+        self._add_figure(name="reset_timing", figure=figure, title="Reset Recovery Timing")
+
     def plot_pose(self):
         """!
         @brief Plot position/attitude solution data.
@@ -2507,6 +2612,7 @@ Load and display information stored in a FusionEngine binary file.
         analyzer.plot_time_scale()
 
         analyzer.plot_solution_type()
+        analyzer.plot_reset_timing()
         analyzer.plot_pose()
         analyzer.plot_pose_displacement()
         analyzer.plot_relative_position()
