@@ -2968,7 +2968,7 @@ Load and display information stored in a FusionEngine binary file.
 
     plot_group = parser.add_argument_group('Plot Control')
     plot_group.add_argument(
-        '--device-uart', choices=['uart0', 'uart1'], default='uart1',
+        '--device-uart', choices=['uart1', 'uart2'], default='uart2',
         help="Which device UART interface was the data collected from. Used when checking the received bytes against "
              "the serial profiling from ProfileCounterMessage messages.")
     plot_group.add_argument('--mapbox-token', metavar='TOKEN',
