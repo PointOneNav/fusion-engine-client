@@ -622,6 +622,15 @@ class DataLoader(object):
         # Done.
         return result
 
+    def read_next(self, return_bytes: bool = False, return_message_index: bool = False):
+        header, payload, message_bytes, message_index = self.reader.read_next()
+        result = [header, payload]
+        if return_bytes:
+            result.append(message_bytes)
+        if return_message_index:
+            result.append(message_index)
+        return result
+
     def get_t0(self):
         return self.t0
 
