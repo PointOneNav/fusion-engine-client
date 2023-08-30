@@ -226,13 +226,14 @@ class Analyzer(object):
             dgps_time = np.diff(pose_data.gps_time, prepend=np.nan)
             dgps_time = np.round(dgps_time * 1e4) * 1e-4
 
-            # plotly starts to struggle with > 2 hours of data and won't display mouseover text, so decimate if
+            # plotly starts to struggle with > 3 hours of data and won't display mouseover text, so decimate if
             # necessary.
+            decimation_limit_sec = 3 * 3600.0
             dt_sec = time[-1] - time[0]
             dp1_stats = None
             dgps_stats = None
-            if dt_sec > 7200.0:
-                step = math.ceil(dt_sec / 7200.0)
+            if dt_sec >= decimation_limit_sec:
+                step = math.ceil(dt_sec / decimation_limit_sec)
                 idx = np.full_like(time, False, dtype=bool)
                 idx[0::step] = True
 
