@@ -368,6 +368,7 @@ class Analyzer(object):
         dt_reset_to_valid = np.full(reset_idx.shape, np.nan)
         dt_reset_to_invalid = np.full(reset_idx.shape, np.nan)
         dt_invalid_to_valid = np.full(reset_idx.shape, np.nan)
+        unstarted_resets = []
 
         log_reader = self.reader.get_log_reader()
         for i, reset_index in enumerate(reset_message_indices):
@@ -395,6 +396,11 @@ class Analyzer(object):
                 elif invalid_p1_time is None:
                     if message.solution_type == SolutionType.Invalid:
                         invalid_p1_time = message.get_p1_time()
+                        invalid_p1_time_sec = float(invalid_p1_time)
+                        if invalid_p1_time_sec >= reset_system_time_sec[i]:
+                            dt_reset_to_invalid[i] = invalid_p1_time_sec - reset_system_time_sec[i]
+                        else:
+                            dt_reset_to_invalid[i] = 0.0
                 else:
                     if message.solution_type != SolutionType.Invalid:
                         valid_p1_time = message.get_p1_time()
@@ -406,16 +412,16 @@ class Analyzer(object):
                         else:
                             dt_reset_to_valid[i] = 0.0
 
-                        if invalid_p1_time_sec >= reset_system_time_sec[i]:
-                            dt_reset_to_invalid[i] = invalid_p1_time_sec - reset_system_time_sec[i]
-                        else:
-                            dt_reset_to_invalid[i] = 0.0
-
                         dt_invalid_to_valid[i] = valid_p1_time_sec - invalid_p1_time_sec
+
                         self.logger.info('  Processed %d/%d resets.' % (i + 1, len(reset_message_indices)))
                         break
 
-            if valid_p1_time is None:
+            if invalid_p1_time is None:
+                self.logger.warning('Unable to determine start time for reset %d at system time %.3f sec.' %
+                                    (i, reset_system_time_sec[i]))
+                unstarted_resets.append(i)
+            elif valid_p1_time is None:
                 self.logger.warning('Unable to calculate recovery time for reset %d at system time %.3f sec.' %
                                     (i, reset_system_time_sec[i]))
 
@@ -442,6 +448,15 @@ class Analyzer(object):
                                       name='Invalid -> Valid', hoverlabel={'namelength': -1},
                                       mode='markers'),
                          1, 1)
+
+        if len(unstarted_resets) > 0:
+            idx = np.array(unstarted_resets)
+            time = time[idx]
+            text = ["System Time: %.3f sec" % (t + self.system_t0) for t in time]
+            figure.add_trace(go.Scattergl(x=time, y=np.zeros_like(time), text=text,
+                                          name='Unstarted Resets', hoverlabel={'namelength': -1},
+                                          mode='markers'),
+                             1, 1)
 
         self._add_figure(name="reset_timing", figure=figure, title="Reset Recovery Timing")
 
