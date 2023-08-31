@@ -227,36 +227,89 @@ class Analyzer(object):
             dgps_time = np.diff(pose_data.gps_time, prepend=np.nan)
             dgps_time = np.round(dgps_time * 1e4) * 1e-4
 
-            # plotly starts to struggle with > 2 hours of data and won't display mouseover text, so decimate if
+            # plotly starts to struggle with > 3 hours of data and won't display mouseover text, so decimate if
             # necessary.
+            decimation_limit_sec = 3 * 3600.0
             dt_sec = time[-1] - time[0]
-            if dt_sec > 7200.0:
-                step = math.ceil(dt_sec / 7200.0)
+            dp1_stats = None
+            dgps_stats = None
+            if dt_sec >= decimation_limit_sec:
+                step = math.ceil(dt_sec / decimation_limit_sec)
                 idx = np.full_like(time, False, dtype=bool)
                 idx[0::step] = True
 
                 time = time[idx]
                 p1_time = pose_data.p1_time[idx]
                 gps_time = pose_data.gps_time[idx]
+
+                # Since we are going to decimate the data, we first calculate min/max values for all epochs in each step
+                # size. That way we can plot min/max, in addition to the value that does not get dropped, to avoid
+                # hiding outliers that do get dropped (e.g., missing a gap of 0.2 seconds (1x 10 Hz output dropped) when
+                # decimating by 3).
+                def _calc_stats(input):
+                    num_remaining = len(idx) % step
+                    if num_remaining == 0:
+                        subset = input
+                    else:
+                        subset = input[:-num_remaining]
+
+                    grouped = subset.reshape((-1, step))
+                    stats = {
+                        'max': np.nanmax(grouped, axis=1),
+                        'min': np.nanmin(grouped, axis=1)
+                    }
+
+                    if num_remaining != 0:
+                        stats['max'] = np.append(stats['max'], np.nanmax(input[-num_remaining:]))
+                        stats['min'] = np.append(stats['min'], np.nanmin(input[-num_remaining:]))
+
+                    return stats
+
+                dp1_stats = _calc_stats(dp1_time)
+                dgps_stats = _calc_stats(dgps_time)
+
                 dp1_time = dp1_time[idx]
                 dgps_time = dgps_time[idx]
 
                 figure.layout.annotations[0].text += "<br>Decimated %dx" % step
+                figure.layout.annotations[1].text += "<br>Decimated %dx" % step
             else:
                 p1_time = pose_data.p1_time
                 gps_time = pose_data.gps_time
 
             text = ['P1: %.3f sec<br>%s' % (p, self._gps_sec_to_string(g)) for p, g in zip(p1_time, gps_time)]
             figure.add_trace(go.Scattergl(x=time, y=np.full_like(time, 1), name='P1/GPS Time', text=text,
-                                          mode='markers'),
+                                          hoverlabel={'namelength': -1},
+                                          mode='markers', marker={'color': 'blue'}),
                              1, 1)
 
             figure.add_trace(go.Scattergl(x=time, y=dp1_time, name='P1 Time Interval', text=text,
-                                          mode='markers'),
+                                          hoverlabel={'namelength': -1},
+                                          mode='markers', marker={'color': 'red'}),
                              2, 1)
+            if dp1_stats is not None:
+                figure.add_trace(go.Scattergl(x=time, y=dp1_stats['max'], name='P1 Time Interval (Max)',
+                                              hoverlabel={'namelength': -1},
+                                              mode='markers', marker={'symbol': 'triangle-up-open'}),
+                                 2, 1)
+                figure.add_trace(go.Scattergl(x=time, y=dp1_stats['min'], name='P1 Time Interval (Min)',
+                                              hoverlabel={'namelength': -1},
+                                              mode='markers', marker={'symbol': 'triangle-down-open'}),
+                                 2, 1)
+
             figure.add_trace(go.Scattergl(x=time, y=dgps_time, name='GPS Time Interval', text=text,
-                                          mode='markers'),
+                                          hoverlabel={'namelength': -1},
+                                          mode='markers', marker={'color': 'green'}),
                              2, 1)
+            if dgps_stats is not None:
+                figure.add_trace(go.Scattergl(x=time, y=dgps_stats['max'], name='GPS Time Interval (Max)',
+                                              hoverlabel={'namelength': -1},
+                                              mode='markers', marker={'symbol': 'triangle-up-open'}),
+                                 2, 1)
+                figure.add_trace(go.Scattergl(x=time, y=dgps_stats['min'], name='GPS Time Interval (Min)',
+                                              hoverlabel={'namelength': -1},
+                                              mode='markers', marker={'symbol': 'triangle-down-open'}),
+                                 2, 1)
 
         # Read system timestamps from event notifications, if present.
         result = self.reader.read(message_types=[EventNotificationMessage], **self.params)
@@ -290,7 +343,8 @@ class Analyzer(object):
 
             text = ['System: %.3f sec' % t for t in system_time_sec]
             figure.add_trace(go.Scattergl(x=time, y=np.full_like(time, 2), name='System Time', text=text,
-                                          mode='markers'),
+                                          hoverlabel={'namelength': -1},
+                                          mode='markers', marker={'color': 'purple'}),
                              1, 1)
 
         self._add_figure(name="time_scale", figure=figure, title="Time Scale")
@@ -1608,14 +1662,18 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             return
 
         # Read the heading measurement data.
-        result = self.reader.read(message_types=[RawHeadingOutput, HeadingOutput, PoseMessage], **self.params)
+        result = self.reader.read(message_types=[RawHeadingOutput, HeadingOutput], **self.params)
         raw_heading_data = result[RawHeadingOutput.MESSAGE_TYPE]
         heading_data = result[HeadingOutput.MESSAGE_TYPE]
-        primary_pose_data = result[PoseMessage.MESSAGE_TYPE]
 
         if (len(heading_data.p1_time) == 0) and (len(raw_heading_data.p1_time) == 0):
             self.logger.info('No heading measurement data available. Skipping plot.')
             return
+
+        # Note that we read the pose data after heading, that way we don't bother reading pose data from disk if there's
+        # no heading data in the log.
+        result = self.reader.read(message_types=[PoseMessage], **self.params)
+        primary_pose_data = result[PoseMessage.MESSAGE_TYPE]
 
         # Setup the figure.
         fig = make_subplots(
@@ -2996,10 +3054,13 @@ Load and display information stored in a FusionEngine binary file.
 
     plot_function_names = [n for n in dir(Analyzer) if n.startswith('plot_')]
     plot_group.add_argument(
-        '--plot', action=CSVAction,
-        help="A comma-separated list of names of plots to be displayed. If a partial name is specified, the best "
-             "matching plot will be generated (e.g., 'sky' will match 'gnss_skyplot'). Use the wildcard '*' to match "
-             "multiple plots. If omitted, plots will be generated based on data present in the log.\n"
+        '--plot', action=CSVAction, nargs='*',
+        help="The names of names of plots to be displayed. May be specified multiple times (--plot map --plot events)"
+             "or as a comma-separated list (--plot map,events). If not specified, plots will be generated based on the "
+             "data present in the log.\n"
+             "\n"
+             "If a partial name is specified, the best matching plot will be generated (e.g., 'sky' will match"
+             "'gnss_skyplot'). Use the wildcard '*' to match multiple plots.\n"
              "\n"
              "Options include:%s" %
              ''.join(['\n- %s' % f[5:] for f in plot_function_names]))

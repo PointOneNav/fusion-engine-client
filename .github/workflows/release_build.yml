@@ -31,7 +31,7 @@ jobs:
 
     # Check C++ formatting.
     - name: Check C++ Formatting
-      uses: jidicula/clang-format-action@v4.4.1
+      uses: jidicula/clang-format-action@v4.11.0
       with:
         clang-format-version: '13'
         check-path: '.'

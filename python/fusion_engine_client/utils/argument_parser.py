@@ -169,7 +169,15 @@ class ExtendedBooleanAction(TriStateBooleanAction):
 
 class CSVAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
-        setattr(namespace, self.dest, [v.strip() for v in values.split(',')])
+        if not isinstance(values, list):
+            values = [values]
+
+        flattened_values = [v.strip() for entry in values for v in entry.split(',')]
+        result = getattr(namespace, self.dest)
+        if result is None:
+            result = []
+        result.extend(flattened_values)
+        setattr(namespace, self.dest, result)
 
 
 class TriStateBoolFormatter(argparse.HelpFormatter):
