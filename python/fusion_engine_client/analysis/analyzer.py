@@ -2121,8 +2121,8 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                                 'actual interface used for data collection or use --device-uart to set the correct '
                                 'port.' %
                                 (device_uart, device_uart))
-
-        if np.max(dropped_data) <= 0:
+            return
+        elif np.max(dropped_data) <= 0:
             self.logger.info('No host side serial drops.')
             return
 
@@ -2969,7 +2969,7 @@ Load and display information stored in a FusionEngine binary file.
 
     plot_group = parser.add_argument_group('Plot Control')
     plot_group.add_argument(
-        '--device-uart', choices=['uart0', 'uart1'], default='uart1',
+        '--device-uart', choices=['uart1', 'uart2'], default='uart2',
         help="Which device UART interface was the data collected from. Used when checking the received bytes against "
              "the serial profiling from ProfileCounterMessage messages.")
     plot_group.add_argument('--mapbox-token', metavar='TOKEN',
