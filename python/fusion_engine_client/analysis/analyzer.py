@@ -2121,6 +2121,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                                 'actual interface used for data collection or use --device-uart to set the correct '
                                 'port.' %
                                 (device_uart, device_uart))
+            return
         elif np.max(dropped_data) <= 0:
             self.logger.info('No host side serial drops.')
             return
