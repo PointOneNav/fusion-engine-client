@@ -1599,14 +1599,18 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             return
 
         # Read the heading measurement data.
-        result = self.reader.read(message_types=[RawHeadingOutput, HeadingOutput, PoseMessage], **self.params)
+        result = self.reader.read(message_types=[RawHeadingOutput, HeadingOutput], **self.params)
         raw_heading_data = result[RawHeadingOutput.MESSAGE_TYPE]
         heading_data = result[HeadingOutput.MESSAGE_TYPE]
-        primary_pose_data = result[PoseMessage.MESSAGE_TYPE]
 
         if (len(heading_data.p1_time) == 0) and (len(raw_heading_data.p1_time) == 0):
             self.logger.info('No heading measurement data available. Skipping plot.')
             return
+
+        # Note that we read the pose data after heading, that way we don't bother reading pose data from disk if there's
+        # no heading data in the log.
+        result = self.reader.read(message_types=[PoseMessage], **self.params)
+        primary_pose_data = result[PoseMessage.MESSAGE_TYPE]
 
         # Setup the figure.
         fig = make_subplots(
@@ -2345,10 +2349,13 @@ Load and display information stored in a FusionEngine binary file.
 
     plot_function_names = [n for n in dir(Analyzer) if n.startswith('plot_')]
     plot_group.add_argument(
-        '--plot', action=CSVAction,
-        help="A comma-separated list of names of plots to be displayed. If a partial name is specified, the best "
-             "matching plot will be generated (e.g., 'sky' will match 'gnss_skyplot'). Use the wildcard '*' to match "
-             "multiple plots. If omitted, plots will be generated based on data present in the log.\n"
+        '--plot', action=CSVAction, nargs='*',
+        help="The names of names of plots to be displayed. May be specified multiple times (--plot map --plot events)"
+             "or as a comma-separated list (--plot map,events). If not specified, plots will be generated based on the "
+             "data present in the log.\n"
+             "\n"
+             "If a partial name is specified, the best matching plot will be generated (e.g., 'sky' will match"
+             "'gnss_skyplot'). Use the wildcard '*' to match multiple plots.\n"
              "\n"
              "Options include:%s" %
              ''.join(['\n- %s' % f[5:] for f in plot_function_names]))

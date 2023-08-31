@@ -146,6 +146,9 @@ class DataLoader(object):
         self.system_t0 = None
         self.system_t0_ns = None
 
+        self._need_t0 = True
+        self._need_system_t0 = True
+
         self._generate_index = generate_index
         if path is not None:
             self.open(path, generate_index=generate_index, ignore_index=ignore_index)
@@ -175,10 +178,21 @@ class DataLoader(object):
         self.system_t0 = None
         self.system_t0_ns = None
 
+        self._need_t0 = True
+        self._need_system_t0 = True
+
         if self.reader.have_index():
+            # If we have t0 in the index, capture it. If not, there must not be any messages with P1 time.
             self.t0 = self.reader.index.t0
             if self.t0 is None:
                 self.logger.warning('Unable to set t0 - no P1 timestamps found in index file.')
+            self._need_t0 = False
+
+            # If there are no messages in the index that have system time, disable the search below. Otherwise, continue
+            # below to search for system t0.
+            if not np.any(np.isin(self.reader.get_index().type, list(messages_with_system_time))):
+                self.logger.warning('Unable to set system t0 - no system timestamps found in index file.')
+                self._need_system_t0 = False
         else:
             self.read(require_p1_time=True, max_messages=1, max_bytes=1 * 1024 * 1024,
                       disable_index_generation=True, ignore_cache=True, show_progress=False)
@@ -187,8 +201,9 @@ class DataLoader(object):
         # the log, if any (profiling data, etc.). Unlike P1 time, since the index file does not contain system
         # timestamps, we have to do a read() even if an index exists. read() will use the index to at least speed up the
         # read operation.
-        self.read(require_system_time=True, max_messages=1, max_bytes=1 * 1024 * 1024,
-                  disable_index_generation=True, ignore_cache=True, show_progress=False)
+        if self._need_system_t0:
+            self.read(require_system_time=True, max_messages=1, max_bytes=1 * 1024 * 1024,
+                      disable_index_generation=True, ignore_cache=True, show_progress=False)
 
     def close(self):
         """!
@@ -373,10 +388,20 @@ class DataLoader(object):
 
         needed_message_types = supported_message_types
 
+        # If P1 or system time is required, filter out message types that we know don't have it.
+        if require_p1_time and require_system_time:
+            needed_message_types = [t for t in needed_message_types
+                                    if t in (messages_with_p1_time | messages_with_system_time)]
+        elif require_p1_time:
+            needed_message_types = [t for t in needed_message_types if t in messages_with_p1_time]
+        elif require_system_time:
+            needed_message_types = [t for t in needed_message_types if t in messages_with_system_time]
+
         # Check if the user requested any message types that use system time, not P1 time. When using an index file for
         # fast reading, messages with system times may have their index entry timestamps set to NAN since A) they can
         # occur in a log before P1 time is established, and B) there's not necessarily a direct way to convert between
         # system and P1 time.
+        p1_time_messages_requested = any([t in messages_with_p1_time for t in needed_message_types])
         system_time_messages_requested = any([t in messages_with_system_time for t in needed_message_types])
 
         # Create a dict with references to the requested types only to be returned below. If any data was already
@@ -407,8 +432,11 @@ class DataLoader(object):
 
         # If we need to establish t0 (either P1 time or system time), we will wait to apply the user's filter criteria.
         # We can get t0 from any message type.
+        need_t0 = self._need_t0 and p1_time_messages_requested
+        need_system_t0 = self._need_system_t0 and system_time_messages_requested
+
         reader_max_messages_applied = False
-        if self.t0 is None or (self.system_t0 is None and system_time_messages_requested):
+        if need_t0 or need_system_t0:
             logger.debug('Establishing t0. Postponing reader filter setup.')
             filters_applied = False
         else:
@@ -483,6 +511,7 @@ class DataLoader(object):
                     logger.debug('Received first message. [type=%s, time=%s]' %
                                  (header.get_type_string(), str(p1_time)))
                     self.t0 = p1_time
+                    self._need_t0 = False
 
             if system_time_valid:
                 if self.system_t0 is None:
@@ -490,12 +519,13 @@ class DataLoader(object):
                                  (header.get_type_string(), system_time_to_str(system_time_ns)))
                     self.system_t0 = system_time_sec
                     self.system_t0_ns = system_time_ns
+                    self._need_system_t0 = False
 
             # If we waited to apply filters above in order to establish t0, manually apply the filter criteria here.
             # Once we know t0, the reader will do the filtering and we won't hit this condition again.
             if not filters_applied:
                 # Once we know t0, enable the reader's internal filtering to take effect on the next message.
-                if self.t0 is not None and (self.system_t0 is not None or not system_time_messages_requested):
+                if not need_t0 and not need_system_t0:
                     logger.debug('Established t0. Applying reader filters.')
                     self.reader.filter_in_place(message_types)
                     self.reader.filter_in_place(time_range)
@@ -547,6 +577,14 @@ class DataLoader(object):
         # Fast-forward the reader to EOF to print out one last progress update. If we already reached EOF and printed
         # the update, this should have no effect.
         self.reader.seek_to_eof()
+
+        # If we were searching for t0 and did not find it, it must not be present in the log. Don't look again on
+        # subsequent read calls.
+        if need_t0:
+            self._need_t0 = False
+
+        if need_system_t0:
+            self._need_system_t0 = False
 
         # If the user only wanted the N newest messages, take them from the circular buffer now.
         if newest_messages is not None:
