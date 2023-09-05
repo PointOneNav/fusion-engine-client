@@ -589,10 +589,10 @@ class DataLoader(object):
 
         # If we were searching for t0 and did not find it, it must not be present in the log. Don't look again on
         # subsequent read calls.
-        if need_t0:
+        if need_t0 and require_p1_time:
             self._need_t0 = False
 
-        if need_system_t0:
+        if need_system_t0 and require_system_time:
             self._need_system_t0 = False
 
         # If the user only wanted the N newest messages, take them from the circular buffer now.
