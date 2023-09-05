@@ -160,34 +160,9 @@ other types of data.
             _logger.error(str(e))
             sys.exit(1)
 
-    # Check if any of the requested message types do _not_ have P1 time (e.g., profiling messages). The index file
-    # does not currently contain non-P1 time messages, so if we use it to search for messages we will end up
-    # skipping all of these ones. Instead, we disable the index and revert to full file search.
-    if read_index:
-        if len(message_types) == 0:
-            need_system_time = True
-        else:
-            need_system_time = False
-            for message_type in message_types:
-                cls = message_type_to_class[message_type]
-                message = cls()
-                if hasattr(message, 'p1_time'):
-                    continue
-                else:
-                    timestamps = getattr(message, 'timestamps', None)
-                    if isinstance(timestamps, MeasurementDetails):
-                        continue
-                    else:
-                        need_system_time = True
-                        break
-
-        if need_system_time and options.time is not None:
-            _logger.info('Non-P1 time messages requested and time range specified. Disabling index file.')
-            read_index = False
-
     # Process all data in the file.
     reader = MixedLogReader(input_path, return_bytes=True, return_offset=True, show_progress=options.progress,
-                            ignore_index=not read_index, generate_index=generate_index,
+                            ignore_index=not read_index, generate_index=generate_index and read_index,
                             message_types=message_types, time_range=time_range)
 
     if reader.generating_index() and (len(message_types) > 0 or options.time is not None):
