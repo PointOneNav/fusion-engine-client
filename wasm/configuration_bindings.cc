@@ -253,6 +253,7 @@ EMSCRIPTEN_BINDINGS(configuration) {
       .value("TCP_SERVER", TransportType::TCP_SERVER)
       .value("UDP_CLIENT", TransportType::UDP_CLIENT)
       .value("UDP_SERVER", TransportType::UDP_SERVER)
+      .value("WEBSOCKET_SERVER", TransportType::WEBSOCKET_SERVER)
       .value("CURRENT", TransportType::CURRENT)
       .value("ALL", TransportType::ALL);
 
