@@ -2505,7 +2505,7 @@ Load and display information stored in a FusionEngine binary file.
         '-m', '--measurements', action=ExtendedBooleanAction,
         help="Plot incoming measurement data (slow). Ignored if --plot is specified.")
     plot_group.add_argument(
-        '--time-axis', choices=('absolute', 'abs', 'relative', 'rel'), default='relative',
+        '--time-axis', choices=('absolute', 'abs', 'relative', 'rel'), default='absolute',
         help="Specify the way in which time will be plotted:"
              "\n- absolute, abs - Absolute P1 or system timestamps"
              "\n- relative, rel - Elapsed time since the start of the log")
