@@ -391,9 +391,7 @@ class Analyzer(object):
                 except StopIteration:
                     break
 
-                if next_reset_index is not None and pose_index >= next_reset_index:
-                    break
-                elif invalid_p1_time is None:
+                if invalid_p1_time is None:
                     if message.solution_type == SolutionType.Invalid:
                         invalid_p1_time = message.get_p1_time()
                         invalid_p1_time_sec = float(invalid_p1_time)
