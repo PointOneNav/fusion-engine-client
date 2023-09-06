@@ -12,7 +12,7 @@ from ..utils.numpy_utils import find_first
 from ..utils.time_range import TimeRange
 
 
-FileIndexEntry = namedtuple('Element', ['time', 'type', 'offset'])
+FileIndexEntry = namedtuple('Element', ['time', 'type', 'offset', 'message_index'])
 
 
 class FileIndexIterator(object):
@@ -25,7 +25,7 @@ class FileIndexIterator(object):
         else:
             entry = next(self.np_iterator)
             return FileIndexEntry(time=Timestamp(entry[0]), type=MessageType(entry[1], raise_on_unrecognized=False),
-                                  offset=entry[2])
+                                  offset=entry[2], message_index=entry[3])
 
 
 class FileIndex(object):
@@ -121,7 +121,7 @@ class FileIndex(object):
     #   timestamp is its exact time
     _RAW_DTYPE = np.dtype([('int', '<u4'), ('type', '<u2'), ('offset', '<u8')])
 
-    _DTYPE = np.dtype([('time', '<f8'), ('type', '<u2'), ('offset', '<u8')])
+    _DTYPE = np.dtype([('time', '<f8'), ('type', '<u2'), ('offset', '<u8'), ('message_index', '<u8')])
 
     def __init__(self, index_path: str = None, data_path: str = None, delete_on_error=True,
                  data: Union[np.ndarray, list] = None, t0: Timestamp = None):
@@ -141,7 +141,7 @@ class FileIndex(object):
             self._data = None
         else:
             if isinstance(data, list):
-                self._data = np.array(data, dtype=FileIndex._DTYPE)
+                self._data = FileIndex._from_list(data)
             elif data.dtype == FileIndex._DTYPE:
                 self._data = data
             else:
@@ -269,7 +269,7 @@ class FileIndex(object):
             data = self._data
             if data['type'][-1] != MessageType.INVALID and data_path is not None:
                 file_size_bytes = os.stat(data_path).st_size
-                data = np.append(data, np.array((np.nan, int(MessageType.INVALID), file_size_bytes),
+                data = np.append(data, np.array((np.nan, int(MessageType.INVALID), file_size_bytes, -1),
                                                 dtype=FileIndex._DTYPE))
 
             raw_data = FileIndex._to_raw(data)
@@ -368,6 +368,8 @@ class FileIndex(object):
             return self._data['type']
         elif key == 'offset':
             return self._data['offset']
+        elif key == 'message_index':
+            return self._data['message_index']
         else:
             raise AttributeError
 
@@ -443,9 +445,25 @@ class FileIndex(object):
         return os.path.splitext(data_path)[0] + '.p1i'
 
     @classmethod
+    def _from_list(cls, data):
+        if len(data) == 0:
+            return np.array([], dtype=cls._DTYPE)
+
+        if len(data[0]) == 3:
+            data = [(*entry, i) for i, entry in enumerate(data)]
+        return np.array(data, dtype=FileIndex._DTYPE)
+
+    @classmethod
     def _from_raw(cls, raw_data):
         idx = raw_data['int'] == Timestamp._INVALID
-        data = raw_data.astype(dtype=cls._DTYPE)
+
+        raw_dtype_with_index = np.dtype(cls._RAW_DTYPE.descr + [('message_index', '<u8')])
+        raw_data_with_index = np.ndarray(raw_data.shape, dtype=raw_dtype_with_index)
+        for name, _ in cls._RAW_DTYPE.descr:
+            raw_data_with_index[name] = raw_data[name]
+        raw_data_with_index['message_index'] = np.arange(len(raw_data))
+
+        data = raw_data_with_index.astype(dtype=cls._DTYPE)
         data['time'][idx] = np.nan
         return data
 
@@ -455,7 +473,7 @@ class FileIndex(object):
         idx = np.isnan(time_sec)
         # Ignore `RuntimeWarning: invalid value encountered in cast` since we want the NaN to be cast to int.
         np.seterr(invalid="ignore")
-        raw_data = data.astype(dtype=cls._RAW_DTYPE)
+        raw_data = data[['time', 'type', 'offset']].astype(dtype=cls._RAW_DTYPE)
         np.seterr(invalid="warn")
         raw_data['int'][idx] = Timestamp._INVALID
         return raw_data
@@ -498,7 +516,7 @@ class FileIndexBuilder(object):
         else:
             time_sec = float(p1_time)
 
-        self.raw_data.append((time_sec, int(message_type), offset_bytes))
+        self.raw_data.append((time_sec, int(message_type), offset_bytes, len(self.raw_data)))
 
     def save(self, index_path: str, data_path: str):
         """!

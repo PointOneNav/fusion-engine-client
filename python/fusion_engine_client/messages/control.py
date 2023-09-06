@@ -1,5 +1,6 @@
 import string
 import struct
+from typing import Sequence
 
 from construct import (Struct, Int64ul, Int16ul, Int8ul, Padding, this, Bytes, PaddedString)
 
@@ -591,6 +592,15 @@ class EventNotificationMessage(MessagePayload):
                 return self.event_description.decode('utf-8')
             except UnicodeDecodeError:
                 return repr(self.event_description)
+
+    @classmethod
+    def to_numpy(cls, messages: Sequence['EventNotificationMessage']):
+        result = {
+            'system_time': np.array([m.system_time_ns * 1e-9 for m in messages]),
+            'event_type': np.array([int(m.event_type) for m in messages], dtype=int),
+            'event_flags': np.array([int(m.event_flags) for m in messages], dtype=np.uint64),
+        }
+        return result
 
     @classmethod
     def _populate_data_byte_string(cls, data: bytes, max_bytes: int = None):
