@@ -39,7 +39,7 @@ def print_message(header, contents, offset_bytes, format='pretty'):
         else:
             parts = str(contents).split('\n')
     else:
-        parts = [f'{header.get_type().to_string(include_value=True)} (unsupported)']
+        parts = [f'{header.get_type_string()} (unsupported)']
 
     if format in ('pretty', 'oneline-detailed'):
         details = 'sequence=%d, size=%d B, offset=%d B (0x%x)' %\
