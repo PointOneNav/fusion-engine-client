@@ -98,6 +98,7 @@ enum class MessageType : uint16_t {
   SET_MESSAGE_RATE = 13220, ///< @ref SetMessageRate
   GET_MESSAGE_RATE = 13221, ///< @ref GetMessageRate
   MESSAGE_RATE_RESPONSE = 13222, ///< @ref MessageRateResponse
+  SUPPORTED_IO_INTERFACES = 13223, ///< @ref SupportedIOInterfacesMessage
 
   LBAND_FRAME = 14000, ///< @ref LBandFrameMessage
 
@@ -245,6 +246,9 @@ P1_CONSTEXPR_FUNC const char* to_string(MessageType type) {
 
     case MessageType::GET_MESSAGE_RATE:
       return "Get Message Rate";
+
+    case MessageType::SUPPORTED_IO_INTERFACES:
+      return "Supported IO Interfaces";
 
     case MessageType::MESSAGE_RATE_RESPONSE:
       return "Message Rate Response";

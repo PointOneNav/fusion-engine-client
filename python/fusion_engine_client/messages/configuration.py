@@ -1160,6 +1160,44 @@ class SaveConfigMessage(MessagePayload):
         return cls.SaveConfigMessageConstruct.sizeof()
 
 
+class SupportedIOInterfacesMessage(MessagePayload):
+    """!
+    @brief A list of transport interfaces supported by the device.
+    """
+    MESSAGE_TYPE = MessageType.SUPPORTED_IO_INTERFACES
+    MESSAGE_VERSION = 0
+
+    SupportedIOInterfacesMessageConstruct = Struct(
+        "num_interfaces" / Int8ul,
+        Padding(7),
+        "interfaces" / Array(this.num_interfaces, _InterfaceIDConstruct)
+    )
+
+    def __init__(self, action: SaveAction = SaveAction.SAVE):
+        self.interfaces : List[InterfaceID] = []
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        packed_data = self.SupportedIOInterfacesMessageConstruct.build(self.__dict__)
+        return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
+
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
+        parsed = self.SupportedIOInterfacesMessageConstruct.parse(buffer[offset:])
+        self.interfaces = parsed.interfaces
+        return parsed._io.tell()
+
+    def __repr__(self):
+        result = super().__repr__()[:-1]
+        result += f', interfaces={self.interfaces}]'
+        return result
+
+    def __str__(self):
+        return construct_message_to_string(message=self, construct=self.SupportedIOInterfacesMessageConstruct,
+                                           title=f'Supported IO Interfaces')
+
+    def calcsize(self) -> int:
+        return len(self.pack())
+
+
 class ConfigResponseMessage(MessagePayload):
     """!
     @brief Response to a @ref GetConfigMessage request.

@@ -2028,6 +2028,25 @@ struct P1_ALIGNAS(4) GetMessageRate : public MessagePayload {
 };
 
 /**
+ * @brief A list of transport interfaces supported by the device (@ref
+ *        MessageType::SUPPORTED_IO_INTERFACES, version 1.0).
+ * @ingroup config_and_ctrl_messages
+ */
+struct P1_ALIGNAS(4) SupportedIOInterfacesMessage : public MessagePayload {
+  static constexpr MessageType MESSAGE_TYPE =
+      MessageType::SUPPORTED_IO_INTERFACES;
+  static constexpr uint8_t MESSAGE_VERSION = 0;
+
+  /** The number of interfaces reported by this message. */
+  uint8_t num_interfaces = 0;
+
+  uint8_t reserved1[7] = {0};
+
+  /* This in then followed by an array of `num_interfaces` @ref InterfaceID */
+  // InterfaceID interfaces[num_interfaces]
+};
+
+/**
  * @brief An element of a @ref MessageRateResponse message.
  * @ingroup config_and_ctrl_messages
  */
