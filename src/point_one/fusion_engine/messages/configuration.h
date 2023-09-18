@@ -867,8 +867,7 @@ enum class WheelSensorType : uint8_t {
    * ticks.
    * */
   TICKS = 2,
-  /** Individual wheel speeds, reported in meters/second. */
-  WHEEL_SPEED = 3,
+  UNUSED = 3,
   /** A single value indicating the vehicle speed (in meters/second). */
   VEHICLE_SPEED = 4,
   /** A single wheel rotational angle, reported as accumulated encoder ticks. */
@@ -894,9 +893,6 @@ P1_CONSTEXPR_FUNC const char* to_string(WheelSensorType wheel_sensor_type) {
     }
     case WheelSensorType::TICKS: {
       return "Ticks";
-    }
-    case WheelSensorType::WHEEL_SPEED: {
-      return "Wheel Speed";
     }
     case WheelSensorType::VEHICLE_SPEED: {
       return "Vehicle Speed";

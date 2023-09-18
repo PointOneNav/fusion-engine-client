@@ -112,7 +112,7 @@ class WheelSensorType(IntEnum):
     NONE = 0,
     TICK_RATE = 1,
     TICKS = 2,
-    WHEEL_SPEED = 3,
+    UNUSED = 3,
     VEHICLE_SPEED = 4,
     VEHICLE_TICKS = 5
 
