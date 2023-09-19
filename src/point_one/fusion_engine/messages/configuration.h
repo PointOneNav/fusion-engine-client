@@ -2042,7 +2042,7 @@ struct P1_ALIGNAS(4) SupportedIOInterfacesMessage : public MessagePayload {
 
   uint8_t reserved1[7] = {0};
 
-  /* This in then followed by an array of `num_interfaces` @ref InterfaceID */
+  /** This in then followed by an array of `num_interfaces` @ref InterfaceID. */
   // InterfaceID interfaces[num_interfaces]
 };
 
@@ -2105,7 +2105,9 @@ struct P1_ALIGNAS(4) MessageRateResponse : public MessagePayload {
   /** The output interface corresponding with this response. */
   InterfaceID output_interface = {};
 
-  /* This in then followed by an array of num_rates MessageRateResponseEntry */
+  /**
+   * This in then followed by an array of num_rates MessageRateResponseEntry.
+   */
   // MessageRateResponseEntry rates[num_rates]
 };
 

@@ -1177,7 +1177,10 @@ class SupportedIOInterfacesMessage(MessagePayload):
         self.interfaces : List[InterfaceID] = []
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
-        packed_data = self.SupportedIOInterfacesMessageConstruct.build(self.__dict__)
+        packed_data = self.SupportedIOInterfacesMessageConstruct.build({
+            'num_interfaces': len(self.interfaces),
+            'interfaces': self.interfaces
+        })
         return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
 
     def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
