@@ -80,6 +80,12 @@ class IMUOutput(MessagePayload):
             'gyro_rps': np.array([m.gyro_rps for m in messages]).T,
             'gyro_std_rps': np.array([m.gyro_std_rps for m in messages]).T,
         }
+
+        # For convenience and consistency with raw measurement messages, we artificially create the following fields
+        # from MeasurementDetails:
+        result['measurement_time_source'] = np.full_like(result['p1_time'], SystemTimeSource.P1_TIME)
+        result['measurement_time'] = result['p1_time']  # No need to copy, reference is fine here.
+
         return result
 
     @classmethod
@@ -236,6 +242,12 @@ Wheel Speed Output @ {str(self.p1_time)}
             'rear_left_speed_mps': np.array([m.rear_left_speed_mps for m in messages]),
             'rear_right_speed_mps': np.array([m.rear_right_speed_mps for m in messages]),
         }
+
+        # For convenience and consistency with raw measurement messages, we artificially create the following fields
+        # from MeasurementDetails:
+        result['measurement_time_source'] = np.full_like(result['p1_time'], SystemTimeSource.P1_TIME)
+        result['measurement_time'] = result['p1_time']  # No need to copy, reference is fine here.
+
         return result
 
 
@@ -397,6 +409,12 @@ Vehicle Speed Output @ {str(self.p1_time)}
             'is_signed': np.array([m.is_signed() for m in messages], dtype=bool),
             'vehicle_speed_mps': np.array([m.vehicle_speed_mps for m in messages]),
         }
+
+        # For convenience and consistency with raw measurement messages, we artificially create the following fields
+        # from MeasurementDetails:
+        result['measurement_time_source'] = np.full_like(result['p1_time'], SystemTimeSource.P1_TIME)
+        result['measurement_time'] = result['p1_time']  # No need to copy, reference is fine here.
+
         return result
 
 
