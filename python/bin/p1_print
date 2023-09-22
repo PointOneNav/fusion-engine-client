@@ -255,12 +255,12 @@ other types of data.
         _logger.info('Selected data size: %d B' % bytes_decoded)
         _logger.info('')
 
-        format_string = '| {:<50} | {:>8} |'
-        _logger.info(format_string.format('Message Type', 'Count'))
-        _logger.info(format_string.format('-' * 50, '-' * 8))
-        for type, info in message_stats.items():
-            _logger.info(format_string.format(message_type_to_class[type].__name__, info['count']))
-        _logger.info(format_string.format('-' * 50, '-' * 8))
-        _logger.info(format_string.format('Total', total_messages))
+        format_string = '| {:<50} | {:>5} | {:>8} |'
+        _logger.info(format_string.format('Message Name', 'Type', 'Count'))
+        _logger.info(format_string.format('-' * 50, '-' * 5, '-' * 8))
+        for type, info in sorted(message_stats.items(), key=lambda x: int(x[0])):
+            _logger.info(format_string.format(message_type_to_class[type].__name__, int(type), info['count']))
+        _logger.info(format_string.format('-' * 50, '-' * 5, '-' * 8))
+        _logger.info(format_string.format('Total', '', total_messages))
     elif total_messages == 0:
         _logger.warning('No valid FusionEngine messages found.')
