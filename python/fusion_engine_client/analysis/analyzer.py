@@ -1272,7 +1272,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                                           mode='markers', marker={'color': color_by_dop[name]}),
                              1, 1)
 
-        self._add_figure(name='dilution_of_precision', figure=figure, title='Dilution of Precision vs. Time')
+        self._add_figure(name='gnss_dop', figure=figure, title='GNSS Dilution of Precision (DOP) vs. Time')
 
     def plot_gnss_corrections_status(self):
         """!
