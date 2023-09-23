@@ -166,6 +166,7 @@ class Analyzer(object):
 
         self.plots = {}
         self.summary = ''
+        self.profiling_present = False
 
         self._mapbox_token_missing = False
 
@@ -2070,6 +2071,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         if len(data.system_time) == 0:
             self.logger.info('No system profiling data available. Skipping plot.')
             return
+        self.profiling_present = True
 
         time = data.system_time - self.system_t0
 
@@ -2124,6 +2126,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         if len(data.system_time_sec) == 0:
             self.logger.info('No execution profiling stats data available. Skipping plot.')
             return
+        self.profiling_present = True
 
         # Read the last task name message to map IDs to names.
         params = copy.deepcopy(self.params)
@@ -2412,6 +2415,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         if len(data.system_time_sec) == 0:
             self.logger.info('No counter profiling stats data available. Skipping execution stats plot.')
             return
+        self.profiling_present = True
 
         # Read the last task name message to map IDs to names.
         params = copy.deepcopy(self.params)
@@ -2506,6 +2510,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         if len(data.system_time_sec) == 0:
             self.logger.info('No FreeRTOS system profiling data available. Skipping plot.')
             return
+        self.profiling_present = True
 
         # Read the last task name message to map IDs to names.
         params = copy.deepcopy(self.params)
@@ -2573,6 +2578,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         if len(data.system_time) == 0:
             self.logger.info('No measurement profiling data available. Skipping plot.')
             return
+        self.profiling_present = True
 
         # Read the last pipeline definition message to map IDs to names.
         params = copy.deepcopy(self.params)
@@ -2614,6 +2620,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         if len(data.points) == 0:
             self.logger.info('No execution profiling data available. Skipping code execution plot.')
             return
+        self.profiling_present = True
 
         # Read the last pipeline definition message to map IDs to names.
         params = copy.deepcopy(self.params)
@@ -3309,6 +3316,13 @@ Load and display information stored in a FusionEngine binary file.
         analyzer.plot_execution_profiling()
         analyzer.plot_execution_stats_profiling()
         analyzer.plot_counter_profiling(options.device_uart)
+        if not analyzer.profiling_present and options.original:
+            diag_path = os.path.join(os.path.dirname(input_path), 'diagnostics.p1log')
+            if os.path.exists(diag_path):
+                _logger.info('*' * 80 + '\n\n' +
+                             f'No profiling available in {input_path}.\n'
+                               f'use {diag_path} to generate plots with profiling.' +
+                             '\n\n' + '*' * 80)
     else:
         if len(options.plot) == 0:
             _logger.error('No plot names specified.')
