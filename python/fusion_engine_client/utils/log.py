@@ -19,8 +19,9 @@ CANDIDATE_LOG_FILES = [
     # by extract_fusion_engine_log().
     'input.p1log',
     'fusion_engine.p1log',
-    # diagnostic log is giving priority for internal tools.
-    'output/diagnostics.p1log',
+    # Current Atlas produces `output/diagnostics.p1log` with profiling data as backup in case
+    # `output/fusion_engine.p1log` has profiling turned off. Specify it explicitly as the log argument to use it.
+    # 'output/diagnostics.p1log',
     'output/fusion_engine.p1log',
     # v- Mixed FE and other data files.
     # Note that we prioritize the input.66.bin file over the others. For logs containing a single mixed serial
