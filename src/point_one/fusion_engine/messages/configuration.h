@@ -856,12 +856,7 @@ struct P1_ALIGNAS(4) VehicleDetails {
 enum class WheelSensorType : uint8_t {
   /** Wheel/vehicle speed data not available. */
   NONE = 0,
-  /**
-   * Individual wheel rotation rates, reported as an encoder tick rate (in
-   * ticks/second). Will be scaled to meters/second using the specified scale
-   * factor.
-   */
-  TICK_RATE = 1,
+  // RESERVED = 1,
   /**
    * Individual wheel rotational angles, reported as accumulated encoder
    * ticks.
@@ -888,9 +883,6 @@ P1_CONSTEXPR_FUNC const char* to_string(WheelSensorType wheel_sensor_type) {
   switch (wheel_sensor_type) {
     case WheelSensorType::NONE: {
       return "None";
-    }
-    case WheelSensorType::TICK_RATE: {
-      return "Tick Rate";
     }
     case WheelSensorType::TICKS: {
       return "Ticks";
@@ -1088,8 +1080,7 @@ struct P1_ALIGNAS(4) WheelConfig {
 
   /**
    * The scale factor to convert from wheel encoder ticks to distance (in
-   * meters/tick). Used for @ref WheelSensorType::TICKS and
-   * @ref WheelSensorType::TICK_RATE.
+   * meters/tick). Used for @ref WheelSensorType::TICKS.
    */
   float wheel_ticks_to_m = NAN;
 
@@ -1252,8 +1243,7 @@ struct P1_ALIGNAS(4) HardwareTickConfig {
 
   /**
    * The scale factor to convert from wheel encoder ticks to distance (in
-   * meters/tick). Used for @ref WheelSensorType::TICKS and
-   * @ref WheelSensorType::TICK_RATE.
+   * meters/tick). Used for @ref WheelSensorType::TICKS.
    */
   float wheel_ticks_to_m = NAN;
 };
