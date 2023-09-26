@@ -1435,6 +1435,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                 titles = ['%s Speed (Signed)' % speed_type, 'Gear/Direction']
             else:
                 titles = ['%s Speed (Unsigned)' % speed_type, 'Gear/Direction']
+        titles.append('Measurement Interval')
 
         if wheel_data is not None:
             titles[0] += f'<br>Messages: {wheel_measurement_type.__name__}'
@@ -1461,9 +1462,12 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         else:
             figure['layout']['yaxis1'].update(title="Speed (m/s)")
 
-        figure['layout']['yaxis%d' % (len(titles))].update(title="Gear/Direction",
-                                                           ticktext=['%s (%d)' % (e.name, e.value) for e in GearType],
-                                                           tickvals=[e.value for e in GearType])
+        gear_y_axis = len(titles) - 1
+        interval_y_axis = len(titles)
+        figure['layout']['yaxis%d' % gear_y_axis].update(title="Gear/Direction",
+                                                         ticktext=['%s (%d)' % (e.name, e.value) for e in GearType],
+                                                         tickvals=[e.value for e in GearType])
+        figure['layout']['yaxis%d' % interval_y_axis].update(title="Interval (sec)")
 
         # Check if the data has P1 time available. If not, we'll plot in the original source time.
         #
@@ -1638,7 +1642,13 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                 figure.add_trace(go.Scattergl(x=time, y=wheel_data.gear[idx], text=text,
                                               name='Gear (Wheel Data)', hoverlabel={'namelength': -1},
                                               mode='markers', marker={'color': 'red'}),
-                                 3 if type == 'tick' else 2, 1)
+                                 gear_y_axis, 1)
+
+            name = "Wheel Interval" + name_suffix
+            color = 'blue' if is_raw else 'red'
+            figure.add_trace(go.Scattergl(x=time[1:], y=np.diff(time), name=name, hoverlabel={'namelength': -1},
+                                          mode='markers', marker={'color': color}),
+                             interval_y_axis, 1)
 
         # Plot the wheel speed data. If we have both corrected and uncorrected (raw) data, plot them both.
         _plot_wheel_data(wheel_data, wheel_time_source, is_raw=wheel_measurement_type == raw_wheel_measurement_type,
@@ -1679,7 +1689,13 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                 figure.add_trace(go.Scattergl(x=time, y=data.gear[idx], text=text,
                                               name='Gear (Vehicle Data)', hoverlabel={'namelength': -1},
                                               mode='markers', marker={'color': 'orange'}),
-                                 3 if type == 'tick' else 2, 1)
+                                 gear_y_axis, 1)
+
+            name = "Vehicle Interval" + name_suffix
+            color = 'blue' if is_raw else 'red'
+            figure.add_trace(go.Scattergl(x=time[1:], y=np.diff(time), name=name, hoverlabel={'namelength': -1},
+                                          mode='markers', marker={'color': color}),
+                             interval_y_axis, 1)
 
         # Plot the vehicle speed data. If we have both corrected and uncorrected (raw) data, plot them both.
         _plot_vehicle_data(vehicle_data, vehicle_time_source,
@@ -1732,14 +1748,16 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             titles = [t + ' (Uncorrected)' for t in titles]
         else:
             titles = [t + ' (Corrected)' for t in titles]
+        titles.append('Measurement Interval')
 
-        figure = make_subplots(rows=2, cols=1, print_grid=False, shared_xaxes=True, subplot_titles=titles)
+        figure = make_subplots(rows=len(titles), cols=1, print_grid=False, shared_xaxes=True, subplot_titles=titles)
 
         figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
-        figure['layout']['xaxis1'].update(title=self.p1_time_label, showticklabels=True)
-        figure['layout']['xaxis2'].update(title=self.p1_time_label, showticklabels=True)
+        for i in range(3):
+            figure['layout']['xaxis%d' % (i + 1)].update(title=self.p1_time_label, showticklabels=True)
         figure['layout']['yaxis1'].update(title="Acceleration (m/s^2)")
         figure['layout']['yaxis2'].update(title="Rotation Rate (rad/s)")
+        figure['layout']['yaxis3'].update(title="Interval (sec)")
 
         figure.add_trace(go.Scattergl(x=time, y=data.accel_mps2[0, :], name='X', legendgroup='x',
                                       mode='lines', line={'color': 'red'}),
@@ -1760,6 +1778,10 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         figure.add_trace(go.Scattergl(x=time, y=data.gyro_rps[2, :], name='Z', legendgroup='z',
                                       showlegend=False, mode='lines', line={'color': 'blue'}),
                          2, 1)
+
+        figure.add_trace(go.Scattergl(x=time[1:], y=np.diff(time), name='Interval', hoverlabel={'namelength': -1},
+                                      mode='markers', marker={'color': 'red'}),
+                         3, 1)
 
         self._add_figure(name=filename, figure=figure, title=figure_title)
 
