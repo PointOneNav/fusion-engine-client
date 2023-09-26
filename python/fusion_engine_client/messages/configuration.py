@@ -110,7 +110,7 @@ class VehicleModel(IntEnum):
 
 class WheelSensorType(IntEnum):
     NONE = 0,
-    TICK_RATE = 1,
+    # RESERVED = 1,
     TICKS = 2,
     WHEEL_SPEED = 3,
     VEHICLE_SPEED = 4,
