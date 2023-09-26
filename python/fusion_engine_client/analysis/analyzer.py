@@ -2677,7 +2677,8 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             return
 
         # Read the data.
-        data = self.reader.read(message_types={MessageType.EVENT_NOTIFICATION} | COMMAND_MESSAGES | RESPONSE_MESSAGES,
+        data = self.reader.read(message_types={MessageType.EVENT_NOTIFICATION, MessageType.DIAG_EVENT_NOTIFICATION} |
+                                              COMMAND_MESSAGES | RESPONSE_MESSAGES,
                                 remove_nan_times=False, return_in_order=True, return_bytes=True, **self.params)
 
         if len(data.messages) == 0:

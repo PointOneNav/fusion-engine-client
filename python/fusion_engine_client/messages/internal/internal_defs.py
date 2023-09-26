@@ -37,6 +37,9 @@ class InternalMessageType(IntEnum):
     # Legacy Internal Alias
     LEGACY_PLATFORM_STORAGE_DATA = 20105
 
+    # Command and control messages.
+    DIAG_EVENT_NOTIFICATION = 23004
+
 
 # Extend the message type enum with internal types.
 for entry in InternalMessageType:
