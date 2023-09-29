@@ -442,40 +442,45 @@ class MessagePayload:
         # Now find matches to each pattern.
         result = set()
         for pattern in requested_types:
-            allow_multiple = '*' in pattern
-            re_pattern = pattern.replace('*', '.*')
-            # if pattern[0] != '^':
-            #     re_pattern = r'.*' + re_pattern
-            # if pattern[-1] != '$':
-            #     re_pattern += '.*'
+            # Check if pattern is the message integer value.
+            try:
+                int_val = int(pattern)
+                result.add(MessageType(int_val))
+            except:
+                allow_multiple = '*' in pattern
+                re_pattern = pattern.replace('*', '.*')
+                # if pattern[0] != '^':
+                #     re_pattern = r'.*' + re_pattern
+                # if pattern[-1] != '$':
+                #     re_pattern += '.*'
 
-            # Check for matches.
-            matched_types = [v for k, v in cls.message_type_by_name.items()
-                             if re.match(re_pattern, k, flags=re.IGNORECASE)]
-            if len(matched_types) == 0:
-                _logger.warning("No message types matching pattern '%s'." % pattern)
-                continue
+                # Check for matches.
+                matched_types = [v for k, v in cls.message_type_by_name.items()
+                                if re.match(re_pattern, k, flags=re.IGNORECASE)]
+                if len(matched_types) == 0:
+                    _logger.warning("No message types matching pattern '%s'." % pattern)
+                    continue
 
-            # Check for exact matches with "Message" and "Measurement" suffixes removed.
-            if len(matched_types) > 1 and not allow_multiple:
-                def _remove_message_suffixes(s):
-                    return _remove_suffixes(s.lower(), ['message', 'measurement', 'input', 'output'])
-                pattern_no_suffix = _remove_message_suffixes(pattern)
-                exact_matches = [t for t in matched_types
-                                 if _remove_message_suffixes(cls.message_type_to_class[t].__name__) ==
-                                 pattern_no_suffix]
-                if len(exact_matches) == 1:
-                    matched_types = exact_matches
+                # Check for exact matches with "Message" and "Measurement" suffixes removed.
+                if len(matched_types) > 1 and not allow_multiple:
+                    def _remove_message_suffixes(s):
+                        return _remove_suffixes(s.lower(), ['message', 'measurement', 'input', 'output'])
+                    pattern_no_suffix = _remove_message_suffixes(pattern)
+                    exact_matches = [t for t in matched_types
+                                    if _remove_message_suffixes(cls.message_type_to_class[t].__name__) ==
+                                    pattern_no_suffix]
+                    if len(exact_matches) == 1:
+                        matched_types = exact_matches
 
-            # If there are still too many matches, fail.
-            if len(matched_types) > 1 and not allow_multiple:
-                class_names = [cls.message_type_to_class[t].__name__ for t in matched_types]
-                raise ValueError("Pattern '%s' matches multiple message types:%s\n\nAdd a wildcard (%s*) to display "
-                                 "all matching types." %
-                                 (pattern, ''.join(['\n  %s' % c for c in class_names]), pattern))
-            # Otherwise, update the set of message types.
-            else:
-                result.update(matched_types)
+                # If there are still too many matches, fail.
+                if len(matched_types) > 1 and not allow_multiple:
+                    class_names = [cls.message_type_to_class[t].__name__ for t in matched_types]
+                    raise ValueError("Pattern '%s' matches multiple message types:%s\n\nAdd a wildcard (%s*) to display "
+                                    "all matching types." %
+                                    (pattern, ''.join(['\n  %s' % c for c in class_names]), pattern))
+                # Otherwise, update the set of message types.
+                else:
+                    result.update(matched_types)
 
         # These types both map to the same message so make sure they're both included if either is.
         if MessageType.LEGACY_PLATFORM_STORAGE_DATA in result:
