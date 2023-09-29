@@ -17,7 +17,7 @@ from fusion_engine_client.utils.argument_parser import ArgumentParser
 if __name__ == "__main__":
     # Parse arguments.
     parser = ArgumentParser(description="""\
-Extract IMU accelerometer and gyroscope measurements.
+Extract wheel speed data.
 """)
     parser.add_argument('--log-base-dir', metavar='DIR', default=DEFAULT_LOG_BASE_DIR,
                         help="The base directory containing FusionEngine logs to be searched if a log pattern is "
@@ -49,37 +49,51 @@ Extract IMU accelerometer and gyroscope measurements.
 
     # Read satellite data from the file.
     reader = DataLoader(input_path)
-    result = reader.read(message_types=[IMUOutput, RawIMUOutput], show_progress=True)
-    imu_data = result[IMUOutput.MESSAGE_TYPE]
-    raw_imu_data = result[RawIMUOutput.MESSAGE_TYPE]
-    if len(imu_data.messages) == 0 and len(raw_imu_data.messages) == 0:
-        logger.warning('No IMU data found in log file.')
+    result = reader.read(message_types=[WheelSpeedOutput, RawWheelSpeedOutput], show_progress=True)
+    wheel_speed_data = result[WheelSpeedOutput.MESSAGE_TYPE]
+    raw_wheel_speed_data = result[RawWheelSpeedOutput.MESSAGE_TYPE]
+    if len(wheel_speed_data.messages) == 0 and len(raw_wheel_speed_data.messages) == 0:
+        logger.warning('No wheel speed data found in log file.')
         sys.exit(2)
 
-    # Generate a CSV file for corrected IMU data.
-    if len(imu_data.messages) != 0:
-        path = os.path.join(output_dir, 'imu_data.csv')
+    # Generate a CSV file for corrected wheel speed data.
+    if len(wheel_speed_data.messages) != 0:
+        path = os.path.join(output_dir, 'wheel_speed_data.csv')
         logger.info("Generating '%s'." % path)
         with open(path, 'w') as f:
-            f.write('P1 Time (sec), GPS Time (sec), Accel X (m/s^2), Y, Z, Gyro X (rad/s), Y, Z\n')
-            for message in imu_data.messages:
+            f.write('P1 Time (sec), GPS Time (sec), Front Left Speed (m/s), Front Right Speed (m/s), Back Left Speed (m/s), Back Right Speed (m/s), Gear\n')
+            for message in wheel_speed_data.messages:
                 gps_time = reader.convert_to_gps_time(message.p1_time)
-                f.write('%.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f\n' %
-                        (float(message.p1_time), float(gps_time), *message.accel_mps2, *message.gyro_rps))
+                f.write(
+                    '%.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %d\n' %
+                    (float(message.p1_time),
+                     float(gps_time),
+                     message.front_left_speed_mps,
+                     message.front_right_speed_mps,
+                     message.back_left_speed_mps,
+                     message.back_right_speed_mps,
+                     message.gear))
     else:
-        logger.info("No corrected IMU data.")
+        logger.info("No corrected wheel speed data.")
 
-    # Generate a CSV file for raw IMU data.
-    if len(raw_imu_data.messages) != 0:
-        path = os.path.join(output_dir, 'raw_imu_data.csv')
+    # Generate a CSV file for raw wheel speed data.
+    if len(raw_wheel_speed_data.messages) != 0:
+        path = os.path.join(output_dir, 'raw_wheel_speed_data.csv')
         logger.info("Generating '%s'." % path)
         with open(path, 'w') as f:
-            f.write('P1 Time (sec), GPS Time (sec), Accel X (m/s^2), Y, Z, Gyro X (rad/s), Y, Z, Temp(C)\n')
-            for message in raw_imu_data.messages:
+            f.write('P1 Time (sec), GPS Time (sec), Front Left Speed (m/s), Front Right Speed (m/s), Back Left Speed (m/s), Back Right Speed (m/s), Gear\n')
+            for message in wheel_speed_data.messages:
                 gps_time = reader.convert_to_gps_time(message.p1_time)
-                f.write('%.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f\n' %
-                        (float(message.p1_time), float(gps_time), *message.accel_mps2, *message.gyro_rps, message.temperature_degc))
+                f.write(
+                    '%.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %d\n' %
+                    (float(message.p1_time),
+                     float(gps_time),
+                     message.front_left_speed_mps,
+                     message.front_right_speed_mps,
+                     message.back_left_speed_mps,
+                     message.back_right_speed_mps,
+                     message.gear))
     else:
-        logger.info("No raw IMU data.")
+        logger.info("No raw wheel speed data.")
 
     logger.info("Output stored in '%s'." % os.path.abspath(output_dir))
