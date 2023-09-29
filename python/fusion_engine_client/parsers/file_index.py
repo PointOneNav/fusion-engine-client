@@ -8,6 +8,7 @@ import os
 import numpy as np
 
 from ..messages import MessageHeader, MessagePayload, MessageType, Timestamp
+from ..utils.enum_utils import IntEnum
 from ..utils.numpy_utils import find_first
 from ..utils.time_range import TimeRange
 
@@ -16,7 +17,8 @@ FileIndexEntry = namedtuple('Element', ['time', 'type', 'offset', 'message_index
 
 
 class FileIndexIterator(object):
-    def __init__(self, np_iterator):
+    def __init__(self, enum_class=None, np_iterator=None):
+        self.enum_class = enum_class
         self.np_iterator = np_iterator
 
     def __next__(self):
@@ -24,7 +26,7 @@ class FileIndexIterator(object):
             raise StopIteration()
         else:
             entry = next(self.np_iterator)
-            return FileIndexEntry(time=Timestamp(entry[0]), type=MessageType(entry[1], raise_on_unrecognized=False),
+            return FileIndexEntry(time=Timestamp(entry[0]), type=self.enum_class(entry[1]),
                                   offset=entry[2], message_index=entry[3])
 
 
@@ -123,8 +125,15 @@ class FileIndex(object):
 
     _DTYPE = np.dtype([('time', '<f8'), ('type', '<u2'), ('offset', '<u8'), ('message_index', '<u8')])
 
-    def __init__(self, index_path: str = None, data_path: str = None, delete_on_error=True,
-                 data: Union[np.ndarray, list] = None, t0: Timestamp = None):
+    def __init__(self,
+                 index_path: str = None,
+                 data_path: str = None,
+                 delete_on_error=True,
+                 data: Union[np.ndarray,
+                             list] = None,
+                 t0: Timestamp = None,
+                 enum_class=MessageType,
+                 enum_class_invalid=MessageType.INVALID):
         """!
         @brief Construct a new @ref FileIndex instance.
 
@@ -136,7 +145,11 @@ class FileIndex(object):
         @param data A NumPy `ndarray` or Python `list` containing information about each FusionEngine message in the
                `.p1log` file. For internal use.
         @param t0 The P1 time corresponding with the start of the `.p1log` file, if known. For internal use.
+        @param enum_class The @ref IntEnum class used to identify the messages.
+        @param enum_class_invalid The value of enum_class to use for invalid entries.
         """
+        self.enum_class = enum_class
+        self.enum_class_invalid = enum_class_invalid
         if data is None:
             self._data = None
         else:
@@ -191,7 +204,7 @@ class FileIndex(object):
             if not os.path.exists(data_path):
                 # If the user didn't explicitly set data_path and the default file doesn't exist, it is not considered
                 # an error.
-                if self._data['type'][-1] == MessageType.INVALID:
+                if self._data['type'][-1] == self.enum_class_invalid:
                     self._data = self._data[:-1]
                 return
         elif not os.path.exists(data_path):
@@ -216,7 +229,7 @@ class FileIndex(object):
             # Get the last entry in the index. If its message type is INVALID, it's a special marker at the end of the
             # index file indicating the size of the binary data file when the index was created. If it exists, we can
             # use it to check if the data file size has changed.
-            if self.type[-1] == MessageType.INVALID:
+            if self.type[-1] == self.enum_class_invalid:
                 expected_data_file_size = self.offset[-1]
                 self._data = self._data[:-1]
 
@@ -267,9 +280,9 @@ class FileIndex(object):
         if len(self._data) > 0:
             # Append an EOF marker at the end of the data if data_path is specified.
             data = self._data
-            if data['type'][-1] != MessageType.INVALID and data_path is not None:
+            if data['type'][-1] != self.enum_class_invalid and data_path is not None:
                 file_size_bytes = os.stat(data_path).st_size
-                data = np.append(data, np.array((np.nan, int(MessageType.INVALID), file_size_bytes, -1),
+                data = np.append(data, np.array((np.nan, self.enum_class_invalid, file_size_bytes, -1),
                                                 dtype=FileIndex._DTYPE))
 
             raw_data = FileIndex._to_raw(data)
@@ -384,14 +397,14 @@ class FileIndex(object):
         elif len(self._data) == 0:
             return FileIndex()
         # Return entries for a specific message type.
-        elif isinstance(key, MessageType):
+        elif isinstance(key, IntEnum):
             idx = self._data['type'] == key
             return FileIndex(data=self._data[idx], t0=self.t0)
         elif MessagePayload.is_subclass(key):
             idx = self._data['type'] == key.get_type()
             return FileIndex(data=self._data[idx], t0=self.t0)
         # Return entries for a list of message types.
-        elif isinstance(key, (set, list, tuple)) and len(key) > 0 and isinstance(next(iter(key)), MessageType):
+        elif isinstance(key, (set, list, tuple)) and len(key) > 0 and isinstance(next(iter(key)), IntEnum):
             idx = np.isin(self._data['type'], [int(k) for k in key])
             return FileIndex(data=self._data[idx], t0=self.t0)
         elif isinstance(key, (set, list, tuple)) and len(key) > 0 and MessagePayload.is_subclass(next(iter(key))):
@@ -429,9 +442,9 @@ class FileIndex(object):
 
     def __iter__(self):
         if len(self._data) == 0:
-            return FileIndexIterator(None)
+            return FileIndexIterator()
         else:
-            return FileIndexIterator(iter(self._data))
+            return FileIndexIterator(self.enum_class, iter(self._data))
 
     @classmethod
     def get_path(cls, data_path):
@@ -485,6 +498,7 @@ class FileIndexBuilder(object):
 
     This class can be used to construct a @ref FileIndex and a corresponding `.p1i` file when reading a `.p1log` file.
     """
+
     def __init__(self):
         self.raw_data = []
 
@@ -503,7 +517,7 @@ class FileIndexBuilder(object):
             self.append(message_type=header.message_type, offset_bytes=offset_bytes, p1_time=p1_time)
         return self.to_index()
 
-    def append(self, message_type: MessageType, offset_bytes: int, p1_time: Timestamp = None):
+    def append(self, message_type: IntEnum, offset_bytes: int, p1_time: Timestamp = None):
         """!
         @brief Add an entry to the index data being accumulated.
 
