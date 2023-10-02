@@ -1,10 +1,8 @@
-from typing import Dict, Iterable, Tuple, Union
+from enum import Enum, auto
+from typing import Dict, Iterable, Union
 
 from collections import deque
-import copy
 from datetime import datetime, timezone
-import io
-import os
 
 from gpstime import gpstime, unix2gps
 import numpy as np
@@ -12,12 +10,17 @@ import scipy as sp
 
 from ..messages import *
 from ..messages.timestamp import is_gps_time
-from ..parsers.file_index import FileIndex, FileIndexBuilder
+from ..parsers.file_index import FileIndex
 from ..parsers.mixed_log_reader import MixedLogReader
 from ..utils import trace as logging
 from ..utils.trace import SilentLogger
 from ..utils.enum_utils import IntEnum
 from ..utils.time_range import TimeRange
+
+
+class TimeConversionType:
+    P1_TO_GPS = auto()
+    GPS_TO_P1 = auto()
 
 
 class MessageData(object):
@@ -649,7 +652,7 @@ class DataLoader(object):
     def get_input_path(self):
         return self.reader.input_file.name
 
-    def _convert_time(self, gps_to_p1,
+    def _convert_time(self, conversion_type: TimeConversionType,
                       times: Union[Iterable[Union[datetime, gpstime, Timestamp, float]],
                                    Union[datetime, gpstime, Timestamp, float]],
                       assume_utc: bool = False) ->\
@@ -657,7 +660,7 @@ class DataLoader(object):
         """!
         @brief Convert UTC or GPS timestamps to P1 time or Convert UTC or P1 timestamps to GPS time.
 
-        @param gps_to_p1 If `True`, convert to P1 time. If `False`, convert to GPS time.
+        @param conversion_type If `GPS_TO_P1`, convert to P1 time. If `P1_TO_GPS`, convert to GPS time.
         @param times A list of one or more timestamps to be converted, using any of the following formats:
                - `datetime` - A UTC or local timezone date and time
                - `gpstime` - A GPS timestamp
@@ -742,7 +745,7 @@ class DataLoader(object):
 
         # Now, find all values that are GPS time (i.e., big enough that we assume they're not P1 times already) and
         # convert them to P1 time or vice versa.
-        if gps_to_p1:
+        if conversion_type == TimeConversionType.GPS_TO_P1:
             gps_idx = is_gps_time(time_sec)
             if np.any(gps_idx):
                 if p1_ref_sec is None:
@@ -754,8 +757,8 @@ class DataLoader(object):
                     # instead use SciPy's function.
                     f = sp.interpolate.interp1d(gps_ref_sec, p1_ref_sec, fill_value='extrapolate')
                     time_sec[gps_idx] = f(time_sec[gps_idx])
-        else:
-            p1_idx = not is_gps_time(time_sec)
+        elif conversion_type == TimeConversionType.P1_TO_GPS:
+            p1_idx = np.logical_not(is_gps_time(time_sec))
             if np.any(p1_idx):
                 if p1_idx is None:
                     time_sec[p1_idx] = np.nan
@@ -792,7 +795,7 @@ class DataLoader(object):
 
         @return A numpy array containing P1 time values (in seconds), or `nan` if the value could not be converted.
         """
-        return self._convert_time(True, times, assume_utc)
+        return self._convert_time(conversion_type=TimeConversionType.GPS_TO_P1, times=times, assume_utc=assume_utc)
 
     def convert_to_gps_time(self,
                             times: Union[Iterable[Union[datetime, gpstime, Timestamp, float]],
@@ -817,7 +820,7 @@ class DataLoader(object):
 
         @return A numpy array containing GPS time values (in seconds), or `nan` if the value could not be converted.
         """
-        return self._convert_time(False, times, assume_utc)
+        return self._convert_time(conversion_type=TimeConversionType.P1_TO_GPS, times=times, assume_utc=assume_utc)
 
     @classmethod
     def time_align_data(cls, data: dict, mode: TimeAlignmentMode = TimeAlignmentMode.INSERT,

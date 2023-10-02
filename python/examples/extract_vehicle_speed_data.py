@@ -49,12 +49,21 @@ Extract wheel speed data.
 
     # Read satellite data from the file.
     reader = DataLoader(input_path)
-    result = reader.read(message_types=[WheelSpeedOutput, RawWheelSpeedOutput], show_progress=True)
+    result = reader.read(
+        message_types=[
+            WheelSpeedOutput,
+            RawWheelSpeedOutput,
+            VehicleSpeedOutput,
+            RawVehicleSpeedOutput],
+        show_progress=True)
+    if all(len(d.messages) == 0 for d in result.values()):
+        logger.warning('No speed data found in log file.')
+        sys.exit(2)
+
     wheel_speed_data = result[WheelSpeedOutput.MESSAGE_TYPE]
     raw_wheel_speed_data = result[RawWheelSpeedOutput.MESSAGE_TYPE]
-    if len(wheel_speed_data.messages) == 0 and len(raw_wheel_speed_data.messages) == 0:
-        logger.warning('No wheel speed data found in log file.')
-        sys.exit(2)
+    vehicle_speed_data = result[WheelSpeedOutput.MESSAGE_TYPE]
+    raw_vehicle_speed_data = result[RawWheelSpeedOutput.MESSAGE_TYPE]
 
     # Generate a CSV file for corrected wheel speed data.
     if len(wheel_speed_data.messages) != 0:
@@ -95,5 +104,39 @@ Extract wheel speed data.
                      message.gear))
     else:
         logger.info("No raw wheel speed data.")
+
+    # Generate a CSV file for corrected vehicle speed data.
+    if len(vehicle_speed_data.messages) != 0:
+        path = os.path.join(output_dir, 'vehicle_speed_data.csv')
+        logger.info("Generating '%s'." % path)
+        with open(path, 'w') as f:
+            f.write('P1 Time (sec), GPS Time (sec), Vehicle Speed (m/s), Gear\n')
+            for message in vehicle_speed_data.messages:
+                gps_time = reader.convert_to_gps_time(message.p1_time)
+                f.write(
+                    '%.6f, %.6f, %.6f, %d\n' %
+                    (float(message.p1_time),
+                     float(gps_time),
+                     message.vehicle_speed_mps,
+                     message.gear))
+    else:
+        logger.info("No corrected vehicle speed data.")
+
+    # Generate a CSV file for raw vehicle speed data.
+    if len(raw_vehicle_speed_data.messages) != 0:
+        path = os.path.join(output_dir, 'raw_vehicle_speed_data.csv')
+        logger.info("Generating '%s'." % path)
+        with open(path, 'w') as f:
+            f.write('P1 Time (sec), GPS Time (sec), Vehicle Speed (m/s), Gear\n')
+            for message in vehicle_speed_data.messages:
+                gps_time = reader.convert_to_gps_time(message.p1_time)
+                f.write(
+                    '%.6f, %.6f, %.6f, %d\n' %
+                    (float(message.p1_time),
+                     float(gps_time),
+                     message.vehicle_speed_mps,
+                     message.gear))
+    else:
+        logger.info("No raw vehicle speed data.")
 
     logger.info("Output stored in '%s'." % os.path.abspath(output_dir))
