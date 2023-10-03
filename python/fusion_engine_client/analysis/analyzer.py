@@ -2206,10 +2206,6 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             self._open_browser(index_path)
 
     def _calculate_duration(self, return_index=False):
-        # Generate an index file, which we need to calculate the log duration, in case it wasn't created earlier (i.e.,
-        # we didn't read anything to plot).
-        self.reader.generate_index(show_progress=True)
-
         # Restrict the index to the user-requested time range.
         full_index = self.reader.get_index()
         reduced_index = full_index[self.params['time_range']]

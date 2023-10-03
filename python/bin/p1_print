@@ -112,7 +112,6 @@ other types of data.
     options = parser.parse_args()
 
     read_index = not options.ignore_index
-    generate_index = not options.ignore_index
 
     # Configure logging.
     if options.verbose >= 1:
@@ -162,11 +161,7 @@ other types of data.
 
     # Process all data in the file.
     reader = MixedLogReader(input_path, return_bytes=True, return_offset=True, show_progress=options.progress,
-                            ignore_index=not read_index, generate_index=generate_index and read_index,
-                            message_types=message_types, time_range=time_range)
-
-    if reader.generating_index() and (len(message_types) > 0 or options.time is not None):
-        _logger.info('Generating index file - processing complete file. This may take some time.')
+                            ignore_index=not read_index, message_types=message_types, time_range=time_range)
 
     first_p1_time_sec = None
     last_p1_time_sec = None
@@ -262,7 +257,8 @@ other types of data.
         _logger.info(format_string.format('Message Name', 'Type', 'Count'))
         _logger.info(format_string.format('-' * 50, '-' * 5, '-' * 8))
         for type, info in sorted(message_stats.items(), key=lambda x: int(x[0])):
-            _logger.info(format_string.format(message_type_to_class[type].__name__, int(type), info['count']))
+            name = message_type_to_class[type].__name__ if type in message_type_to_class else "Unknown"
+            _logger.info(format_string.format(name, int(type), info['count']))
         _logger.info(format_string.format('-' * 50, '-' * 5, '-' * 8))
         _logger.info(format_string.format('Total', '', total_messages))
     elif total_messages == 0:

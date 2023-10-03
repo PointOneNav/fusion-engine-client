@@ -356,7 +356,7 @@ def find_p1log_file(input_path, return_output_dir=False, return_log_id=False, lo
         raise FileExistsError('Specified file is not a .p1log file.')
 
 
-def extract_fusion_engine_log(input_path, output_path=None, warn_on_gaps=True, return_counts=False, generate_index=True):
+def extract_fusion_engine_log(input_path, output_path=None, warn_on_gaps=True, return_counts=False, save_index=True):
     """!
     @brief Extract FusionEngine data from a file containing mixed binary data.
 
@@ -365,7 +365,7 @@ def extract_fusion_engine_log(input_path, output_path=None, warn_on_gaps=True, r
            `input_path` is `<prefix>.<ext>`.
     @param warn_on_gaps If `True`, print a warning if gaps are detected in the data sequence numbers.
     @param return_counts If `True`, return the number of messages extracted for each message type.
-    @param generate_index If `True`, generate an index file to go along with the output file for faster reading in the
+    @param save_index If `True`, generate an index file to go along with the output file for faster reading in the
            future. See @ref FileIndex for details.
 
     @return A tuple containing:
@@ -377,10 +377,10 @@ def extract_fusion_engine_log(input_path, output_path=None, warn_on_gaps=True, r
     if output_path is None:
         output_path = os.path.splitext(input_path)[0] + '.p1log'
 
-    index_builder = FileIndexBuilder() if generate_index else None
+    index_builder = FileIndexBuilder() if save_index else None
 
     with open(input_path, 'rb') as in_fd, open(output_path, 'wb') as out_path:
-        reader = MixedLogReader(in_fd, warn_on_gaps=warn_on_gaps, generate_index=False,
+        reader = MixedLogReader(in_fd, warn_on_gaps=warn_on_gaps, save_index=False,
                                 return_header=True, return_payload=True, return_bytes=True, return_offset=False,
                                 show_progress=True)
         for header, payload, data in reader:

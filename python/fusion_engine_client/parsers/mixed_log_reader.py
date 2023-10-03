@@ -7,7 +7,7 @@ import sys
 
 import numpy as np
 
-from . import file_index
+from . import fast_indexer, file_index
 from ..messages import MessageType, MessageHeader, MessagePayload, Timestamp, message_type_to_class
 from ..utils import trace as logging
 from ..utils.time_range import TimeRange
@@ -22,7 +22,7 @@ class MixedLogReader(object):
     logger = logging.getLogger('point_one.fusion_engine.parsers.mixed_log_reader')
 
     def __init__(self, input_file, warn_on_gaps: bool = False, show_progress: bool = False,
-                 generate_index: bool = True, ignore_index: bool = False, max_bytes: int = None,
+                 save_index: bool = True, ignore_index: bool = False, max_bytes: int = None,
                  time_range: TimeRange = None, message_types: Union[Iterable[MessageType], MessageType] = None,
                  return_header: bool = True, return_payload: bool = True,
                  return_bytes: bool = False, return_offset: bool = False, return_message_index: bool = False):
@@ -36,10 +36,10 @@ class MixedLogReader(object):
                object.
         @param warn_on_gaps If `True`, print warnings if gaps are detected in the FusionEngine message sequence numbers.
         @param show_progress If `True`, print file read progress to the console periodically.
-        @param generate_index If `True`, generate an index file if one does not exist for faster reading in the future.
+        @param save_index If `True`, save an index file if one does not exist for faster reading in the future.
                See @ref FileIndex for details. Ignored if `max_bytes` is specified.
         @param ignore_index If `True`, ignore the existing index file and read from the binary file directly. If
-               `generate_index == True`, this will delete the existing file and create a new one.
+               `save_index == True`, this will delete the existing file and create a new one.
         @param max_bytes If specified, read up to the maximum number of bytes.
         @param time_range An optional @ref TimeRange object specifying desired start and end time bounds of the data to
                be read. See @ref TimeRange for more details.
@@ -102,38 +102,13 @@ class MixedLogReader(object):
             self.max_bytes = sys.maxsize
         else:
             self.max_bytes = max_bytes
-            if generate_index:
-                self.logger.debug('Max bytes specified. Disabling index generation.')
-                generate_index = False
 
-        # Open the companion index file if one exists.
-        self.index_path = file_index.FileIndex.get_path(input_path)
-        self._original_index = None
-        self.index = None
+        # Open the companion index file if one exists, otherwise index the file.
+        self._original_index = fast_indexer.fast_generate_index(input_path, force_reindex=ignore_index, save_index=save_index, max_bytes=max_bytes)
         self.next_index_elem = 0
-        if ignore_index:
-            if os.path.exists(self.index_path):
-                if generate_index:
-                    self.logger.debug("Deleting/regenerating index file @ '%s'." % self.index_path)
-                    os.remove(self.index_path)
-                else:
-                    self.logger.debug("Ignoring index file @ '%s'." % self.index_path)
-        else:
-            if os.path.exists(self.index_path):
-                try:
-                    self.logger.debug("Loading index file '%s'." % self.index_path)
-                    self._original_index = file_index.FileIndex(index_path=self.index_path, data_path=input_path,
-                                                                delete_on_error=generate_index)
-                    self.index = self._original_index[self.message_types][self.time_range]
-                    self.filtered_message_types = len(np.unique(self._original_index.type)) != \
-                                                  len(np.unique(self.index.type))
-                except ValueError as e:
-                    self.logger.error("Error loading index file: %s" % str(e))
-            else:
-                self.logger.debug("No index file found @ '%s'." % self.index_path)
-
-        self.index_builder = None
-        self.set_generate_index(generate_index)
+        self.index = self._original_index[self.message_types][self.time_range]
+        self.filtered_message_types = len(np.unique(self._original_index.type)) != \
+                                        len(np.unique(self.index.type))
 
     def rewind(self):
         self.logger.debug('Rewinding to the start of the file.')
@@ -154,9 +129,6 @@ class MixedLogReader(object):
 
         self.next_index_elem = 0
         self.input_file.seek(0, os.SEEK_SET)
-
-        if self.index_builder is not None:
-            self.index_builder = file_index.FileIndexBuilder()
 
     def seek_to_message(self, message_index: int, is_filtered_index: bool = False):
         if self.index is None:
@@ -185,18 +157,6 @@ class MixedLogReader(object):
     def get_index(self):
         return self._original_index
 
-    def generating_index(self):
-        return self.index_builder is not None
-
-    def set_generate_index(self, generate_index):
-        if self._original_index is None:
-            if generate_index:
-                self.logger.debug("Generating index file '%s'." % self.index_path)
-                self.index_builder = file_index.FileIndexBuilder()
-            else:
-                self.logger.debug("Index generation disabled.")
-                self.index_builder = None
-
     def set_show_progress(self, show_progress):
         self.show_progress = show_progress
 
@@ -205,9 +165,6 @@ class MixedLogReader(object):
             self.max_bytes = sys.maxsize
         else:
             self.max_bytes = max_bytes
-            if self.index_builder is not None:
-                self.logger.debug('Max bytes specified. Disabling index generation.')
-                self.set_generate_index(False)
 
     def get_bytes_read(self):
         return self.total_bytes_read
@@ -215,16 +172,12 @@ class MixedLogReader(object):
     def next(self):
         return self.read_next()
 
-    def read_next(self, require_p1_time=False, require_system_time=False, generate_index=True):
-        return self._read_next(require_p1_time=require_p1_time, require_system_time=require_system_time,
-                               generate_index=generate_index)
+    def read_next(self, require_p1_time=False, require_system_time=False):
+        return self._read_next(require_p1_time=require_p1_time, require_system_time=require_system_time)
 
-    def _read_next(self, require_p1_time=False, require_system_time=False, generate_index=True, force_eof=False):
+    def _read_next(self, require_p1_time=False, require_system_time=False, force_eof=False):
         if force_eof:
             if not self.reached_eof():
-                if self.generating_index():
-                    raise ValueError('Cannot jump to EOF while building an index file.')
-
                 self.logger.debug('Forcibly seeking to EOF.')
                 if self.index is None:
                     self.input_file.seek(self.file_size_bytes, os.SEEK_SET)
@@ -337,8 +290,7 @@ class MixedLogReader(object):
                 # Deserialize the payload if we need it.
                 need_payload = self.return_payload or \
                                self.time_range is not None or \
-                               require_p1_time or require_system_time or \
-                               (self.index_builder is not None and generate_index)
+                               require_p1_time or require_system_time
 
                 if need_payload:
                     cls = message_type_to_class.get(header.message_type, None)
@@ -362,11 +314,6 @@ class MixedLogReader(object):
                 # Extract P1 time if available.
                 p1_time = payload.get_p1_time() if payload is not None else Timestamp()
 
-                # Add this message to the index file.
-                if self.index_builder is not None and generate_index:
-                    self.index_builder.append(message_type=header.message_type, offset_bytes=start_offset_bytes,
-                                              p1_time=p1_time)
-
                 # Now, if this message is not in the user-specified filter criteria, skip it.
                 #
                 # If we have an index available, this is implied by the index (we won't seek to messages that don't meet
@@ -381,7 +328,7 @@ class MixedLogReader(object):
                         self.logger.trace("Message does not have valid P1 time. Skipping.", depth=1)
                         continue
                     elif self.time_range is not None and not self.time_range.is_in_range(payload):
-                        if self.time_range.in_range_started() and (self.index_builder is None or not generate_index):
+                        if self.time_range.in_range_started():
                             self.logger.debug("End of time range reached. Finished processing.")
                             break
                         else:
@@ -414,19 +361,6 @@ class MixedLogReader(object):
         self._print_progress(self.total_bytes_read)
         self.logger.debug("Read %d bytes total." % self.total_bytes_read)
 
-        # If we are creating an index file, save it now.
-        if self.index_builder is not None and generate_index:
-            self.logger.debug("Saving index file as '%s'." % self.index_path)
-            self._original_index = self.index_builder.save(self.index_path, self.input_file.name)
-            self.index_builder = None
-
-            self.index = self._original_index[self.message_types][self.time_range]
-            if self.remove_invalid_p1_time:
-                self.index = self.index.get_time_range(hint='remove_nans')
-            self.message_types = None
-            self.time_range = None
-            self.next_index_elem = len(self.index)
-
         # Finished iterating.
         if force_eof:
             return
@@ -434,50 +368,15 @@ class MixedLogReader(object):
             raise StopIteration()
 
     def _advance_to_next_sync(self):
-        if self.index is None:
-            try:
-                if self.logger.isEnabledFor(logging.getTraceLevel(depth=2)):
-                    self.logger.trace('Starting next sync search @ %d (0x%x).' %
-                                      (self.total_bytes_read, self.total_bytes_read),
-                                      depth=2)
-                while True:
-                    if self.total_bytes_read + 1 >= self.max_bytes:
-                        self.logger.debug('Max read length exceeded (%d B).' % self.max_bytes)
-                        return False
-
-                    byte0 = self.input_file.read(1)[0]
-                    self.total_bytes_read += 1
-                    while True:
-                        if byte0 == MessageHeader.SYNC0:
-                            if self.total_bytes_read + 1 >= self.max_bytes:
-                                self.logger.debug('Max read length exceeded (%d B).' % self.max_bytes)
-                                return False
-
-                            byte1 = self.input_file.read(1)[0]
-                            self.total_bytes_read += 1
-                            if byte1 == MessageHeader.SYNC1:
-                                self.input_file.seek(-2, os.SEEK_CUR)
-                                self.total_bytes_read -= 2
-                                if self.logger.isEnabledFor(logging.getTraceLevel(depth=3)):
-                                    self.logger.trace('Sync bytes found @ %d (0x%x).' %
-                                                      (self.total_bytes_read, self.total_bytes_read),
-                                                      depth=3)
-                                return True
-                            byte0 = byte1
-                        else:
-                            break
-            except IndexError:
-                return False
+        if self.next_index_elem == len(self.index):
+            return False
         else:
-            if self.next_index_elem == len(self.index):
-                return False
-            else:
-                offset_bytes = self.index.offset[self.next_index_elem]
-                self.current_message_index = self.index.message_index[self.next_index_elem]
-                self.next_index_elem += 1
-                self.input_file.seek(offset_bytes, os.SEEK_SET)
-                self.total_bytes_read = offset_bytes
-                return True
+            offset_bytes = self.index.offset[self.next_index_elem]
+            self.current_message_index = self.index.message_index[self.next_index_elem]
+            self.next_index_elem += 1
+            self.input_file.seek(offset_bytes, os.SEEK_SET)
+            self.total_bytes_read = offset_bytes
+            return True
 
     def _print_progress(self, file_size=None):
         show_progress = self.show_progress
@@ -664,7 +563,4 @@ class MixedLogReader(object):
 
     @classmethod
     def generate_index_file(cls, input_file):
-        reader = MixedLogReader(input_file=input_file, ignore_index=False, generate_index=True, return_payload=False)
-        if reader.index is None:
-            for _ in reader:
-                pass
+        return fast_indexer.fast_generate_index(input_file)
