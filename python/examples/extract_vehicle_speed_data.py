@@ -62,8 +62,8 @@ Extract wheel speed data.
 
     wheel_speed_data = result[WheelSpeedOutput.MESSAGE_TYPE]
     raw_wheel_speed_data = result[RawWheelSpeedOutput.MESSAGE_TYPE]
-    vehicle_speed_data = result[WheelSpeedOutput.MESSAGE_TYPE]
-    raw_vehicle_speed_data = result[RawWheelSpeedOutput.MESSAGE_TYPE]
+    vehicle_speed_data = result[VehicleSpeedOutput.MESSAGE_TYPE]
+    raw_vehicle_speed_data = result[RawVehicleSpeedOutput.MESSAGE_TYPE]
 
     # Generate a CSV file for corrected wheel speed data.
     if len(wheel_speed_data.messages) != 0:
@@ -79,8 +79,8 @@ Extract wheel speed data.
                      float(gps_time),
                      message.front_left_speed_mps,
                      message.front_right_speed_mps,
-                     message.back_left_speed_mps,
-                     message.back_right_speed_mps,
+                     message.rear_left_speed_mps,
+                     message.rear_right_speed_mps,
                      message.gear))
     else:
         logger.info("No corrected wheel speed data.")
@@ -99,8 +99,8 @@ Extract wheel speed data.
                      float(gps_time),
                      message.front_left_speed_mps,
                      message.front_right_speed_mps,
-                     message.back_left_speed_mps,
-                     message.back_right_speed_mps,
+                     message.rear_left_speed_mps,
+                     message.rear_right_speed_mps,
                      message.gear))
     else:
         logger.info("No raw wheel speed data.")
