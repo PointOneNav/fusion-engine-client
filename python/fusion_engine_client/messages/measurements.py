@@ -607,7 +607,7 @@ class RawWheelTickOutput(WheelTickInput):
     MESSAGE_VERSION = 0
 
     def __str__(self):
-        return super().__str__().replace('Tick Input', 'Tick Output')
+        return super().__str__().replace('Wheel Tick Input', 'Raw Wheel Tick Output')
 
 ################################################################################
 # Vehicle Tick Measurements
@@ -702,7 +702,7 @@ class RawVehicleTickOutput(VehicleTickInput):
     MESSAGE_VERSION = 0
 
     def __str__(self):
-        return super().__str__().replace('Tick Input', 'Tick Output')
+        return super().__str__().replace('Vehicle Tick Input', 'Raw Vehicle Tick Output')
 
 ################################################################################
 # Deprecated Speed Measurement Definitions
