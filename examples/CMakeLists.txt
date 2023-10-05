@@ -1,8 +1,9 @@
 add_subdirectory(common)
 
 add_subdirectory(generate_data)
-add_subdirectory(message_decode)
 add_subdirectory(lband_decode)
+add_subdirectory(message_decode)
+add_subdirectory(request_version)
 add_subdirectory(tcp_client)
 add_subdirectory(udp_client)
 

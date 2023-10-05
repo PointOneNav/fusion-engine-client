@@ -78,6 +78,8 @@ The `examples/` directory contains example applications demonstrating how to use
 - `external_cmake_project` - Download a copy of the FusionEngine Client library from the public repository and import
   it into a CMake project using `FetchContent`.
 - `generate_data` - Generate a binary file containing a fixed set of messages.
+- `lband_decode` - Example of decoding RTCM corrections from a recorded file containing LBandFrameMessage.
+- `request_version` - Simulate sending a request for a version info message, and waiting for a response.
 - `tcp_client` - Connect to a device over TCP and display the received FusionEngine messages.
 - `udp_client` - Connect to a device over UDP and display the received FusionEngine messages.
 
