@@ -6,6 +6,7 @@ filegroup(
     srcs = [
         "//generate_data",
         "//message_decode",
+        "//request_version",
         "//tcp_client",
         "//udp_client",
     ]

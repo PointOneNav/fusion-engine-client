@@ -107,10 +107,31 @@ void PrintMessage(const MessageHeader& header, const void* payload_in) {
              sv.azimuth_deg);
       printf("    In solution: %s\n", sv.usage > 0 ? "yes" : "no");
     }
+  } else if (header.message_type == MessageType::VERSION_INFO) {
+    auto& contents = *reinterpret_cast<const VersionInfoMessage*>(payload);
+    payload += sizeof(contents);
+
+    double system_time = contents.system_time_ns * 1e-9;
+    printf(
+        "Version info message @ System time %.3f seconds. [sequence=%u, "
+        "size=%zu B]\n",
+        system_time, header.sequence_number, message_size);
+    printf("  Firmware version: %.*s\n", contents.fw_version_length,
+           reinterpret_cast<const char*>(payload));
   } else {
     printf("Received message type %s. [sequence=%u, %zu bytes]\n",
            to_string(header.message_type), header.sequence_number,
            message_size);
+  }
+}
+
+void PrintHex(const void* data, size_t data_len_bytes) {
+  const uint8_t* data_ptr = static_cast<const uint8_t*>(data);
+  for (size_t i = 0; i < data_len_bytes; ++i) {
+    printf("%02x", data_ptr[i]);
+    if (i < data_len_bytes - 1) {
+      printf(" ");
+    }
   }
 }
 

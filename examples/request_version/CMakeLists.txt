@@ -1,0 +1,3 @@
+add_executable(request_version request_version.cc)
+target_link_libraries(request_version PUBLIC fusion_engine_client)
+target_link_libraries(request_version PUBLIC print_message)
