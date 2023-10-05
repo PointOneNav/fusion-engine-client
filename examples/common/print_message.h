@@ -20,6 +20,8 @@ namespace examples {
 void PrintMessage(const fusion_engine::messages::MessageHeader& header,
                   const void* payload);
 
+void PrintHex(const void* data, size_t data_len_bytes);
+
 } // namespace examples
 } // namespace fusion_engine
 } // namespace point_one

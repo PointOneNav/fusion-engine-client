@@ -49,19 +49,37 @@ Extract IMU accelerometer and gyroscope measurements.
 
     # Read satellite data from the file.
     reader = DataLoader(input_path)
-    result = reader.read(message_types=[IMUOutput], show_progress=True)
+    result = reader.read(message_types=[IMUOutput, RawIMUOutput], show_progress=True)
     imu_data = result[IMUOutput.MESSAGE_TYPE]
-    if len(imu_data.messages) == 0:
+    raw_imu_data = result[RawIMUOutput.MESSAGE_TYPE]
+    if len(imu_data.messages) == 0 and len(raw_imu_data.messages) == 0:
         logger.warning('No IMU data found in log file.')
         sys.exit(2)
 
-    # Generate a CSV file.
-    path = os.path.join(output_dir, 'imu_data.csv')
-    logger.info("Generating '%s'." % path)
-    with open(path, 'w') as f:
-        f.write('P1 Time (sec), Accel X (m/s^2), Y, Z, Gyro X (rad/s), Y, Z\n')
-        for message in imu_data.messages:
-            f.write('%.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f\n' %
-                    (float(message.p1_time), *message.accel_mps2, *message.gyro_rps))
+    # Generate a CSV file for corrected IMU data.
+    if len(imu_data.messages) != 0:
+        path = os.path.join(output_dir, 'imu_data.csv')
+        logger.info("Generating '%s'." % path)
+        with open(path, 'w') as f:
+            f.write('P1 Time (sec), GPS Time (sec), Accel X (m/s^2), Y, Z, Gyro X (rad/s), Y, Z\n')
+            for message in imu_data.messages:
+                gps_time = reader.convert_to_gps_time(message.p1_time)
+                f.write('%.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f\n' %
+                        (float(message.p1_time), float(gps_time), *message.accel_mps2, *message.gyro_rps))
+    else:
+        logger.info("No corrected IMU data.")
+
+    # Generate a CSV file for raw IMU data.
+    if len(raw_imu_data.messages) != 0:
+        path = os.path.join(output_dir, 'raw_imu_data.csv')
+        logger.info("Generating '%s'." % path)
+        with open(path, 'w') as f:
+            f.write('P1 Time (sec), GPS Time (sec), Accel X (m/s^2), Y, Z, Gyro X (rad/s), Y, Z, Temp(C)\n')
+            for message in raw_imu_data.messages:
+                gps_time = reader.convert_to_gps_time(message.p1_time)
+                f.write('%.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f\n' %
+                        (float(message.p1_time), float(gps_time), *message.accel_mps2, *message.gyro_rps, message.temperature_degc))
+    else:
+        logger.info("No raw IMU data.")
 
     logger.info("Output stored in '%s'." % os.path.abspath(output_dir))
