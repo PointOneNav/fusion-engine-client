@@ -24,7 +24,10 @@ alignas(4) uint8_t storage[4096];
 
 // Fake Send/Receive functions.
 /******************************************************************************/
-void SendData(void* data, size_t data_len_bytes) {}
+void SendData(void* data, size_t data_len_bytes) {
+  (void)data;
+  (void)data_len_bytes;
+}
 
 /******************************************************************************/
 size_t ReceiveData(uint8_t* buffer, size_t read_size) {
