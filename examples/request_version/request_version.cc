@@ -1,5 +1,6 @@
 /**************************************************************************/ /**
-* @brief Message encode example.
+* @brief Simulate sending a request for a version info message, and waiting for
+*        a response.
 * @file
 ******************************************************************************/
 
