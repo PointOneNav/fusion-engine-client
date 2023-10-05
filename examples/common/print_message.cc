@@ -125,6 +125,7 @@ void PrintMessage(const MessageHeader& header, const void* payload_in) {
   }
 }
 
+/******************************************************************************/
 void PrintHex(const void* data, size_t data_len_bytes) {
   const uint8_t* data_ptr = static_cast<const uint8_t*>(data);
   for (size_t i = 0; i < data_len_bytes; ++i) {

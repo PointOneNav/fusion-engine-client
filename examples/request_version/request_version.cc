@@ -19,6 +19,27 @@ using namespace point_one::fusion_engine::parsers;
 
 bool message_found = false;
 
+// Enforce a 4-byte aligned address.
+alignas(4) uint8_t storage[4096];
+
+// Fake Send/Receive functions.
+/******************************************************************************/
+void SendData(void* data, size_t data_len_bytes) {}
+
+/******************************************************************************/
+size_t ReceiveData(uint8_t* buffer, size_t read_size) {
+  static size_t offset = 0;
+  if (offset + read_size < sizeof(storage)) {
+    // We're using this data as if it were received from the device.
+    memcpy(buffer, storage + offset, read_size);
+    offset += read_size;
+    return read_size;
+  } else {
+    return 0;
+  }
+}
+
+/******************************************************************************/
 int main(int argc, const char* argv[]) {
   if (argc != 1) {
     printf("Usage: %s\n", argv[0]);
@@ -27,9 +48,6 @@ Simulate sending a version request, and parsing the response.
 )EOF");
     return 0;
   }
-
-  // Enforce a 4-byte aligned address.
-  alignas(4) uint8_t storage[4096];
 
   //////////////////////////////////////////////////////////////////////////////
   // Write a VersionInfoMessage request.
@@ -52,16 +70,19 @@ Simulate sending a version request, and parsing the response.
   header->crc = CalculateCRC(storage);
 
   printf("Sending VersionInfoMessage request:\n  ");
-  // This data would be sent over serial to the device.
   PrintHex(storage, sizeof(MessageHeader) + sizeof(MessageRequest));
+  // This data would be sent over serial to the device.
+  SendData(storage, sizeof(MessageHeader) + sizeof(MessageRequest));
+
   printf("\n");
 
   //////////////////////////////////////////////////////////////////////////////
-  // Generate an example response
+  // Generate an example response of the data a device would send back.
   //////////////////////////////////////////////////////////////////////////////
 
   static constexpr char VERSION_STR[] = {'t', 'e', 's', 't'};
 
+  // @ref ReceiveData will read data from `storage`.
   buffer = storage;
   header = reinterpret_cast<MessageHeader*>(buffer);
   buffer += sizeof(MessageHeader);
@@ -83,16 +104,14 @@ Simulate sending a version request, and parsing the response.
   header->crc = CalculateCRC(storage);
 
   //////////////////////////////////////////////////////////////////////////////
-  // Receive example response
+  // Receive example response.
   //////////////////////////////////////////////////////////////////////////////
 
   printf("Waiting for response\n");
-  size_t READ_SIZE = 10;
-  // We're using this data as if it were received from the device.
-  buffer = storage;
   // In a real application, you'd need to do the bookkeeping to trigger a
   // timeout if no response is received after a couple seconds.
   bool has_timed_out = false;
+  uint8_t read_buffer[10];
 
   FusionEngineFramer framer(1024);
   framer.SetMessageCallback(
@@ -105,9 +124,8 @@ Simulate sending a version request, and parsing the response.
       });
 
   while (!has_timed_out && !message_found) {
-    // Use the example data as if it were received from the device.
-    framer.OnData(buffer, READ_SIZE);
-    buffer += READ_SIZE;
+    size_t data_read = ReceiveData(read_buffer, sizeof(read_buffer));
+    framer.OnData(read_buffer, data_read);
   }
 
   printf("Response received.\n");
