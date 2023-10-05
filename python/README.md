@@ -37,8 +37,10 @@ FusionEngine message specification.
       - [extract_position_data.py](examples/extract_position_data.py) - Generate CSV and KML files detailing the vehicle
         position over time
         - This script also includes an example of time-aligning multiple message types
-      - [extract_satellite_info.py](examples/extract_satellite_info.py) - Generate a CSV file containing satellite 
+      - [extract_satellite_info.py](examples/extract_satellite_info.py) - Generate a CSV file containing satellite
         azimuth/elevation and C/N0 information over time
+      - [extract_vehicle_speed_data.py](examples/extract_vehicle_speed_data.py) - Generate CSV files containing recorded
+        wheel and vehicle speed measurements
       - [manual_message_decode.py](examples/manual_message_decode.py) - Read a `.p1log` binary file and decode the
         message headers and payloads explicitly (without the using the `FusionEngineDecoder` helper class)
       - [manual_tcp_client.py](examples/manual_tcp_client.py) - Connect to a device over TCP and decode/display messages
