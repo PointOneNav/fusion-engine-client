@@ -202,8 +202,8 @@ other types of data.
                             newest_p1_time = p1_time
                             newest_p1_message_type = header.message_type
                         else:
-                            # For P1 time, we allow a small tolerance to account for normal latency between measurements
-                            # and computed data like pose solutions.
+                            # We allow a small tolerance to account for normal latency between measurements and computed
+                            # data like pose solutions, as well as latency between different types of measurements.
                             dt_sec = float(p1_time - newest_p1_time)
                             if dt_sec < -0.2:
                                 _logger.warning(
@@ -223,7 +223,10 @@ other types of data.
                             newest_system_time_sec = system_time_sec
                             newest_system_message_type = header.message_type
                         else:
-                            if system_time_sec < newest_system_time_sec:
+                            # We allow a small tolerance to account for normal latency between measurements and computed
+                            # data like pose solutions, as well as latency between different types of measurements.
+                            dt_sec = newest_system_time_sec - system_time_sec
+                            if dt_sec < -0.2:
                                 _logger.warning(
                                     'Backwards/restarted system time detected after %s (%s). [new_message=%s, '
                                     'new_system_time=%s, offset=%d B]' %
