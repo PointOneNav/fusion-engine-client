@@ -387,7 +387,7 @@ class GNSSInfoMessage(MessagePayload):
             'num_svs': np.array([int(m.num_svs) for m in messages], dtype=int),
             'corrections_age_sec': np.array([m.corrections_age_sec for m in messages]),
             'baseline_distance_m': np.array([m.baseline_distance_m for m in messages]),
-            'reference_station_id': np.array([int(m.reference_station_id) for m in messages], dtype=int),
+            'reference_station_id': np.array([int(m.reference_station_id) for m in messages], dtype=np.uint32),
             'gdop': np.array([m.gdop for m in messages]),
             'pdop': np.array([m.pdop for m in messages]),
             'hdop': np.array([m.hdop for m in messages]),
