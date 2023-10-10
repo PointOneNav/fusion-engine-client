@@ -65,7 +65,6 @@ Extract L-band corrections data from a log containing FusionEngine L-band frame 
     options = parser.parse_args()
 
     read_index = not options.ignore_index
-    generate_index = not options.ignore_index
 
     # Configure logging.
     if options.verbose >= 1:
@@ -112,11 +111,7 @@ Extract L-band corrections data from a log containing FusionEngine L-band frame 
 
     # Process all LBandFrameMessage data in the file.
     reader = MixedLogReader(input_path, return_bytes=True, return_offset=True, show_progress=options.progress,
-                            ignore_index=not read_index, generate_index=generate_index,
-                            message_types=message_types, time_range=time_range)
-
-    if reader.generating_index():
-        _logger.info('Generating index file - processing complete file. This may take some time.')
+                            ignore_index=not read_index, message_types=message_types, time_range=time_range)
 
     total_messages = 0
     bytes_decoded = 0

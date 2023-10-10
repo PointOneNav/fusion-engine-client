@@ -130,7 +130,6 @@ class TestClass:
         messages = self._generate_mixed_data(data_path)
 
         reader = MixedLogReader(str(data_path))
-        assert reader.index is None
         self._check_results(reader, messages)
 
         # Verify that we successfully generated an index file.
@@ -145,7 +144,6 @@ class TestClass:
         expected_messages = [m for m in messages if isinstance(m, PoseMessage)]
 
         reader = MixedLogReader(str(data_path))
-        assert reader.index is None
         reader.filter_in_place((PoseMessage,))
         self._check_results(reader, expected_messages)
 
@@ -175,7 +173,6 @@ class TestClass:
         expected_messages = [m for m in messages if isinstance(m, PoseMessage)]
 
         reader = MixedLogReader(str(data_path))
-        assert reader.index is None
         reader.filter_in_place((PoseMessage,))
         self._check_results(reader, expected_messages)
 
@@ -215,16 +212,6 @@ class TestClass:
         reader.filter_in_place((EventNotificationMessage,))
         self._check_results(reader, expected_messages)
 
-    def test_read_no_generate_index(self, data_path):
-        messages = self._generate_mixed_data(data_path)
-        expected_messages = [m for m in messages if isinstance(m, PoseMessage)]
-
-        reader = MixedLogReader(str(data_path), generate_index=False)
-        assert reader.index is None
-        reader.filter_in_place((PoseMessage,))
-        self._check_results(reader, expected_messages)
-        assert reader.index is None
-
     def test_read_with_index(self, data_path):
         messages = self._generate_mixed_data(data_path)
         expected_messages = [m for m in messages if isinstance(m, PoseMessage)]
@@ -256,16 +243,11 @@ class TestClass:
         MixedLogReader.generate_index_file(str(data_path))
         reader = MixedLogReader(str(data_path), ignore_index=True)
 
-        # By default, we will be generating an index file, overwriting the existing one, so the reader should have
-        # deleted the existing one.
-        assert reader.index is None
-        assert not os.path.exists(reader.index_path)
-
         reader.filter_in_place((PoseMessage,))
         self._check_results(reader, expected_messages)
 
         # Check that we generated a new index.
-        assert os.path.exists(reader.index_path)
+        assert os.path.exists(FileIndex.get_path(data_path))
         assert reader.index is not None and len(reader.index) == len(expected_messages)
         assert len(reader._original_index) == len(messages)
 
@@ -274,17 +256,13 @@ class TestClass:
         expected_messages = [m for m in messages if isinstance(m, PoseMessage)]
 
         MixedLogReader.generate_index_file(str(data_path))
-        reader = MixedLogReader(str(data_path), ignore_index=True, generate_index=False)
-        assert reader.index is None
+        reader = MixedLogReader(str(data_path), ignore_index=True, save_index=False)
 
         # This time, we are not generating an index so we do _not_ delete the existing file and leave it intact.
-        assert reader.index is None
-        assert os.path.exists(reader.index_path)
+        assert os.path.exists(FileIndex.get_path(data_path))
 
         reader.filter_in_place((PoseMessage,))
         self._check_results(reader, expected_messages)
-
-        assert reader.index is None
 
     # Note: TimeRange objects keep internal state, so we can't use them here since the state will remain across multiple
     # calls for different use_index values. Instead we store range strings and parse them on each call.
@@ -319,10 +297,8 @@ class TestClass:
             _, message = next(reader)
             self._check_message(message, expected_messages[i])
 
-        if use_index:
-            assert reader.index is not None
-        else:
-            assert reader.index is None
+
+        assert reader.index is not None
 
         reader.rewind()
         self._check_results(reader, expected_messages)
@@ -425,12 +401,8 @@ class TestClass:
             _, message = next(reader)
             self._check_message(message, expected_messages[i])
 
-        # Now jump to EOF. If we're generating an index file, this is illegal.
-        if use_index:
-            reader.seek_to_eof()
-        else:
-            with pytest.raises(ValueError):
-                reader.seek_to_eof()
+        # Now jump to EOF.
+        reader.seek_to_eof()
 
     def test_seek_to_eof_no_index(self, data_path):
         self._test_seek_to_eof(data_path, use_index=False)

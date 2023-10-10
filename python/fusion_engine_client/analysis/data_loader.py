@@ -67,7 +67,7 @@ class MessageData(object):
 
             if do_conversion:
                 self.__dict__.update(self.message_class.to_numpy(self.messages))
-                self.messages_bytes = np.array(self.messages_bytes, dtype=int)
+                self.messages_bytes = np.array(self.messages_bytes, dtype=np.uint64)
                 self.message_index = np.array(self.message_index, dtype=int)
 
                 if remove_nan_times and 'p1_time' in self.__dict__:
@@ -135,15 +135,15 @@ class DataLoader(object):
 
     logger = logging.getLogger('point_one.fusion_engine.analysis.data_loader')
 
-    def __init__(self, path=None, generate_index=True, ignore_index=False):
+    def __init__(self, path=None, save_index=True, ignore_index=False):
         """!
         @brief Create a new reader instance.
 
         @param path The path to a binary file containing FusionEngine messages, or an existing Python file object.
-        @param generate_index If `True`, generate a `.p1i` index file if one does not exist for faster reading in the
+        @param save_index If `True`, save a `.p1i` index file if one does not exist for faster reading in the
                future. See @ref FileIndex for details.
         @param ignore_index If `True`, ignore the existing index file and read from the `.p1log` binary file directly.
-               If `generate_index == True`, this will delete the existing file and create a new one.
+               If `save_index == True`, this will delete the existing file and create a new one.
         """
         self.reader: MixedLogReader = None
 
@@ -155,26 +155,24 @@ class DataLoader(object):
         self._need_t0 = True
         self._need_system_t0 = True
 
-        self._generate_index = generate_index
+        self._generate_index = save_index
         if path is not None:
-            self.open(path, generate_index=generate_index, ignore_index=ignore_index)
+            self.open(path, save_index=save_index, ignore_index=ignore_index)
 
-    def open(self, path, generate_index=True, ignore_index=False):
+    def open(self, path, save_index=True, ignore_index=False):
         """!
         @brief Open a FusionEngine binary file.
 
         @param path The path to a binary file containing FusionEngine messages, or an existing Python file object.
-        @param generate_index If `True`, generate a `.p1i` index file if one does not exist for faster reading in the
+        @param save_index If `True`, generate a `.p1i` index file if one does not exist for faster reading in the
                future. See @ref FileIndex for details.
         @param ignore_index If `True`, ignore the existing index file and read from the `.p1log` binary file directly.
-               If `generate_index == True`, this will delete the existing file and create a new one.
+               If `save_index == True`, this will delete the existing file and create a new one.
         """
         self.close()
 
-        self.reader = MixedLogReader(input_file=path, generate_index=generate_index, ignore_index=ignore_index,
+        self.reader = MixedLogReader(input_file=path, save_index=save_index, ignore_index=ignore_index,
                                      return_bytes=True, return_message_index=True)
-        if self.reader.have_index():
-            self.logger.debug("Using index file '%s'." % self.reader.index_path)
 
         # Read the first message (with P1 time) in the file to set self.t0.
         #
@@ -218,28 +216,6 @@ class DataLoader(object):
         if self.reader is not None:
             self.reader = None
 
-    def generate_index(self, show_progress=False):
-        """!
-        @brief Generate an index file for the current binary file if one does not already exist.
-        """
-        if not self.reader.have_index():
-            # We'll read pose data (doesn't actually matter which). Store the currently cached data and restore it when
-            # we're done. That way if the user already did a read (with generate_index == False), they don't have to
-            # re-read the data if they try to use it again.
-            prev_data = self.data.get(MessageType.POSE, None)
-
-            if show_progress:
-                self.logger.info('Generating data index for faster access. This may take a few minutes...')
-            else:
-                self.logger.debug('Generating data index for faster access. This may take a few minutes...')
-
-            self._generate_index = True
-            self.read(message_types=[MessageType.POSE], max_messages=1, disable_index_generation=False,
-                      ignore_cache=True, show_progress=show_progress, quiet=True)
-
-            if prev_data is not None:
-                self.data[MessageType.POSE] = prev_data
-
     def read(self, *args, **kwargs) \
             -> Union[Dict[MessageType, MessageData], MessageData]:
         """!
@@ -248,7 +224,7 @@ class DataLoader(object):
         The read data will be cached internally. Subsequent reads for the same data type will return the cached data.
 
         @note
-        This function uses a data index file to speed up reads when available. If `generate_index == True` and no index
+        This function uses a data index file to speed up reads when available. If `save_index == True` and no index
         file exists, one will be generated automatically. In order to do this, this function must read the entire data
         file, even if it could normally return early when `max_messages` or the end of `time_range` are reached.
 
@@ -258,7 +234,7 @@ class DataLoader(object):
                be read. See @ref TimeRange for more details.
 
         @param show_progress If `True`, print the read progress every 10 MB (useful for large files).
-        @param disable_index_generation If `True`, override the `generate_index` argument provided to `open()` and do
+        @param disable_index_generation If `True`, override the `save_index` argument provided to `open()` and do
                not generate an index file during this call (intended for internal use only).
         @param ignore_cache If `True`, ignore any cached data from a previous @ref read() call, and reload the requested
                data from disk.
@@ -434,7 +410,6 @@ class DataLoader(object):
         else:
             self.reader.rewind()
             self.reader.clear_filters()
-            self.reader.set_generate_index(self._generate_index and not disable_index_generation)
             self.reader.set_show_progress(show_progress)
             self.reader.set_max_bytes(max_bytes)
 
@@ -576,13 +551,8 @@ class DataLoader(object):
                         data_cache[header.message_type].message_index.append(message_index)
 
             if max_messages is not None:
-                # If we reached the max message count but we're generating an index file, we need to read through the
-                # entire data file. Keep reading but discard any further messages.
-                if self.reader.generating_index() and message_count > abs(max_messages):
-                    logger.debug('  Max messages reached. Discarding. [# messages=%d]' % message_count)
-                    continue
-                # If we're not generating an index and we hit the max message count, we're done reading.
-                elif not self.reader.generating_index() and message_count == abs(max_messages):
+                # If we hit the max message count, we're done reading.
+                if message_count == abs(max_messages):
                     logger.debug('  Max messages reached. Done reading. [# messages=%d]' % message_count)
                     break
 

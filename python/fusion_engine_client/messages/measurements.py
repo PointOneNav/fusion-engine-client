@@ -592,10 +592,10 @@ Wheel Tick Input @ {str(self.details.p1_time)}
     @classmethod
     def to_numpy(cls, messages):
         result = {
-            'front_left_wheel_ticks': np.array([m.front_left_wheel_ticks for m in messages], dtype=int),
-            'front_right_wheel_ticks': np.array([m.front_right_wheel_ticks for m in messages], dtype=int),
-            'rear_left_wheel_ticks': np.array([m.rear_left_wheel_ticks for m in messages], dtype=int),
-            'rear_right_wheel_ticks': np.array([m.rear_right_wheel_ticks for m in messages], dtype=int),
+            'front_left_wheel_ticks': np.array([m.front_left_wheel_ticks for m in messages], dtype=np.uint32),
+            'front_right_wheel_ticks': np.array([m.front_right_wheel_ticks for m in messages], dtype=np.uint32),
+            'rear_left_wheel_ticks': np.array([m.rear_left_wheel_ticks for m in messages], dtype=np.uint32),
+            'rear_right_wheel_ticks': np.array([m.rear_right_wheel_ticks for m in messages], dtype=np.uint32),
             'gear': np.array([m.gear for m in messages], dtype=int),
         }
         result.update(MeasurementDetails.to_numpy([m.details for m in messages]))
@@ -690,7 +690,7 @@ Vehicle Tick Input @ {str(self.details.p1_time)}
     @classmethod
     def to_numpy(cls, messages):
         result = {
-            'tick_count': np.array([m.tick_count for m in messages], dtype=int),
+            'tick_count': np.array([m.tick_count for m in messages], dtype=np.uint32),
             'gear': np.array([m.gear for m in messages], dtype=int),
         }
         result.update(MeasurementDetails.to_numpy([m.details for m in messages]))
@@ -1003,7 +1003,7 @@ Heading Output @ {str(self.details.p1_time)}
     def to_numpy(cls, messages: Sequence['HeadingOutput']):
         result = {
             'solution_type': np.array([int(m.solution_type) for m in messages], dtype=int),
-            'flags': np.array([int(m.flags) for m in messages], dtype=int),
+            'flags': np.array([int(m.flags) for m in messages], dtype=np.uint32),
             'ypr_deg': np.array([m.ypr_deg for m in messages]).T,
             'heading_true_north_deg': np.array([m.heading_true_north_deg for m in messages], dtype=float).T,
         }
@@ -1122,7 +1122,7 @@ Raw Heading Output @ {str(self.details.p1_time)}
     def to_numpy(cls, messages: Sequence['RawHeadingOutput']):
         result = {
             'solution_type': np.array([int(m.solution_type) for m in messages], dtype=int),
-            'flags': np.array([int(m.flags) for m in messages], dtype=int),
+            'flags': np.array([int(m.flags) for m in messages], dtype=np.uint32),
             'relative_position_enu_m': np.array([m.relative_position_enu_m for m in messages]).T,
             'position_std_enu_m': np.array([m.position_std_enu_m for m in messages]).T,
             'heading_true_north_deg': np.array([float(m.heading_true_north_deg) for m in messages]),

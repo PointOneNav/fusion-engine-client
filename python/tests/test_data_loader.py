@@ -154,18 +154,15 @@ class TestReader:
         expected_messages = generate_data(data_path=str(data_path), include_binary=False, return_dict=False)
         expected_result = message_list_to_dict(expected_messages)
 
-        # Construct a reader. This will attempt to set t0 immediately by scanning the data file. If an index file
-        # exists, the reader will use the index file to find t0 quickly. If not, it'll read the file directly, but will
-        # _not_ attempt to generate an index (which requires reading the entire data file).
+        # Construct a reader. This will attempt to generate an index and set t0 immediately by scanning the data file.
         reader = DataLoader(path=str(data_path))
+        assert reader.reader.have_index()
         assert reader.t0 is not None
         assert reader.system_t0 is not None
-        assert not reader.reader.have_index()
 
         # Now read the data itself. This _will_ generate an index file.
         result = reader.read()
         self._check_results(result, expected_result)
-        assert reader.reader.have_index()
         assert len(reader.reader._original_index) == len(expected_messages)
         assert len(reader.reader.index) == len(expected_messages)
 
@@ -224,34 +221,12 @@ class TestReader:
         assert len(reader.reader._original_index) == len(messages)
         assert len(reader.reader.index) == len(expected_messages)
 
-    def test_read_no_generate_index(self, data_path):
-        expected_result = generate_data(data_path=str(data_path), include_binary=False)
-
-        # Construct a reader with index generation disabled. This never generates an index, but the read() call below
-        # would if we did not set this.
-        reader = DataLoader(path=str(data_path), generate_index=False)
-        assert reader.t0 is not None
-        assert reader.system_t0 is not None
-        assert not reader.reader.have_index()
-
-        # Now read the data itself. This will _not_ generate an index file.
-        result = reader.read()
-        self._check_results(result, expected_result)
-        assert not reader.reader.have_index()
-
-        # Do the same but this time using the disable argument to read().
-        reader = DataLoader(path=str(data_path))
-        result = reader.read(disable_index_generation=True)
-        self._check_results(result, expected_result)
-        assert not reader.reader.have_index()
-
     def test_read_in_order(self, data_path):
         messages = generate_data(data_path=str(data_path), include_binary=False, return_dict=False)
         expected_messages = [m for m in messages if m.get_type() in (MessageType.POSE, MessageType.EVENT_NOTIFICATION)]
         expected_result = message_list_to_messagedata(expected_messages)
 
         reader = DataLoader(path=str(data_path))
-        assert not reader.reader.have_index()
 
         result = reader.read(message_types=[PoseMessage, EventNotificationMessage], return_in_order=True)
         self._check_results(result, expected_result)
