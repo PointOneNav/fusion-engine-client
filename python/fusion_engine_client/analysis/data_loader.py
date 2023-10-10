@@ -67,7 +67,7 @@ class MessageData(object):
 
             if do_conversion:
                 self.__dict__.update(self.message_class.to_numpy(self.messages))
-                self.messages_bytes = np.array(self.messages_bytes, dtype=int)
+                self.messages_bytes = np.array(self.messages_bytes, dtype=np.uint64)
                 self.message_index = np.array(self.message_index, dtype=int)
 
                 if remove_nan_times and 'p1_time' in self.__dict__:
