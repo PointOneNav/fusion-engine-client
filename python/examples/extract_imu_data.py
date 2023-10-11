@@ -49,36 +49,39 @@ Extract IMU accelerometer and gyroscope measurements.
 
     # Read satellite data from the file.
     reader = DataLoader(input_path)
-    result = reader.read(message_types=[IMUOutput, RawIMUOutput], show_progress=True)
+    result = reader.read(message_types=[IMUOutput, RawIMUOutput], show_progress=True, return_numpy=True)
     imu_data = result[IMUOutput.MESSAGE_TYPE]
     raw_imu_data = result[RawIMUOutput.MESSAGE_TYPE]
-    if len(imu_data.messages) == 0 and len(raw_imu_data.messages) == 0:
+    if len(imu_data.p1_time) == 0 and len(raw_imu_data.p1_time) == 0:
         logger.warning('No IMU data found in log file.')
         sys.exit(2)
 
     # Generate a CSV file for corrected IMU data.
-    if len(imu_data.messages) != 0:
+    if len(imu_data.p1_time) != 0:
         path = os.path.join(output_dir, 'imu_data.csv')
         logger.info("Generating '%s'." % path)
+        gps_time = reader.convert_to_gps_time(imu_data.p1_time)
         with open(path, 'w') as f:
             f.write('P1 Time (sec), GPS Time (sec), Accel X (m/s^2), Y, Z, Gyro X (rad/s), Y, Z\n')
-            for message in imu_data.messages:
-                gps_time = reader.convert_to_gps_time(message.p1_time)
-                f.write('%.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f\n' %
-                        (float(message.p1_time), float(gps_time), *message.accel_mps2, *message.gyro_rps))
+            np.savetxt(f, np.concatenate([imu_data.p1_time[:, None],
+                                          gps_time[:, None],
+                                          imu_data.accel_mps2.T,
+                                          imu_data.gyro_rps.T], axis=1), fmt='%.6f')
     else:
         logger.info("No corrected IMU data.")
 
     # Generate a CSV file for raw IMU data.
-    if len(raw_imu_data.messages) != 0:
+    if len(raw_imu_data.p1_time) != 0:
         path = os.path.join(output_dir, 'raw_imu_data.csv')
         logger.info("Generating '%s'." % path)
+        gps_time = reader.convert_to_gps_time(raw_imu_data.p1_time)
         with open(path, 'w') as f:
             f.write('P1 Time (sec), GPS Time (sec), Accel X (m/s^2), Y, Z, Gyro X (rad/s), Y, Z, Temp(C)\n')
-            for message in raw_imu_data.messages:
-                gps_time = reader.convert_to_gps_time(message.p1_time)
-                f.write('%.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f\n' %
-                        (float(message.p1_time), float(gps_time), *message.accel_mps2, *message.gyro_rps, message.temperature_degc))
+            np.savetxt(f, np.concatenate([raw_imu_data.p1_time[:, None],
+                                          gps_time[:, None],
+                                          raw_imu_data.accel_mps2.T,
+                                          raw_imu_data.gyro_rps.T,
+                                          raw_imu_data.temperature_degc[:, None]], axis=1), fmt='%.6f')
     else:
         logger.info("No raw IMU data.")
 
