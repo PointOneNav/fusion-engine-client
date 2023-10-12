@@ -61,8 +61,8 @@ Extract wheel speed data.
         logger.warning('No speed data found in log file.')
         sys.exit(2)
 
-    wheel_speed_data = result[WheelSpeedOutput.MESSAGE_TYPE]
     # Generate a CSV file for corrected wheel speed data.
+    wheel_speed_data = result[WheelSpeedOutput.MESSAGE_TYPE]
     if len(wheel_speed_data.p1_time) != 0:
         path = os.path.join(output_dir, 'wheel_speed_data.csv')
         logger.info("Generating '%s'." % path)
@@ -75,12 +75,12 @@ Extract wheel speed data.
                                     wheel_speed_data.front_right_speed_mps,
                                     wheel_speed_data.rear_left_speed_mps,
                                     wheel_speed_data.rear_right_speed_mps,
-                                    wheel_speed_data.gear], axis=1), fmt='%.6f')
+                                    wheel_speed_data.gear], axis=1), fmt=['%.6f'] * 6 + ['%d'])
     else:
         logger.info("No corrected wheel speed data.")
 
-    raw_wheel_speed_data = result[RawWheelSpeedOutput.MESSAGE_TYPE]
     # Generate a CSV file for raw wheel speed data.
+    raw_wheel_speed_data = result[RawWheelSpeedOutput.MESSAGE_TYPE]
     if len(raw_wheel_speed_data.p1_time) != 0:
         path = os.path.join(output_dir, 'raw_wheel_speed_data.csv')
         logger.info("Generating '%s'." % path)
@@ -93,12 +93,12 @@ Extract wheel speed data.
                                     raw_wheel_speed_data.front_right_speed_mps,
                                     raw_wheel_speed_data.rear_left_speed_mps,
                                     raw_wheel_speed_data.rear_right_speed_mps,
-                                    raw_wheel_speed_data.gear], axis=1), fmt='%.6f')
+                                    raw_wheel_speed_data.gear], axis=1), fmt=['%.6f'] * 6 + ['%d'])
     else:
         logger.info("No raw wheel speed data.")
 
-    vehicle_speed_data = result[VehicleSpeedOutput.MESSAGE_TYPE]
     # Generate a CSV file for corrected vehicle speed data.
+    vehicle_speed_data = result[VehicleSpeedOutput.MESSAGE_TYPE]
     if len(vehicle_speed_data.p1_time) != 0:
         path = os.path.join(output_dir, 'vehicle_speed_data.csv')
         logger.info("Generating '%s'." % path)
@@ -108,12 +108,12 @@ Extract wheel speed data.
             np.savetxt(path, np.stack([vehicle_speed_data.p1_time,
                                        gps_time,
                                        vehicle_speed_data.vehicle_speed_mps,
-                                       vehicle_speed_data.gear], axis=1), fmt='%.6f')
+                                       vehicle_speed_data.gear], axis=1), fmt=['%.6f'] * 3 + ['%d'])
     else:
         logger.info("No corrected vehicle speed data.")
 
-    raw_vehicle_speed_data = result[RawVehicleSpeedOutput.MESSAGE_TYPE]
     # Generate a CSV file for raw vehicle speed data.
+    raw_vehicle_speed_data = result[RawVehicleSpeedOutput.MESSAGE_TYPE]
     if len(raw_vehicle_speed_data.p1_time) != 0:
         path = os.path.join(output_dir, 'raw_vehicle_speed_data.csv')
         logger.info("Generating '%s'." % path)
@@ -123,7 +123,7 @@ Extract wheel speed data.
             np.savetxt(path, np.stack([raw_vehicle_speed_data.p1_time,
                                        gps_time,
                                        raw_vehicle_speed_data.vehicle_speed_mps,
-                                       raw_vehicle_speed_data.gear], axis=1), fmt='%.6f')
+                                       raw_vehicle_speed_data.gear], axis=1), fmt=['%.6f'] * 3 + ['%d'])
     else:
         logger.info("No raw vehicle speed data.")
 
