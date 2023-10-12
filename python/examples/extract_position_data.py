@@ -81,15 +81,11 @@ KML_TEMPLATE_END = """\
 
 KML_TEMPLATE = """\
     <Placemark>
-      <Timestamp>
-%(timestamp)s
-      </Timestamp>
+      <Timestamp>%(timestamp)s</Timestamp>
       <styleUrl>#type-%(solution_type)s</styleUrl>
-      <altitudeMode>absolute</altitudeMode>
       <Point>
-        <coordinates>
-%(coordinates)s
-        </coordinates>
+        <altitudeMode>absolute</altitudeMode>
+        <coordinates>%(coordinates)s</coordinates>
       </Point>
     </Placemark>
 """
@@ -162,7 +158,6 @@ Extract position data to both CSV and KML files.
     with open(path, 'w') as f:
         f.write(KML_TEMPLATE_START)
         for pose in pose_data.messages:
-          # if pose.solution_type != SolutionType.Invalid:
           f.write(KML_TEMPLATE %
                   {'timestamp': '\n'.join([str(pose.gps_time.as_utc())]),
                   'solution_type':'\n'.join([str(int(pose.solution_type))]),
