@@ -14,28 +14,84 @@ from fusion_engine_client.utils import trace as logging
 from fusion_engine_client.utils.argument_parser import ArgumentParser
 from fusion_engine_client.utils.log import locate_log, DEFAULT_LOG_BASE_DIR
 
-KML_TEMPLATE = """\
+KML_TEMPLATE_START = """\
 <kml xmlns="http://www.opengis.net/kml/2.2">
   <Document>
+    <name>FusionEngine Trajectory</name>
+    <Style id="type-0">
+      <IconStyle>
+        <scale>0.3</scale>
+        <color>FF000000</color>
+        <Icon>
+          <href>https://maps.google.com/mapfiles/kml/shapes/road_shield3.png</href>
+        </Icon>
+      </IconStyle>
+    </Style>
+    <Style id="type-1">
+      <IconStyle>
+        <scale>0.3</scale>
+        <color>FF0000FF</color>
+        <Icon>
+          <href>https://maps.google.com/mapfiles/kml/shapes/road_shield3.png</href>
+        </Icon>
+      </IconStyle>
+    </Style>
+    <Style id="type-2">
+      <IconStyle>
+        <scale>0.3</scale>
+        <color>FFFF0000</color>
+        <Icon>
+          <href>https://maps.google.com/mapfiles/kml/shapes/road_shield3.png</href>
+        </Icon>
+      </IconStyle>
+    </Style>
+    <Style id="type-4">
+      <IconStyle>
+        <scale>0.3</scale>
+        <color>FF00A5FF</color>
+        <Icon>
+          <href>https://maps.google.com/mapfiles/kml/shapes/road_shield3.png</href>
+        </Icon>
+      </IconStyle>
+    </Style>
+    <Style id="type-5">
+      <IconStyle>
+        <scale>0.3</scale>
+        <color>FF008000</color>
+        <Icon>
+          <href>https://maps.google.com/mapfiles/kml/shapes/road_shield3.png</href>
+        </Icon>
+      </IconStyle>
+    </Style>
+    <Style id="type-6">
+      <IconStyle>
+        <scale>0.3</scale>
+        <color>FFFFFF00</color>
+        <Icon>
+          <href>https://maps.google.com/mapfiles/kml/shapes/road_shield3.png</href>
+        </Icon>
+      </IconStyle>
+    </Style>
+"""
+
+KML_TEMPLATE_END = """\
+  </Document>
+</kml>
+"""
+
+KML_TEMPLATE = """\
     <Placemark>
-      <name>Position</name>
-      <Style>
-        <LineStyle>
-          <width>8</width>
-          <color>#ff0000ff</color>
-        </LineStyle>
-      </Style>
-      <LineString>
-        <extrude>0</extrude>
-        <tesselate>1</tesselate>
-        <altitudeMode>clampToGround</altitudeMode>
+      <Timestamp>
+%(timestamp)s
+      </Timestamp>
+      <styleUrl>#type-%(solution_type)s</styleUrl>
+      <altitudeMode>absolute</altitudeMode>
+      <Point>
         <coordinates>
 %(coordinates)s
         </coordinates>
-      </LineString>
+      </Point>
     </Placemark>
-  </Document>
-</kml>
 """
 
 if __name__ == "__main__":
@@ -104,9 +160,13 @@ Extract position data to both CSV and KML files.
     path = os.path.join(output_dir, 'position.kml')
     logger.info("Generating '%s'." % path)
     with open(path, 'w') as f:
-        f.write(KML_TEMPLATE %
-                {'coordinates': '\n'.join(['%.8f,%.8f' % (message.lla_deg[1], message.lla_deg[0])
-                                           for message in pose_data.messages
-                                           if message.solution_type != SolutionType.Invalid])})
+        f.write(KML_TEMPLATE_START)
+        for pose in pose_data.messages:
+          # if pose.solution_type != SolutionType.Invalid:
+          f.write(KML_TEMPLATE %
+                  {'timestamp': '\n'.join([str(pose.gps_time.as_utc())]),
+                  'solution_type':'\n'.join([str(int(pose.solution_type))]),
+                  'coordinates': '\n'.join(['%.8f,%.8f,%.8f' % (pose.lla_deg[1], pose.lla_deg[0], pose.lla_deg[2] - pose.undulation_m)])})
+        f.write(KML_TEMPLATE_END)
 
     logger.info("Storing output in '%s'." % os.path.abspath(output_dir))
