@@ -3,24 +3,17 @@
 import os
 import sys
 
-# Add the Python root directory (fusion-engine-client/python/) to the import search path to enable FusionEngine imports
-# if this application is being run directly out of the repository and is not installed as a pip package.
-root_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
-sys.path.insert(0, root_dir)
-
-root_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
-sys.path.append(root_dir)
-
-from fusion_engine_client.messages import *
-from fusion_engine_client.parsers import MixedLogReader
-from fusion_engine_client.utils import trace as logging
-from fusion_engine_client.utils.argument_parser import ArgumentParser
-from fusion_engine_client.utils.log import locate_log, DEFAULT_LOG_BASE_DIR
-from fusion_engine_client.utils.time_range import TimeRange
+from ..messages import *
+from ..parsers import MixedLogReader
+from ..utils import trace as logging
+from ..utils.argument_parser import ArgumentParser
+from ..utils.log import locate_log, DEFAULT_LOG_BASE_DIR
+from ..utils.time_range import TimeRange
 
 _logger = logging.getLogger('point_one.fusion_engine.applications.print_contents')
 
-if __name__ == "__main__":
+
+def main():
     parser = ArgumentParser(description="""\
 Decode and dump the platform storage data for a specific datatype.
 The version of the data is also recorded to the a `*_version.txt` file.
@@ -151,3 +144,7 @@ The version of the data is also recorded to the a `*_version.txt` file.
             f'Decoded {total_messages} instances of {options.storage_type} PlatformStorage message version {version_str}.')
         with open(output_version_file, 'w') as fd:
             fd.write(version_str)
+
+
+if __name__ == "__main__":
+    main()
