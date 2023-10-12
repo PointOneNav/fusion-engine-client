@@ -3,15 +3,9 @@
 import os
 import sys
 
-# Add the Python root directory (fusion-engine-client/python/) to the import search path to enable FusionEngine imports
-# if this application is being run directly out of the repository and is not installed as a pip package.
-root_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
-sys.path.insert(0, root_dir)
-
-from fusion_engine_client.utils import trace as logging
-from fusion_engine_client.utils.argument_parser import ArgumentParser
-from fusion_engine_client.utils.log import extract_fusion_engine_log, find_log_file, CANDIDATE_MIXED_FILES, \
-    DEFAULT_LOG_BASE_DIR
+from ..utils import trace as logging
+from ..utils.argument_parser import ArgumentParser
+from ..utils.log import extract_fusion_engine_log, find_log_file, CANDIDATE_LOG_FILES, DEFAULT_LOG_BASE_DIR
 
 
 def main():
@@ -56,7 +50,7 @@ Extract FusionEngine message contents from a binary file containing mixed data
     # Locate the input file and set the output directory.
     try:
         if options.candidate_files is None:
-            candidate_files = CANDIDATE_MIXED_FILES
+            candidate_files = CANDIDATE_LOG_FILES
         else:
             candidate_files = options.candidate_files.split(',')
 
