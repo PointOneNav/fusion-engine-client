@@ -7,26 +7,35 @@ See https://github.com/PointOneNav/fusion-engine-client for full details. See
 [Point One FusionEngine Message Specification](http://pointonenav.com/files/fusion-engine-message-spec) for the latest
 FusionEngine message specification.
 
+### Table Of Contents
+
 * [Requirements](#requirements)
+* [Applications](#applications)
 * [Directory Structure](#directory-structure)
 * [Usage Instructions](#usage-instructions)
 * [Examples](#examples)
 * [Using A Python Virtual Environment](#using-a-python-virtual-environment)
 
 ### Requirements
+
 - Python 3.6 or later
+
+### Applications
+
+- [p1_display](fusion_engine_client/applications/p1_display.py) - Generate plots of vehicle trajectory, GNSS signal
+  status, wheel speed measurements, etc. from a file of logged FusionEngine messages
+- [p1_extract](fusion_engine_client/applications/p1_extract.py) - Extract FusionEngine messages from a binary file
+  containing multiple data streams (e.g., interleaved RTCM and FusionEngine messages)
+- [p1_lband_extract](fusion_engine_client/applications/p1_lband_extract.py) - Extract L-band data bits contained from a
+  log of FusionEngine `LBandFrameMessage` messages
+- [p1_print](fusion_engine_client/applications/p1_print.py) - Print the contents of FusionEngine messages found in a
+  binary file to the console
 
 ### Directory Structure
   - `python/` - Python source files
-    - `bin/` - Analysis and processing tools
-      - [p1_display](bin/p1_display) - Generate HTML plots of vehicle trajectory, etc. (see also
-        `analyzer.py` below)
-      - [p1_extract](bin/p1_extract) - Extract FusionEngine message contents from a binary file containing mixed data
-        (e.g., interleaved RTCM and FusionEngine messages)
-      - [p1_print](bin/p1_print) - Print the contents of FusionEngine messages found in a binary file to the
-        console
-    - `examples/` - Python example applications
-      - [analyze_data.py](examples/analyze_data.py) - Generate HTML plots of vehicle trajectory, INS filter state, etc.
+    - `examples/` - Examples of how to use the FusionEngine client library to load and parse FusionEngine messages,
+      perform analysis on recorded data, generate FusionEngine commands, communicate with a FusionEngine device, etc.
+      - [analyze_data.py](examples/analyze_data.py) - Calculate the average LLA position from a data log
       - [binary_message_decode.py](examples/binary_message_decode.py) - Decode and print FusionEngine messages contained
         in a hex byte string
       - [encode_data.py](examples/encode_data.py) - Construct and serialize FusionEngine messages, and save them in a
@@ -57,19 +66,23 @@ FusionEngine message specification.
       - [udp_client.py](examples/udp_client.py) - Connect to a device over UDP and decode/display messages in real time
         - Unlike [tcp_client.py](examples/tcp_client.py), currently assumes all incoming UDP packets contain
           FusionEngine messages and does not use the `FusionEngineDecoder` helper class
-    - `fusion_engine_client` - Top Python package directory
+    - `fusion_engine_client` - Top-level Python package directory
       - `analysis`
-        - [analyzer.py](analysis/analyzer.py) - `Analyzer` class, used to plot data from a recorded file of FusionEngine
-          messages (vehicle trajectory map, navigation engine state information, etc.)
-          - This class is used by the `bin/p1_display` application
-        - [file_reader.py](analysis/file_reader.py) - `FileReader` class, capable of loading and time-aligning
-          FusionEngine data captured in a `*.p1log` file
+        - [analyzer.py](fusion_engine_client/analysis/analyzer.py) - `Analyzer` class, used by
+          [p1_display](fusion_engine_client/applications/p1_display.py) to plot data from a recorded file of
+          FusionEngine messages (vehicle trajectory map, navigation engine state information, etc.)
+        - [file_reader.py](fusion_engine_client/analysis/file_reader.py) - `FileReader` class, capable of loading and
+          time-aligning FusionEngine data captured in a `*.p1log` file
+      - `applications` - Applications and processing tools -- see [Applications](#applications) for detailed
+        descriptions of each of these tools
+        - _The applications in this directory will be installed on your system by `pip install` along with the rest of
+          the library code so that they can be called directly from the command line_
       - `messages` - Python message definitions
       - `parsers` - Message encoding and decoding support
-        - [decoder.py](parsers/decoder.py) - `FusionEngineDecoder` class, used to frame and parse incoming streaming
-          data (e.g., received over TCP or serial)
-        - [encoder.py](parsers/encoder.py) - `FusionEngineEncoder` class, used when serializing messages to be sent to a
-          connected device
+        - [decoder.py](fusion_engine_client/parsers/decoder.py) - `FusionEngineDecoder` class, used to frame and parse
+          incoming streaming data (e.g., received over TCP or serial)
+        - [encoder.py](fusion_engine_client/parsers/encoder.py) - `FusionEngineEncoder` class, used when serializing
+          messages to be sent to a connected device
       - `utils` - Various utility functions used by the other files (e.g., log search support)
     
 ### Usage Instructions
@@ -79,13 +92,20 @@ FusionEngine message specification.
 1. Install Python (3.6 or later) and pip.
 2. Install the `fusione-engine-client` module, including all analysis and data processing tools:
    ```bash
-   python3 -m pip install fusion-engine-client[all]
+   python3 -m pip install fusion-engine-client
    ```
-   - Note: If you wish to only install data parsing support, and do not want to install plotting and other requirements
-     used by the analysis tools in `bin/`, you may omit `[all]` and run `python3 -m pip install fusion-engine-client`
-3. Run any of the applications in `bin/`. For example, to plot results from a `*.p1log` file from a Point One device:
+   - This will install the library code, and will also the applications in `fusion_engine_client/applications/`
+     onto your system `PATH` so you can run them at the command line (e.g., `p1_display.py` will be available on
+     the command line as `p1_display`).
+3. Run any of the applications described in [Applications](#applications). For example, to plot results from a `*.p1log`
+   file from a Point One device:
    ```bash
    p1_display /path/to/log/file_or_directory
+   ```
+   
+   You can also run any of the scripts in the `examples/` directory as follows:
+   ```bash
+   python3 examples/extract_position_data.py /path/to/log/file_or_directory
    ```
 
 #### Install From Source (Use In Another Python Project)
@@ -97,14 +117,23 @@ FusionEngine message specification.
    ```
 3. Install the `fusione-engine-client` module, including all analysis and data processing tools:
    ```bash
-   python3 -m pip install -e /path/to/fusion-engine-client[all]
+   python3 -m pip install -e /path/to/fusion-engine-client
    ```
+   - This will install the library code, and will also all of the applications in `fusion_engine_client/applications/`
+     onto your system `PATH` so you can run them at the command line (e.g., `p1_display.py` will be available on
+     the command line as `p1_display`).
    - Note the additional `-e` argument (optional), which tells `pip` to install `fusion-engine-client` as editable.
      This means that it will reference the local directory instead of copying the source code. That way, if you update
      the code (`git pull`), your Python installation will automatically use the new version.
-4. Run any of the applications in `bin/`. For example, to plot results from a `*.p1log` file from a Point One device:
+4. Run any of the applications described in [Applications](#applications). For example, to plot results from a `*.p1log`
+   file from a Point One device:
    ```bash
    p1_display /path/to/log/file_or_directory
+   ```
+   
+   You can also run any of the scripts in the `examples/` directory as follows:
+   ```bash
+   python3 examples/extract_position_data.py /path/to/log/file_or_directory
    ```
 
 #### Install From Source (Development)
@@ -118,10 +147,15 @@ FusionEngine message specification.
    ```bash
    python3 -m pip install -r requirements.txt
    ```
-4. Run any of the applications in `bin/` or the example code in `examples/`. For example, to plot results from a
-   `*.p1log` file from a Point One device:
+4. Run any of the applications described in [Applications](#applications). For example, to plot results from a `*.p1log`
+   file from a Point One device:
    ```bash
-   python3 bin/p1_display /path/to/log/file_or_directory
+   p1_display /path/to/log/file_or_directory
+   ```
+   
+   You can also run any of the scripts in the `examples/` directory as follows:
+   ```bash
+   python3 examples/extract_position_data.py /path/to/log/file_or_directory
    ```
 
 Whenever possible, we strongly encourage the use of a Python [virtual environment](#using-a-python-virtual-environment).
@@ -138,20 +172,20 @@ Whenever possible, we strongly encourage the use of a Python [virtual environmen
 The following will generate plots for a log with ID `c25445f4e60d441dbf4af8a3571352fa`.
 
 ```bash
-> python3 bin/p1_display --mapbox-token MY_MAPBOX_TOKEN /path/to/c25445f4e60d441dbf4af8a3571352fa
+> p1_display --mapbox-token MY_MAPBOX_TOKEN /path/to/c25445f4e60d441dbf4af8a3571352fa
 ```
 
 Alternatively, you can search for a log by entering the first few characters of the ID. By default, logs are assumed to
-be stored in the directory `/logs`.
+be stored in the directory `~/logs` on Linux or MacOS, or `%HOME%/Documents/logs` on Windows.
 
 ```bash
-> python3 bin/p1_display c2544
+> p1_display c2544
 ```
 
-Use the `--logs-base-dir` argument to search a directory other than `/logs`:
+Use the `--logs-base-dir` argument to search a directory other than the default log directory:
 
 ```bash
-> python3 bin/p1_display --logs-base-dir /my/log/directory c2544
+> p1_display --logs-base-dir /my/log/directory c2544
 ```
 
 ### Record Data Over TCP
@@ -268,11 +302,15 @@ virtual  environment:
    ```bash
    venv\Scripts\activate.bat
    ```
-3. Install the pip requirements:
+3. Install the library
+   ```bash
+   pip install fusion-engine-client
+   ```
+   or install the pip requirements if using a local copy of the repository:
    ```bash
    pip install -r requirements.txt
    ```
 4. Run any of the FusionEngine applications/scripts normally:
    ```bash
-   python3 bin/p1_display /path/to/log/directory
+   p1_display /path/to/log/directory
    ```
