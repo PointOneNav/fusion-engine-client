@@ -15,7 +15,8 @@ from fusion_engine_client.utils.argument_parser import ArgumentParser
 from fusion_engine_client.utils.log import locate_log, DEFAULT_LOG_BASE_DIR
 
 KML_TEMPLATE_START = """\
-<kml xmlns="http://www.opengis.net/kml/2.2">
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:kml="http://www.opengis.net/kml/2.2" xmlns:atom="http://www.w3.org/2005/Atom">
   <Document>
     <name>FusionEngine Trajectory</name>
     <Style id="type-0">
@@ -157,6 +158,28 @@ Extract position data to both CSV and KML files.
     logger.info("Generating '%s'." % path)
     with open(path, 'w') as f:
         f.write(KML_TEMPLATE_START)
+        # Extract the first valid position along with the last position.
+        reader_np = DataLoader(input_path)
+        result_np = reader_np.read(message_types=[PoseMessage], show_progress=True, return_numpy=True)
+        pose_data_np = result_np[PoseMessage.MESSAGE_TYPE]
+        idx_valid = np.argmax(pose_data_np.solution_type != SolutionType.Invalid)
+
+        pose_valid = pose_data.messages[idx_valid]
+        pose_last = pose_data.messages[-1]
+        f.write('''\
+    <LookAt>
+      <latitude>%.8f</latitude>
+      <longitude>%.8f</longitude>
+      <altitude>%.8f</altitude>
+      <altitudeMode>absolute</altitudeMode>
+      <range>250</range>
+      <gx:TimeSpan>
+        <begin>%s</begin>
+        <end>%s</end>
+      </gx:TimeSpan>
+    </LookAt>
+''' % (pose_valid.lla_deg[0], pose_valid.lla_deg[1], pose_valid.lla_deg[2] - pose_valid.undulation_m, str(pose_valid.gps_time.as_utc().isoformat()), str(pose_last.gps_time.as_utc().isoformat())))
+
         for pose in pose_data.messages:
           # IMPORTANT: KML heights are specified in MSL, so we convert the ellipsoid heights to orthometric below using
           # the reported geoid undulation (geoid height). Undulation values come from a geoid model, and are not
@@ -167,6 +190,7 @@ Extract position data to both CSV and KML files.
                   {'timestamp': '\n'.join([str(pose.gps_time.as_utc().isoformat())]),
                   'solution_type': int(pose.solution_type),
                   'coordinates': '\n'.join(['%.8f,%.8f,%.8f' % (pose.lla_deg[1], pose.lla_deg[0], pose.lla_deg[2] - pose.undulation_m)])})
+
         f.write(KML_TEMPLATE_END)
 
     logger.info("Storing output in '%s'." % os.path.abspath(output_dir))
