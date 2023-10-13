@@ -14,28 +14,95 @@ from fusion_engine_client.utils import trace as logging
 from fusion_engine_client.utils.argument_parser import ArgumentParser
 from fusion_engine_client.utils.log import locate_log, DEFAULT_LOG_BASE_DIR
 
-KML_TEMPLATE = """\
-<kml xmlns="http://www.opengis.net/kml/2.2">
+KML_TEMPLATE_START = """\
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:kml="http://www.opengis.net/kml/2.2" xmlns:atom="http://www.w3.org/2005/Atom">
   <Document>
-    <Placemark>
-      <name>Position</name>
-      <Style>
-        <LineStyle>
-          <width>8</width>
-          <color>#ff0000ff</color>
-        </LineStyle>
-      </Style>
-      <LineString>
-        <extrude>0</extrude>
-        <tesselate>1</tesselate>
-        <altitudeMode>clampToGround</altitudeMode>
-        <coordinates>
-%(coordinates)s
-        </coordinates>
-      </LineString>
-    </Placemark>
+    <name>FusionEngine Trajectory</name>
+    <Style id="type-0">
+      <IconStyle>
+        <scale>0.3</scale>
+        <color>FF000000</color>
+        <Icon>
+          <href>https://maps.google.com/mapfiles/kml/shapes/road_shield3.png</href>
+        </Icon>
+      </IconStyle>
+    </Style>
+    <Style id="type-1">
+      <IconStyle>
+        <scale>0.3</scale>
+        <color>FF0000FF</color>
+        <Icon>
+          <href>https://maps.google.com/mapfiles/kml/shapes/road_shield3.png</href>
+        </Icon>
+      </IconStyle>
+    </Style>
+    <Style id="type-2">
+      <IconStyle>
+        <scale>0.3</scale>
+        <color>FFFF0000</color>
+        <Icon>
+          <href>https://maps.google.com/mapfiles/kml/shapes/road_shield3.png</href>
+        </Icon>
+      </IconStyle>
+    </Style>
+    <Style id="type-4">
+      <IconStyle>
+        <scale>0.3</scale>
+        <color>FF00A5FF</color>
+        <Icon>
+          <href>https://maps.google.com/mapfiles/kml/shapes/road_shield3.png</href>
+        </Icon>
+      </IconStyle>
+    </Style>
+    <Style id="type-5">
+      <IconStyle>
+        <scale>0.3</scale>
+        <color>FF008000</color>
+        <Icon>
+          <href>https://maps.google.com/mapfiles/kml/shapes/road_shield3.png</href>
+        </Icon>
+      </IconStyle>
+    </Style>
+    <Style id="type-6">
+      <IconStyle>
+        <scale>0.3</scale>
+        <color>FFFFFF00</color>
+        <Icon>
+          <href>https://maps.google.com/mapfiles/kml/shapes/road_shield3.png</href>
+        </Icon>
+      </IconStyle>
+    </Style>
+"""
+
+KML_TEMPLATE_END = """\
   </Document>
 </kml>
+"""
+
+KML_TEMPLATE = """\
+    <Placemark>
+      <TimeStamp><when>%(timestamp)s</when></TimeStamp>
+      <styleUrl>#type-%(solution_type)d</styleUrl>
+      <Point>
+        <altitudeMode>absolute</altitudeMode>
+        <coordinates>%(coordinates)s</coordinates>
+      </Point>
+    </Placemark>
+"""
+
+KML_TEMPLATE_LOOKAT = """\
+    <LookAt>
+      <latitude>%(latitude).8f</latitude>
+      <longitude>%(longitude).8f</longitude>
+      <altitude>%(altitude).8f</altitude>
+      <altitudeMode>absolute</altitudeMode>
+      <range>250</range>
+      <gx:TimeSpan>
+        <begin>%(begin_time)s</begin>
+        <end>%(end_time)s</end>
+      </gx:TimeSpan>
+    </LookAt>
 """
 
 if __name__ == "__main__":
@@ -79,7 +146,7 @@ Extract position data to both CSV and KML files.
     # be an equal number of all message types and we can simply loop over them.
     reader = DataLoader(input_path)
     result = reader.read(message_types=[PoseMessage, PoseAuxMessage, GNSSSatelliteMessage], show_progress=True,
-                         time_align=TimeAlignmentMode.INSERT)
+                         time_align=TimeAlignmentMode.INSERT, return_numpy=True, keep_messages=True)
     pose_data = result[PoseMessage.MESSAGE_TYPE]
     pose_aux_data = result[PoseAuxMessage.MESSAGE_TYPE]
     satellite_data = result[GNSSSatelliteMessage.MESSAGE_TYPE]
@@ -104,9 +171,30 @@ Extract position data to both CSV and KML files.
     path = os.path.join(output_dir, 'position.kml')
     logger.info("Generating '%s'." % path)
     with open(path, 'w') as f:
-        f.write(KML_TEMPLATE %
-                {'coordinates': '\n'.join(['%.8f,%.8f' % (message.lla_deg[1], message.lla_deg[0])
-                                           for message in pose_data.messages
-                                           if message.solution_type != SolutionType.Invalid])})
+        f.write(KML_TEMPLATE_START)
+        # Extract the first and last valid position.
+        valid_solutions = np.where(pose_data.solution_type != SolutionType.Invalid)[0]
+        first_valid_pose = pose_data.messages[valid_solutions[0]]
+        last_valid_pose = pose_data.messages[valid_solutions[-1]]
+
+        f.write(KML_TEMPLATE_LOOKAT %
+          {'latitude': first_valid_pose.lla_deg[0],
+          'longitude': first_valid_pose.lla_deg[1],
+          'altitude': first_valid_pose.lla_deg[2] - first_valid_pose.undulation_m,
+          'begin_time': str(first_valid_pose.gps_time.as_utc().isoformat()),
+          'end_time': str(last_valid_pose.gps_time.as_utc().isoformat())}
+        )
+        for pose in pose_data.messages:
+          # IMPORTANT: KML heights are specified in MSL, so we convert the ellipsoid heights to orthometric below using
+          # the reported geoid undulation (geoid height). Undulation values come from a geoid model, and are not
+          # typically precise. When analyzing position performance compared with another device, we strongly recommend
+          # that you do the performance using ellipsoid heights. When comparing in MSL, if the geoid models used by the
+          # two devices are not exactly the same, the heights may differ by multiple meters.
+          f.write(KML_TEMPLATE %
+                  {'timestamp': '\n'.join([str(pose.gps_time.as_utc().isoformat())]),
+                  'solution_type': int(pose.solution_type),
+                  'coordinates': '\n'.join(['%.8f,%.8f,%.8f' % (pose.lla_deg[1], pose.lla_deg[0], pose.lla_deg[2] - pose.undulation_m)])})
+
+        f.write(KML_TEMPLATE_END)
 
     logger.info("Storing output in '%s'." % os.path.abspath(output_dir))
