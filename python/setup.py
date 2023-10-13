@@ -83,6 +83,8 @@ for the latest FusionEngine message specification.
     entry_points={
         'console_scripts': [
             'p1_display = fusion_engine_client.analysis.analyzer:main',
+            'p1_dump_p1bin = fusion_engine_client.applications.p1_dump_p1bin:main',
+            'p1_dump_storage = fusion_engine_client.applications.p1_dump_storage:main',
             'p1_extract = fusion_engine_client.applications.p1_extract:main',
             'p1_lband_extract = fusion_engine_client.applications.p1_lband_extract:main',
             'p1_print = fusion_engine_client.applications.p1_print:main',

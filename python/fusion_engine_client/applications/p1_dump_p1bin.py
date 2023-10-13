@@ -3,15 +3,10 @@
 import os
 import sys
 
-# Add the Python root directory (fusion-engine-client/python/) to the import search path to enable FusionEngine imports
-# if this application is being run directly out of the repository and is not installed as a pip package.
-root_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
-sys.path.insert(0, root_dir)
-
-from fusion_engine_client.utils import trace as logging
-from fusion_engine_client.utils.argument_parser import ArgumentParser
-from fusion_engine_client.utils.dump_p1bin import dump_p1bin
-from fusion_engine_client.utils.log import find_log_file, DEFAULT_LOG_BASE_DIR
+from ..utils import trace as logging
+from ..utils.argument_parser import ArgumentParser
+from ..utils.dump_p1bin import dump_p1bin
+from ..utils.log import find_log_file, DEFAULT_LOG_BASE_DIR
 
 
 def main():
