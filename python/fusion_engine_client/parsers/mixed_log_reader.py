@@ -104,7 +104,8 @@ class MixedLogReader(object):
             self.max_bytes = max_bytes
 
         # Open the companion index file if one exists, otherwise index the file.
-        self._original_index = fast_indexer.fast_generate_index(input_path, force_reindex=ignore_index, save_index=save_index, max_bytes=max_bytes)
+        self._original_index = fast_indexer.fast_generate_index(input_path, force_reindex=ignore_index,
+                                                                save_index=save_index, max_bytes=max_bytes)
         self.next_index_elem = 0
         self.index = self._original_index[self.message_types][self.time_range]
         self.filtered_message_types = len(np.unique(self._original_index.type)) != \
