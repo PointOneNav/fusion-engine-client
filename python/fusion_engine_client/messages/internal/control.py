@@ -11,3 +11,6 @@ class DiagEventNotificationMessage(EventNotificationMessage):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+    def event_description_to_string(self, max_bytes=None):
+        return '[Diag] ' + super().event_description_to_string(max_bytes=max_bytes)
