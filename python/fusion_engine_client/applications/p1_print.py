@@ -1,22 +1,15 @@
 #!/usr/bin/env python3
 
 from collections import defaultdict
-import os
 import sys
 
-# Add the Python root directory (fusion-engine-client/python/) to the import search path to enable FusionEngine imports
-# if this application is being run directly out of the repository and is not installed as a pip package.
-root_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
-sys.path.insert(0, root_dir)
-
-
-from fusion_engine_client.messages import *
-from fusion_engine_client.parsers import MixedLogReader
-from fusion_engine_client.utils import trace as logging
-from fusion_engine_client.utils.argument_parser import ArgumentParser, ExtendedBooleanAction
-from fusion_engine_client.utils.log import locate_log, DEFAULT_LOG_BASE_DIR
-from fusion_engine_client.utils.time_range import TimeRange
-from fusion_engine_client.utils.trace import HighlightFormatter, BrokenPipeStreamHandler
+from ..messages import *
+from ..parsers import MixedLogReader
+from ..utils import trace as logging
+from ..utils.argument_parser import ArgumentParser, ExtendedBooleanAction
+from ..utils.log import locate_log, DEFAULT_LOG_BASE_DIR
+from ..utils.time_range import TimeRange
+from ..utils.trace import HighlightFormatter, BrokenPipeStreamHandler
 
 _logger = logging.getLogger('point_one.fusion_engine.applications.print_contents')
 
@@ -54,7 +47,7 @@ def print_message(header, contents, offset_bytes, format='pretty'):
     _logger.info('\n'.join(parts))
 
 
-if __name__ == "__main__":
+def main():
     parser = ArgumentParser(description="""\
 Decode and print the contents of messages contained in a *.p1log file or other
 binary file containing FusionEngine messages. The binary file may also contain
@@ -267,3 +260,7 @@ other types of data.
         _logger.info(format_string.format('Total', '', total_messages))
     elif total_messages == 0:
         _logger.warning('No valid FusionEngine messages found.')
+
+
+if __name__ == "__main__":
+    main()

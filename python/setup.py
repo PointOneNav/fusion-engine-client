@@ -15,6 +15,17 @@ def find_version(*file_paths):
 
 version = find_version('fusion_engine_client', '__init__.py')
 
+message_requirements = set([
+    'aenum>=3.1.1',
+    # Note: Using the Point One fork of gpstime until the patch to download the leap
+    # seconds file from alternate servers is merged:
+    # https://gitlab.com/jrollins/gpstime/-/merge_requests/2
+    'gpstime @ git+https://github.com/PointOneNav/gpstime@1b39ea27698df36e08b9f9e8da7a57838d289191#egg=gpstime',
+    #'gpstime>=0.6.2',
+    'numpy>=1.16.0',
+    'construct>=2.10.0',
+])
+
 tools_requirements = set([
     'argparse-formatter>=1.4',
     'scipy>=1.5.0',
@@ -29,9 +40,9 @@ display_requirements = set([
 
 dev_requirements = set([
     'packaging>=21.0.0',
-]) | tools_requirements
+])
 
-all_requirements = tools_requirements | display_requirements | dev_requirements
+all_requirements = message_requirements | tools_requirements | display_requirements | dev_requirements
 
 setup(
     name='fusion-engine-client',
@@ -69,29 +80,24 @@ for the latest FusionEngine message specification.
     ],
     url='https://github.com/PointOneNav/fusion-engine-client',
     packages=find_packages(where='.'),
-    scripts=[
-        'bin/p1_display',
-        'bin/p1_extract',
-        'bin/p1_print',
-    ],
+    entry_points={
+        'console_scripts': [
+            'p1_display = fusion_engine_client.analysis.analyzer:main',
+            'p1_extract = fusion_engine_client.applications.p1_extract:main',
+            'p1_lband_extract = fusion_engine_client.applications.p1_lband_extract:main',
+            'p1_print = fusion_engine_client.applications.p1_print:main',
+        ]
+    },
     python_requires='>=3.6',
     setup_requires=[
         'wheel>=0.36.2',
     ],
-    install_requires=[
-        'aenum>=3.1.1',
-        # Note: Using the Point One fork of gpstime until the patch to download the leap
-        # seconds file from alternate servers is merged:
-        # https://gitlab.com/jrollins/gpstime/-/merge_requests/2
-        'gpstime @ git+https://github.com/PointOneNav/gpstime@1b39ea27698df36e08b9f9e8da7a57838d289191#egg=gpstime',
-        #'gpstime>=0.6.2',
-        'numpy>=1.16.0',
-        'construct>=2.10.0',
-    ],
+    install_requires=list(all_requirements),
     extras_require={
-        'all': list(all_requirements),
-        'dev': list(dev_requirements),
-        'display': list(display_requirements),
-        'tools': list(tools_requirements),
+        # Kept for backwards compatibility.
+        'all': [],
+        'dev': [],
+        'display': [],
+        'tools': [],
     },
 )
