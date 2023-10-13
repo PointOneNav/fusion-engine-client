@@ -91,6 +91,20 @@ KML_TEMPLATE = """\
     </Placemark>
 """
 
+KML_TEMPLATE_LOOKAT = """\
+    <LookAt>
+      <latitude>%(latitude).8f</latitude>
+      <longitude>%(longitude).8f</longitude>
+      <altitude>%(altitude).8f</altitude>
+      <altitudeMode>absolute</altitudeMode>
+      <range>250</range>
+      <gx:TimeSpan>
+        <begin>%(begin_time)s</begin>
+        <end>%(end_time)s</end>
+      </gx:TimeSpan>
+    </LookAt>
+"""
+
 if __name__ == "__main__":
     # Parse arguments.
     parser = ArgumentParser(description="""\
@@ -132,7 +146,7 @@ Extract position data to both CSV and KML files.
     # be an equal number of all message types and we can simply loop over them.
     reader = DataLoader(input_path)
     result = reader.read(message_types=[PoseMessage, PoseAuxMessage, GNSSSatelliteMessage], show_progress=True,
-                         time_align=TimeAlignmentMode.INSERT)
+                         time_align=TimeAlignmentMode.INSERT, return_numpy=True, keep_messages=True)
     pose_data = result[PoseMessage.MESSAGE_TYPE]
     pose_aux_data = result[PoseAuxMessage.MESSAGE_TYPE]
     satellite_data = result[GNSSSatelliteMessage.MESSAGE_TYPE]
@@ -158,28 +172,18 @@ Extract position data to both CSV and KML files.
     logger.info("Generating '%s'." % path)
     with open(path, 'w') as f:
         f.write(KML_TEMPLATE_START)
-        # Extract the first valid position along with the last position.
-        reader_np = DataLoader(input_path)
-        result_np = reader_np.read(message_types=[PoseMessage], show_progress=True, return_numpy=True)
-        pose_data_np = result_np[PoseMessage.MESSAGE_TYPE]
-        idx_valid = np.argmax(pose_data_np.solution_type != SolutionType.Invalid)
+        # Extract the first and last valid position.
+        valid_solutions = np.where(pose_data.solution_type != SolutionType.Invalid)[0]
+        first_valid_pose = pose_data.messages[valid_solutions[0]]
+        last_valid_pose = pose_data.messages[valid_solutions[-1]]
 
-        pose_valid = pose_data.messages[idx_valid]
-        pose_last = pose_data.messages[-1]
-        f.write('''\
-    <LookAt>
-      <latitude>%.8f</latitude>
-      <longitude>%.8f</longitude>
-      <altitude>%.8f</altitude>
-      <altitudeMode>absolute</altitudeMode>
-      <range>250</range>
-      <gx:TimeSpan>
-        <begin>%s</begin>
-        <end>%s</end>
-      </gx:TimeSpan>
-    </LookAt>
-''' % (pose_valid.lla_deg[0], pose_valid.lla_deg[1], pose_valid.lla_deg[2] - pose_valid.undulation_m, str(pose_valid.gps_time.as_utc().isoformat()), str(pose_last.gps_time.as_utc().isoformat())))
-
+        f.write(KML_TEMPLATE_LOOKAT %
+          {'latitude': first_valid_pose.lla_deg[0],
+          'longitude': first_valid_pose.lla_deg[1],
+          'altitude': first_valid_pose.lla_deg[2] - first_valid_pose.undulation_m,
+          'begin_time': str(first_valid_pose.gps_time.as_utc().isoformat()),
+          'end_time': str(last_valid_pose.gps_time.as_utc().isoformat())}
+        )
         for pose in pose_data.messages:
           # IMPORTANT: KML heights are specified in MSL, so we convert the ellipsoid heights to orthometric below using
           # the reported geoid undulation (geoid height). Undulation values come from a geoid model, and are not
