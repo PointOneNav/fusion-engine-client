@@ -2708,11 +2708,8 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             return
 
         times_before_resets = self.extract_times_before_reset()
-        if (len(times_before_resets) > 0):
-            table_columns = ['Relative Time (s)', 'System Time (s)', 'Previous P1 Time (s)', 'Event', 'Flags',
-                             'Description']
-        else:
-            table_columns = ['Relative Time (s)', 'System Time (s)', 'Event', 'Flags', 'Description']
+        table_columns = ['Relative Time (s)', 'System Time (s)', 'Previous P1 Time (s)', 'Event', 'Flags',
+                         'Description']
 
         rows = []
         system_t0_ns = self.reader.get_system_t0_ns()

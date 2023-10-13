@@ -345,11 +345,36 @@ class ResetRequest(MessagePayload):
 
     def __repr__(self):
         result = super().__repr__()[:-1]
-        result += f', mask=0x{self.reset_mask:08X}]'
+        mask_text = f'0x{self.reset_mask:08X}'
+        name = self._get_known_mask_name(self.reset_mask)
+        if name is not None:
+            mask_text += f' ({name})'
+        result += f', mask={mask_text}]'
         return result
 
     def __str__(self):
-        return 'Reset Request [mask=0x%08x]' % self.reset_mask
+        mask_text = f'0x{self.reset_mask:08X}'
+        name = self._get_known_mask_name(self.reset_mask)
+        if name is not None:
+            mask_text += f' ({name})'
+        return f'Reset Request [mask={mask_text}]'
+
+    @classmethod
+    def _get_known_mask_name(cls, mask) -> str:
+        if mask == cls.HOT_START:
+            return 'HOT_START'
+        elif mask == cls.WARM_START:
+            return 'WARM_START'
+        elif mask == cls.PVT_RESET:
+            return 'PVT_RESET'
+        elif mask == cls.COLD_START:
+            return 'COLD_START'
+        elif mask == cls.FACTORY_RESET:
+            return 'FACTORY_RESET'
+        elif mask & cls.DIAGNOSTIC_LOG_RESET:
+            return 'DIAGNOSTIC_LOG_RESET'
+        else:
+            return None
 
 
 class VersionInfoMessage(MessagePayload):
