@@ -81,8 +81,8 @@ KML_TEMPLATE_END = """\
 
 KML_TEMPLATE = """\
     <Placemark>
-      <Timestamp>%(timestamp)s</Timestamp>
-      <styleUrl>#type-%(solution_type)s</styleUrl>
+      <TimeStamp><when>%(timestamp)s</when></TimeStamp>
+      <styleUrl>#type-%(solution_type)d</styleUrl>
       <Point>
         <altitudeMode>absolute</altitudeMode>
         <coordinates>%(coordinates)s</coordinates>
@@ -158,9 +158,14 @@ Extract position data to both CSV and KML files.
     with open(path, 'w') as f:
         f.write(KML_TEMPLATE_START)
         for pose in pose_data.messages:
+          # IMPORTANT: KML heights are specified in MSL, so we convert the ellipsoid heights to orthometric below using
+          # the reported geoid undulation (geoid height). Undulation values come from a geoid model, and are not
+          # typically precise. When analyzing position performance compared with another device, we strongly recommend
+          # that you do the performance using ellipsoid heights. When comparing in MSL, if the geoid models used by the
+          # two devices are not exactly the same, the heights may differ by multiple meters.
           f.write(KML_TEMPLATE %
-                  {'timestamp': '\n'.join([str(pose.gps_time.as_utc())]),
-                  'solution_type':'\n'.join([str(int(pose.solution_type))]),
+                  {'timestamp': '\n'.join([str(pose.gps_time.as_utc().isoformat())]),
+                  'solution_type': int(pose.solution_type),
                   'coordinates': '\n'.join(['%.8f,%.8f,%.8f' % (pose.lla_deg[1], pose.lla_deg[0], pose.lla_deg[2] - pose.undulation_m)])})
         f.write(KML_TEMPLATE_END)
 
