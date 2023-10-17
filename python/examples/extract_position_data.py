@@ -190,10 +190,13 @@ Extract position data to both CSV and KML files.
           # typically precise. When analyzing position performance compared with another device, we strongly recommend
           # that you do the performance using ellipsoid heights. When comparing in MSL, if the geoid models used by the
           # two devices are not exactly the same, the heights may differ by multiple meters.
-          f.write(KML_TEMPLATE %
-                  {'timestamp': '\n'.join([str(pose.gps_time.as_utc().isoformat())]),
-                  'solution_type': int(pose.solution_type),
-                  'coordinates': '\n'.join(['%.8f,%.8f,%.8f' % (pose.lla_deg[1], pose.lla_deg[0], pose.lla_deg[2] - pose.undulation_m)])})
+          #
+          # Only write KML entries with valid GPS time.
+          if pose.gps_time.as_utc() is not None:
+            f.write(KML_TEMPLATE %
+                    {'timestamp': '\n'.join([str(pose.gps_time.as_utc().isoformat())]),
+                    'solution_type': int(pose.solution_type),
+                    'coordinates': '\n'.join(['%.8f,%.8f,%.8f' % (pose.lla_deg[1], pose.lla_deg[0], pose.lla_deg[2] - pose.undulation_m)])})
 
         f.write(KML_TEMPLATE_END)
 
