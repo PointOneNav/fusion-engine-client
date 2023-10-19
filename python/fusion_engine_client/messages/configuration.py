@@ -529,21 +529,50 @@ class _ConfigClassGenerator:
         applied_speed_type: AppliedSpeedType = AppliedSpeedType.REAR_WHEELS
         ## Indication of which of the vehicle's wheels are steered.
         steering_type: SteeringType = SteeringType.UNKNOWN
-        ## The nominal rate at which wheel speed measurements will be provided (in seconds).
+        ##
+        # The rate at which wheel speed/tick measurements will be sent to the device (in seconds).
+        #
+        # @note
+        # This parameter is required when using software wheel measurements. It may not be `NAN` if wheel measurements
+        # are enabled, and cannot be determined automatically by the device.
         wheel_update_interval_sec: float = math.nan
-        ## The nominal rate at which wheel tick measurements will be provided (in seconds).
+        ##
+        # Override the rate at which wheel tick measurements will be used by the navigation engine (in seconds).
+        #
+        # If this parameter is `NAN`, the best rate will be selected automatically by
+        # the device based on the input rate (@ref wheel_update_interval_sec) and the
+        # wheel tick quantization (@ref wheel_ticks_to_m).
+        #
+        # @warning
+        # For most system configurations, we recommend setting this value to `NAN` to let the device choose the
+        # appropriate setting. Use this setting with caution.
         wheel_tick_output_interval_sec: float = math.nan
-        ## Ratio between angle of the steering wheel and the angle of the wheels on the ground.
+        ##
+        # Ratio between angle of the steering wheel and the angle of the wheels on the ground.
+        #
+        # Used when applying measurements from steered wheels only, ignored otherwise.
         steering_ratio: float = math.nan
-        ## The scale factor to convert from wheel encoder ticks to distance (in meters/tick).
+        ##
+        # The scale factor to convert from wheel encoder ticks to distance (in meters/tick).
+        #
+        # Used for @ref WheelSensorType::TICKS and @ref WheelSensorType::VEHCILE_TICKS, ignored for wheel speed input.
         wheel_ticks_to_m: float = math.nan
-        ## The maximum value (inclusive) before the wheel tick measurement will roll over.
+        ##
+        # The maximum value (inclusive) before the wheel tick measurement will roll over.
+        #
+        # Used for @ref WheelSensorType::TICKS and @ref WheelSensorType::VEHCILE_TICKS, ignored for wheel speed input.
         wheel_tick_max_value: int = 0
-        ## `True` if the reported wheel tick measurements should be interpreted as signed integers, or `False` if they
-        ## should be interpreted as unsigned integers.
+        ##
+        # `True` if the reported wheel tick measurements should be interpreted as signed integers, or `False` if they
+        # should be interpreted as unsigned integers.
+        #
+        # Used for @ref WheelSensorType::TICKS and @ref WheelSensorType::VEHCILE_TICKS, ignored for wheel speed input.
         wheel_ticks_signed: bool = False
-        ## `True` if the wheel tick measurements increase by a positive amount when driving forward or backward.
-        ## `False` if wheel tick measurements decrease when driving backward.
+        ##
+        # `True` if the wheel tick measurements increase by a positive amount when driving forward or backward.
+        # `False` if wheel tick measurements decrease when driving backward.
+        #
+        # Used for @ref WheelSensorType::TICKS and @ref WheelSensorType::VEHCILE_TICKS, ignored for wheel speed input.
         wheel_ticks_always_increase: bool = True
 
     WheelConfigConstruct = Struct(

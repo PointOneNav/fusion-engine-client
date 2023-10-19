@@ -858,15 +858,24 @@ enum class WheelSensorType : uint8_t {
   NONE = 0,
   // RESERVED = 1,
   /**
-   * Individual wheel rotational angles, reported as accumulated encoder
-   * ticks.
+   * Individual rotational angle measurements for multiple wheels, reported as
+   * accumulated encoder ticks. See @ref WheelTickInput.
    * */
   TICKS = 2,
-  /** Individual wheel speeds, reported in meters/second. */
+  /**
+   * Individual speed measurements for multiple wheels, reported in
+   * meters/second. See @ref WheelSpeedInput.
+   */
   WHEEL_SPEED = 3,
-  /** A single value indicating the vehicle speed (in meters/second). */
+  /**
+   * A single value indicating the vehicle speed (in meters/second). See @ref
+   * VehicleSpedInput.
+   */
   VEHICLE_SPEED = 4,
-  /** A single wheel rotational angle, reported as accumulated encoder ticks. */
+  /**
+   * A single wheel rotational angle, reported as accumulated encoder ticks. See
+   * @ref VehicleSpeedInput.
+   */
   VEHICLE_TICKS = 5,
 };
 
@@ -1061,26 +1070,47 @@ struct P1_ALIGNAS(4) WheelConfig {
   uint8_t reserved1[1] = {0};
 
   /**
-   * The nominal rate at which wheel speed measurements will be provided (in
-   * seconds).
+   * The rate at which wheel speed/tick measurements will be sent to the device
+   * (in seconds).
+   *
+   * @note
+   * This parameter is required when using software wheel measurements. It
+   * may not be `NAN` if wheel measurements are enabled, and cannot be
+   * determined automatically by the device.
    */
   float wheel_update_interval_sec = NAN;
 
   /**
-   * The nominal rate at which wheel tick measurements will be provided (in
-   * seconds).
+   * Override the rate at which wheel tick measurements will be used by the
+   * navigation engine (in seconds).
+   *
+   * If this parameter is `NAN` (default), the best rate will be selected
+   * automatically by the device based on the input rate (@ref
+   * wheel_update_interval_sec) and the wheel tick quantization (@ref
+   * wheel_ticks_to_m).
+   *
+   * @warning
+   * For most system configurations, we recommend setting this value to `NAN` to
+   * let the device choose the appropriate setting. Use this setting with
+   * caution.
    */
   float wheel_tick_output_interval_sec = NAN;
 
   /**
    * Ratio between angle of the steering wheel and the angle of the wheels on
    * the ground.
+   *
+   * Used when applying measurements from steered wheels only, ignored
+   * otherwise.
    */
   float steering_ratio = NAN;
 
   /**
    * The scale factor to convert from wheel encoder ticks to distance (in
-   * meters/tick). Used for @ref WheelSensorType::TICKS.
+   * meters/tick).
+   *
+   * Used for @ref WheelSensorType::TICKS and @ref
+   * WheelSensorType::VEHCILE_TICKS, ignored for wheel speed input.
    */
   float wheel_ticks_to_m = NAN;
 
@@ -1095,6 +1125,9 @@ struct P1_ALIGNAS(4) WheelConfig {
    *
    * Signed values are assumed to be asymmetric, consistent with a typical 2's
    * complement rollover.
+   *
+   * Used for @ref WheelSensorType::TICKS and @ref
+   * WheelSensorType::VEHCILE_TICKS, ignored for wheel speed input.
    */
   uint32_t wheel_tick_max_value = 0;
 
@@ -1103,7 +1136,9 @@ struct P1_ALIGNAS(4) WheelConfig {
    * signed integers, or `false` if they should be interpreted as unsigned
    * integers.
    *
-   * See @ref wheel_tick_max_value for details.
+   * Used for @ref WheelSensorType::TICKS and @ref
+   * WheelSensorType::VEHCILE_TICKS, ignored for wheel speed input. See
+   * @ref wheel_tick_max_value for details.
    */
   bool wheel_ticks_signed = false;
 
@@ -1111,6 +1146,9 @@ struct P1_ALIGNAS(4) WheelConfig {
    * `true` if the wheel tick measurements increase by a positive amount when
    * driving forward or backward. `false` if wheel tick measurements decrease
    * when driving backward.
+   *
+   * Used for @ref WheelSensorType::TICKS and @ref
+   * WheelSensorType::VEHCILE_TICKS, ignored for wheel speed input.
    */
   bool wheel_ticks_always_increase = true;
 
