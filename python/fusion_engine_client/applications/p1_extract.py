@@ -3,6 +3,14 @@
 import os
 import sys
 
+# If this application is being run directly as a script (e.g., python p1_*.py), rather than as a script installed by pip
+# (e.g., p1_*), manually set the package name and add the Python root directory (fusion-engine-client/python/) to the
+# import search path to enable relative imports.
+if __name__ == "__main__":
+    root_dir = os.path.normpath(os.path.join(os.path.abspath(os.path.dirname(__file__)), '../..'))
+    sys.path.insert(0, root_dir)
+    __package__ = os.path.dirname(__file__).replace('/', '.')
+
 from ..utils import trace as logging
 from ..utils.argument_parser import ArgumentParser
 from ..utils.log import extract_fusion_engine_log, find_log_file, CANDIDATE_LOG_FILES, DEFAULT_LOG_BASE_DIR
