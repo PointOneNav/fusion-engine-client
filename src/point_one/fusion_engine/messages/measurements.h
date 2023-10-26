@@ -316,6 +316,91 @@ struct P1_ALIGNAS(4) RawIMUOutput : public MessagePayload {
   int32_t gyro[3] = {INT32_MAX, INT32_MAX, INT32_MAX};
 };
 
+/**
+ * @brief IMU sensor measurement input  with calibration and corrections applied
+ *        (@ref MessageType::IMU_INPUT, version 1.0).
+ * @ingroup measurement_messages
+ *
+ * This message is an input  from the device containing IMU acceleration and
+ * rotation rate measurements. The measurements been corrected for biases and
+ * scale factors, and have been rotated into the vehicle body frame from the
+ * original IMU orientation, including calibrated mounting error estimates.
+ *
+ * See also @ref RawIMUInput.
+ */
+struct P1_ALIGNAS(4) IMUInput : public MessagePayload {
+  static constexpr MessageType MESSAGE_TYPE = MessageType::IMU_INPUT;
+  static constexpr uint8_t MESSAGE_VERSION = 0;
+
+  /** The time of the measurement, in P1 time (beginning at power-on). */
+  Timestamp p1_time;
+
+  /**
+   * Corrected vehicle x/y/z acceleration (in meters/second^2), resolved in the
+   * body frame.
+   */
+  double accel_mps2[3] = {NAN, NAN, NAN};
+
+  /**
+   * Corrected vehicle x/y/z acceleration standard deviation (in
+   * meters/second^2), resolved in the body frame.
+   */
+  double accel_std_mps2[3] = {NAN, NAN, NAN};
+
+  /**
+   * Corrected vehicle x/y/z rate of rotation (in radians/second), resolved in
+   * the body frame.
+   */
+  double gyro_rps[3] = {NAN, NAN, NAN};
+
+  /**
+   * Corrected vehicle x/y/z rate of rotation standard deviation (in
+   * radians/second), resolved in the body frame.
+   */
+  double gyro_std_rps[3] = {NAN, NAN, NAN};
+};
+
+/**
+ * @brief Raw (uncorrected) IMU sensor measurement input (@ref
+          MessageType::RAW_IMU_INPUT, version 1.0).
+ * @ingroup measurement_messages
+ *
+ * This message is an input from the device containing raw IMU acceleration and
+ * rotation rate measurements. These measurements come directly from the sensor,
+ * and do not have any corrections or calibration applied.
+ *
+ * See also @ref IMUInput.
+ */
+struct P1_ALIGNAS(4) RawIMUInput : public MessagePayload {
+  static constexpr MessageType MESSAGE_TYPE = MessageType::RAW_IMU_INPUT;
+  static constexpr uint8_t MESSAGE_VERSION = 0;
+
+  /**
+   * Measurement timestamp and additional information, if available. See @ref
+   * MeasurementDetails for details.
+   */
+  MeasurementDetails details;
+
+  uint8_t reserved[6] = {0};
+
+  /**
+   * The IMU temperature (in deg Celcius * 2^-7). Set to 0x7FFF if invalid.
+   */
+  int16_t temperature = INT16_MAX;
+
+  /**
+   * Measured x/y/z acceleration (in meters/second^2 * 2^-16), resolved in the
+   * sensor measurement frame. Set to 0x7FFFFFFF if invalid.
+   */
+  int32_t accel[3] = {INT32_MAX, INT32_MAX, INT32_MAX};
+
+  /**
+   * Measured x/y/z rate of rotation (in radians/second * 2^-20), resolved in
+   * the sensor measurement frame. Set to 0x7FFFFFFF if invalid.
+   */
+  int32_t gyro[3] = {INT32_MAX, INT32_MAX, INT32_MAX};
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 // Different Wheel Speed Measurements
 ////////////////////////////////////////////////////////////////////////////////
