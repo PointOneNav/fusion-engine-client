@@ -18,14 +18,17 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/..
 
 # Define the WASM binding library.
 add_executable(fusion_engine_client_wasm
+               command_control_bindings.cc
+               configuration_bindings.cc
                defs_binding.cc
                device_binding.cc
                fusion_engine_framer_binding.cc
-               solution_binding.cc
-               configuration_bindings.cc
+               fault_bindings.cc
+               gnss_corrections_bindings.cc
                measurements_binding.cc
-               signal_defs_bindings.cc
-               command_control_bindings.cc)
+               ros_bindings.cc
+               solution_binding.cc
+               signal_defs_bindings.cc)
 target_include_directories(fusion_engine_client_wasm PUBLIC
                            ${CMAKE_CURRENT_SOURCE_DIR}})
 target_link_libraries(fusion_engine_client_wasm PUBLIC fusion_engine_client)

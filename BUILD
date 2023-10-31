@@ -55,6 +55,7 @@ cc_library(
         "src/point_one/fusion_engine/messages/gnss_corrections.h",
         "src/point_one/fusion_engine/messages/measurements.h",
         "src/point_one/fusion_engine/messages/signal_defs.h",
+        "src/point_one/fusion_engine/messages/ros.h",
         "src/point_one/fusion_engine/messages/solution.h",
     ],
     deps = [

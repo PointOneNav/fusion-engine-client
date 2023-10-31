@@ -23,11 +23,14 @@ EMSCRIPTEN_BINDINGS(configuration) {
       .value("VEHICLE_DETAILS", ConfigType::VEHICLE_DETAILS)
       .value("WHEEL_CONFIG", ConfigType::WHEEL_CONFIG)
       .value("HARDWARE_TICK_CONFIG", ConfigType::HARDWARE_TICK_CONFIG)
+      .value("HEADING_BIAS", ConfigType::HEADING_BIAS)
       .value("ENABLED_GNSS_SYSTEMS", ConfigType::ENABLED_GNSS_SYSTEMS)
       .value("ENABLED_GNSS_FREQUENCY_BANDS",
              ConfigType::ENABLED_GNSS_FREQUENCY_BANDS)
       .value("LEAP_SECOND", ConfigType::LEAP_SECOND)
       .value("GPS_WEEK_ROLLOVER", ConfigType::GPS_WEEK_ROLLOVER)
+      .value("IONOSPHERE_CONFIG", ConfigType::IONOSPHERE_CONFIG)
+      .value("TROPOSPHERE_CONFIG", ConfigType::TROPOSPHERE_CONFIG)
       .value("INTERFACE_CONFIG", ConfigType::INTERFACE_CONFIG)
       .value("UART1_BAUD", ConfigType::UART1_BAUD)
       .value("UART2_BAUD", ConfigType::UART2_BAUD)
@@ -35,7 +38,9 @@ EMSCRIPTEN_BINDINGS(configuration) {
              ConfigType::UART1_OUTPUT_DIAGNOSTICS_MESSAGES)
       .value("UART2_OUTPUT_DIAGNOSTICS_MESSAGES",
              ConfigType::UART2_OUTPUT_DIAGNOSTICS_MESSAGES)
-      .value("ENABLE_WATCHDOG_TIMER", ConfigType::ENABLE_WATCHDOG_TIMER);
+      .value("ENABLE_WATCHDOG_TIMER", ConfigType::ENABLE_WATCHDOG_TIMER)
+      .value("USER_DEVICE_ID", ConfigType::USER_DEVICE_ID)
+      .value("LBAND_PARAMETERS", ConfigType::LBAND_PARAMETERS);
 
   enum_<InterfaceConfigType>("InterfaceConfigType")
       .value("INVALID", InterfaceConfigType::INVALID)
@@ -107,6 +112,7 @@ EMSCRIPTEN_BINDINGS(configuration) {
       .constructor<>()
       .class_property("MESSAGE_TYPE", &ConfigResponseMessage_MESSAGE_TYPE)
       .class_property("MESSAGE_VERSION", &ConfigResponseMessage_MESSAGE_VERSION)
+      .class_property("FLAG_ACTIVE_DIFFERS_FROM_SAVED", &ConfigResponseMessage_FLAG_ACTIVE_DIFFERS_FROM_SAVED)
       .property("config_source", &ConfigResponseMessage::config_source)
       .property("flags", &ConfigResponseMessage::flags)
       .property("config_type", &ConfigResponseMessage::config_type)
@@ -114,7 +120,6 @@ EMSCRIPTEN_BINDINGS(configuration) {
       .ARRAY_PROPERTY(ConfigResponseMessage, reserved)
       .property("config_length_bytes",
                 &ConfigResponseMessage::config_length_bytes)
-      .ARRAY_PROPERTY(ConfigResponseMessage, reserved)
       .STRUCT_FUNCTIONS(ConfigResponseMessage);
 
   class_<Point3f>("Point3f")
@@ -168,7 +173,6 @@ EMSCRIPTEN_BINDINGS(configuration) {
 
   enum_<WheelSensorType>("WheelSensorType")
       .value("NONE", WheelSensorType::NONE)
-      .value("TICK_RATE", WheelSensorType::TICK_RATE)
       .value("TICKS", WheelSensorType::TICKS)
       .value("WHEEL_SPEED", WheelSensorType::WHEEL_SPEED)
       .value("VEHICLE_SPEED", WheelSensorType::VEHICLE_SPEED)
@@ -223,6 +227,44 @@ EMSCRIPTEN_BINDINGS(configuration) {
       .property("wheel_ticks_to_m", &HardwareTickConfig::wheel_ticks_to_m)
       .STRUCT_FUNCTIONS(HardwareTickConfig);
 
+  class_<HeadingBias>("HeadingBias")
+      .constructor<>()
+      .property("horizontal_bias_deg", &HeadingBias::horizontal_bias_deg)
+      .property("vertical_bias_deg", &HeadingBias::vertical_bias_deg)
+      .STRUCT_FUNCTIONS(HeadingBias);
+
+  enum_<IonoDelayModel>("IonoDelayModel")
+      .value("AUTO", IonoDelayModel::AUTO)
+      .value("OFF", IonoDelayModel::OFF)
+      .value("KLOBUCHAR", IonoDelayModel::KLOBUCHAR);
+
+  class_<IonosphereConfig>("IonosphereConfig")
+      .constructor<>()
+      .property("iono_delay_model", &IonosphereConfig::iono_delay_model)
+      .ARRAY_PROPERTY(IonosphereConfig, reserved)
+      .STRUCT_FUNCTIONS(IonosphereConfig);
+
+  enum_<TropoDelayModel>("TropoDelayModel")
+       .value("AUTO", TropoDelayModel::AUTO)
+       .value("OFF", TropoDelayModel::OFF)
+       .value("SAASTAMOINEN", TropoDelayModel::SAASTAMOINEN);
+
+  class_<TroposphereConfig>("TroposphereConfig")
+       .constructor<>()
+       .property("tropo_delay_model", &TroposphereConfig::tropo_delay_model)
+       .ARRAY_PROPERTY(TroposphereConfig, reserved)
+       .STRUCT_FUNCTIONS(TroposphereConfig);
+
+  class_<LBandConfig>("LBandConfig")
+       .constructor<>()
+       .property("center_frequency_hz", &LBandConfig::center_frequency_hz)
+       .property("search_window_hz", &LBandConfig::search_window_hz)
+       .property("pmp_service_id", &LBandConfig::pmp_service_id)
+       .property("pmp_data_rate_bps", &LBandConfig::pmp_data_rate_bps)
+       .ARRAY_PROPERTY(LBandConfig, reserved)
+       .property("pmp_unique_word", &LBandConfig::pmp_unique_word)
+       .STRUCT_FUNCTIONS(LBandConfig);
+
   enum_<ProtocolType>("ProtocolType")
       .value("INVALID", ProtocolType::INVALID)
       .value("FUSION_ENGINE", ProtocolType::FUSION_ENGINE)
@@ -233,6 +275,7 @@ EMSCRIPTEN_BINDINGS(configuration) {
   class_<MsgType>("MsgType")
       .constructor<>()
       .property("protocol", &MsgType::protocol)
+      .ARRAY_PROPERTY(MsgType, reserved)
       .property("msg_id", &MsgType::msg_id)
       .STRUCT_FUNCTIONS(MsgType);
 
@@ -276,7 +319,10 @@ EMSCRIPTEN_BINDINGS(configuration) {
       .value("P1MSG", NmeaMessageType::P1MSG)
       .value("PQTMVERNO", NmeaMessageType::PQTMVERNO)
       .value("PQTMVER", NmeaMessageType::PQTMVER)
-      .value("PQTMGNSS", NmeaMessageType::PQTMGNSS);
+      .value("PQTMGNSS", NmeaMessageType::PQTMGNSS)
+      .value("PQTMVERNO_SUB", NmeaMessageType::PQTMVERNO_SUB)
+      .value("PQTMVER_SUB", NmeaMessageType::PQTMVER_SUB)
+      .value("PQTMTXT", NmeaMessageType::PQTMTXT);
 
   enum_<MessageRate>("MessageRate")
       .value("OFF", MessageRate::OFF)
@@ -328,6 +374,16 @@ EMSCRIPTEN_BINDINGS(configuration) {
       .property("request_source", &GetMessageRate::request_source)
       .property("message_id", &GetMessageRate::message_id)
       .STRUCT_FUNCTIONS(GetMessageRate);
+
+  static auto SupportedIOInterfacesMessage_MESSAGE_TYPE = SupportedIOInterfacesMessage::MESSAGE_TYPE;
+  static auto SupportedIOInterfacesMessage_MESSAGE_VERSION = SupportedIOInterfacesMessage::MESSAGE_VERSION;
+  class_<SupportedIOInterfacesMessage>("SupportedIOInterfacesMessage")
+      .constructor<>()
+      .class_property("MESSAGE_TYPE", &SupportedIOInterfacesMessage_MESSAGE_TYPE)
+      .class_property("MESSAGE_VERSION", &SupportedIOInterfacesMessage_MESSAGE_VERSION)
+      .property("num_interfaces", &SupportedIOInterfacesMessage::num_interfaces)
+      .ARRAY_PROPERTY(SupportedIOInterfacesMessage, reserved1)
+      .STRUCT_FUNCTIONS(SupportedIOInterfacesMessage);
 
   static auto MessageRateResponseEntry_FLAG_ACTIVE_DIFFERS_FROM_SAVED =
       MessageRateResponseEntry::FLAG_ACTIVE_DIFFERS_FROM_SAVED;

@@ -80,6 +80,7 @@ EMSCRIPTEN_BINDINGS(measurements) {
       .constructor<>()
       .class_property("MESSAGE_TYPE", &WheelSpeedInput_MESSAGE_TYPE)
       .class_property("MESSAGE_VERSION", &WheelSpeedInput_MESSAGE_VERSION)
+      .class_property("FLAG_SIGNED", &WheelSpeedInput_FLAG_SIGNED)
       .property("details", &WheelSpeedInput::details)
       .property("front_left_speed",  &WheelSpeedInput::front_left_speed)
       .property("front_right_speed", &WheelSpeedInput::front_right_speed)
@@ -97,6 +98,7 @@ EMSCRIPTEN_BINDINGS(measurements) {
       .constructor<>()
       .class_property("MESSAGE_TYPE", &WheelSpeedOutput_MESSAGE_TYPE)
       .class_property("MESSAGE_VERSION", &WheelSpeedOutput_MESSAGE_VERSION)
+      .class_property("FLAG_SIGNED", &WheelSpeedOutput_FLAG_SIGNED)
       .property("p1_time", &WheelSpeedOutput::p1_time)
       .property("data_source", &WheelSpeedOutput::data_source)
       .property("gear", &WheelSpeedOutput::gear)
@@ -115,6 +117,7 @@ EMSCRIPTEN_BINDINGS(measurements) {
       .constructor<>()
       .class_property("MESSAGE_TYPE", &RawWheelSpeedOutput_MESSAGE_TYPE)
       .class_property("MESSAGE_VERSION", &RawWheelSpeedOutput_MESSAGE_VERSION)
+      .class_property("FLAG_SIGNED", &RawWheelSpeedOutput_FLAG_SIGNED)
       .property("details", &RawWheelSpeedOutput::details)
       .property("front_left_speed", &RawWheelSpeedOutput::front_left_speed)
       .property("front_right_speed", &RawWheelSpeedOutput::front_right_speed)
@@ -132,12 +135,97 @@ EMSCRIPTEN_BINDINGS(measurements) {
       .constructor<>()
       .class_property("MESSAGE_TYPE", &VehicleSpeedInput_MESSAGE_TYPE)
       .class_property("MESSAGE_VERSION", &VehicleSpeedInput_MESSAGE_VERSION)
+      .class_property("FLAG_SIGNED", &VehicleSpeedInput_FLAG_SIGNED)
       .property("details", &VehicleSpeedInput::details)
       .property("vehicle_speed", &VehicleSpeedInput::vehicle_speed)
       .property("gear", &VehicleSpeedInput::gear)
       .property("flags", &VehicleSpeedInput::flags)
       .ARRAY_PROPERTY(VehicleSpeedInput, reserved)
       .STRUCT_FUNCTIONS(VehicleSpeedInput);
+
+  static auto VehicleSpeedOutput_MESSAGE_TYPE = VehicleSpeedOutput::MESSAGE_TYPE;
+  static auto VehicleSpeedOutput_MESSAGE_VERSION = VehicleSpeedOutput::MESSAGE_VERSION;
+  static auto VehicleSpeedOutput_FLAG_SIGNED = VehicleSpeedOutput::FLAG_SIGNED;
+  class_<VehicleSpeedOutput>("VehicleSpeedOutput")
+      .constructor<>()
+      .class_property("MESSAGE_TYPE", &VehicleSpeedOutput_MESSAGE_TYPE)
+      .class_property("MESSAGE_VERSION", &VehicleSpeedOutput_MESSAGE_VERSION)
+      .class_property("FLAG_SIGNED", &VehicleSpeedOutput_FLAG_SIGNED)
+      .property("p1_time", &VehicleSpeedOutput::p1_time)
+      .property("data_source", &VehicleSpeedOutput::data_source)
+      .property("gear", &VehicleSpeedOutput::gear)
+      .property("flags", &VehicleSpeedOutput::flags)
+      .property("reserved", &VehicleSpeedOutput::reserved)
+      .property("vehicle_speed_mps", &VehicleSpeedOutput::vehicle_speed_mps)
+      .STRUCT_FUNCTIONS(VehicleSpeedOutput);
+
+  static auto RawVehicleSpeedOutput_MESSAGE_TYPE = RawVehicleSpeedOutput::MESSAGE_TYPE;
+  static auto RawVehicleSpeedOutput_MESSAGE_VERSION = RawVehicleSpeedOutput::MESSAGE_VERSION;
+  static auto RawVehicleSpeedOutput_FLAG_SIGNED = RawVehicleSpeedOutput::FLAG_SIGNED;
+  class_<RawVehicleSpeedOutput>("RawVehicleSpeedOutput")
+      .constructor<>()
+      .class_property("MESSAGE_TYPE", &RawVehicleSpeedOutput_MESSAGE_TYPE)
+      .class_property("MESSAGE_VERSION", &RawVehicleSpeedOutput_MESSAGE_VERSION)
+      .class_property("FLAG_SIGNED", &RawVehicleSpeedOutput_FLAG_SIGNED)
+      .property("details", &RawVehicleSpeedOutput::details)
+      .property("vehicle_speed", &RawVehicleSpeedOutput::vehicle_speed)
+      .property("gear", &RawVehicleSpeedOutput::gear)
+      .property("flags", &RawVehicleSpeedOutput::flags)
+      .ARRAY_PROPERTY(RawVehicleSpeedOutput, reserved)
+      .STRUCT_FUNCTIONS(RawVehicleSpeedOutput);
+
+  static auto WheelTickInput_MESSAGE_TYPE =  WheelTickInput::MESSAGE_TYPE;
+  static auto WheelTickInput_MESSAGE_VERSION = WheelTickInput::MESSAGE_VERSION;
+  class_<WheelTickInput>("WheelTickInput")
+      .constructor<>()
+      .class_property("MESSAGE_TYPE", &WheelTickInput_MESSAGE_TYPE)
+      .class_property("MESSAGE_VERSION", &WheelTickInput_MESSAGE_VERSION)
+      .property("details", &WheelTickInput::details)
+      .property("front_left_wheel_ticks", &WheelTickInput::front_left_wheel_ticks)
+      .property("front_right_wheel_ticks", &WheelTickInput::front_right_wheel_ticks)
+      .property("rear_left_wheel_ticks", &WheelTickInput::rear_left_wheel_ticks)
+      .property("rear_right_wheel_ticks", &WheelTickInput::rear_right_wheel_ticks)
+      .ARRAY_PROPERTY(WheelTickInput, reserved)
+      .STRUCT_FUNCTIONS(WheelTickInput);
+
+  static auto RawWheelTickOutput_MESSAGE_TYPE =  RawWheelTickOutput::MESSAGE_TYPE;
+  static auto RawWheelTickOutput_MESSAGE_VERSION = RawWheelTickOutput::MESSAGE_VERSION;
+  class_<RawWheelTickOutput>("RawWheelTickOutput")
+      .constructor<>()
+      .class_property("MESSAGE_TYPE", &RawWheelTickOutput_MESSAGE_TYPE)
+      .class_property("MESSAGE_VERSION", &RawWheelTickOutput_MESSAGE_VERSION)
+      .property("details", &RawWheelTickOutput::details)
+      .property("front_left_wheel_ticks", &RawWheelTickOutput::front_left_wheel_ticks)
+      .property("front_right_wheel_ticks", &RawWheelTickOutput::front_right_wheel_ticks)
+      .property("rear_left_wheel_ticks", &RawWheelTickOutput::rear_left_wheel_ticks)
+      .property("rear_right_wheel_ticks", &RawWheelTickOutput::rear_right_wheel_ticks)
+      .property("gear", &RawWheelTickOutput::gear)
+      .ARRAY_PROPERTY(RawWheelTickOutput, reserved)
+      .STRUCT_FUNCTIONS(RawWheelTickOutput);
+
+  static auto VehicleTickInput_MESSAGE_TYPE =  VehicleTickInput::MESSAGE_TYPE;
+  static auto VehicleTickInput_MESSAGE_VERSION = VehicleTickInput::MESSAGE_VERSION;
+  class_<VehicleTickInput>("VehicleTickInput")
+      .constructor<>()
+      .class_property("MESSAGE_TYPE", &VehicleTickInput_MESSAGE_TYPE)
+      .class_property("MESSAGE_VERSION", &VehicleTickInput_MESSAGE_VERSION)
+      .property("details", &VehicleTickInput::details)
+      .property("tick_count", &VehicleTickInput::tick_count)
+      .property("gear", &VehicleTickInput::gear)
+      .ARRAY_PROPERTY(VehicleTickInput, reserved)
+      .STRUCT_FUNCTIONS(VehicleTickInput);
+
+  static auto RawVehicleTickOutput_MESSAGE_TYPE =  RawVehicleTickOutput::MESSAGE_TYPE;
+  static auto RawVehicleTickOutput_MESSAGE_VERSION = RawVehicleTickOutput::MESSAGE_VERSION;
+  class_<RawVehicleTickOutput>("RawVehicleTickOutput")
+      .constructor<>()
+      .class_property("MESSAGE_TYPE", &RawVehicleTickOutput_MESSAGE_TYPE)
+      .class_property("MESSAGE_VERSION", &RawVehicleTickOutput_MESSAGE_VERSION)
+      .property("details", &RawVehicleTickOutput::details)
+      .property("tick_count", &RawVehicleTickOutput::tick_count)
+      .property("gear", &RawVehicleTickOutput::gear)
+      .ARRAY_PROPERTY(RawVehicleTickOutput, reserved)
+      .STRUCT_FUNCTIONS(RawVehicleTickOutput);
 
   static auto DeprecatedWheelSpeedMeasurement_MESSAGE_TYPE = DeprecatedWheelSpeedMeasurement::MESSAGE_TYPE;
   static auto DeprecatedWheelSpeedMeasurement_MESSAGE_VERSION = DeprecatedWheelSpeedMeasurement::MESSAGE_VERSION;

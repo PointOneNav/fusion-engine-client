@@ -91,7 +91,10 @@ EMSCRIPTEN_BINDINGS(defs) {
 
       .value("SET_MESSAGE_RATE", MessageType::SET_MESSAGE_RATE)
       .value("GET_MESSAGE_RATE", MessageType::GET_MESSAGE_RATE)
-      .value("MESSAGE_RATE_RESPONSE", MessageType::MESSAGE_RATE_RESPONSE);
+      .value("MESSAGE_RATE_RESPONSE", MessageType::MESSAGE_RATE_RESPONSE)
+      .value("SUPPORTED_IO_INTERFACES", MessageType::SUPPORTED_IO_INTERFACES)
+
+      .value("LBAND_FRAME", MessageType::LBAND_FRAME);
 
   enum_<Response>("Response")
       .value("OK", Response::OK)

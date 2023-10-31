@@ -1,5 +1,5 @@
 /**************************************************************************/ /**
- * @brief Emscripten bindings for structs in configuration.h.
+ * @brief Emscripten bindings for structs in control.h.
  ******************************************************************************/
 
 #include <emscripten/bind.h>
@@ -110,6 +110,29 @@ EMSCRIPTEN_BINDINGS(control) {
       .property("rx_version_length", &VersionInfoMessage::rx_version_length)
       .ARRAY_PROPERTY(VersionInfoMessage, reserved)
       .STRUCT_FUNCTIONS(VersionInfoMessage);
+
+  enum_<DeviceType>("DeviceType")
+      .value("UNKNOWN", DeviceType::UNKNOWN)
+      .value("ATLAS", DeviceType::ATLAS)
+      .value("LG69T_AM", DeviceType::LG69T_AM)
+      .value("LG69T_AP", DeviceType::LG69T_AP)
+      .value("LG69T_AH", DeviceType::LG69T_AH);
+
+  static auto DeviceIDMessage_MESSAGE_TYPE =
+      DeviceIDMessage::MESSAGE_TYPE;
+  static auto DeviceIDMessage_MESSAGE_VERSION =
+      DeviceIDMessage::MESSAGE_VERSION;
+  class_<DeviceIDMessage>("DeviceIDMessage")
+      .constructor<>()
+      .class_property("MESSAGE_TYPE", &DeviceIDMessage_MESSAGE_TYPE)
+      .class_property("MESSAGE_VERSION", &DeviceIDMessage_MESSAGE_VERSION)
+      .property("system_time_ns", &DeviceIDMessage::system_time_ns)
+      .property("device_type", &DeviceIDMessage::device_type)
+      .property("hw_id_length", &DeviceIDMessage::hw_id_length)
+      .property("user_id_length", &DeviceIDMessage::user_id_length)
+      .property("receiver_id_length", &DeviceIDMessage::receiver_id_length)
+      .ARRAY_PROPERTY(DeviceIDMessage, reserved)
+      .STRUCT_FUNCTIONS(DeviceIDMessage);
 
   static auto EventNotificationMessage_MESSAGE_TYPE =
       EventNotificationMessage::MESSAGE_TYPE;
