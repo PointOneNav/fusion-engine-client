@@ -77,6 +77,7 @@ EMSCRIPTEN_BINDINGS(defs) {
       .value("EVENT_NOTIFICATION", MessageType::EVENT_NOTIFICATION)
       .value("SHUTDOWN_REQUEST", MessageType::SHUTDOWN_REQUEST)
       .value("FAULT_CONTROL", MessageType::FAULT_CONTROL)
+      .value("DEVICE_ID", MessageType::DEVICE_ID)
       .value("STARTUP_REQUEST", MessageType::STARTUP_REQUEST)
 
       .value("SET_CONFIG", MessageType::SET_CONFIG)
