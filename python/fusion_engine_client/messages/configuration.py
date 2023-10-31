@@ -105,7 +105,12 @@ class VehicleModel(IntEnum):
 
     LINCOLN_MKZ = 180,
 
-    BMW_7 = 200
+    BMW_7 = 200,
+    BMW_MOTORRAD = 201,
+
+    VW_4 = 220,
+
+    RIVIAN = 240
 
 
 class WheelSensorType(IntEnum):

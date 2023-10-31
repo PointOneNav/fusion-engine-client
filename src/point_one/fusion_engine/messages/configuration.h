@@ -773,6 +773,11 @@ enum class VehicleModel : uint16_t {
   LINCOLN_MKZ = 180,
 
   BMW_7 = 200,
+  BMW_MOTORRAD = 201,
+
+  VW_4 = 220,
+
+  RIVIAN = 240,
 };
 
 /**
@@ -817,6 +822,12 @@ P1_CONSTEXPR_FUNC const char* to_string(VehicleModel vehicle_model) {
       return "LINCOLN_MKZ";
     case VehicleModel::BMW_7:
       return "BMW_7";
+    case VehicleModel::BMW_MOTORRAD:
+      return "BMW_MOTORRAD";
+    case VehicleModel::VW_4:
+      return "VW_4";
+    case VehicleModel::RIVIAN:
+      return "RIVIAN";
     default:
       return "UNRECOGNIZED";
   }
