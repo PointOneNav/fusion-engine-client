@@ -56,24 +56,24 @@ class InterfaceConfigType(IntEnum):
 
 class Direction(IntEnum):
     ## Aligned with vehicle +x axis.
-    FORWARD = 0,
+    FORWARD = 0
     ## Aligned with vehicle -x axis.
-    BACKWARD = 1,
+    BACKWARD = 1
     ## Aligned with vehicle +y axis.
-    LEFT = 2,
+    LEFT = 2
     ## Aligned with vehicle -y axis.
-    RIGHT = 3,
+    RIGHT = 3
     ## Aligned with vehicle +z axis.
-    UP = 4,
+    UP = 4
     ## Aligned with vehicle -z axis.
-    DOWN = 5,
+    DOWN = 5
     ## Error value.
     INVALID = 255
 
 
 class VehicleModel(IntEnum):
-    UNKNOWN_VEHICLE = 0,
-    DATASPEED_CD4 = 1,
+    UNKNOWN_VEHICLE = 0
+    DATASPEED_CD4 = 1
     ## In general, all J1939 vehicles support a subset of the J1939 standard and
     ## may be set to vehicle model `J1939`. Their 29-bit CAN IDs may differ
     ## based on how the platform assigns message priorities and source
@@ -82,80 +82,85 @@ class VehicleModel(IntEnum):
     ##
     ## For most vehicles, it is not necessary to specify and particular make and
     ## model.
-    J1939 = 2,
+    J1939 = 2
 
-    LEXUS_CT200H = 20,
+    LEXUS_CT200H = 20
 
-    KIA_SORENTO = 40,
-    KIA_SPORTAGE = 41,
+    KIA_SORENTO = 40
+    KIA_SPORTAGE = 41
 
-    AUDI_Q7 = 60,
-    AUDI_A8L = 61,
+    AUDI_Q7 = 60
+    AUDI_A8L = 61
 
-    TESLA_MODEL_X = 80,
-    TESLA_MODEL_3 = 81,
+    TESLA_MODEL_X = 80
+    TESLA_MODEL_3 = 81
 
-    HYUNDAI_ELANTRA = 100,
+    HYUNDAI_ELANTRA = 100
 
-    PEUGEOT_206 = 120,
+    PEUGEOT_206 = 120
 
-    MAN_TGX = 140,
+    MAN_TGX = 140
 
-    FACTION = 160,
+    FACTION = 160
 
-    LINCOLN_MKZ = 180,
+    LINCOLN_MKZ = 180
 
     BMW_7 = 200
+    BMW_MOTORRAD = 201
+
+    VW_4 = 220
+
+    RIVIAN = 240
 
 
 class WheelSensorType(IntEnum):
-    NONE = 0,
-    # RESERVED = 1,
-    TICKS = 2,
-    WHEEL_SPEED = 3,
-    VEHICLE_SPEED = 4,
+    NONE = 0
+    # RESERVED = 1
+    TICKS = 2
+    WHEEL_SPEED = 3
+    VEHICLE_SPEED = 4
     VEHICLE_TICKS = 5
 
 
 class AppliedSpeedType(IntEnum):
-    NONE = 0,
-    REAR_WHEELS = 1,
-    FRONT_WHEELS = 2,
-    FRONT_AND_REAR_WHEELS = 3,
+    NONE = 0
+    REAR_WHEELS = 1
+    FRONT_WHEELS = 2
+    FRONT_AND_REAR_WHEELS = 3
     VEHICLE_BODY = 4
 
 
 class SteeringType(IntEnum):
-    UNKNOWN = 0,
-    FRONT = 1,
+    UNKNOWN = 0
+    FRONT = 1
     FRONT_AND_REAR = 2
 
 
 class TickMode(IntEnum):
-    OFF = 0,
-    RISING_EDGE = 1,
+    OFF = 0
+    RISING_EDGE = 1
     FALLING_EDGE = 2
 
 
 class TickDirection(IntEnum):
-    OFF = 0,
-    FORWARD_ACTIVE_HIGH = 1,
+    OFF = 0
+    FORWARD_ACTIVE_HIGH = 1
     FORWARD_ACTIVE_LOW = 2
 
 
 class TransportType(IntEnum):
-    INVALID = 0,
-    SERIAL = 1,
-    FILE = 2,
-    TCP_CLIENT = 3,
-    TCP_SERVER = 4,
-    UDP_CLIENT = 5,
-    UDP_SERVER = 6,
-    WEBSOCKET_SERVER = 7,
+    INVALID = 0
+    SERIAL = 1
+    FILE = 2
+    TCP_CLIENT = 3
+    TCP_SERVER = 4
+    UDP_CLIENT = 5
+    UDP_SERVER = 6
+    WEBSOCKET_SERVER = 7
     ## Set/get the configuration for the interface on which the command was received.
-    CURRENT = 254,
+    CURRENT = 254
     ## Set/get the configuration for the all I/O interfaces.
-    ALL = 255,
+    ALL = 255
 
 
 class UpdateAction(IntEnum):
