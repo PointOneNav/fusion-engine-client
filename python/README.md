@@ -75,8 +75,9 @@ FusionEngine message specification.
           time-aligning FusionEngine data captured in a `*.p1log` file
       - `applications` - Applications and processing tools -- see [Applications](#applications) for detailed
         descriptions of each of these tools
-        - _The applications in this directory will be installed on your system by `pip install` along with the rest of
-          the library code so that they can be called directly from the command line_
+        - _The applications in this directory will be installed on your system by `pip install`, along with the rest of
+          the library code, so that they can be called directly from the command line (e.g., `p1_display.py` can be run
+          on the command line as `p1_display`)_
       - `messages` - Python message definitions
       - `parsers` - Message encoding and decoding support
         - [decoder.py](fusion_engine_client/parsers/decoder.py) - `FusionEngineDecoder` class, used to frame and parse
