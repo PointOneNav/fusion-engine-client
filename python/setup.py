@@ -81,7 +81,7 @@ for the latest FusionEngine message specification.
     packages=find_packages(where='.'),
     entry_points={
         'console_scripts': [
-            'p1_display = fusion_engine_client.analysis.analyzer:main',
+            'p1_display = fusion_engine_client.applications.p1_display:main',
             'p1_dump_p1bin = fusion_engine_client.applications.p1_dump_p1bin:main',
             'p1_dump_storage = fusion_engine_client.applications.p1_dump_storage:main',
             'p1_extract = fusion_engine_client.applications.p1_extract:main',

@@ -3,6 +3,10 @@
 import os
 import sys
 
+if __package__ is None or __package__ == "":
+    from import_utils import enable_relative_imports
+    __package__ = enable_relative_imports(__name__, __file__)
+
 from ..utils import trace as logging
 from ..utils.argument_parser import ArgumentParser
 from ..utils.log import extract_fusion_engine_log, find_log_file, CANDIDATE_LOG_FILES, DEFAULT_LOG_BASE_DIR

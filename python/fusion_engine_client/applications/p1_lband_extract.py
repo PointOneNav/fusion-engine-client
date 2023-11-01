@@ -3,6 +3,10 @@
 import os
 import sys
 
+if __package__ is None or __package__ == "":
+    from import_utils import enable_relative_imports
+    __package__ = enable_relative_imports(__name__, __file__)
+
 from ..utils.trace import HighlightFormatter, BrokenPipeStreamHandler
 from ..utils.time_range import TimeRange
 from ..utils.log import locate_log, DEFAULT_LOG_BASE_DIR
