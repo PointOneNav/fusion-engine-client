@@ -19,7 +19,7 @@ project(fusion_engine_usage_example C CXX)
 # Use FetchContent to import the fusion-engine-client C++ library using Git.
 #
 # Note that we always recommend using a specific version of the library in your
-# code by specifying a release zip file or a git tag (e.g., `GIT_TAG v1.15.2`),
+# code by specifying a release zip file or a git tag (e.g., `GIT_TAG vA.B.C`),
 # and updating that as new versions are released. That way, you can be sure that
 # your code is always built with a known version of fusion-engine-client. If you
 # prefer, however, you can set the GIT_TAG to track the latest changes by
@@ -39,11 +39,11 @@ include(FetchContent)
 FetchContent_Declare(
     fusion_engine_client
     # Recommended:
-    URL https://github.com/PointOneNav/fusion-engine-client/archive/refs/tags/v1.16.0.zip
-    URL_HASH MD5=3d35c1c56e111d2e9a164cdbf7878228
+    URL https://github.com/PointOneNav/fusion-engine-client/archive/refs/tags/v1.22.3.zip
+    URL_HASH MD5=cfe1de319725822a1b825cd3421fb6b1
     # Or alternatively:
     # GIT_REPOSITORY https://github.com/PointOneNav/fusion-engine-client.git
-    # GIT_TAG v1.16.0
+    # GIT_TAG v1.22.3
 )
 set(P1_FE_BUILD_EXAMPLES OFF CACHE INTERNAL "")
 FetchContent_MakeAvailable(fusion_engine_client)
