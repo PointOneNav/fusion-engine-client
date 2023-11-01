@@ -97,8 +97,12 @@ below, rather than compiling and installing the library manually as in the secti
 include(FetchContent)
 FetchContent_Declare(
     fusion_engine_client
-    GIT_REPOSITORY https://github.com/PointOneNav/fusion-engine-client.git
-    GIT_TAG v1.15.2
+    # Recommended:
+    URL https://github.com/PointOneNav/fusion-engine-client/archive/refs/tags/v1.22.3.zip
+    URL_HASH MD5=cfe1de319725822a1b825cd3421fb6b1
+    # Alternatively:
+    # GIT_REPOSITORY https://github.com/PointOneNav/fusion-engine-client.git
+    # GIT_TAG v1.22.3
 )
 set(P1_FE_BUILD_EXAMPLES OFF CACHE INTERNAL "")
 FetchContent_MakeAvailable(fusion_engine_client)
@@ -109,10 +113,10 @@ add_executable(example_app main.cc)
 target_link_libraries(example_app PUBLIC fusion_engine_client)
 ```
 
-Note that we strongly recommend using a specific version of the library in your code by specifying a git tag (e.g.,
-`GIT_TAG v1.15.2`), and updating that as new versions are released. That way, you can be sure that your code is always
-built with a known version of fusion-engine-client. If you prefer, however, you can tell CMake to track the latest
-changes by using `GIT_TAG master` instead.
+Note that we strongly recommend using a specific version of the library in your code by specifying a release zip file or
+a git tag (e.g., `GIT_TAG vA.B.C`), and updating that as new versions are released. That way, you can be sure that your
+code is always built with a known version of fusion-engine-client. If you prefer, however, you can tell CMake to track
+the latest changes by using `GIT_TAG master` instead.
 
 See [examples/external_cmake_project/CMakeLists.txt](examples/external_cmake_project/CMakeLists.txt) for more details.
 
@@ -164,12 +168,12 @@ To use this library in an existing Bazel project, add the following to your proj
 git_repository(
     name = "fusion_engine_client",
     remote = "git@github.com:PointOneNav/fusion_engine_client.git",
-    tag = "v1.15.2",
+    tag = "v1.22.3",
 )
 ```
 
 Note that we strongly recommend using a specific version of the library in your code by specifying a git tag (e.g.,
-`tag = "v1.15.2"`), and updating that as new versions are released. That way, you can be sure that your code is always
+`tag = "v1.22.3"`), and updating that as new versions are released. That way, you can be sure that your code is always
 built with a known version of fusion-engine-client. If you prefer, however, you can tell Bazel to track the latest
 changes by using `branch = "master"` instead.
 
