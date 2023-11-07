@@ -100,7 +100,6 @@ class MessageType(IntEnum):
     RAW_IMU_OUTPUT = 11002
     HEADING_OUTPUT = 11003
     IMU_INPUT = 11004
-    RAW_IMU_INPUT = 11005
 
     # Vehicle measurement messages.
     DEPRECATED_WHEEL_SPEED_MEASUREMENT = 11101
