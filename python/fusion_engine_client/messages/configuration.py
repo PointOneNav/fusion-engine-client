@@ -1010,8 +1010,8 @@ class SetConfigMessage(MessagePayload):
         "config_change_data" / Bytes(this.config_change_length_bytes),
     )
 
-    def __init__(self, config_object: Optional[_conf_gen.ConfigClass]
-                 = None, flags=0x0, interface: Optional[InterfaceID] = None):
+    def __init__(self, config_object: Optional[_conf_gen.ConfigClass] = None, flags=0x0,
+                 interface: Optional[InterfaceID] = None):
         self.config_object = config_object
         self.flags = flags
         self.interface = interface
