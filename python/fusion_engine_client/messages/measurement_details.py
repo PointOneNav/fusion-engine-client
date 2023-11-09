@@ -97,7 +97,8 @@ class MeasurementDetails(object):
         return 2 * Timestamp.calcsize() + cls._STRUCT.size
 
     def __str__(self):
-        string = f'Measurement time: {str(self.measurement_time)} (source: {str(self.measurement_time_source)})\n'
+        string = f'Measurement time: {str(self.measurement_time)} ' \
+                 f'(source: {self.measurement_time_source.to_string()})\n'
         if self.measurement_time_source != SystemTimeSource.P1_TIME:
             string += f'P1 time: {str(self.p1_time)}\n'
         string += f'Data source: {str(self.data_source)}'
