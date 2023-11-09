@@ -1199,7 +1199,7 @@ struct P1_ALIGNAS(4) RawHeadingOutput : public MessagePayload {
  * The HeadingOutput message behaves similarly to the RawHeadingOutput,
  * however, if no biases have been set AND the message is enabled,
  * then the message will not be published.
- * 
+ *
  * See also @ref RawHeadingOutput and @ref SolutionType::Invalid.
  */
 struct P1_ALIGNAS(4) HeadingOutput : public MessagePayload {
