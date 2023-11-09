@@ -42,6 +42,10 @@ class IMUInput(MessagePayload):
         parsed = self.Construct.parse(buffer[offset:])
         self.__dict__.update(parsed)
         del self.__dict__['_io']
+
+        # Disregard any user-specified P1 timestamps in input data.
+        self.details.p1_time = Timestamp()
+
         return parsed._io.tell()
 
     @classmethod
@@ -179,6 +183,10 @@ class RawIMUOutput(MessagePayload):
         parsed = self.Construct.parse(buffer[offset:])
         self.__dict__.update(parsed)
         del self.__dict__['_io']
+
+        # Disregard any user-specified P1 timestamps in input data.
+        self.details.p1_time = Timestamp()
+
         return parsed._io.tell()
 
     @classmethod
@@ -261,6 +269,10 @@ class WheelSpeedInput(MessagePayload):
         parsed = self.Construct.parse(buffer[offset:])
         self.__dict__.update(parsed)
         del self.__dict__['_io']
+
+        # Disregard any user-specified P1 timestamps in input data.
+        self.details.p1_time = Timestamp()
+
         return parsed._io.tell()
 
     @classmethod
@@ -437,6 +449,10 @@ class RawWheelSpeedOutput(MessagePayload):
         parsed = self.Construct.parse(buffer[offset:])
         self.__dict__.update(parsed)
         del self.__dict__['_io']
+
+        # Disregard any user-specified P1 timestamps in input data.
+        self.details.p1_time = Timestamp()
+
         return parsed._io.tell()
 
     @classmethod
@@ -522,6 +538,10 @@ class VehicleSpeedInput(MessagePayload):
         parsed = self.Construct.parse(buffer[offset:])
         self.__dict__.update(parsed)
         del self.__dict__['_io']
+
+        # Disregard any user-specified P1 timestamps in input data.
+        self.details.p1_time = Timestamp()
+
         return parsed._io.tell()
 
     @classmethod
@@ -787,6 +807,8 @@ class WheelTickInput(MessagePayload):
         initial_offset = offset
 
         offset += self.details.unpack(buffer, offset)
+        # Disregard any user-specified P1 timestamps in input data.
+        self.details.p1_time = Timestamp()
 
         (self.front_left_wheel_ticks,
          self.front_right_wheel_ticks,
@@ -885,6 +907,8 @@ class VehicleTickInput(MessagePayload):
         initial_offset = offset
 
         offset += self.details.unpack(buffer, offset)
+        # Disregard any user-specified P1 timestamps in input data.
+        self.details.p1_time = Timestamp()
 
         (self.tick_count,
          gear_int) = \
