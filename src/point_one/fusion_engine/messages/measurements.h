@@ -505,10 +505,11 @@ struct P1_ALIGNAS(4) WheelSpeedInput : public MessagePayload {
  * data_source field will indicate which type of data source provided the
  * measurements to the device.
  *
- * When odometry is provided using hardware wheel ticks, the speeds in this
- * message reflect the tick rate over a fixed time interval. For high accuracy
- * applications, it may be necessary to integrate tick counts over longer
- * intervals of time.
+ * @note
+ * When odometry is provided using hardware wheel ticks, the output rate of this
+ * message may differ from the wheel tick input rate. For high accuracy
+ * applications, FusionEngine may integrate tick counts over longer intervals to
+ * improve performance.
  *
  * See also @ref WheelSpeedInput and @ref RawWheelSpeedOutput.
  */
@@ -702,10 +703,11 @@ struct P1_ALIGNAS(4) VehicleSpeedInput : public MessagePayload {
  * data_source field will indicate which type of data source provided the
  * measurements to the device.
  *
- * When odometry is provided using hardware wheel ticks, the speed in this
- * message reflects the tick rate over a fixed time interval. For high accuracy
- * applications, it may be necessary to integrate tick counts over longer
- * intervals of time.
+ * @note
+ * When odometry is provided using hardware wheel ticks, the output rate of this
+ * message may differ from the wheel tick input rate. For high accuracy
+ * applications, FusionEngine may integrate tick counts over longer intervals to
+ * improve performance.
  *
  * See also @ref VehicleSpeedInput and @ref RawVehicleSpeedOutput.
  */
