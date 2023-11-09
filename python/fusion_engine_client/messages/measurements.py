@@ -219,6 +219,94 @@ class GearType(IntEnum):
   NEUTRAL = 4 ##< The vehicle is in neutral.
 
 
+class WheelSpeedInput(MessagePayload):
+    """!
+    @brief Differential wheel speed measurement input.
+    """
+    MESSAGE_TYPE = MessageType.WHEEL_SPEED_INPUT
+    MESSAGE_VERSION = 0
+
+    FLAG_SIGNED = 0x1
+
+    Construct = Struct(
+        "details" / MeasurementDetailsConstruct,
+        "front_left_speed_mps" / FixedPointAdapter(2 ** -10, Int32sl, invalid=0x7FFFFFFF),
+        "front_right_speed_mps" / FixedPointAdapter(2 ** -10, Int32sl, invalid=0x7FFFFFFF),
+        "rear_left_speed_mps" / FixedPointAdapter(2 ** -10, Int32sl, invalid=0x7FFFFFFF),
+        "rear_right_speed_mps" / FixedPointAdapter(2 ** -10, Int32sl, invalid=0x7FFFFFFF),
+        "gear" / AutoEnum(Int8ul, GearType),
+        "flags" / Int8ul,
+        Padding(2),
+    )
+
+    def __init__(self):
+        self.details = MeasurementDetails()
+        self.gear = GearType.UNKNOWN
+        self.flags = 0x0
+
+        self.front_left_speed_mps = np.nan
+        self.front_right_speed_mps = np.nan
+        self.rear_left_speed_mps = np.nan
+        self.rear_right_speed_mps = np.nan
+
+    def is_signed(self) -> bool:
+        return (self.flags & self.FLAG_SIGNED) != 0
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        values = dict(self.__dict__)
+        packed_data = self.Construct.build(values)
+        return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
+
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
+        parsed = self.Construct.parse(buffer[offset:])
+        self.__dict__.update(parsed)
+        del self.__dict__['_io']
+        return parsed._io.tell()
+
+    @classmethod
+    def calcsize(cls) -> int:
+        return cls.Construct.sizeof()
+
+    def __getattr__(self, item):
+        if item == 'p1_time':
+            return self.details.p1_time
+        elif item == 'is_signed':
+            return self.is_signed()
+        else:
+            return super().__getattr__(item)
+
+    def __repr__(self):
+        result = super().__repr__()[:-1]
+        result += f', gear={self.gear}, speed=[{self.front_left_speed_mps:.1f}, {self.front_right_speed_mps:.1f}, ' \
+                  f'{self.rear_left_speed_mps:.1f}, {self.rear_right_speed_mps:.1f}] m/s]'
+        return result
+
+    def __str__(self):
+        newline = '\n'
+        return f"""\
+Wheel Speed Input @ {str(self.details.p1_time)}
+  {str(self.details).replace(newline, newline + '  ')}
+  Gear: {self.gear.to_string(include_value=True)}
+  Type: {'signed' if self.is_signed() else 'unsigned'}
+  Front left: {self.front_left_speed_mps:.2f} m/s
+  Front right: {self.front_right_speed_mps:.2f} m/s
+  Rear left: {self.rear_left_speed_mps:.2f} m/s
+  Rear right: {self.rear_right_speed_mps:.2f} m/s"""
+
+    @classmethod
+    def to_numpy(cls, messages):
+        result = {
+            'gear': np.array([m.gear for m in messages], dtype=int),
+            'is_signed': np.array([m.is_signed() for m in messages], dtype=bool),
+            'front_left_speed_mps': np.array([m.front_left_speed_mps for m in messages]),
+            'front_right_speed_mps': np.array([m.front_right_speed_mps for m in messages]),
+            'rear_left_speed_mps': np.array([m.rear_left_speed_mps for m in messages]),
+            'rear_right_speed_mps': np.array([m.rear_right_speed_mps for m in messages]),
+        }
+        result.update(MeasurementDetails.to_numpy([m.details for m in messages]))
+        return result
+
+
 class WheelSpeedOutput(MessagePayload):
     """!
     @brief Differential wheel speed output with calibration and corrections applied.
@@ -397,6 +485,88 @@ Raw Wheel Speed Output @ {str(self.details.p1_time)}
 ################################################################################
 # Vehicle Speed Measurements
 ################################################################################
+
+
+class VehicleSpeedInput(MessagePayload):
+    """!
+    @brief Vehicle body speed measurement input.
+    """
+    MESSAGE_TYPE = MessageType.VEHICLE_SPEED_INPUT
+    MESSAGE_VERSION = 0
+
+    FLAG_SIGNED = 0x1
+
+    Construct = Struct(
+        "details" / MeasurementDetailsConstruct,
+        "vehicle_speed_mps" / FixedPointAdapter(2 ** -10, Int32sl, invalid=0x7FFFFFFF),
+        "gear" / AutoEnum(Int8ul, GearType),
+        "flags" / Int8ul,
+        Padding(2),
+    )
+
+    def __init__(self):
+        self.details = MeasurementDetails()
+        self.gear = GearType.UNKNOWN
+        self.flags = 0x0
+        self.vehicle_speed = np.nan
+
+    def is_signed(self) -> bool:
+        return (self.flags & self.FLAG_SIGNED) != 0
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        values = dict(self.__dict__)
+        packed_data = self.Construct.build(values)
+        return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
+
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
+        parsed = self.Construct.parse(buffer[offset:])
+        self.__dict__.update(parsed)
+        del self.__dict__['_io']
+        return parsed._io.tell()
+
+    @classmethod
+    def calcsize(cls) -> int:
+        return cls.Construct.sizeof()
+
+    def __getattr__(self, item):
+        if item == 'p1_time':
+            return self.details.p1_time
+        elif item == 'is_signed':
+            return self.is_signed()
+        else:
+            return super().__getattr__(item)
+
+    def __getattr__(self, item):
+        if item == 'p1_time':
+            return self.details.p1_time
+        elif item == 'is_signed':
+            return self.is_signed()
+        else:
+            return super().__getattr__(item)
+
+    def __repr__(self):
+        result = super().__repr__()[:-1]
+        result += f', gear={self.gear}, speed={self.vehicle_speed_mps:.1f} m/s]'
+        return result
+
+    def __str__(self):
+        newline = '\n'
+        return f"""\
+Vehicle Speed Input @ {str(self.details.p1_time)}
+  {str(self.details).replace(newline, newline + '  ')}
+  Gear: {self.gear.to_string(include_value=True)}
+  Type: {'signed' if self.is_signed() else 'unsigned'}
+  Speed: {self.vehicle_speed_mps:.2f} m/s"""
+
+    @classmethod
+    def to_numpy(cls, messages):
+        result = {
+            'gear': np.array([m.gear for m in messages], dtype=int),
+            'is_signed': np.array([m.is_signed() for m in messages], dtype=bool),
+            'vehicle_speed_mps': np.array([m.vehicle_speed_mps for m in messages]),
+        }
+        result.update(MeasurementDetails.to_numpy([m.details for m in messages]))
+        return result
 
 
 class VehicleSpeedOutput(MessagePayload):

@@ -1361,8 +1361,8 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             vehicle_measurement_type = self._auto_detect_message_type([VehicleSpeedOutput,
                                                                        DeprecatedVehicleSpeedMeasurement])
 
-            raw_wheel_measurement_type = self._auto_detect_message_type([RawWheelSpeedOutput])
-            raw_vehicle_measurement_type = self._auto_detect_message_type([RawVehicleSpeedOutput])
+            raw_wheel_measurement_type = self._auto_detect_message_type([RawWheelSpeedOutput, WheelSpeedInput])
+            raw_vehicle_measurement_type = self._auto_detect_message_type([RawVehicleSpeedOutput, VehicleSpeedInput])
 
             if wheel_measurement_type is None:
                 wheel_measurement_type = raw_wheel_measurement_type
