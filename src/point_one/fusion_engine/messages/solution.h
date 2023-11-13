@@ -73,7 +73,7 @@ struct P1_ALIGNAS(4) PoseMessage : public MessagePayload {
   int16_t undulation_cm = INVALID_UNDULATION;
 
   /**
-   * The geodetic latitude, longitude, and altitude (in degrees/meters),
+   * The geodetic latitude, longitude, and altitude (in degrees/degrees/meters),
    * expressed using the WGS-84 reference ellipsoid.
    *
    * @section p1_fe_pose_datum Datum/Epoch Considerations
