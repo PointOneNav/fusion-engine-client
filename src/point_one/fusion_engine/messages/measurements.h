@@ -232,6 +232,46 @@ struct P1_ALIGNAS(4) MeasurementDetails {
 ////////////////////////////////////////////////////////////////////////////////
 
 /**
+ * @brief IMU sensor measurement input (@ref MessageType::IMU_INPUT,
+ *        version 1.0).
+ * @ingroup measurement_messages
+ *
+ * This message is an input to the device containing raw IMU acceleration and
+ * rotation rate measurements.
+ *
+ * See also @ref IMUOutput.
+ */
+struct P1_ALIGNAS(4) IMUInput : public MessagePayload {
+  static constexpr MessageType MESSAGE_TYPE = MessageType::IMU_INPUT;
+  static constexpr uint8_t MESSAGE_VERSION = 0;
+
+  /**
+   * Measurement timestamp and additional information, if available. See @ref
+   * MeasurementDetails for details.
+   */
+  MeasurementDetails details;
+
+  uint8_t reserved[6] = {0};
+
+  /**
+   * The IMU temperature (in deg Celcius * 2^-7). Set to 0x7FFF if invalid.
+   */
+  int16_t temperature = INT16_MAX;
+
+  /**
+   * Measured x/y/z acceleration (in meters/second^2 * 2^-16), resolved in the
+   * sensor measurement frame. Set to 0x7FFFFFFF if invalid.
+   */
+  int32_t accel[3] = {INT32_MAX, INT32_MAX, INT32_MAX};
+
+  /**
+   * Measured x/y/z rate of rotation (in radians/second * 2^-20), resolved in
+   * the sensor measurement frame. Set to 0x7FFFFFFF if invalid.
+   */
+  int32_t gyro[3] = {INT32_MAX, INT32_MAX, INT32_MAX};
+};
+
+/**
  * @brief IMU sensor measurement output with calibration and corrections applied
  *        (@ref MessageType::IMU_OUTPUT, version 1.0).
  * @ingroup measurement_messages
