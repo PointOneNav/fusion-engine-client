@@ -1443,7 +1443,7 @@ struct P1_ALIGNAS(4) LBandConfig {
    * The center frequency of the L-band beam (Hz). If `NAN` use the system
    * default value.
    */
-  float center_frequency_hz = NAN;
+  double center_frequency_hz = NAN;
 
   /**
    * The size of the signal acquisition search space (in Hz) around the center
