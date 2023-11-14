@@ -1439,28 +1439,65 @@ struct P1_ALIGNAS(4) TroposphereConfig {
  * @ingroup config_and_ctrl_messages
  */
 struct P1_ALIGNAS(4) LBandConfig {
-  /** The center frequency of the L-band beam (Hz). */
+  /**
+   * The center frequency of the L-band beam (Hz). If `NAN` use the system
+   * default value.
+   */
   float center_frequency_hz = NAN;
 
   /**
    * The size of the signal acquisition search space (in Hz) around the center
-   * frequency.
+   * frequency. If `NAN` use the system default value.
    *
    * For example, a value of 6000 will search +/- 3 kHz around the center
    * frequency.
    */
   float search_window_hz = NAN;
 
+  /**
+   * If `true`, use the provider service ID in this configuration. Otherwise,
+   * use device's default value.
+   */
+  bool use_custom_pmp_service_id = false;
+
+  /**
+   * If `true`, use the provider date rate in this configuration. Otherwise, use
+   * device's default value.
+   */
+  bool use_custom_pmp_data_rate = false;
+
+  /**
+   * If `true`, use the provider unique word in this configuration. Otherwise,
+   * use device's default value.
+   */
+  bool use_custom_pmp_unique_word = false;
+
+  /**
+   * If `true`, use the descrambler initialization vector in this configuration.
+   * Otherwise, use device's default value.
+   */
+  bool use_custom_descrambler_init = false;
+
+  /**
+   * If `true`, only output data frames with the configured service ID.
+   * Otherwise, output all decoded frames.
+   */
+  bool filter_data_by_service_id = true;
+
+  /** Enable/disable the descrambler. */
+  bool use_descrambler = true;
+
   /** Service ID of the provider. */
-  uint32_t pmp_service_id = 0;
+  uint16_t pmp_service_id = 0;
+
+  /** Unique word of the provider. */
+  uint64_t pmp_unique_word = 0;
 
   /** Data rate of the provider (bps). */
   uint16_t pmp_data_rate_bps = 0;
 
-  uint8_t reserved[2] = {0};
-
-  /** Unique word of the provider. */
-  uint32_t pmp_unique_word = 0;
+  /** The initialization value for the descrambling vector */
+  uint16_t descrambler_init = 0;
 };
 
 /** @} */
