@@ -674,20 +674,45 @@ class _ConfigClassGenerator:
         ## For example, a value of 6000 will search +/- 3 kHz around the center
         ## frequency.
         search_window_hz: float
+        ## If `true`, use the provider service ID in this configuration. Otherwise,
+        ## use device's default value.
+        use_custom_pmp_service_id: bool
+        ## If `true`, use the provider date rate in this configuration. Otherwise, use
+        ## device's default value.
+        use_custom_pmp_data_rate: bool
+        ## If `true`, use the provider unique word in this configuration. Otherwise,
+        ## use device's default value.
+        use_custom_pmp_unique_word: bool
+        ## If `true`, use the descrambler initialization vector in this configuration.
+        ## Otherwise, use device's default value.
+        use_custom_descrambler_init: bool
+        ## If `true`, only output data frames with the configured service ID.
+        ## Otherwise, output all decoded frames.
+        filter_data_by_service_id: bool
+        ## Enable/disable the descrambler. */
+        use_descrambler: bool
         ## Service ID of the provider.
         pmp_service_id: int
-        ## Data rate of the provider (bps).
-        pmp_data_rate_bps: int
         ## Unique word of the provider.
         pmp_unique_word: int
+        ## Data rate of the provider (bps).
+        pmp_data_rate_bps: int
+        ## The initialization value for the descrambling vector.
+        descrambler_init: int
 
     LBandConfigConstruct = Struct(
-        "center_frequency_hz" / Float32l,
+        "center_frequency_hz" / Float64l,
         "search_window_hz" / Float32l,
-        "pmp_service_id" / Int32ul,
+        "use_custom_pmp_service_id" / Flag,
+        "use_custom_pmp_data_rate" / Flag,
+        "use_custom_pmp_unique_word" / Flag,
+        "use_custom_descrambler_init" / Flag,
+        "filter_data_by_service_id" / Flag,
+        "use_descrambler" / Flag,
+        "pmp_service_id" / Int16ul,
+        "pmp_unique_word" / Int64ul,
         "pmp_data_rate_bps" / Int16ul,
-        Padding(2),
-        "pmp_unique_word" / Int32ul,
+        "descrambler_init" / Int16ul,
     )
 
     class Empty(NamedTuple):

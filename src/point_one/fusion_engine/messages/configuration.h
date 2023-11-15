@@ -1440,14 +1440,14 @@ struct P1_ALIGNAS(4) TroposphereConfig {
  */
 struct P1_ALIGNAS(4) LBandConfig {
   /**
-   * The center frequency of the L-band beam (Hz). If `NAN` use the system
+   * The center frequency of the L-band beam (Hz). If `NAN`, use the system
    * default value.
    */
   double center_frequency_hz = NAN;
 
   /**
    * The size of the signal acquisition search space (in Hz) around the center
-   * frequency. If `NAN` use the system default value.
+   * frequency. If `NAN`, use the system default value.
    *
    * For example, a value of 6000 will search +/- 3 kHz around the center
    * frequency.
@@ -1496,7 +1496,7 @@ struct P1_ALIGNAS(4) LBandConfig {
   /** Data rate of the provider (bps). */
   uint16_t pmp_data_rate_bps = 0;
 
-  /** The initialization value for the descrambling vector */
+  /** The initialization value for the descrambling vector. */
   uint16_t descrambler_init = 0;
 };
 
