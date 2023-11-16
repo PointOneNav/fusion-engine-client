@@ -666,39 +666,39 @@ class _ConfigClassGenerator:
         @brief Configuration of the L-band demodulator parameters.
         """
         ## The center frequency of the L-band beam (Hz).
-        center_frequency_hz: float
+        center_frequency_hz: float = math.nan
 
         ## The size of the signal acquisition search space (in Hz) around the center
         ## frequency.
         ##
         ## For example, a value of 6000 will search +/- 3 kHz around the center
         ## frequency.
-        search_window_hz: float
+        search_window_hz: float = math.nan
         ## If `true`, use the provider service ID in this configuration. Otherwise,
         ## use device's default value.
-        use_custom_pmp_service_id: bool
+        use_custom_pmp_service_id: bool = False
         ## If `true`, use the provider date rate in this configuration. Otherwise, use
         ## device's default value.
-        use_custom_pmp_data_rate: bool
+        use_custom_pmp_data_rate: bool = False
         ## If `true`, use the provider unique word in this configuration. Otherwise,
         ## use device's default value.
-        use_custom_pmp_unique_word: bool
+        use_custom_pmp_unique_word: bool = False
         ## If `true`, use the descrambler initialization vector in this configuration.
         ## Otherwise, use device's default value.
-        use_custom_descrambler_init: bool
+        use_custom_descrambler_init: bool = False
         ## If `true`, only output data frames with the configured service ID.
         ## Otherwise, output all decoded frames.
-        filter_data_by_service_id: bool
+        filter_data_by_service_id: bool = True
         ## Enable/disable the descrambler. */
-        use_descrambler: bool
+        use_descrambler: bool = True
         ## Service ID of the provider.
-        pmp_service_id: int
+        pmp_service_id: int = 0
         ## Unique word of the provider.
-        pmp_unique_word: int
+        pmp_unique_word: int = 0
         ## Data rate of the provider (bps).
-        pmp_data_rate_bps: int
+        pmp_data_rate_bps: int = 0
         ## The initialization value for the descrambling vector.
-        descrambler_init: int
+        descrambler_init: int = 0
 
     LBandConfigConstruct = Struct(
         "center_frequency_hz" / Float64l,
