@@ -1482,7 +1482,7 @@ struct P1_ALIGNAS(4) LBandConfig {
    * If `true`, only output data frames with the configured service ID.
    * Otherwise, output all decoded frames.
    */
-  bool filter_data_by_service_id = true;
+  bool filter_data_by_service_id = false;
 
   /** Enable/disable the descrambler. */
   bool use_descrambler = true;

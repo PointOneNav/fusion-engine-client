@@ -688,7 +688,7 @@ class _ConfigClassGenerator:
         use_custom_descrambler_init: bool = False
         ## If `true`, only output data frames with the configured service ID.
         ## Otherwise, output all decoded frames.
-        filter_data_by_service_id: bool = True
+        filter_data_by_service_id: bool = False
         ## Enable/disable the descrambler. */
         use_descrambler: bool = True
         ## Service ID of the provider.
