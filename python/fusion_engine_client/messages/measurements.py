@@ -12,6 +12,62 @@ from ..utils.enum_utils import IntEnum
 # IMU Measurements
 ################################################################################
 
+class IMUInput(MessagePayload):
+    """!
+    @brief IMU sensor measurement input.
+    """
+    MESSAGE_TYPE = MessageType.IMU_INPUT
+    MESSAGE_VERSION = 0
+
+    Construct = Struct(
+        "details" / MeasurementDetailsConstruct,
+        Padding(6),
+        "temperature_degc" / FixedPointAdapter(2 ** -7, Int16sl, invalid=0x7FFF),
+        "accel_mps2" / Array(3, FixedPointAdapter(2 ** -16, Int32sl, invalid=0x7FFFFFFF)),
+        "gyro_rps" / Array(3, FixedPointAdapter(2 ** -20, Int32sl, invalid=0x7FFFFFFF)),
+    )
+
+    def __init__(self):
+        self.details = MeasurementDetails()
+        self.temperature_degc = np.nan
+        self.accel_mps2 = np.full((3,), np.nan)
+        self.gyro_rps = np.full((3,), np.nan)
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        values = dict(self.__dict__)
+        packed_data = self.Construct.build(values)
+        return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
+
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
+        parsed = self.Construct.parse(buffer[offset:])
+        self.__dict__.update(parsed)
+        del self.__dict__['_io']
+        return parsed._io.tell()
+
+    @classmethod
+    def calcsize(cls) -> int:
+        return cls.Construct.sizeof()
+
+    @classmethod
+    def to_numpy(cls, messages):
+        result = {
+            'p1_time': np.array([float(m.p1_time) for m in messages]),
+            'accel_mps2': np.array([m.accel_mps2 for m in messages]).T,
+            'gyro_rps': np.array([m.gyro_rps for m in messages]).T,
+            'temperature_degc': np.array([m.temperature_degc for m in messages]),
+        }
+        result.update(MeasurementDetails.to_numpy([m.details for m in messages]))
+        return result
+
+    def __getattr__(self, item):
+        if item == 'p1_time':
+            return self.details.p1_time
+        else:
+            return super().__getattr__(item)
+
+    def __str__(self):
+        return construct_message_to_string(message=self, construct=self.Construct, title='IMU Input',
+                                           fields=['details', 'accel_mps2', 'gyro_rps', 'temperature_degc'])
 
 class IMUOutput(MessagePayload):
     """!
@@ -97,7 +153,7 @@ class RawIMUOutput(MessagePayload):
     """!
     @brief Raw (uncorrected) IMU sensor measurement output.
     """
-    MESSAGE_TYPE = MessageType.RAW_IMU_MEASUREMENT
+    MESSAGE_TYPE = MessageType.RAW_IMU_OUTPUT
     MESSAGE_VERSION = 0
 
     Construct = Struct(
