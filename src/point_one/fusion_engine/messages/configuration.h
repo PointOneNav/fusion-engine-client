@@ -1440,43 +1440,18 @@ struct P1_ALIGNAS(4) TroposphereConfig {
  */
 struct P1_ALIGNAS(4) LBandConfig {
   /**
-   * The center frequency of the L-band beam (Hz). If `NAN`, use the system
-   * default value.
+   * The center frequency of the L-band beam (Hz).
    */
-  double center_frequency_hz = NAN;
+  double center_frequency_hz = 1555492500.0;
 
   /**
    * The size of the signal acquisition search space (in Hz) around the center
-   * frequency. If `NAN`, use the system default value.
+   * frequency.
    *
    * For example, a value of 6000 will search +/- 3 kHz around the center
    * frequency.
    */
-  float search_window_hz = NAN;
-
-  /**
-   * If `true`, use the provider service ID in this configuration. Otherwise,
-   * use device's default value.
-   */
-  bool use_custom_pmp_service_id = false;
-
-  /**
-   * If `true`, use the provider date rate in this configuration. Otherwise, use
-   * device's default value.
-   */
-  bool use_custom_pmp_data_rate = false;
-
-  /**
-   * If `true`, use the provider unique word in this configuration. Otherwise,
-   * use device's default value.
-   */
-  bool use_custom_pmp_unique_word = false;
-
-  /**
-   * If `true`, use the descrambler initialization vector in this configuration.
-   * Otherwise, use device's default value.
-   */
-  bool use_custom_descrambler_init = false;
+  float search_window_hz = 2000.0;
 
   /**
    * If `true`, only output data frames with the configured service ID.
@@ -1491,13 +1466,13 @@ struct P1_ALIGNAS(4) LBandConfig {
   uint16_t pmp_service_id = 0x5555;
 
   /** Unique word of the provider. */
-  uint64_t pmp_unique_word = 0;
+  uint64_t pmp_unique_word = 0xE15AE893E15AE893ull;
 
   /** Data rate of the provider (bps). */
-  uint16_t pmp_data_rate_bps = 0;
+  uint16_t pmp_data_rate_bps = 4800;
 
   /** The initialization value for the descrambling vector. */
-  uint16_t descrambler_init = 0;
+  uint16_t descrambler_init = 0x6969;
 };
 
 /** @} */
