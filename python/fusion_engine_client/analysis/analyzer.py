@@ -1358,12 +1358,12 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             figure_title = 'Measurements: %s Encoder Ticks' % source.title()
 
             if source == 'wheel':
-                measurement_type = self._auto_detect_message_type([RawWheelTickOutput, WheelTickInput])
+                raw_measurement_type = self._auto_detect_message_type([RawWheelTickOutput, WheelTickInput])
             else:
-                measurement_type = self._auto_detect_message_type([RawVehicleTickOutput, VehicleTickInput])
+                raw_measurement_type = self._auto_detect_message_type([RawVehicleTickOutput, VehicleTickInput])
 
-            # Wheel ticks are raw (uncorrected) by definition.
-            raw_measurement_type = measurement_type
+            # Wheel ticks are raw (uncorrected) by definition. There are no corrected wheel ticks.
+            measurement_type = None
         else:
             filename = '%s_speed' % source
             figure_title = 'Measurements: %s Speed' % source.title()
@@ -1372,26 +1372,25 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                 measurement_type = self._auto_detect_message_type([WheelSpeedOutput, DeprecatedWheelSpeedMeasurement])
             else:
                 measurement_type = self._auto_detect_message_type([VehicleSpeedOutput,
-                                                                       DeprecatedVehicleSpeedMeasurement])
+                                                                   DeprecatedVehicleSpeedMeasurement])
 
             if source == 'wheel':
                 raw_measurement_type = self._auto_detect_message_type([RawWheelSpeedOutput, WheelSpeedInput])
             else:
                 raw_measurement_type = self._auto_detect_message_type([RawVehicleSpeedOutput, VehicleSpeedInput])
 
-            if measurement_type is None:
-                measurement_type = raw_measurement_type
-
-        if measurement_type is None:
+        if measurement_type is None and raw_measurement_type is None:
             self.logger.info('No %s %s data available. Skipping plot.' % (source, type))
             return
+
+        any_measurement_type = measurement_type if measurement_type is not None else raw_measurement_type
 
         # If the measurement data is very high rate, this plot may be very slow to generate for a multi-hour log.
         if self.long_log_detected and self.truncate_data:
             params = copy.deepcopy(self.params)
             params['max_messages'] = 2
-            result = self.reader.read(message_types=measurement_type, remove_nan_times=False, **params)
-            data = result[measurement_type.MESSAGE_TYPE]
+            result = self.reader.read(message_types=any_measurement_type, remove_nan_times=False, **params)
+            data = result[any_measurement_type.MESSAGE_TYPE]
             if len(data.measurement_time) == 2:
                 dt_sec = data.measurement_time[1] - data.measurement_time[0]
                 data_rate_hz = round(1.0 / dt_sec)
@@ -1434,12 +1433,12 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                 titles = ['%s Speed (Unsigned)' % source.title(), 'Gear/Direction']
         titles.append('Measurement Interval')
 
-        if data is not None:
-            titles[0] += f'<br>Messages: {measurement_type.__name__}'
-            if raw_data is not None and measurement_type != raw_measurement_type:
-                titles[0] += f', {raw_measurement_type.__name__}'
-        else:
+        if data is None:
             titles[0] += f'<br>Messages: {raw_measurement_type.__name__}'
+        elif raw_data is None:
+            titles[0] += f'<br>Messages: {measurement_type.__name__}'
+        else:
+            titles[0] += f'<br>Messages: {measurement_type.__name__}, {raw_measurement_type.__name__}'
 
         figure = make_subplots(rows=len(titles), cols=1, print_grid=False, shared_xaxes=True, subplot_titles=titles)
 
@@ -1463,47 +1462,42 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         #
         # All output messages from the device should contain P1 time. We should only ever use a non-P1 time source when
         # plotting logged input messages (uncommon).
-        def _get_time_source(measurement_type, data):
-            if measurement_type is None or data is None:
+        def _get_time_source(meas_type, data):
+            if meas_type is None or data is None:
                 return None
             # If this data does not have P1 time, use its incoming native time source (system time of reception, etc.).
             elif np.all(np.isnan(data.p1_time)):
                 # Check that the time source never changed. Warn if it did.
                 if np.any(np.diff(data.measurement_time_source) != 0):
-                    self.logger.warning('Detected multiple time source types in %s data.' % measurement_type.__name__)
+                    self.logger.warning('Detected multiple time source types in %s data.' % meas_type.__name__)
 
                 result = SystemTimeSource(data.measurement_time_source[0])
                 self.logger.warning('%s data does not have P1 time available. Plotting in %s time.' %
-                                    (measurement_type.__name__, self._time_source_to_display_name(result)))
+                                    (meas_type.__name__, self._time_source_to_display_name(result)))
             # P1 time available - use that.
             else:
                 result = SystemTimeSource.P1_TIME
             return result
 
-        time_source = _get_time_source(measurement_type, data)
-
-        if raw_measurement_type is not None and measurement_type != raw_measurement_type:
-            raw_time_source = _get_time_source(raw_measurement_type, raw_data)
-            if time_source is None:
-                time_source = raw_time_source
-            elif time_source != raw_time_source:
-                self.logger.warning('Different time sources detected for %s and %s. Data may not align.' %
-                                    (measurement_type.__name__, raw_measurement_type.__name__))
-        else:
-            raw_time_source = time_source
-
         same_time_source = True
-        if measurement_type == raw_measurement_type:
-            common_time_source = time_source
-        elif time_source is None:
+        if raw_measurement_type is None:
+            corrected_time_source = _get_time_source(measurement_type, data)
+            raw_time_source = None
+            common_time_source = corrected_time_source
+        elif measurement_type is None:
+            corrected_time_source = None
+            raw_time_source = _get_time_source(raw_measurement_type, data)
             common_time_source = raw_time_source
-        elif raw_time_source is None:
-            common_time_source = time_source
         else:
-            self.logger.warning('Both raw and corrected %s data present, but timestamped with different '
-                                'sources. Plotted data may not align in time.' % source)
-            same_time_source = False
-            common_time_source = None
+            corrected_time_source = _get_time_source(measurement_type, data)
+            raw_time_source = _get_time_source(raw_measurement_type, raw_data)
+            if corrected_time_source == raw_time_source:
+                common_time_source = corrected_time_source
+            else:
+                common_time_source = corrected_time_source
+                same_time_source = False
+                self.logger.warning('Both raw and corrected %s data present, but timestamped with different '
+                                    'sources. Plotted data may not align in time.' % source)
 
         if same_time_source:
             time_name = self._time_source_to_display_name(common_time_source)
@@ -1513,16 +1507,16 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             for i in range(len(titles)):
                 figure['layout']['xaxis%d' % (i + 1)].update(title=time_label, showticklabels=True)
         else:
-            time_name = self._time_source_to_display_name(time_source)
+            corrected_time_name = self._time_source_to_display_name(corrected_time_source)
             raw_time_name = self._time_source_to_display_name(raw_time_source)
             figure['layout']['annotations'][0]['text'] += '<br>Time Source: %s (Raw), %s (Corrected)' % \
-                                                          (raw_time_name, time_name)
+                                                          (raw_time_name, corrected_time_name)
 
-            time_label = f'{time_name}/{raw_time_name} Time (sec)'
+            time_label = f'{corrected_time_name}/{raw_time_name} Time (sec)'
             for i in range(len(titles)):
                 figure['layout']['xaxis%d' % (i + 1)].update(title=time_label, showticklabels=True)
 
-        p1_time_present = (time_source == SystemTimeSource.P1_TIME or
+        p1_time_present = (corrected_time_source == SystemTimeSource.P1_TIME or
                            raw_time_source == SystemTimeSource.P1_TIME)
 
         # If plotting speed data, try to plot the navigation engine's speed estimate for reference.
@@ -1687,9 +1681,8 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         # Plot the data. If we have both corrected (e.g., WheelSpeedOutput) and uncorrected (e.g., RawWheelSpeedOutput)
         # messages are present in the log, plot them both for comparison.
         _plot_func = _plot_wheel_data if source == 'wheel' else _plot_vehicle_data
-        _plot_func(data, time_source, is_raw=measurement_type == raw_measurement_type, show_gear=True)
-        if measurement_type != raw_measurement_type:
-            _plot_func(raw_data, raw_time_source, is_raw=True, show_gear=False)
+        _plot_func(data, corrected_time_source, is_raw=False, show_gear=True)
+        _plot_func(raw_data, raw_time_source, is_raw=True, show_gear=False)
 
         self._add_figure(name=filename, figure=figure, title=figure_title)
 
