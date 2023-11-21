@@ -96,12 +96,22 @@ Payload: Reset Request [mask=0x01000fff]
                     logger.warning("Unrecognized message type %s." % str(header.message_type))
                 else:
                     payload = payload_cls()
-                    min_message_size_bytes = MessageHeader.calcsize() + payload.calcsize()
 
-                    logger.info("Minimum size for this message:")
-                    logger.info("  Payload: %d B" % payload.calcsize())
-                    logger.info("  Complete message: %d B" % min_message_size_bytes)
+                    # Calculate the minimum size for this message type.
+                    try:
+                        min_payload_size_bytes = payload.calcsize()
+                        min_message_size_bytes = MessageHeader.calcsize() + min_payload_size_bytes
 
+                        logger.info("Minimum size for this message:")
+                        logger.info("  Payload: %d B" % min_payload_size_bytes)
+                        logger.info("  Complete message: %d B" % min_message_size_bytes)
+                    except TypeError:
+                        # SetConfig and ConfigResponse messages cannot be packed or compute size if a configuration
+                        # payload has not been specified.
+                        min_message_size_bytes = 0
+
+                    # Try to decode the message payload. If we cannot calculate the minimum size above, we'll just try
+                    # to decode anyway.
                     if len(contents) >= min_message_size_bytes:
                         try:
                             payload.unpack(buffer=contents, offset=header.calcsize(),

@@ -11,6 +11,7 @@ from ..messages import *
 from ..parsers import MixedLogReader
 from ..utils import trace as logging
 from ..utils.argument_parser import ArgumentParser, ExtendedBooleanAction
+from ..utils.bin_utils import bytes_to_hex
 from ..utils.log import locate_log, DEFAULT_LOG_BASE_DIR
 from ..utils.time_range import TimeRange
 from ..utils.trace import HighlightFormatter, BrokenPipeStreamHandler
@@ -18,9 +19,13 @@ from ..utils.trace import HighlightFormatter, BrokenPipeStreamHandler
 _logger = logging.getLogger('point_one.fusion_engine.applications.print_contents')
 
 
-def print_message(header, contents, offset_bytes, format='pretty'):
-    if isinstance(contents, MessagePayload):
-        if format in ('oneline', 'oneline-detailed'):
+def print_message(header, contents, offset_bytes, format='pretty', bytes=None):
+    if format == 'binary':
+        if bytes is None:
+            raise ValueError('No data provided for binary format.')
+        parts = []
+    elif isinstance(contents, MessagePayload):
+        if format in ('oneline', 'oneline-binary', 'oneline-detailed'):
             # The repr string should always start with the message type, then other contents:
             #   [POSE (10000), p1_time=12.029 sec, gps_time=2249:528920.500 (1360724120.500 sec), ...]
             # We want to reformat and insert the additional details as follows for consistency:
@@ -38,7 +43,7 @@ def print_message(header, contents, offset_bytes, format='pretty'):
     else:
         parts = [f'{header.get_type_string()} (unsupported)']
 
-    if format in ('pretty', 'oneline-detailed'):
+    if format in ('pretty', 'pretty-binary', 'oneline-detailed', 'oneline-binary'):
         details = 'sequence=%d, size=%d B, offset=%d B (0x%x)' %\
                   (header.sequence_number, header.get_message_size(), offset_bytes, offset_bytes)
 
@@ -47,6 +52,18 @@ def print_message(header, contents, offset_bytes, format='pretty'):
             parts[0] += f' [{details}]'
         else:
             parts[0] = f'{parts[0][:(idx + 1)]}{details}, {parts[0][(idx + 1):]}'
+
+    if bytes is None:
+        pass
+    elif format == 'binary':
+        byte_string = bytes_to_hex(bytes, bytes_per_row=-1, bytes_per_col=2).replace('\n', '\n  ')
+        parts.insert(1, byte_string)
+    elif format == 'pretty-binary':
+        byte_string = '    ' + bytes_to_hex(bytes, bytes_per_row=16, bytes_per_col=2).replace('\n', '\n    ')
+        parts.insert(1, "  Binary:\n%s" % byte_string)
+    elif format == 'oneline-binary':
+        byte_string = '  ' + bytes_to_hex(bytes, bytes_per_row=16, bytes_per_col=2).replace('\n', '\n  ')
+        parts.insert(1, byte_string)
 
     _logger.info('\n'.join(parts))
 
@@ -63,8 +80,16 @@ other types of data.
         help="Interpret the timestamps in --time as absolute P1 times. Otherwise, treat them as relative to the first "
              "message in the file. Ignored if --time contains a type specifier.")
     parser.add_argument(
-        '-f', '--format', choices=['pretty', 'oneline', 'oneline-detailed'], default='pretty',
-        help="Specify the format used to print the message contents.")
+        '-f', '--format', choices=['binary', 'pretty', 'pretty-binary', 'oneline', 'oneline-detailed',
+                                   'oneline-binary'],
+        default='pretty',
+        help="Specify the format used to print the message contents:\n"
+             "- Print the binary representation of each message on a single line, but no other details\n"
+             "- pretty - Print the message contents in a human-readable format (default)\n"
+             "- pretty-binary - Use `pretty` format, but include the binary representation of each message\n"
+             "- oneline - Print a summary of each message on a single line\n"
+             "- oneline-detailed - Print a one-line summary, including message offset details\n"
+             "- oneline-binary - Use `oneline-detailed` format, but include the binary representation of each message")
     parser.add_argument(
         '-s', '--summary', action='store_true',
         help="Print a summary of the messages in the file.")
@@ -234,7 +259,7 @@ other types of data.
                             newest_system_time_sec = system_time_sec
                             newest_system_message_type = header.message_type
             else:
-                print_message(header, message, offset_bytes, format=options.format)
+                print_message(header, message, offset_bytes, format=options.format, bytes=data)
     except (BrokenPipeError, KeyboardInterrupt) as e:
         sys.exit(1)
 
