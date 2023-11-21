@@ -1439,8 +1439,10 @@ struct P1_ALIGNAS(4) TroposphereConfig {
  * @ingroup config_and_ctrl_messages
  */
 struct P1_ALIGNAS(4) LBandConfig {
-  /** The center frequency of the L-band beam (Hz). */
-  float center_frequency_hz = NAN;
+  /**
+   * The center frequency of the L-band beam (Hz).
+   */
+  double center_frequency_hz = 1555492500.0;
 
   /**
    * The size of the signal acquisition search space (in Hz) around the center
@@ -1449,18 +1451,28 @@ struct P1_ALIGNAS(4) LBandConfig {
    * For example, a value of 6000 will search +/- 3 kHz around the center
    * frequency.
    */
-  float search_window_hz = NAN;
+  float search_window_hz = 2000.0;
+
+  /**
+   * If `true`, only output data frames with the configured service ID.
+   * Otherwise, output all decoded frames.
+   */
+  bool filter_data_by_service_id = true;
+
+  /** Enable/disable the descrambler. */
+  bool use_descrambler = true;
 
   /** Service ID of the provider. */
-  uint32_t pmp_service_id = 0;
-
-  /** Data rate of the provider (bps). */
-  uint16_t pmp_data_rate_bps = 0;
-
-  uint8_t reserved[2] = {0};
+  uint16_t pmp_service_id = 0x5555;
 
   /** Unique word of the provider. */
-  uint32_t pmp_unique_word = 0;
+  uint64_t pmp_unique_word = 0xE15AE893E15AE893ull;
+
+  /** Data rate of the provider (bps). */
+  uint16_t pmp_data_rate_bps = 4800;
+
+  /** The initialization value for the descrambling vector. */
+  uint16_t descrambler_init = 0x6969;
 };
 
 /** @} */

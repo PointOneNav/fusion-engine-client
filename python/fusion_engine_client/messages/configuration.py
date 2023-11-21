@@ -666,28 +666,37 @@ class _ConfigClassGenerator:
         @brief Configuration of the L-band demodulator parameters.
         """
         ## The center frequency of the L-band beam (Hz).
-        center_frequency_hz: float
+        center_frequency_hz: float =  1555492500.0
 
         ## The size of the signal acquisition search space (in Hz) around the center
         ## frequency.
         ##
         ## For example, a value of 6000 will search +/- 3 kHz around the center
         ## frequency.
-        search_window_hz: float
+        search_window_hz: float = 2000.0
+        ## If `true`, only output data frames with the configured service ID.
+        ## Otherwise, output all decoded frames.
+        filter_data_by_service_id: bool = True
+        ## Enable/disable the descrambler. */
+        use_descrambler: bool = True
         ## Service ID of the provider.
-        pmp_service_id: int
-        ## Data rate of the provider (bps).
-        pmp_data_rate_bps: int
+        pmp_service_id: int = 0x5555
         ## Unique word of the provider.
-        pmp_unique_word: int
+        pmp_unique_word: int = 0xE15AE893E15AE893
+        ## Data rate of the provider (bps).
+        pmp_data_rate_bps: int = 4800
+        ## The initialization value for the descrambling vector.
+        descrambler_init: int = 0x6969
 
     LBandConfigConstruct = Struct(
-        "center_frequency_hz" / Float32l,
+        "center_frequency_hz" / Float64l,
         "search_window_hz" / Float32l,
-        "pmp_service_id" / Int32ul,
+        "filter_data_by_service_id" / Flag,
+        "use_descrambler" / Flag,
+        "pmp_service_id" / Int16ul,
+        "pmp_unique_word" / Int64ul,
         "pmp_data_rate_bps" / Int16ul,
-        Padding(2),
-        "pmp_unique_word" / Int32ul,
+        "descrambler_init" / Int16ul,
     )
 
     class Empty(NamedTuple):
