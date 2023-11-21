@@ -1344,7 +1344,15 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         """!
         @brief Plot wheel speed or tick data.
         """
-        # Read the data. Try to determine which type of wheel output is present in the log (if any).
+        # Read the data. Try to determine which type of wheel output is present in the log (if any):
+        # 1. A call to this function may be plotting either speed or tick count data, depending on `type`
+        # 2. A call to this function may be plotting data from a single sensor (e.g., VehicleSpeedOutput) or for
+        #    multiple differential wheel sensors (e.g., WheelSpeedOutput), depending on `source`
+        # 3. This function may plot both corrected (e.g., WheelSpeedOutput) and uncorrected (e.g., RawWheelSpeedOutput)
+        #    measurements if both are present in the log
+        # 4. (Internal use only) If input messages _to_ the device are present and the corresponding uncorrected output
+        #    messages are not, display the input messages
+        # 5. For backwards compatibility, this function may read older, deprecated measurements if present in the log
         if type == 'tick':
             filename = '%s_ticks' % source
             figure_title = 'Measurements: %s Encoder Ticks' % source.title()
@@ -1676,7 +1684,8 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                                           mode='markers', marker={'color': color}),
                              interval_y_axis, 1)
 
-        # Plot the data. If we have both corrected and uncorrected (raw) data, plot them both.
+        # Plot the data. If we have both corrected (e.g., WheelSpeedOutput) and uncorrected (e.g., RawWheelSpeedOutput)
+        # messages are present in the log, plot them both for comparison.
         _plot_func = _plot_wheel_data if source == 'wheel' else _plot_vehicle_data
         _plot_func(data, time_source, is_raw=measurement_type == raw_measurement_type, show_gear=True)
         if measurement_type != raw_measurement_type:
