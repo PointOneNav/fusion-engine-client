@@ -97,7 +97,13 @@ class MeasurementDetails(object):
         return 2 * Timestamp.calcsize() + cls._STRUCT.size
 
     def __str__(self):
-        string = f'Measurement time: {str(self.measurement_time)} (source: {str(self.measurement_time_source)})\n'
+        if self.measurement_time_source == SystemTimeSource.P1_TIME or \
+            self.measurement_time_source == SystemTimeSource.GPS_TIME:
+            measurement_time_str = str(self.measurement_time)
+        else:
+            measurement_time_str = 'System: %.3f sec' % self.measurement_time
+        string = f'Measurement time: {measurement_time_str} ' \
+                 f'(source: {self.measurement_time_source.to_string()})\n'
         if self.measurement_time_source != SystemTimeSource.P1_TIME:
             string += f'P1 time: {str(self.p1_time)}\n'
         string += f'Data source: {str(self.data_source)}'

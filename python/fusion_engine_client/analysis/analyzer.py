@@ -1335,59 +1335,64 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         if self.output_dir is None:
             return
 
-        self._plot_wheel_ticks_or_speeds(type='speed')
-        self._plot_wheel_ticks_or_speeds(type='tick')
+        self._plot_wheel_ticks_or_speeds(source='wheel', type='speed')
+        self._plot_wheel_ticks_or_speeds(source='wheel', type='tick')
+        self._plot_wheel_ticks_or_speeds(source='vehicle', type='speed')
+        self._plot_wheel_ticks_or_speeds(source='vehicle', type='tick')
 
-    def _plot_wheel_ticks_or_speeds(self, type):
+    def _plot_wheel_ticks_or_speeds(self, source, type):
         """!
         @brief Plot wheel speed or tick data.
         """
-        # Read the data. Try to determine which type of wheel output is present in the log (if any).
+        # Read the data. Try to determine which type of wheel output is present in the log (if any):
+        # 1. A call to this function may be plotting either speed or tick count data, depending on `type`
+        # 2. A call to this function may be plotting data from a single sensor (e.g., VehicleSpeedOutput) or for
+        #    multiple differential wheel sensors (e.g., WheelSpeedOutput), depending on `source`
+        # 3. This function may plot both corrected (e.g., WheelSpeedOutput) and uncorrected (e.g., RawWheelSpeedOutput)
+        #    measurements if both are present in the log
+        # 4. (Internal use only) If input messages _to_ the device are present and the corresponding uncorrected output
+        #    messages are not, display the input messages
+        # 5. For backwards compatibility, this function may read older, deprecated measurements if present in the log
         if type == 'tick':
-            filename = 'wheel_ticks'
-            figure_title = 'Measurements: Wheel Encoder Ticks'
+            filename = '%s_ticks' % source
+            figure_title = 'Measurements: %s Encoder Ticks' % source.title()
 
-            wheel_measurement_type = self._auto_detect_message_type([RawWheelTickOutput, WheelTickInput])
-            vehicle_measurement_type = self._auto_detect_message_type([RawVehicleTickOutput, VehicleTickInput])
+            if source == 'wheel':
+                raw_measurement_type = self._auto_detect_message_type([RawWheelTickOutput, WheelTickInput])
+            else:
+                raw_measurement_type = self._auto_detect_message_type([RawVehicleTickOutput, VehicleTickInput])
 
-            # Wheel ticks are raw (uncorrected) by definition.
-            raw_wheel_measurement_type = wheel_measurement_type
-            raw_vehicle_measurement_type = vehicle_measurement_type
+            # Wheel ticks are raw (uncorrected) by definition. There are no corrected wheel ticks.
+            measurement_type = None
         else:
-            filename = 'wheel_speed'
-            figure_title = 'Measurements: Wheel Speed'
+            filename = '%s_speed' % source
+            figure_title = 'Measurements: %s Speed' % source.title()
 
-            wheel_measurement_type = self._auto_detect_message_type([WheelSpeedOutput, DeprecatedWheelSpeedMeasurement])
-            vehicle_measurement_type = self._auto_detect_message_type([VehicleSpeedOutput,
-                                                                       DeprecatedVehicleSpeedMeasurement])
+            if source == 'wheel':
+                measurement_type = self._auto_detect_message_type([WheelSpeedOutput, DeprecatedWheelSpeedMeasurement])
+            else:
+                measurement_type = self._auto_detect_message_type([VehicleSpeedOutput,
+                                                                   DeprecatedVehicleSpeedMeasurement])
 
-            raw_wheel_measurement_type = self._auto_detect_message_type([RawWheelSpeedOutput])
-            raw_vehicle_measurement_type = self._auto_detect_message_type([RawVehicleSpeedOutput])
+            if source == 'wheel':
+                raw_measurement_type = self._auto_detect_message_type([RawWheelSpeedOutput, WheelSpeedInput])
+            else:
+                raw_measurement_type = self._auto_detect_message_type([RawVehicleSpeedOutput, VehicleSpeedInput])
 
-            if wheel_measurement_type is None:
-                wheel_measurement_type = raw_wheel_measurement_type
-            if vehicle_measurement_type is None:
-                vehicle_measurement_type = raw_vehicle_measurement_type
+        if measurement_type is None and raw_measurement_type is None:
+            self.logger.info('No %s %s data available. Skipping plot.' % (source, type))
+            return
+
+        any_measurement_type = measurement_type if measurement_type is not None else raw_measurement_type
 
         # If the measurement data is very high rate, this plot may be very slow to generate for a multi-hour log.
         if self.long_log_detected and self.truncate_data:
             params = copy.deepcopy(self.params)
             params['max_messages'] = 2
-            dt_sec = None
-
-            if wheel_measurement_type is not None:
-                result = self.reader.read(message_types=wheel_measurement_type, remove_nan_times=False, **params)
-                data = result[wheel_measurement_type.MESSAGE_TYPE]
-                if len(data.measurement_time) == 2:
-                    dt_sec = data.measurement_time[1] - data.measurement_time[0]
-
-            if dt_sec is None and vehicle_measurement_type is not None:
-                result = self.reader.read(message_types=vehicle_measurement_type, remove_nan_times=False, **params)
-                data = result[vehicle_measurement_type.MESSAGE_TYPE]
-                if len(data.measurement_time) == 2:
-                    dt_sec = data.measurement_time[1] - data.measurement_time[0]
-
-            if dt_sec is not None:
+            result = self.reader.read(message_types=any_measurement_type, remove_nan_times=False, **params)
+            data = result[any_measurement_type.MESSAGE_TYPE]
+            if len(data.measurement_time) == 2:
+                dt_sec = data.measurement_time[1] - data.measurement_time[0]
                 data_rate_hz = round(1.0 / dt_sec)
                 if data_rate_hz > self.HIGH_MEASUREMENT_RATE_HZ:
                     _logger.warning('High rate data detected (%d Hz). Skipping wheel %s plot for very long log. Rerun '
@@ -1396,8 +1401,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                     return
 
         # Read the data.
-        result = self.reader.read(message_types=[wheel_measurement_type, vehicle_measurement_type,
-                                                 raw_wheel_measurement_type, raw_vehicle_measurement_type],
+        result = self.reader.read(message_types=[measurement_type, raw_measurement_type],
                                   remove_nan_times=False, **self.params)
 
         def _extract_data(measurement_type):
@@ -1413,43 +1417,28 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                 data_signed = False
             return data, data_signed
 
-        wheel_data, wheel_data_signed = _extract_data(wheel_measurement_type)
-        raw_wheel_data, raw_wheel_data_signed = _extract_data(raw_wheel_measurement_type)
-        vehicle_data, vehicle_data_signed = _extract_data(vehicle_measurement_type)
-        raw_vehicle_data, raw_vehicle_data_signed = _extract_data(raw_vehicle_measurement_type)
-
-        if wheel_data is None and vehicle_data is None:
-            self.logger.info('No wheel %s data available. Skipping plot.' % type)
+        data, data_signed = _extract_data(measurement_type)
+        raw_data, raw_data_signed = _extract_data(raw_measurement_type)
+        if data is None and raw_data is None:
+            self.logger.info('No %s %s data available. Skipping plot.' % (source, type))
             return
-        elif wheel_data is not None and vehicle_data is not None:
-            self.logger.warning('Both wheel and vehicle %s data detected.' % type)
-            speed_type = 'Wheel/Vehicle'
-        else:
-            speed_type = 'Wheel' if wheel_data is not None else 'Vehicle'
 
         # Setup the figure.
         if type == 'tick':
-            titles = ['%s Tick Count' % speed_type, '%s Tick Rate' % speed_type, 'Gear/Direction']
+            titles = ['%s Tick Count' % source.title(), '%s Tick Rate' % source.title(), 'Gear/Direction']
         else:
-            if wheel_data_signed or vehicle_data_signed:
-                titles = ['%s Speed (Signed)' % speed_type, 'Gear/Direction']
+            if data_signed or raw_data_signed:
+                titles = ['%s Speed (Signed)' % source.title(), 'Gear/Direction']
             else:
-                titles = ['%s Speed (Unsigned)' % speed_type, 'Gear/Direction']
+                titles = ['%s Speed (Unsigned)' % source.title(), 'Gear/Direction']
         titles.append('Measurement Interval')
 
-        if wheel_data is not None:
-            titles[0] += f'<br>Messages: {wheel_measurement_type.__name__}'
-        if raw_wheel_data is not None and wheel_measurement_type != raw_wheel_measurement_type:
-            titles[0] += f', {raw_wheel_measurement_type.__name__}'
-
-        if vehicle_data is not None:
-           if wheel_data is not None:
-               titles[0] += ', '
-           else:
-               titles[0] += '<br>Messages: '
-           titles[0] += f'{vehicle_measurement_type.__name__}'
-        if raw_vehicle_data is not None and vehicle_measurement_type != raw_vehicle_measurement_type:
-            titles[0] += f', {raw_vehicle_measurement_type.__name__}'
+        if data is None:
+            titles[0] += f'<br>Messages: {raw_measurement_type.__name__}'
+        elif raw_data is None:
+            titles[0] += f'<br>Messages: {measurement_type.__name__}'
+        else:
+            titles[0] += f'<br>Messages: {measurement_type.__name__}, {raw_measurement_type.__name__}'
 
         figure = make_subplots(rows=len(titles), cols=1, print_grid=False, shared_xaxes=True, subplot_titles=titles)
 
@@ -1473,44 +1462,42 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         #
         # All output messages from the device should contain P1 time. We should only ever use a non-P1 time source when
         # plotting logged input messages (uncommon).
-        wheel_time_source = None
-        vehicle_time_source = None
+        def _get_time_source(meas_type, data):
+            if meas_type is None or data is None:
+                return None
+            # If this data does not have P1 time, use its incoming native time source (system time of reception, etc.).
+            elif np.all(np.isnan(data.p1_time)):
+                # Check that the time source never changed. Warn if it did.
+                if np.any(np.diff(data.measurement_time_source) != 0):
+                    self.logger.warning('Detected multiple time source types in %s data.' % meas_type.__name__)
 
-        if wheel_data is not None:
-            if np.all(np.isnan(wheel_data.p1_time)):
-                if np.any(np.diff(wheel_data.measurement_time_source) != 0):
-                    self.logger.warning('Detected multiple time source types in wheel %s data.' % type)
-
-                wheel_time_source = SystemTimeSource(wheel_data.measurement_time_source[0])
-                self.logger.warning('Wheel %s data does not have P1 time available. Plotting in %s time.' %
-                                    (type, self._time_source_to_display_name(wheel_time_source)))
+                result = SystemTimeSource(data.measurement_time_source[0])
+                self.logger.warning('%s data does not have P1 time available. Plotting in %s time.' %
+                                    (meas_type.__name__, self._time_source_to_display_name(result)))
+            # P1 time available - use that.
             else:
-                wheel_time_source = SystemTimeSource.P1_TIME
-
-        if vehicle_data is not None:
-            if np.all(np.isnan(vehicle_data.p1_time)):
-                if np.any(np.diff(vehicle_data.measurement_time_source) != 0):
-                    self.logger.warning('Detected multiple time source types in vehicle %s data.' % type)
-
-                vehicle_time_source = SystemTimeSource(vehicle_data.measurement_time_source[0])
-                self.logger.warning('Vehicle %s data does not have P1 time available. Plotting in %s time.' %
-                                    (type, self._time_source_to_display_name(vehicle_time_source)))
-            else:
-                vehicle_time_source = SystemTimeSource.P1_TIME
+                result = SystemTimeSource.P1_TIME
+            return result
 
         same_time_source = True
-        if wheel_time_source is None:
-            common_time_source = vehicle_time_source
-        elif vehicle_time_source is None:
-            common_time_source = wheel_time_source
+        if raw_measurement_type is None:
+            corrected_time_source = _get_time_source(measurement_type, data)
+            raw_time_source = None
+            common_time_source = corrected_time_source
+        elif measurement_type is None:
+            corrected_time_source = None
+            raw_time_source = _get_time_source(raw_measurement_type, data)
+            common_time_source = raw_time_source
         else:
-            if wheel_time_source == vehicle_time_source:
-                common_time_source = wheel_time_source
+            corrected_time_source = _get_time_source(measurement_type, data)
+            raw_time_source = _get_time_source(raw_measurement_type, raw_data)
+            if corrected_time_source == raw_time_source:
+                common_time_source = corrected_time_source
             else:
-                self.logger.warning('Both wheel and vehicle %s data present, but timestamped with different '
-                                    'sources. Plotted data may not align in time.')
+                common_time_source = corrected_time_source
                 same_time_source = False
-                common_time_source = None
+                self.logger.warning('Both raw and corrected %s data present, but timestamped with different '
+                                    'sources. Plotted data may not align in time.' % source)
 
         if same_time_source:
             time_name = self._time_source_to_display_name(common_time_source)
@@ -1520,17 +1507,17 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             for i in range(len(titles)):
                 figure['layout']['xaxis%d' % (i + 1)].update(title=time_label, showticklabels=True)
         else:
-            wheel_time_name = self._time_source_to_display_name(wheel_time_source)
-            vehicle_time_name = self._time_source_to_display_name(vehicle_time_source)
-            figure['layout']['annotations'][0]['text'] += '<br>Time Source: %s (Wheel), %s (Vehicle)' % \
-                                                          (wheel_time_name, vehicle_time_name)
+            corrected_time_name = self._time_source_to_display_name(corrected_time_source)
+            raw_time_name = self._time_source_to_display_name(raw_time_source)
+            figure['layout']['annotations'][0]['text'] += '<br>Time Source: %s (Raw), %s (Corrected)' % \
+                                                          (raw_time_name, corrected_time_name)
 
-            time_label = f'{wheel_time_name}/{vehicle_time_name} Time (sec)'
+            time_label = f'{corrected_time_name}/{raw_time_name} Time (sec)'
             for i in range(len(titles)):
                 figure['layout']['xaxis%d' % (i + 1)].update(title=time_label, showticklabels=True)
 
-        p1_time_present = (wheel_time_source == SystemTimeSource.P1_TIME or
-                           vehicle_time_source == SystemTimeSource.P1_TIME)
+        p1_time_present = (corrected_time_source == SystemTimeSource.P1_TIME or
+                           raw_time_source == SystemTimeSource.P1_TIME)
 
         # If plotting speed data, try to plot the navigation engine's speed estimate for reference.
         #
@@ -1548,7 +1535,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             if len(pose_data.p1_time) != 0 and np.any(~np.isnan(pose_data.velocity_body_mps[0, :])):
                 nav_engine_p1_time = pose_data.p1_time
                 nav_engine_speed_mps = pose_data.velocity_body_mps[0, :]
-                if wheel_data_signed or vehicle_data_signed:
+                if data_signed:
                     nav_engine_speed_name = 'Speed Estimate (Nav Engine)'
                 else:
                     nav_engine_speed_mps = np.abs(nav_engine_speed_mps)
@@ -1639,7 +1626,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                         name='Rear Right Wheel' + name_suffix, color='purple', style=style)
 
             if show_gear:
-                figure.add_trace(go.Scattergl(x=time, y=wheel_data.gear[idx], text=text,
+                figure.add_trace(go.Scattergl(x=time, y=data.gear[idx], text=text,
                                               name='Gear (Wheel Data)', hoverlabel={'namelength': -1},
                                               mode='markers', marker={'color': 'red'}),
                                  gear_y_axis, 1)
@@ -1649,12 +1636,6 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             figure.add_trace(go.Scattergl(x=time[1:], y=np.diff(time), name=name, hoverlabel={'namelength': -1},
                                           mode='markers', marker={'color': color}),
                              interval_y_axis, 1)
-
-        # Plot the wheel speed data. If we have both corrected and uncorrected (raw) data, plot them both.
-        _plot_wheel_data(wheel_data, wheel_time_source, is_raw=wheel_measurement_type == raw_wheel_measurement_type,
-                         show_gear=True)
-        if wheel_measurement_type != raw_wheel_measurement_type:
-            _plot_wheel_data(raw_wheel_data, wheel_time_source, is_raw=True, show_gear=False)
 
         def _plot_vehicle_data(data, time_source, is_raw=False, show_gear=False, style=None):
             if data is None:
@@ -1697,11 +1678,11 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                                           mode='markers', marker={'color': color}),
                              interval_y_axis, 1)
 
-        # Plot the vehicle speed data. If we have both corrected and uncorrected (raw) data, plot them both.
-        _plot_vehicle_data(vehicle_data, vehicle_time_source,
-                           is_raw=vehicle_measurement_type == raw_vehicle_measurement_type, show_gear=True)
-        if vehicle_measurement_type != raw_vehicle_measurement_type:
-            _plot_vehicle_data(raw_vehicle_data, vehicle_time_source, is_raw=True, show_gear=False)
+        # Plot the data. If we have both corrected (e.g., WheelSpeedOutput) and uncorrected (e.g., RawWheelSpeedOutput)
+        # messages are present in the log, plot them both for comparison.
+        _plot_func = _plot_wheel_data if source == 'wheel' else _plot_vehicle_data
+        _plot_func(data, corrected_time_source, is_raw=False, show_gear=True)
+        _plot_func(raw_data, raw_time_source, is_raw=True, show_gear=False)
 
         self._add_figure(name=filename, figure=figure, title=figure_title)
 
