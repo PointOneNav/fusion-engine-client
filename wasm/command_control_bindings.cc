@@ -181,7 +181,7 @@ EMSCRIPTEN_BINDINGS(control) {
       .constructor<>()
       .class_property("MESSAGE_TYPE", &StartupRequest_MESSAGE_TYPE)
       .class_property("MESSAGE_VERSION", &StartupRequest_MESSAGE_VERSION)
-      .property("shutdown_flags", &StartupRequest::startup_flags)
+      .property("startup_flags", &StartupRequest::startup_flags)
       .ARRAY_PROPERTY(StartupRequest, reserved1)
       .STRUCT_FUNCTIONS(StartupRequest);
 }

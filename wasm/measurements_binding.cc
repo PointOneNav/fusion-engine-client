@@ -38,6 +38,7 @@ EMSCRIPTEN_BINDINGS(measurements) {
       .property("data_source", &MeasurementDetails::data_source)
       .ARRAY_PROPERTY(MeasurementDetails, reserved)
       .property("p1_time", &MeasurementDetails::p1_time)
+      .REF_TO(MeasurementDetails, p1_time)
       .STRUCT_FUNCTIONS(MeasurementDetails);
 
   static auto IMUOutput_MESSAGE_TYPE = IMUOutput::MESSAGE_TYPE;
@@ -100,6 +101,7 @@ EMSCRIPTEN_BINDINGS(measurements) {
       .class_property("MESSAGE_VERSION", &WheelSpeedOutput_MESSAGE_VERSION)
       .class_property("FLAG_SIGNED", &WheelSpeedOutput_FLAG_SIGNED)
       .property("p1_time", &WheelSpeedOutput::p1_time)
+      .REF_TO(WheelSpeedOutput, p1_time)
       .property("data_source", &WheelSpeedOutput::data_source)
       .property("gear", &WheelSpeedOutput::gear)
       .property("flags", &WheelSpeedOutput::flags)
@@ -152,6 +154,7 @@ EMSCRIPTEN_BINDINGS(measurements) {
       .class_property("MESSAGE_VERSION", &VehicleSpeedOutput_MESSAGE_VERSION)
       .class_property("FLAG_SIGNED", &VehicleSpeedOutput_FLAG_SIGNED)
       .property("p1_time", &VehicleSpeedOutput::p1_time)
+      .REF_TO(VehicleSpeedOutput, p1_time)
       .property("data_source", &VehicleSpeedOutput::data_source)
       .property("gear", &VehicleSpeedOutput::gear)
       .property("flags", &VehicleSpeedOutput::flags)
