@@ -46,6 +46,8 @@ EMSCRIPTEN_BINDINGS(defs) {
       .value("RAW_HEADING_OUTPUT", MessageType::RAW_HEADING_OUTPUT)
       .value("RAW_IMU_OUTPUT", MessageType::RAW_IMU_OUTPUT)
       .value("HEADING_OUTPUT", MessageType::HEADING_OUTPUT)
+      .value("IMU_INPUT", MessageType::IMU_INPUT)
+
 
       // Vehicle measurement messages.
       .value("DEPRECATED_WHEEL_SPEED_MEASUREMENT", MessageType::DEPRECATED_WHEEL_SPEED_MEASUREMENT)

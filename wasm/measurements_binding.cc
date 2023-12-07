@@ -41,6 +41,19 @@ EMSCRIPTEN_BINDINGS(measurements) {
       .REF_TO(MeasurementDetails, p1_time)
       .STRUCT_FUNCTIONS(MeasurementDetails);
 
+  static auto IMUInput_MESSAGE_TYPE = IMUInput::MESSAGE_TYPE;
+  static auto IMUInput_MESSAGE_VERSION = IMUInput::MESSAGE_VERSION;
+  class_<IMUInput>("IMUInput")
+      .constructor<>()
+      .class_property("MESSAGE_TYPE", &IMUInput_MESSAGE_TYPE)
+      .class_property("MESSAGE_VERSION", &IMUInput_MESSAGE_VERSION)
+      .property("details", &IMUInput::details)
+      .ARRAY_PROPERTY(IMUInput, reserved)
+      .property("temperature", &IMUInput::temperature)
+      .ARRAY_PROPERTY(IMUInput, accel)
+      .ARRAY_PROPERTY(IMUInput, gyro)
+      .STRUCT_FUNCTIONS(IMUInput);
+
   static auto IMUOutput_MESSAGE_TYPE = IMUOutput::MESSAGE_TYPE;
   static auto IMUOutput_MESSAGE_VERSION = IMUOutput::MESSAGE_VERSION;
   class_<IMUOutput>("IMUOutput")

@@ -259,10 +259,12 @@ EMSCRIPTEN_BINDINGS(configuration) {
        .constructor<>()
        .property("center_frequency_hz", &LBandConfig::center_frequency_hz)
        .property("search_window_hz", &LBandConfig::search_window_hz)
+       .property("filter_data_by_service_id", &LBandConfig::filter_data_by_service_id)
+       .property("use_descrambler", &LBandConfig::use_descrambler)
        .property("pmp_service_id", &LBandConfig::pmp_service_id)
-       .property("pmp_data_rate_bps", &LBandConfig::pmp_data_rate_bps)
-       .ARRAY_PROPERTY(LBandConfig, reserved)
        .property("pmp_unique_word", &LBandConfig::pmp_unique_word)
+       .property("pmp_data_rate_bps", &LBandConfig::pmp_data_rate_bps)
+       .property("descrambler_init", &LBandConfig::descrambler_init)
        .STRUCT_FUNCTIONS(LBandConfig);
 
   enum_<ProtocolType>("ProtocolType")
