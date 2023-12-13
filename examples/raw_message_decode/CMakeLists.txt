@@ -1,0 +1,3 @@
+add_executable(raw_message_decode raw_message_decode.cc)
+target_link_libraries(raw_message_decode PUBLIC fusion_engine_client)
+target_link_libraries(raw_message_decode PUBLIC print_message)

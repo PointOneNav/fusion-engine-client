@@ -74,11 +74,13 @@ One FusionEngine or a Point One device (Atlas, Quectel LG69T, etc.), please cont
 #### Example Applications
 
 The `examples/` directory contains example applications demonstrating how to use this library. They are:
-- `message_decode` - Print the contents of messages contained in a binary file.
 - `external_cmake_project` - Download a copy of the FusionEngine Client library from the public repository and import
   it into a CMake project using `FetchContent`.
 - `generate_data` - Generate a binary file containing a fixed set of messages.
 - `lband_decode` - Example of decoding RTCM corrections from a recorded file containing LBandFrameMessage.
+- `message_decode` - Parse and print the contents of messages contained in a binary file using the `FusionEngineFramer`
+  class.
+- `raw_message_decode` - Parse and print the contents of messages directly from a binary file without a helper class.
 - `request_version` - Simulate sending a request for a version info message, and waiting for a response.
 - `tcp_client` - Connect to a device over TCP and display the received FusionEngine messages.
 - `udp_client` - Connect to a device over UDP and display the received FusionEngine messages.
