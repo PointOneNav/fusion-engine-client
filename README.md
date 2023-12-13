@@ -32,7 +32,7 @@ One FusionEngine or a Point One device (Atlas, Quectel LG69T, etc.), please cont
     * [Running Examples](#running-examples)
   * [Bazel](#bazel)
     * [Including In Your Bazel Project](#including-in-your-bazel-project)
-    * [Compiling From Source](#compiling-from-so
+    * [Compiling From Source](#compiling-from-source)
     * [Running Examples](#running-examples-1)
   * [Python](#python)
   * [Compiling Documentation](#compiling-documentation)
