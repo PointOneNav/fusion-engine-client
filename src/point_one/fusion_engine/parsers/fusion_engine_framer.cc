@@ -253,37 +253,67 @@ int32_t FusionEngineFramer::OnByte(bool quiet) {
 
     // Check if the header is complete.
     if (next_byte_index_ == sizeof(MessageHeader)) {
-      // Compute the full message size. If the message is too large to fit in
-      // the buffer, we cannot parse it. Otherwise, start collecting the
-      // message payload.
-      //
-      // Note that while we compute the current_message_size_ here, we
-      // intentionally do the "too big" check below with the payload size. That
-      // way we implicitly handle cases where the payload is large enough to
-      // cause current_message_size_ to overflow. Normally, this won't happen
-      // for legit packets that are just too big for the user's buffer, but it
-      // could happen on a bogus header if we find the preamble randomly in an
-      // incoming byte stream. The buffer capacity is always
-      // >=sizeof(MessageHeader), so the subtraction will never be negative.
       auto* header = reinterpret_cast<MessageHeader*>(buffer_);
       current_message_size_ =
           sizeof(MessageHeader) + header->payload_size_bytes;
       VLOG(3) << "Header complete. Waiting for payload. [message="
-              << header->message_type << " (" << (unsigned)header->message_type
-              << "), seq=" << header->sequence_number
-              << ", payload_size=" << header->payload_size_bytes << " B]";
-      if (header->payload_size_bytes <=
-          capacity_bytes_ - sizeof(MessageHeader)) {
-        // If there's no payload, do the CRC check now.
-        if (header->payload_size_bytes == 0) {
-          VLOG(3) << "Message has no payload. Checking CRC.";
-          crc_check_needed = true;
+              << header->message_type << ", seq=" << header->sequence_number
+              << ", payload_size=" << header->payload_size_bytes
+              << " B, message_size=" << current_message_size_ << " B]";
+
+      // Check for size overflow. We don't currently expect to have _extremely_
+      // large packets, so this should never happen. If it does, assume this is
+      // not a valid message, and instead the sync pattern likely showed up at
+      // random in the data stream.
+      if (current_message_size_ < header->payload_size_bytes) {
+        if (quiet) {
+          VLOG(2) << "Message size overflow. Dropping suspected invalid sync. "
+                     "[size="
+                  << current_message_size_
+                  << " B (payload=" << header->payload_size_bytes << " B)]";
+        } else {
+          LOG(WARNING)
+              << "Message size overflow. Dropping suspected invalid sync. "
+                 "[size="
+              << current_message_size_
+              << " B (payload=" << header->payload_size_bytes << " B)]";
         }
-        // Otherwise, collect the payload, then do the CRC check.
-        else {
-          state_ = State::DATA;
+
+        state_ = State::SYNC0;
+        return -1;
+      }
+      // The reserved bytes in the header are currently always set to 0. If the
+      // incoming bytes are not zero, assume this an invalid sync.
+      //
+      // This may change in the future, but for now it prevents us from
+      // needing to collect a ton of bytes before performing a CRC check if a
+      // bogus header from an invalid sync has a very large payload size that
+      // happens to still be smaller than the buffer size.
+      else if (header->reserved[0] != 0 || header->reserved[1] != 0) {
+        if (quiet) {
+          VLOG(2) << "Reserved bytes nonzero. Dropping suspected invalid sync. "
+                     "[size="
+                  << current_message_size_
+                  << " B (payload=" << header->payload_size_bytes << " B)]";
+        } else {
+          LOG(WARNING) << "Message too large for buffer. [size="
+                       << current_message_size_
+                       << " B (payload=" << header->payload_size_bytes
+                       << " B), buffer_capacity=" << capacity_bytes_
+                       << " B (max_payload="
+                       << capacity_bytes_ - sizeof(MessageHeader) << " B)]";
         }
-      } else {
+
+        state_ = State::SYNC0;
+        return -1;
+      }
+      // If the message is too large to fit in the buffer, we cannot parse it.
+      //
+      // If this is an invalid sync, the parsed (invalid) payload length may
+      // exceed the buffer size and the invalid header will be dropped. If it
+      // does not exceed the buffer size, it'll get caught later during the CRC
+      // check.
+      else if (current_message_size_ > capacity_bytes_) {
         if (quiet) {
           VLOG(2) << "Message too large for buffer. [size="
                   << current_message_size_
@@ -302,6 +332,18 @@ int32_t FusionEngineFramer::OnByte(bool quiet) {
 
         state_ = State::SYNC0;
         return -1;
+      }
+      // Sanity checks passed. Start collecting the message payload next.
+      else {
+        // If there's no payload, do the CRC check now.
+        if (header->payload_size_bytes == 0) {
+          VLOG(3) << "Message has no payload. Checking CRC.";
+          crc_check_needed = true;
+        }
+        // Otherwise, collect the payload, then do the CRC check.
+        else {
+          state_ = State::DATA;
+        }
       }
     }
   }
