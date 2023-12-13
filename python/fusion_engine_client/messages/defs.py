@@ -221,12 +221,13 @@ class MessageHeader:
 
     SYNC = bytes((SYNC0, SYNC1))
 
-    _FORMAT = '<BB2xIBBHIII'
+    _FORMAT = '<BBHIBBHIII'
     _SIZE: int = struct.calcsize(_FORMAT)
 
     _MAX_EXPECTED_SIZE_BYTES = (1 << 24)
 
     def __init__(self, message_type: MessageType = MessageType.INVALID):
+        self.reserved: int = 0
         self.crc: int = 0
         self.protocol_version: int = 2
         self.sequence_number: int = 0
@@ -285,13 +286,17 @@ class MessageHeader:
 
         @return A `bytes` object containing the serialized message, or the size of the serialized content (in bytes).
         """
+        if self.reserved != 0:
+            self.reserved = 0
+
         # If the payload is specified, set the CRC and payload length, and then append the payload to the returned
         # result.
         if payload is not None:
             self.calculate_crc(payload)
 
-        args = (MessageHeader.SYNC0, MessageHeader.SYNC1, self.crc, self.protocol_version, self.message_version,
-                int(self.message_type), self.sequence_number, self.payload_size_bytes, self.source_identifier)
+        args = (MessageHeader.SYNC0, MessageHeader.SYNC1, self.reserved, self.crc, self.protocol_version,
+                self.message_version, int(self.message_type), self.sequence_number, self.payload_size_bytes,
+                self.source_identifier)
         if buffer is None:
             buffer = struct.pack(MessageHeader._FORMAT, *args)
             if payload is not None:
@@ -323,7 +328,7 @@ class MessageHeader:
 
         @return The size of the serialized header (in bytes).
         """
-        (sync0, sync1,
+        (sync0, sync1, self.reserved,
          self.crc, self.protocol_version,
          self.message_version, message_type_int,
          self.sequence_number, self.payload_size_bytes, self.source_identifier) = \
