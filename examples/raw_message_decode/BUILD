@@ -1,20 +1,15 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_binary(
-    name = "message_decode",
+    name = "raw_message_decode",
     srcs = [
-        "message_decode.cc",
+        "raw_message_decode.cc",
     ],
     data = [
-        ":example_data",
+        "//message_decode:example_data",
     ],
     deps = [
         "//common:print_message",
         "@fusion_engine_client",
     ],
-)
-
-filegroup(
-    name = "example_data",
-    srcs = ["example_data.p1log"],
 )

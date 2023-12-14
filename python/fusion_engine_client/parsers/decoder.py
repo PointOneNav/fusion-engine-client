@@ -166,10 +166,33 @@ class FusionEngineDecoder:
                                self._bytes_processed, self._bytes_processed))
                 self._trace_buffer(self._buffer[:MessageHeader.calcsize()])
 
-                if self._header.payload_size_bytes > self._max_payload_len_bytes:
+                # The reserved bytes in the header are currently always set to 0. If the incoming bytes are not zero,
+                # assume this an invalid sync.
+                #
+                # This may change in the future, but for now it prevents us from needing to collect a ton of bytes
+                # before performing a CRC check if a bogus header from an invalid sync has a very large payload size
+                # that happens to still be smaller than the buffer size.
+                drop_candidate = False
+                if self._header.reserved != 0:
                     print_func = _logger.warning if self._warn_on_error == self.WarnOnError.ALL else _logger.debug
-                    print_func('Message payload too big. [payload_size=%d B, max=%d B]',
-                               self._header.payload_size_bytes, self._max_payload_len_bytes)
+                    print_func('Reserved bytes nonzero. Dropping suspected invalid sync. [type=%s, payload_size=%d B, '
+                               'max=%d B]' %
+                               (self._header.get_type_string(), self._header.payload_size_bytes,
+                                self._max_payload_len_bytes))
+                    drop_candidate = True
+                # If the message is too large to fit in the buffer, we cannot parse it.
+                #
+                # If this is an invalid sync, the parsed (invalid) payload length may  exceed the buffer size and the
+                # invalid header will be dropped. If it does not exceed the buffer size, it'll get caught later during
+                # the CRC check.
+                elif self._header.payload_size_bytes > self._max_payload_len_bytes:
+                    print_func = _logger.warning if self._warn_on_error == self.WarnOnError.ALL else _logger.debug
+                    print_func('Message payload too big. [type=%s, payload_size=%d B, max=%d B]' %
+                               (self._header.get_type_string(), self._header.payload_size_bytes,
+                                self._max_payload_len_bytes))
+                    drop_candidate = True
+
+                if drop_candidate:
                     self._header = None
                     self._buffer.pop(0)
                     self._bytes_processed += 1
