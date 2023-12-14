@@ -261,10 +261,11 @@ int32_t FusionEngineFramer::OnByte(bool quiet) {
               << ", payload_size=" << header->payload_size_bytes
               << " B, message_size=" << current_message_size_ << " B]";
 
-      // Check for size overflow. We don't currently expect to have _extremely_
-      // large packets, so this should never happen. If it does, assume this is
-      // not a valid message, and instead the sync pattern likely showed up at
-      // random in the data stream.
+      // Check for overflow of the messge size uint32_t variable. We don't
+      // currently expect to have _extremely_ large packets, so this should
+      // never happen for a valid message. If it does, assume this is not a
+      // valid message, and instead the sync pattern likely showed up at random
+      // in the data stream.
       if (current_message_size_ < header->payload_size_bytes) {
         if (quiet) {
           VLOG(2) << "Message size overflow. Dropping suspected invalid sync. "
@@ -296,12 +297,11 @@ int32_t FusionEngineFramer::OnByte(bool quiet) {
                   << current_message_size_
                   << " B (payload=" << header->payload_size_bytes << " B)]";
         } else {
-          LOG(WARNING) << "Message too large for buffer. [size="
+          LOG(WARNING) << "Reserved bytes nonzero. Dropping suspected invalid "
+                          "sync. [size="
                        << current_message_size_
                        << " B (payload=" << header->payload_size_bytes
-                       << " B), buffer_capacity=" << capacity_bytes_
-                       << " B (max_payload="
-                       << capacity_bytes_ - sizeof(MessageHeader) << " B)]";
+                       << " B)]";
         }
 
         state_ = State::SYNC0;
