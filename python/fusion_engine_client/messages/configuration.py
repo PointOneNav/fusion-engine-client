@@ -223,6 +223,7 @@ class IonoDelayModel(IntEnum):
     AUTO = 0
     OFF = 1
     KLOBUCHAR = 2
+    SBAS = 3
 
 
 class TropoDelayModel(IntEnum):

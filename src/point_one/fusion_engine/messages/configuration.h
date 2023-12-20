@@ -1350,6 +1350,8 @@ enum class IonoDelayModel : uint8_t {
   OFF = 1,
   /** Use the Klobuchar ionospheric model. */
   KLOBUCHAR = 2,
+  /** Use the SBAS ionospheric model. */
+  SBAS = 3,
 };
 
 P1_CONSTEXPR_FUNC const char* to_string(IonoDelayModel iono_delay_model) {
@@ -1360,6 +1362,8 @@ P1_CONSTEXPR_FUNC const char* to_string(IonoDelayModel iono_delay_model) {
       return "OFF";
     case IonoDelayModel::KLOBUCHAR:
       return "KLOBUCHAR";
+    case IonoDelayModel::SBAS:
+      return "SBAS";
     default:
       return "UNRECOGNIZED";
   }
