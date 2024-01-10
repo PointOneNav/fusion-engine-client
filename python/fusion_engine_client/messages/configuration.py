@@ -52,6 +52,7 @@ class InterfaceConfigType(IntEnum):
   BAUD_RATE = 2
   REMOTE_ADDRESS = 3
   PORT = 4
+  ENABLED = 5
 
 
 class Direction(IntEnum):
@@ -912,6 +913,26 @@ class InterfaceBaudRateConfig(_conf_gen.IntegerVal):
     """
     pass
 
+@_conf_gen.create_interface_config_class(InterfaceConfigType.PORT, _conf_gen.UInt16Construct)
+class InterfacePortConfig(_conf_gen.IntegerVal):
+    """!
+    @brief Interface network port configuration settings.
+    """
+    pass
+
+@_conf_gen.create_interface_config_class(InterfaceConfigType.REMOTE_ADDRESS, _conf_gen.StringConstruct(64))
+class InterfaceRemoteAddressConfig(_conf_gen.StringVal):
+    """!
+    @brief Configure the network address for a client to connect to.
+    """
+    pass
+
+@_conf_gen.create_interface_config_class(InterfaceConfigType.ENABLED, _conf_gen.BoolConstruct)
+class InterfaceEnabledConfig(_conf_gen.BoolVal):
+    """!
+    @brief Interface enabled/disabled configuration settings.
+    """
+    pass
 
 @_conf_gen.create_interface_config_class(InterfaceConfigType.OUTPUT_DIAGNOSTICS_MESSAGES, _conf_gen.BoolConstruct)
 class InterfaceDiagnosticMessagesEnabled(_conf_gen.BoolVal):

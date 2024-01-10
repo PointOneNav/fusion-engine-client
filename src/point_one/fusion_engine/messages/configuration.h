@@ -394,6 +394,17 @@ enum class InterfaceConfigType : uint8_t {
    * Payload format: `uint16_t`
    */
   PORT = 4,
+
+  /**
+   * Enable/disable the interface.
+   *
+   * Valid for:
+   * - @ref TransportType::TCP_CLIENT
+   * - @ref TransportType::UDP_CLIENT
+   *
+   * Payload format: `bool`
+   */
+  ENABLED = 5,
 };
 
 /**
@@ -420,6 +431,9 @@ P1_CONSTEXPR_FUNC const char* to_string(InterfaceConfigType type) {
 
     case InterfaceConfigType::PORT:
       return "Network Port";
+
+    case InterfaceConfigType::ENABLED:
+      return "Interface Enabled";
 
     default:
       return "Unrecognized Configuration";
