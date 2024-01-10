@@ -26,10 +26,11 @@ When using UDP, you must configure the device to send data to your machine.
 """)
 
     parser.add_argument('-f', '--format', default='p1log', choices=('p1log', 'raw', 'csv'),
-                        help="The format of the file to be generated when --output is enabled."
-                             "If 'p1log' (default), create a *.p1log file containing only FusionEngine messages."
-                             "If 'raw', create a generic binary file containing all incoming data."
-                             "If 'csv', create a csv of time vs message type.")
+                        help="""\
+The format of the file to be generated when --output is enabled:
+- p1log - (default), create a *.p1log file containing only FusionEngine messages."
+- raw - create a generic binary file containing all incoming data."
+- csv - create a csv of time vs message type.""")
     parser.add_argument('-n', '--no-display', dest='display', action='store_false',
                         help="Do not display the incoming message contents.")
     parser.add_argument('-o', '--output', type=str,
@@ -81,7 +82,7 @@ When using UDP, you must configure the device to send data to your machine.
             if not options.quiet:
                 now = datetime.now()
                 if (now - last_print_time).total_seconds() > 5.0:
-                    print('Status: [bytes_received=%d, messages_received=%d elapsed_time=%d sec]' %
+                    print('Status: [bytes_received=%d, messages_received=%d, elapsed_time=%d sec]' %
                           (bytes_received, messages_received, (now - start_time).total_seconds()))
                     last_print_time = now
         except KeyboardInterrupt:
@@ -127,5 +128,5 @@ When using UDP, you must configure the device to send data to your machine.
     if not options.quiet:
         now = datetime.now()
         elapsed_sec = (now - last_print_time).total_seconds() if last_print_time else 0.0
-        print('Status: [bytes_received=%d, messages_received=%d elapsed_time=%d sec]' %
+        print('Status: [bytes_received=%d, messages_received=%d, elapsed_time=%d sec]' %
               (bytes_received, messages_received, elapsed_sec))
