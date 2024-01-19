@@ -456,6 +456,11 @@ inline p1_ostream& operator<<(p1_ostream& stream, InterfaceConfigType type) {
 enum class ConfigurationSource : uint8_t {
   ACTIVE = 0, ///< Active configuration currently in use by the device.
   SAVED = 1, ///< Settings currently saved to persistent storage.
+  /**
+   * Read only device defaults. Attempting to write to this source will fail
+   * with a @ref Response::VALUE_ERROR.
+   */
+  DEFAULT = 2,
 };
 
 /**
@@ -474,6 +479,9 @@ P1_CONSTEXPR_FUNC const char* to_string(ConfigurationSource source) {
 
     case ConfigurationSource::SAVED:
       return "Saved";
+
+    case ConfigurationSource::DEFAULT:
+      return "Default";
 
     default:
       return "Unrecognized Source";
