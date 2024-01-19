@@ -555,7 +555,10 @@ class MessagePayload:
     def get_p1_time(self) -> Timestamp:
         measurement_details = getattr(self, 'details', None)
         if isinstance(measurement_details, MeasurementDetails):
-            return measurement_details.p1_time
+            if measurement_details.measurement_time_source == SystemTimeSource.P1_TIME:
+                return measurement_details.measurement_time
+            else:
+                return measurement_details.p1_time
         else:
             return getattr(self, 'p1_time', None)
 
