@@ -570,7 +570,23 @@ struct P1_ALIGNAS(4) EventNotificationMessage : public MessagePayload {
 struct P1_ALIGNAS(4) ShutdownRequest : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::SHUTDOWN_REQUEST;
   static constexpr uint8_t MESSAGE_VERSION = 0;
-  /** A bitmask of flags associated with the event. */
+
+  /**
+   * Stop navigation engine if running and flush calibration to non-volatile
+   * storage.
+   */
+  static constexpr uint64_t STOP_ENGINE = 0x0000000000000001;
+  /**
+   * If a log is being generated, end that log.
+   */
+  static constexpr uint64_t STOP_CURRENT_LOG = 0x0000000000000002;
+
+  /**
+   * A bitmask of flags associated with the event.
+   *
+   * @note For backwards compatibility, a value of `0` is treated as if the
+   *       STOP_ENGINE bit is set (`0x0000000000000001`).
+   */
   uint64_t shutdown_flags = 0;
   uint8_t reserved1[8] = {0};
 };
@@ -587,7 +603,22 @@ struct P1_ALIGNAS(4) ShutdownRequest : public MessagePayload {
 struct P1_ALIGNAS(4) StartupRequest : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::STARTUP_REQUEST;
   static constexpr uint8_t MESSAGE_VERSION = 0;
-  /** A bitmask of flags associated with the event. */
+
+  /**
+   * Start navigation engine if not running.
+   */
+  static constexpr uint64_t START_ENGINE = 0x0000000000000001;
+  /**
+   *  If a log is not being generated, start a new log.
+   */
+  static constexpr uint64_t START_NEW_LOG = 0x0000000000000002;
+
+  /**
+   * A bitmask of flags associated with the event.
+   *
+   * @note For backwards compatibility, a value of `0` is treated as if the
+   *       STOP_ENGINE bit is set (`0x0000000000000001`).
+   */
   uint64_t startup_flags = 0;
   uint8_t reserved1[8] = {0};
 };
