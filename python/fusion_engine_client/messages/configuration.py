@@ -18,6 +18,7 @@ from .defs import *
 class ConfigurationSource(IntEnum):
     ACTIVE = 0
     SAVED = 1
+    DEFAULT = 2
 
 
 class ConfigType(IntEnum):
