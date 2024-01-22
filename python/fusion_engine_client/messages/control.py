@@ -641,7 +641,7 @@ class ShutdownRequest(MessagePayload):
     MESSAGE_TYPE = MessageType.SHUTDOWN_REQUEST
     MESSAGE_VERSION = 0
 
-    ## Stop navigation engine if running and flush calibration to non-volatile storage.
+    ## Stop navigation engine and flush state to non-volatile storage.
     STOP_ENGINE = 0x0000000000000001
     ## If a log is being generated, end that log.
     STOP_CURRENT_LOG = 0x0000000000000002
@@ -685,7 +685,7 @@ class StartupRequest(MessagePayload):
 
     ## Start navigation engine if not running.
     START_ENGINE = 0x0000000000000001
-    ## If a log is not being generated, start a new log.
+    ## If a log is not being generated, start a new log. If a log is active, end it, and immediately start a new log.
     START_NEW_LOG = 0x0000000000000002
 
     StartupRequestConstruct = Struct(
