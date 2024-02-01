@@ -178,13 +178,29 @@ Extract position data to both CSV and KML files.
         first_valid_pose = pose_data.messages[valid_solutions[0]]
         last_valid_pose = pose_data.messages[valid_solutions[-1]]
 
+        # Extract the start/end GPS times. Note that the device may not have GPS time at the start of a log, even if it
+        # has a valid position, if it started up inside a parking garage, etc. Similarly, it might not have GPS time at
+        # the end of the log if it was reset and didn't have enough time to reinitialize time. So we can't simply look
+        # at [first,last]_valid_pose.gps_time since it might be invalid.
+        #
+        # Instead, we can ask the DataLoader class to convert P1 time to GPS time for us. If it is still not able to
+        # convert either time, the returned Timestamp object will be invalid. Timestamp.as_utc() will return None below
+        # and we will not be able to put a timestamp on the KML entry.
+        gps_times = reader.convert_to_gps_time((first_valid_pose.p1_time, last_valid_pose.p1_time),
+                                               return_timestamp=True)
+
+        def _to_time_str(time: Timestamp):
+            utc_time = time.as_utc()
+            return utc_time.isoformat() if utc_time is not None else ""
+
         f.write(KML_TEMPLATE_LOOKAT % {
             'latitude': first_valid_pose.lla_deg[0],
             'longitude': first_valid_pose.lla_deg[1],
             'altitude': first_valid_pose.lla_deg[2] - first_valid_pose.undulation_m,
-            'begin_time': first_valid_pose.gps_time.as_utc().isoformat(),
-            'end_time': last_valid_pose.gps_time.as_utc().isoformat()}
-        )
+            'begin_time': _to_time_str(gps_times[0]),
+            'end_time': _to_time_str(gps_times[1]),
+        })
+
         for pose in pose_data.messages:
             # IMPORTANT: KML heights are specified in MSL, so we convert the ellipsoid heights to orthometric below
             # using the reported geoid undulation (geoid height). Undulation values come from a geoid model, and are not
@@ -193,13 +209,12 @@ Extract position data to both CSV and KML files.
             # the two devices are not exactly the same, the heights may differ by multiple meters.
             #
             # Only write KML entries with valid GPS time.
-            if pose.gps_time.as_utc() is not None:
-                f.write(KML_TEMPLATE % {
-                    'timestamp': pose.gps_time.as_utc().isoformat(),
-                    'solution_type': int(pose.solution_type),
-                    'coordinates': '%.8f,%.8f,%.8f' % (pose.lla_deg[1], pose.lla_deg[0],
-                                                       pose.lla_deg[2] - pose.undulation_m),
-                })
+            f.write(KML_TEMPLATE % {
+                'timestamp': _to_time_str(pose.gps_time),
+                'solution_type': int(pose.solution_type),
+                'coordinates': '%.8f,%.8f,%.8f' % (pose.lla_deg[1], pose.lla_deg[0],
+                                                   pose.lla_deg[2] - pose.undulation_m),
+            })
 
         f.write(KML_TEMPLATE_END)
 
