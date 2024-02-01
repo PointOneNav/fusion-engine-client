@@ -172,31 +172,34 @@ Extract position data to both CSV and KML files.
     logger.info("Generating '%s'." % path)
     with open(path, 'w') as f:
         f.write(KML_TEMPLATE_START)
+
         # Extract the first and last valid position.
         valid_solutions = np.where(pose_data.solution_type != SolutionType.Invalid)[0]
         first_valid_pose = pose_data.messages[valid_solutions[0]]
         last_valid_pose = pose_data.messages[valid_solutions[-1]]
 
-        f.write(KML_TEMPLATE_LOOKAT %
-          {'latitude': first_valid_pose.lla_deg[0],
-          'longitude': first_valid_pose.lla_deg[1],
-          'altitude': first_valid_pose.lla_deg[2] - first_valid_pose.undulation_m,
-          'begin_time': str(first_valid_pose.gps_time.as_utc().isoformat()),
-          'end_time': str(last_valid_pose.gps_time.as_utc().isoformat())}
+        f.write(KML_TEMPLATE_LOOKAT % {
+            'latitude': first_valid_pose.lla_deg[0],
+            'longitude': first_valid_pose.lla_deg[1],
+            'altitude': first_valid_pose.lla_deg[2] - first_valid_pose.undulation_m,
+            'begin_time': first_valid_pose.gps_time.as_utc().isoformat(),
+            'end_time': last_valid_pose.gps_time.as_utc().isoformat()}
         )
         for pose in pose_data.messages:
-          # IMPORTANT: KML heights are specified in MSL, so we convert the ellipsoid heights to orthometric below using
-          # the reported geoid undulation (geoid height). Undulation values come from a geoid model, and are not
-          # typically precise. When analyzing position performance compared with another device, we strongly recommend
-          # that you do the performance using ellipsoid heights. When comparing in MSL, if the geoid models used by the
-          # two devices are not exactly the same, the heights may differ by multiple meters.
-          #
-          # Only write KML entries with valid GPS time.
-          if pose.gps_time.as_utc() is not None:
-            f.write(KML_TEMPLATE %
-                    {'timestamp': '\n'.join([str(pose.gps_time.as_utc().isoformat())]),
+            # IMPORTANT: KML heights are specified in MSL, so we convert the ellipsoid heights to orthometric below
+            # using the reported geoid undulation (geoid height). Undulation values come from a geoid model, and are not
+            # typically precise. When analyzing position performance compared with another device, we strongly recommend
+            # that you do the performance using ellipsoid heights. When comparing in MSL, if the geoid models used by
+            # the two devices are not exactly the same, the heights may differ by multiple meters.
+            #
+            # Only write KML entries with valid GPS time.
+            if pose.gps_time.as_utc() is not None:
+                f.write(KML_TEMPLATE % {
+                    'timestamp': pose.gps_time.as_utc().isoformat(),
                     'solution_type': int(pose.solution_type),
-                    'coordinates': '\n'.join(['%.8f,%.8f,%.8f' % (pose.lla_deg[1], pose.lla_deg[0], pose.lla_deg[2] - pose.undulation_m)])})
+                    'coordinates': '%.8f,%.8f,%.8f' % (pose.lla_deg[1], pose.lla_deg[0],
+                                                       pose.lla_deg[2] - pose.undulation_m),
+                })
 
         f.write(KML_TEMPLATE_END)
 
