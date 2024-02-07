@@ -102,6 +102,12 @@ enum class FaultType : uint8_t {
    * Payload format: `uint8_t` (0=disable, 1=enable)
    */
   QUECTEL_TEST = 6,
+  /**
+   * Modify the navigation integrity status.
+   *
+   * Payload format: `uint8_t` (To be cast into IntegrityStatus enum)
+   */
+  INTEGRITY_STATUS = 7,
 };
 
 /**
@@ -134,6 +140,9 @@ P1_CONSTEXPR_FUNC const char* to_string(FaultType type) {
 
     case FaultType::QUECTEL_TEST:
       return "Quectel Test";
+
+    case FaultType::INTEGRITY_STATUS:
+      return "Integrity Status";
 
     default:
       return "Unrecognized";
