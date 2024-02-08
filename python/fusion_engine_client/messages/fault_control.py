@@ -177,7 +177,7 @@ class FaultControlMessage(MessagePayload):
     @_class_gen.create_payload_class(FaultType.INTEGRITY_STATUS, _class_gen.IntegrityStatusConstruct)
     class IntegrityStatus(_class_gen.IntegrityStatus):
         """!
-        @brief Modify the navigation integrity status.
+        @brief Simulate a specified integrity status failure (intended for factory test purposes only).
         """
         pass
 

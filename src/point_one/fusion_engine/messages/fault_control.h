@@ -103,9 +103,10 @@ enum class FaultType : uint8_t {
    */
   QUECTEL_TEST = 6,
   /**
-   * Modify the navigation integrity status.
+   * Simulate a specified integrity status failure (intended for factory test
+   * purposes only).
    *
-   * Payload format: `uint8_t` (To be cast into IntegrityStatus enum)
+   * Payload format: `uint8_t`
    */
   INTEGRITY_STATUS = 7,
 };
