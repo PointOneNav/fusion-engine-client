@@ -160,7 +160,10 @@ EMSCRIPTEN_BINDINGS(configuration) {
       .value("MAN_TGX", VehicleModel::MAN_TGX)
       .value("FACTION", VehicleModel::FACTION)
       .value("LINCOLN_MKZ", VehicleModel::LINCOLN_MKZ)
-      .value("BMW_7", VehicleModel::BMW_7);
+      .value("BMW_7", VehicleModel::BMW_7)
+      .value("BMW_MOTORRAD", VehicleModel::BMW_MOTORRAD)
+      .value("VW_4", VehicleModel::VW_4)
+      .value("RIVIAN", VehicleModel::RIVIAN);
 
   class_<VehicleDetails>("VehicleDetails")
       .constructor<>()
