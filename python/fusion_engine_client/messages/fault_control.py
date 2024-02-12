@@ -15,6 +15,7 @@ class FaultType(IntEnum):
     ENABLE_GNSS = 4
     REGION_BLACKOUT = 5
     QUECTEL_TEST = 6
+    INTEGRITY_STATUS = 7
 
 
 class CoComType(IntEnum):
@@ -90,6 +91,15 @@ class _FaultPayloadGenerator:
         "value" / AutoEnum(Int8ul, CoComType),
     )
 
+    class IntegerVal(NamedTuple):
+        """!
+        @brief Integer value specifier.
+        """
+        value: int = 0
+
+    UInt8Construct = Struct(
+        "value" / Int8ul,
+    )
 
 _class_gen = _FaultPayloadGenerator()
 
@@ -161,6 +171,13 @@ class FaultControlMessage(MessagePayload):
     class QuectelTest(_class_gen.Bool):
         """!
         @brief Enable/disable Quectel test features (intended for factory test purposes only).
+        """
+        pass
+
+    @_class_gen.create_payload_class(FaultType.INTEGRITY_STATUS, _class_gen.UInt8Construct)
+    class IntegrityStatus(_class_gen.IntegerVal):
+        """!
+        @brief Simulate a specified integrity status failure (intended for factory test purposes only).
         """
         pass
 
