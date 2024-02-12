@@ -625,8 +625,8 @@ class DataLoader(object):
     def _convert_time(self, conversion_type: TimeConversionType,
                       times: Union[Iterable[Union[datetime, gpstime, Timestamp, float]],
                                    Union[datetime, gpstime, Timestamp, float]],
-                      assume_utc: bool = False) ->\
-            np.ndarray:
+                      assume_utc: bool = False, return_timestamp: bool = False) ->\
+            Union[np.ndarray, Timestamp]:
         """!
         @brief Convert UTC or GPS timestamps to P1 time or Convert UTC or P1 timestamps to GPS time.
 
@@ -643,8 +643,11 @@ class DataLoader(object):
                  seconds.
                - For `datetime`, if `tzinfo` is not set, assume it is `timezone.utc`. Otherwise, interpret the timestamp
                  in the local timezone.
+        @param return_timestamp If `True`, return `Timestamp` objects instead of floating point values.
 
-        @return A numpy array containing time values (in seconds), or `nan` if the value could not be converted.
+        @return If `return_timestamp == False`, a numpy array containing time values (in seconds), or `nan` if the value
+                could not be converted. If `return_timestamp == True`, a list of @ref
+                fusion_engine_client.messages.timestamps.Timestamp objects.
         """
         # Load pose messages, which contain the relationship between P1 and GPS time. Omit any NAN values from the
         # reference timestamps.
@@ -721,10 +724,10 @@ class DataLoader(object):
                 if p1_ref_sec is None:
                     time_sec[gps_idx] = np.nan
                 else:
-                    # The relationship between P1 time and GPS time should not change rapidly since P1 time is rate-steered
-                    # to align with GPS time. As a result, it should be safe to extrapolate between gaps in P1 or GPS times,
-                    # as long as the gaps aren't extremely large. NumPy's interp() function does not extrapolate, so we
-                    # instead use SciPy's function.
+                    # The relationship between P1 time and GPS time should not change rapidly since P1 time is
+                    # rate-steered to align with GPS time. As a result, it should be safe to extrapolate between gaps in
+                    # P1 or GPS times, as long as the gaps aren't extremely large. NumPy's interp() function does not
+                    # extrapolate, so we instead use SciPy's function.
                     f = sp.interpolate.interp1d(gps_ref_sec, p1_ref_sec, fill_value='extrapolate')
                     time_sec[gps_idx] = f(time_sec[gps_idx])
         elif conversion_type == TimeConversionType.P1_TO_GPS:
@@ -737,16 +740,17 @@ class DataLoader(object):
                     f = sp.interpolate.interp1d(p1_ref_sec, gps_ref_sec, fill_value='extrapolate')
                     time_sec[p1_idx] = f(time_sec[p1_idx])
 
+        result = [Timestamp(t) for t in time_sec] if return_timestamp else time_sec
         if return_scalar:
-            return time_sec[0]
+            return result[0]
         else:
-            return time_sec
+            return result
 
     def convert_to_p1_time(self,
                            times: Union[Iterable[Union[datetime, gpstime, Timestamp, float]],
                                         Union[datetime, gpstime, Timestamp, float]],
-                           assume_utc: bool = False) ->\
-            np.ndarray:
+                           assume_utc: bool = False, return_timestamp: bool = False) ->\
+            Union[np.ndarray, Timestamp]:
         """!
         @brief Convert UTC or GPS timestamps to P1 time.
 
@@ -762,16 +766,18 @@ class DataLoader(object):
                  seconds.
                - For `datetime`, if `tzinfo` is not set, assume it is `timezone.utc`. Otherwise, interpret the timestamp
                  in the local timezone.
+        @param return_timestamp If `True`, return `Timestamp` objects instead of floating point values.
 
         @return A numpy array containing P1 time values (in seconds), or `nan` if the value could not be converted.
         """
-        return self._convert_time(conversion_type=TimeConversionType.GPS_TO_P1, times=times, assume_utc=assume_utc)
+        return self._convert_time(conversion_type=TimeConversionType.GPS_TO_P1, times=times, assume_utc=assume_utc,
+                                  return_timestamp=return_timestamp)
 
     def convert_to_gps_time(self,
                             times: Union[Iterable[Union[datetime, gpstime, Timestamp, float]],
                                          Union[datetime, gpstime, Timestamp, float]],
-                            assume_utc: bool = False) ->\
-            np.ndarray:
+                            assume_utc: bool = False, return_timestamp: bool = False) ->\
+            Union[np.ndarray, Timestamp]:
         """!
         @brief Convert UTC or P1 timestamps to GPS time.
 
@@ -787,10 +793,12 @@ class DataLoader(object):
                  seconds.
                - For `datetime`, if `tzinfo` is not set, assume it is `timezone.utc`. Otherwise, interpret the timestamp
                  in the local timezone.
+        @param return_timestamp If `True`, return `Timestamp` objects instead of floating point values.
 
         @return A numpy array containing GPS time values (in seconds), or `nan` if the value could not be converted.
         """
-        return self._convert_time(conversion_type=TimeConversionType.P1_TO_GPS, times=times, assume_utc=assume_utc)
+        return self._convert_time(conversion_type=TimeConversionType.P1_TO_GPS, times=times, assume_utc=assume_utc,
+                                  return_timestamp=return_timestamp)
 
     @classmethod
     def time_align_data(cls, data: dict, mode: TimeAlignmentMode = TimeAlignmentMode.INSERT,
