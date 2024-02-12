@@ -91,13 +91,13 @@ class _FaultPayloadGenerator:
         "value" / AutoEnum(Int8ul, CoComType),
     )
 
-    class IntegrityStatus(NamedTuple):
+    class IntegerVal(NamedTuple):
         """!
-        @brief Integrity status specifier.
+        @brief Integer value specifier.
         """
-        value: Int8ul
+        value: int = 0
 
-    IntegrityStatusConstruct = Struct(
+    UInt8Construct = Struct(
         "value" / Int8ul,
     )
 
@@ -174,8 +174,8 @@ class FaultControlMessage(MessagePayload):
         """
         pass
 
-    @_class_gen.create_payload_class(FaultType.INTEGRITY_STATUS, _class_gen.IntegrityStatusConstruct)
-    class IntegrityStatus(_class_gen.IntegrityStatus):
+    @_class_gen.create_payload_class(FaultType.INTEGRITY_STATUS, _class_gen.UInt8Construct)
+    class IntegrityStatus(_class_gen.IntegerVal):
         """!
         @brief Simulate a specified integrity status failure (intended for factory test purposes only).
         """
