@@ -11,8 +11,9 @@ class HostTimeByteMapper:
 
     A "host time" is the Unix time in seconds.
 
-    This class reads a `*_host_times.bin` file from disk containing. This can then be used to associate messages with
-    host times by there byte offset into their data files.
+    This class reads a `*_host_times.bin` file from disk containing the host time that the byte offsets in a file were
+    received. This can then be used to associate messages with host times they were received. For instance,
+    python/fusion_engine_client/applications/p1_dump_pcap.py generates the host times TCP data was received.
     """
 
     # [Host Posix Time in Seconds, Log Byte Offset]
@@ -71,5 +72,8 @@ class HostTimeByteMapper:
         for i, offset in enumerate(msg_offsets):
             while offset > self.data[host_idx][1]:
                 host_idx += 1
+                if host_idx == len(self.data):
+                    host_times[i:] = np.nan
+                    return host_times
             host_times[i] = self.data[host_idx][0]
         return host_times

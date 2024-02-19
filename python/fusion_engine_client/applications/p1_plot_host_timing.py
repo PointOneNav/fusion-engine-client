@@ -20,14 +20,14 @@ from ..utils.log import DEFAULT_LOG_BASE_DIR, locate_log
 from ..utils.time_range import TimeRange
 from ..utils.trace import BrokenPipeStreamHandler, HighlightFormatter
 
-_logger = logging.getLogger('point_one.fusion_engine.applications.print_contents')
+_logger = logging.getLogger('point_one.fusion_engine.applications.plot_host_timing')
 
 
 def main():
     parser = ArgumentParser(description="""\
-Decode and print the contents of messages contained in a *.p1log file or other
-binary file containing FusionEngine messages. The binary file may also contain
-other types of data.
+Generate plots of host time intervals for FE messages.
+Requires a `*_host_times.bin` file was generated during the collection. For instance,
+python/fusion_engine_client/applications/p1_dump_pcap.py generates the host times TCP data was received.
 """)
 
     parser.add_argument(
