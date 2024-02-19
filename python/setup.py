@@ -27,6 +27,7 @@ message_requirements = set([
 
 tools_requirements = set([
     'argparse-formatter>=1.4',
+    'scapy>=2.5.0',
     'scipy>=1.5.0',
 ])
 
@@ -83,6 +84,7 @@ for the latest FusionEngine message specification.
         'console_scripts': [
             'p1_display = fusion_engine_client.applications.p1_display:main',
             'p1_dump_p1bin = fusion_engine_client.applications.p1_dump_p1bin:main',
+            'p1_dump_pcap = fusion_engine_client.applications.p1_dump_pcap:main',
             'p1_dump_storage = fusion_engine_client.applications.p1_dump_storage:main',
             'p1_extract = fusion_engine_client.applications.p1_extract:main',
             'p1_lband_extract = fusion_engine_client.applications.p1_lband_extract:main',
