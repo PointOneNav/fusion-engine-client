@@ -50,9 +50,17 @@ def _search_blocks_for_fe(input_path: str, block_starts: List[int]):
             if len(data) == _READ_SIZE_BYTES + _MAX_FE_MSG_SIZE_BYTES:
                 word_count = int(_READ_SIZE_BYTES / 2)
             # The last read on the last thread will run out of data, so read
-            # whatever is left.
-            else:
+            # whatever is left. If the amount left is less then the overlap
+            # space (and this wasn't the first thread), this data will already
+            # have been processed by another thread with the `elif len(data) >=
+            # _MAX_FE_MSG_SIZE_BYTES` branch.
+            elif block_offset == 0 or len(data) >= _MAX_FE_MSG_SIZE_BYTES:
                 word_count = int(len(data) / 2) - 1
+            # If the amount left is less then the overlap space, this data will
+            # already have been processed by another thread with the `elif
+            # len(data) >= _MAX_FE_MSG_SIZE_BYTES` branch.
+            else:
+                break
 
             # This is a fairly optimized search for preamble matches.
             # Allocate space for all the message offsets to check.
