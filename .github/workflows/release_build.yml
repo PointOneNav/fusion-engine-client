@@ -282,7 +282,6 @@ jobs:
         pip install packaging
         python3 docs/update_versions.py ${GIT_TAG}
         doxygen Doxyfile.version
-        cp docs/include_header.js docs/html/
         tar czf fusion-engine-client-docs.tar.gz docs/html --transform 's|^docs/html|fusion-engine-client/docs/html|'
         tar czf version-docs.tar.gz docs/include_header.js docs/versions.html
 
