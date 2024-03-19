@@ -423,3 +423,4 @@ jobs:
       with:
         password: ${{ secrets.PYPI_API_TOKEN }}
         packages_dir: python/dist/
+        verbose: true
