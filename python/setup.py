@@ -79,6 +79,7 @@ for the latest FusionEngine message specification.
         'Topic :: Software Development :: Libraries :: Python Modules',
     ],
     url='https://github.com/PointOneNav/fusion-engine-client',
+    download_url=f'https://github.com/PointOneNav/fusion-engine-client/archive/refs/tags/v{version}.tar.gz',
     packages=find_packages(where='.'),
     entry_points={
         'console_scripts': [
