@@ -40,8 +40,66 @@ class SatelliteTypeMask:
     ALL = 0xFFFFFFFF
 
 
+def _get_signal_type_offset(system: SatelliteType) -> int:
+    return 16 * int(system)
+
+
 class SignalType(IntEnum):
     UNKNOWN = 0
+
+    GPS_L1CA = 16
+    GPS_L1P = 17
+    GPS_L1C = 18
+    GPS_L2C = 20
+    GPS_L2P = 21
+    GPS_L5 = 24
+
+    GLO_L1CA = 32
+    GLO_L1P = 33
+    GLO_L2CA = 36
+    GLO_L2P = 37
+
+    GAL_E1A = 64
+    GAL_E1BC = 65
+    GAL_E5B = 68
+    GAL_E5A = 72
+    GAL_E6A = 76
+    GAL_E6BC = 77
+
+    BDS_B1I = 80
+    BDS_B1C = 81
+    BDS_B2I = 84
+    BDS_B2B = 85
+    BDS_B2A = 88
+    BDS_B3 = 92
+
+    @classmethod
+    def get_offset(cls, system: SatelliteType) -> int:
+        return _get_signal_type_offset(system)
+
+
+@enum_bitmask(SignalType, offset=SignalType.get_offset(SatelliteType.GPS),
+              predicate=lambda x: str(x).startswith('GPS'))
+class GPSSignalTypeMask:
+    ALL = 0xFFFF
+
+
+@enum_bitmask(SignalType, offset=SignalType.get_offset(SatelliteType.GLONASS),
+              predicate=lambda x: str(x).startswith('GLO'))
+class GLOSignalTypeMask:
+    ALL = 0xFFFF
+
+
+@enum_bitmask(SignalType, offset=SignalType.get_offset(SatelliteType.GALILEO),
+              predicate=lambda x: str(x).startswith('GAL'))
+class GALSignalTypeMask:
+    ALL = 0xFFFF
+
+
+@enum_bitmask(SignalType, offset=SignalType.get_offset(SatelliteType.BEIDOU),
+              predicate=lambda x: str(x).startswith('BDS'))
+class BDSSignalTypeMask:
+    ALL = 0xFFFF
 
 
 class FrequencyBand(IntEnum):
