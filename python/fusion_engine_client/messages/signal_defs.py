@@ -49,7 +49,7 @@ class SatelliteTypeMask(IntEnum):
     ALL = 0xFFFFFFFF
 
     @classmethod
-    def to_bit_mask(cls, systems: List[Union[SatelliteType, str]]):
+    def to_bitmask(cls, systems: List[Union[SatelliteType, str]]):
         mask = 0
         for system in systems:
             if isinstance(system, str):
@@ -59,7 +59,7 @@ class SatelliteTypeMask(IntEnum):
         return mask
 
     @classmethod
-    def bit_mask_to_systems(cls, mask: int):
+    def bitmask_to_values(cls, mask: int):
         systems = []
         for system in SatelliteType:
             if (mask & (1 << int(system))) != 0:
@@ -67,9 +67,9 @@ class SatelliteTypeMask(IntEnum):
         return systems
 
     @classmethod
-    def bit_mask_to_string(cls, mask: int):
-        systems = cls.bit_mask_to_systems(mask)
-        return ', '.join(str(s) for s in systems)
+    def bitmask_to_string(cls, mask: int):
+        values = cls.bitmask_to_values(mask)
+        return ', '.join(str(s) for s in values)
 
 
 class SignalType(IntEnum):
@@ -93,7 +93,7 @@ class FrequencyBandMask(IntEnum):
     ALL = 0xFFFFFFFF
 
     @classmethod
-    def to_bit_mask(cls, frequencies: List[Union[FrequencyBand, str]]):
+    def to_bitmask(cls, frequencies: List[Union[FrequencyBand, str]]):
         mask = 0
         for freq in frequencies:
             if isinstance(freq, str):
@@ -103,7 +103,7 @@ class FrequencyBandMask(IntEnum):
         return mask
 
     @classmethod
-    def bit_mask_to_systems(cls, mask: int):
+    def bitmask_to_values(cls, mask: int):
         frequencies = []
         for freq in FrequencyBand:
             if (mask & (1 << int(freq))) != 0:
@@ -111,9 +111,9 @@ class FrequencyBandMask(IntEnum):
         return frequencies
 
     @classmethod
-    def bit_mask_to_string(cls, mask: int):
-        systems = cls.bit_mask_to_systems(mask)
-        return ', '.join(str(s) for s in systems)
+    def bitmask_to_string(cls, mask: int):
+        values = cls.bitmask_to_values(mask)
+        return ', '.join(str(s) for s in values)
 
 
 _SHORT_FORMAT = re.compile(r'([%s])(\d+)(?:\s+(\w+))?' % ''.join(SatelliteTypeCharReverse.keys()))

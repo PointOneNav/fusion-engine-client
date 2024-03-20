@@ -436,11 +436,11 @@ class _ConfigClassGenerator:
                 # SatelliteTypeMaskVal(SatelliteType.GPS)
                 # SatelliteTypeMaskVal('GPS')
                 if isinstance(args[0], SatelliteType) or isinstance(args[0], str):
-                    args = (SatelliteTypeMask.to_bit_mask(args),)
+                    args = (SatelliteTypeMask.to_bitmask(args),)
                 # SatelliteTypeMaskVal([SatelliteType.GPS, SatelliteType.GALILEO])
                 # SatelliteTypeMaskVal(['GPS', 'GALILEO'])
                 elif isinstance(args[0], Iterable):
-                    args = (SatelliteTypeMask.to_bit_mask(args[0])),
+                    args = (SatelliteTypeMask.to_bitmask(args[0])),
                 # SatelliteTypeMaskVal(bit_mask)
                 else:
                     pass
@@ -448,13 +448,13 @@ class _ConfigClassGenerator:
             #   SatelliteTypeMaskVal(SatelliteType.GPS, SatelliteType.GALILEO)
             #   SatelliteTypeMaskVal('GPS', 'GALILEO')
             elif len(args) > 1:
-                args = (SatelliteTypeMask.to_bit_mask(args),)
+                args = (SatelliteTypeMask.to_bitmask(args),)
 
             return super().__new__(cls, *args, **kwargs)
 
         def __repr__(self):
             return f'{self.__class__.__name__}(value=0x{self.value:02x} ' \
-                   f'({SatelliteTypeMask.bit_mask_to_string(self.value)}))'
+                   f'({SatelliteTypeMask.bitmask_to_string(self.value)}))'
 
     class FrequencyBandMaskVal(IntegerVal):
         """!
@@ -466,11 +466,11 @@ class _ConfigClassGenerator:
                 # FrequencyBandMaskVal(FrequencyBand.L1)
                 # FrequencyBandMaskVal('L1')
                 if isinstance(args[0], FrequencyBand) or isinstance(args[0], str):
-                    args = (FrequencyBandMask.to_bit_mask(args),)
+                    args = (FrequencyBandMask.to_bitmask(args),)
                 # FrequencyBandMaskVal([FrequencyBand.L1, FrequencyBand.L5])
                 # FrequencyBandMaskVal(['L1', 'L5'])
                 elif isinstance(args[0], Iterable):
-                    args = (FrequencyBandMask.to_bit_mask(args[0])),
+                    args = (FrequencyBandMask.to_bitmask(args[0])),
                 # FrequencyBandMaskVal(bit_mask)
                 else:
                     pass
@@ -478,13 +478,13 @@ class _ConfigClassGenerator:
             #   FrequencyBandMaskVal(FrequencyBand.L1, FrequencyBand.L5)
             #   FrequencyBandMaskVal('L1', 'L5')
             elif len(args) > 1:
-                args = (FrequencyBandMask.to_bit_mask(args),)
+                args = (FrequencyBandMask.to_bitmask(args),)
 
             return super().__new__(cls, *args, **kwargs)
 
         def __repr__(self):
             return f'{self.__class__.__name__}(value=0x{self.value:02x} ' \
-                   f'({FrequencyBandMask.bit_mask_to_string(self.value)}))'
+                   f'({FrequencyBandMask.bitmask_to_string(self.value)}))'
 
     class CoarseOrientation(NamedTuple):
         """!
