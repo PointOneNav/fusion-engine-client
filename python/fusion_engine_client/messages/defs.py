@@ -11,6 +11,7 @@ from .measurement_details import *
 from .signal_defs import *
 from .timestamp import *
 from ..utils import trace as logging
+from ..utils.construct_utils import construct_message_to_string
 from ..utils.enum_utils import IntEnum
 
 _logger = logging.getLogger('point_one.fusion_engine.messages.defs')
@@ -538,10 +539,31 @@ class MessagePayload:
         return inspect.isclass(obj) and issubclass(obj, MessagePayload)
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
-        raise NotImplementedError('pack() not implemented.')
+        construct = getattr(self.__class__, 'Construct', None)
+        if construct is not None:
+            values = vars(self)
+            packed_data = construct.build(values)
+            return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
+        else:
+            raise NotImplementedError('pack() not implemented.')
 
     def unpack(self, buffer: bytes, offset: int = 0, message_version: int = _UNSPECIFIED_VERSION) -> int:
-        raise NotImplementedError('unpack() not implemented.')
+        construct = getattr(self.__class__, 'Construct', None)
+        if construct is not None:
+            parsed = construct.parse(buffer[offset:])
+            self.__dict__.update(parsed)
+            del self.__dict__['_io']
+            return parsed._io.tell()
+        else:
+            raise NotImplementedError('unpack() not implemented.')
+
+    @classmethod
+    def calcsize(cls) -> int:
+        construct = getattr(cls, 'Construct', None)
+        if construct is not None:
+            return construct.sizeof()
+        else:
+            raise NotImplementedError('calcsize() not implemented.')
 
     def get_p1_time(self) -> Timestamp:
         measurement_details = getattr(self, 'details', None)
@@ -586,7 +608,14 @@ class MessagePayload:
         return result
 
     def __str__(self):
-        return repr(self)
+        construct = getattr(self.__class__, 'Construct', None)
+        if construct is not None:
+            title = self.__class__.__name__
+            if hasattr(self, 'p1_time'):
+                title += f' @ {self.p1_time}'
+            return construct_message_to_string(message=self, title=title)
+        else:
+            return repr(self)
 
     @classmethod
     def pack_values(cls, format: Union[str, struct.Struct], buffer: bytes, offset: int = 0, *args):
