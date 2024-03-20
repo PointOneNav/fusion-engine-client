@@ -2,7 +2,7 @@ import inspect
 import re
 import struct
 import sys
-from typing import Dict, List, Optional, Set, Type, Union
+from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Type, Union
 from zlib import crc32
 
 import numpy as np
@@ -685,6 +685,47 @@ class MessagePayload:
                 value_idx += 1
 
         return size
+
+    @classmethod
+    def to_numpy(cls, messages: Sequence['MessagePayload']):
+        return cls._message_to_numpy(messages)
+
+    @classmethod
+    def _message_to_numpy(cls,
+                          messages: Sequence['MessagePayload'],
+                          fields: Optional[Sequence[str]] = None,
+                          value_to_array: Optional[Dict[str, Callable[[List[Any]], np.ndarray]]] = None) -> \
+            Dict[str, np.ndarray]:
+        if fields is None:
+            if len(messages) > 0:
+                fields = sorted(messages[0].__dict__.keys())
+            elif cls is not MessagePayload:
+                instance = cls()
+                fields = sorted(instance.__dict__.keys())
+            else:
+                raise RuntimeError('Cannot infer message fields.')
+
+        if len(messages) == 0:
+            return {f: np.array(()) for f in fields}
+
+        if value_to_array is None:
+            value_to_array = {}
+
+        def _generic_value_to_array(values):
+            if isinstance(values[0], np.ndarray) and len(values[0]) > 1:
+                return np.array(values).T
+            elif isinstance(values[0], Timestamp):
+                return np.array([float(v) for v in values])
+            else:
+                return np.array(values)
+
+        result = {}
+        for field in fields:
+            to_array = value_to_array.get(field, _generic_value_to_array)
+            values = [getattr(m, field) for m in messages]
+            result[field] = to_array(values)
+
+        return result
 
 
 def PackedDataToBuffer(packed_data: bytes, buffer: Optional[bytes] = None, offset: int = 0,
