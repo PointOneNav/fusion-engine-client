@@ -610,12 +610,17 @@ class MessagePayload:
     def __str__(self):
         construct = getattr(self.__class__, 'Construct', None)
         if construct is not None:
+            return self._construct_str_impl()
+        else:
+            return repr(self)
+
+    def _construct_str_impl(self, **kwargs):
+        if 'title' not in kwargs:
             title = self.__class__.__name__
             if hasattr(self, 'p1_time'):
                 title += f' @ {self.p1_time}'
-            return construct_message_to_string(message=self, title=title)
-        else:
-            return repr(self)
+            kwargs['title'] = title
+        return construct_message_to_string(message=self, **kwargs)
 
     @classmethod
     def pack_values(cls, format: Union[str, struct.Struct], buffer: bytes, offset: int = 0, *args):
