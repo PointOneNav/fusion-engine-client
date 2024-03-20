@@ -1,8 +1,10 @@
+from functools import reduce
 import math
 import re
 from typing import Optional
 
-from construct import Adapter, Enum, Struct
+from construct import Adapter, Array, Enum, Float64l, Float32l, FormatField, Struct
+import numpy as np
 
 from .enum_utils import IntEnum
 
@@ -30,6 +32,51 @@ class FixedPointAdapter(Adapter):
             return self.invalid
         else:
             return int(round(obj / self.scale))
+
+
+class NumpyAdapter(Adapter):
+    def __init__(self, shape, dtype=None, construct_type=Float64l):
+        if dtype is None:
+            if construct_type is Float64l or construct_type is Float32l:
+                dtype = float
+            elif isinstance(construct_type, FormatField) and construct_type.fmtstr[1].lower() in 'bhlq':
+                dtype = int
+            else:
+                raise ValueError(f"Unable to infer numpy dtype from construct type {repr(construct_type)}.")
+
+        if construct_type is None:
+            if dtype is float or dtype is np.float:
+                # Assuming all floats are transmitted as 64-bit little endian by default.
+                construct_type = Float64l
+            else:
+                raise ValueError(f"Unable to infer serialized data type from numpy dtype {repr(dtype)}.")
+
+        if isinstance(shape, int):
+            shape = (shape,)
+
+        num_elements = reduce(lambda x, y: x * y, shape)
+        super().__init__(subcon=Array(num_elements, construct_type))
+
+        self.shape = shape
+        self.dtype = dtype
+
+    def _decode(self, obj, context, path):
+        return np.array(obj, dtype=self.dtype).reshape(self.shape)
+
+    def _encode(self, obj, context, path):
+        # Multi-dimensional arrays will be flattened an row-major order:
+        #   [[1, 2, 3],
+        #    [4, 5, 6]]
+        # becomes
+        #   [1, 2, 3, 4, 5, 6]
+        if isinstance(obj, np.ndarray):
+            return obj.astype(self.dtype).flatten().tolist()
+        else:
+            # Handle the case where the user passes in a list or tuple instead of a numpy array.
+            if len(self.shape) == 1:
+                return obj
+            else:
+                return np.array(obj, shape=self.shape, dtype=self.dtype).flatten().tolist()
 
 
 class NamedTupleAdapter(Adapter):
