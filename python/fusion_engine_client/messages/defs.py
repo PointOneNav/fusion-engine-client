@@ -94,6 +94,7 @@ class MessageType(IntEnum):
 
     # Device status messages.
     SYSTEM_STATUS = 10500
+    SSR_STATUS = 10501
 
     # Sensor measurement messages.
     IMU_OUTPUT = 11000

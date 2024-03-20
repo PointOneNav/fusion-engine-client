@@ -44,6 +44,7 @@ enum class MessageType : uint16_t {
 
   // Device status messages.
   SYSTEM_STATUS = 10500, ///< @ref SystemStatusMessage
+  SSR_STATUS = 10501, ///< @ref SSRStatusMessage
 
   // Sensor measurement messages.
   IMU_OUTPUT = 11000, ///< @ref IMUOutput
@@ -142,6 +143,9 @@ P1_CONSTEXPR_FUNC const char* to_string(MessageType type) {
     // Device status messages.
     case MessageType::SYSTEM_STATUS:
       return "System Status";
+
+    case MessageType::SSR_STATUS:
+      return "SSR Status";
 
     // Sensor measurement messages.
     case MessageType::IMU_OUTPUT:

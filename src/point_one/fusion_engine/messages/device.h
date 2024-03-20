@@ -27,6 +27,49 @@ namespace messages {
  */
 
 /**
+ * @brief RTCM output source types.
+ * @ingroup device_status
+ */
+enum class RTKOutputSource : uint8_t {
+  /** No RTCM output available. */
+  NONE = 0,
+  /** RTCM output received from an incoming base station. */
+  OSR = 1,
+  /** RTCM output generated SSR model data. */
+  SSR = 2,
+};
+
+/**
+ * @brief Get a human-friendly string name for the specified @ref
+ *        RTKOutputSource.
+ * @ingroup device_status
+ *
+ * @param source The enum to get the string name for.
+ *
+ * @return The corresponding string name.
+ */
+P1_CONSTEXPR_FUNC const char* to_string(RTKOutputSource source) {
+  switch (source) {
+    case RTKOutputSource::NONE:
+      return "NONE";
+    case RTKOutputSource::OSR:
+      return "OSR";
+    case RTKOutputSource::SSR:
+      return "SSR";
+  }
+  return "Unknown";
+}
+
+/**
+ * @brief @ref RTKOutputSource stream operator.
+ * @ingroup device_status
+ */
+inline p1_ostream& operator<<(p1_ostream& stream, RTKOutputSource source) {
+  stream << to_string(source) << " (" << (int)source << ")";
+  return stream;
+}
+
+/**
  * @brief System status information (@ref
  *        MessageType::SYSTEM_STATUS, version 1.0).
  * @ingroup device_status
@@ -53,6 +96,324 @@ struct P1_ALIGNAS(4) SystemStatusMessage : public MessagePayload {
   int16_t gnss_temperature = INVALID_TEMPERATURE;
 
   uint8_t reserved[118] = {0};
+};
+
+/**
+ * @brief State-space representation (SSR) GNSS corrections status (@ref
+ *        MessageType::SSR_STATUS, version 1.0).
+ * @ingroup device_status
+ */
+struct P1_ALIGNAS(4) SSRStatusMessage : public MessagePayload {
+  static constexpr MessageType MESSAGE_TYPE = MessageType::SSR_STATUS;
+  static constexpr uint8_t MESSAGE_VERSION = 0;
+
+  static constexpr uint16_t INVALID_STATION_ID = 0xFFFF;
+  static constexpr uint8_t INVALID_GRID_ID = 0xFF;
+
+  /**
+   * The time of the message, in P1 time (beginning at power-on).
+   *
+   * @note
+   * Only used for status of SSR data used within a navigation engine; not
+   * applicable for standalone SSR clients. Use @ref system_time_ns instead.
+   */
+  Timestamp p1_time;
+
+  /** The current system timestamp (in ns). */
+  int64_t system_time_ns = 0;
+
+  /**
+   * @name RTCM Output Status
+   * @{
+   */
+
+  /**
+   * The GPS time corresponding with the most recently output corrections data.
+   */
+  Timestamp output_gps_time;
+  /**
+   * The source of the most recent output RTCM corrections data.
+   */
+  RTKOutputSource output_source = RTKOutputSource::NONE;
+  uint8_t reserved1 = 0;
+  /**
+   * The RTCM base station ID contained in the most recent corrections data.
+   */
+  uint16_t output_station_id = INVALID_STATION_ID;
+
+  /** The base station longitude (in degrees). */
+  double base_latitude_deg = NAN;
+  /** The base station latitude (in degrees). */
+  double base_longitude_deg = NAN;
+  /** The base station altitude (in meters). */
+  double base_altitude_m = NAN;
+
+  /** The number of satellites present in the most recent corrections data. */
+  uint8_t num_satellites = 0;
+  /** The number of GNSS signals present in the most recent corrections data. */
+  uint8_t num_signals = 0;
+
+  /**
+   * A bitmask indicating which GNSS constellations are present in the generated
+   * corrections data.
+   *
+   * Bit offsets corresponding withe @ref SatelliteType enum values for each
+   * constellation.
+   *
+   *  Bit  | Description
+   * ----- | -----------
+   *   0   | _Reserved for future use_
+   *   1   | GPS
+   *   2   | GLONASS
+   *   3   | _Reserved for future use_
+   *   4   | Galileo
+   *   5   | BeiDou
+   *   6   | QZSS
+   *   7   | _Reserved for future use_
+   *   8   | SBAS
+   *   9   | IRNSS
+   * 10-15 | _Reserved for future use_
+   */
+  uint16_t gnss_systems_mask = 0x0;
+
+  /**
+   * A bitmask indicating which GPS signal types are present in the generated
+   * corrections data.
+   *
+   *  Bit  | Description
+   * ----- | -----------
+   *   0   | L1 C/A
+   *   1   | L1P
+   *   2   | L1C
+   *   3   | _Reserved for future use_
+   *   4   | L2C
+   *   5   | L2P
+   *  6-7  | _Reserved for future use_
+   *   8   | L5
+   *  9-15 | _Reserved for future use_
+   */
+  uint16_t gps_signal_types_mask = 0x0;
+
+  /**
+   * A bitmask indicating which GLONASS signal types are present in the
+   * generated corrections data.
+   *
+   *  Bit  | Description
+   * ----- | -----------
+   *   0   | L1 C/A
+   *   1   | L1P
+   *  2-3  | _Reserved for future use_
+   *   4   | L2 C/A
+   *   5   | L2P
+   *  6-15 | _Reserved for future use_
+   */
+  uint16_t glo_signal_types_mask = 0x0;
+
+  /**
+   * A bitmask indicating which Galileo signal types are present in the
+   * generated corrections data.
+   *
+   *  Bit  | Description
+   * ----- | -----------
+   *   0   | E1-A
+   *   1   | E1-BC
+   *  2-3  | _Reserved for future use_
+   *   4   | E5b
+   *  5-7  | _Reserved for future use_
+   *   8   | E5a
+   *  9-11 | _Reserved for future use_
+   *  12   | E6-A
+   *  13   | E6-BC
+   * 14-15 | _Reserved for future use_
+   */
+  uint16_t gal_signal_types_mask = 0x0;
+
+  /**
+   * A bitmask indicating which BeiDou signal types are present in the
+   * generated corrections data.
+   *
+   *  Bit  | Description
+   * ----- | -----------
+   *   0   | B1I
+   *   1   | B1C
+   *  2-3  | _Reserved for future use_
+   *   4   | B2I
+   *   5   | B2b
+   *  6-7  | _Reserved for future use_
+   *   8   | B2a
+   *  9-11 | _Reserved for future use_
+   *  12   | B3
+   * 13-15 | _Reserved for future use_
+   */
+  uint16_t bds_signal_types_mask = 0x0;
+
+  uint8_t reserved2[8] = {0};
+
+  /** @} */
+
+  /**
+   * @name Satellite Ephemeris Status
+   * @{
+   */
+
+  /**
+   * The number of GPS satellites for which ephemeris data is available (may
+   * include satellites that are not currently visible).
+   */
+  uint8_t num_gps_ephemeris = 0;
+  /**
+   * The number of GLONASS satellites for which ephemeris data is available (may
+   * include satellites that are not currently visible).
+   */
+  uint8_t num_glo_ephemeris = 0;
+  /**
+   * The number of Galileo satellites for which ephemeris data is available (may
+   * include satellites that are not currently visible).
+   */
+  uint8_t num_gal_ephemeris = 0;
+  /**
+   * The number of BeiDou satellites for which ephemeris data is available (may
+   * include satellites that are not currently visible).
+   */
+  uint8_t num_bds_ephemeris = 0;
+
+  uint8_t reserved3[4] = {0};
+
+  /** @} */
+
+  /**
+   * @name Incoming OSR Base Station Data Status
+   * @{
+   */
+
+  /**
+   * A bitmask indicating the status of incoming OSR corrections data from an
+   * external base station RTCM data stream.
+   *
+   *  Bit  | Description
+   * ----- | -----------
+   *   0   | (Real) OSR corrections data available
+   *  1-15 | _Reserved for future use_
+   */
+  uint16_t osr_data_status = 0x0;
+
+  uint8_t reserved4[2] = {0};
+
+  /** @} */
+
+  /**
+   * @name Incoming SSR Model Data Status
+   * @{
+   */
+
+  /**
+   * A bitmask indicating the status of incoming SSR corrections data.
+   *
+   *  Bit  | Description
+   * ----- | -----------
+   *   0   | SSR model data ready for OSR generation
+   *  1-15 | _Reserved for future use_
+   */
+  uint16_t ssr_data_status = 0x0;
+
+  uint8_t reserved5 = 0;
+
+  /**
+   * The identifier of the local SSR corrections grid currently in use.
+   */
+  uint8_t ssr_grid_id = INVALID_GRID_ID;
+
+  /**
+   * A bitmask indicating which SSR model components are enabled for the current
+   * corrections region.
+   *
+   * The following table describes the bit definitions used by this mask, and by
+   * the component status masks in this structure (@ref ssr_decode_status_mask_,
+   * @ref ssr_model_status_mask_).
+   *
+   *  Bit  | Description
+   * ----- | -----------
+   *   0   | SSR network metadata
+   *   1   | Grid definition
+   *   2   | Satellite group definition
+   *   3   | Geoid model data
+   *   4   | Antenna corrections data (ATX)
+   *   5   | High-rate satellite corrections data
+   *   6   | Low-rate satellite corrections data
+   *   7   | Global per-satellite ionosphere (GSI) data
+   *   8   | Gridded per-satellite ionosphere (GRI) data
+   *   9   | Gridded troposphere (GRT) data
+   *  10   | Regional per-satellite ionosphere (RSI) data
+   *  11   | Global vertical ionosphere delay (GVI) data
+   *  12   | Regional troposphere (RT) data
+   * 13-15 | _Reserved for future use_
+   */
+  uint16_t ssr_enabled_component_mask = 0x0;
+
+  /**
+   * A bitmask indicating the status of the individual SSR component models
+   * (0 = model data not available/expired, 1 = model data usable).
+   *
+   * See @ref ssr_enabled_component_mask_ for bit definitions. Synthetic OSR
+   * generation is ready when the bits for all models indicated by
+   * @ref ssr_enabled_component_mask_ are set in this mask.
+   *
+   * See also @ref ssr_decode_status_mask_.
+   */
+  uint16_t ssr_model_status_mask = 0x0;
+
+  /**
+   * A bitmask indicating the decoding status of the incoming SSR data messages
+   * (0 = waiting for data, 1 = decoded data received).
+   *
+   * @note
+   * Generating OSR measurements requires a complete set of SSR model data from
+   * a consistent time epoch. SSR data will be made available to the SSR models
+   * after a complete data set arrives. This bitmask indicates the status of the
+   * individual incoming data messages as they arrive and get decoded.\n
+   * \n
+   * When the first SSR message of new time epoch arrives, the decode status for
+   * the other SSR models in this bitmask may be cleared. They will be set again
+   * as their data messages arrive for the new epoch. In the meantime, the SSR
+   * models will continue to produce synthetic OSR measurements using model data
+   * from the previous time epoch until either the new epoch is completed or the
+   * previous data expires. @ref ssr_model_status_mask_ indicates the status of
+   * the data in use by the SSR models.
+   *
+   * See @ref ssr_enabled_component_mask_ for bit definitions.
+   */
+  uint16_t ssr_decode_status_mask = 0x0;
+
+  uint8_t reserved6[2] = {0};
+
+  /** @} */
+
+  /**
+   * @name Incoming Data Interface Status
+   * @{
+   */
+
+  /**
+   * The number of messages successfully decoded from the primary SSR data
+   * interface.
+   */
+  uint32_t ssr_primary_message_count = 0;
+
+  /**
+   * The number of CRC failures detected on the primary SSR interface.
+   *
+   * The sum of @c ssr_primary_message_count and @c ssr_primary_crc_fail_count
+   * is an _approximation_ of the total number of SSR messages received on the
+   * interface:
+   * - If the data preamble appears in the middle of the data stream, it is
+   *   possible to count a "failure" for a message that was not present
+   * - If the interface contains both SSR data and other binary interleaved, CRC
+   *   failures may occur whenever non-SSR data is received if the SSR preamble
+   *   is present in the non-SSR data
+   */
+  uint32_t ssr_primary_crc_fail_count = 0;
+
+  /** @} */
 };
 
 #pragma pack(pop)
