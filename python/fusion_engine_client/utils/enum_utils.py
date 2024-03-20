@@ -94,7 +94,7 @@ class IntEnum(IntEnumBase, metaclass=DynamicEnumMeta):
             return str(self)
 
 
-def enum_bitmask(enum_type, define_bits=True):
+def enum_bitmask(enum_type, offset=0, define_bits=True, predicate=None):
     """!
     @brief Create a bitmask class definition corresponding with an existing class derived from `IntEnum`.
 
@@ -125,9 +125,15 @@ def enum_bitmask(enum_type, define_bits=True):
     ```
 
     @param enum_type The enum to which the mask class corresponds.
+    @param offset An offset to apply to all enum values such that `mask = (1 << (enum - offset))`
     @param define_bits If `True`, define mask bit member variables for each value defined in the enum (e.g., `A` and `B`
            above). Otherwise, do not define any member variables for the class, only attach the helper methods.
+    @param predicate An optional function to be called for each candidate enum value. Only values for which the
+           predicate returns `True` will be included.
     """
+    if predicate is None:
+        predicate = lambda x: True
+
     def _wrapper(base_cls):
         # Define a wrapper class that inherits from both the base class and IntEnum, and adds the additional bitmask
         # helper functions.
@@ -147,7 +153,7 @@ def enum_bitmask(enum_type, define_bits=True):
                     if isinstance(value, str):
                         mask |= getattr(cls, value.upper())
                     else:
-                        mask |= (1 << int(value))
+                        mask |= (1 << (int(value) - cls._enum_offset))
                 return mask
 
             @classmethod
@@ -160,8 +166,8 @@ def enum_bitmask(enum_type, define_bits=True):
                 @return A list of enum values for each bit set in the mask.
                 """
                 values = []
-                for value in enum_type:
-                    if (mask & (1 << int(value))) != 0:
+                for value in cls._enum_values:
+                    if (mask & (1 << (int(value) - cls._enum_offset))) != 0:
                         values.append(value)
                 return values
 
@@ -176,6 +182,11 @@ def enum_bitmask(enum_type, define_bits=True):
                 """
                 values = cls.to_values(mask)
                 return ', '.join(str(s) for s in values)
+
+        # Note that these are used in the functions above, but must be defined here, _not_ under the `class WrappedCls:`
+        # definition above, so IntEnum doesn't try to interpret them.
+        WrappedCls._enum_offset = offset
+        WrappedCls._enum_values = [v for v in enum_type if predicate(v)]
 
         # List elements returned by getmembers() for _all_ objects so we can skip them in the loops below when looking
         # for enum values to be added.
@@ -196,8 +207,8 @@ def enum_bitmask(enum_type, define_bits=True):
         #   A = (1 << MyEnum.A)
         if define_bits:
             for entry in inspect.getmembers(enum_type):
-                if entry[0] not in internals:
-                    extend_enum(WrappedCls, entry[0], (1 << int(entry[1])))
+                if entry[0] not in internals and predicate(entry[1]):
+                    extend_enum(WrappedCls, entry[0], (1 << (int(entry[1]) - WrappedCls._enum_offset)))
 
         return WrappedCls
     return _wrapper
