@@ -76,7 +76,7 @@ class Timestamp:
             tow_sec = self.seconds - week * SECONDS_PER_WEEK
             return week, tow_sec
         else:
-            return np.nan, np.nan
+            return -1, np.nan
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = False) -> (bytes, int):
         if math.isnan(self.seconds):
@@ -149,9 +149,12 @@ class Timestamp:
 
     def __str__(self):
         if self.is_gps():
-            return 'GPS: %d:%.3f (%.3f sec)' % (*self.get_week_tow(), self.seconds)
+            return 'GPS: %s' % self.to_gps_str()
         else:
             return 'P1: %.3f sec' % self.seconds
+
+    def to_gps_str(self):
+        return '%d:%.3f (%.3f sec)' % (*self.get_week_tow(), self.seconds)
 
 
 def system_time_to_str(system_time, is_seconds=False):
