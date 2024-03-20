@@ -151,11 +151,11 @@ class SSRStatusMessage(MessagePayload):
         to_hex = lambda v: '0x%04X' % v
         kwargs['value_to_string'] = {
             'output_gps_time': lambda t: t.to_gps_str(),
-            'gnss_systems_mask': to_hex,
-            'gps_signal_types_mask': to_hex,
-            'glo_signal_types_mask': to_hex,
-            'gal_signal_types_mask': to_hex,
-            'bds_signal_types_mask': to_hex,
+            'gnss_systems_mask': lambda v: f'{to_hex(v)} = {SatelliteTypeMask.to_string(v)}',
+            'gps_signal_types_mask': lambda v: f'{to_hex(v)} = {GPSSignalTypeMask.to_string(v)}',
+            'glo_signal_types_mask': lambda v: f'{to_hex(v)} = {GLOSignalTypeMask.to_string(v)}',
+            'gal_signal_types_mask': lambda v: f'{to_hex(v)} = {GALSignalTypeMask.to_string(v)}',
+            'bds_signal_types_mask': lambda v: f'{to_hex(v)} = {BDSSignalTypeMask.to_string(v)}',
             'osr_status_mask': to_hex,
             'ssr_status_mask': to_hex,
             'ssr_enabled_component_mask': to_hex,
