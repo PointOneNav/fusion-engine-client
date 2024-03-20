@@ -97,9 +97,6 @@ other types of data.
              "- oneline-binary - Use `oneline-detailed` format, but include the binary representation of each message\n"
              "- oneline-binary-payload - Like `oneline-binary`, but exclude the message header from the binary")
     parser.add_argument(
-        '-s', '--summary', action='store_true',
-        help="Print a summary of the messages in the file.")
-    parser.add_argument(
         '-m', '--message-type', type=str, action='append',
         help="An optional list of class names corresponding with the message types to be displayed. May be specified "
              "multiple times (-m Pose -m PoseAux), or as a comma-separated list (-m Pose,PoseAux). All matches are"
@@ -109,6 +106,17 @@ other types of data.
              "message types.\n"
              "\n"
              "Supported types:\n%s" % '\n'.join(['- %s' % c for c in message_type_by_name.keys()]))
+    parser.add_argument(
+        '-n', '--max', type=int, default=None,
+        help="Print up to a maximum of N messages. If --message-type is specified, only count messages matching the "
+             "specified type(s).")
+    parser.add_argument(
+        '-s', '--summary', action='store_true',
+        help="Print a summary of the messages in the file.")
+    parser.add_argument(
+        '--skip', type=int, default=0,
+        help="Skip the first N messages in the log. If --message-type is specified, only count messages matching the "
+             "specified type(s).")
     parser.add_argument(
         '-t', '--time', type=str, metavar='[START][:END][:{rel,abs}]',
         help="The desired time range to be analyzed. Both start and end may be omitted to read from beginning or to "
@@ -201,6 +209,7 @@ other types of data.
     newest_system_time_sec = None
     newest_system_message_type = None
 
+    total_decoded_messages = 0
     total_messages = 0
     bytes_decoded = 0
 
@@ -208,10 +217,15 @@ other types of data.
     message_stats = defaultdict(create_stats_entry)
     try:
         for header, message, data, offset_bytes in reader:
-            bytes_decoded += len(data)
+            total_decoded_messages += 1
+            if total_decoded_messages <= options.skip:
+                continue
+            elif options.max is not None and (total_decoded_messages - options.skip) > options.max:
+                break
 
             # Update the data summary in summary mode, or print the message contents otherwise.
             total_messages += 1
+            bytes_decoded += len(data)
             if options.summary:
                 entry = message_stats[header.message_type]
                 entry['count'] += 1
