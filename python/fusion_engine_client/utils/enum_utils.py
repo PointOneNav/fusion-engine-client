@@ -188,10 +188,14 @@ def enum_bitmask(enum_type, offset=0, define_bits=True, predicate=None):
         WrappedCls._enum_offset = offset
         WrappedCls._enum_values = [v for v in enum_type if predicate(v)]
 
-        # List elements returned by getmembers() for _all_ objects so we can skip them in the loops below when looking
+        # List elements returned by getmembers() for _all_ IntEnum so we can skip them in the loops below when looking
         # for enum values to be added.
-        internals = set(dir(type('dummy', (object,), {})))
-        internals.add('__members__')
+        class Dummy(IntEnum):
+            pass
+        internals = [e[0] for e in inspect.getmembers(Dummy)]
+
+        def _is_enum_entry(entry):
+            return entry[0] not in internals and not entry[0].startswith('_')
 
         # If the user defined any additional enum values in the template base class, remove them from the base and add
         # them back using extend_enum() so they are usable enum values. For example:
@@ -199,7 +203,7 @@ def enum_bitmask(enum_type, offset=0, define_bits=True, predicate=None):
         #   class MyMask:
         #       ALL = 0xFF
         for entry in inspect.getmembers(base_cls):
-            if entry[0] not in internals:
+            if _is_enum_entry(entry):
                 delattr(base_cls, entry[0])
                 extend_enum(WrappedCls, entry[0], int(entry[1]))
 
@@ -207,7 +211,7 @@ def enum_bitmask(enum_type, offset=0, define_bits=True, predicate=None):
         #   A = (1 << MyEnum.A)
         if define_bits:
             for entry in inspect.getmembers(enum_type):
-                if entry[0] not in internals and predicate(entry[1]):
+                if _is_enum_entry(entry) and predicate(entry[1]):
                     extend_enum(WrappedCls, entry[0], (1 << (int(entry[1]) - WrappedCls._enum_offset)))
 
         return WrappedCls
