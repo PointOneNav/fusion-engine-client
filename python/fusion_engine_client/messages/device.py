@@ -73,7 +73,6 @@ class SSRStatusMessage(MessagePayload):
 
     Construct = Struct(
         "p1_time" / TimestampConstruct,
-        "system_time_ns" / Int64ul,
 
         "output_gps_time" / TimestampConstruct,
         "output_source" / AutoEnum(Int8ul, RTKOutputSource),
@@ -113,7 +112,6 @@ class SSRStatusMessage(MessagePayload):
 
     def __init__(self):
         self.p1_time = Timestamp()
-        self.system_time_ns = 0
 
         self.output_gps_time = Timestamp()
         self.output_source = RTKOutputSource.NONE

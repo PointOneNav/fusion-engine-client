@@ -112,15 +112,8 @@ struct P1_ALIGNAS(4) SSRStatusMessage : public MessagePayload {
 
   /**
    * The time of the message, in P1 time (beginning at power-on).
-   *
-   * @note
-   * Only used for status of SSR data used within a navigation engine; not
-   * applicable for standalone SSR clients. Use @ref system_time_ns instead.
    */
   Timestamp p1_time;
-
-  /** The current system timestamp (in ns). */
-  int64_t system_time_ns = 0;
 
   /**
    * @name RTCM Output Status
