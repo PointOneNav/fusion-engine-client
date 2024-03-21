@@ -321,8 +321,8 @@ struct P1_ALIGNAS(4) SSRStatusMessage : public MessagePayload {
    * corrections region.
    *
    * The following table describes the bit definitions used by this mask, and by
-   * the component status masks in this structure (@ref ssr_decode_status_mask_,
-   * @ref ssr_model_status_mask_).
+   * the component status masks in this structure (@ref ssr_decode_status_mask,
+   * @ref ssr_model_status_mask).
    *
    *  Bit  | Description
    * ----- | -----------
@@ -347,11 +347,11 @@ struct P1_ALIGNAS(4) SSRStatusMessage : public MessagePayload {
    * A bitmask indicating the status of the individual SSR component models
    * (0 = model data not available/expired, 1 = model data usable).
    *
-   * See @ref ssr_enabled_component_mask_ for bit definitions. Synthetic OSR
+   * See @ref ssr_enabled_component_mask for bit definitions. Synthetic OSR
    * generation is ready when the bits for all models indicated by
-   * @ref ssr_enabled_component_mask_ are set in this mask.
+   * @ref ssr_enabled_component_mask are set in this mask.
    *
-   * See also @ref ssr_decode_status_mask_.
+   * See also @ref ssr_decode_status_mask.
    */
   uint16_t ssr_model_status_mask = 0x0;
 
@@ -370,10 +370,10 @@ struct P1_ALIGNAS(4) SSRStatusMessage : public MessagePayload {
    * as their data messages arrive for the new epoch. In the meantime, the SSR
    * models will continue to produce synthetic OSR measurements using model data
    * from the previous time epoch until either the new epoch is completed or the
-   * previous data expires. @ref ssr_model_status_mask_ indicates the status of
+   * previous data expires. @ref ssr_model_status_mask indicates the status of
    * the data in use by the SSR models.
    *
-   * See @ref ssr_enabled_component_mask_ for bit definitions.
+   * See @ref ssr_enabled_component_mask for bit definitions.
    */
   uint16_t ssr_decode_status_mask = 0x0;
 
