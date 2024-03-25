@@ -213,7 +213,7 @@ other types of data.
     total_messages = 0
     bytes_decoded = 0
 
-    def create_stats_entry(): return {'count': 1}
+    def create_stats_entry(): return {'count': 0}
     message_stats = defaultdict(create_stats_entry)
     try:
         for header, message, data, offset_bytes in reader:
