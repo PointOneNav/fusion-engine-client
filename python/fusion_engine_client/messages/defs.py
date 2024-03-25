@@ -557,13 +557,8 @@ class MessagePayload:
         else:
             raise NotImplementedError('unpack() not implemented.')
 
-    @classmethod
-    def calcsize(cls) -> int:
-        construct = getattr(cls, 'Construct', None)
-        if construct is not None:
-            return construct.sizeof()
-        else:
-            raise NotImplementedError('calcsize() not implemented.')
+    def calcsize(self) -> int:
+        raise NotImplementedError('calcsize() not implemented.')
 
     def get_p1_time(self) -> Timestamp:
         measurement_details = getattr(self, 'details', None)
