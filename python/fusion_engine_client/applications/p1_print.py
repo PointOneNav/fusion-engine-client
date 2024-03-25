@@ -299,7 +299,12 @@ other types of data.
         _logger.info(format_string.format('Message Name', 'Type', 'Count'))
         _logger.info(format_string.format('-' * 50, '-' * 5, '-' * 8))
         for type, info in sorted(message_stats.items(), key=lambda x: int(x[0])):
-            name = message_type_to_class[type].__name__ if type in message_type_to_class else "Unknown"
+            if type in message_type_to_class:
+                name = message_type_to_class[type].__name__
+            elif type.is_unrecognized():
+                name = str(type)
+            else:
+                name = f'Unsupported ({str(type)})'
             _logger.info(format_string.format(name, int(type), info['count']))
         _logger.info(format_string.format('-' * 50, '-' * 5, '-' * 8))
         _logger.info(format_string.format('Total', '', total_messages))

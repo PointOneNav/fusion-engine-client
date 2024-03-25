@@ -79,7 +79,7 @@ class IntEnum(IntEnumBase, metaclass=DynamicEnumMeta):
         #       BAR = 1
         #
         #   print(Foo.BAR)   # Prints "BAR", not "Foo.BAR"
-        if self.name.startswith(IntEnum.UNRECOGNIZED_PREFIX):
+        if self.is_unrecognized():
             return "(Unrecognized)"
         else:
             return self.name
@@ -92,6 +92,9 @@ class IntEnum(IntEnumBase, metaclass=DynamicEnumMeta):
             return '%s (%d)' % (str(self), int(self))
         else:
             return str(self)
+
+    def is_unrecognized(self):
+        return self.name.startswith(IntEnum.UNRECOGNIZED_PREFIX)
 
 
 def enum_bitmask(enum_type, offset=0, define_bits=True, predicate=None):
