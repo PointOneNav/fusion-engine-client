@@ -213,7 +213,7 @@ other types of data.
     total_messages = 0
     bytes_decoded = 0
 
-    def create_stats_entry(): return {'count': 1}
+    def create_stats_entry(): return {'count': 0}
     message_stats = defaultdict(create_stats_entry)
     try:
         for header, message, data, offset_bytes in reader:
@@ -262,7 +262,7 @@ other types of data.
                         else:
                             # We allow a small tolerance to account for normal latency between measurements and computed
                             # data like pose solutions, as well as latency between different types of measurements.
-                            dt_sec = newest_system_time_sec - system_time_sec
+                            dt_sec = system_time_sec - newest_system_time_sec
                             if dt_sec < -0.2:
                                 _logger.warning(
                                     'Backwards/restarted system time detected after %s (%s). [new_message=%s, '
@@ -299,7 +299,12 @@ other types of data.
         _logger.info(format_string.format('Message Name', 'Type', 'Count'))
         _logger.info(format_string.format('-' * 50, '-' * 5, '-' * 8))
         for type, info in sorted(message_stats.items(), key=lambda x: int(x[0])):
-            name = message_type_to_class[type].__name__ if type in message_type_to_class else "Unknown"
+            if type in message_type_to_class:
+                name = message_type_to_class[type].__name__
+            elif type.is_unrecognized():
+                name = str(type)
+            else:
+                name = f'Unsupported ({str(type)})'
             _logger.info(format_string.format(name, int(type), info['count']))
         _logger.info(format_string.format('-' * 50, '-' * 5, '-' * 8))
         _logger.info(format_string.format('Total', '', total_messages))

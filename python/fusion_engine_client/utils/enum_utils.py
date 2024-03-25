@@ -9,6 +9,14 @@ from aenum import extend_enum
 class DynamicEnumMeta(EnumMeta):
     UNRECOGNIZED_PREFIX = '_U'
 
+    def __new__(cls, name, bases, dict):
+        # Add is_recognized() to the definition for the class using this metaclass.
+        def is_unrecognized(self):
+            return self.name.startswith(cls.UNRECOGNIZED_PREFIX)
+        dict['is_unrecognized'] = is_unrecognized
+        enum_class = super().__new__(cls, name, bases, dict)
+        return enum_class
+
     def __call__(cls, value, *args, **kwargs):
         raise_on_unrecognized = kwargs.pop('raise_on_unrecognized', True)
 
@@ -79,7 +87,7 @@ class IntEnum(IntEnumBase, metaclass=DynamicEnumMeta):
         #       BAR = 1
         #
         #   print(Foo.BAR)   # Prints "BAR", not "Foo.BAR"
-        if self.name.startswith(IntEnum.UNRECOGNIZED_PREFIX):
+        if self.is_unrecognized():
             return "(Unrecognized)"
         else:
             return self.name
