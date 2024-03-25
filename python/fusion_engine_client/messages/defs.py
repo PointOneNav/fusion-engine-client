@@ -2,7 +2,7 @@ import inspect
 import re
 import struct
 import sys
-from typing import Dict, List, Optional, Set, Type, Union
+from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Type, Union
 from zlib import crc32
 
 import numpy as np
@@ -11,6 +11,7 @@ from .measurement_details import *
 from .signal_defs import *
 from .timestamp import *
 from ..utils import trace as logging
+from ..utils.construct_utils import construct_message_to_string
 from ..utils.enum_utils import IntEnum
 
 _logger = logging.getLogger('point_one.fusion_engine.messages.defs')
@@ -538,10 +539,26 @@ class MessagePayload:
         return inspect.isclass(obj) and issubclass(obj, MessagePayload)
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
-        raise NotImplementedError('pack() not implemented.')
+        construct = getattr(self.__class__, 'Construct', None)
+        if construct is not None:
+            values = vars(self)
+            packed_data = construct.build(values)
+            return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
+        else:
+            raise NotImplementedError('pack() not implemented.')
 
     def unpack(self, buffer: bytes, offset: int = 0, message_version: int = _UNSPECIFIED_VERSION) -> int:
-        raise NotImplementedError('unpack() not implemented.')
+        construct = getattr(self.__class__, 'Construct', None)
+        if construct is not None:
+            parsed = construct.parse(buffer[offset:])
+            self.__dict__.update(parsed)
+            del self.__dict__['_io']
+            return parsed._io.tell()
+        else:
+            raise NotImplementedError('unpack() not implemented.')
+
+    def calcsize(self) -> int:
+        raise NotImplementedError('calcsize() not implemented.')
 
     def get_p1_time(self) -> Timestamp:
         measurement_details = getattr(self, 'details', None)
@@ -586,7 +603,19 @@ class MessagePayload:
         return result
 
     def __str__(self):
-        return repr(self)
+        construct = getattr(self.__class__, 'Construct', None)
+        if construct is not None:
+            return self._construct_str_impl()
+        else:
+            return repr(self)
+
+    def _construct_str_impl(self, **kwargs):
+        if 'title' not in kwargs:
+            title = self.__class__.__name__
+            if hasattr(self, 'p1_time'):
+                title += f' @ {self.p1_time}'
+            kwargs['title'] = title
+        return construct_message_to_string(message=self, **kwargs)
 
     @classmethod
     def pack_values(cls, format: Union[str, struct.Struct], buffer: bytes, offset: int = 0, *args):
@@ -685,6 +714,47 @@ class MessagePayload:
                 value_idx += 1
 
         return size
+
+    @classmethod
+    def to_numpy(cls, messages: Sequence['MessagePayload']):
+        return cls._message_to_numpy(messages)
+
+    @classmethod
+    def _message_to_numpy(cls,
+                          messages: Sequence['MessagePayload'],
+                          fields: Optional[Sequence[str]] = None,
+                          value_to_array: Optional[Dict[str, Callable[[List[Any]], np.ndarray]]] = None) -> \
+            Dict[str, np.ndarray]:
+        if fields is None:
+            if len(messages) > 0:
+                fields = sorted(messages[0].__dict__.keys())
+            elif cls is not MessagePayload:
+                instance = cls()
+                fields = sorted(instance.__dict__.keys())
+            else:
+                raise RuntimeError('Cannot infer message fields.')
+
+        if len(messages) == 0:
+            return {f: np.array(()) for f in fields}
+
+        if value_to_array is None:
+            value_to_array = {}
+
+        def _generic_value_to_array(values):
+            if isinstance(values[0], np.ndarray) and len(values[0]) > 1:
+                return np.array(values).T
+            elif isinstance(values[0], Timestamp):
+                return np.array([float(v) for v in values])
+            else:
+                return np.array(values)
+
+        result = {}
+        for field in fields:
+            to_array = value_to_array.get(field, _generic_value_to_array)
+            values = [getattr(m, field) for m in messages]
+            result[field] = to_array(values)
+
+        return result
 
 
 def PackedDataToBuffer(packed_data: bytes, buffer: Optional[bytes] = None, offset: int = 0,

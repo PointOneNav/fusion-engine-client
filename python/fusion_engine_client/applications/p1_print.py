@@ -25,7 +25,7 @@ def print_message(header, contents, offset_bytes, format='pretty', bytes=None):
             raise ValueError('No data provided for binary format.')
         parts = []
     elif isinstance(contents, MessagePayload):
-        if format in ('oneline', 'oneline-binary', 'oneline-detailed'):
+        if format.startswith('oneline-'):
             # The repr string should always start with the message type, then other contents:
             #   [POSE (10000), p1_time=12.029 sec, gps_time=2249:528920.500 (1360724120.500 sec), ...]
             # We want to reformat and insert the additional details as follows for consistency:
@@ -43,7 +43,7 @@ def print_message(header, contents, offset_bytes, format='pretty', bytes=None):
     else:
         parts = [f'{header.get_type_string()} (unsupported)']
 
-    if format in ('pretty', 'pretty-binary', 'oneline-detailed', 'oneline-binary'):
+    if format != 'oneline':
         details = 'sequence=%d, size=%d B, offset=%d B (0x%x)' %\
                   (header.sequence_number, header.get_message_size(), offset_bytes, offset_bytes)
 
@@ -58,10 +58,14 @@ def print_message(header, contents, offset_bytes, format='pretty', bytes=None):
     elif format == 'binary':
         byte_string = bytes_to_hex(bytes, bytes_per_row=-1, bytes_per_col=2).replace('\n', '\n  ')
         parts.insert(1, byte_string)
-    elif format == 'pretty-binary':
+    elif format == 'pretty-binary' or format == 'pretty-binary-payload':
+        if format.endswith('-payload'):
+            bytes = bytes[MessageHeader.calcsize():]
         byte_string = '    ' + bytes_to_hex(bytes, bytes_per_row=16, bytes_per_col=2).replace('\n', '\n    ')
         parts.insert(1, "  Binary:\n%s" % byte_string)
-    elif format == 'oneline-binary':
+    elif format == 'oneline-binary' or format == 'oneline-binary-payload':
+        if format.endswith('-payload'):
+            bytes = bytes[MessageHeader.calcsize():]
         byte_string = '  ' + bytes_to_hex(bytes, bytes_per_row=16, bytes_per_col=2).replace('\n', '\n  ')
         parts.insert(1, byte_string)
 
@@ -80,19 +84,18 @@ other types of data.
         help="Interpret the timestamps in --time as absolute P1 times. Otherwise, treat them as relative to the first "
              "message in the file. Ignored if --time contains a type specifier.")
     parser.add_argument(
-        '-f', '--format', choices=['binary', 'pretty', 'pretty-binary', 'oneline', 'oneline-detailed',
-                                   'oneline-binary'],
+        '-f', '--format', choices=['binary', 'pretty', 'pretty-binary', 'pretty-binary-payload',
+                                   'oneline', 'oneline-detailed', 'oneline-binary', 'oneline-binary-payload'],
         default='pretty',
         help="Specify the format used to print the message contents:\n"
              "- Print the binary representation of each message on a single line, but no other details\n"
              "- pretty - Print the message contents in a human-readable format (default)\n"
              "- pretty-binary - Use `pretty` format, but include the binary representation of each message\n"
+             "- pretty-binary-payload - Like `pretty-binary`, but exclude the message header from the binary\n"
              "- oneline - Print a summary of each message on a single line\n"
              "- oneline-detailed - Print a one-line summary, including message offset details\n"
-             "- oneline-binary - Use `oneline-detailed` format, but include the binary representation of each message")
-    parser.add_argument(
-        '-s', '--summary', action='store_true',
-        help="Print a summary of the messages in the file.")
+             "- oneline-binary - Use `oneline-detailed` format, but include the binary representation of each message\n"
+             "- oneline-binary-payload - Like `oneline-binary`, but exclude the message header from the binary")
     parser.add_argument(
         '-m', '--message-type', type=str, action='append',
         help="An optional list of class names corresponding with the message types to be displayed. May be specified "
@@ -103,6 +106,17 @@ other types of data.
              "message types.\n"
              "\n"
              "Supported types:\n%s" % '\n'.join(['- %s' % c for c in message_type_by_name.keys()]))
+    parser.add_argument(
+        '-n', '--max', type=int, default=None,
+        help="Print up to a maximum of N messages. If --message-type is specified, only count messages matching the "
+             "specified type(s).")
+    parser.add_argument(
+        '-s', '--summary', action='store_true',
+        help="Print a summary of the messages in the file.")
+    parser.add_argument(
+        '--skip', type=int, default=0,
+        help="Skip the first N messages in the log. If --message-type is specified, only count messages matching the "
+             "specified type(s).")
     parser.add_argument(
         '-t', '--time', type=str, metavar='[START][:END][:{rel,abs}]',
         help="The desired time range to be analyzed. Both start and end may be omitted to read from beginning or to "
@@ -195,6 +209,7 @@ other types of data.
     newest_system_time_sec = None
     newest_system_message_type = None
 
+    total_decoded_messages = 0
     total_messages = 0
     bytes_decoded = 0
 
@@ -202,10 +217,15 @@ other types of data.
     message_stats = defaultdict(create_stats_entry)
     try:
         for header, message, data, offset_bytes in reader:
-            bytes_decoded += len(data)
+            total_decoded_messages += 1
+            if total_decoded_messages <= options.skip:
+                continue
+            elif options.max is not None and (total_decoded_messages - options.skip) > options.max:
+                break
 
             # Update the data summary in summary mode, or print the message contents otherwise.
             total_messages += 1
+            bytes_decoded += len(data)
             if options.summary:
                 entry = message_stats[header.message_type]
                 entry['count'] += 1

@@ -1,4 +1,7 @@
 from enum import EnumMeta, IntEnum as IntEnumBase
+import functools
+import inspect
+from typing import List, Union
 
 from aenum import extend_enum
 
@@ -89,3 +92,127 @@ class IntEnum(IntEnumBase, metaclass=DynamicEnumMeta):
             return '%s (%d)' % (str(self), int(self))
         else:
             return str(self)
+
+
+def enum_bitmask(enum_type, offset=0, define_bits=True, predicate=None):
+    """!
+    @brief Create a bitmask class definition corresponding with an existing class derived from `IntEnum`.
+
+    ```py
+    class MyEnum(IntEnum):
+        A = 1
+        B = 2
+
+    @enum_bitmask(MyEnum)
+    class MyMask: pass
+    ```
+
+    The `MyMask` definition above is the equivalent of:
+
+    ```py
+    class MyMask(IntEnum):
+        A = (1 << 1)
+        B = (1 << 2)
+
+        @classmethod
+        def to_bitmask(cls, values): ...
+
+        @classmethod
+        def to_values(cls, mask): ...
+
+        @classmethod
+        def to_string(cls, mask): ...
+    ```
+
+    @param enum_type The enum to which the mask class corresponds.
+    @param offset An offset to apply to all enum values such that `mask = (1 << (enum - offset))`
+    @param define_bits If `True`, define mask bit member variables for each value defined in the enum (e.g., `A` and `B`
+           above). Otherwise, do not define any member variables for the class, only attach the helper methods.
+    @param predicate An optional function to be called for each candidate enum value. Only values for which the
+           predicate returns `True` will be included.
+    """
+    if predicate is None:
+        predicate = lambda x: True
+
+    def _wrapper(base_cls):
+        # Define a wrapper class that inherits from both the base class and IntEnum, and adds the additional bitmask
+        # helper functions.
+        @functools.wraps(base_cls, updated=())
+        class WrappedCls(base_cls, IntEnum):
+            @classmethod
+            def to_bitmask(cls, values: List[Union[enum_type, str]]) -> int:
+                """!
+                @brief Convert a list of enum values or string names to a bitmask.
+
+                @param values A list of one or more enum values or string names.
+
+                @return The corresponding integer bitmask.
+                """
+                mask = 0
+                for value in values:
+                    if isinstance(value, str):
+                        mask |= getattr(cls, value.upper())
+                    else:
+                        mask |= (1 << (int(value) - cls._enum_offset))
+                return mask
+
+            @classmethod
+            def to_values(cls, mask: int) -> List[enum_type]:
+                """!
+                @brief Decode a bitmask into a list of enum values.
+
+                @param mask The bitmask to be decoded.
+
+                @return A list of enum values for each bit set in the mask.
+                """
+                values = []
+                for value in cls._enum_values:
+                    if (mask & (1 << (int(value) - cls._enum_offset))) != 0:
+                        values.append(value)
+                return values
+
+            @classmethod
+            def to_string(cls, mask: int) -> str:
+                """!
+                @brief Decode a bitmask into a human-readable string.
+
+                @param mask The bitmask to be decoded.
+
+                @return A comma-separated string listing the names of the enum value for each bit set in the mask.
+                """
+                values = cls.to_values(mask)
+                return ', '.join(str(s) for s in values)
+
+        # Note that these are used in the functions above, but must be defined here, _not_ under the `class WrappedCls:`
+        # definition above, so IntEnum doesn't try to interpret them.
+        WrappedCls._enum_offset = offset
+        WrappedCls._enum_values = [v for v in enum_type if predicate(v)]
+
+        # List elements returned by getmembers() for _all_ IntEnum so we can skip them in the loops below when looking
+        # for enum values to be added.
+        class Dummy(IntEnum):
+            pass
+        internals = [e[0] for e in inspect.getmembers(Dummy)]
+
+        def _is_enum_entry(entry):
+            return entry[0] not in internals and not entry[0].startswith('_')
+
+        # If the user defined any additional enum values in the template base class, remove them from the base and add
+        # them back using extend_enum() so they are usable enum values. For example:
+        #   @enum_bitmask(MyEnum)
+        #   class MyMask:
+        #       ALL = 0xFF
+        for entry in inspect.getmembers(base_cls):
+            if _is_enum_entry(entry):
+                delattr(base_cls, entry[0])
+                extend_enum(WrappedCls, entry[0], int(entry[1]))
+
+        # Now define additional enum values for each bit:
+        #   A = (1 << MyEnum.A)
+        if define_bits:
+            for entry in inspect.getmembers(enum_type):
+                if _is_enum_entry(entry) and predicate(entry[1]):
+                    extend_enum(WrappedCls, entry[0], (1 << (int(entry[1]) - WrappedCls._enum_offset)))
+
+        return WrappedCls
+    return _wrapper

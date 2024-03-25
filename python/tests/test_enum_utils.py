@@ -1,6 +1,6 @@
 import pytest
 
-from fusion_engine_client.utils.enum_utils import IntEnum
+from fusion_engine_client.utils.enum_utils import IntEnum, enum_bitmask
 
 
 @pytest.fixture
@@ -73,3 +73,47 @@ def test_unrecognized(Enum):
 
     value = Enum('W', raise_on_unrecognized=False)
     assert int(value) == -2
+
+
+def test_bitmask_decorator(Enum):
+    @enum_bitmask(Enum)
+    class EnumMask: pass
+    expected_values = [Enum.A, Enum.B]
+    expected_mask = (1 << int(Enum.A)) | (1 << int(Enum.B))
+    assert EnumMask.to_bitmask(expected_values) == expected_mask
+    assert EnumMask.to_values(expected_mask) == expected_values
+    assert EnumMask.to_string(expected_mask) == 'A, B'
+
+
+def test_bitmask_decorator_extended(Enum):
+    @enum_bitmask(Enum)
+    class EnumMask:
+        ALL = 0xFF
+
+    expected_values = [Enum.A, Enum.B]
+    expected_mask = (1 << int(Enum.A)) | (1 << int(Enum.B))
+    assert EnumMask.to_bitmask(expected_values) == expected_mask
+    assert EnumMask.to_values(expected_mask) == expected_values
+    assert EnumMask.to_string(expected_mask) == 'A, B'
+
+    assert EnumMask.to_values(0xFF) == expected_values
+    assert EnumMask[0xFF] == EnumMask.ALL
+
+
+def test_bitmask_decorator_offset(Enum):
+    @enum_bitmask(Enum, offset=1)
+    class EnumMask: pass
+    assert EnumMask.B == (1 << (Enum.B - 1))
+
+    expected_values = [Enum.A, Enum.B]
+    expected_mask = (1 << (int(Enum.A) - 1)) | (1 << (int(Enum.B) - 1))
+    assert EnumMask.to_bitmask(expected_values) == expected_mask
+    assert EnumMask.to_values(expected_mask) == expected_values
+    assert EnumMask.to_string(expected_mask) == 'A, B'
+
+
+def test_bitmask_decorator_predicate(Enum):
+    @enum_bitmask(Enum, predicate=lambda x: str(x) == 'A')
+    class EnumMask: pass
+    assert hasattr(EnumMask, 'A')
+    assert not hasattr(EnumMask, 'B')
