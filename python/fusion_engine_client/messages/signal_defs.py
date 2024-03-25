@@ -3,7 +3,7 @@ from typing import List, Union
 
 import numpy as np
 
-from ..utils.enum_utils import IntEnum
+from ..utils.enum_utils import IntEnum, enum_bitmask
 
 
 class SatelliteType(IntEnum):
@@ -35,41 +35,9 @@ SatelliteTypeChar = {
 SatelliteTypeCharReverse = {v: k for k, v in SatelliteTypeChar.items()}
 
 
-class SatelliteTypeMask(IntEnum):
-    GPS = (1 << SatelliteType.GPS)
-    GLONASS = (1 << SatelliteType.GLONASS)
-    LEO = (1 << SatelliteType.LEO)
-    GALILEO = (1 << SatelliteType.GALILEO)
-    BEIDOU = (1 << SatelliteType.BEIDOU)
-    QZSS = (1 << SatelliteType.QZSS)
-    MIXED = (1 << SatelliteType.MIXED)
-    SBAS = (1 << SatelliteType.SBAS)
-    IRNSS = (1 << SatelliteType.IRNSS)
-
+@enum_bitmask(SatelliteType)
+class SatelliteTypeMask:
     ALL = 0xFFFFFFFF
-
-    @classmethod
-    def to_bit_mask(cls, systems: List[Union[SatelliteType, str]]):
-        mask = 0
-        for system in systems:
-            if isinstance(system, str):
-                mask |= getattr(cls, system.upper())
-            else:
-                mask |= (1 << int(system))
-        return mask
-
-    @classmethod
-    def bit_mask_to_systems(cls, mask: int):
-        systems = []
-        for system in SatelliteType:
-            if (mask & (1 << int(system))) != 0:
-                systems.append(system)
-        return systems
-
-    @classmethod
-    def bit_mask_to_string(cls, mask: int):
-        systems = cls.bit_mask_to_systems(mask)
-        return ', '.join(str(s) for s in systems)
 
 
 class SignalType(IntEnum):
@@ -84,36 +52,9 @@ class FrequencyBand(IntEnum):
     L6 = 6
 
 
-class FrequencyBandMask(IntEnum):
-    L1 = (1 << FrequencyBand.L1)
-    L2 = (1 << FrequencyBand.L2)
-    L5 = (1 << FrequencyBand.L5)
-    L6 = (1 << FrequencyBand.L6)
-
+@enum_bitmask(FrequencyBand)
+class FrequencyBandMask:
     ALL = 0xFFFFFFFF
-
-    @classmethod
-    def to_bit_mask(cls, frequencies: List[Union[FrequencyBand, str]]):
-        mask = 0
-        for freq in frequencies:
-            if isinstance(freq, str):
-                mask |= getattr(cls, freq.upper())
-            else:
-                mask |= (1 << int(freq))
-        return mask
-
-    @classmethod
-    def bit_mask_to_systems(cls, mask: int):
-        frequencies = []
-        for freq in FrequencyBand:
-            if (mask & (1 << int(freq))) != 0:
-                frequencies.append(freq)
-        return frequencies
-
-    @classmethod
-    def bit_mask_to_string(cls, mask: int):
-        systems = cls.bit_mask_to_systems(mask)
-        return ', '.join(str(s) for s in systems)
 
 
 _SHORT_FORMAT = re.compile(r'([%s])(\d+)(?:\s+(\w+))?' % ''.join(SatelliteTypeCharReverse.keys()))

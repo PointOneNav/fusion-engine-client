@@ -2,7 +2,9 @@ import numpy as np
 import pytest
 import struct
 
-from fusion_engine_client.messages import MessagePayload, MessageType
+import numpy as np
+
+from fusion_engine_client.messages import MessagePayload, MessageType, Timestamp
 
 
 def test_pack_primitives():
@@ -112,3 +114,49 @@ def test_find_message_types():
     # Multiple matches without a * raise an exception.
     with pytest.raises(ValueError):
         MessagePayload.find_matching_message_types(['pos'])
+
+
+class DummyMessage(MessagePayload):
+    MESSAGE_TYPE = MessageType.INVALID
+    MESSAGE_VERSION = 0
+
+    def __init__(self, p1_time=None, lla_deg=None, scalar=None, custom=None):
+        self.p1_time = Timestamp() if p1_time is None else p1_time
+        self.lla_deg = np.full((3,), np.nan) if lla_deg is None else lla_deg
+        self.scalar = 0 if scalar is None else scalar
+        self.custom = 0 if custom is None else custom
+
+    @classmethod
+    def to_numpy_custom(cls, messages):
+        return cls._message_to_numpy(messages,
+                                     value_to_array={'custom': lambda values: np.array([v * 1.01 for v in values])})
+
+
+def test_message_to_numpy():
+    messages = [
+        DummyMessage(p1_time=Timestamp(3), lla_deg=np.array((1, 2, 3)), scalar=6, custom=10),
+        DummyMessage(p1_time=Timestamp(), scalar=np.nan, custom=11),
+        DummyMessage(p1_time=Timestamp(5), scalar=np.nan, custom=12),
+    ]
+
+    expected_result = {
+        'p1_time': np.array((3, np.nan, 5)),
+        'lla_deg': np.array(((1, 2, 3), (np.nan, np.nan, np.nan), (np.nan, np.nan, np.nan))).T,
+        'scalar': np.array((6, np.nan, np.nan)),
+        'custom': np.array((10, 11, 12)),
+    }
+
+    # Test default to_numpy() implementation, inherited from MessagePayload.
+    result = DummyMessage.to_numpy(messages)
+    assert result.keys() == expected_result.keys()
+    for key, expected_value in expected_result.items():
+        assert np.allclose(expected_value, result[key], equal_nan=True), \
+            f"'{key}' values did not match:\n\nExpected:\n{repr(expected_value)}\n\nGot:\n{repr(result[key])}"
+
+    # Test a custom to_numpy() implementation.
+    expected_result['custom'] =np.array((10.10, 11.11, 12.12))
+    result = DummyMessage.to_numpy_custom(messages)
+    assert result.keys() == expected_result.keys()
+    for key, expected_value in expected_result.items():
+        assert np.allclose(expected_value, result[key], equal_nan=True), \
+            f"'{key}' values did not match:\n\nExpected:\n{repr(expected_value)}\n\nGot:\n{repr(result[key])}"
