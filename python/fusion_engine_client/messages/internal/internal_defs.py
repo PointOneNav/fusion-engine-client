@@ -20,6 +20,7 @@ class InternalMessageType(IntEnum):
     CONFIG_DATA = 20005
     MANIFEST_DATA_REQ = 20006
     MANIFEST_DATA = 20007
+    SSR_EPOCH = 20011
 
     # System profiling data
     PROFILE_SYSTEM_STATUS = 20032
