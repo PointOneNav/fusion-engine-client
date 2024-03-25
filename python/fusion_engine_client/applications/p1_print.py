@@ -262,7 +262,7 @@ other types of data.
                         else:
                             # We allow a small tolerance to account for normal latency between measurements and computed
                             # data like pose solutions, as well as latency between different types of measurements.
-                            dt_sec = newest_system_time_sec - system_time_sec
+                            dt_sec = system_time_sec - newest_system_time_sec
                             if dt_sec < -0.2:
                                 _logger.warning(
                                     'Backwards/restarted system time detected after %s (%s). [new_message=%s, '
