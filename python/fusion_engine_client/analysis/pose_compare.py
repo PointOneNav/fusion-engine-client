@@ -217,136 +217,6 @@ class PoseCompare(object):
 
         self._add_figure(name="solution_type", figure=figure, title="Solution Type")
 
-    def _plot_displacement(self, source, time, solution_type, displacement_enu_m, std_enu_m):
-        """!
-        @brief Generate a topocentric (top-down) plot of position displacement, as well as plot of displacement over
-               time.
-        """
-        if self.output_dir is None:
-            return
-
-        # Setup the figure.
-        topo_figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=False,
-                                    subplot_titles=['Displacement'])
-        topo_figure['layout']['xaxis1'].update(title="East (m)")
-        topo_figure['layout']['yaxis1'].update(title="North (m)")
-
-        time_figure = make_subplots(rows=4, cols=1, print_grid=False, shared_xaxes=True,
-                                    subplot_titles=['3D', 'East', 'North', 'Up'])
-        time_figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
-        for i in range(4):
-            time_figure['layout']['xaxis%d' % (i + 1)].update(title=self.p1_time_label, showticklabels=True)
-        time_figure['layout']['yaxis1'].update(title="Displacement (m)")
-        time_figure['layout']['yaxis2'].update(title="Displacement (m)")
-        time_figure['layout']['yaxis3'].update(title="Displacement (m)")
-        time_figure['layout']['yaxis4'].update(title="Displacement (m)")
-
-        # Remove invalid solutions.
-        valid_idx = np.logical_and(~np.isnan(time), solution_type != SolutionType.Invalid)
-        if not np.any(valid_idx):
-            self.logger.info('No valid position solutions detected. Skipping displacement plots.')
-            return
-
-        # Add statistics to the figure title.
-        format = 'Mean: %(mean).2f m, Median: %(median).2f m, Min: %(min).2f m, Max: %(max).2f m, Std Dev: %(std).2f m'
-        displacement_3d_m = np.linalg.norm(displacement_enu_m, axis=0)
-        extra_text = '[All] ' + format % {
-            'mean': np.mean(displacement_3d_m),
-            'median': np.median(displacement_3d_m),
-            'min': np.min(displacement_3d_m),
-            'max': np.max(displacement_3d_m),
-            'std': np.std(displacement_3d_m),
-        }
-
-        idx = solution_type == SolutionType.RTKFixed
-        if np.any(idx):
-            displacement_3d_m = np.linalg.norm(displacement_enu_m[:, idx], axis=0)
-            extra_text += '<br>[Fixed] ' + format % {
-                'mean': np.mean(displacement_3d_m),
-                'median': np.median(displacement_3d_m),
-                'min': np.min(displacement_3d_m),
-                'max': np.max(displacement_3d_m),
-                'std': np.std(displacement_3d_m),
-            }
-
-        topo_figure.update_layout(title_text=extra_text)
-        time_figure.update_layout(title_text=extra_text)
-
-        # Plot the data.
-        def _plot_data(name, idx, marker_style=None):
-            style = {'mode': 'markers', 'marker': {'size': 8}, 'showlegend': True, 'legendgroup': name,
-                     'hoverlabel': {'namelength': -1}}
-            if marker_style is not None:
-                style['marker'].update(marker_style)
-
-            if np.any(idx):
-                text = ["Time: %.3f sec (%.3f sec)<br>Delta (ENU): (%.2f, %.2f, %.2f) m" \
-                        "<br>Std (ENU): (%.2f, %.2f, %.2f) m" %
-                        (t, t + float(self.t0), *delta, *std)
-                        for t, delta, std in zip(time[idx], displacement_enu_m[:, idx].T, std_enu_m[:, idx].T)]
-                topo_figure.add_trace(go.Scattergl(x=displacement_enu_m[0, idx], y=displacement_enu_m[1, idx],
-                                                   name=name, text=text, **style), 1, 1)
-
-                time_figure.add_trace(go.Scattergl(x=time[idx], y=np.linalg.norm(displacement_enu_m[:, idx], axis=0),
-                                                   name=name, text=text, **style), 1, 1)
-                style['showlegend'] = False
-                time_figure.add_trace(go.Scattergl(x=time[idx], y=displacement_enu_m[0, idx], name=name,
-                                                   text=text, **style), 2, 1)
-                time_figure.add_trace(go.Scattergl(x=time[idx], y=displacement_enu_m[1, idx], name=name,
-                                                   text=text, **style), 3, 1)
-                time_figure.add_trace(go.Scattergl(x=time[idx], y=displacement_enu_m[2, idx], name=name,
-                                                   text=text, **style), 4, 1)
-            else:
-                # If there's no data, draw a dummy trace so it shows up in the legend anyway.
-                topo_figure.add_trace(go.Scattergl(x=[np.nan], y=[np.nan], name=name, visible='legendonly', **style),
-                                      1, 1)
-                time_figure.add_trace(go.Scattergl(x=[np.nan], y=[np.nan], name=name, visible='legendonly', **style),
-                                      1, 1)
-
-        for type, info in _SOLUTION_TYPE_MAP.items():
-            _plot_data(info.name, solution_type == type, marker_style=info.style)
-
-        name = source.replace(' ', '_').lower()
-        self._add_figure(name=f"{name}_top_down", figure=topo_figure, title=f"{source}: Top-Down (Topocentric)")
-        self._add_figure(name=f"{name}_displacement", figure=time_figure, title=f"{source}: vs. Time")
-
-    def plot_pose_displacement(self):
-        """!
-        @brief Generate a topocentric (top-down) plot of position displacement, as well as plot of displacement over
-               time.
-        """
-        if self.output_dir is None:
-            return
-
-        # Read the pose data.
-        result = self.reader.read(message_types=[PoseMessage], **self.params)
-        pose_data = result[PoseMessage.MESSAGE_TYPE]
-
-        if len(pose_data.p1_time) == 0:
-            self.logger.info('No pose data available. Skipping displacement plots.')
-            return
-
-        # Remove invalid solutions.
-        valid_idx = np.logical_and(~np.isnan(pose_data.p1_time), pose_data.solution_type != SolutionType.Invalid)
-        if not np.any(valid_idx):
-            self.logger.info('No valid position solutions detected. Skipping displacement plots.')
-            return
-
-        time = pose_data.p1_time[valid_idx] - float(self.t0)
-        solution_type = pose_data.solution_type[valid_idx]
-        lla_deg = pose_data.lla_deg[:, valid_idx]
-        std_enu_m = pose_data.position_std_enu_m[:, valid_idx]
-
-        # Convert to ENU displacement with respect to the median position (we use median instead of centroid just in
-        # case there are one or two huge outliers).
-        position_ecef_m = np.array(geodetic2ecef(lat=lla_deg[0, :], lon=lla_deg[1, :], alt=lla_deg[2, :], deg=True))
-        center_ecef_m = np.median(position_ecef_m, axis=1)
-        displacement_ecef_m = position_ecef_m - center_ecef_m.reshape(3, 1)
-        c_enu_ecef = get_enu_rotation_matrix(*lla_deg[0:2, 0], deg=True)
-        displacement_enu_m = c_enu_ecef.dot(displacement_ecef_m)
-
-        self._plot_displacement('Pose Displacement', time, solution_type, displacement_enu_m, std_enu_m)
-
     def plot_map(self, mapbox_token):
         """!
         @brief Plot a map of the position data.
@@ -937,12 +807,7 @@ Load and display information stored in a FusionEngine binary file.
                         prefix=options.prefix + '.' if options.prefix is not None else '',
                         time_range=time_range, time_axis=options.time_axis)
 
-
     analyzer.plot_solution_type()
-    # Need 2D + 3D difference plot
-
-    # Want to plot difference, not displacement
-    #analyzer.plot_pose_displacement()
 
     analyzer.plot_map(mapbox_token=options.mapbox_token)
 
