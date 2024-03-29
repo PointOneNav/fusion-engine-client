@@ -133,19 +133,6 @@ class PoseCompare(object):
         @param truncate_long_logs If `True`, reduce or skip certain plots if the log extremely long (as defined by
                @ref LONG_LOG_DURATION_SEC).
         """
-        if isinstance(file_a, str):
-            self.readers = [DataLoader(file_a, ignore_index=ignore_index)]
-        else:
-            self.readers = [file_a]
-
-        if isinstance(file_b, str):
-            self.readers.append(DataLoader(file_b, ignore_index=ignore_index))
-        else:
-            self.readers.append(file_b)
-
-        self.output_dir = output_dir
-        self.prefix = prefix
-
         self.params = {
             'time_range': time_range,
             'max_messages': max_messages,
@@ -153,11 +140,27 @@ class PoseCompare(object):
             'return_numpy': True
         }
 
+        self.pose_datas: List[PoseMessage] = []
+        if isinstance(file_a, str):
+            self.pose_datas.append(DataLoader(file_a, ignore_index=ignore_index).read(
+                message_types=[PoseMessage], **self.params)[PoseMessage.MESSAGE_TYPE])
+        else:
+            self.pose_datas.append(file_a.read(message_types=[PoseMessage], **self.params)[PoseMessage.MESSAGE_TYPE])
+
+        if isinstance(file_b, str):
+            self.pose_datas.append(DataLoader(file_b, ignore_index=ignore_index).read(
+                message_types=[PoseMessage], **self.params)[PoseMessage.MESSAGE_TYPE])
+        else:
+            self.pose_datas.append(file_b.read(message_types=[PoseMessage], **self.params)[PoseMessage.MESSAGE_TYPE])
+
+        self.output_dir = output_dir
+        self.prefix = prefix
+
+
         if time_axis in ('relative', 'rel'):
             self.time_axis = 'relative'
 
-            result = self.readers[0].read(message_types=[PoseMessage], **self.params)
-            gps_time_a = result[PoseMessage.MESSAGE_TYPE].gps_time
+            gps_time_a = self.pose_datas[0].gps_time
             valid_gps_time = gps_time_a[np.isfinite(gps_time_a)]
 
             if len(valid_gps_time) > 0:
@@ -183,6 +186,40 @@ class PoseCompare(object):
             if not os.path.exists(self.output_dir):
                 os.makedirs(self.output_dir)
 
+        self.pose_index_maps = self._get_log_pose_mapping()
+
+    def _get_log_pose_mapping(self):
+        # intersect1d implicitly ignore NaNs.
+        gps_matches = np.intersect1d(self.pose_datas[0].gps_time, self.pose_datas[1].gps_time, return_indices=True)
+
+        # [matched_indices_log_a, matched_indices_log_b]
+        return gps_matches[1:]
+
+        # # Debug time mapping between logs
+        # matched_p1_time_a = self.pose_datas[0].p1_time[gps_matches[1]]
+        # matched_p1_time_b = self.pose_datas[1].p1_time[gps_matches[2]]
+        # p1_offsets = matched_p1_time_a - matched_p1_time_b
+
+        # log_b_p1_time = self.pose_datas[1].p1_time + \
+        #     np.interp(np.arange(len(self.pose_datas[1].p1_time)), gps_matches[2], p1_offsets)
+
+        # log_a_t0 = self.pose_datas[0].p1_time[0]
+        # log_b_t0 = log_b_p1_time[0]
+        # log_a_end = self.pose_datas[0].p1_time[-1]
+        # log_b_end = log_b_p1_time[-1]
+        # self.logger.info(f'first_p1_offset:{p1_offsets[0]}, log_a_t0:{log_a_t0}, log_b_t0:{log_b_t0}')
+        # self.logger.info(f'last_p1_offset:{p1_offsets[-1]}, log_a_end:{log_a_end}, log_b_end:{log_b_end}')
+        # self.logger.info(f'num_matched_epochs:{len(p1_offsets)}')
+
+        # return log_b_p1_time
+
+        # # Setup the figure.
+        # figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=True, subplot_titles=['P1 Time Offset'])
+        # figure['layout']['xaxis'].update(title=self.gps_time_label)
+        # figure['layout']['yaxis1'].update(title="Time Offset (s)")
+        # figure.add_trace(go.Scattergl(x=list(range(len(p1_offsets))), y=p1_offsets, mode='markers'), 1, 1)
+        # self._add_figure(name="p1_time_offset", figure=figure, title="P1 Time Offset")
+
 
     def plot_solution_type(self):
         """!
@@ -191,13 +228,7 @@ class PoseCompare(object):
         if self.output_dir is None:
             return
 
-        # Read the pose data.
-        pose_datas = []
-        for reader in self.readers:
-            result = reader.read(message_types=[PoseMessage], **self.params)
-            pose_datas.append(result[PoseMessage.MESSAGE_TYPE])
-
-        if len(pose_datas[0].p1_time) == 0 or len(pose_datas[1].p1_time) == 0:
+        if len(self.pose_datas[0].p1_time) == 0 or len(self.pose_datas[1].p1_time) == 0:
             self.logger.info('No pose data available. Skipping solution type plot.')
             return
 
@@ -209,7 +240,7 @@ class PoseCompare(object):
                                           ticktext=['%s (%d)' % (e.name, e.value) for e in SolutionType],
                                           tickvals=[e.value for e in SolutionType])
 
-        for pose_data in pose_datas:
+        for pose_data in self.pose_datas:
             time = pose_data.gps_time - float(self.t0)
 
             text = ["Time: %.3f sec (%.3f sec)" % (t, t + float(self.t0)) for t in time]
@@ -234,20 +265,14 @@ class PoseCompare(object):
             self._mapbox_token_missing = True
             mapbox_token = None
 
-        # Read the pose data.
-        pose_datas = []
-        for reader in self.readers:
-            result = reader.read(message_types=[PoseMessage], **self.params)
-            pose_datas.append(result[PoseMessage.MESSAGE_TYPE])
-
-        if len(pose_datas[0].p1_time) == 0 or len(pose_datas[0].p1_time) == 0:
+        if len(self.pose_datas[0].p1_time) == 0 or len(self.pose_datas[0].p1_time) == 0:
             self.logger.info('No pose data available. Skipping map display.')
             return
 
         # Add data to the map.
         map_data = []
 
-        for i, pose_data in enumerate(pose_datas):
+        for i, pose_data in enumerate(self.pose_datas):
             log_name = ['Log A', 'Log B'][i]
 
             # Remove invalid solutions.
@@ -272,10 +297,11 @@ class PoseCompare(object):
                             (t, t + float(self.t0), std[0], std[1], std[2])
                             for t, std in zip(time[idx], std_enu_m[:, idx].T)]
                     map_data.append(go.Scattermapbox(lat=lla_deg[0, idx], lon=lla_deg[1, idx], name=name, text=text,
-                                                    **style))
+                                                     **style))
                 else:
                     # If there's no data, draw a dummy trace so it shows up in the legend anyway.
-                    map_data.append(go.Scattermapbox(lat=[np.nan], lon=[np.nan], name=name, visible='legendonly', **style))
+                    map_data.append(go.Scattermapbox(lat=[np.nan], lon=[np.nan],
+                                    name=name, visible='legendonly', **style))
 
             for type, info in _SOLUTION_TYPE_MAP[i].items():
                 _plot_data(info.name, solution_type == type, marker_style=info.style)
@@ -379,34 +405,35 @@ class PoseCompare(object):
 
         return (CrashType.CRASH_TYPE_NONE, 0)
 
-    def _calculate_duration(self, return_index=False):
-        # Restrict the index to the user-requested time range.
-        full_index = self.reader.get_index()
-        reduced_index = full_index[self.params['time_range']]
-
-        # Calculate the log duration.
-        idx = ~np.isnan(full_index['time'])
-        time = full_index['time'][idx]
-        if len(time) >= 2:
-            log_duration_sec = time[-1] - time[0]
-        else:
-            log_duration_sec = np.nan
-
-        idx = ~np.isnan(reduced_index['time'])
-        time = reduced_index['time'][idx]
-        if len(time) >= 2:
-            processing_duration_sec = time[-1] - time[0]
-        else:
-            processing_duration_sec = np.nan
-
-        if return_index:
-            return log_duration_sec, processing_duration_sec, reduced_index
-        else:
-            return log_duration_sec, processing_duration_sec
-
     def _set_data_summary(self):
-        # Calculate the log duration.
-        log_duration_sec, processing_duration_sec, reduced_index = self._calculate_duration(return_index=True)
+
+        devices_solution_cdf = []
+        for pose_data in self.pose_datas:
+            device_solution_cdf = {}
+            device_solution_cdf['RTK Fixed'] = np.sum(pose_data.solution_type >= SolutionType.RTKFixed)
+            device_solution_cdf['RTK Float'] = np.sum(pose_data.solution_type >= SolutionType.RTKFlo) + device_solution_cdf['RTK Fixed']
+            device_solution_cdf['Standalone'] = np.sum(pose_data.solution_type >= SolutionType.RTKFlo) + device_solution_cdf['RTK Float']
+            device_solution_cdf['Integrate'] = np.sum(pose_data.solution_type >= SolutionType.RTKFlo) + device_solution_cdf['Standalone']
+
+            
+
+            devices_solution_cdf.append(device_solution_cdf)
+
+
+        print(devices_solution_cdf) 
+
+
+        # time_to_first_gps
+
+        # p1 time to p1 time
+
+        # find time overlap
+
+        # for each:
+        #     time to first fix
+        #     fix rates
+
+        return
 
         # Create a table with position solution type statistics.
         result = self.reader.read(message_types=[PoseMessage], **self.params)
@@ -698,9 +725,9 @@ Load and display information stored in a FusionEngine binary file.
 
     plot_group = parser.add_argument_group('Plot Control')
     plot_group.add_argument('--mapbox-token', metavar='TOKEN',
-        help="A Mapbox token to use for satellite imagery when generating a map. If unspecified, the token will be "
-             "read from the MAPBOX_ACCESS_TOKEN or MapboxAccessToken environment variables if set. If no token is "
-             "available, a default map will be displayed using Open Street Maps data.")
+                            help="A Mapbox token to use for satellite imagery when generating a map. If unspecified, the token will be "
+                            "read from the MAPBOX_ACCESS_TOKEN or MapboxAccessToken environment variables if set. If no token is "
+                            "available, a default map will be displayed using Open Street Maps data.")
     plot_group.add_argument(
         '--time-axis', choices=('absolute', 'abs', 'relative', 'rel'), default='absolute',
         help="Specify the way in which time will be plotted:"
@@ -750,6 +777,9 @@ Load and display information stored in a FusionEngine binary file.
         '--no-index', action=ExtendedBooleanAction,
         help="Do not automatically open the plots in a web browser.")
     output_group.add_argument(
+        '--skip-plots', action=ExtendedBooleanAction,
+        help="Do not generate plots.")
+    output_group.add_argument(
         '-o', '--output', type=str, metavar='DIR',
         help="The directory where output will be stored. Defaults to the current directory, or to "
               "'<log_dir>/plot_pose_compare/' if reading from a log.")
@@ -787,7 +817,7 @@ Load and display information stored in a FusionEngine binary file.
                                                   load_original=options.original)
 
     input_path_b = locate_log(input_path=options.log_b, log_base_dir=options.log_base_dir,
-                                                  load_original=options.original)
+                              load_original=options.original)
 
     if input_path_a is None or input_path_b is None:
         # locate_log() will log an error.
@@ -804,14 +834,14 @@ Load and display information stored in a FusionEngine binary file.
 
     # Read pose data from the file.
     analyzer = PoseCompare(file_a=input_path_a, file_b=input_path_b, output_dir=output_dir, ignore_index=options.ignore_index,
-                        prefix=options.prefix + '.' if options.prefix is not None else '',
-                        time_range=time_range, time_axis=options.time_axis)
+                           prefix=options.prefix + '.' if options.prefix is not None else '',
+                           time_range=time_range, time_axis=options.time_axis)
 
-    analyzer.plot_solution_type()
+    if not options.skip_plots:
+        analyzer.plot_solution_type()
+        analyzer.plot_map(mapbox_token=options.mapbox_token)
 
-    analyzer.plot_map(mapbox_token=options.mapbox_token)
-
-    #analyzer.generate_index(auto_open=not options.no_index)
+    analyzer.generate_index(auto_open=not options.no_index)
 
     _logger.info("Output stored in '%s'." % os.path.abspath(output_dir))
 
