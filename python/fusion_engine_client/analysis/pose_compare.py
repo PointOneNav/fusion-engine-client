@@ -38,6 +38,11 @@ _logger = logging.getLogger('point_one.fusion_engine.analysis.pose_compare')
 
 SolutionTypeInfo = namedtuple('SolutionTypeInfo', ['name', 'style'])
 
+_LOG_NAMES = [
+    'Test',
+    'Reference',
+]
+
 _SOLUTION_TYPE_MAP = [{
     SolutionType.Invalid: SolutionTypeInfo(name='Invalid', style={'color': 'black'}),
     SolutionType.Integrate: SolutionTypeInfo(name='Integrated', style={'color': 'cyan'}),
@@ -59,7 +64,7 @@ _SOLUTION_TYPE_MAP = [{
 }]
 
 
-def _data_to_table(col_titles: List[str], values: List[List[Any]], row_major: bool = False):
+def _data_to_table(col_titles: List[str], values: List[List[Any]], round_decimal_places: Optional[int] = None, row_major: bool = False):
     if row_major:
         # If values is row major (outer index is the table rows), transpose it.
         col_values = list(map(list, zip(*values)))
@@ -83,7 +88,10 @@ def _data_to_table(col_titles: List[str], values: List[List[Any]], row_major: bo
             if separator_row:
                 table_html += '<td><hr></td>'
             else:
-                table_html += f'<td>{col_data[row_idx]}</td>'
+                if round_decimal_places and isinstance(col_data[row_idx], float):
+                    table_html += f'<td>{col_data[row_idx]:.{round_decimal_places}f}</td>'
+                else:
+                    table_html += f'<td>{col_data[row_idx]}</td>'
 
         table_html += '</tr>'
     table_html += '''\
@@ -111,7 +119,7 @@ class PoseCompare(object):
     logger = _logger
 
     def __init__(self,
-                 file_a: Union[DataLoader, str], file_b: Union[DataLoader, str], ignore_index: bool = False,
+                 file_test: Union[DataLoader, str], file_reference: Union[DataLoader, str], ignore_index: bool = False,
                  output_dir: str = None, prefix: str = '',
                  time_range: TimeRange = None, max_messages: int = None,
                  time_axis: str = 'relative'):
@@ -141,27 +149,27 @@ class PoseCompare(object):
         }
 
         self.pose_datas: List[PoseMessage] = []
-        if isinstance(file_a, str):
-            self.pose_datas.append(DataLoader(file_a, ignore_index=ignore_index).read(
+        if isinstance(file_test, str):
+            self.pose_datas.append(DataLoader(file_test, ignore_index=ignore_index).read(
                 message_types=[PoseMessage], **self.params)[PoseMessage.MESSAGE_TYPE])
         else:
-            self.pose_datas.append(file_a.read(message_types=[PoseMessage], **self.params)[PoseMessage.MESSAGE_TYPE])
+            self.pose_datas.append(file_test.read(message_types=[PoseMessage], **self.params)[PoseMessage.MESSAGE_TYPE])
 
-        if isinstance(file_b, str):
-            self.pose_datas.append(DataLoader(file_b, ignore_index=ignore_index).read(
+        if isinstance(file_reference, str):
+            self.pose_datas.append(DataLoader(file_reference, ignore_index=ignore_index).read(
                 message_types=[PoseMessage], **self.params)[PoseMessage.MESSAGE_TYPE])
         else:
-            self.pose_datas.append(file_b.read(message_types=[PoseMessage], **self.params)[PoseMessage.MESSAGE_TYPE])
+            self.pose_datas.append(file_reference.read(
+                message_types=[PoseMessage], **self.params)[PoseMessage.MESSAGE_TYPE])
 
         self.output_dir = output_dir
         self.prefix = prefix
 
-
         if time_axis in ('relative', 'rel'):
             self.time_axis = 'relative'
 
-            gps_time_a = self.pose_datas[0].gps_time
-            valid_gps_time = gps_time_a[np.isfinite(gps_time_a)]
+            gps_time_test = self.pose_datas[0].gps_time
+            valid_gps_time = gps_time_test[np.isfinite(gps_time_test)]
 
             if len(valid_gps_time) > 0:
                 self.t0 = valid_gps_time[0]
@@ -192,34 +200,8 @@ class PoseCompare(object):
         # intersect1d implicitly ignore NaNs.
         gps_matches = np.intersect1d(self.pose_datas[0].gps_time, self.pose_datas[1].gps_time, return_indices=True)
 
-        # [matched_indices_log_a, matched_indices_log_b]
+        # [matched_indices_log_test, matched_indices_log_reference]
         return gps_matches[1:]
-
-        # # Debug time mapping between logs
-        # matched_p1_time_a = self.pose_datas[0].p1_time[gps_matches[1]]
-        # matched_p1_time_b = self.pose_datas[1].p1_time[gps_matches[2]]
-        # p1_offsets = matched_p1_time_a - matched_p1_time_b
-
-        # log_b_p1_time = self.pose_datas[1].p1_time + \
-        #     np.interp(np.arange(len(self.pose_datas[1].p1_time)), gps_matches[2], p1_offsets)
-
-        # log_a_t0 = self.pose_datas[0].p1_time[0]
-        # log_b_t0 = log_b_p1_time[0]
-        # log_a_end = self.pose_datas[0].p1_time[-1]
-        # log_b_end = log_b_p1_time[-1]
-        # self.logger.info(f'first_p1_offset:{p1_offsets[0]}, log_a_t0:{log_a_t0}, log_b_t0:{log_b_t0}')
-        # self.logger.info(f'last_p1_offset:{p1_offsets[-1]}, log_a_end:{log_a_end}, log_b_end:{log_b_end}')
-        # self.logger.info(f'num_matched_epochs:{len(p1_offsets)}')
-
-        # return log_b_p1_time
-
-        # # Setup the figure.
-        # figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=True, subplot_titles=['P1 Time Offset'])
-        # figure['layout']['xaxis'].update(title=self.gps_time_label)
-        # figure['layout']['yaxis1'].update(title="Time Offset (s)")
-        # figure.add_trace(go.Scattergl(x=list(range(len(p1_offsets))), y=p1_offsets, mode='markers'), 1, 1)
-        # self._add_figure(name="p1_time_offset", figure=figure, title="P1 Time Offset")
-
 
     def plot_solution_type(self):
         """!
@@ -240,11 +222,12 @@ class PoseCompare(object):
                                           ticktext=['%s (%d)' % (e.name, e.value) for e in SolutionType],
                                           tickvals=[e.value for e in SolutionType])
 
-        for pose_data in self.pose_datas:
+        for name, pose_data in zip(_LOG_NAMES, self.pose_datas):
             time = pose_data.gps_time - float(self.t0)
 
             text = ["Time: %.3f sec (%.3f sec)" % (t, t + float(self.t0)) for t in time]
-            figure.add_trace(go.Scattergl(x=time, y=pose_data.solution_type, text=text, mode='markers'), 1, 1)
+            figure.add_trace(go.Scattergl(x=time, y=pose_data.solution_type,
+                             text=text, name=name, mode='markers'), 1, 1)
 
         self._add_figure(name="solution_type", figure=figure, title="Solution Type")
 
@@ -273,7 +256,7 @@ class PoseCompare(object):
         map_data = []
 
         for i, pose_data in enumerate(self.pose_datas):
-            log_name = ['Log A', 'Log B'][i]
+            log_name = _LOG_NAMES[i]
 
             # Remove invalid solutions.
             valid_idx = np.logical_and(~np.isnan(pose_data.p1_time), pose_data.solution_type != SolutionType.Invalid)
@@ -334,6 +317,118 @@ class PoseCompare(object):
 
         self._add_figure(name="map", figure=figure, title="Vehicle Trajectory (Map)")
 
+    def _calc_pose_error(self, time, solution_type, error_enu_m, std_enu_m, skip_plot: bool):
+        """!
+        @brief Generate a plot of pose ENU error over time.
+        """
+
+        self.error_3d_m = np.linalg.norm(error_enu_m, axis=0)
+        self.error_2d_m = np.linalg.norm(error_enu_m[:2], axis=0)
+        self.error_solution_types = solution_type
+
+        if skip_plot:
+            return
+
+        if self.output_dir is None:
+            return
+
+        time_figure = make_subplots(rows=4, cols=1, print_grid=False, shared_xaxes=True,
+                                    subplot_titles=['3D', 'East', 'North', 'Up'])
+        time_figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
+        for i in range(4):
+            time_figure['layout']['xaxis%d' % (i + 1)].update(title=self.gps_time_label, showticklabels=True)
+        time_figure['layout']['yaxis1'].update(title="Error (m)")
+        time_figure['layout']['yaxis2'].update(title="Error (m)")
+        time_figure['layout']['yaxis3'].update(title="Error (m)")
+        time_figure['layout']['yaxis4'].update(title="Error (m)")
+
+        # Plot the data.
+        def _plot_data(name, idx, marker_style=None):
+            style = {'mode': 'markers', 'marker': {'size': 8}, 'showlegend': True, 'legendgroup': name,
+                     'hoverlabel': {'namelength': -1}}
+            if marker_style is not None:
+                style['marker'].update(marker_style)
+
+            if np.any(idx):
+                text = ["Time: %.3f sec (%.3f sec)<br>Delta (ENU): (%.2f, %.2f, %.2f) m"
+                        "<br>Std (ENU): (%.2f, %.2f, %.2f) m" %
+                        (t, t + float(self.t0), *delta, *std)
+                        for t, delta, std in zip(time[idx], error_enu_m[:, idx].T, std_enu_m[:, idx].T)]
+
+                time_figure.add_trace(go.Scattergl(x=time[idx], y=self.error_3d_m[idx],
+                                                   name=name, text=text, **style), 1, 1)
+                style['showlegend'] = False
+                time_figure.add_trace(go.Scattergl(x=time[idx], y=error_enu_m[0, idx], name=name,
+                                                   text=text, **style), 2, 1)
+                time_figure.add_trace(go.Scattergl(x=time[idx], y=error_enu_m[1, idx], name=name,
+                                                   text=text, **style), 3, 1)
+                time_figure.add_trace(go.Scattergl(x=time[idx], y=error_enu_m[2, idx], name=name,
+                                                   text=text, **style), 4, 1)
+            else:
+                # If there's no data, draw a dummy trace so it shows up in the legend anyway.
+                time_figure.add_trace(go.Scattergl(x=[np.nan], y=[np.nan], name=name, visible='legendonly', **style),
+                                      1, 1)
+
+        for type, info in _SOLUTION_TYPE_MAP[0].items():
+            _plot_data(info.name, solution_type == type, marker_style=info.style)
+
+        self._add_figure(name=f"pose_error", figure=time_figure, title=f"Pose Error: vs. Time")
+
+    def generate_pose_error(self, skip_plot: bool):
+        """!
+        @brief Generate a plot of pose error over time.
+        """
+        if self.output_dir is None:
+            return
+
+        if len(self.pose_datas[0].p1_time) == 0 or len(self.pose_datas[0].p1_time) == 0:
+            self.logger.info('No pose data available. Skipping error plots.')
+            return
+
+        test_solution_types = self.pose_datas[0].solution_type[self.pose_index_maps[0]]
+        reference_solution_types = self.pose_datas[1].solution_type[self.pose_index_maps[1]]
+
+        reference_fixed_or_better = reference_solution_types == SolutionType.RTKFixed
+        reference_float_or_better = np.logical_or(
+            reference_fixed_or_better, reference_solution_types == SolutionType.RTKFloat)
+        reference_standalone_or_better = np.logical_or(
+            reference_float_or_better, reference_solution_types == SolutionType.AutonomousGPS)
+        reference_dr_or_better = np.logical_or(reference_standalone_or_better,
+                                               reference_solution_types == SolutionType.Integrate)
+
+        valid_fixed = np.logical_and(test_solution_types == SolutionType.RTKFixed, reference_fixed_or_better)
+        valid_float = np.logical_and(test_solution_types == SolutionType.RTKFloat, reference_float_or_better)
+        valid_standalone = np.logical_and(
+            test_solution_types == SolutionType.AutonomousGPS, reference_standalone_or_better)
+        valid_dr = np.logical_and(test_solution_types == SolutionType.Integrate, reference_dr_or_better)
+
+        # Remove solutions without reliable reference.
+        valid_idx = valid_fixed | valid_float | valid_standalone | valid_dr
+        if not np.any(valid_idx):
+            self.logger.info('No valid position solutions detected. Skipping error plots.')
+            return
+
+        test_gps_times = self.pose_datas[0].gps_time[self.pose_index_maps[0]]
+        test_std_enu_m = self.pose_datas[0].position_std_enu_m[:, self.pose_index_maps[0]]
+        test_lla_deg = self.pose_datas[0].lla_deg[:, self.pose_index_maps[0]]
+        valid_test_lla_deg = test_lla_deg[:, valid_idx]
+        valid_test_ecef = np.array(geodetic2ecef(
+            lat=test_lla_deg[0, valid_idx], lon=test_lla_deg[1, valid_idx], alt=test_lla_deg[2, valid_idx], deg=True))
+
+        reference_lla_deg = self.pose_datas[1].lla_deg[:, self.pose_index_maps[1]]
+        valid_reference_ecef = np.array(geodetic2ecef(
+            lat=reference_lla_deg[0, valid_idx], lon=reference_lla_deg[1, valid_idx], alt=reference_lla_deg[2, valid_idx], deg=True))
+
+        time = test_gps_times[valid_idx] - float(self.t0)
+        solution_type = test_solution_types[valid_idx]
+        std_enu_m = test_std_enu_m[:, valid_idx]
+
+        error_ecef_m = valid_test_ecef - valid_reference_ecef
+        c_enu_ecef = get_enu_rotation_matrix(*valid_test_lla_deg[0:2, 0], deg=True)
+        error_enu_m = c_enu_ecef.dot(error_ecef_m)
+
+        self._calc_pose_error(time, solution_type, error_enu_m, std_enu_m, skip_plot)
+
     def generate_index(self, auto_open=True):
         """!
         @brief Generate an `index.html` page with links to all generated figures.
@@ -384,54 +479,91 @@ class PoseCompare(object):
         if auto_open:
             self._open_browser(index_path)
 
-    def _parse_crash_log(self, storage_messages: List[PlatformStorageDataMessage]):
-        class CrashType(IntEnum):
-            CRASH_TYPE_NONE = 0,
-            CRASH_TYPE_HARD_FAULT = 1,
-            CRASH_TYPE_MALLOC_FAIL = 2,
-            CRASH_TYPE_STACK_OVERFLOW = 3,
-            CRASH_TYPE_ABORT = 4
-
-        crash_info_format = '<BI'
-        format_len = struct.calcsize(crash_info_format)
-
-        for msg in storage_messages:
-            if msg.data_type == DataType.CRASH_LOG and msg.response == Response.OK:
-                if len(msg.data) < format_len:
-                    self.logger.warning('Crash log with unexpectedly short %d bytes of data.' % len(msg.data))
-                else:
-                    crash_type, crash_count = struct.unpack(crash_info_format, msg.data[:format_len])
-                    return CrashType(crash_type), crash_count
-
-        return (CrashType.CRASH_TYPE_NONE, 0)
-
     def _set_data_summary(self):
-
         devices_solution_cdf = []
-        for pose_data in self.pose_datas:
+        totals = []
+        for pose_index_map, pose_data in zip(self.pose_index_maps, self.pose_datas):
+            solution_types = pose_data.solution_type[pose_index_map]
             device_solution_cdf = {}
-            device_solution_cdf['RTK Fixed'] = np.sum(pose_data.solution_type >= SolutionType.RTKFixed)
-            device_solution_cdf['RTK Float'] = np.sum(pose_data.solution_type >= SolutionType.RTKFlo) + device_solution_cdf['RTK Fixed']
-            device_solution_cdf['Standalone'] = np.sum(pose_data.solution_type >= SolutionType.RTKFlo) + device_solution_cdf['RTK Float']
-            device_solution_cdf['Integrate'] = np.sum(pose_data.solution_type >= SolutionType.RTKFlo) + device_solution_cdf['Standalone']
-
-            
+            device_solution_cdf['RTK Fixed'] = np.sum(solution_types == SolutionType.RTKFixed)
+            device_solution_cdf['RTK Float'] = np.sum(
+                solution_types == SolutionType.RTKFloat) + device_solution_cdf['RTK Fixed']
+            # DGPS is just used by native receiver output?
+            device_solution_cdf['Standalone'] = np.sum(
+                solution_types == SolutionType.AutonomousGPS) + np.sum(solution_types == SolutionType.DGPS) + device_solution_cdf['RTK Float']
+            device_solution_cdf['Integrate'] = np.sum(
+                solution_types == SolutionType.Integrate) + device_solution_cdf['Standalone']
+            total = device_solution_cdf['Integrate'] + np.sum(solution_types == SolutionType.Invalid)
+            if total != len(solution_types):
+                _logger.warning(
+                    f'Unexpected SolutionTypes in: {[_SOLUTION_TYPE_MAP[0][k].name for k in np.unique(solution_types)]}')
 
             devices_solution_cdf.append(device_solution_cdf)
+            totals.append(total)
 
+        types = list(devices_solution_cdf[0].keys())
+        counts = []
+        percents = []
+        for i in range(2):
+            counts.append([devices_solution_cdf[i][t] for t in types])
+            percents.append([devices_solution_cdf[i][t] / totals[i] * 100.0 for t in types])
+        solution_type_table = _data_to_table(['Position Type', 'Test Count', 'Test Percent', 'Reference Count', 'Reference Percent'], [
+                                             types, counts[0], percents[0], counts[1], percents[1]], round_decimal_places=2)
 
-        print(devices_solution_cdf) 
+        # Debug time mapping between logs
+        matched_p1_time_a = self.pose_datas[0].p1_time[self.pose_index_maps[0]]
+        matched_p1_time_b = self.pose_datas[1].p1_time[self.pose_index_maps[1]]
+        p1_offsets = matched_p1_time_a - matched_p1_time_b
+        log_b_p1_time = self.pose_datas[1].p1_time + \
+            np.interp(np.arange(len(self.pose_datas[1].p1_time)), self.pose_index_maps[1], p1_offsets)
+        log_a_t0 = self.pose_datas[0].p1_time[0]
+        log_b_t0 = log_b_p1_time[0]
+        log_a_end = self.pose_datas[0].p1_time[-1]
+        log_b_end = log_b_p1_time[-1]
 
+        data = [[], []]
+        data[0].append('Test Log Start')
+        data[1].append(log_a_t0)
+        data[0].append('Reference Log Start')
+        data[1].append(log_b_t0)
+        data[0].append('Test Log Duration')
+        data[1].append(log_a_end - log_a_t0)
+        data[0].append('Reference Log Duration')
+        data[1].append(log_b_end - log_b_t0)
+        data[0].append('Matched GPS Epochs')
+        data[1].append(len(matched_p1_time_a))
+        data[0].append('Min P1 Time Offset')
+        data[1].append(np.min(p1_offsets))
+        data[0].append('Max P1 Time Offset')
+        data[1].append(np.max(p1_offsets))
 
-        # time_to_first_gps
+        time_table = _data_to_table(['Description', 'Time'], data, round_decimal_places=2)
 
-        # p1 time to p1 time
+        columns = ['Error Metric (m)', 'Mean_', 'Median', 'Min__', 'Max__', "Std"]
+        data = []
 
-        # find time overlap
+        def get_stats(label, values):
+            if len(values) == 0:
+                return [label] + ['NA'] * 5
+            else:
+                return [label, np.mean(values), np.median(values), np.min(values), np.max(values), np.std(values)]
+        data.append(get_stats('2D [All]', self.error_2d_m))
+        data.append(get_stats('3D [All]', self.error_3d_m))
+        data.append(get_stats('3D [fixed]', self.error_3d_m[self.error_solution_types == SolutionType.RTKFixed]))
+        data.append(get_stats('3D [float]', self.error_3d_m[self.error_solution_types == SolutionType.RTKFloat]))
+        data.append(get_stats('3D [standalone]',
+                    self.error_3d_m[self.error_solution_types == SolutionType.AutonomousGPS]))
+        data.append(get_stats('3D [dr]', self.error_3d_m[self.error_solution_types == SolutionType.Integrate]))
+        error_table = _data_to_table(columns, data, row_major=True, round_decimal_places=2)
 
-        # for each:
-        #     time to first fix
-        #     fix rates
+        self.summary += f"""
+{time_table}
+
+<h1>Solution Type CDF</h1>
+{solution_type_table}
+
+{error_table}
+"""
 
         return
 
@@ -758,14 +890,14 @@ Load and display information stored in a FusionEngine binary file.
         '--original', action=ExtendedBooleanAction,
         help='When loading from a log, load the recorded FusionEngine output file instead of playback results.')
     log_group.add_argument(
-        'log_a',
+        'log_test',
         help="The first log to be read. May be one of:\n"
              "- The path to a .p1log file or a file containing FusionEngine messages and other content\n"
              "- The path to a FusionEngine log directory\n"
              "- A pattern matching a FusionEngine log directory under the specified base directory "
              "(see find_fusion_engine_log() and --log-base-dir)")
     log_group.add_argument(
-        'log_b',
+        'log_reference',
         help="The second log to be read. May be one of:\n"
              "- The path to a .p1log file or a file containing FusionEngine messages and other content\n"
              "- The path to a FusionEngine log directory\n"
@@ -812,19 +944,19 @@ Load and display information stored in a FusionEngine binary file.
         time_range = None
 
     # Locate the input file and set the output directory.
-    input_path_a, output_dir, log_id = locate_log(input_path=options.log_a, log_base_dir=options.log_base_dir,
-                                                  return_output_dir=True, return_log_id=True,
-                                                  load_original=options.original)
+    input_path_test, output_dir, log_id = locate_log(input_path=options.log_test, log_base_dir=options.log_base_dir,
+                                                     return_output_dir=True, return_log_id=True,
+                                                     load_original=options.original)
 
-    input_path_b = locate_log(input_path=options.log_b, log_base_dir=options.log_base_dir,
-                              load_original=options.original)
+    input_path_reference = locate_log(input_path=options.log_reference, log_base_dir=options.log_base_dir,
+                                      load_original=options.original)
 
-    if input_path_a is None or input_path_b is None:
+    if input_path_test is None or input_path_reference is None:
         # locate_log() will log an error.
         sys.exit(1)
 
     if log_id is None:
-        _logger.info('Loading A: %s , B: %s.' % (input_path_a, input_path_b))
+        _logger.info('Loading A: %s , B: %s.' % (input_path_test, input_path_reference))
 
     if options.output is None:
         if log_id is not None:
@@ -833,13 +965,14 @@ Load and display information stored in a FusionEngine binary file.
         output_dir = options.output
 
     # Read pose data from the file.
-    analyzer = PoseCompare(file_a=input_path_a, file_b=input_path_b, output_dir=output_dir, ignore_index=options.ignore_index,
+    analyzer = PoseCompare(file_test=input_path_test, file_reference=input_path_reference, output_dir=output_dir, ignore_index=options.ignore_index,
                            prefix=options.prefix + '.' if options.prefix is not None else '',
                            time_range=time_range, time_axis=options.time_axis)
 
     if not options.skip_plots:
         analyzer.plot_solution_type()
         analyzer.plot_map(mapbox_token=options.mapbox_token)
+    analyzer.generate_pose_error(options.skip_plots)
 
     analyzer.generate_index(auto_open=not options.no_index)
 
