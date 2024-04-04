@@ -2133,6 +2133,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
 
         # Read the last task name message to map IDs to names.
         params = copy.deepcopy(self.params)
+        params['return_numpy'] = False
         params['max_messages'] = -1
         result = self.reader.read(message_types=[ProfileExecutionStatsMessage.DEFINITION_TYPE], remove_nan_times=False,
                                   **params)
@@ -2422,6 +2423,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
 
         # Read the last task name message to map IDs to names.
         params = copy.deepcopy(self.params)
+        params['return_numpy'] = False
         params['max_messages'] = -1
         result = self.reader.read(message_types=[ProfileCounterMessage.DEFINITION_TYPE], remove_nan_times=False,
                                   **params)
@@ -2517,6 +2519,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
 
         # Read the last task name message to map IDs to names.
         params = copy.deepcopy(self.params)
+        params['return_numpy'] = False
         params['max_messages'] = -1
         result = self.reader.read(message_types=[ProfileFreeRtosSystemStatusMessage.DEFINITION_TYPE],
                                   remove_nan_times=False, **params)
@@ -2585,6 +2588,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
 
         # Read the last pipeline definition message to map IDs to names.
         params = copy.deepcopy(self.params)
+        params['return_numpy'] = False
         params['max_messages'] = -1
         result = self.reader.read(message_types=[ProfilePipelineMessage.DEFINITION_TYPE], remove_nan_times=False,
                                   **params)
@@ -2627,6 +2631,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
 
         # Read the last pipeline definition message to map IDs to names.
         params = copy.deepcopy(self.params)
+        params['return_numpy'] = False
         params['max_messages'] = -1
         result = self.reader.read(message_types=[ProfileExecutionMessage.DEFINITION_TYPE], remove_nan_times=False,
                                   **params)
