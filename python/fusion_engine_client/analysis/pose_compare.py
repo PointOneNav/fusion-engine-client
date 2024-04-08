@@ -169,17 +169,18 @@ class PoseCompare(object):
         self.output_dir = output_dir
         self.prefix = prefix
 
+
+        gps_time_test = self.test_pose.gps_time
+        valid_gps_time = gps_time_test[np.isfinite(gps_time_test)]
+        if len(valid_gps_time) == 0:
+            raise ValueError('Test data had no valid GPS Times.')
+
+        if np.all(self.test_pose.solution_type == SolutionType.Invalid):
+            raise ValueError(f'Test data had no valid position solutions.')
+
         if time_axis in ('relative', 'rel'):
             self.time_axis = 'relative'
-
-            gps_time_test = self.test_pose.gps_time
-            valid_gps_time = gps_time_test[np.isfinite(gps_time_test)]
-
-            if len(valid_gps_time) > 0:
-                self.t0 = valid_gps_time[0]
-            else:
-                self.t0 = Timestamp()
-
+            self.t0 = valid_gps_time[0]
             self.gps_time_label = 'Relative Time (sec)'
         elif time_axis in ('absolute', 'abs'):
             self.time_axis = 'absolute'
@@ -200,7 +201,7 @@ class PoseCompare(object):
 
         self.pose_index_maps = self._get_log_pose_mapping()
 
-        if len(self.pose_index_maps) == 0:
+        if len(self.pose_index_maps[0]) == 0:
             raise ValueError('Test and reference logs did not have overlapping GPS times.')
 
     def _get_log_pose_mapping(self):
