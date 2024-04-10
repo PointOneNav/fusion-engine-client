@@ -38,6 +38,8 @@ class InternalMessageType(IntEnum):
     # Legacy Internal Alias
     LEGACY_PLATFORM_STORAGE_DATA = 20105
 
+    DATA_WRAPPER = 20200
+
     # Command and control messages.
     DIAG_EVENT_NOTIFICATION = 23004
 
