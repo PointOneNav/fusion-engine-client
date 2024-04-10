@@ -38,6 +38,8 @@ class DataWrapperMessage(MessagePayload):
         return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
 
     def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
+        # NOTE: Since this message does no capture the expected data size, the Construct relies on the size of the Python
+        # `buffer` to infer the size of the data. This is the behavior of @ref GreedyBytes.
         parsed = self.DataWrapperMessageConstruct.parse(buffer[offset:])
         self.unpack_timestamp(parsed.time_stamp_data)
         self.data_type = parsed.data_type
