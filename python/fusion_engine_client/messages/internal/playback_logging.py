@@ -1,4 +1,4 @@
-from construct import (Struct, Int16ul, Int8ul, Padding, Array, GreedyBytes)
+from construct import (BytesInteger, Struct, Int16ul, Int8ul, Padding, Array, GreedyBytes)
 
 from typing import Union
 
@@ -12,10 +12,13 @@ class DataWrapperMessage(MessagePayload):
     MESSAGE_TYPE = MessageType.DATA_WRAPPER
     MESSAGE_VERSION = 0
 
-    DataWrapperMessageConstruct = Struct(
-        "time_stamp_data" / Array(5, Int8ul),
+    Construct = Struct(
+        # 5 byte, unsigned, little endian integer
+        "timestamp_ms" / BytesInteger(5, swapped=True),
         Padding(1),
         "data_type" / Int16ul,
+        # NOTE: Since this message does no capture the expected data size, the Construct relies on the size of the
+        # Python buffer passed to `unpack`` to infer the size of the data. This is the behavior of @ref GreedyBytes.
         "data" / GreedyBytes
     )
 
@@ -24,27 +27,7 @@ class DataWrapperMessage(MessagePayload):
         self.data_type = 0
         self.data = bytes()
 
-    def pack_timestamp(self) -> bytes:
-        return bytes([(self.timestamp_ms >> (i*8)) & 0xFF for i in range(5)])
-
-    def unpack_timestamp(self, time_stamp_data: bytes) -> None:
-        self.timestamp_ms = 0
-        for i in range(5):
-            self.timestamp_ms += time_stamp_data[i] << (i*8)
-
-    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> Union[bytes, int]:
-        packed_data = self.DataWrapperMessageConstruct.build(
-            {"time_stamp_data": self.pack_timestamp(), "data_type": self.data_type, "data": self.data})
-        return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
-
-    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
-        # NOTE: Since this message does no capture the expected data size, the Construct relies on the size of the Python
-        # `buffer` to infer the size of the data. This is the behavior of @ref GreedyBytes.
-        parsed = self.DataWrapperMessageConstruct.parse(buffer[offset:])
-        self.unpack_timestamp(parsed.time_stamp_data)
-        self.data_type = parsed.data_type
-        self.data = parsed.data
-        return parsed._io.tell()
+    # Use default MessagePayload.pack and MessagePayload.unpack
 
     def __repr__(self):
         result = super().__repr__()[:-1]
@@ -52,7 +35,7 @@ class DataWrapperMessage(MessagePayload):
         return result
 
     def __str__(self):
-        return construct_message_to_string(message=self, construct=self.DataWrapperMessageConstruct,
+        return construct_message_to_string(message=self, construct=self.Construct,
                                            value_to_string={'data': lambda x: f'{len(x)} B payload'},
                                            title=f'Data Wrapper')
 
