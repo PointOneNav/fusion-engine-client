@@ -454,7 +454,7 @@ class _ConfigClassGenerator:
 
         def __repr__(self):
             return f'{self.__class__.__name__}(value=0x{self.value:02x} ' \
-                   f'({SatelliteTypeMask.bitmask_to_string(self.value)}))'
+                   f'({SatelliteTypeMask.to_string(self.value)}))'
 
     class FrequencyBandMaskVal(IntegerVal):
         """!
@@ -484,7 +484,7 @@ class _ConfigClassGenerator:
 
         def __repr__(self):
             return f'{self.__class__.__name__}(value=0x{self.value:02x} ' \
-                   f'({FrequencyBandMask.bitmask_to_string(self.value)}))'
+                   f'({FrequencyBandMask.to_string(self.value)}))'
 
     class CoarseOrientation(NamedTuple):
         """!
