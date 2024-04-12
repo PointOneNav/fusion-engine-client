@@ -165,10 +165,16 @@ EMSCRIPTEN_BINDINGS(control) {
       ShutdownRequest::MESSAGE_TYPE;
   static auto ShutdownRequest_MESSAGE_VERSION =
       ShutdownRequest::MESSAGE_VERSION;
+  static auto ShutdownRequest_STOP_ENGINE =
+      ShutdownRequest::STOP_ENGINE;
+  static auto ShutdownRequest_STOP_CURRENT_LOG =
+      ShutdownRequest::STOP_CURRENT_LOG;
   class_<ShutdownRequest>("ShutdownRequest")
       .constructor<>()
       .class_property("MESSAGE_TYPE", &ShutdownRequest_MESSAGE_TYPE)
       .class_property("MESSAGE_VERSION", &ShutdownRequest_MESSAGE_VERSION)
+      .class_property("STOP_ENGINE", &ShutdownRequest_STOP_ENGINE)
+      .class_property("STOP_CURRENT_LOG", &ShutdownRequest_STOP_CURRENT_LOG)
       .property("shutdown_flags", &ShutdownRequest::shutdown_flags)
       .ARRAY_PROPERTY(ShutdownRequest, reserved1)
       .STRUCT_FUNCTIONS(ShutdownRequest);
@@ -177,10 +183,16 @@ EMSCRIPTEN_BINDINGS(control) {
       StartupRequest::MESSAGE_TYPE;
   static auto StartupRequest_MESSAGE_VERSION =
       StartupRequest::MESSAGE_VERSION;
+  static auto StartupRequest_START_ENGINE =
+        StartupRequest::START_ENGINE;
+  static auto StartupRequest_START_NEW_LOG =
+        StartupRequest::START_NEW_LOG;
   class_<StartupRequest>("StartupRequest")
       .constructor<>()
       .class_property("MESSAGE_TYPE", &StartupRequest_MESSAGE_TYPE)
       .class_property("MESSAGE_VERSION", &StartupRequest_MESSAGE_VERSION)
+      .class_property("START_ENGINE", &StartupRequest_START_ENGINE)
+      .class_property("START_NEW_LOG", &StartupRequest_START_NEW_LOG)
       .property("startup_flags", &StartupRequest::startup_flags)
       .ARRAY_PROPERTY(StartupRequest, reserved1)
       .STRUCT_FUNCTIONS(StartupRequest);
