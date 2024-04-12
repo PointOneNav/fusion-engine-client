@@ -35,4 +35,4 @@ target_link_libraries(fusion_engine_client_wasm PUBLIC fusion_engine_client)
 set(CMAKE_EXECUTABLE_SUFFIX ".js")
 set_target_properties(fusion_engine_client_wasm PROPERTIES
     LINK_FLAGS
-    "-s WASM=1 -s NO_EXIT_RUNTIME=1 -sMODULARIZE -s EXPORT_ES6=1 -lembind")
+    "-s WASM=1 -s NO_EXIT_RUNTIME=1 -s WASM_BIGINT=1 -s MODULARIZE -s EXPORT_ES6=1 -lembind ")
