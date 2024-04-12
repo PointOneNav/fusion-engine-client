@@ -25,7 +25,7 @@ def print_message(header, contents, offset_bytes, format='pretty', bytes=None):
             raise ValueError('No data provided for binary format.')
         parts = []
     elif isinstance(contents, MessagePayload):
-        if format.startswith('oneline-'):
+        if format.startswith('oneline'):
             # The repr string should always start with the message type, then other contents:
             #   [POSE (10000), p1_time=12.029 sec, gps_time=2249:528920.500 (1360724120.500 sec), ...]
             # We want to reformat and insert the additional details as follows for consistency:
