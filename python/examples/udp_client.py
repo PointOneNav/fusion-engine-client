@@ -12,10 +12,10 @@ import time
 root_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, root_dir)
 
+from fusion_engine_client.applications.p1_print import add_print_format_argument, print_message
 from fusion_engine_client.parsers import FusionEngineDecoder
 from fusion_engine_client.utils.argument_parser import ArgumentParser
 
-from examples.message_decode import print_message
 
 if __name__ == "__main__":
     parser = ArgumentParser(description="""\
@@ -25,6 +25,7 @@ contents and/or log the messages to disk.
 When using UDP, you must configure the device to send data to your machine.
 """)
 
+    add_print_format_argument(parser, '--display-format')
     parser.add_argument('-f', '--format', default='p1log', choices=('p1log', 'raw', 'csv'),
                         help="""\
 The format of the file to be generated when --output is enabled:
@@ -108,7 +109,7 @@ The format of the file to be generated when --output is enabled:
                     output_file.write(raw_data)
 
                 if options.display:
-                    print_message(header, message)
+                    print_message(header, message, format=options.display_format)
 
                 if generating_csv:
                     p1_time = message.get_p1_time()

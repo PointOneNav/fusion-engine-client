@@ -55,8 +55,10 @@ Extract satellite azimuth, elevation, and L1 signal C/N0 data to a CSV file.
         logger.warning('No satellite data found in log file.')
         sys.exit(2)
 
+    output_prefix = os.path.join(output_dir, os.path.splitext(os.path.basename(input_path))[0])
+
     # Generate a CSV file.
-    path = os.path.join(output_dir, 'satellite_info.csv')
+    path = f'{output_prefix}.satellite_info.csv'
     logger.info("Generating '%s'." % path)
     with open(path, 'w') as f:
         f.write('P1 Time (sec), GPS Time (sec), System, PRN, Azimuth (deg), Elevation (deg), C/N0 (dB-Hz)\n')

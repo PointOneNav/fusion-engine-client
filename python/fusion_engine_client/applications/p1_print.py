@@ -19,7 +19,24 @@ from ..utils.trace import HighlightFormatter, BrokenPipeStreamHandler
 _logger = logging.getLogger('point_one.fusion_engine.applications.print_contents')
 
 
-def print_message(header, contents, offset_bytes, format='pretty', bytes=None):
+def add_print_format_argument(parser, *arg_names):
+    parser.add_argument(
+        *arg_names,
+        choices=['binary', 'pretty', 'pretty-binary', 'pretty-binary-payload',
+                 'oneline', 'oneline-detailed', 'oneline-binary', 'oneline-binary-payload'],
+        default='pretty',
+        help="Specify the format used to print the message contents:\n"
+             "- Print the binary representation of each message on a single line, but no other details\n"
+             "- pretty - Print the message contents in a human-readable format (default)\n"
+             "- pretty-binary - Use `pretty` format, but include the binary representation of each message\n"
+             "- pretty-binary-payload - Like `pretty-binary`, but exclude the message header from the binary\n"
+             "- oneline - Print a summary of each message on a single line\n"
+             "- oneline-detailed - Print a one-line summary, including message offset details\n"
+             "- oneline-binary - Use `oneline-detailed` format, but include the binary representation of each message\n"
+             "- oneline-binary-payload - Like `oneline-binary`, but exclude the message header from the binary")
+
+
+def print_message(header, contents, offset_bytes=None, format='pretty', bytes=None):
     if format == 'binary':
         if bytes is None:
             raise ValueError('No data provided for binary format.')
@@ -44,8 +61,9 @@ def print_message(header, contents, offset_bytes, format='pretty', bytes=None):
         parts = [f'{header.get_type_string()} (unsupported)']
 
     if format != 'oneline':
-        details = 'sequence=%d, size=%d B, offset=%d B (0x%x)' %\
-                  (header.sequence_number, header.get_message_size(), offset_bytes, offset_bytes)
+        details = 'sequence=%d, size=%d B' % (header.sequence_number, header.get_message_size())
+        if offset_bytes is not None:
+            details += ', offset=%d B (0x%x)' % (offset_bytes, offset_bytes)
 
         idx = parts[0].find('[')
         if idx < 0:
@@ -83,19 +101,7 @@ other types of data.
         '--absolute-time', '--abs', action=ExtendedBooleanAction,
         help="Interpret the timestamps in --time as absolute P1 times. Otherwise, treat them as relative to the first "
              "message in the file. Ignored if --time contains a type specifier.")
-    parser.add_argument(
-        '-f', '--format', choices=['binary', 'pretty', 'pretty-binary', 'pretty-binary-payload',
-                                   'oneline', 'oneline-detailed', 'oneline-binary', 'oneline-binary-payload'],
-        default='pretty',
-        help="Specify the format used to print the message contents:\n"
-             "- Print the binary representation of each message on a single line, but no other details\n"
-             "- pretty - Print the message contents in a human-readable format (default)\n"
-             "- pretty-binary - Use `pretty` format, but include the binary representation of each message\n"
-             "- pretty-binary-payload - Like `pretty-binary`, but exclude the message header from the binary\n"
-             "- oneline - Print a summary of each message on a single line\n"
-             "- oneline-detailed - Print a one-line summary, including message offset details\n"
-             "- oneline-binary - Use `oneline-detailed` format, but include the binary representation of each message\n"
-             "- oneline-binary-payload - Like `oneline-binary`, but exclude the message header from the binary")
+    add_print_format_argument(parser, '-f', '--format', '--display-format')
     parser.add_argument(
         '-m', '--message-type', type=str, action='append',
         help="An optional list of class names corresponding with the message types to be displayed. May be specified "
