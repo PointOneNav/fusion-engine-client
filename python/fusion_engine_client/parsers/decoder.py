@@ -210,6 +210,8 @@ class FusionEngineDecoder:
                           (self._header.get_message_size(), self._header.payload_size_bytes))
             self._trace_buffer(self._buffer[:self._msg_len])
 
+            internal_sync_detected = self._buffer[0] == InternalSync.SYNC0 and self._buffer[1] == InternalSync.SYNC1
+
             # Validate the CRC. This will raise an exception on CRC failure.
             try:
                 self._header.validate_crc(self._buffer)
@@ -236,7 +238,11 @@ class FusionEngineDecoder:
                 continue
 
             # Check for sequence number gaps.
-            if self._last_sequence_number is not None:
+            #
+            # We specifically ignore messages using the internal sync sequence. Those are typically external input to a
+            # device that have been wrapped to avoid them showing up to the user when included in a diagnostic output
+            # stream. Their sequence numbers likely do not match the ones used by the device's output.
+            if not internal_sync_detected and self._last_sequence_number is not None:
                 # If we got this far, the message is valid and the CRC passed, so we expect the sequence number to go
                 # forward. If it goes backward, treat this as unexpected and warn if errors for "likely" messages are
                 # enabled.
@@ -255,7 +261,9 @@ class FusionEngineDecoder:
                         _logger.warning("Gap detected in FusionEngine message sequence numbers. [expected=%d, "
                                         "received=%d].",
                                         expected_sequence_number, self._header.sequence_number)
-            self._last_sequence_number = self._header.sequence_number
+
+            if not internal_sync_detected:
+                self._last_sequence_number = self._header.sequence_number
 
             # Get the class for the received message type and deserialize the message payload. If cls is not None, it is
             # a child of @ref MessagePayload that maps to the received @ref MessageType.
