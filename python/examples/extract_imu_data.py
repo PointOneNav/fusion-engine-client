@@ -56,9 +56,11 @@ Extract IMU accelerometer and gyroscope measurements.
         logger.warning('No IMU data found in log file.')
         sys.exit(2)
 
+    output_prefix = os.path.join(output_dir, os.path.splitext(os.path.basename(input_path))[0])
+
     # Generate a CSV file for corrected IMU data.
     if len(imu_data.p1_time) != 0:
-        path = os.path.join(output_dir, 'imu_data.csv')
+        path = f'{output_prefix}.imu.csv'
         logger.info("Generating '%s'." % path)
         gps_time = reader.convert_to_gps_time(imu_data.p1_time)
         with open(path, 'w') as f:
@@ -72,7 +74,7 @@ Extract IMU accelerometer and gyroscope measurements.
 
     # Generate a CSV file for raw IMU data.
     if len(raw_imu_data.p1_time) != 0:
-        path = os.path.join(output_dir, 'raw_imu_data.csv')
+        path = f'{output_prefix}.raw_imu.csv'
         logger.info("Generating '%s'." % path)
         gps_time = reader.convert_to_gps_time(raw_imu_data.p1_time)
         with open(path, 'w') as f:

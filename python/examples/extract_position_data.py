@@ -154,8 +154,10 @@ Extract position data to both CSV and KML files.
         logger.warning('No pose data found in log file.')
         sys.exit(2)
 
+    output_prefix = os.path.join(output_dir, os.path.splitext(os.path.basename(input_path))[0])
+
     # Generate a CSV file.
-    path = os.path.join(output_dir, 'position.csv')
+    path = f'{output_prefix}.position.csv'
     logger.info("Generating '%s'." % path)
     with open(path, 'w') as f:
         f.write('P1 Time (sec), GPS Time (sec), Solution Type, Lat (deg), Lon (deg), Ellipsoid Alt (m), # Satellites, '
@@ -168,7 +170,7 @@ Extract position data to both CSV and KML files.
                      *pose.ypr_deg, *pose_aux.velocity_enu_mps))
 
     # Generate a KML file.
-    path = os.path.join(output_dir, 'position.kml')
+    path = f'{output_prefix}.kml'
     logger.info("Generating '%s'." % path)
     with open(path, 'w') as f:
         f.write(KML_TEMPLATE_START)
