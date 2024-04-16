@@ -5,6 +5,7 @@ import io
 import sys
 import os
 import json
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict
 
@@ -40,16 +41,27 @@ def download_to_memory(s3_key) -> bytes:
 
 
 def find_logs(prefix, log_guids) -> Dict[str, str]:
+    PREFIX_DATE_FORMAT = '%Y-%m-%d'
     resp = {}
-    paginator = s3_client.get_paginator('list_objects_v2')
-    pages = paginator.paginate(Bucket=S3_DEFAULT_INGEST_BUCKET, Prefix=prefix)
-    for page in pages:
-        for content in page['Contents']:
-            for uuid in log_guids:
-                if uuid in content['Key']:
-                    offset = content['Key'].index(uuid)
-                    resp[uuid] = content['Key'][:offset] + uuid
-                    break
+
+    prefix_date = datetime.strptime(prefix, PREFIX_DATE_FORMAT)
+    day_before = prefix_date - timedelta(days=1)
+    day_after = prefix_date + timedelta(days=1)
+    prefixes = [prefix, day_before.strftime(PREFIX_DATE_FORMAT), day_after.strftime(PREFIX_DATE_FORMAT)]
+
+    for prefix in prefixes:
+        if len(log_guids) == len(resp):
+            break
+        _logger.debug(f"Searching {S3_DEFAULT_INGEST_BUCKET}/{prefix} for logs.")
+        paginator = s3_client.get_paginator('list_objects_v2')
+        pages = paginator.paginate(Bucket=S3_DEFAULT_INGEST_BUCKET, Prefix=prefix)
+        for page in pages:
+            for content in page['Contents']:
+                for uuid in log_guids:
+                    if uuid in content['Key']:
+                        offset = content['Key'].index(uuid)
+                        resp[uuid] = content['Key'][:offset] + uuid
+                        break
     return resp
 
 
@@ -59,9 +71,8 @@ def get_device_name_from_path(log_path: Path) -> str:
 
 def main():
     parser = ArgumentParser(description="""\
-    Run p1_pose_compare for each device included in a drive test.
-    This tool downloads the relevant files from S3 and prompts stdin before moving on to the next log.
-    """)
+Run p1_pose_compare for each device included in a drive test.
+This tool downloads the relevant files from S3 and prompts stdin before moving on to the next log.""")
     parser.add_argument('-v', '--verbose', action='count', default=0,
                         help="Print verbose/trace debugging messages.")
 
@@ -76,6 +87,7 @@ def main():
     if options.verbose >= 1:
         logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(name)s:%(lineno)d - %(message)s',
                             stream=sys.stdout)
+        _logger.setLevel(logging.DEBUG)
         if options.verbose == 1:
             logging.getLogger('point_one.fusion_engine.analysis.pose_compare').setLevel(logging.DEBUG)
         else:
@@ -131,10 +143,10 @@ def main():
             if guid not in log_prefixes:
                 if reference_guid == guid:
                     _logger.error(
-                        f"Could't find test log: {guid}. Make sure collection wasn't on day boundary. Continuing without it.")
+                        f"Could't find test log: {guid}. Continuing without it.")
                     test_guids.remove(guid)
                 else:
-                    _logger.error(f"Could't find reference log: {guid}. Make sure collection wasn't on day boundary.")
+                    _logger.error(f"Could't find reference log: {guid}.")
                     exit(1)
 
         for guid, s3_prefix in log_prefixes.items():

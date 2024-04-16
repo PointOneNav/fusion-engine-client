@@ -17,3 +17,6 @@ scipy>=1.5.0
 
 # Required for development only.
 packaging>=21.0.0
+
+# Required only for drive analysis.
+boto3>=1.34.79
