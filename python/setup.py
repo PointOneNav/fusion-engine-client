@@ -42,7 +42,11 @@ dev_requirements = set([
     'packaging>=21.0.0',
 ])
 
-all_requirements = message_requirements | tools_requirements | display_requirements | dev_requirements
+internal_only_requirements = set([
+    'boto3>=1.34.79',
+])
+
+all_requirements = message_requirements | tools_requirements | display_requirements | dev_requirements | internal_only_requirements
 
 setup(
     name='fusion-engine-client',
