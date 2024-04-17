@@ -411,6 +411,12 @@ P1_CONSTEXPR_FUNC const char* to_string(DeviceType val) {
       return "LG69T_AP";
     case DeviceType::LG69T_AH:
       return "LG69T_AH";
+    case DeviceType::NEXAR_BEAM2K:
+      return "NEXAR_BEAM2K";
+    case DeviceType::SSR_LG69T:
+      return "SSR_LG69T";
+    case DeviceType::SSR_DESKTOP:
+      return "SSR_DESKTOP";
   }
   return "Unrecognized";
 }
