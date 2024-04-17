@@ -375,19 +375,19 @@ struct P1_ALIGNAS(4) VersionInfoMessage : public MessagePayload {
 enum class DeviceType : uint8_t {
   /** Unable to map device to a defined entry. */
   UNKNOWN = 0,
-  /** Device is a Point One Atlas. */
+  /** Point One Atlas. */
   ATLAS = 1,
-  /** Device is a Quectel LG69T-AM system. */
+  /** Quectel LG69T-AM system. */
   LG69T_AM = 2,
-  /** Device is a Quectel LG69T-AP system. */
+  /** Quectel LG69T-AP system. */
   LG69T_AP = 3,
-  /** Device is a Quectel LG69T-AH system. */
+  /** Quectel LG69T-AH system. */
   LG69T_AH = 4,
-  /** Device is a Nexar Beam2K system. */
+  /** Nexar Beam2K system. */
   NEXAR_BEAM2K = 5,
-  /** Device is an SSR system on a LG69T. */
+  /** Point One SSR client running on an LG69T platform. */
   SSR_LG69T = 6,
-  /** Device is an SSR system on a desktop. */
+  /** Point One SSR client running on a desktop platform. */
   SSR_DESKTOP = 7,
 };
 
