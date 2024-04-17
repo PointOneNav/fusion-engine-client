@@ -442,6 +442,9 @@ class DeviceType(IntEnum):
     LG69T_AM = 2
     LG69T_AP = 3
     LG69T_AH = 4
+    NEXAR_BEAM2K = 5,
+    SSR_LG69T = 6,
+    SSR_DESKTOP = 7,
 
 
 class DeviceIDMessage(MessagePayload):

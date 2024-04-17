@@ -383,6 +383,12 @@ enum class DeviceType : uint8_t {
   LG69T_AP = 3,
   /** Device is a Quectel LG69T-AH system. */
   LG69T_AH = 4,
+  /** Device is a Nexar Beam2K system. */
+  NEXAR_BEAM2K = 5,
+  /** Device is an SSR system on a LG69T. */
+  SSR_LG69T = 6,
+  /** Device is an SSR system on a desktop. */
+  SSR_DESKTOP = 7,
 };
 
 /**
