@@ -108,7 +108,7 @@ class Analyzer(object):
                  output_dir: str = None, prefix: str = '',
                  time_range: TimeRange = None, max_messages: int = None,
                  time_axis: str = 'relative',
-                 truncate_long_logs: bool = True):
+                 truncate_long_logs: bool = True, source_id: List[int]=[0]):
         """!
         @brief Create an analyzer for the specified log.
 
@@ -128,7 +128,7 @@ class Analyzer(object):
                @ref LONG_LOG_DURATION_SEC).
         """
         if isinstance(file, str):
-            self.reader = DataLoader(file, ignore_index=ignore_index)
+            self.reader = DataLoader(file, ignore_index=ignore_index, source_id=source_id)
         else:
             self.reader = file
 
@@ -141,6 +141,18 @@ class Analyzer(object):
             'show_progress': True,
             'return_numpy': True
         }
+
+        available_source_ids = self.reader.get_available_source_ids()
+        source_id_set = set(source_id)
+        available_source_id_set = set(available_source_ids)
+        if available_source_id_set != source_id_set:
+            unavailable_source_ids = list(source_id_set.difference(available_source_id_set))
+            _logger.warning('Not all source IDs requested are available. Cannot extract the following source '
+                            'IDs: {}'.format(unavailable_source_ids))
+            source_id = list(source_id_set.intersection(available_source_id_set))
+            _logger.warning('Will extract the following available requested source IDs: {}'.format(source_id))
+
+        self.source_id = source_id
 
         if time_axis in ('relative', 'rel'):
             self.time_axis = 'relative'
