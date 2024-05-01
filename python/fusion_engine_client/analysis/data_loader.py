@@ -606,6 +606,29 @@ class DataLoader(object):
             result.append(message_index)
         return result
 
+    def get_available_source_ids(self,
+                                 message_types: List[MessageType] = [MessageType.POSE, MessageType.POSE_AUX],
+                                 num_messages_to_read: int = 100):
+        source_ids = []
+        num_messages_read = 0
+
+        while num_messages_read < num_messages_to_read:
+            try:
+                header, payload = self.read_next()
+            except StopIteration:
+                break
+
+            if header.message_type not in message_types:
+                continue
+
+            num_messages_read += 1
+            if header.source_identifier in source_ids:
+                continue
+
+            source_ids.append(header.source_identifier)
+
+        return source_ids
+
     def get_t0(self):
         return self.t0
 
