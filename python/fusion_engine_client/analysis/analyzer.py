@@ -2264,17 +2264,17 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         self._add_figure(name="profile_eigen", figure=figure, title="Profiling: Eigen Pools")
 
     def plot_host_side_serial_dropouts(self, id_to_name, data, raw_file_index, device_uart):
-        host_serial_interface = 'tx_' + device_uart
+        host_serial_interfaces = (f'{device_uart}_tx', f'tx_{device_uart}')
 
         # Get the ProfileCounterMessage that corresponds to the interface the host was listening to.
         connected_port_idx = None
         for k, val in id_to_name.items():
-            if host_serial_interface == val:
+            if val in host_serial_interfaces:
                 connected_port_idx = k
 
         if connected_port_idx is None:
             self.logger.info("Device serial interface %s not found in profiling counters, can't check for host serial "
-                             "dropouts." % host_serial_interface)
+                             "dropouts." % host_serial_interfaces[0])
             return
 
         # Get the profiling data for the amount of serial data transmitted to the host.
@@ -2337,7 +2337,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         error_counts_maps = []
         data_counts_maps = []
         for k, v in id_to_name.items():
-            if not (v.startswith('tx_') or v.startswith('rx_')):
+            if not v.startswith('uart'):
                 continue
 
             if '_buff' in v:
