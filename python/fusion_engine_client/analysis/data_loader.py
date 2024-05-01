@@ -135,7 +135,7 @@ class DataLoader(object):
 
     logger = logging.getLogger('point_one.fusion_engine.analysis.data_loader')
 
-    def __init__(self, path=None, save_index=True, ignore_index=False):
+    def __init__(self, path=None, save_index=True, ignore_index=False, source_id=[0]):
         """!
         @brief Create a new reader instance.
 
@@ -151,6 +151,8 @@ class DataLoader(object):
         self.t0 = None
         self.system_t0 = None
         self.system_t0_ns = None
+
+        self.source_id = source_id
 
         self._need_t0 = True
         self._need_system_t0 = True
@@ -172,7 +174,7 @@ class DataLoader(object):
         self.close()
 
         self.reader = MixedLogReader(input_file=path, save_index=save_index, ignore_index=ignore_index,
-                                     return_bytes=True, return_message_index=True)
+                                     return_bytes=True, return_message_index=True, source_id=self.source_id)
 
         # Read the first message (with P1 time) in the file to set self.t0.
         #
@@ -468,6 +470,8 @@ class DataLoader(object):
             except StopIteration:
                 break
 
+            if header.source_identifier not in self.source_id:
+                continue
             message_size_bytes = header.get_message_size()
             message_offset_bytes = self.reader.get_bytes_read() - message_size_bytes
 

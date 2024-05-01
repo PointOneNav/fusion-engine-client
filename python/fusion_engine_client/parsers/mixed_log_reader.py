@@ -1,4 +1,4 @@
-from typing import Iterable, Union
+from typing import Iterable, List, Union
 
 import copy
 from datetime import datetime
@@ -25,7 +25,8 @@ class MixedLogReader(object):
                  save_index: bool = True, ignore_index: bool = False, max_bytes: int = None,
                  time_range: TimeRange = None, message_types: Union[Iterable[MessageType], MessageType] = None,
                  return_header: bool = True, return_payload: bool = True,
-                 return_bytes: bool = False, return_offset: bool = False, return_message_index: bool = False):
+                 return_bytes: bool = False, return_offset: bool = False, return_message_index: bool = False,
+                 source_id: List[int] = [0]):
         """!
         @brief Construct a new generator instance.
 
@@ -59,6 +60,7 @@ class MixedLogReader(object):
         self.return_bytes = return_bytes
         self.return_offset = return_offset
         self.return_message_index = return_message_index
+        self.source_id = source_id
 
         self._original_time_range = copy.deepcopy(time_range)
         self.time_range = copy.deepcopy(self._original_time_range)
@@ -257,6 +259,10 @@ class MixedLogReader(object):
 
                 data += payload_bytes
                 header.validate_crc(data)
+
+                # Verify that source ID is correct.
+                if header.source_identifier not in self.source_id:
+                    continue
 
                 message_length_bytes = MessageHeader.calcsize() + header.payload_size_bytes
                 if self.logger.isEnabledFor(logging.getTraceLevel(depth=1)):
