@@ -377,9 +377,14 @@ int32_t FusionEngineFramer::OnByte(bool quiet) {
               << "), seq=" << header->sequence_number
               << ", size=" << current_message_size_
               << " B, crc=" << HexPrintableInteger(crc) << "]";
+      auto* payload = reinterpret_cast<uint8_t*>(header + 1);
+#if P1_HAVE_STD_FUNCTION
       if (callback_) {
-        auto* payload = reinterpret_cast<uint8_t*>(header + 1);
         callback_(*header, payload);
+      }
+#endif // P1_HAVE_STD_FUNCTION
+      if (raw_callback_) {
+        raw_callback_(raw_callback_context_, *header, payload);
       }
       state_ = State::SYNC0;
       return static_cast<int32_t>(current_message_size_);
