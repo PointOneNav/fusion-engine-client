@@ -45,7 +45,7 @@ namespace parsers {
  * framer.OnData(my_data, my_data_size);
  * ```
  */
-class P1_EXPORT FusionEngineFramer {
+class FusionEngineFramer {
  public:
 #if P1_HAVE_STD_FUNCTION
   using MessageCallback =
@@ -62,14 +62,14 @@ class P1_EXPORT FusionEngineFramer {
    * You must call @ref SetBuffer() to assign a buffer, otherwise all incoming
    * data will be discarded.
    */
-  FusionEngineFramer() = default;
+  P1_EXPORT FusionEngineFramer() = default;
 
   /**
    * @brief Construct a framer instance with an internally allocated buffer.
    *
    * @param capacity_bytes The maximum framing buffer capacity (in bytes).
    */
-  explicit FusionEngineFramer(size_t capacity_bytes)
+  P1_EXPORT explicit FusionEngineFramer(size_t capacity_bytes)
       : FusionEngineFramer(nullptr, capacity_bytes) {}
 
   /**
@@ -82,9 +82,9 @@ class P1_EXPORT FusionEngineFramer {
    *        buffer internally.
    * @param capacity_bytes The maximum framing buffer capacity (in bytes).
    */
-  FusionEngineFramer(void* buffer, size_t capacity_bytes);
+  P1_EXPORT FusionEngineFramer(void* buffer, size_t capacity_bytes);
 
-  ~FusionEngineFramer();
+  P1_EXPORT ~FusionEngineFramer();
 
   // Don't allow copying or moving to avoid issues with managed buffer_.
   FusionEngineFramer(const FusionEngineFramer&) = delete; // Copy constructor
@@ -104,7 +104,7 @@ class P1_EXPORT FusionEngineFramer {
    *        buffer internally.
    * @param capacity_bytes The maximum framing buffer capacity (in bytes).
    */
-  void SetBuffer(void* buffer, size_t capacity_bytes);
+  P1_EXPORT void SetBuffer(void* buffer, size_t capacity_bytes);
 
   /**
    * @brief Enable/disable warnings for CRC and "message too large" failures.
@@ -116,7 +116,7 @@ class P1_EXPORT FusionEngineFramer {
    *
    * @param enabled If `true`, issue warnings on errors.
    */
-  void WarnOnError(bool enabled) { warn_on_error_ = enabled; }
+  P1_EXPORT void WarnOnError(bool enabled) { warn_on_error_ = enabled; }
 
 #if P1_HAVE_STD_FUNCTION
   /**
@@ -125,7 +125,9 @@ class P1_EXPORT FusionEngineFramer {
    * @param callback The function to be called with the message header and a
    *        pointer to the message payload.
    */
-  void SetMessageCallback(MessageCallback callback) { callback_ = callback; }
+  P1_EXPORT void SetMessageCallback(MessageCallback callback) {
+    callback_ = callback;
+  }
 #endif // P1_HAVE_STD_FUNCTION
 
   /**
@@ -135,7 +137,8 @@ class P1_EXPORT FusionEngineFramer {
    *        variable, the message header, and a pointer to the message payload.
    * @param context A context value that will be passed to the callback.
    */
-  void SetMessageCallback(RawMessageCallback callback, void* context) {
+  P1_EXPORT void SetMessageCallback(RawMessageCallback callback,
+                                    void* context) {
     raw_callback_ = callback;
     raw_callback_context_ = context;
   }
@@ -143,7 +146,7 @@ class P1_EXPORT FusionEngineFramer {
   /**
    * @brief Reset the framer and discard all pending data.
    */
-  void Reset();
+  P1_EXPORT void Reset();
 
   /**
    * @brief Process incoming data.
@@ -154,7 +157,7 @@ class P1_EXPORT FusionEngineFramer {
    * @return The total size of all valid, complete messages, or 0 if no messages
    *         were completed.
    */
-  size_t OnData(const uint8_t* buffer, size_t length_bytes);
+  P1_EXPORT size_t OnData(const uint8_t* buffer, size_t length_bytes);
 
  private:
   enum class State {
