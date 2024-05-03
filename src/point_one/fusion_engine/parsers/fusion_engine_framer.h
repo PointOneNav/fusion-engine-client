@@ -42,7 +42,9 @@ namespace parsers {
  */
 class P1_EXPORT FusionEngineFramer {
  public:
-  using MessageCallback = void (*)(const messages::MessageHeader&, const void*);
+  using RawMessageCallback = void (*)(void* context,
+                                      const messages::MessageHeader& header,
+                                      const void* payload);
 
   /**
    * @brief Construct a framer instance with no buffer allocated.
@@ -113,7 +115,21 @@ class P1_EXPORT FusionEngineFramer {
    * @param callback The function to be called with the message header and a
    *        pointer to the message payload.
    */
-  void SetMessageCallback(MessageCallback callback) { callback_ = callback; }
+  void SetMessageCallback(RawMessageCallback callback) {
+    SetMessageCallback(callback, nullptr);
+  }
+
+  /**
+   * @brief Specify a function to be called when a message is framed.
+   *
+   * @param callback The function to be called with the supplied context
+   *        variable, the message header, and a pointer to the message payload.
+   * @param context A context value that will be passed to the callback.
+   */
+  void SetMessageCallback(RawMessageCallback callback, void* context) {
+    raw_callback_ = callback;
+    raw_callback_context_ = context;
+  }
 
   /**
    * @brief Reset the framer and discard all pending data.
@@ -139,7 +155,8 @@ class P1_EXPORT FusionEngineFramer {
     DATA = 3,
   };
 
-  MessageCallback callback_ = nullptr;
+  RawMessageCallback raw_callback_ = nullptr;
+  void* raw_callback_context_ = nullptr;
 
   bool warn_on_error_ = true;
   bool is_buffer_managed_ = false;
