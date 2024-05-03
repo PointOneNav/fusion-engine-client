@@ -378,6 +378,11 @@ int32_t FusionEngineFramer::OnByte(bool quiet) {
               << ", size=" << current_message_size_
               << " B, crc=" << HexPrintableInteger(crc) << "]";
       auto* payload = reinterpret_cast<uint8_t*>(header + 1);
+#if P1_HAVE_STD_FUNCTION
+      if (callback_) {
+        callback_(*header, payload);
+      }
+#endif // P1_HAVE_STD_FUNCTION
       if (raw_callback_) {
         raw_callback_(raw_callback_context_, *header, payload);
       }

@@ -5,8 +5,13 @@
 
 #pragma once
 
+#include "point_one/fusion_engine/common/portability.h"
+
 #include <cstddef> // For size_t
 #include <cstdint>
+#if P1_HAVE_STD_FUNCTION
+#  include <functional>
+#endif // P1_HAVE_STD_FUNCTION
 
 #include "point_one/fusion_engine/messages/defs.h"
 
@@ -42,6 +47,10 @@ namespace parsers {
  */
 class P1_EXPORT FusionEngineFramer {
  public:
+#if P1_HAVE_STD_FUNCTION
+  using MessageCallback =
+      std::function<void(const messages::MessageHeader&, const void*)>;
+#endif // P1_HAVE_STD_FUNCTION
   using RawMessageCallback = void (*)(void* context,
                                       const messages::MessageHeader& header,
                                       const void* payload);
@@ -109,15 +118,15 @@ class P1_EXPORT FusionEngineFramer {
    */
   void WarnOnError(bool enabled) { warn_on_error_ = enabled; }
 
+#if P1_HAVE_STD_FUNCTION
   /**
    * @brief Specify a function to be called when a message is framed.
    *
    * @param callback The function to be called with the message header and a
    *        pointer to the message payload.
    */
-  void SetMessageCallback(RawMessageCallback callback) {
-    SetMessageCallback(callback, nullptr);
-  }
+  void SetMessageCallback(MessageCallback callback) { callback_ = callback; }
+#endif // P1_HAVE_STD_FUNCTION
 
   /**
    * @brief Specify a function to be called when a message is framed.
@@ -155,6 +164,9 @@ class P1_EXPORT FusionEngineFramer {
     DATA = 3,
   };
 
+#if P1_HAVE_STD_FUNCTION
+  MessageCallback callback_;
+#endif // P1_HAVE_STD_FUNCTION
   RawMessageCallback raw_callback_ = nullptr;
   void* raw_callback_context_ = nullptr;
 
