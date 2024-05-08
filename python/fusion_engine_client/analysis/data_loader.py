@@ -135,7 +135,7 @@ class DataLoader(object):
 
     logger = logging.getLogger('point_one.fusion_engine.analysis.data_loader')
 
-    def __init__(self, path=None, save_index=True, ignore_index=False):
+    def __init__(self, path=None, save_index=True, ignore_index=False, enable_internal_sync: bool = True):
         """!
         @brief Create a new reader instance.
 
@@ -144,6 +144,7 @@ class DataLoader(object):
                future. See @ref FileIndex for details.
         @param ignore_index If `True`, ignore the existing index file and read from the `.p1log` binary file directly.
                If `save_index == True`, this will delete the existing file and create a new one.
+        @param enable_internal_sync If `True`, search for messages using the internal sync pattern.
         """
         self.reader: MixedLogReader = None
 
@@ -157,9 +158,9 @@ class DataLoader(object):
 
         self._generate_index = save_index
         if path is not None:
-            self.open(path, save_index=save_index, ignore_index=ignore_index)
+            self.open(path, save_index=save_index, ignore_index=ignore_index, enable_internal_sync=enable_internal_sync)
 
-    def open(self, path, save_index=True, ignore_index=False):
+    def open(self, path, save_index=True, ignore_index=False, enable_internal_sync: bool = True):
         """!
         @brief Open a FusionEngine binary file.
 
@@ -168,10 +169,12 @@ class DataLoader(object):
                future. See @ref FileIndex for details.
         @param ignore_index If `True`, ignore the existing index file and read from the `.p1log` binary file directly.
                If `save_index == True`, this will delete the existing file and create a new one.
+        @param enable_internal_sync If `True`, search for messages using the internal sync pattern.
         """
         self.close()
 
         self.reader = MixedLogReader(input_file=path, save_index=save_index, ignore_index=ignore_index,
+                                     enable_internal_sync=enable_internal_sync,
                                      return_bytes=True, return_message_index=True)
 
         # Read the first message (with P1 time) in the file to set self.t0.

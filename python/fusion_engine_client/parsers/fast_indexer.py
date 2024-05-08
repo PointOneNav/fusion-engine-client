@@ -25,7 +25,8 @@ _INTERNAL_PREAMBLE = struct.unpack('<H', InternalSync.SYNC)
 _logger = logging.getLogger('point_one.fusion_engine.parsers.fast_indexer')
 
 
-def _search_blocks_for_fe(input_path: str, thread_idx: int, block_starts: List[int]):
+def _search_blocks_for_fe(input_path: str, thread_idx: int, block_starts: List[int],
+                          enable_internal_sync: bool = True):
     """!
     @brief Search the specified portions of the file for the start offsets of valid FE messages.
 
@@ -79,7 +80,10 @@ def _search_blocks_for_fe(input_path: str, thread_idx: int, block_starts: List[i
             # This is lot faster then doing this check in raw Python due to numpy optimizations.
             #
             # INTERNAL: Also check for internally wrapped messages, which use a different sync sequence.
-            sync_matches = np.where(np.logical_or(np_data == _PREAMBLE, np_data == _INTERNAL_PREAMBLE))[0]
+            idx = np_data == _PREAMBLE
+            if enable_internal_sync:
+                idx = np.logical_or(idx, np_data == _INTERNAL_PREAMBLE)
+            sync_matches = np.where(idx)[0]
 
             _logger.trace(f'Thread {thread_idx}, block {i}: {len(sync_matches)} matches', depth=2)
             num_syncs += len(sync_matches)
@@ -131,6 +135,7 @@ def _search_blocks_for_fe(input_path: str, thread_idx: int, block_starts: List[i
 def fast_generate_index(
         input_path: str,
         force_reindex=False,
+        enable_internal_sync: bool = True,
         save_index=True,
         max_bytes=None,
         num_threads=cpu_count()) -> FileIndex:
@@ -141,6 +146,7 @@ def fast_generate_index(
 
     @param input_path The path to the file to be read.
     @param force_reindex If `True` regenerate the index even if there's an existing file.
+    @param enable_internal_sync If `True`, search for messages using the internal sync pattern.
     @param save_index If `True` save the index to disk after generation.
     @param max_bytes If specified, read up to the maximum number of bytes.
     @param num_threads The number of parallel processes to spawn for searching the file.
@@ -171,7 +177,7 @@ def fast_generate_index(
     _logger.debug(f'Using Threads: {num_threads}')
 
     # These are the args passed to the _search_blocks_for_fe instances.
-    args: list[Tuple[str, int, List[int]]] = []
+    args: list[Tuple[str, int, List[int], bool]] = []
     # Allocate which blocks of bytes will be processed by each thread.
     num_blocks = math.ceil(file_size / _READ_SIZE_BYTES)
     # Each thread will process at least blocks_per_thread blocks. If the number
@@ -183,7 +189,8 @@ def fast_generate_index(
         if i < blocks_remainder:
             blocks += 1
         args.append((input_path, i,
-                     list(range(byte_offset, byte_offset + blocks * _READ_SIZE_BYTES, _READ_SIZE_BYTES))))
+                     list(range(byte_offset, byte_offset + blocks * _READ_SIZE_BYTES, _READ_SIZE_BYTES)),
+                     enable_internal_sync))
         byte_offset += blocks * _READ_SIZE_BYTES
 
     _logger.debug(f'Reads/thread: {blocks_per_thread}')

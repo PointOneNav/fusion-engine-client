@@ -9,7 +9,6 @@ import numpy as np
 
 from . import fast_indexer, file_index
 from ..messages import MessageType, MessageHeader, MessagePayload, Timestamp, message_type_to_class
-from ..messages.internal import InternalSync
 from ..utils import trace as logging
 from ..utils.time_range import TimeRange
 
@@ -23,8 +22,9 @@ class MixedLogReader(object):
     logger = logging.getLogger('point_one.fusion_engine.parsers.mixed_log_reader')
 
     def __init__(self, input_file, warn_on_gaps: bool = False, show_progress: bool = False,
-                 save_index: bool = True, ignore_index: bool = False, max_bytes: int = None,
-                 time_range: TimeRange = None, message_types: Union[Iterable[MessageType], MessageType] = None,
+                 save_index: bool = True, ignore_index: bool = False, enable_internal_sync: bool = True,
+                 max_bytes: int = None, time_range: TimeRange = None,
+                 message_types: Union[Iterable[MessageType], MessageType] = None,
                  return_header: bool = True, return_payload: bool = True,
                  return_bytes: bool = False, return_offset: bool = False, return_message_index: bool = False):
         """!
@@ -41,6 +41,7 @@ class MixedLogReader(object):
                See @ref FileIndex for details. Ignored if `max_bytes` is specified.
         @param ignore_index If `True`, ignore the existing index file and read from the binary file directly. If
                `save_index == True`, this will delete the existing file and create a new one.
+        @param enable_internal_sync If `True`, search for messages using the internal sync pattern.
         @param max_bytes If specified, read up to the maximum number of bytes.
         @param time_range An optional @ref TimeRange object specifying desired start and end time bounds of the data to
                be read. See @ref TimeRange for more details.
@@ -106,6 +107,7 @@ class MixedLogReader(object):
 
         # Open the companion index file if one exists, otherwise index the file.
         self._original_index = fast_indexer.fast_generate_index(input_path, force_reindex=ignore_index,
+                                                                enable_internal_sync=enable_internal_sync,
                                                                 save_index=save_index, max_bytes=max_bytes)
         self.next_index_elem = 0
         self.index = self._original_index[self.message_types][self.time_range]
