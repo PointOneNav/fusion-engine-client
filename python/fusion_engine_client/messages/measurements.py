@@ -1251,8 +1251,7 @@ class HeadingOutput(MessagePayload):
 Heading Output @ {str(self.details.p1_time)}
   Solution Type: {self.solution_type}
   YPR (ENU) (deg): {self.ypr_deg[0]:.2f}, {self.ypr_deg[1]:.2f}, {self.ypr_deg[2]:.2f}
-  Heading (deg): {self.heading_true_north_deg:.2f}
-  """
+  Heading (deg): {self.heading_true_north_deg:.2f}"""
 
     @classmethod
     def calcsize(cls) -> int:
