@@ -23,6 +23,7 @@ CACHE_NAME_MAP = {
     DataType.FILTER_STATE: 'filter_state.p1log'
 }
 
+
 def main():
     parser = ArgumentParser(description="""\
 Decode and dump the platform storage data for a specific datatype.
@@ -42,6 +43,9 @@ The version of the data is also recorded to the a `*_version.txt` file.
         help="If set, do not load the .p1i index file corresponding with the .p1log data file. If specified and a .p1i "
              "file does not exist, do not generate one. Otherwise, a .p1i file will be created automatically to "
              "improve data read speed in the future.")
+    log_parser.add_argument(
+        '--original', action="store_true",
+        help='When loading from a log, load the recorded FusionEngine output file instead of playback results.')
     log_parser.add_argument(
         '--log-base-dir', metavar='DIR', default=DEFAULT_LOG_BASE_DIR,
         help="The base directory containing FusionEngine logs to be searched if a log pattern is specified.")
@@ -87,7 +91,8 @@ The version of the data is also recorded to the a `*_version.txt` file.
         logging.basicConfig(level=logging.INFO, format='%(message)s', stream=sys.stdout)
 
     # Locate the input file and set the output directory.
-    input_path, output_dir, log_id = locate_log(input_path=options.log, log_base_dir=options.log_base_dir, return_log_id=True,
+    input_path, output_dir, log_id = locate_log(input_path=options.log, log_base_dir=options.log_base_dir,
+                                                return_log_id=True, load_original=options.original,
                                                 extract_fusion_engine_data=False, return_output_dir=True)
     if input_path is None:
         # locate_log() will log an error.
@@ -115,28 +120,35 @@ The version of the data is also recorded to the a `*_version.txt` file.
 
     total_messages = defaultdict(int)
     versions = {}
+    for name in CACHE_NAME_MAP.values():
+        file_path = os.path.join(output_dir, name)
+        if os.path.exists(file_path):
+            os.remove(file_path)
+
+    types_remaining = set(storage_types)
     for header, message, data in reader:
-        if message.data_type in storage_types:
+        if message.data_type in types_remaining:
             total_messages[message.data_type] += 1
             versions[message.data_type] = message.data_version
             file_path = os.path.join(output_dir, CACHE_NAME_MAP[message.data_type])
             if options.payload_only:
                 data = message.data
-            if options.last or options.first or total_messages == 1:
+            if options.last or options.first:
                 open(file_path, 'wb').write(data)
                 if options.first:
-                    storage_types.remove(message.data_type)
+                    types_remaining.remove(message.data_type)
             else:
                 open(file_path, 'ab').write(data)
 
-    if total_messages == 0:
-        _logger.warning(f'No valid {options.storage_type} PlatformStorage messages found.')
-    else:
-        for type, version in versions.items():
+    for data_type in storage_types:
+        if data_type not in versions:
+            _logger.warning(f'No valid {data_type.name} PlatformStorage messages found.')
+        else:
+            version = versions[data_type]
             version_str = f'{version.major}.{version.minor}'
             _logger.info(
-                f'Decoded {total_messages[type]} instances of {type.name} PlatformStorage message version {version_str}.')
-            file_path = os.path.join(output_dir, CACHE_NAME_MAP[type])
+                f'Decoded {total_messages[data_type]} instances of {data_type.name} PlatformStorage message version {version_str}.')
+            file_path = os.path.join(output_dir, CACHE_NAME_MAP[data_type])
             output_version_file = ''.join(file_path.split('.')[:-1]) + '_version.txt'
             with open(output_version_file, 'w') as fd:
                 fd.write(version_str)
