@@ -73,6 +73,7 @@ class IMUInput(MessagePayload):
         return construct_message_to_string(message=self, construct=self.Construct, title='IMU Input',
                                            fields=['details', 'accel_mps2', 'gyro_rps', 'temperature_degc'])
 
+
 class IMUOutput(MessagePayload):
     """!
     @brief IMU sensor measurement data.
@@ -94,6 +95,7 @@ class IMUOutput(MessagePayload):
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
             buffer = bytearray(self.calcsize())
+            offset = 0
 
         initial_offset = offset
 
@@ -785,6 +787,7 @@ class WheelTickInput(MessagePayload):
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
             buffer = bytearray(self.calcsize())
+            offset = 0
 
         initial_offset = offset
 
@@ -888,6 +891,7 @@ class VehicleTickInput(MessagePayload):
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
             buffer = bytearray(self.calcsize())
+            offset = 0
 
         initial_offset = offset
 
@@ -999,6 +1003,7 @@ class DeprecatedWheelSpeedMeasurement(MessagePayload):
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
             buffer = bytearray(self.calcsize())
+            offset = 0
 
         initial_offset = offset
 
@@ -1103,6 +1108,7 @@ class DeprecatedVehicleSpeedMeasurement(MessagePayload):
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
             buffer = bytearray(self.calcsize())
+            offset = 0
 
         initial_offset = offset
 
@@ -1193,6 +1199,7 @@ class HeadingOutput(MessagePayload):
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
             buffer = bytearray(self.calcsize())
+            offset = 0
 
         initial_offset = offset
 
@@ -1303,6 +1310,7 @@ class RawHeadingOutput(MessagePayload):
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
             buffer = bytearray(self.calcsize())
+            offset = 0
 
         initial_offset = offset
 
