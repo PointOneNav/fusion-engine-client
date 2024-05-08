@@ -1243,8 +1243,7 @@ class HeadingOutput(MessagePayload):
 
     def __repr__(self):
         result = super().__repr__()[:-1]
-        ypr_str = ['%.1f' % v for v in self.ypr_deg]
-        result += f', solution_type={self.solution_type}, ypr=[{ypr_str}] deg]'
+        result += f', solution_type={self.solution_type}, heading={self.heading_true_north_deg:.1f} deg]'
         return result
 
     def __str__(self):
