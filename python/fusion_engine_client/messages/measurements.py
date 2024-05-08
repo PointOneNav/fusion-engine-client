@@ -1203,8 +1203,7 @@ class HeadingOutput(MessagePayload):
 
         initial_offset = offset
 
-        buffer = self.details.pack(buffer)
-        offset += self.details.calcsize()
+        offset += self.details.pack(buffer, offset, return_buffer=False)
 
         self._STRUCT.pack_into(
             buffer, offset,
@@ -1231,7 +1230,8 @@ class HeadingOutput(MessagePayload):
          self.ypr_deg[0],
          self.ypr_deg[1],
          self.ypr_deg[2],
-         self.heading_true_north_deg) = self._STRUCT.unpack_from(buffer, offset)
+         self.heading_true_north_deg) = \
+            self._STRUCT.unpack_from(buffer, offset)
         offset += self._STRUCT.size
 
         self.solution_type = SolutionType(solution_type_int)
