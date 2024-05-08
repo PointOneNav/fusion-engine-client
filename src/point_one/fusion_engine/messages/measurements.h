@@ -1134,8 +1134,8 @@ struct P1_ALIGNAS(4) DeprecatedVehicleSpeedMeasurement : public MessagePayload {
  *        MessageType::RAW_HEADING_OUTPUT, version 1.0).
  * @ingroup measurement_messages
  *
- * This message contains raw heading sensor measurements that have not been
- * corrected for mounting angle biases.
+ * This message is an output from the device contaning raw heading sensor
+ * measurements that have not been corrected for mounting angle biases.
  *
  * See also @ref HeadingOutput.
  */
@@ -1194,15 +1194,16 @@ struct P1_ALIGNAS(4) RawHeadingOutput : public MessagePayload {
 };
 
 /**
- * @brief Heading sensor measurement output (@ref MessageType::HEADING_OUTPUT,
- *        version 1.0).
+ * @brief Heading sensor measurement output with heading bias corrections
+ *        applied (@ref MessageType::HEADING_OUTPUT, version 1.0).
  * @ingroup measurement_messages
  *
- * The HeadingOutput message behaves similarly to the RawHeadingOutput,
- * however, if no biases have been set AND the message is enabled,
- * then the message will not be published.
+ * This message is an output from the device contaning heading sensor
+ * measurements after applying user-specified horizontal and vertical bias
+ * corrections to account for the orientation of the primary and secondary GNSS
+ * antennas.
  *
- * See also @ref RawHeadingOutput and @ref SolutionType::Invalid.
+ * See also @ref RawHeadingOutput.
  */
 struct P1_ALIGNAS(4) HeadingOutput : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::HEADING_OUTPUT;
@@ -1242,8 +1243,9 @@ struct P1_ALIGNAS(4) HeadingOutput : public MessagePayload {
   float ypr_deg[3] = {NAN, NAN, NAN};
 
   /**
-   * The corrected heading angle (in degrees) with respect to true north,
-   * pointing from the primary antenna to the secondary antenna.
+   * The heading angle (in degrees) with respect to true north, pointing from
+   * the primary antenna to the secondary  antenna, after applying bias
+   * corrections.
    *
    * @note
    * Reported in the range [0, 360).

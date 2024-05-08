@@ -1170,7 +1170,7 @@ Vehicle Speed Measurement @ {str(self.details.p1_time)}
 
 class HeadingOutput(MessagePayload):
     """!
-     @brief Corrected heading sensor measurement output.
+    @brief Heading sensor measurement output with heading bias corrections applied.
     """
     MESSAGE_TYPE = MessageType.HEADING_OUTPUT
     MESSAGE_VERSION = 0
@@ -1185,12 +1185,15 @@ class HeadingOutput(MessagePayload):
         self.solution_type = SolutionType.Invalid
         ## A bitmask of flags associated with the solution
         self.flags = 0
-        ## The measured YPR vector (in degrees), resolved in the ENU frame.
+
+        ##
+        # The measured YPR vector (in degrees), resolved in the ENU frame, after applying horizontal (yaw) and vertical
+        # (pitch) bias corrections.
         self.ypr_deg = np.full((3,), np.nan)
 
         ##
-        # The corrected heading between the primary device antenna and the secondary (in degrees) with
-        # respect to true north.
+        # The heading angle (in degrees) with respect to true north, pointing from the primary antenna to the secondary
+        # antenna, after applying bias corrections.
         #
         # @note
         # Reported in the range [0, 360).
@@ -1270,7 +1273,7 @@ Heading Output @ {str(self.details.p1_time)}
 
 class RawHeadingOutput(MessagePayload):
     """!
-     @brief Raw (uncorrected) heading sensor measurement output.
+    @brief Raw (uncorrected) heading sensor measurement output.
     """
     MESSAGE_TYPE = MessageType.RAW_HEADING_OUTPUT
     MESSAGE_VERSION = 0
