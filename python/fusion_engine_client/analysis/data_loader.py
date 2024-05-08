@@ -135,7 +135,7 @@ class DataLoader(object):
 
     logger = logging.getLogger('point_one.fusion_engine.analysis.data_loader')
 
-    def __init__(self, path=None, save_index=True, ignore_index=False, enable_internal_sync: bool = True):
+    def __init__(self, path=None, save_index=True, ignore_index=False, omit_internal_sync_from_index: bool = False):
         """!
         @brief Create a new reader instance.
 
@@ -144,7 +144,9 @@ class DataLoader(object):
                future. See @ref FileIndex for details.
         @param ignore_index If `True`, ignore the existing index file and read from the `.p1log` binary file directly.
                If `save_index == True`, this will delete the existing file and create a new one.
-        @param enable_internal_sync If `True`, search for messages using the internal sync pattern.
+        @param omit_internal_sync_from_index If `True`, do not include messages using the internal sync pattern in the
+               generated index file. WARNING: If an index file already exists and contains messages with internal sync
+               sequences, setting this parameter will have no effect unless `ignore_index == True`.
         """
         self.reader: MixedLogReader = None
 
@@ -158,9 +160,10 @@ class DataLoader(object):
 
         self._generate_index = save_index
         if path is not None:
-            self.open(path, save_index=save_index, ignore_index=ignore_index, enable_internal_sync=enable_internal_sync)
+            self.open(path, save_index=save_index, ignore_index=ignore_index,
+                      omit_internal_sync_from_index=omit_internal_sync_from_index)
 
-    def open(self, path, save_index=True, ignore_index=False, enable_internal_sync: bool = True):
+    def open(self, path, save_index=True, ignore_index=False, omit_internal_sync_from_index: bool = False):
         """!
         @brief Open a FusionEngine binary file.
 
@@ -169,13 +172,15 @@ class DataLoader(object):
                future. See @ref FileIndex for details.
         @param ignore_index If `True`, ignore the existing index file and read from the `.p1log` binary file directly.
                If `save_index == True`, this will delete the existing file and create a new one.
-        @param enable_internal_sync If `True`, search for messages using the internal sync pattern.
+        @param omit_internal_sync_from_index If `True`, do not include messages using the internal sync pattern in the
+               generated index file. WARNING: If an index file already exists and contains messages with internal sync
+               sequences, setting this parameter will have no effect unless `ignore_index == True`.
         """
         self.close()
 
         self.reader = MixedLogReader(input_file=path, save_index=save_index, ignore_index=ignore_index,
-                                     enable_internal_sync=enable_internal_sync,
-                                     return_bytes=True, return_message_index=True)
+                                     return_bytes=True, return_message_index=True,
+                                     omit_internal_sync_from_index=omit_internal_sync_from_index)
 
         # Read the first message (with P1 time) in the file to set self.t0.
         #
@@ -202,7 +207,8 @@ class DataLoader(object):
                 self._need_system_t0 = False
         else:
             self.read(require_p1_time=True, max_messages=1, max_bytes=1 * 1024 * 1024,
-                      ignore_cache=True, show_progress=False)
+                      ignore_cache=True, show_progress=False,
+                      enable_internal_sync=not omit_internal_sync_from_index)
 
         # Similarly, we also set the system t0 based on the first system-stamped (typically POSIX) message to appear in
         # the log, if any (profiling data, etc.). Unlike P1 time, since the index file does not contain system
@@ -210,7 +216,8 @@ class DataLoader(object):
         # read operation.
         if self._need_system_t0:
             self.read(require_system_time=True, max_messages=1, max_bytes=1 * 1024 * 1024,
-                      ignore_cache=True, show_progress=False)
+                      ignore_cache=True, show_progress=False,
+                      enable_internal_sync=not omit_internal_sync_from_index)
 
     def close(self):
         """!
@@ -240,6 +247,7 @@ class DataLoader(object):
         @param ignore_cache If `True`, ignore any cached data from a previous @ref read() call, and reload the requested
                data from disk.
 
+        @param enable_internal_sync If `True`, search for messages using the internal sync pattern.
         @param max_messages If set, read up to the specified maximum number of messages. Applies across all message
                types. If negative, read the last N messages.
         @param max_bytes If set, read up to the specified maximum number of bytes.
@@ -279,6 +287,7 @@ class DataLoader(object):
               time_range: TimeRange = None,
               show_progress: bool = False,
               ignore_cache: bool = False,
+              enable_internal_sync: bool = True,
               max_messages: int = None, max_bytes: int = None,
               require_p1_time: bool = False, require_system_time: bool = False,
               return_in_order: bool = False, return_bytes: bool = False, return_message_index: bool = False,
@@ -305,6 +314,7 @@ class DataLoader(object):
         # Otherwise, we need to read from disk again.
         params = {
             'time_range': time_range,
+            'enable_internal_sync': enable_internal_sync,
             'max_messages': max_messages,
             'max_bytes': max_bytes,
             'require_p1_time': require_p1_time,
@@ -467,7 +477,8 @@ class DataLoader(object):
             try:
                 header, payload, message_bytes, message_index = \
                     self.reader.read_next(require_p1_time=require_p1_time,
-                                          require_system_time=require_system_time)
+                                          require_system_time=require_system_time,
+                                          enable_internal_sync=enable_internal_sync)
             except StopIteration:
                 break
 

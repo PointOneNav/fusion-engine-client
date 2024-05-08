@@ -8,7 +8,7 @@ import sys
 import numpy as np
 
 from . import fast_indexer, file_index
-from ..messages import MessageType, MessageHeader, MessagePayload, Timestamp, message_type_to_class
+from ..messages import InternalSync, MessageType, MessageHeader, MessagePayload, Timestamp, message_type_to_class
 from ..utils import trace as logging
 from ..utils.time_range import TimeRange
 
@@ -22,7 +22,7 @@ class MixedLogReader(object):
     logger = logging.getLogger('point_one.fusion_engine.parsers.mixed_log_reader')
 
     def __init__(self, input_file, warn_on_gaps: bool = False, show_progress: bool = False,
-                 save_index: bool = True, ignore_index: bool = False, enable_internal_sync: bool = True,
+                 save_index: bool = True, ignore_index: bool = False, omit_internal_sync_from_index: bool = False,
                  max_bytes: int = None, time_range: TimeRange = None,
                  message_types: Union[Iterable[MessageType], MessageType] = None,
                  return_header: bool = True, return_payload: bool = True,
@@ -41,7 +41,9 @@ class MixedLogReader(object):
                See @ref FileIndex for details. Ignored if `max_bytes` is specified.
         @param ignore_index If `True`, ignore the existing index file and read from the binary file directly. If
                `save_index == True`, this will delete the existing file and create a new one.
-        @param enable_internal_sync If `True`, search for messages using the internal sync pattern.
+        @param omit_internal_sync_from_index If `True`, do not include messages using the internal sync pattern in the
+               generated index file. WARNING: If an index file already exists and contains messages with internal sync
+               sequences, setting this parameter will have no effect unless `ignore_index == True`.
         @param max_bytes If specified, read up to the maximum number of bytes.
         @param time_range An optional @ref TimeRange object specifying desired start and end time bounds of the data to
                be read. See @ref TimeRange for more details.
@@ -107,7 +109,7 @@ class MixedLogReader(object):
 
         # Open the companion index file if one exists, otherwise index the file.
         self._original_index = fast_indexer.fast_generate_index(input_path, force_reindex=ignore_index,
-                                                                enable_internal_sync=enable_internal_sync,
+                                                                enable_internal_sync=not omit_internal_sync_from_index,
                                                                 save_index=save_index, max_bytes=max_bytes)
         self.next_index_elem = 0
         self.index = self._original_index[self.message_types][self.time_range]
@@ -176,10 +178,13 @@ class MixedLogReader(object):
     def next(self):
         return self.read_next()
 
-    def read_next(self, require_p1_time=False, require_system_time=False):
-        return self._read_next(require_p1_time=require_p1_time, require_system_time=require_system_time)
+    def read_next(self, require_p1_time=False, require_system_time=False,
+                  enable_internal_sync: bool = True):
+        return self._read_next(require_p1_time=require_p1_time, require_system_time=require_system_time,
+                               enable_internal_sync=enable_internal_sync)
 
-    def _read_next(self, require_p1_time=False, require_system_time=False, force_eof=False):
+    def _read_next(self, require_p1_time=False, require_system_time=False, force_eof=False,
+                   enable_internal_sync: bool = True):
         if force_eof:
             if not self.reached_eof():
                 self.logger.debug('Forcibly seeking to EOF.')
@@ -230,13 +235,27 @@ class MixedLogReader(object):
 
             try:
                 header = MessageHeader()
-                header.unpack(data, warn_on_unrecognized=False)
+                _, sync = header.unpack(data, warn_on_unrecognized=False, return_sync_bytes=True)
+                message_length_bytes = MessageHeader.calcsize() + header.payload_size_bytes
+                payload_size_bytes = header.payload_size_bytes
+
+                if not enable_internal_sync and sync == InternalSync.SYNC:
+                    if self.logger.isEnabledFor(logging.getTraceLevel(depth=1)):
+                        self.logger.trace(
+                            'Skipping %s message with internal sync @ %d (0x%x). [length=%d B, sequence=%d, '
+                            '# messages=%d]' %
+                             (header.get_type_string(), start_offset_bytes, start_offset_bytes,
+                              message_length_bytes, header.sequence_number, self.valid_count + 1),
+                             depth=1)
+                    self.total_bytes_read += header.payload_size_bytes
+                    self.valid_count += 1
+                    continue
 
                 # Check if the payload is too big. If so, we most likely found an invalid header -- message sync bytes
                 # occurring randomly in non-FusionEngine binary data in the file.
-                if header.payload_size_bytes > MessageHeader._MAX_EXPECTED_SIZE_BYTES:
+                if payload_size_bytes > MessageHeader._MAX_EXPECTED_SIZE_BYTES:
                     raise ValueError('Payload size (%d) too large. [message_type=%s]' %
-                                     (header.payload_size_bytes, header.get_type_string()))
+                                     (payload_size_bytes, header.get_type_string()))
 
                 # Read and validate the payload.
                 #
@@ -251,17 +270,16 @@ class MixedLogReader(object):
                 #
                 # If the CRC fails, either because we found an invalid header or because a valid message got corrupted,
                 # validate_crc() will raise a ValueError and we will skip forward in the same manner.
-                payload_bytes = self.input_file.read(header.payload_size_bytes)
+                payload_bytes = self.input_file.read(payload_size_bytes)
                 read_len += len(payload_bytes)
                 self.total_bytes_read += len(payload_bytes)
-                if len(payload_bytes) != header.payload_size_bytes:
+                if len(payload_bytes) != payload_size_bytes:
                     raise ValueError('Not enough data - likely not a valid FusionEngine header. [message_type=%s]' %
                                      header.get_type_string())
 
                 data += payload_bytes
                 header.validate_crc(data)
 
-                message_length_bytes = MessageHeader.calcsize() + header.payload_size_bytes
                 if self.logger.isEnabledFor(logging.getTraceLevel(depth=1)):
                     self.logger.trace('Read %s message @ %d (0x%x). [length=%d B, sequence=%d, # messages=%d]' %
                                       (header.get_type_string(), start_offset_bytes, start_offset_bytes,
