@@ -1808,7 +1808,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             row=3, col=1
         )
 
-        fig.update_layout(title='Heading Plots', legend_traceorder='normal')
+        fig.update_layout(title='Heading Plots', legend_traceorder='normal', modebar_add=['v1hovermode'])
 
 
         # Display the navigation engine's heading estimate, if available, for comparison with the heading sensor
