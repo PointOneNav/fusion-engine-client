@@ -1784,7 +1784,11 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             return
 
         # Read the heading measurement data.
-        result = self.reader.read(message_types=[RawHeadingOutput, HeadingOutput], **self.params)
+        #
+        # Internal: We explicitly disable internal sync here to avoid overlap between wrapped RawHeadingOutput from the
+        # secondary device and the rewritten versions containing primary device P1 timestamps and sequence numbers.
+        result = self.reader.read(message_types=[RawHeadingOutput, HeadingOutput],
+                                  enable_internal_sync=False, **self.params)
         raw_heading_data = result[RawHeadingOutput.MESSAGE_TYPE]
         heading_data = result[HeadingOutput.MESSAGE_TYPE]
 
