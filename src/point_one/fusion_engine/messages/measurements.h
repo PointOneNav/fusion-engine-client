@@ -1130,12 +1130,72 @@ struct P1_ALIGNAS(4) DeprecatedVehicleSpeedMeasurement : public MessagePayload {
 ////////////////////////////////////////////////////////////////////////////////
 
 /**
+ * @brief Heading sensor measurement output with heading bias corrections
+ *        applied (@ref MessageType::HEADING_OUTPUT, version 1.0).
+ * @ingroup measurement_messages
+ *
+ * This message is an output from the device contaning heading sensor
+ * measurements after applying user-specified horizontal and vertical bias
+ * corrections to account for the orientation of the primary and secondary GNSS
+ * antennas.
+ *
+ * See also @ref RawHeadingOutput.
+ */
+struct P1_ALIGNAS(4) HeadingOutput : public MessagePayload {
+  static constexpr MessageType MESSAGE_TYPE = MessageType::HEADING_OUTPUT;
+  static constexpr uint8_t MESSAGE_VERSION = 0;
+
+  /**
+   * Measurement timestamp and additional information, if available. See @ref
+   * MeasurementDetails for details.
+   */
+  MeasurementDetails details;
+
+  /**
+   * Set to @ref SolutionType::RTKFixed when heading is available, or @ref
+   * SolutionType::Invalid otherwise.
+   */
+  SolutionType solution_type = SolutionType::Invalid;
+
+  uint8_t reserved[3] = {0};
+
+  /** A bitmask of flags associated with the solution. */
+  uint32_t flags = 0;
+
+  /**
+   * The measured YPR vector (in degrees), resolved in the ENU frame.
+   *
+   * YPR is defined as an intrinsic Euler-321 rotation, i.e., yaw, pitch, then
+   * roll.
+   *
+   * @note
+   * This field contains the measured attitude information (@ref
+   * RawHeadingOutput) from a secondary heading device after applying @ref
+   * ConfigType::HEADING_BIAS configuration settings for yaw (horizontal) and
+   * pitch (vertical) offsets between the primary and secondary GNSS antennas.
+   * If either bias value is not specified, the corresponding measurement values
+   * will be set to `NAN`.
+   */
+  float ypr_deg[3] = {NAN, NAN, NAN};
+
+  /**
+   * The heading angle (in degrees) with respect to true north, pointing from
+   * the primary antenna to the secondary  antenna, after applying bias
+   * corrections.
+   *
+   * @note
+   * Reported in the range [0, 360).
+   */
+  float heading_true_north_deg = NAN;
+};
+
+/**
  * @brief Raw (uncorrected) heading sensor measurement output (@ref
  *        MessageType::RAW_HEADING_OUTPUT, version 1.0).
  * @ingroup measurement_messages
  *
- * This message contains raw heading sensor measurements that have not been
- * corrected for mounting angle biases.
+ * This message is an output from the device contaning raw heading sensor
+ * measurements that have not been corrected for mounting angle biases.
  *
  * See also @ref HeadingOutput.
  */
@@ -1191,64 +1251,6 @@ struct P1_ALIGNAS(4) RawHeadingOutput : public MessagePayload {
    * The estimated distance between primary and secondary antennas (in meters).
    */
   float baseline_distance_m = NAN;
-};
-
-/**
- * @brief Heading sensor measurement output (@ref MessageType::HEADING_OUTPUT,
- *        version 1.0).
- * @ingroup measurement_messages
- *
- * The HeadingOutput message behaves similarly to the RawHeadingOutput,
- * however, if no biases have been set AND the message is enabled,
- * then the message will not be published.
- *
- * See also @ref RawHeadingOutput and @ref SolutionType::Invalid.
- */
-struct P1_ALIGNAS(4) HeadingOutput : public MessagePayload {
-  static constexpr MessageType MESSAGE_TYPE = MessageType::HEADING_OUTPUT;
-  static constexpr uint8_t MESSAGE_VERSION = 0;
-
-  /**
-   * Measurement timestamp and additional information, if available. See @ref
-   * MeasurementDetails for details.
-   */
-  MeasurementDetails details;
-
-  /**
-   * Set to @ref SolutionType::RTKFixed when heading is available, or @ref
-   * SolutionType::Invalid otherwise.
-   */
-  SolutionType solution_type = SolutionType::Invalid;
-
-  uint8_t reserved[3] = {0};
-
-  /** A bitmask of flags associated with the solution. */
-  uint32_t flags = 0;
-
-  /**
-   * The measured YPR vector (in degrees), resolved in the ENU frame.
-   *
-   * YPR is defined as an intrinsic Euler-321 rotation, i.e., yaw, pitch, then
-   * roll.
-   *
-   * @note
-   * This field contains the measured attitude information (@ref
-   * RawHeadingOutput) from a secondary heading device after applying @ref
-   * ConfigType::HEADING_BIAS configuration settings for yaw (horizontal) and
-   * pitch (vertical) offsets between the primary and secondary GNSS antennas.
-   * If either bias value is not specified, the corresponding measurement values
-   * will be set to `NAN`.
-   */
-  float ypr_deg[3] = {NAN, NAN, NAN};
-
-  /**
-   * The corrected heading angle (in degrees) with respect to true north,
-   * pointing from the primary antenna to the secondary antenna.
-   *
-   * @note
-   * Reported in the range [0, 360).
-   */
-  float heading_true_north_deg = NAN;
 };
 
 #pragma pack(pop)

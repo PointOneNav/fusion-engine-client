@@ -45,6 +45,7 @@ class PoseMessage(MessagePayload):
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
             buffer = bytearray(self.calcsize())
+            offset = 0
 
         initial_offset = offset
 
@@ -188,6 +189,7 @@ class PoseAuxMessage(MessagePayload):
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
             buffer = bytearray(self.calcsize())
+            offset = 0
 
         initial_offset = offset
 
@@ -277,6 +279,7 @@ class GNSSInfoMessage(MessagePayload):
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
             buffer = bytearray(self.calcsize())
+            offset = 0
 
         initial_offset = offset
 
@@ -418,6 +421,7 @@ class SatelliteInfo:
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
             buffer = bytearray(self.calcsize())
+            offset = 0
 
         if np.isnan(self.cn0_dbhz):
             cn0_int = SatelliteInfo.INVALID_CN0
@@ -476,6 +480,7 @@ class GNSSSatelliteMessage(MessagePayload):
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
             buffer = bytearray(self.calcsize())
+            offset = 0
 
         initial_offset = offset
 
@@ -680,6 +685,7 @@ class CalibrationStatus(MessagePayload):
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
             buffer = bytearray(self.calcsize())
+            offset = 0
 
         initial_offset = offset
 

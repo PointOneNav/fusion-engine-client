@@ -199,7 +199,7 @@ class DataLoader(object):
                 self._need_system_t0 = False
         else:
             self.read(require_p1_time=True, max_messages=1, max_bytes=1 * 1024 * 1024,
-                      disable_index_generation=True, ignore_cache=True, show_progress=False)
+                      ignore_cache=True, show_progress=False)
 
         # Similarly, we also set the system t0 based on the first system-stamped (typically POSIX) message to appear in
         # the log, if any (profiling data, etc.). Unlike P1 time, since the index file does not contain system
@@ -207,7 +207,7 @@ class DataLoader(object):
         # read operation.
         if self._need_system_t0:
             self.read(require_system_time=True, max_messages=1, max_bytes=1 * 1024 * 1024,
-                      disable_index_generation=True, ignore_cache=True, show_progress=False)
+                      ignore_cache=True, show_progress=False)
 
     def close(self):
         """!
@@ -234,8 +234,6 @@ class DataLoader(object):
                be read. See @ref TimeRange for more details.
 
         @param show_progress If `True`, print the read progress every 10 MB (useful for large files).
-        @param disable_index_generation If `True`, override the `save_index` argument provided to `open()` and do
-               not generate an index file during this call (intended for internal use only).
         @param ignore_cache If `True`, ignore any cached data from a previous @ref read() call, and reload the requested
                data from disk.
 
@@ -277,7 +275,7 @@ class DataLoader(object):
               message_types: Union[Iterable[MessageType], MessageType] = None,
               time_range: TimeRange = None,
               show_progress: bool = False,
-              ignore_cache: bool = False, disable_index_generation: bool = False,
+              ignore_cache: bool = False,
               max_messages: int = None, max_bytes: int = None,
               require_p1_time: bool = False, require_system_time: bool = False,
               return_in_order: bool = False, return_bytes: bool = False, return_message_index: bool = False,

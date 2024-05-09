@@ -73,6 +73,7 @@ class IMUInput(MessagePayload):
         return construct_message_to_string(message=self, construct=self.Construct, title='IMU Input',
                                            fields=['details', 'accel_mps2', 'gyro_rps', 'temperature_degc'])
 
+
 class IMUOutput(MessagePayload):
     """!
     @brief IMU sensor measurement data.
@@ -94,6 +95,7 @@ class IMUOutput(MessagePayload):
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
             buffer = bytearray(self.calcsize())
+            offset = 0
 
         initial_offset = offset
 
@@ -785,6 +787,7 @@ class WheelTickInput(MessagePayload):
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
             buffer = bytearray(self.calcsize())
+            offset = 0
 
         initial_offset = offset
 
@@ -888,6 +891,7 @@ class VehicleTickInput(MessagePayload):
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
             buffer = bytearray(self.calcsize())
+            offset = 0
 
         initial_offset = offset
 
@@ -999,6 +1003,7 @@ class DeprecatedWheelSpeedMeasurement(MessagePayload):
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
             buffer = bytearray(self.calcsize())
+            offset = 0
 
         initial_offset = offset
 
@@ -1103,6 +1108,7 @@ class DeprecatedVehicleSpeedMeasurement(MessagePayload):
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
             buffer = bytearray(self.calcsize())
+            offset = 0
 
         initial_offset = offset
 
@@ -1164,7 +1170,7 @@ Vehicle Speed Measurement @ {str(self.details.p1_time)}
 
 class HeadingOutput(MessagePayload):
     """!
-     @brief Corrected heading sensor measurement output.
+    @brief Heading sensor measurement output with heading bias corrections applied.
     """
     MESSAGE_TYPE = MessageType.HEADING_OUTPUT
     MESSAGE_VERSION = 0
@@ -1179,12 +1185,15 @@ class HeadingOutput(MessagePayload):
         self.solution_type = SolutionType.Invalid
         ## A bitmask of flags associated with the solution
         self.flags = 0
-        ## The measured YPR vector (in degrees), resolved in the ENU frame.
+
+        ##
+        # The measured YPR vector (in degrees), resolved in the ENU frame, after applying horizontal (yaw) and vertical
+        # (pitch) bias corrections.
         self.ypr_deg = np.full((3,), np.nan)
 
         ##
-        # The corrected heading between the primary device antenna and the secondary (in degrees) with
-        # respect to true north.
+        # The heading angle (in degrees) with respect to true north, pointing from the primary antenna to the secondary
+        # antenna, after applying bias corrections.
         #
         # @note
         # Reported in the range [0, 360).
@@ -1193,11 +1202,11 @@ class HeadingOutput(MessagePayload):
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
             buffer = bytearray(self.calcsize())
+            offset = 0
 
         initial_offset = offset
 
-        buffer = self.details.pack(buffer)
-        offset += self.details.calcsize()
+        offset += self.details.pack(buffer, offset, return_buffer=False)
 
         self._STRUCT.pack_into(
             buffer, offset,
@@ -1224,7 +1233,8 @@ class HeadingOutput(MessagePayload):
          self.ypr_deg[0],
          self.ypr_deg[1],
          self.ypr_deg[2],
-         self.heading_true_north_deg) = self._STRUCT.unpack_from(buffer, offset)
+         self.heading_true_north_deg) = \
+            self._STRUCT.unpack_from(buffer, offset)
         offset += self._STRUCT.size
 
         self.solution_type = SolutionType(solution_type_int)
@@ -1233,8 +1243,7 @@ class HeadingOutput(MessagePayload):
 
     def __repr__(self):
         result = super().__repr__()[:-1]
-        ypr_str = ['%.1f' % v for v in self.ypr_deg]
-        result += f', solution_type={self.solution_type}, ypr=[{ypr_str}] deg]'
+        result += f', solution_type={self.solution_type}, heading={self.heading_true_north_deg:.1f} deg]'
         return result
 
     def __str__(self):
@@ -1242,8 +1251,7 @@ class HeadingOutput(MessagePayload):
 Heading Output @ {str(self.details.p1_time)}
   Solution Type: {self.solution_type}
   YPR (ENU) (deg): {self.ypr_deg[0]:.2f}, {self.ypr_deg[1]:.2f}, {self.ypr_deg[2]:.2f}
-  Heading (deg): {self.heading_true_north_deg:.2f}
-  """
+  Heading (deg): {self.heading_true_north_deg:.2f}"""
 
     @classmethod
     def calcsize(cls) -> int:
@@ -1263,7 +1271,7 @@ Heading Output @ {str(self.details.p1_time)}
 
 class RawHeadingOutput(MessagePayload):
     """!
-     @brief Raw (uncorrected) heading sensor measurement output.
+    @brief Raw (uncorrected) heading sensor measurement output.
     """
     MESSAGE_TYPE = MessageType.RAW_HEADING_OUTPUT
     MESSAGE_VERSION = 0
@@ -1303,6 +1311,7 @@ class RawHeadingOutput(MessagePayload):
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
             buffer = bytearray(self.calcsize())
+            offset = 0
 
         initial_offset = offset
 

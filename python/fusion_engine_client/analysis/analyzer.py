@@ -1808,7 +1808,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             row=3, col=1
         )
 
-        fig.update_layout(title='Heading Plots', legend_traceorder='normal')
+        fig.update_layout(title='Heading Plots', legend_traceorder='normal', modebar_add=['v1hovermode'])
 
 
         # Display the navigation engine's heading estimate, if available, for comparison with the heading sensor
@@ -2005,7 +2005,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                     marker={'color': 'green'},
                     hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
                                   '<br><b>Solution</b>: %{text}',
-                    text=[str(SolutionType(s)) for s in raw_heading_data.solution_type],
+                    text=[str(SolutionType(s)) for s in heading_data.solution_type],
                     name='Corrected Heading Solution Type'
                 ),
                 row=3, col=1
