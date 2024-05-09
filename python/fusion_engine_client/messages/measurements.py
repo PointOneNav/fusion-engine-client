@@ -12,6 +12,7 @@ from ..utils.enum_utils import IntEnum
 # IMU Measurements
 ################################################################################
 
+
 class IMUInput(MessagePayload):
     """!
     @brief IMU sensor measurement input.
