@@ -12,6 +12,7 @@ from ..utils.enum_utils import IntEnum
 # IMU Measurements
 ################################################################################
 
+
 class IMUInput(MessagePayload):
     """!
     @brief IMU sensor measurement input.
@@ -1263,7 +1264,7 @@ Heading Output @ {str(self.details.p1_time)}
             'solution_type': np.array([int(m.solution_type) for m in messages], dtype=int),
             'flags': np.array([int(m.flags) for m in messages], dtype=np.uint32),
             'ypr_deg': np.array([m.ypr_deg for m in messages]).T,
-            'heading_true_north_deg': np.array([m.heading_true_north_deg for m in messages], dtype=float).T,
+            'heading_true_north_deg': np.array([m.heading_true_north_deg for m in messages], dtype=float),
         }
         result.update(MeasurementDetails.to_numpy([m.details for m in messages]))
         return result
