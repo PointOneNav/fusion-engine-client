@@ -295,6 +295,7 @@ P1_CONSTEXPR_FUNC bool IsCommand(MessageType message_type) {
   switch (message_type) {
     case MessageType::MESSAGE_REQUEST:
     case MessageType::RESET_REQUEST:
+    case MessageType::STARTUP_REQUEST:
     case MessageType::SHUTDOWN_REQUEST:
     case MessageType::FAULT_CONTROL:
     case MessageType::SET_CONFIG:
