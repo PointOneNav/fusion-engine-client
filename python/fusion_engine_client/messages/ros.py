@@ -38,6 +38,7 @@ class ROSPoseMessage(MessagePayload):
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
             buffer = bytearray(self.calcsize())
+            offset = 0
 
         initial_offset = offset
 
@@ -160,6 +161,7 @@ class ROSGPSFixMessage(MessagePayload):
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
             buffer = bytearray(self.calcsize())
+            offset = 0
 
         initial_offset = offset
 
@@ -288,6 +290,7 @@ class ROSIMUMessage(MessagePayload):
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
             buffer = bytearray(self.calcsize())
+            offset = 0
 
         initial_offset = offset
 

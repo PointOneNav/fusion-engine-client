@@ -2,7 +2,7 @@ import inspect
 import re
 import struct
 import sys
-from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Type, Union
+from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Tuple, Type, Union
 from zlib import crc32
 
 import numpy as np
@@ -315,7 +315,8 @@ class MessageHeader:
             return self.calcsize()
 
     def unpack(self, buffer: bytes, offset: int = 0, validate_sync: bool = False, validate_crc: bool = False,
-               warn_on_unrecognized: bool = True) -> int:
+               warn_on_unrecognized: bool = True, return_sync_bytes: bool = False) -> \
+            Union[int, Tuple[int, bytes]]:
         """!
         @brief Deserialize a message header and validate its sync bytes and CRC.
 
@@ -327,6 +328,7 @@ class MessageHeader:
         @param validate_sync If `True`, validate the sync bytes contained in the data buffer.
         @param validate_crc If `True`, validate the deserialized CRC against the data in the buffer.
         @param warn_on_unrecognized If `True`, print a warning if the message type is not listed in @ref MessageType.
+        @param return_sync_bytes If `True`, return the decoded sync bytes in addition to the header size.
 
         @return The size of the serialized header (in bytes).
         """
@@ -351,7 +353,10 @@ class MessageHeader:
                             'Unrecognized message type %d.' % message_type_int)
             self.message_type = MessageType(message_type_int, raise_on_unrecognized=False)
 
-        return MessageHeader._SIZE
+        if return_sync_bytes:
+            return MessageHeader._SIZE, bytes((sync0, sync1))
+        else:
+            return MessageHeader._SIZE
 
     def get_message_size(self) -> int:
         """!
