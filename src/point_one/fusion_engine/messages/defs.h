@@ -295,6 +295,7 @@ P1_CONSTEXPR_FUNC bool IsCommand(MessageType message_type) {
   switch (message_type) {
     case MessageType::MESSAGE_REQUEST:
     case MessageType::RESET_REQUEST:
+    case MessageType::STARTUP_REQUEST:
     case MessageType::SHUTDOWN_REQUEST:
     case MessageType::FAULT_CONTROL:
     case MessageType::SET_CONFIG:
@@ -305,9 +306,46 @@ P1_CONSTEXPR_FUNC bool IsCommand(MessageType message_type) {
     case MessageType::SET_MESSAGE_RATE:
     case MessageType::GET_MESSAGE_RATE:
       return true;
-    default:
+    case MessageType::INVALID:
+    case MessageType::POSE:
+    case MessageType::GNSS_INFO:
+    case MessageType::GNSS_SATELLITE:
+    case MessageType::POSE_AUX:
+    case MessageType::CALIBRATION_STATUS:
+    case MessageType::RELATIVE_ENU_POSITION:
+    case MessageType::SYSTEM_STATUS:
+    case MessageType::IMU_OUTPUT:
+    case MessageType::RAW_HEADING_OUTPUT:
+    case MessageType::RAW_IMU_OUTPUT:
+    case MessageType::HEADING_OUTPUT:
+    case MessageType::IMU_INPUT:
+    case MessageType::DEPRECATED_WHEEL_SPEED_MEASUREMENT:
+    case MessageType::DEPRECATED_VEHICLE_SPEED_MEASUREMENT:
+    case MessageType::WHEEL_TICK_INPUT:
+    case MessageType::VEHICLE_TICK_INPUT:
+    case MessageType::WHEEL_SPEED_INPUT:
+    case MessageType::VEHICLE_SPEED_INPUT:
+    case MessageType::RAW_WHEEL_TICK_OUTPUT:
+    case MessageType::RAW_VEHICLE_TICK_OUTPUT:
+    case MessageType::RAW_WHEEL_SPEED_OUTPUT:
+    case MessageType::RAW_VEHICLE_SPEED_OUTPUT:
+    case MessageType::WHEEL_SPEED_OUTPUT:
+    case MessageType::VEHICLE_SPEED_OUTPUT:
+    case MessageType::ROS_POSE:
+    case MessageType::ROS_GPS_FIX:
+    case MessageType::ROS_IMU:
+    case MessageType::COMMAND_RESPONSE:
+    case MessageType::VERSION_INFO:
+    case MessageType::EVENT_NOTIFICATION:
+    case MessageType::DEVICE_ID:
+    case MessageType::CONFIG_RESPONSE:
+    case MessageType::PLATFORM_STORAGE_DATA:
+    case MessageType::MESSAGE_RATE_RESPONSE:
+    case MessageType::SUPPORTED_IO_INTERFACES:
+    case MessageType::LBAND_FRAME:
       return false;
   }
+  return false;
 }
 
 /**
