@@ -1601,6 +1601,9 @@ class DataVersion(NamedTuple):
     major: int
     minor: int
 
+    def __str__(self):
+        return f'{self.major}.{self.minor}'
+
 
 _DataVersionConstructRaw = Struct(
     Padding(1),
