@@ -318,6 +318,7 @@ P1_CONSTEXPR_FUNC bool IsCommand(MessageType message_type) {
     case MessageType::CALIBRATION_STATUS:
     case MessageType::RELATIVE_ENU_POSITION:
     case MessageType::SYSTEM_STATUS:
+    case MessageType::SSR_STATUS:
     case MessageType::IMU_OUTPUT:
     case MessageType::RAW_HEADING_OUTPUT:
     case MessageType::RAW_IMU_OUTPUT:
