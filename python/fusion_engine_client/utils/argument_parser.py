@@ -176,6 +176,8 @@ class CSVAction(argparse.Action):
         result = getattr(namespace, self.dest)
         if result is None:
             result = []
+        elif result is self.default:
+            result = []
         result.extend(flattened_values)
         setattr(namespace, self.dest, result)
 
