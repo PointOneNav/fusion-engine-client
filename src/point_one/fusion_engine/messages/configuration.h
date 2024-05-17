@@ -398,9 +398,7 @@ enum class InterfaceConfigType : uint8_t {
   /**
    * Enable/disable the interface.
    *
-   * Valid for:
-   * - @ref TransportType::TCP_CLIENT
-   * - @ref TransportType::UDP_CLIENT
+   * Valid for all @ref TransportType values.
    *
    * Payload format: `bool`
    */
