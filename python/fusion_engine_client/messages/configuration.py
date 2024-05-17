@@ -269,6 +269,13 @@ def get_message_type_string(protocol: ProtocolType, message_id: int):
             return '%s (%d)' % (str(enum), int(enum))
 
 
+def _define_enum_config_classes(enum_type, construct_type=Int8ul):
+    class EnumVal(NamedTuple):
+        value: enum_type = list(enum_type)[0]
+    construct = AutoEnum(construct_type, enum_type)
+    return EnumVal, construct
+
+
 class _ConfigClassGenerator:
     """!
     @brief Internal class for generating `ConfigClass` children.
@@ -430,16 +437,8 @@ class _ConfigClassGenerator:
         "value" / Flag,
     )
 
-    # Enum helpers.
-    @staticmethod
-    def _define_enum_classes(enum_type, construct_type=Int8ul):
-        class EnumVal(NamedTuple):
-            value: enum_type = list(enum_type)[0]
-        construct = AutoEnum(construct_type, enum_type)
-        return EnumVal, construct
-
-    TransportDirectionVal, TransportDirectionConstruct = _define_enum_classes(TransportDirection, Int8ul)
-    SocketTypeVal, SocketTypeConstruct = _define_enum_classes(SocketType, Int8ul)
+    TransportDirectionVal, TransportDirectionConstruct = _define_enum_config_classes(TransportDirection, Int8ul)
+    SocketTypeVal, SocketTypeConstruct = _define_enum_config_classes(SocketType, Int8ul)
 
     class StringVal(NamedTuple):
         """!
