@@ -156,11 +156,11 @@ class TransportType(IntEnum):
     INVALID = 0
     SERIAL = 1
     FILE = 2
-    TCP_CLIENT = 3
-    TCP_SERVER = 4
-    UDP_CLIENT = 5
-    UDP_SERVER = 6
-    WEBSOCKET_SERVER = 7
+    # RESERVED  3
+    TCP = 4
+    UDP = 5
+    # RESERVED = 6
+    WEBSOCKET = 7
     UNIX = 8
     ## Set/get the configuration for the interface on which the command was received.
     CURRENT = 254
