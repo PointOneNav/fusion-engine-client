@@ -377,8 +377,8 @@ enum class InterfaceConfigType : uint8_t {
    * socket file.
    *
    * Valid for:
-   * - @ref TransportType::TCP_CLIENT
-   * - @ref TransportType::UDP_CLIENT
+   * - @ref TransportType::TCP
+   * - @ref TransportType::UDP
    * - @ref TransportType::UNIX
    *
    * Payload format: `char[64]` containing a NULL terminated string.
@@ -389,11 +389,9 @@ enum class InterfaceConfigType : uint8_t {
    * Configure the network port.
    *
    * Valid for:
-   * - @ref TransportType::TCP_CLIENT
-   * - @ref TransportType::TCP_SERVER
-   * - @ref TransportType::UDP_CLIENT
-   * - @ref TransportType::UDP_SERVER
-   * - @ref TransportType::WEBSOCKET_SERVER
+   * - @ref TransportType::TCP
+   * - @ref TransportType::UDP
+   * - @ref TransportType::WEBSOCKET
    *
    * Payload format: `uint16_t`
    */
@@ -412,6 +410,8 @@ enum class InterfaceConfigType : uint8_t {
    * Set the interface direction (client/server).
    *
    * Valid for:
+   * - @ref TransportType::TCP
+   * - @ref TransportType::WEBSOCKET
    * - @ref TransportType::UNIX
    *
    * Payload format: @ref TransportDirection
@@ -1595,16 +1595,41 @@ enum class TransportType : uint8_t {
   SERIAL = 1,
   /** A interface that writes to a file. */
   FILE = 2,
-  /** An interface that will try to connect to a remote TCP server. */
-  TCP_CLIENT = 3,
-  /** An interface that will communicate with connected clients. */
-  TCP_SERVER = 4,
-  /** An interface that will try to connect to a remote UDP server. */
-  UDP_CLIENT = 5,
-  /** An interface that will communicate with connected clients. */
-  UDP_SERVER = 6,
-  /** An interface that will communicate with connected clients. */
-  WEBSOCKET_SERVER = 7,
+  // RESERVED = 3,
+  /**
+   * A TCP client or server.
+   *
+   * A TCP client will connect to a specified TCP server address and port. A TCP
+   * server will listen for incoming client connections, and may communicate
+   * with multiple clients at a time. Responses to commands will be sent only to
+   * the the issuing client. All other configured output messages will be sent
+   * to all clients.
+   *
+   * See also @ref TransportDirection.
+   */
+  TCP = 4,
+  /**
+   * A UDP client or server.
+   *
+   * UDP connections are stateless, unlike TCP. A UDP interface will listen for
+   * incoming messages on a specified port. It may optionally be configured to
+   * sent output to a specific hostname or IP address, including broadcast or
+   * multicast addresses. If an address is not specified, the interface will not
+   * send any output automatically, but it will respond to incoming commands,
+   * sending responses back to the remote client's address and port.
+   */
+  UDP = 5,
+  // RESERVED = 6,
+  /**
+   * A WebSocket client or server.
+   *
+   * WebSocket connections are similar to TCP connections, and use TCP as their
+   * underlying transport, but use the WebSocket protocol to send and receive
+   * data.
+   *
+   * See also @ref TransportDirection.
+   */
+  WEBSOCKET = 7,
   /**
    * A UNIX domain socket client or server.
    *
@@ -1652,16 +1677,12 @@ P1_CONSTEXPR_FUNC const char* to_string(TransportType val) {
       return "Serial";
     case TransportType::FILE:
       return "File";
-    case TransportType::TCP_CLIENT:
-      return "TCP Client";
-    case TransportType::TCP_SERVER:
-      return "TCP Server";
-    case TransportType::UDP_CLIENT:
-      return "UDP Client";
-    case TransportType::UDP_SERVER:
-      return "UDP Server";
-    case TransportType::WEBSOCKET_SERVER:
-      return "Websocket Server";
+    case TransportType::TCP:
+      return "TCP";
+    case TransportType::UDP:
+      return "UDP";
+    case TransportType::WEBSOCKET:
+      return "WebSocket";
     case TransportType::UNIX:
       return "UNIX";
     case TransportType::CURRENT:
