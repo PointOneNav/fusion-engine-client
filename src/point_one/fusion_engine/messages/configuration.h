@@ -405,6 +405,13 @@ enum class InterfaceConfigType : uint8_t {
    * Payload format: `bool`
    */
   ENABLED = 5,
+
+  /**
+   * Set the interface direction (client/server).
+   *
+   * Payload format: @ref TransportDirection
+   */
+  DIRECTION = 6,
 };
 
 /**
@@ -434,6 +441,9 @@ P1_CONSTEXPR_FUNC const char* to_string(InterfaceConfigType type) {
 
     case InterfaceConfigType::ENABLED:
       return "Interface Enabled";
+
+    case InterfaceConfigType::DIRECTION:
+      return "Transport Direction";
 
     default:
       return "Unrecognized Configuration";
@@ -1626,6 +1636,47 @@ P1_CONSTEXPR_FUNC const char* to_string(TransportType val) {
  * @ingroup config_and_ctrl_messages
  */
 inline p1_ostream& operator<<(p1_ostream& stream, TransportType val) {
+  stream << to_string(val) << " (" << (int)val << ")";
+  return stream;
+}
+
+/**
+ * @brief The direction (client/server) for an individual interface.
+ */
+enum class TransportDirection : uint8_t {
+  INVALID = 0,
+  /** A server listening for one or more incoming remote connections. */
+  SERVER = 1,
+  /** A client connecting to a specified remote server. */
+  CLIENT = 2,
+};
+
+/**
+ * @brief Get a human-friendly string name for the specified @ref
+ *        TransportDirection.
+ * @ingroup config_and_ctrl_messages
+ *
+ * @param val The enum to get the string name for.
+ *
+ * @return The corresponding string name.
+ */
+P1_CONSTEXPR_FUNC const char* to_string(TransportDirection val) {
+  switch (val) {
+    case TransportDirection::INVALID:
+      return "INVALID";
+    case TransportDirection::SERVER:
+      return "SERVER";
+    case TransportDirection::CLIENT:
+      return "CLIENT";
+  }
+  return "Unrecognized";
+}
+
+/**
+ * @brief @ref TransportDirection stream operator.
+ * @ingroup config_and_ctrl_messages
+ */
+inline p1_ostream& operator<<(p1_ostream& stream, TransportDirection val) {
   stream << to_string(val) << " (" << (int)val << ")";
   return stream;
 }

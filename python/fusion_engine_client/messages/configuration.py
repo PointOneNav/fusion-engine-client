@@ -54,6 +54,7 @@ class InterfaceConfigType(IntEnum):
   REMOTE_ADDRESS = 3
   PORT = 4
   ENABLED = 5
+  DIRECTION = 6
 
 
 class Direction(IntEnum):
@@ -163,6 +164,12 @@ class TransportType(IntEnum):
     CURRENT = 254
     ## Set/get the configuration for the all I/O interfaces.
     ALL = 255
+
+
+class TransportDirection(IntEnum):
+    INVALID = 0
+    SERVER = 1
+    CLIENT = 2
 
 
 class UpdateAction(IntEnum):
@@ -413,6 +420,16 @@ class _ConfigClassGenerator:
     BoolConstruct = Struct(
         "value" / Flag,
     )
+
+    # Enum helpers.
+    @staticmethod
+    def _define_enum_classes(enum_type, construct_type=Int8ul):
+        class EnumVal(NamedTuple):
+            value: enum_type = list(enum_type)[0]
+        construct = AutoEnum(construct_type, enum_type)
+        return EnumVal, construct
+
+    TransportDirectionVal, TransportDirectionConstruct = _define_enum_classes(TransportDirection, Int8ul)
 
     class StringVal(NamedTuple):
         """!
@@ -907,12 +924,14 @@ class HeadingBias(_conf_gen.HeadingBias):
     """
     pass
 
+
 @_conf_gen.create_interface_config_class(InterfaceConfigType.BAUD_RATE, _conf_gen.UInt32Construct)
 class InterfaceBaudRateConfig(_conf_gen.IntegerVal):
     """!
     @brief Interface baud configuration settings.
     """
     pass
+
 
 @_conf_gen.create_interface_config_class(InterfaceConfigType.PORT, _conf_gen.UInt16Construct)
 class InterfacePortConfig(_conf_gen.IntegerVal):
@@ -921,6 +940,7 @@ class InterfacePortConfig(_conf_gen.IntegerVal):
     """
     pass
 
+
 @_conf_gen.create_interface_config_class(InterfaceConfigType.REMOTE_ADDRESS, _conf_gen.StringConstruct(64))
 class InterfaceRemoteAddressConfig(_conf_gen.StringVal):
     """!
@@ -928,12 +948,22 @@ class InterfaceRemoteAddressConfig(_conf_gen.StringVal):
     """
     pass
 
+
 @_conf_gen.create_interface_config_class(InterfaceConfigType.ENABLED, _conf_gen.BoolConstruct)
 class InterfaceEnabledConfig(_conf_gen.BoolVal):
     """!
     @brief Interface enabled/disabled configuration settings.
     """
     pass
+
+
+@_conf_gen.create_interface_config_class(InterfaceConfigType.DIRECTION, _conf_gen.TransportDirectionConstruct)
+class InterfaceDirectionConfig(_conf_gen.TransportDirectionVal):
+    """!
+    @brief Interface transport direction (client/server) configuration settings.
+    """
+    pass
+
 
 @_conf_gen.create_interface_config_class(InterfaceConfigType.OUTPUT_DIAGNOSTICS_MESSAGES, _conf_gen.BoolConstruct)
 class InterfaceDiagnosticMessagesEnabled(_conf_gen.BoolVal):
