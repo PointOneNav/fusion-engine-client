@@ -55,6 +55,7 @@ class InterfaceConfigType(IntEnum):
   PORT = 4
   ENABLED = 5
   DIRECTION = 6
+  SOCKET_TYPE = 7
 
 
 class Direction(IntEnum):
@@ -160,6 +161,7 @@ class TransportType(IntEnum):
     UDP_CLIENT = 5
     UDP_SERVER = 6
     WEBSOCKET_SERVER = 7
+    UNIX = 8
     ## Set/get the configuration for the interface on which the command was received.
     CURRENT = 254
     ## Set/get the configuration for the all I/O interfaces.
@@ -170,6 +172,13 @@ class TransportDirection(IntEnum):
     INVALID = 0
     SERVER = 1
     CLIENT = 2
+
+
+class SocketType(IntEnum):
+    INVALID = 0
+    STREAM = 1
+    DATAGRAM = 2
+    SEQPACKET = 3
 
 
 class UpdateAction(IntEnum):
@@ -430,6 +439,7 @@ class _ConfigClassGenerator:
         return EnumVal, construct
 
     TransportDirectionVal, TransportDirectionConstruct = _define_enum_classes(TransportDirection, Int8ul)
+    SocketTypeVal, SocketTypeConstruct = _define_enum_classes(SocketType, Int8ul)
 
     class StringVal(NamedTuple):
         """!
@@ -961,6 +971,14 @@ class InterfaceEnabledConfig(_conf_gen.BoolVal):
 class InterfaceDirectionConfig(_conf_gen.TransportDirectionVal):
     """!
     @brief Interface transport direction (client/server) configuration settings.
+    """
+    pass
+
+
+@_conf_gen.create_interface_config_class(InterfaceConfigType.SOCKET_TYPE, _conf_gen.SocketTypeConstruct)
+class InterfaceSocketTypeConfig(_conf_gen.SocketTypeVal):
+    """!
+    @brief UNIX domain socket type configuration (stream, datagram, sequence).
     """
     pass
 

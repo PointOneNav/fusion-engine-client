@@ -373,9 +373,13 @@ enum class InterfaceConfigType : uint8_t {
   /**
    * Configure the network address for a client to connect to.
    *
+   * For UNIX domain sockets, this string represents the path to the local
+   * socket file.
+   *
    * Valid for:
    * - @ref TransportType::TCP_CLIENT
    * - @ref TransportType::UDP_CLIENT
+   * - @ref TransportType::UNIX
    *
    * Payload format: `char[64]` containing a NULL terminated string.
    */
@@ -407,9 +411,22 @@ enum class InterfaceConfigType : uint8_t {
   /**
    * Set the interface direction (client/server).
    *
+   * Valid for:
+   * - @ref TransportType::UNIX
+   *
    * Payload format: @ref TransportDirection
    */
   DIRECTION = 6,
+
+  /**
+   * Set the UNIX domain socket type (streaming/datagram/sequenced).
+   *
+   * Valid for:
+   * - @ref TransportType::UNIX
+   *
+   * Payload format: @ref SocketType
+   */
+  SOCKET_TYPE = 7,
 };
 
 /**
@@ -442,6 +459,9 @@ P1_CONSTEXPR_FUNC const char* to_string(InterfaceConfigType type) {
 
     case InterfaceConfigType::DIRECTION:
       return "Transport Direction";
+
+    case InterfaceConfigType::SOCKET_TYPE:
+      return "Socket Type";
 
     default:
       return "Unrecognized Configuration";
@@ -1586,6 +1606,27 @@ enum class TransportType : uint8_t {
   /** An interface that will communicate with connected clients. */
   WEBSOCKET_SERVER = 7,
   /**
+   * A UNIX domain socket client or server.
+   *
+   * UNIX domain socket connections may be configured as either client that
+   * connects to an existing server, or a server that listens for one or more
+   * incoming client connections. UNIX domain sockets may operate in one of
+   * three possible modes:
+   * - A connection-oriented streaming mode where packet boundaries are not
+   *   preserved (similar to TCP)
+   * - Datagram mode where packet boundaries are preserved but connections
+   *   between the client and server are not maintained, and the interface sends
+   *   output to an optional configured file (similar to UDP)
+   * - Sequenced packet mode, which is connection-oriented (like TCP) but also
+   *   preserves message boundaries (like UDP) and guarantees in-order delivery
+   *
+   * For a UNIX domain socket, you must specify:
+   * - The @ref TransportDirection (client or server)
+   * - The @ref SocketType (streaming, datagram, or sequenced)
+   * - The path to a socket file to connect to (client) or create (server)
+   */
+  UNIX = 8,
+  /**
    * Set/get the configuration for the interface on which the command was
    * received.
    */
@@ -1621,6 +1662,8 @@ P1_CONSTEXPR_FUNC const char* to_string(TransportType val) {
       return "UDP Server";
     case TransportType::WEBSOCKET_SERVER:
       return "Websocket Server";
+    case TransportType::UNIX:
+      return "UNIX";
     case TransportType::CURRENT:
       return "Current";
     case TransportType::ALL:
@@ -1675,6 +1718,60 @@ P1_CONSTEXPR_FUNC const char* to_string(TransportDirection val) {
  * @ingroup config_and_ctrl_messages
  */
 inline p1_ostream& operator<<(p1_ostream& stream, TransportDirection val) {
+  stream << to_string(val) << " (" << (int)val << ")";
+  return stream;
+}
+
+/**
+ * @brief The socket type specifying how data is transmitted for UNIX domain
+ *        sockets.
+ */
+enum class SocketType : uint8_t {
+  INVALID = 0,
+  /**
+   * Operate in connection-oriented streaming mode and do not preserve message
+   * boundaries (similar to TCP).
+   */
+  STREAM = 1,
+  /**
+   * Operate in datagram mode, preserving message boundaries but not maintaining
+   * client connections (similar to UDP).
+   */
+  DATAGRAM = 2,
+  /**
+   * Operate in sequenced packet mode, which is both connection-oriented and
+   * preserves message boundaries.
+   */
+  SEQPACKET = 3,
+};
+
+/**
+ * @brief Get a human-friendly string name for the specified @ref SocketType.
+ * @ingroup config_and_ctrl_messages
+ *
+ * @param val The enum to get the string name for.
+ *
+ * @return The corresponding string name.
+ */
+P1_CONSTEXPR_FUNC const char* to_string(SocketType val) {
+  switch (val) {
+    case SocketType::INVALID:
+      return "INVALID";
+    case SocketType::STREAM:
+      return "STREAM";
+    case SocketType::DATAGRAM:
+      return "DATAGRAM";
+    case SocketType::SEQPACKET:
+      return "SEQPACKET";
+  }
+  return "Unrecognized";
+}
+
+/**
+ * @brief @ref SocketType stream operator.
+ * @ingroup config_and_ctrl_messages
+ */
+inline p1_ostream& operator<<(p1_ostream& stream, SocketType val) {
   stream << to_string(val) << " (" << (int)val << ")";
   return stream;
 }
