@@ -22,8 +22,8 @@ _READ_SIZE_BYTES = 80 * 1024
 _PREAMBLE = struct.unpack('<H', MessageHeader.SYNC)
 
 # This is FileIndex._RAW_DTYPE with an additional size field. The size field is
-# used to check for overlapped messages created by `INPUT_DATA_WRAPPER` messages
-# split across blocks.
+# used to check for overlapped messages created by any wrapper messages that may
+# contain valid FusionEngine content in their payload split across blocks.
 _RAW_DTYPE_WITH_SIZE = np.dtype([('int', '<u4'), ('type', '<u2'), ('offset', '<u8'), ('size', '<u2')])
 
 _logger = logging.getLogger('point_one.fusion_engine.parsers.fast_indexer')
@@ -40,7 +40,7 @@ def _search_blocks_for_fe(input_path: str, thread_idx: int, block_starts: List[i
     """
     if len(block_starts) == 0:
         _logger.trace(f'Skipping search thread {thread_idx}. [num_blocks={len(block_starts)}]', depth=2)
-        return np.array([], dtype=FileIndex._RAW_DTYPE)
+        return np.array([], dtype=_RAW_DTYPE_WITH_SIZE)
     else:
         _logger.trace(f'Starting search thread {thread_idx}. '
                       f'[num_blocks={len(block_starts)}, first={block_starts[0]} B, last={block_starts[-1]} B]',
@@ -195,13 +195,13 @@ def fast_generate_index(
         # Kick off the threads to process with their args. Then concatenate their returned data.
         index_raw = np.concatenate([o for o in p.starmap(_search_blocks_for_fe, args)])
 
-    # INPUT_DATA_WRAPPER messages may encapsulate other complete FE messages.
-    # Normally, these are ignored. However, if a message straddles one of the
-    # processing blocks, it can end up indexed. Look at the offsets and sizes of
-    # the detected messages, and filter out messages that fall within previous
-    # messages.
+    # Some messages may encapsulate other complete FE messages. Normally, these
+    # are ignored. However, if a message straddles one of the processing blocks,
+    # it can end up indexed. Look at the offsets and sizes of the detected
+    # messages, and filter out messages that fall within previous messages.
+    #
     # Find the end offsets of the messages.
-    expected_msg_ends = index_raw[:]['offset'] +index_raw[:]['size']
+    expected_msg_ends = index_raw[:]['offset'] + index_raw[:]['size']
     # Propagate forward the largest endpoint found to handle multiple encapsulated messages.
     expected_msg_ends = np.maximum.accumulate(expected_msg_ends)
     # Find the messages that start after the previous message.
