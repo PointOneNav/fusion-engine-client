@@ -429,7 +429,8 @@ class MessagePayload:
                part or all of a class name. Patterns may include wildcards (`*`) to match multiple classes. If no
                wildcards are specified and multiple classes match, a single result will be returned if there is an exact
                match (e.g., `pose` will match to @ref MessageType.POSE, not @ref MessageType.POSE_AUX). All matches are
-               case-insensitive.
+               case-insensitive. Patterns can also be the exact integer value of a MessageType. To specify an
+               unrecognized integer MessageType, precede the value with 'u'.
         @param return_class If `True`, return classes for each matching message type (derived from @ref MessagePayload).
                Otherwise, return @ref MessageType enum values.
 
@@ -453,8 +454,13 @@ class MessagePayload:
         for pattern in requested_types:
             # Check if pattern is the message integer value.
             try:
-                int_val = int(pattern)
-                result.add(MessageType(int_val))
+                # Allow specifying unknown MessageType values if they are preceded by 'u'.
+                if len(pattern) > 1 and pattern[0] == 'u':
+                    int_val = int(pattern[1:])
+                    result.add(MessageType(int_val, raise_on_unrecognized=False))
+                else:
+                    int_val = int(pattern)
+                    result.add(MessageType(int_val))
             except:
                 allow_multiple = '*' in pattern
                 re_pattern = pattern.replace('*', '.*')
