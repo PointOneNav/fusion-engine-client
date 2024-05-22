@@ -135,7 +135,7 @@ class DataLoader(object):
 
     logger = logging.getLogger('point_one.fusion_engine.analysis.data_loader')
 
-    def __init__(self, path=None, save_index=True, ignore_index=False, source_id=[0]):
+    def __init__(self, path=None, save_index=True, ignore_index=False, source_ids: List[int]=[0]):
         """!
         @brief Create a new reader instance.
 
@@ -152,7 +152,7 @@ class DataLoader(object):
         self.system_t0 = None
         self.system_t0_ns = None
 
-        self.source_id = source_id
+        self.source_ids = source_ids
 
         self._need_t0 = True
         self._need_system_t0 = True
@@ -174,7 +174,10 @@ class DataLoader(object):
         self.close()
 
         self.reader = MixedLogReader(input_file=path, save_index=save_index, ignore_index=ignore_index,
-                                     return_bytes=True, return_message_index=True, source_id=self.source_id)
+                                     return_bytes=True, return_message_index=True, source_ids=self.source_ids)
+
+        # Narrow down source IDs to the ones that are requested AND are available.
+        self.source_ids = self.reader.requested_source_ids
 
         # Read the first message (with P1 time) in the file to set self.t0.
         #
@@ -284,7 +287,7 @@ class DataLoader(object):
               return_numpy: bool = False, keep_messages: bool = False, remove_nan_times: bool = True,
               time_align: TimeAlignmentMode = TimeAlignmentMode.NONE,
               aligned_message_types: Union[list, tuple, set] = None,
-              quiet: bool = False) \
+              quiet: bool = False, source_ids: List[int] = [0]) \
             -> Union[Dict[MessageType, MessageData], MessageData]:
         if quiet:
             logger = SilentLogger(self.logger.name)
@@ -311,6 +314,7 @@ class DataLoader(object):
             'return_bytes': return_bytes,
             'return_message_index': return_message_index,
             'remove_nan_times': remove_nan_times,
+            'source_ids': source_ids,
         }
 
         # If the user requested output in the order that it was logged, we need to ignore cached data since that data
@@ -427,6 +431,7 @@ class DataLoader(object):
 
             self.reader.filter_in_place(time_range)
             self.reader.filter_in_place(message_types)
+            self.reader.filter_in_place(None, source_ids=source_ids)
 
             # If the user is requiring (valid) P1 timestamps, filter to those now.
             if require_p1_time and not system_time_messages_requested:
@@ -470,8 +475,8 @@ class DataLoader(object):
             except StopIteration:
                 break
 
-            if header.source_identifier not in self.source_id:
-                continue
+            # if header.source_identifier not in self.requested_source_id:
+            #     continue
             message_size_bytes = header.get_message_size()
             message_offset_bytes = self.reader.get_bytes_read() - message_size_bytes
 
@@ -605,29 +610,6 @@ class DataLoader(object):
         if return_message_index:
             result.append(message_index)
         return result
-
-    def get_available_source_ids(self,
-                                 message_types: List[MessageType] = [MessageType.POSE, MessageType.POSE_AUX],
-                                 num_messages_to_read: int = 100):
-        source_ids = []
-        num_messages_read = 0
-
-        while num_messages_read < num_messages_to_read:
-            try:
-                header, payload = self.read_next()
-            except StopIteration:
-                break
-
-            if header.message_type not in message_types:
-                continue
-
-            num_messages_read += 1
-            if header.source_identifier in source_ids:
-                continue
-
-            source_ids.append(header.source_identifier)
-
-        return source_ids
 
     def get_t0(self):
         return self.t0
