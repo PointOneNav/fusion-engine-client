@@ -605,7 +605,8 @@ class MixedLogReader(object):
 
         while num_messages_read < num_messages_to_read:
             try:
-                header, payload, message_bytes, message_index = self.read_next()
+                result = self.read_next()
+                header = result[0]
             except StopIteration:
                 break
 
