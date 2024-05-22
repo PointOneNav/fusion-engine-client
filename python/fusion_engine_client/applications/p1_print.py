@@ -127,7 +127,7 @@ other types of data.
              "specified type(s).")
     parser.add_argument(
         '--source-identifier', '--source-id', nargs='*', type=int, default=0,
-        help="Source identifier")
+        help="Print the Fusion Engine messages characterized by the listed source identifier(s).")
     parser.add_argument(
         '-t', '--time', type=str, metavar='[START][:END][:{rel,abs}]',
         help="The desired time range to be analyzed. Both start and end may be omitted to read from beginning or to "
@@ -187,7 +187,10 @@ other types of data.
     # Parse the time range.
     time_range = TimeRange.parse(options.time, absolute=options.absolute_time)
 
-    source_id = options.source_identifier
+    if options.source_identifier is None:
+        source_ids = [0]
+    else:
+        source_ids = options.source_identifier
 
     # If the user specified a set of message names, lookup their type values. Below, we will limit the printout to only
     # those message types.
@@ -211,7 +214,7 @@ other types of data.
     # Process all data in the file.
     reader = MixedLogReader(input_path, return_bytes=True, return_offset=True, show_progress=options.progress,
                             ignore_index=not read_index, message_types=message_types, time_range=time_range,
-                            source_id=source_id)
+                            source_ids=source_ids)
 
     first_p1_time_sec = None
     last_p1_time_sec = None
