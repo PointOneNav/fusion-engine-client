@@ -128,7 +128,7 @@ class Analyzer(object):
                @ref LONG_LOG_DURATION_SEC).
         """
         if isinstance(file, str):
-            self.reader = DataLoader(file, ignore_index=ignore_index, source_id=source_id)
+            self.reader = DataLoader(file, ignore_index=ignore_index, source_ids=source_id)
         else:
             self.reader = file
 
@@ -142,17 +142,8 @@ class Analyzer(object):
             'return_numpy': True
         }
 
-        available_source_ids = self.reader.get_available_source_ids()
-        source_id_set = set(source_id)
-        available_source_id_set = set(available_source_ids)
-        if available_source_id_set != source_id_set:
-            unavailable_source_ids = list(source_id_set.difference(available_source_id_set))
-            _logger.warning('Not all source IDs requested are available. Cannot extract the following source '
-                            'IDs: {}'.format(unavailable_source_ids))
-            source_id = list(source_id_set.intersection(available_source_id_set))
-            _logger.warning('Will extract the following available requested source IDs: {}'.format(source_id))
-
-        self.source_id = source_id
+        # For plots that only need to trace one source ID.
+        self.default_source_id = min(self.reader.source_ids)
 
         if time_axis in ('relative', 'rel'):
             self.time_axis = 'relative'
@@ -225,7 +216,7 @@ class Analyzer(object):
         figure['layout']['yaxis2'].update(title="Interval (sec)", rangemode="tozero")
 
         # Read the pose data to get P1 and GPS timestamps.
-        result = self.reader.read(message_types=[PoseMessage], **self.params)
+        result = self.reader.read(message_types=[PoseMessage], source_ids=[self.default_source_id], **self.params)
         pose_data = result[PoseMessage.MESSAGE_TYPE]
 
         if len(pose_data.p1_time) > 0:
@@ -323,7 +314,8 @@ class Analyzer(object):
                                  2, 1)
 
         # Read system timestamps from event notifications, if present.
-        result = self.reader.read(message_types=[EventNotificationMessage], **self.params)
+        result = self.reader.read(message_types=[EventNotificationMessage], source_ids=[self.default_source_id],
+                                  **self.params)
         event_data = result[EventNotificationMessage.MESSAGE_TYPE]
 
         system_time_sec = None
@@ -357,7 +349,8 @@ class Analyzer(object):
             return
 
         # Find reset events.
-        result = self.reader.read(message_types=[EventNotificationMessage], return_message_index=True, **self.params)
+        result = self.reader.read(message_types=[EventNotificationMessage], source_ids=[self.default_source_id],
+                                  return_message_index=True, **self.params)
         event_data = result[EventNotificationMessage.MESSAGE_TYPE]
 
         reset_idx = event_data.event_type == EventType.RESET
@@ -478,7 +471,7 @@ class Analyzer(object):
             return
 
         # Read the pose data.
-        result = self.reader.read(message_types=[PoseMessage], **self.params)
+        result = self.reader.read(message_types=[PoseMessage], source_ids=[self.default_source_id], **self.params)
         pose_data = result[PoseMessage.MESSAGE_TYPE]
 
         if len(pose_data.p1_time) == 0:
@@ -591,7 +584,8 @@ class Analyzer(object):
             return
 
         # Read the pose data.
-        result = self.reader.read(message_types=[CalibrationStatus], **self.params)
+        result = self.reader.read(message_types=[CalibrationStatus], source_ids=[self.default_source_id],
+                                  **self.params)
         cal_data = result[CalibrationStatus.MESSAGE_TYPE]
 
         if len(cal_data.p1_time) == 0:
@@ -693,7 +687,7 @@ class Analyzer(object):
             return
 
         # Read the pose data.
-        result = self.reader.read(message_types=[PoseMessage], **self.params)
+        result = self.reader.read(message_types=[PoseMessage], source_ids=[self.default_source_id], **self.params)
         pose_data = result[PoseMessage.MESSAGE_TYPE]
 
         if len(pose_data.p1_time) == 0:
@@ -817,7 +811,8 @@ class Analyzer(object):
             return
 
         # Read the pose data.
-        result = self.reader.read(message_types=[PoseMessage], **self.params)
+        print("plotting pose diplacement, source id is ", self.default_source_id)
+        result = self.reader.read(message_types=[PoseMessage], source_ids=[self.default_source_id], **self.params)
         pose_data = result[PoseMessage.MESSAGE_TYPE]
 
         if len(pose_data.p1_time) == 0:
@@ -854,7 +849,7 @@ class Analyzer(object):
             return
 
         # Read the pose data.
-        result = self.reader.read(message_types=[RelativeENUPositionMessage], **self.params)
+        result = self.reader.read(message_types=[RelativeENUPositionMessage], source_ids=[self.default_source_id], **self.params)
         relative_position_data = result[RelativeENUPositionMessage.MESSAGE_TYPE]
 
         if len(relative_position_data.p1_time) == 0:
@@ -892,29 +887,10 @@ class Analyzer(object):
             self._mapbox_token_missing = True
             mapbox_token = None
 
-        # Read the pose data.
-        result = self.reader.read(message_types=[PoseMessage], **self.params)
-        pose_data = result[PoseMessage.MESSAGE_TYPE]
-
-        if len(pose_data.p1_time) == 0:
-            self.logger.info('No pose data available. Skipping map display.')
-            return
-
-        # Remove invalid solutions.
-        valid_idx = np.logical_and(~np.isnan(pose_data.p1_time), pose_data.solution_type != SolutionType.Invalid)
-        if not np.any(valid_idx):
-            self.logger.info('No valid position solutions detected.')
-            return
-
-        time = pose_data.p1_time[valid_idx] - float(self.t0)
-        solution_type = pose_data.solution_type[valid_idx]
-        lla_deg = pose_data.lla_deg[:, valid_idx]
-        std_enu_m = pose_data.position_std_enu_m[:, valid_idx]
-
         # Add data to the map.
         map_data = []
 
-        def _plot_data(name, idx, marker_style=None):
+        def _plot_data(name, idx, source_id, marker_style=None):
             style = {'mode': 'markers', 'marker': {'size': 8}, 'showlegend': True}
             if marker_style is not None:
                 style['marker'].update(marker_style)
@@ -923,14 +899,44 @@ class Analyzer(object):
                 text = ["Time: %.3f sec (%.3f sec)<br>Std (ENU): (%.2f, %.2f, %.2f) m" %
                         (t, t + float(self.t0), std[0], std[1], std[2])
                         for t, std in zip(time[idx], std_enu_m[:, idx].T)]
-                map_data.append(go.Scattermapbox(lat=lla_deg[0, idx], lon=lla_deg[1, idx], name=name, text=text,
-                                                 **style))
+                # Only put default source ID on map by default.
+                if source_id == self.default_source_id:
+                    map_data.append(go.Scattermapbox(lat=lla_deg[0, idx], lon=lla_deg[1, idx], name=name, text=text,
+                                                     legendgroup=source_id, **style))
+                else:
+                    map_data.append(go.Scattermapbox(lat=lla_deg[0, idx], lon=lla_deg[1, idx], name=name, text=text,
+                                                     legendgroup=source_id, visible='legendonly', **style))
+
             else:
                 # If there's no data, draw a dummy trace so it shows up in the legend anyway.
                 map_data.append(go.Scattermapbox(lat=[np.nan], lon=[np.nan], name=name, visible='legendonly', **style))
 
-        for type, info in _SOLUTION_TYPE_MAP.items():
-            _plot_data(info.name, solution_type == type, marker_style=info.style)
+        # Read the pose data.
+        for source_id in self.source_ids:
+            result = self.reader.read(message_types=[PoseMessage], source_ids=[source_id], **self.params)
+            pose_data = result[PoseMessage.MESSAGE_TYPE]
+
+            if len(pose_data.p1_time) == 0:
+                self.logger.info('No pose data available. Skipping map display.')
+                return
+
+            # Remove invalid solutions.
+            valid_idx = np.logical_and(~np.isnan(pose_data.p1_time), pose_data.solution_type != SolutionType.Invalid)
+            if not np.any(valid_idx):
+                self.logger.info('No valid position solutions detected.')
+                return
+
+            time = pose_data.p1_time[valid_idx] - float(self.t0)
+            solution_type = pose_data.solution_type[valid_idx]
+            lla_deg = pose_data.lla_deg[:, valid_idx]
+            std_enu_m = pose_data.position_std_enu_m[:, valid_idx]
+
+            for type, info in _SOLUTION_TYPE_MAP.items():
+                if len(self.source_ids) > 1:
+                    name = info.name + ' [source_id=' + str(source_id) + ']'
+                else:
+                    name = info.name
+                _plot_data(name, solution_type == type, source_id, marker_style=info.style)
 
         # Create the map.
         title = 'Vehicle Trajectory'
@@ -962,7 +968,8 @@ class Analyzer(object):
 
     def plot_gnss_skyplot(self, decimate=True):
         # Read the satellite data.
-        result = self.reader.read(message_types=[GNSSSatelliteMessage], **self.params)
+        result = self.reader.read(message_types=[GNSSSatelliteMessage], source_ids=[self.default_source_id],
+                                  **self.params)
         data = result[GNSSSatelliteMessage.MESSAGE_TYPE]
 
         if len(data.p1_time) == 0:
@@ -1058,7 +1065,8 @@ class Analyzer(object):
     def plot_gnss_cn0(self):
         # The legacy GNSSSatelliteMessage contains data per satellite, not per signal. The plotted C/N0 values will
         # reflect the L1 signal, unless L1 is not being tracked.
-        result = self.reader.read(message_types=[GNSSSatelliteMessage], **self.params)
+        result = self.reader.read(message_types=[GNSSSatelliteMessage], source_ids=[self.default_source_id],
+                                  **self.params)
         data = result[GNSSSatelliteMessage.MESSAGE_TYPE]
 
         if len(data.p1_time) == 0:
@@ -1120,7 +1128,8 @@ class Analyzer(object):
         figure_title = "GNSS Signal Status"
 
         # Read the satellite data.
-        result = self.reader.read(message_types=[GNSSSatelliteMessage], **self.params)
+        result = self.reader.read(message_types=[GNSSSatelliteMessage], source_ids=[self.default_source_id],
+                                  **self.params)
         data = result[GNSSSatelliteMessage.MESSAGE_TYPE]
         is_legacy_message = True
 
@@ -1253,7 +1262,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
 
         This includes geometric, position, horizontal, and vertical DOP.
         """
-        result = self.reader.read(message_types=[GNSSInfoMessage], **self.params)
+        result = self.reader.read(message_types=[GNSSInfoMessage], source_ids=[self.default_source_id], **self.params)
         data = result[GNSSInfoMessage.MESSAGE_TYPE]
 
         if len(data.p1_time) == 0:
@@ -1290,7 +1299,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         """!
         @brief Plot GNSS corrections status (baseline distance, age, etc.).
         """
-        result = self.reader.read(message_types=[GNSSInfoMessage], **self.params)
+        result = self.reader.read(message_types=[GNSSInfoMessage], source_ids=[self.default_source_id], **self.params)
         data = result[GNSSInfoMessage.MESSAGE_TYPE]
 
         if len(data.p1_time) == 0:
@@ -1401,7 +1410,8 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         if self.long_log_detected and self.truncate_data:
             params = copy.deepcopy(self.params)
             params['max_messages'] = 2
-            result = self.reader.read(message_types=any_measurement_type, remove_nan_times=False, **params)
+            result = self.reader.read(message_types=any_measurement_type, remove_nan_times=False,
+                                      source_ids=[self.default_source_id], **params)
             data = result[any_measurement_type.MESSAGE_TYPE]
             if len(data.measurement_time) == 2:
                 dt_sec = data.measurement_time[1] - data.measurement_time[0]
@@ -1414,7 +1424,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
 
         # Read the data.
         result = self.reader.read(message_types=[measurement_type, raw_measurement_type],
-                                  remove_nan_times=False, **self.params)
+                                  remove_nan_times=False, source_ids=[self.default_source_id], **self.params)
 
         def _extract_data(measurement_type):
             if measurement_type is not None:
@@ -1542,7 +1552,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             # If we have pose messages _and_ they contain body velocity, we can use that.
             #
             # Note that we are using this to compare vs wheel speeds, so we're only interested in forward speed here.
-            result = self.reader.read(message_types=[PoseMessage], **self.params)
+            result = self.reader.read(message_types=[PoseMessage], source_ids=[self.default_source_id], **self.params)
             pose_data = result[PoseMessage.MESSAGE_TYPE]
             if len(pose_data.p1_time) != 0 and np.any(~np.isnan(pose_data.velocity_body_mps[0, :])):
                 nav_engine_p1_time = pose_data.p1_time
@@ -1557,7 +1567,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             # direction. This will also be an absolute value, so may not match the wheel data if it is signed and the
             # vehicle is going backward.
             else:
-                result = self.reader.read(message_types=[PoseAuxMessage], **self.params)
+                result = self.reader.read(message_types=[PoseAuxMessage], source_ids=[self.default_source_id], **self.params)
                 pose_aux_data = result[PoseAuxMessage.MESSAGE_TYPE]
                 if len(pose_aux_data.p1_time) != 0:
                     self.logger.warning('Body forward velocity not available. Estimating |speed| from ENU velocity. '
@@ -1714,7 +1724,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         if self.truncate_data:
             params = copy.deepcopy(self.params)
             params['max_messages'] = 2
-            result = self.reader.read(message_types=[message_cls], **params)
+            result = self.reader.read(message_types=[message_cls], source_ids=[self.default_source_id], **params)
             data = result[message_cls.MESSAGE_TYPE]
             if len(data.p1_time) == 2:
                 dt_sec = data.p1_time[1] - data.p1_time[0]
@@ -1726,7 +1736,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                     return
 
         # Read the data.
-        result = self.reader.read(message_types=[message_cls], **self.params)
+        result = self.reader.read(message_types=[message_cls], source_ids=[self.default_source_id], **self.params)
         data = result[message_cls.MESSAGE_TYPE]
 
         if len(data.p1_time) == 0:
@@ -1786,7 +1796,8 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             return
 
         # Read the heading measurement data.
-        result = self.reader.read(message_types=[RawHeadingOutput, HeadingOutput], **self.params)
+        result = self.reader.read(message_types=[RawHeadingOutput, HeadingOutput], source_ids=[self.default_source_id],
+                                  **self.params)
         raw_heading_data = result[RawHeadingOutput.MESSAGE_TYPE]
         heading_data = result[HeadingOutput.MESSAGE_TYPE]
 
@@ -1796,7 +1807,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
 
         # Note that we read the pose data after heading, that way we don't bother reading pose data from disk if there's
         # no heading data in the log.
-        result = self.reader.read(message_types=[PoseMessage], **self.params)
+        result = self.reader.read(message_types=[PoseMessage], source_ids=[self.default_source_id], **self.params)
         primary_pose_data = result[PoseMessage.MESSAGE_TYPE]
 
         # Setup the figure.
@@ -2033,7 +2044,8 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             return
 
         # Read the data.
-        result = self.reader.read(message_types=[SystemStatusMessage], remove_nan_times=False, **self.params)
+        result = self.reader.read(message_types=[SystemStatusMessage], remove_nan_times=False,
+                                  source_ids=[self.default_source_id], **self.params)
         data = result[SystemStatusMessage.MESSAGE_TYPE]
 
         if len(data.p1_time) == 0:
@@ -2068,7 +2080,8 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
 
         # Read the data.
         data = self.reader.read(message_types={MessageType.EVENT_NOTIFICATION} | COMMAND_MESSAGES | RESPONSE_MESSAGES,
-                                remove_nan_times=False, return_in_order=True, return_bytes=True, **self.params)
+                                remove_nan_times=False, return_in_order=True, return_bytes=True,
+                                source_ids=[self.default_source_id], **self.params)
 
         if len(data.messages) == 0:
             self.logger.info('No event notification data available.')
@@ -2225,7 +2238,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         log_duration_sec, processing_duration_sec, reduced_index = self._calculate_duration(return_index=True)
 
         # Create a table with position solution type statistics.
-        result = self.reader.read(message_types=[PoseMessage], **self.params)
+        result = self.reader.read(message_types=[PoseMessage], source_ids=[self.default_source_id], **self.params)
         pose_data = result[PoseMessage.MESSAGE_TYPE]
         num_pose_messages = len(pose_data.solution_type)
         solution_type_count = {}
@@ -2268,13 +2281,15 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         params['max_messages'] = 1
         params['return_in_order'] = True
 
-        result = self.reader.read(message_types=None, require_p1_time=True, **params)
+        result = self.reader.read(message_types=None, require_p1_time=True, source_ids=[self.default_source_id],
+                                  **params)
         if len(result.messages) > 0:
             processed_t0 = result.messages[0].get_p1_time()
         else:
             processed_t0 = Timestamp()
 
-        result = self.reader.read(message_types=None, require_system_time=True, **params)
+        result = self.reader.read(message_types=None, require_system_time=True, source_ids=[self.default_source_id],
+                                  **params)
         if len(result.messages) > 0:
             processed_system_t0 = result.messages[0].get_system_time_sec()
         else:
@@ -2322,7 +2337,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
 
         # Create a software version table.
         result = self.reader.read(message_types=[VersionInfoMessage.MESSAGE_TYPE], remove_nan_times=False,
-                                  **self.params)
+                                  source_ids=[self.default_source_id], **self.params)
         if len(result[VersionInfoMessage.MESSAGE_TYPE].messages) != 0:
             version = result[VersionInfoMessage.MESSAGE_TYPE].messages[-1]
             version_types = {'fw': 'Firmware', 'engine': 'FusionEngine', 'os': 'OS', 'rx': 'GNSS Receiver'}
@@ -2439,7 +2454,8 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         params['max_messages'] = 1
         selected_type = None
         for message_type in types:
-            result = self.reader.read(message_types=message_type, remove_nan_times=False, **params)
+            result = self.reader.read(message_types=message_type, remove_nan_times=False,
+                                      source_ids=[self.default_source_id], **params)
             data = result[message_type]
             if len(data.p1_time) > 0:
                 selected_type = message_type_to_class[message_type]
@@ -2540,6 +2556,10 @@ Load and display information stored in a FusionEngine binary file.
              "Options include:%s" %
              ''.join(['\n- %s' % f[5:] for f in plot_function_names]))
 
+    plot_group.add_argument(
+        '--source-identifier', '--source-id', nargs='*', type=int,
+        help="Plot the Fusion Engine messages characterized by the listed source identifier(s).")
+
     time_group = parser.add_argument_group('Time Control')
     time_group.add_argument(
         '--absolute-time', '--abs', action=ExtendedBooleanAction,
@@ -2622,11 +2642,16 @@ Load and display information stored in a FusionEngine binary file.
     else:
         output_dir = options.output
 
+    if options.source_identifier is None:
+        source_id = [0]
+    else:
+        source_id = list(options.source_identifier)
+
     # Read pose data from the file.
     analyzer = Analyzer(file=input_path, output_dir=output_dir, ignore_index=options.ignore_index,
                         prefix=options.prefix + '.' if options.prefix is not None else '',
                         time_range=time_range, time_axis=options.time_axis,
-                        truncate_long_logs=options.truncate and options.plot is None)
+                        truncate_long_logs=options.truncate and options.plot is None, source_id=source_id)
 
     if options.plot is None:
         analyzer.plot_events()
