@@ -211,15 +211,15 @@ def fast_generate_index(
     # messages, and filter out messages that fall within previous messages.
     #
     # Find the end offsets of the messages.
-    expected_msg_ends = index_raw[:]['offset'] + index_raw[:]['size']
-    # Propagate forward the largest endpoint found to handle multiple encapsulated messages.
-    expected_msg_ends = np.maximum.accumulate(expected_msg_ends)
-    # Find the messages that start after the previous message.
-    non_overlapped_idx = np.concatenate([[True], index_raw[1:]['offset'] >= expected_msg_ends[:-1]])
-    _logger.debug(f'Dropped {np.sum(~non_overlapped_idx)} wrapped messages.')
-    index_raw = index_raw[non_overlapped_idx]
-
     total_entries = len(index_raw)
+    if total_entries > 0:
+        expected_msg_ends = index_raw[:]['offset'] + index_raw[:]['size']
+        # Propagate forward the largest endpoint found to handle multiple encapsulated messages.
+        expected_msg_ends = np.maximum.accumulate(expected_msg_ends)
+        # Find the messages that start after the previous message.
+        non_overlapped_idx = np.concatenate([[True], index_raw[1:]['offset'] >= expected_msg_ends[:-1]])
+        _logger.debug(f'Dropped {np.sum(~non_overlapped_idx)} wrapped messages.')
+        index_raw = index_raw[non_overlapped_idx]
 
     _logger.debug(f'FE messages found: {total_entries}')
 
