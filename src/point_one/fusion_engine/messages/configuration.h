@@ -2286,7 +2286,7 @@ struct P1_ALIGNAS(4) SupportedIOInterfacesMessage : public MessagePayload {
 
   uint8_t reserved1[7] = {0};
 
-  /** This in then followed by an array of `num_interfaces` @ref InterfaceID. */
+  /** This is followed `num_interfaces` @ref InterfaceID elements. */
   // InterfaceID interfaces[num_interfaces]
 };
 
@@ -2350,7 +2350,7 @@ struct P1_ALIGNAS(4) MessageRateResponse : public MessagePayload {
   InterfaceID output_interface = {};
 
   /**
-   * This in then followed by an array of num_rates MessageRateResponseEntry.
+   * This is followed by `num_rates` @ref MessageRateResponseEntry elements.
    */
   // MessageRateResponseEntry rates[num_rates]
 };
@@ -2424,8 +2424,8 @@ struct P1_ALIGNAS(4) ImportDataMessage {
   uint32_t data_length_bytes = 0;
 
   /**
-   * This in then followed by an array of data_length_bytes bytes for the data
-   * contents.
+   * This is followed by `data_length_bytes` bytes containing the data to be
+   * imported.
    */
   // uint8_t data[data_length_bytes]
 };
@@ -2490,9 +2490,7 @@ struct P1_ALIGNAS(4) PlatformStorageDataMessage {
   /** Number of bytes in data contents. */
   uint32_t data_length_bytes = 0;
   /**
-
-   * This in then followed by an array of data_length_bytes bytes for the data
-   * contents.
+   * This is followed by `data_length_bytes` bytes containing the data contents.
    */
   // uint8_t data[data_length_bytes]
 };
