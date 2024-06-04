@@ -79,9 +79,9 @@ class MixedLogReader(object):
 
         # The source IDs requested by the user that are available.
         self.requested_source_ids = source_ids
+        self.available_source_ids = set()
 
         self._original_message_types = copy.deepcopy(self.message_types)
-        self.filtered_message_types = self.message_types is not None
 
         self.valid_count = 0
         self.message_counts = {}
@@ -114,13 +114,10 @@ class MixedLogReader(object):
         self.index = self._original_index
         self.filtered_message_types = False
 
-        # Now, apply filters -> apply pose message filter, then look at available message types
-        # self.populate_xx() (builds list of source_ids) -> self.filter_in_place(source_id) -> applies pose message filtering
-            # get list of available source IDs
         self.get_available_source_ids()
         self.filter_in_place(None, source_ids=self.requested_source_ids)
 
-        self.clear_filters()
+
         self.filter_in_place(self.message_types)
         self.filter_in_place(self.time_range)
         self.index = self._original_index[self.message_types][self.time_range]
@@ -495,15 +492,14 @@ class MixedLogReader(object):
         if source_ids is not None:
             # Apply source IDs that are available.
             source_id_set = set(source_ids)
-            available_source_id_set = set(self.available_source_ids)
-            if available_source_id_set != source_id_set:
-                unavailable_source_ids = list(source_id_set.difference(available_source_id_set))
+            if self.available_source_ids != source_id_set:
+                unavailable_source_ids = list(source_id_set.difference(self.available_source_ids))
                 if len(unavailable_source_ids) > 0:
                     self.logger.warning('Not all source IDs requested are available. Cannot extract the following '
                                         'source IDs: {}'.format(unavailable_source_ids))
-                source_ids = list(source_id_set.intersection(available_source_id_set))
+                source_ids = list(source_id_set.intersection(self.available_source_ids))
                 if len(source_ids) == 0:
-                    raise ValueError("All requested source ID(s) unavailable. Exiting.")
+                    raise ValueError("Requested source ID(s) unavailable. Exiting.")
 
                 if len(unavailable_source_ids) > 0:
                     self.logger.info('Extracting the following available requested source IDs: {}'.format(source_ids))
@@ -596,28 +592,32 @@ class MixedLogReader(object):
 
         return self
 
-    # Move to mixed log reader
-    def get_available_source_ids(self,
-                                 message_types: List[MessageType] = [MessageType.POSE, MessageType.POSE_AUX],
-                                 num_messages_to_read: int = 500):
-        self.available_source_ids = []
-        num_messages_read = 0
+    def get_available_source_ids(self, num_messages_to_read: int = 10):
+        self._populate_available_source_ids(num_messages_to_read=num_messages_to_read)
 
-        while num_messages_read < num_messages_to_read:
+    def _populate_available_source_ids(self, num_messages_to_read):
+        self.available_source_ids = set()
+        # Loop over all message types and read N of each type.
+        for message_type in np.unique(self.index['type']):
             try:
-                result = self.read_next()
-                header = result[0]
-            except StopIteration:
-                break
-
-            if header.message_type not in message_types:
+                message_type = MessageType(message_type, raise_on_unrecognized=True)
+            except (KeyError, ValueError) as e:
                 continue
+            self.filter_in_place(message_type)
+            num_messages_read = 0
+            while num_messages_read < num_messages_to_read:
+                try:
+                    result = self.read_next()
+                    header = result[0]
+                except StopIteration:
+                    break
 
-            num_messages_read += 1
-            if header.source_identifier in self.available_source_ids:
-                continue
+                num_messages_read += 1
+                self.available_source_ids.add(header.source_identifier)
 
-            self.available_source_ids.append(header.source_identifier)
+            self.clear_filters()
+
+        self.rewind()
 
     def __iter__(self):
         return self

@@ -475,8 +475,6 @@ class DataLoader(object):
             except StopIteration:
                 break
 
-            # if header.source_identifier not in self.requested_source_id:
-            #     continue
             message_size_bytes = header.get_message_size()
             message_offset_bytes = self.reader.get_bytes_read() - message_size_bytes
 

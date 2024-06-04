@@ -912,7 +912,7 @@ class Analyzer(object):
                 map_data.append(go.Scattermapbox(lat=[np.nan], lon=[np.nan], name=name, visible='legendonly', **style))
 
         # Read the pose data.
-        for source_id in self.source_ids:
+        for source_id in self.reader.source_ids:
             result = self.reader.read(message_types=[PoseMessage], source_ids=[source_id], **self.params)
             pose_data = result[PoseMessage.MESSAGE_TYPE]
 
@@ -932,7 +932,7 @@ class Analyzer(object):
             std_enu_m = pose_data.position_std_enu_m[:, valid_idx]
 
             for type, info in _SOLUTION_TYPE_MAP.items():
-                if len(self.source_ids) > 1:
+                if len(self.reader.source_ids) > 1:
                     name = info.name + ' [source_id=' + str(source_id) + ']'
                 else:
                     name = info.name
