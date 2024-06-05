@@ -19,9 +19,18 @@ namespace messages {
 // within the definitions. See the "Message Packing" section of the README.
 #pragma pack(push, 1)
 
+/**************************************************************************/ /**
+ * @defgroup config_types Device Configuration Settings Control
+ * @brief Messages/types for configuring device parameters (lever arms,
+ *        orientation, wheel speed settings, etc.).
+ * @ingroup config_and_ctrl_messages
+ *
+ * See also @ref import_export.
+ ******************************************************************************/
+
 /**
  * @brief An identifier for the contents of a parameter configuration message.
- * @ingroup config_and_ctrl_messages
+ * @ingroup config_types
  *
  * See also @ref SetConfigMessage.
  */
@@ -246,7 +255,7 @@ enum class ConfigType : uint16_t {
 
 /**
  * @brief Get a human-friendly string name for the specified @ref ConfigType.
- * @ingroup config_and_ctrl_messages
+ * @ingroup config_types
  *
  * @param type The desired configuration parameter type.
  *
@@ -329,7 +338,7 @@ P1_CONSTEXPR_FUNC const char* to_string(ConfigType type) {
 
 /**
  * @brief @ref ConfigType stream operator.
- * @ingroup config_and_ctrl_messages
+ * @ingroup config_types
  */
 inline p1_ostream& operator<<(p1_ostream& stream, ConfigType type) {
   stream << to_string(type) << " (" << (int)type << ")";
@@ -339,7 +348,7 @@ inline p1_ostream& operator<<(p1_ostream& stream, ConfigType type) {
 /**
  * @brief An identifier for the contents of a output interface configuration
  *        submessage.
- * @ingroup config_and_ctrl_messages
+ * @ingroup config_types
  *
  * See also @ref InterfaceConfigSubmessage.
  */
@@ -431,7 +440,7 @@ enum class InterfaceConfigType : uint8_t {
 
 /**
  * @brief Get a human-friendly string name for the specified @ref ConfigType.
- * @ingroup config_and_ctrl_messages
+ * @ingroup config_types
  *
  * @param type The desired configuration parameter type.
  *
@@ -470,7 +479,7 @@ P1_CONSTEXPR_FUNC const char* to_string(InterfaceConfigType type) {
 
 /**
  * @brief @ref InterfaceConfigType stream operator.
- * @ingroup config_and_ctrl_messages
+ * @ingroup config_types
  */
 inline p1_ostream& operator<<(p1_ostream& stream, InterfaceConfigType type) {
   stream << to_string(type) << " (" << (int)type << ")";
@@ -479,7 +488,7 @@ inline p1_ostream& operator<<(p1_ostream& stream, InterfaceConfigType type) {
 
 /**
  * @brief The type of a device's configuration settings.
- * @ingroup config_and_ctrl_messages
+ * @ingroup config_types
  */
 enum class ConfigurationSource : uint8_t {
   ACTIVE = 0, ///< Active configuration currently in use by the device.
@@ -494,7 +503,7 @@ enum class ConfigurationSource : uint8_t {
 /**
  * @brief Get a human-friendly string name for the specified @ref
  *        ConfigurationSource.
- * @ingroup config_and_ctrl_messages
+ * @ingroup config_types
  *
  * @param source The desired configuration source.
  *
@@ -518,7 +527,7 @@ P1_CONSTEXPR_FUNC const char* to_string(ConfigurationSource source) {
 
 /**
  * @brief @ref ConfigurationSource stream operator.
- * @ingroup config_and_ctrl_messages
+ * @ingroup config_types
  */
 inline p1_ostream& operator<<(p1_ostream& stream, ConfigurationSource source) {
   stream << to_string(source) << " (" << (int)source << ")";
@@ -527,7 +536,7 @@ inline p1_ostream& operator<<(p1_ostream& stream, ConfigurationSource source) {
 
 /**
  * @brief The type configuration save operation to be performed.
- * @ingroup config_and_ctrl_messages
+ * @ingroup config_types
  */
 enum class SaveAction : uint8_t {
   /** Save all active parameters to persistent storage. */
@@ -540,7 +549,7 @@ enum class SaveAction : uint8_t {
 
 /**
  * @brief Get a human-friendly string name for the specified @ref SaveAction.
- * @ingroup config_and_ctrl_messages
+ * @ingroup config_types
  *
  * @param action The desired save operation.
  *
@@ -564,7 +573,7 @@ P1_CONSTEXPR_FUNC const char* to_string(SaveAction action) {
 
 /**
  * @brief @ref SaveAction stream operator.
- * @ingroup config_and_ctrl_messages
+ * @ingroup config_types
  */
 inline p1_ostream& operator<<(p1_ostream& stream, SaveAction action) {
   stream << to_string(action) << " (" << (int)action << ")";
@@ -574,7 +583,7 @@ inline p1_ostream& operator<<(p1_ostream& stream, SaveAction action) {
 /**
  * @brief Set a user configuration parameter (@ref MessageType::SET_CONFIG,
  *        version 1.0).
- * @ingroup config_and_ctrl_messages
+ * @ingroup config_types
  *
  * The format of the parameter value is defined by the the specified @ref
  * config_type (@ref ConfigType). For example, an antenna lever arm definition
@@ -634,7 +643,7 @@ struct P1_ALIGNAS(4) SetConfigMessage : public MessagePayload {
 /**
  * @brief Query the value of a user configuration parameter (@ref
  *        MessageType::GET_CONFIG, version 1.1).
- * @ingroup config_and_ctrl_messages
+ * @ingroup config_types
  *
  * # Expected Response
  * The device will respond with a @ref ConfigResponseMessage containing the
@@ -664,7 +673,7 @@ struct P1_ALIGNAS(4) GetConfigMessage : public MessagePayload {
 /**
  * @brief Save or reload configuration settings (@ref MessageType::SAVE_CONFIG,
  *        version 1.0).
- * @ingroup config_and_ctrl_messages
+ * @ingroup config_types
  *
  * # Expected Response
  * The device will respond with a @ref CommandResponseMessage indicating whether
@@ -683,7 +692,7 @@ struct P1_ALIGNAS(4) SaveConfigMessage : public MessagePayload {
 /**
  * @brief Response to a @ref GetConfigMessage request (@ref
  *        MessageType::CONFIG_RESPONSE, version 1.0).
- * @ingroup config_and_ctrl_messages
+ * @ingroup config_types
  *
  * This message is followed by `N` bytes, where `N` is equal to @ref
  * config_length_bytes that make up the data associated with @ref config_type.
@@ -737,13 +746,9 @@ struct P1_ALIGNAS(4) ConfigResponseMessage : public MessagePayload {
   //uint8_t config_change_data[0];
 };
 
-/**************************************************************************/ /**
- * @defgroup config_types Configuration Settings Type Definitions
- * @{
- ******************************************************************************/
-
 /**
  * @brief A 3-dimensional vector (used for lever arms, etc.).
+ * @ingroup config_types
  */
 struct P1_ALIGNAS(4) Point3f {
   float x = NAN;
@@ -753,6 +758,7 @@ struct P1_ALIGNAS(4) Point3f {
 
 /**
  * @brief The orientation of a device with respect to the vehicle body axes.
+ * @ingroup config_types
  *
  * A device's orientation is defined by specifying how the +x and +z axes of its
  * IMU are aligned with the vehicle body axes. For example, in a car:
@@ -786,7 +792,7 @@ struct P1_ALIGNAS(4) CoarseOrientation {
 
 /**
  * @brief The make and model of the vehicle.
- * @ingroup config_and_ctrl_messages
+ * @ingroup config_types
  */
 enum class VehicleModel : uint16_t {
   UNKNOWN_VEHICLE = 0,
@@ -832,7 +838,7 @@ enum class VehicleModel : uint16_t {
 
 /**
  * @brief Get a human-friendly string name for the specified @ref VehicleModel.
- * @ingroup config_and_ctrl_messages
+ * @ingroup config_types
  *
  * @param vehicle_model The desired vehicle model.
  *
@@ -885,7 +891,7 @@ P1_CONSTEXPR_FUNC const char* to_string(VehicleModel vehicle_model) {
 
 /**
  * @brief @ref VehicleModel stream operator.
- * @ingroup config_and_ctrl_messages
+ * @ingroup config_types
  */
 inline p1_ostream& operator<<(p1_ostream& stream, VehicleModel vehicle_model) {
   stream << to_string(vehicle_model) << " (" << (int)vehicle_model << ")";
@@ -894,7 +900,7 @@ inline p1_ostream& operator<<(p1_ostream& stream, VehicleModel vehicle_model) {
 
 /**
  * @brief Information about the vehicle including model and dimensions.
- * @ingroup config_and_ctrl_messages
+ * @ingroup config_types
  */
 struct P1_ALIGNAS(4) VehicleDetails {
   VehicleModel vehicle_model = VehicleModel::UNKNOWN_VEHICLE;
@@ -912,7 +918,7 @@ struct P1_ALIGNAS(4) VehicleDetails {
 
 /**
  * @brief The type of vehicle/wheel speed measurements produced by the vehicle.
- * @ingroup config_and_ctrl_messages
+ * @ingroup config_types
  */
 enum class WheelSensorType : uint8_t {
   /** Wheel/vehicle speed data not available. */
@@ -943,7 +949,7 @@ enum class WheelSensorType : uint8_t {
 /**
  * @brief Get a human-friendly string name for the specified @ref
  *        WheelSensorType.
- * @ingroup config_and_ctrl_messages
+ * @ingroup config_types
  *
  * @param wheel_sensor_type The desired wheel sensor type.
  *
@@ -974,7 +980,7 @@ P1_CONSTEXPR_FUNC const char* to_string(WheelSensorType wheel_sensor_type) {
 
 /**
  * @brief @ref WheelSensorType stream operator.
- * @ingroup config_and_ctrl_messages
+ * @ingroup config_types
  */
 inline p1_ostream& operator<<(p1_ostream& stream,
                               WheelSensorType wheel_sensor_type) {
@@ -985,7 +991,7 @@ inline p1_ostream& operator<<(p1_ostream& stream,
 
 /**
  * @brief The type of vehicle/wheel speed measurements to be applied.
- * @ingroup config_and_ctrl_messages
+ * @ingroup config_types
  */
 enum class AppliedSpeedType : uint8_t {
   /** Speed data not applied to the system. */
@@ -1003,7 +1009,7 @@ enum class AppliedSpeedType : uint8_t {
 /**
  * @brief Get a human-friendly string name for the specified @ref
  *        AppliedSpeedType.
- * @ingroup config_and_ctrl_messages
+ * @ingroup config_types
  *
  * @param applied_speed_type The desired applied speed type.
  *
@@ -1034,7 +1040,7 @@ P1_CONSTEXPR_FUNC const char* to_string(AppliedSpeedType applied_speed_type) {
 
 /**
  * @brief @ref AppliedSpeedType stream operator.
- * @ingroup config_and_ctrl_messages
+ * @ingroup config_types
  */
 inline p1_ostream& operator<<(p1_ostream& stream,
                               AppliedSpeedType applied_speed_type) {
@@ -1045,7 +1051,7 @@ inline p1_ostream& operator<<(p1_ostream& stream,
 
 /**
  * @brief Indication of which of the vehicle's wheels are steered.
- * @ingroup config_and_ctrl_messages
+ * @ingroup config_types
  */
 enum class SteeringType : uint8_t {
   /** Steered wheels unknown. */
@@ -1058,7 +1064,7 @@ enum class SteeringType : uint8_t {
 
 /**
  * @brief Get a human-friendly string name for the specified @ref SteeringType.
- * @ingroup config_and_ctrl_messages
+ * @ingroup config_types
  *
  * @param steering_type The desired steering type.
  *
@@ -1083,7 +1089,7 @@ P1_CONSTEXPR_FUNC const char* to_string(SteeringType steering_type) {
 
 /**
  * @brief @ref SteeringType stream operator.
- * @ingroup config_and_ctrl_messages
+ * @ingroup config_types
  */
 inline p1_ostream& operator<<(p1_ostream& stream, SteeringType steering_type) {
   stream << to_string(steering_type) << " (" << (int)steering_type << ")";
@@ -1092,7 +1098,7 @@ inline p1_ostream& operator<<(p1_ostream& stream, SteeringType steering_type) {
 
 /**
  * @brief Software vehicle/wheel speed measurement configuration settings.
- * @ingroup config_and_ctrl_messages
+ * @ingroup config_types
  *
  * @warning
  * The @ref WheelConfig payload is intended for use on vehicles where wheel
@@ -1218,7 +1224,7 @@ struct P1_ALIGNAS(4) WheelConfig {
 
 /**
  * @brief The signal edge to use when capturing a wheel tick voltage signal.
- * @ingroup config_and_ctrl_messages
+ * @ingroup config_types
  */
 enum class TickMode : uint8_t {
   /** Wheel tick capture disabled. */
@@ -1244,7 +1250,7 @@ P1_CONSTEXPR_FUNC const char* to_string(TickMode tick_mode) {
 
 /**
  * @brief @ref TickMode stream operator.
- * @ingroup config_and_ctrl_messages
+ * @ingroup config_types
  */
 inline p1_ostream& operator<<(p1_ostream& stream, TickMode tick_mode) {
   stream << to_string(tick_mode) << " (" << (int)tick_mode << ")";
@@ -1254,7 +1260,7 @@ inline p1_ostream& operator<<(p1_ostream& stream, TickMode tick_mode) {
 /**
  * @brief The way to interpret an incoming voltage signal, used to indicate
  *        direction of a hardware wheel tick pulse, if available.
- * @ingroup config_and_ctrl_messages
+ * @ingroup config_types
  */
 enum class TickDirection : uint8_t {
   /** Wheel tick direction not provided. */
@@ -1286,7 +1292,7 @@ P1_CONSTEXPR_FUNC const char* to_string(TickDirection tick_direction) {
 
 /**
  * @brief @ref TickDirection stream operator.
- * @ingroup config_and_ctrl_messages
+ * @ingroup config_types
  */
 inline p1_ostream& operator<<(p1_ostream& stream,
                               TickDirection tick_direction) {
@@ -1296,7 +1302,7 @@ inline p1_ostream& operator<<(p1_ostream& stream,
 
 /**
  * @brief Hardware wheel tick encoder configuration settings.
- * @ingroup config_and_ctrl_messages
+ * @ingroup config_types
  *
  * @warning
  * The @ref HardwareTickConfig payload is intended for use on vehicles with a
@@ -1349,7 +1355,7 @@ struct P1_ALIGNAS(4) HardwareTickConfig {
 
 /**
  * @brief Heading bias horizontal/vertical configuration settings.
- * @ingroup config_and_ctrl_messages
+ * @ingroup config_types
  *
  * @note
  * Both HeadingBias values must be set for the system to use them.
@@ -1391,7 +1397,7 @@ struct P1_ALIGNAS(4) HeadingBias {
 
 /**
  * @brief The ionospheric delay model to use.
- * @ingroup config_and_ctrl_messages
+ * @ingroup config_types
  */
 enum class IonoDelayModel : uint8_t {
   /** Select the best available ionospheric delay model. */
@@ -1421,7 +1427,7 @@ P1_CONSTEXPR_FUNC const char* to_string(IonoDelayModel iono_delay_model) {
 
 /**
  * @brief @ref IonoDelayModel stream operator.
- * @ingroup config_and_ctrl_messages
+ * @ingroup config_types
  */
 inline p1_ostream& operator<<(p1_ostream& stream,
                               IonoDelayModel iono_delay_model) {
@@ -1431,7 +1437,7 @@ inline p1_ostream& operator<<(p1_ostream& stream,
 
 /**
  * @brief Ionospheric delay model configuration.
- * @ingroup config_and_ctrl_messages
+ * @ingroup config_types
  */
 struct P1_ALIGNAS(4) IonosphereConfig {
   /** The ionospheric delay model to use. */
@@ -1442,7 +1448,7 @@ struct P1_ALIGNAS(4) IonosphereConfig {
 
 /**
  * @brief The tropospheric delay model to use.
- * @ingroup config_and_ctrl_messages
+ * @ingroup config_types
  */
 enum class TropoDelayModel : uint8_t {
   /** Select the best available tropospheric delay model. */
@@ -1468,7 +1474,7 @@ P1_CONSTEXPR_FUNC const char* to_string(TropoDelayModel tropo_delay_model) {
 
 /**
  * @brief @ref TropoDelayModel stream operator.
- * @ingroup config_and_ctrl_messages
+ * @ingroup config_types
  */
 inline p1_ostream& operator<<(p1_ostream& stream,
                               TropoDelayModel tropo_delay_model) {
@@ -1479,7 +1485,7 @@ inline p1_ostream& operator<<(p1_ostream& stream,
 
 /**
  * @brief Tropospheric delay model configuration.
- * @ingroup config_and_ctrl_messages
+ * @ingroup config_types
  */
 struct P1_ALIGNAS(4) TroposphereConfig {
   /** The tropospheric delay model to use. */
@@ -1489,55 +1495,214 @@ struct P1_ALIGNAS(4) TroposphereConfig {
 };
 
 /**
- * @brief Configuration of the L-band demodulator parameters.
- * @ingroup config_and_ctrl_messages
+ * @brief A submessage header for configuration data associated with the
+ *        @ref ConfigType::INTERFACE_CONFIG.
+ * @ingroup config_types
+ *
+ * In @ref SetConfigMessage, @ref GetConfigMessage, and @ref
+ * ConfigResponseMessage this struct can be used to access settings
+ * associated with a a particular interface. For example, to set the baudrate
+ * for serial port 1:
+ *
+ * ```
+ * {
+ *   SetConfigMessage(
+ *     config_type=INTERFACE_CONFIG),
+ *   InterfaceConfigSubmessage(
+ *     interface=InterfaceID(TransportType::SERIAL, 1),
+ *     subtype=BAUD_RATE),
+ *   uint32_t 115200
+ * }
+ * ```
  */
-struct P1_ALIGNAS(4) LBandConfig {
+struct P1_ALIGNAS(4) InterfaceConfigSubmessage {
   /**
-   * The center frequency of the L-band beam (Hz).
-   */
-  double center_frequency_hz = 1555492500.0;
-
-  /**
-   * The size of the signal acquisition search space (in Hz) around the center
-   * frequency.
+   * The interface ID to target.
    *
-   * For example, a value of 6000 will search +/- 3 kHz around the center
-   * frequency.
+   * @note
+   * TransportType::ALL is not supported.
    */
-  float search_window_hz = 2000.0;
+  InterfaceID interface = InterfaceID(TransportType::CURRENT, 0);
 
   /**
-   * If `true`, only output data frames with the configured service ID.
-   * Otherwise, output all decoded frames.
+   * The interface setting to get/set/describe.
    */
-  bool filter_data_by_service_id = true;
+  InterfaceConfigType subtype = InterfaceConfigType::INVALID;
 
-  /** Enable/disable the descrambler. */
-  bool use_descrambler = true;
+  uint8_t reserved[3] = {0};
 
-  /** Service ID of the provider. */
-  uint16_t pmp_service_id = 0x5555;
-
-  /** Unique word of the provider. */
-  uint64_t pmp_unique_word = 0xE15AE893E15AE893ull;
-
-  /** Data rate of the provider (bps). */
-  uint16_t pmp_data_rate_bps = 4800;
-
-  /** The initialization value for the descrambling vector. */
-  uint16_t descrambler_init = 0x6969;
+  /**
+   * A pointer to the beginning of the configuration parameter value if
+   * setting/describing.
+   *
+   * The size and format of the contents is specified by the @ref subtype.
+   * See @ref InterfaceConfigType.
+   */
+  //uint8_t config_data[0];
 };
 
-/** @} */
+/**************************************************************************/ /**
+ * @defgroup import_export Device Configuration Import/Export
+ * @brief Messages for importing/exporting device configuration.
+ * @ingroup config_and_ctrl_messages
+ *
+ * See also @ref config_types.
+ ******************************************************************************/
+
+/**
+ * @brief Type of data stored on device.
+ * @ingroup import_export
+ */
+enum class DataType : uint8_t {
+  CALIBRATION_STATE = 0,
+  CRASH_LOG = 1,
+  FILTER_STATE = 2,
+  USER_CONFIG = 3,
+  INVALID = 255
+};
+
+/**
+ * @brief Get a string representation of a @ref DataType.
+ * @ingroup import_export
+ *
+ * @param type The requested type.
+ *
+ * @return The corresponding string name.
+ */
+P1_CONSTEXPR_FUNC const char* to_string(DataType type) {
+  switch (type) {
+    case DataType::CALIBRATION_STATE:
+      return "CalibrationState";
+    case DataType::CRASH_LOG:
+      return "CrashLog";
+    case DataType::FILTER_STATE:
+      return "FilterState";
+    case DataType::USER_CONFIG:
+      return "UserConfig";
+    default:
+      return "Invalid";
+  }
+}
+
+/**
+ * @brief @ref DataType stream operator.
+ * @ingroup import_export
+ */
+inline p1_ostream& operator<<(p1_ostream& stream, DataType val) {
+  stream << to_string(val) << " (" << (int)val << ")";
+  return stream;
+}
+
+/**
+ * @brief Import data from the host to the device (@ref
+ *        MessageType::IMPORT_DATA, version 1.0).
+ * @ingroup import_export
+ *
+ * # Expected Response
+ * The device will respond with a @ref CommandResponseMessage indicating whether
+ * or not the request succeeded.
+ */
+struct P1_ALIGNAS(4) ImportDataMessage {
+  static constexpr MessageType MESSAGE_TYPE = MessageType::IMPORT_DATA;
+  static constexpr uint8_t MESSAGE_VERSION = 0;
+  /**
+   * The type of data being imported.
+   */
+  DataType data_type = DataType::INVALID;
+  /**
+   * The location of the data to update (active, saved, etc.). For data that
+   * doesn't have separate active and saved copies, this parameter is ignored.
+   */
+  ConfigurationSource source = ConfigurationSource::ACTIVE;
+  uint8_t reserved1[2] = {0};
+  /** @brief Version of data contents. */
+  DataVersion data_version;
+  uint8_t reserved2[4] = {0};
+  /** @brief Number of bytes to update. */
+  uint32_t data_length_bytes = 0;
+
+  /**
+   * This is followed by `data_length_bytes` bytes containing the data to be
+   * imported.
+   */
+  // uint8_t data[data_length_bytes]
+};
+
+/**
+ * @brief Export data from the device (@ref
+ *        MessageType::EXPORT_DATA, version 1.0).
+ * @ingroup import_export
+ *
+ * # Expected Response
+ * The device will respond with a @ref PlatformStorageDataMessage.
+ */
+struct P1_ALIGNAS(4) ExportDataMessage {
+  static constexpr MessageType MESSAGE_TYPE = MessageType::EXPORT_DATA;
+  static constexpr uint8_t MESSAGE_VERSION = 0;
+  /**
+   * The type of data to be exported.
+   */
+  DataType data_type = DataType::INVALID;
+  /**
+   * The source to copy this data from. If the data_type doesn't separate active
+   * and saved data, this will be ignored.
+   */
+  ConfigurationSource source = ConfigurationSource::ACTIVE;
+  uint8_t reserved[2] = {0};
+};
+
+/**
+ * @brief Message for reporting platform storage data (@ref
+ *        MessageType::PLATFORM_STORAGE_DATA, version 1.0).
+ * @ingroup import_export
+ *
+ * See also @ref ExportDataMessage.
+ *
+ * Changes:
+ * - Version 1: Added data_validity field.
+ * - Version 2: Changed data_validity to a @ref Response enum and added
+ *              @ref source field.
+ */
+struct P1_ALIGNAS(4) PlatformStorageDataMessage {
+  static constexpr MessageType MESSAGE_TYPE =
+      MessageType::PLATFORM_STORAGE_DATA;
+  static constexpr uint8_t MESSAGE_VERSION = 2;
+
+  /**
+   * The type of data contained in this message.
+   */
+  DataType data_type = DataType::INVALID;
+  /**
+   * The status of the specified data type on the device.
+   */
+  Response response = Response::OK;
+  /**
+   * The source this data was copied from. If the @ref data_type doesn't separate
+   * active and saved data, this will be set to @ref
+   * ConfigurationSource::ACTIVE.
+   */
+  ConfigurationSource source = ConfigurationSource::ACTIVE;
+  uint8_t reserved[1] = {0};
+  /** Version of data contents. */
+  DataVersion data_version;
+  /** Number of bytes in data contents. */
+  uint32_t data_length_bytes = 0;
+  /**
+   * This is followed by `data_length_bytes` bytes containing the data contents.
+   */
+  // uint8_t data[data_length_bytes]
+};
 
 /**************************************************************************/ /**
- * @name Input/Output Stream Control
- * @{
+ * @defgroup io_interfaces Input/Output Interface And Message Rate Control
+ * @brief Messages for controlling device output (e.g., define TCP server
+ *        parameters, configure message output rates).
+ * @ingroup config_and_ctrl_messages
  ******************************************************************************/
 
 /**
  * @brief The framing protocol of a message.
+ * @ingroup io_interfaces
  */
 enum class ProtocolType : uint8_t {
   INVALID = 0,
@@ -1554,7 +1719,7 @@ constexpr uint16_t ALL_MESSAGES_ID = 0xFFFF;
 /**
  * @brief Get a human-friendly string name for the specified @ref
  *        ProtocolType.
- * @ingroup config_and_ctrl_messages
+ * @ingroup io_interfaces
  *
  * @param val The enum to get the string name for.
  *
@@ -1579,7 +1744,7 @@ P1_CONSTEXPR_FUNC const char* to_string(ProtocolType val) {
 
 /**
  * @brief @ref ProtocolType stream operator.
- * @ingroup config_and_ctrl_messages
+ * @ingroup io_interfaces
  */
 inline p1_ostream& operator<<(p1_ostream& stream, ProtocolType val) {
   stream << to_string(val) << " (" << (int)val << ")";
@@ -1588,6 +1753,7 @@ inline p1_ostream& operator<<(p1_ostream& stream, ProtocolType val) {
 
 /**
  * @brief Type of I/O interface transport.
+ * @ingroup io_interfaces
  */
 enum class TransportType : uint8_t {
   INVALID = 0,
@@ -1663,7 +1829,7 @@ enum class TransportType : uint8_t {
 /**
  * @brief Get a human-friendly string name for the specified @ref
  *        TransportType.
- * @ingroup config_and_ctrl_messages
+ * @ingroup io_interfaces
  *
  * @param val The enum to get the string name for.
  *
@@ -1695,7 +1861,7 @@ P1_CONSTEXPR_FUNC const char* to_string(TransportType val) {
 
 /**
  * @brief @ref TransportType stream operator.
- * @ingroup config_and_ctrl_messages
+ * @ingroup io_interfaces
  */
 inline p1_ostream& operator<<(p1_ostream& stream, TransportType val) {
   stream << to_string(val) << " (" << (int)val << ")";
@@ -1704,6 +1870,7 @@ inline p1_ostream& operator<<(p1_ostream& stream, TransportType val) {
 
 /**
  * @brief The direction (client/server) for an individual interface.
+ * @ingroup io_interfaces
  */
 enum class TransportDirection : uint8_t {
   INVALID = 0,
@@ -1716,7 +1883,7 @@ enum class TransportDirection : uint8_t {
 /**
  * @brief Get a human-friendly string name for the specified @ref
  *        TransportDirection.
- * @ingroup config_and_ctrl_messages
+ * @ingroup io_interfaces
  *
  * @param val The enum to get the string name for.
  *
@@ -1736,7 +1903,7 @@ P1_CONSTEXPR_FUNC const char* to_string(TransportDirection val) {
 
 /**
  * @brief @ref TransportDirection stream operator.
- * @ingroup config_and_ctrl_messages
+ * @ingroup io_interfaces
  */
 inline p1_ostream& operator<<(p1_ostream& stream, TransportDirection val) {
   stream << to_string(val) << " (" << (int)val << ")";
@@ -1746,6 +1913,7 @@ inline p1_ostream& operator<<(p1_ostream& stream, TransportDirection val) {
 /**
  * @brief The socket type specifying how data is transmitted for UNIX domain
  *        sockets.
+ * @ingroup io_interfaces
  */
 enum class SocketType : uint8_t {
   INVALID = 0,
@@ -1768,7 +1936,7 @@ enum class SocketType : uint8_t {
 
 /**
  * @brief Get a human-friendly string name for the specified @ref SocketType.
- * @ingroup config_and_ctrl_messages
+ * @ingroup io_interfaces
  *
  * @param val The enum to get the string name for.
  *
@@ -1790,7 +1958,7 @@ P1_CONSTEXPR_FUNC const char* to_string(SocketType val) {
 
 /**
  * @brief @ref SocketType stream operator.
- * @ingroup config_and_ctrl_messages
+ * @ingroup io_interfaces
  */
 inline p1_ostream& operator<<(p1_ostream& stream, SocketType val) {
   stream << to_string(val) << " (" << (int)val << ")";
@@ -1798,7 +1966,8 @@ inline p1_ostream& operator<<(p1_ostream& stream, SocketType val) {
 }
 
 /**
- * @brief Identifies an I/O interface.
+ * @brief Identifier for an I/O interface.
+ * @ingroup io_interfaces
  *
  * For example, serial port 1 or TCP server 2.
  *
@@ -1849,7 +2018,7 @@ struct P1_ALIGNAS(4) InterfaceID {
 
 /**
  * @brief @ref InterfaceID stream operator.
- * @ingroup config_and_ctrl_messages
+ * @ingroup io_interfaces
  */
 inline p1_ostream& operator<<(p1_ostream& stream, InterfaceID val) {
   stream << "[type=" << val.type << ", index=" << (int)val.index << "]";
@@ -1858,6 +2027,7 @@ inline p1_ostream& operator<<(p1_ostream& stream, InterfaceID val) {
 
 /**
  * @brief Integer ID for NMEA messages.
+ * @ingroup io_interfaces
  */
 enum class NmeaMessageType : uint16_t {
   INVALID = 0,
@@ -1898,7 +2068,7 @@ enum class NmeaMessageType : uint16_t {
 /**
  * @brief Get a human-friendly string name for the specified @ref
  *        NmeaMessageType.
- * @ingroup config_and_ctrl_messages
+ * @ingroup io_interfaces
  *
  * @param value The enum to get the string name for.
  *
@@ -1943,7 +2113,7 @@ P1_CONSTEXPR_FUNC const char* to_string(NmeaMessageType value) {
 
 /**
  * @brief @ref NmeaMessageType stream operator.
- * @ingroup config_and_ctrl_messages
+ * @ingroup io_interfaces
  */
 inline p1_ostream& operator<<(p1_ostream& stream, NmeaMessageType val) {
   stream << to_string(val) << " (" << (int)val << ")";
@@ -1952,6 +2122,7 @@ inline p1_ostream& operator<<(p1_ostream& stream, NmeaMessageType val) {
 
 /**
  * @brief The output rate for a message type on an interface.
+ * @ingroup io_interfaces
  */
 enum class MessageRate : uint8_t {
   /**
@@ -2038,7 +2209,7 @@ enum class MessageRate : uint8_t {
 /**
  * @brief Get a human-friendly string name for the specified @ref
  *        MessageRate.
- * @ingroup config_and_ctrl_messages
+ * @ingroup io_interfaces
  *
  * @param value The enum to get the string name for.
  *
@@ -2085,7 +2256,7 @@ P1_CONSTEXPR_FUNC const char* to_string(MessageRate value) {
 
 /**
  * @brief @ref MessageRate stream operator.
- * @ingroup config_and_ctrl_messages
+ * @ingroup io_interfaces
  */
 inline p1_ostream& operator<<(p1_ostream& stream, MessageRate val) {
   stream << to_string(val) << " (" << (int)val << ")";
@@ -2095,6 +2266,7 @@ inline p1_ostream& operator<<(p1_ostream& stream, MessageRate val) {
 /**
  * @brief Set the output rate for the requested message types (@ref
  *        MessageType::SET_MESSAGE_RATE, version 1.0).
+ * @ingroup io_interfaces
  *
  * Multiple message rates can be configured with a single command if wild cards
  * are used for the interface, protocol, or message ID. When multiple messages
@@ -2179,8 +2351,6 @@ inline p1_ostream& operator<<(p1_ostream& stream, MessageRate val) {
  * Both of the bit flags are set for this message. This will cause the
  * configuration to be saved to non-volatile memory.
  *
- * @ingroup config_and_ctrl_messages
- *
  * # Expected Response
  * The device will respond with a @ref CommandResponseMessage indicating whether
  * or not the request succeeded.
@@ -2231,7 +2401,7 @@ struct P1_ALIGNAS(4) SetMessageRate : public MessagePayload {
  * @brief Get the configured output rate for the he requested message type on
  *        the specified interface (@ref MessageType::GET_MESSAGE_RATE,
  *        version 1.0).
- * @ingroup config_and_ctrl_messages
+ * @ingroup io_interfaces
  *
  * Multiple message rates can be requested with a single command if wild cards
  * are used for the protocol, or message ID.
@@ -2274,7 +2444,7 @@ struct P1_ALIGNAS(4) GetMessageRate : public MessagePayload {
 /**
  * @brief A list of transport interfaces supported by the device (@ref
  *        MessageType::SUPPORTED_IO_INTERFACES, version 1.0).
- * @ingroup config_and_ctrl_messages
+ * @ingroup io_interfaces
  */
 struct P1_ALIGNAS(4) SupportedIOInterfacesMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE =
@@ -2292,7 +2462,7 @@ struct P1_ALIGNAS(4) SupportedIOInterfacesMessage : public MessagePayload {
 
 /**
  * @brief An element of a @ref MessageRateResponse message.
- * @ingroup config_and_ctrl_messages
+ * @ingroup io_interfaces
  */
 struct P1_ALIGNAS(4) MessageRateResponseEntry {
   /**
@@ -2330,7 +2500,7 @@ struct P1_ALIGNAS(4) MessageRateResponseEntry {
 /**
  * @brief Response to a @ref GetMessageRate request (@ref
  *        MessageType::MESSAGE_RATE_RESPONSE, version 1.1).
- * @ingroup config_and_ctrl_messages
+ * @ingroup io_interfaces
  */
 struct P1_ALIGNAS(4) MessageRateResponse : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE =
@@ -2355,194 +2525,52 @@ struct P1_ALIGNAS(4) MessageRateResponse : public MessagePayload {
   // MessageRateResponseEntry rates[num_rates]
 };
 
-/** Type of data stored on device. */
-enum class DataType : uint8_t {
-  CALIBRATION_STATE = 0,
-  CRASH_LOG = 1,
-  FILTER_STATE = 2,
-  USER_CONFIG = 3,
-  INVALID = 255
-};
-
-/**
- * @brief Get a string representation of a @ref DataType.
- *
- * @param type The requested type.
- *
- * @return The corresponding string name.
- */
-P1_CONSTEXPR_FUNC const char* to_string(DataType type) {
-  switch (type) {
-    case DataType::CALIBRATION_STATE:
-      return "CalibrationState";
-    case DataType::CRASH_LOG:
-      return "CrashLog";
-    case DataType::FILTER_STATE:
-      return "FilterState";
-    case DataType::USER_CONFIG:
-      return "UserConfig";
-    default:
-      return "Invalid";
-  }
-}
-
-/**
- * @brief @ref DataType stream operator.
+/**************************************************************************/ /**
+ * @defgroup gnss_corrections_control GNSS Corrections Control
+ * @brief Messages for enabling/disabling GNSS corrections sources.
  * @ingroup config_and_ctrl_messages
- */
-inline p1_ostream& operator<<(p1_ostream& stream, DataType val) {
-  stream << to_string(val) << " (" << (int)val << ")";
-  return stream;
-}
+ ******************************************************************************/
 
 /**
- * @brief Import data from the host to the device (@ref
- *        MessageType::IMPORT_DATA, version 1.0).
- * @ingroup config_and_ctrl_messages
- *
- * # Expected Response
- * The device will respond with a @ref CommandResponseMessage indicating whether
- * or not the request succeeded.
+ * @brief L-band demodulator configuration parameters.
+ * @ingroup gnss_corrections_control
  */
-struct P1_ALIGNAS(4) ImportDataMessage {
-  static constexpr MessageType MESSAGE_TYPE = MessageType::IMPORT_DATA;
-  static constexpr uint8_t MESSAGE_VERSION = 0;
+struct P1_ALIGNAS(4) LBandConfig {
   /**
-   * The type of data being imported.
+   * The center frequency of the L-band beam (Hz).
    */
-  DataType data_type = DataType::INVALID;
-  /**
-   * The location of the data to update (active, saved, etc.). For data that
-   * doesn't have separate active and saved copies, this parameter is ignored.
-   */
-  ConfigurationSource source = ConfigurationSource::ACTIVE;
-  uint8_t reserved1[2] = {0};
-  /** @brief Version of data contents. */
-  DataVersion data_version;
-  uint8_t reserved2[4] = {0};
-  /** @brief Number of bytes to update. */
-  uint32_t data_length_bytes = 0;
+  double center_frequency_hz = 1555492500.0;
 
   /**
-   * This is followed by `data_length_bytes` bytes containing the data to be
-   * imported.
-   */
-  // uint8_t data[data_length_bytes]
-};
-
-/**
- * @brief Export data from the device (@ref
- *        MessageType::EXPORT_DATA, version 1.0).
- * @ingroup config_and_ctrl_messages
- *
- * # Expected Response
- * The device will respond with a @ref PlatformStorageDataMessage.
- */
-struct P1_ALIGNAS(4) ExportDataMessage {
-  static constexpr MessageType MESSAGE_TYPE = MessageType::EXPORT_DATA;
-  static constexpr uint8_t MESSAGE_VERSION = 0;
-  /**
-   * The type of data to be exported.
-   */
-  DataType data_type = DataType::INVALID;
-  /**
-   * The source to copy this data from. If the data_type doesn't separate active
-   * and saved data, this will be ignored.
-   */
-  ConfigurationSource source = ConfigurationSource::ACTIVE;
-  uint8_t reserved[2] = {0};
-};
-
-/**
- * @brief Message for reporting platform storage data (@ref
- *        MessageType::PLATFORM_STORAGE_DATA, version 1.0).
- * @ingroup config_and_ctrl_messages
- *
- * See also @ref ExportDataMessage.
- *
- * Changes:
- * - Version 1: Added data_validity field.
- * - Version 2: Changed data_validity to a @ref Response enum and added
- *              @ref source field.
- */
-struct P1_ALIGNAS(4) PlatformStorageDataMessage {
-  static constexpr MessageType MESSAGE_TYPE =
-      MessageType::PLATFORM_STORAGE_DATA;
-  static constexpr uint8_t MESSAGE_VERSION = 2;
-
-  /**
-   * The type of data contained in this message.
-   */
-  DataType data_type = DataType::INVALID;
-  /**
-   * The status of the specified data type on the device.
-   */
-  Response response = Response::OK;
-  /**
-   * The source this data was copied from. If the @ref data_type doesn't separate
-   * active and saved data, this will be set to @ref
-   * ConfigurationSource::ACTIVE.
-   */
-  ConfigurationSource source = ConfigurationSource::ACTIVE;
-  uint8_t reserved[1] = {0};
-  /** Version of data contents. */
-  DataVersion data_version;
-  /** Number of bytes in data contents. */
-  uint32_t data_length_bytes = 0;
-  /**
-   * This is followed by `data_length_bytes` bytes containing the data contents.
-   */
-  // uint8_t data[data_length_bytes]
-};
-
-/**
- * @brief A submessage header for configuration data associated with the
- *        @ref ConfigType::INTERFACE_CONFIG.
- * @ingroup config_and_ctrl_messages
- *
- * In @ref SetConfigMessage, @ref GetConfigMessage, and @ref
- * ConfigResponseMessage this struct can be used to access settings
- * associated with a a particular interface. For example, to set the baudrate
- * for serial port 1:
- *
- * ```
- * {
- *   SetConfigMessage(
- *     config_type=INTERFACE_CONFIG),
- *   InterfaceConfigSubmessage(
- *     interface=InterfaceID(TransportType::SERIAL, 1),
- *     subtype=BAUD_RATE),
- *   uint32_t 115200
- * }
- * ```
- */
-struct P1_ALIGNAS(4) InterfaceConfigSubmessage {
-  /**
-   * The interface ID to target.
+   * The size of the signal acquisition search space (in Hz) around the center
+   * frequency.
    *
-   * @note
-   * TransportType::ALL is not supported.
+   * For example, a value of 6000 will search +/- 3 kHz around the center
+   * frequency.
    */
-  InterfaceID interface = InterfaceID(TransportType::CURRENT, 0);
+  float search_window_hz = 2000.0;
 
   /**
-   * The interface setting to get/set/describe.
+   * If `true`, only output data frames with the configured service ID.
+   * Otherwise, output all decoded frames.
    */
-  InterfaceConfigType subtype = InterfaceConfigType::INVALID;
+  bool filter_data_by_service_id = true;
 
-  uint8_t reserved[3] = {0};
+  /** Enable/disable the descrambler. */
+  bool use_descrambler = true;
 
-  /**
-   * A pointer to the beginning of the configuration parameter value if
-   * setting/describing.
-   *
-   * The size and format of the contents is specified by the @ref subtype.
-   * See @ref InterfaceConfigType.
-   */
-  //uint8_t config_data[0];
+  /** Service ID of the provider. */
+  uint16_t pmp_service_id = 0x5555;
+
+  /** Unique word of the provider. */
+  uint64_t pmp_unique_word = 0xE15AE893E15AE893ull;
+
+  /** Data rate of the provider (bps). */
+  uint16_t pmp_data_rate_bps = 4800;
+
+  /** The initialization value for the descrambling vector. */
+  uint16_t descrambler_init = 0x6969;
 };
-
-/** @} */
 
 #pragma pack(pop)
 

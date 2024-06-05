@@ -19,7 +19,7 @@ namespace messages {
 #pragma pack(push, 1)
 
 /**
- * @defgroup config_and_ctrl_messages Device Configuration and Control Message Definitions
+ * @defgroup config_and_ctrl_messages Device Configuration, Control, And Status Messages
  * @brief Messages for controlling device configuration and operation.
  * @ingroup messages
  *
@@ -34,10 +34,16 @@ namespace messages {
  * See also @ref messages.
  */
 
+/**************************************************************************/ /**
+ * @defgroup device_control Device Control Messages
+ * @brief Messages for high-level device control (reset, shutdown, etc.).
+ * @ingroup config_and_ctrl_messages
+ ******************************************************************************/
+
 /**
  * @brief Response to indicate if command was processed successfully (@ref
  *        MessageType::COMMAND_RESPONSE, version 1.0).
- * @ingroup config_and_ctrl_messages
+ * @ingroup device_control
  */
 struct P1_ALIGNAS(4) CommandResponseMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::COMMAND_RESPONSE;
@@ -55,7 +61,7 @@ struct P1_ALIGNAS(4) CommandResponseMessage : public MessagePayload {
 /**
  * @brief Request transmission of a specified message type, (@ref
  *        MessageType::MESSAGE_REQUEST, version 1.0).
- * @ingroup config_and_ctrl_messages
+ * @ingroup device_control
  *
  * On success, the device will output the requested message type.
  *
@@ -83,7 +89,7 @@ struct P1_ALIGNAS(4) MessageRequest : public MessagePayload {
 /**
  * @brief Perform a software or hardware reset (@ref MessageType::RESET_REQUEST,
  *        version 1.0).
- * @ingroup config_and_ctrl_messages
+ * @ingroup device_control
  *
  * This message contains a bitmask indicating the set of components to be reset.
  * Helper bitmasks are provided for common reset operations.
@@ -313,7 +319,7 @@ struct P1_ALIGNAS(4) ResetRequest : public MessagePayload {
 /**
  * @brief Perform a device shutdown (@ref
  *        MessageType::SHUTDOWN_REQUEST, version 1.0).
- * @ingroup config_and_ctrl_messages
+ * @ingroup device_control
  *
  * # Expected Response
  * The device will respond with a @ref CommandResponseMessage indicating whether
@@ -345,7 +351,7 @@ struct P1_ALIGNAS(4) ShutdownRequest : public MessagePayload {
 /**
  * @brief Start up a device (@ref
  *        MessageType::STARTUP_REQUEST, version 1.0).
- * @ingroup config_and_ctrl_messages
+ * @ingroup device_control
  *
  * # Expected Response
  * The device will respond with a @ref CommandResponseMessage indicating whether
