@@ -327,8 +327,7 @@ class Analyzer(object):
                                  2, 1)
 
         # Read system timestamps from event notifications, if present.
-        result = self.reader.read(message_types=[EventNotificationMessage], source_ids=self.source_ids,
-                                  **self.params)
+        result = self.reader.read(message_types=[EventNotificationMessage], **self.params)
         event_data = result[EventNotificationMessage.MESSAGE_TYPE]
 
         system_time_sec = None
@@ -362,8 +361,7 @@ class Analyzer(object):
             return
 
         # Find reset events.
-        result = self.reader.read(message_types=[EventNotificationMessage], source_ids=self.source_ids,
-                                  return_message_index=True, **self.params)
+        result = self.reader.read(message_types=[EventNotificationMessage], return_message_index=True, **self.params)
         event_data = result[EventNotificationMessage.MESSAGE_TYPE]
 
         reset_idx = event_data.event_type == EventType.RESET
@@ -597,8 +595,7 @@ class Analyzer(object):
             return
 
         # Read the pose data.
-        result = self.reader.read(message_types=[CalibrationStatus], source_ids=self.source_ids,
-                                  **self.params)
+        result = self.reader.read(message_types=[CalibrationStatus], **self.params)
         cal_data = result[CalibrationStatus.MESSAGE_TYPE]
 
         if len(cal_data.p1_time) == 0:
@@ -861,7 +858,7 @@ class Analyzer(object):
             return
 
         # Read the pose data.
-        result = self.reader.read(message_types=[RelativeENUPositionMessage], source_ids=self.source_ids, **self.params)
+        result = self.reader.read(message_types=[RelativeENUPositionMessage], **self.params)
         relative_position_data = result[RelativeENUPositionMessage.MESSAGE_TYPE]
 
         if len(relative_position_data.p1_time) == 0:
@@ -980,8 +977,7 @@ class Analyzer(object):
 
     def plot_gnss_skyplot(self, decimate=True):
         # Read the satellite data.
-        result = self.reader.read(message_types=[GNSSSatelliteMessage], source_ids=self.source_ids,
-                                  **self.params)
+        result = self.reader.read(message_types=[GNSSSatelliteMessage], **self.params)
         data = result[GNSSSatelliteMessage.MESSAGE_TYPE]
 
         if len(data.p1_time) == 0:
@@ -1077,8 +1073,7 @@ class Analyzer(object):
     def plot_gnss_cn0(self):
         # The legacy GNSSSatelliteMessage contains data per satellite, not per signal. The plotted C/N0 values will
         # reflect the L1 signal, unless L1 is not being tracked.
-        result = self.reader.read(message_types=[GNSSSatelliteMessage], source_ids=self.source_ids,
-                                  **self.params)
+        result = self.reader.read(message_types=[GNSSSatelliteMessage], **self.params)
         data = result[GNSSSatelliteMessage.MESSAGE_TYPE]
 
         if len(data.p1_time) == 0:
@@ -1140,8 +1135,7 @@ class Analyzer(object):
         figure_title = "GNSS Signal Status"
 
         # Read the satellite data.
-        result = self.reader.read(message_types=[GNSSSatelliteMessage], source_ids=self.source_ids,
-                                  **self.params)
+        result = self.reader.read(message_types=[GNSSSatelliteMessage], **self.params)
         data = result[GNSSSatelliteMessage.MESSAGE_TYPE]
         is_legacy_message = True
 
@@ -1274,7 +1268,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
 
         This includes geometric, position, horizontal, and vertical DOP.
         """
-        result = self.reader.read(message_types=[GNSSInfoMessage], source_ids=self.source_ids, **self.params)
+        result = self.reader.read(message_types=[GNSSInfoMessage], **self.params)
         data = result[GNSSInfoMessage.MESSAGE_TYPE]
 
         if len(data.p1_time) == 0:
@@ -1311,7 +1305,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         """!
         @brief Plot GNSS corrections status (baseline distance, age, etc.).
         """
-        result = self.reader.read(message_types=[GNSSInfoMessage], source_ids=self.source_ids, **self.params)
+        result = self.reader.read(message_types=[GNSSInfoMessage], **self.params)
         data = result[GNSSInfoMessage.MESSAGE_TYPE]
 
         if len(data.p1_time) == 0:
@@ -1422,8 +1416,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         if self.long_log_detected and self.truncate_data:
             params = copy.deepcopy(self.params)
             params['max_messages'] = 2
-            result = self.reader.read(message_types=any_measurement_type, remove_nan_times=False,
-                                      source_ids=self.source_ids, **params)
+            result = self.reader.read(message_types=any_measurement_type, remove_nan_times=False, **params)
             data = result[any_measurement_type.MESSAGE_TYPE]
             if len(data.measurement_time) == 2:
                 dt_sec = data.measurement_time[1] - data.measurement_time[0]
@@ -1436,7 +1429,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
 
         # Read the data.
         result = self.reader.read(message_types=[measurement_type, raw_measurement_type],
-                                  remove_nan_times=False, source_ids=self.source_ids, **self.params)
+                                  remove_nan_times=False, **self.params)
 
         def _extract_data(measurement_type):
             if measurement_type is not None:
@@ -1736,7 +1729,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         if self.truncate_data:
             params = copy.deepcopy(self.params)
             params['max_messages'] = 2
-            result = self.reader.read(message_types=[message_cls], source_ids=self.source_ids, **params)
+            result = self.reader.read(message_types=[message_cls], **params)
             data = result[message_cls.MESSAGE_TYPE]
             if len(data.p1_time) == 2:
                 dt_sec = data.p1_time[1] - data.p1_time[0]
@@ -1748,7 +1741,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                     return
 
         # Read the data.
-        result = self.reader.read(message_types=[message_cls], source_ids=self.source_ids, **self.params)
+        result = self.reader.read(message_types=[message_cls], **self.params)
         data = result[message_cls.MESSAGE_TYPE]
 
         if len(data.p1_time) == 0:
@@ -1808,8 +1801,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             return
 
         # Read the heading measurement data.
-        result = self.reader.read(message_types=[RawHeadingOutput, HeadingOutput], source_ids=self.source_ids,
-                                  **self.params)
+        result = self.reader.read(message_types=[RawHeadingOutput, HeadingOutput], **self.params)
         raw_heading_data = result[RawHeadingOutput.MESSAGE_TYPE]
         heading_data = result[HeadingOutput.MESSAGE_TYPE]
 
@@ -2056,8 +2048,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             return
 
         # Read the data.
-        result = self.reader.read(message_types=[SystemStatusMessage], remove_nan_times=False,
-                                  source_ids=self.source_ids, **self.params)
+        result = self.reader.read(message_types=[SystemStatusMessage], remove_nan_times=False, **self.params)
         data = result[SystemStatusMessage.MESSAGE_TYPE]
 
         if len(data.p1_time) == 0:
@@ -2092,8 +2083,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
 
         # Read the data.
         data = self.reader.read(message_types={MessageType.EVENT_NOTIFICATION} | COMMAND_MESSAGES | RESPONSE_MESSAGES,
-                                remove_nan_times=False, return_in_order=True, return_bytes=True,
-                                source_ids=self.source_ids, **self.params)
+                                remove_nan_times=False, return_in_order=True, return_bytes=True, **self.params)
 
         if len(data.messages) == 0:
             self.logger.info('No event notification data available.')
@@ -2293,15 +2283,13 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         params['max_messages'] = 1
         params['return_in_order'] = True
 
-        result = self.reader.read(message_types=None, require_p1_time=True, source_ids=self.source_ids,
-                                  **params)
+        result = self.reader.read(message_types=None, require_p1_time=True, **params)
         if len(result.messages) > 0:
             processed_t0 = result.messages[0].get_p1_time()
         else:
             processed_t0 = Timestamp()
 
-        result = self.reader.read(message_types=None, require_system_time=True, source_ids=self.source_ids,
-                                  **params)
+        result = self.reader.read(message_types=None, require_system_time=True, **params)
         if len(result.messages) > 0:
             processed_system_t0 = result.messages[0].get_system_time_sec()
         else:
@@ -2349,7 +2337,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
 
         # Create a software version table.
         result = self.reader.read(message_types=[VersionInfoMessage.MESSAGE_TYPE], remove_nan_times=False,
-                                  source_ids=self.source_ids, **self.params)
+                                  **self.params)
         if len(result[VersionInfoMessage.MESSAGE_TYPE].messages) != 0:
             version = result[VersionInfoMessage.MESSAGE_TYPE].messages[-1]
             version_types = {'fw': 'Firmware', 'engine': 'FusionEngine', 'os': 'OS', 'rx': 'GNSS Receiver'}
@@ -2466,8 +2454,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         params['max_messages'] = 1
         selected_type = None
         for message_type in types:
-            result = self.reader.read(message_types=message_type, remove_nan_times=False,
-                                      source_ids=self.source_ids, **params)
+            result = self.reader.read(message_types=message_type, remove_nan_times=False, **params)
             data = result[message_type]
             if len(data.p1_time) > 0:
                 selected_type = message_type_to_class[message_type]

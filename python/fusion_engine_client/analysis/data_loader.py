@@ -305,6 +305,8 @@ class DataLoader(object):
         else:
             time_range = TimeRange.parse(time_range)
 
+        if source_ids is None:
+            source_ids = self.reader.get_available_source_ids()
         if source_ids is not None:
             source_ids = set(source_ids)
 

@@ -501,7 +501,7 @@ class MixedLogReader(object):
                 unavailable_source_ids = list(source_ids.difference(self.available_source_ids))
                 if len(unavailable_source_ids) > 0:
                     self.logger.debug('Not all source IDs requested are available. Cannot extract the following '
-                                        'source IDs: {}'.format(unavailable_source_ids))
+                                      'source IDs: {}'.format(unavailable_source_ids))
                 source_ids = list(source_ids.intersection(self.available_source_ids))
                 if len(source_ids) == 0:
                     raise ValueError("Requested source ID(s) unavailable. Exiting.")
