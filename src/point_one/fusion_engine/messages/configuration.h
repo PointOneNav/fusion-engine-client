@@ -585,6 +585,12 @@ inline p1_ostream& operator<<(p1_ostream& stream, SaveAction action) {
  *        version 1.0).
  * @ingroup config_types
  *
+ * This message must be followed by the parameter value to be used:
+ *
+ * ```
+ * {MessageHeader, SetConfigMessage, Parameter[data_length_bytes]}
+ * ```
+ *
  * The format of the parameter value is defined by the the specified @ref
  * config_type (@ref ConfigType). For example, an antenna lever arm definition
  * may require three 32-bit `float` values, one for each axis, while a serial
@@ -630,14 +636,6 @@ struct P1_ALIGNAS(4) SetConfigMessage : public MessagePayload {
 
   /** The size of the parameter value (in bytes). */
   uint32_t config_length_bytes = 0;
-
-  /**
-   * A pointer to the beginning of the configuration parameter value.
-   *
-   * The size and format of the contents is specified by the @ref config_type.
-   * See @ref ConfigType.
-   */
-  // uint8_t config_change_data[0];
 };
 
 /**
@@ -1495,14 +1493,14 @@ struct P1_ALIGNAS(4) TroposphereConfig {
 };
 
 /**
- * @brief A submessage header for configuration data associated with the
- *        @ref ConfigType::INTERFACE_CONFIG.
+ * @brief I/O interface parameter configuration submessage (used when sending
+ *        a @ref SetConfigMessage for @ref ConfigType::INTERFACE_CONFIG).
  * @ingroup config_types
  *
  * In @ref SetConfigMessage, @ref GetConfigMessage, and @ref
- * ConfigResponseMessage this struct can be used to access settings
- * associated with a a particular interface. For example, to set the baudrate
- * for serial port 1:
+ * ConfigResponseMessage, this struct can be used to access settings
+ * associated with a a particular I/O interface. For example, to set the
+ * baudrate for serial port 1:
  *
  * ```
  * {
@@ -1514,6 +1512,15 @@ struct P1_ALIGNAS(4) TroposphereConfig {
  *   uint32_t 115200
  * }
  * ```
+ *
+ * This message must be followed by the parameter value to be used:
+ *
+ * ```
+ * {MessageHeader, SetConfigMessage, InterfaceConfigSubmessage, Parameter}
+ * ```
+ *
+ * See @ref InterfaceConfigType for a complete list of parameters and their
+ * data formats.
  */
 struct P1_ALIGNAS(4) InterfaceConfigSubmessage {
   /**
@@ -1530,15 +1537,6 @@ struct P1_ALIGNAS(4) InterfaceConfigSubmessage {
   InterfaceConfigType subtype = InterfaceConfigType::INVALID;
 
   uint8_t reserved[3] = {0};
-
-  /**
-   * A pointer to the beginning of the configuration parameter value if
-   * setting/describing.
-   *
-   * The size and format of the contents is specified by the @ref subtype.
-   * See @ref InterfaceConfigType.
-   */
-  //uint8_t config_data[0];
 };
 
 /**************************************************************************/ /**
@@ -1598,6 +1596,13 @@ inline p1_ostream& operator<<(p1_ostream& stream, DataType val) {
  *        MessageType::IMPORT_DATA, version 1.0).
  * @ingroup import_export
  *
+ * This message must be followed by @ref data_length_bytes bytes containing
+ * the data to be imported:
+ *
+ * ```
+ * {MessageHeader, ImportDataMessage, Payload[data_length_bytes]}
+ * ```
+ *
  * # Expected Response
  * The device will respond with a @ref CommandResponseMessage indicating whether
  * or not the request succeeded.
@@ -1620,12 +1625,6 @@ struct P1_ALIGNAS(4) ImportDataMessage {
   uint8_t reserved2[4] = {0};
   /** @brief Number of bytes to update. */
   uint32_t data_length_bytes = 0;
-
-  /**
-   * This is followed by `data_length_bytes` bytes containing the data to be
-   * imported.
-   */
-  // uint8_t data[data_length_bytes]
 };
 
 /**
@@ -1655,6 +1654,13 @@ struct P1_ALIGNAS(4) ExportDataMessage {
  * @brief Message for reporting platform storage data (@ref
  *        MessageType::PLATFORM_STORAGE_DATA, version 1.0).
  * @ingroup import_export
+ *
+ * This message will be followed by @ref data_length_bytes bytes containing
+ * the data storage contents:
+ *
+ * ```
+ * {MessageHeader, PlatformStorageDataMessage, Payload[data_length_bytes]}
+ * ```
  *
  * See also @ref ExportDataMessage.
  *
@@ -1687,10 +1693,6 @@ struct P1_ALIGNAS(4) PlatformStorageDataMessage {
   DataVersion data_version;
   /** Number of bytes in data contents. */
   uint32_t data_length_bytes = 0;
-  /**
-   * This is followed by `data_length_bytes` bytes containing the data contents.
-   */
-  // uint8_t data[data_length_bytes]
 };
 
 /**************************************************************************/ /**
@@ -2501,6 +2503,13 @@ struct P1_ALIGNAS(4) MessageRateResponseEntry {
  * @brief Response to a @ref GetMessageRate request (@ref
  *        MessageType::MESSAGE_RATE_RESPONSE, version 1.1).
  * @ingroup io_interfaces
+ *
+ * This message will be followed by @ref num_rates @ref MessageRateResponseEntry
+ * elements:
+ *
+ * ```
+ * {MessageHeader, MessageRateResponse, MessageRateResponseEntry[num_rates]}
+ * ```
  */
 struct P1_ALIGNAS(4) MessageRateResponse : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE =
@@ -2518,11 +2527,6 @@ struct P1_ALIGNAS(4) MessageRateResponse : public MessagePayload {
 
   /** The output interface corresponding with this response. */
   InterfaceID output_interface = {};
-
-  /**
-   * This is followed by `num_rates` @ref MessageRateResponseEntry elements.
-   */
-  // MessageRateResponseEntry rates[num_rates]
 };
 
 /**************************************************************************/ /**
