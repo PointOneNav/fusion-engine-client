@@ -346,147 +346,6 @@ inline p1_ostream& operator<<(p1_ostream& stream, ConfigType type) {
 }
 
 /**
- * @brief An identifier for the contents of a output interface configuration
- *        submessage.
- * @ingroup config_types
- *
- * See also @ref InterfaceConfigSubmessage.
- */
-enum class InterfaceConfigType : uint8_t {
-  INVALID = 0,
-
-  /**
-   * Enable/disable output of diagnostic data on this interface.
-   *
-   * Valid for:
-   * - All @ref TransportType
-   *
-   * @note
-   * Enabling this setting will override the message rate/off settings for some
-   * FusionEngine messages.
-   *
-   * Payload format: `bool`
-   */
-  OUTPUT_DIAGNOSTICS_MESSAGES = 1,
-
-  /**
-   * Configure the serial baud rate (in bits/second).
-   *
-   * Valid for:
-   * - @ref TransportType::SERIAL
-   *
-   * Payload format: `uint32_t`
-   */
-  BAUD_RATE = 2,
-
-  /**
-   * Configure the network address for a client to connect to.
-   *
-   * For UNIX domain sockets, this string represents the path to the local
-   * socket file.
-   *
-   * Valid for:
-   * - @ref TransportType::TCP
-   * - @ref TransportType::UDP
-   * - @ref TransportType::UNIX
-   *
-   * Payload format: `char[64]` containing a NULL terminated string.
-   */
-  REMOTE_ADDRESS = 3,
-
-  /**
-   * Configure the network port.
-   *
-   * Valid for:
-   * - @ref TransportType::TCP
-   * - @ref TransportType::UDP
-   * - @ref TransportType::WEBSOCKET
-   *
-   * Payload format: `uint16_t`
-   */
-  PORT = 4,
-
-  /**
-   * Enable/disable the interface.
-   *
-   * Valid for all @ref TransportType values.
-   *
-   * Payload format: `bool`
-   */
-  ENABLED = 5,
-
-  /**
-   * Set the interface direction (client/server).
-   *
-   * Valid for:
-   * - @ref TransportType::TCP
-   * - @ref TransportType::WEBSOCKET
-   * - @ref TransportType::UNIX
-   *
-   * Payload format: @ref TransportDirection
-   */
-  DIRECTION = 6,
-
-  /**
-   * Set the UNIX domain socket type (streaming/datagram/sequenced).
-   *
-   * Valid for:
-   * - @ref TransportType::UNIX
-   *
-   * Payload format: @ref SocketType
-   */
-  SOCKET_TYPE = 7,
-};
-
-/**
- * @brief Get a human-friendly string name for the specified @ref ConfigType.
- * @ingroup config_types
- *
- * @param type The desired configuration parameter type.
- *
- * @return The corresponding string name.
- */
-P1_CONSTEXPR_FUNC const char* to_string(InterfaceConfigType type) {
-  switch (type) {
-    case InterfaceConfigType::INVALID:
-      return "Invalid";
-
-    case InterfaceConfigType::OUTPUT_DIAGNOSTICS_MESSAGES:
-      return "Diagnostic Messages Enabled";
-
-    case InterfaceConfigType::BAUD_RATE:
-      return "Serial Baud Rate";
-
-    case InterfaceConfigType::REMOTE_ADDRESS:
-      return "Remote Network Address";
-
-    case InterfaceConfigType::PORT:
-      return "Network Port";
-
-    case InterfaceConfigType::ENABLED:
-      return "Interface Enabled";
-
-    case InterfaceConfigType::DIRECTION:
-      return "Transport Direction";
-
-    case InterfaceConfigType::SOCKET_TYPE:
-      return "Socket Type";
-
-    default:
-      return "Unrecognized Configuration";
-  }
-}
-
-/**
- * @brief @ref InterfaceConfigType stream operator.
- * @ingroup config_types
- */
-inline p1_ostream& operator<<(p1_ostream& stream, InterfaceConfigType type) {
-  stream << to_string(type) << " (" << (int)type << ")";
-  return stream;
-}
-
-/**
  * @brief The type of a device's configuration settings.
  * @ingroup config_types
  */
@@ -1492,53 +1351,6 @@ struct P1_ALIGNAS(4) TroposphereConfig {
   uint8_t reserved[3] = {0};
 };
 
-/**
- * @brief I/O interface parameter configuration submessage (used when sending
- *        a @ref SetConfigMessage for @ref ConfigType::INTERFACE_CONFIG).
- * @ingroup config_types
- *
- * In @ref SetConfigMessage, @ref GetConfigMessage, and @ref
- * ConfigResponseMessage, this struct can be used to access settings
- * associated with a a particular I/O interface. For example, to set the
- * baudrate for serial port 1:
- *
- * ```
- * {
- *   SetConfigMessage(
- *     config_type=INTERFACE_CONFIG),
- *   InterfaceConfigSubmessage(
- *     interface=InterfaceID(TransportType::SERIAL, 1),
- *     subtype=BAUD_RATE),
- *   uint32_t 115200
- * }
- * ```
- *
- * This message must be followed by the parameter value to be used:
- *
- * ```
- * {MessageHeader, SetConfigMessage, InterfaceConfigSubmessage, Parameter}
- * ```
- *
- * See @ref InterfaceConfigType for a complete list of parameters and their
- * data formats.
- */
-struct P1_ALIGNAS(4) InterfaceConfigSubmessage {
-  /**
-   * The interface ID to target.
-   *
-   * @note
-   * TransportType::ALL is not supported.
-   */
-  InterfaceID interface = InterfaceID(TransportType::CURRENT, 0);
-
-  /**
-   * The interface setting to get/set/describe.
-   */
-  InterfaceConfigType subtype = InterfaceConfigType::INVALID;
-
-  uint8_t reserved[3] = {0};
-};
-
 /**************************************************************************/ /**
  * @defgroup import_export Device Configuration Import/Export
  * @brief Messages for importing/exporting device configuration.
@@ -1701,6 +1513,147 @@ struct P1_ALIGNAS(4) PlatformStorageDataMessage {
  *        parameters, configure message output rates).
  * @ingroup config_and_ctrl_messages
  ******************************************************************************/
+
+/**
+ * @brief An identifier for the contents of a output interface configuration
+ *        submessage.
+ * @ingroup io_interfaces
+ *
+ * See also @ref InterfaceConfigSubmessage.
+ */
+enum class InterfaceConfigType : uint8_t {
+  INVALID = 0,
+
+  /**
+   * Enable/disable output of diagnostic data on this interface.
+   *
+   * Valid for:
+   * - All @ref TransportType
+   *
+   * @note
+   * Enabling this setting will override the message rate/off settings for some
+   * FusionEngine messages.
+   *
+   * Payload format: `bool`
+   */
+  OUTPUT_DIAGNOSTICS_MESSAGES = 1,
+
+  /**
+   * Configure the serial baud rate (in bits/second).
+   *
+   * Valid for:
+   * - @ref TransportType::SERIAL
+   *
+   * Payload format: `uint32_t`
+   */
+  BAUD_RATE = 2,
+
+  /**
+   * Configure the network address for a client to connect to.
+   *
+   * For UNIX domain sockets, this string represents the path to the local
+   * socket file.
+   *
+   * Valid for:
+   * - @ref TransportType::TCP
+   * - @ref TransportType::UDP
+   * - @ref TransportType::UNIX
+   *
+   * Payload format: `char[64]` containing a NULL terminated string.
+   */
+  REMOTE_ADDRESS = 3,
+
+  /**
+   * Configure the network port.
+   *
+   * Valid for:
+   * - @ref TransportType::TCP
+   * - @ref TransportType::UDP
+   * - @ref TransportType::WEBSOCKET
+   *
+   * Payload format: `uint16_t`
+   */
+  PORT = 4,
+
+  /**
+   * Enable/disable the interface.
+   *
+   * Valid for all @ref TransportType values.
+   *
+   * Payload format: `bool`
+   */
+  ENABLED = 5,
+
+  /**
+   * Set the interface direction (client/server).
+   *
+   * Valid for:
+   * - @ref TransportType::TCP
+   * - @ref TransportType::WEBSOCKET
+   * - @ref TransportType::UNIX
+   *
+   * Payload format: @ref TransportDirection
+   */
+  DIRECTION = 6,
+
+  /**
+   * Set the UNIX domain socket type (streaming/datagram/sequenced).
+   *
+   * Valid for:
+   * - @ref TransportType::UNIX
+   *
+   * Payload format: @ref SocketType
+   */
+  SOCKET_TYPE = 7,
+};
+
+/**
+ * @brief Get a human-friendly string name for the specified @ref ConfigType.
+ * @ingroup io_interfaces
+ *
+ * @param type The desired configuration parameter type.
+ *
+ * @return The corresponding string name.
+ */
+P1_CONSTEXPR_FUNC const char* to_string(InterfaceConfigType type) {
+  switch (type) {
+    case InterfaceConfigType::INVALID:
+      return "Invalid";
+
+    case InterfaceConfigType::OUTPUT_DIAGNOSTICS_MESSAGES:
+      return "Diagnostic Messages Enabled";
+
+    case InterfaceConfigType::BAUD_RATE:
+      return "Serial Baud Rate";
+
+    case InterfaceConfigType::REMOTE_ADDRESS:
+      return "Remote Network Address";
+
+    case InterfaceConfigType::PORT:
+      return "Network Port";
+
+    case InterfaceConfigType::ENABLED:
+      return "Interface Enabled";
+
+    case InterfaceConfigType::DIRECTION:
+      return "Transport Direction";
+
+    case InterfaceConfigType::SOCKET_TYPE:
+      return "Socket Type";
+
+    default:
+      return "Unrecognized Configuration";
+  }
+}
+
+/**
+ * @brief @ref InterfaceConfigType stream operator.
+ * @ingroup io_interfaces
+ */
+inline p1_ostream& operator<<(p1_ostream& stream, InterfaceConfigType type) {
+  stream << to_string(type) << " (" << (int)type << ")";
+  return stream;
+}
 
 /**
  * @brief The framing protocol of a message.
@@ -2264,6 +2217,54 @@ inline p1_ostream& operator<<(p1_ostream& stream, MessageRate val) {
   stream << to_string(val) << " (" << (int)val << ")";
   return stream;
 }
+
+/**
+ * @brief I/O interface parameter configuration submessage (used when sending
+ *        a @ref SetConfigMessage or @ref GetConfigMessage for @ref
+ *        ConfigType::INTERFACE_CONFIG).
+ * @ingroup io_interfaces
+ *
+ * In @ref SetConfigMessage, @ref GetConfigMessage, and @ref
+ * ConfigResponseMessage, this struct can be used to access settings
+ * associated with a a particular I/O interface. For example, to set the
+ * baudrate for serial port 1:
+ *
+ * ```
+ * {
+ *   SetConfigMessage(
+ *     config_type=INTERFACE_CONFIG),
+ *   InterfaceConfigSubmessage(
+ *     interface=InterfaceID(TransportType::SERIAL, 1),
+ *     subtype=BAUD_RATE),
+ *   uint32_t 115200
+ * }
+ * ```
+ *
+ * This message must be followed by the parameter value to be used:
+ *
+ * ```
+ * {MessageHeader, SetConfigMessage, InterfaceConfigSubmessage, Parameter}
+ * ```
+ *
+ * See @ref InterfaceConfigType for a complete list of parameters and their
+ * data formats.
+ */
+struct P1_ALIGNAS(4) InterfaceConfigSubmessage {
+  /**
+   * The interface ID to target.
+   *
+   * @note
+   * TransportType::ALL is not supported.
+   */
+  InterfaceID interface = InterfaceID(TransportType::CURRENT, 0);
+
+  /**
+   * The interface setting to get or set.
+   */
+  InterfaceConfigType subtype = InterfaceConfigType::INVALID;
+
+  uint8_t reserved[3] = {0};
+};
 
 /**
  * @brief Set the output rate for the requested message types (@ref
