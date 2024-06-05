@@ -83,8 +83,8 @@ class MixedLogReader(object):
             self.requested_source_ids = None
         else:
             self.requested_source_ids = set(source_ids)
-        # The source IDs that are available in the log. This will be populated below when get_available_source_ids is
-        # called.
+        # The source IDs that are available in the log. This will be populated below when
+        # _populate_available_source_ids is called.
         self.available_source_ids = None
 
         self._original_message_types = copy.deepcopy(self.message_types)
@@ -119,12 +119,12 @@ class MixedLogReader(object):
         self.next_index_elem = 0
         self.index = self._original_index
         self.filtered_message_types = False
+        self._populate_available_source_ids()
 
-        self.get_available_source_ids()
         self.filter_in_place(None, source_ids=self.requested_source_ids)
-
         self.filter_in_place(self.message_types)
         self.filter_in_place(self.time_range)
+
         self.index = self._original_index[self.message_types][self.time_range]
         self.filtered_message_types = len(np.unique(self._original_index.type)) != \
                                         len(np.unique(self.index.type))
@@ -500,7 +500,7 @@ class MixedLogReader(object):
             if self.available_source_ids != source_ids:
                 unavailable_source_ids = list(source_ids.difference(self.available_source_ids))
                 if len(unavailable_source_ids) > 0:
-                    self.logger.warning('Not all source IDs requested are available. Cannot extract the following '
+                    self.logger.debug('Not all source IDs requested are available. Cannot extract the following '
                                         'source IDs: {}'.format(unavailable_source_ids))
                 source_ids = list(source_ids.intersection(self.available_source_ids))
                 if len(source_ids) == 0:
@@ -597,10 +597,10 @@ class MixedLogReader(object):
 
         return self
 
-    def get_available_source_ids(self, num_messages_to_read: int = 10):
-        self._populate_available_source_ids(num_messages_to_read=num_messages_to_read)
+    def get_available_source_ids(self):
+        return self.available_source_ids
 
-    def _populate_available_source_ids(self, num_messages_to_read):
+    def _populate_available_source_ids(self, num_messages_to_read: int = 10):
         self.available_source_ids = set()
         # Loop over all message types and read N of each type.
         for message_type in np.unique(self.index['type']):
