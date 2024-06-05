@@ -126,7 +126,7 @@ other types of data.
         help="Skip the first N messages in the log. If --message-type is specified, only count messages matching the "
              "specified type(s).")
     parser.add_argument(
-        '--source-identifier', '--source-id', nargs='*', type=int, default=0,
+        '--source-identifier', '--source-id', nargs='*', type=int,
         help="Print the Fusion Engine messages characterized by the listed source identifier(s).")
     parser.add_argument(
         '-t', '--time', type=str, metavar='[START][:END][:{rel,abs}]',
@@ -187,11 +187,6 @@ other types of data.
     # Parse the time range.
     time_range = TimeRange.parse(options.time, absolute=options.absolute_time)
 
-    if options.source_identifier is None:
-        source_ids = [0]
-    else:
-        source_ids = options.source_identifier
-
     # If the user specified a set of message names, lookup their type values. Below, we will limit the printout to only
     # those message types.
     message_types = set()
@@ -214,7 +209,7 @@ other types of data.
     # Process all data in the file.
     reader = MixedLogReader(input_path, return_bytes=True, return_offset=True, show_progress=options.progress,
                             ignore_index=not read_index, message_types=message_types, time_range=time_range,
-                            source_ids=source_ids)
+                            source_ids=options.source_identifier)
 
     first_p1_time_sec = None
     last_p1_time_sec = None

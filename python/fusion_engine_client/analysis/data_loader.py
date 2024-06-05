@@ -135,7 +135,7 @@ class DataLoader(object):
 
     logger = logging.getLogger('point_one.fusion_engine.analysis.data_loader')
 
-    def __init__(self, path=None, save_index=True, ignore_index=False, source_ids: List[int]=[0]):
+    def __init__(self, path=None, save_index=True, ignore_index=False):
         """!
         @brief Create a new reader instance.
 
@@ -152,7 +152,7 @@ class DataLoader(object):
         self.system_t0 = None
         self.system_t0_ns = None
 
-        self.source_ids = source_ids
+        self.source_ids = None
 
         self._need_t0 = True
         self._need_system_t0 = True
@@ -174,10 +174,10 @@ class DataLoader(object):
         self.close()
 
         self.reader = MixedLogReader(input_file=path, save_index=save_index, ignore_index=ignore_index,
-                                     return_bytes=True, return_message_index=True, source_ids=self.source_ids)
+                                     return_bytes=True, return_message_index=True)
 
-        # Narrow down source IDs to the ones that are requested AND are available.
-        self.source_ids = self.reader.requested_source_ids
+        # By default, use all available source IDs. Filtering by source ID may be done with the read() function.
+        self.source_ids = self.reader.available_source_ids
 
         # Read the first message (with P1 time) in the file to set self.t0.
         #
@@ -287,7 +287,7 @@ class DataLoader(object):
               return_numpy: bool = False, keep_messages: bool = False, remove_nan_times: bool = True,
               time_align: TimeAlignmentMode = TimeAlignmentMode.NONE,
               aligned_message_types: Union[list, tuple, set] = None,
-              quiet: bool = False, source_ids: List[int] = [0]) \
+              quiet: bool = False, source_ids: Optional[List[int]] = None) \
             -> Union[Dict[MessageType, MessageData], MessageData]:
         if quiet:
             logger = SilentLogger(self.logger.name)

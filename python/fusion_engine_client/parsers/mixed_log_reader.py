@@ -26,7 +26,7 @@ class MixedLogReader(object):
                  time_range: TimeRange = None, message_types: Union[Iterable[MessageType], MessageType] = None,
                  return_header: bool = True, return_payload: bool = True,
                  return_bytes: bool = False, return_offset: bool = False, return_message_index: bool = False,
-                 source_ids: List[int] = [0]):
+                 source_ids: List[int] = None):
         """!
         @brief Construct a new generator instance.
 
@@ -77,9 +77,14 @@ class MixedLogReader(object):
             if len(self.message_types) == 0:
                 self.message_types = None
 
-        # The source IDs requested by the user that are available.
-        self.requested_source_ids = source_ids
-        self.available_source_ids = set()
+        # The source IDs requested by the user. If none were requested, then use all of them.
+        if source_ids is None:
+            self.requested_source_ids = None
+        else:
+            self.requested_source_ids = set(source_ids)
+        # The source IDs that are available in the log. This will be populated below when get_available_source_ids is
+        # called.
+        self.available_source_ids = None
 
         self._original_message_types = copy.deepcopy(self.message_types)
 
@@ -116,7 +121,6 @@ class MixedLogReader(object):
 
         self.get_available_source_ids()
         self.filter_in_place(None, source_ids=self.requested_source_ids)
-
 
         self.filter_in_place(self.message_types)
         self.filter_in_place(self.time_range)
@@ -490,14 +494,14 @@ class MixedLogReader(object):
 
         # Set requested source IDs.
         if source_ids is not None:
+            source_ids = set(source_ids)
             # Apply source IDs that are available.
-            source_id_set = set(source_ids)
-            if self.available_source_ids != source_id_set:
-                unavailable_source_ids = list(source_id_set.difference(self.available_source_ids))
+            if self.available_source_ids != source_ids:
+                unavailable_source_ids = list(source_ids.difference(self.available_source_ids))
                 if len(unavailable_source_ids) > 0:
                     self.logger.warning('Not all source IDs requested are available. Cannot extract the following '
                                         'source IDs: {}'.format(unavailable_source_ids))
-                source_ids = list(source_id_set.intersection(self.available_source_ids))
+                source_ids = list(source_ids.intersection(self.available_source_ids))
                 if len(source_ids) == 0:
                     raise ValueError("Requested source ID(s) unavailable. Exiting.")
 
