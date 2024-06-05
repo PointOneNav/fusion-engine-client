@@ -1598,9 +1598,9 @@ enum class InterfaceConfigType : uint8_t {
    * Valid for:
    * - @ref TransportType::UNIX
    *
-   * Payload format: @ref SocketType
+   * Payload format: @ref UNIXSocketType
    */
-  SOCKET_TYPE = 7,
+  UNIX_SOCKET_TYPE = 7,
 };
 
 /**
@@ -1634,8 +1634,8 @@ P1_CONSTEXPR_FUNC const char* to_string(InterfaceConfigType type) {
     case InterfaceConfigType::DIRECTION:
       return "Transport Direction";
 
-    case InterfaceConfigType::SOCKET_TYPE:
-      return "Socket Type";
+    case InterfaceConfigType::UNIX_SOCKET_TYPE:
+      return "UNIX Socket Type";
 
     default:
       return "Unrecognized Configuration";
@@ -1764,7 +1764,7 @@ enum class TransportType : uint8_t {
    *
    * For a UNIX domain socket, you must specify:
    * - The @ref TransportDirection (client or server)
-   * - The @ref SocketType (streaming, datagram, or sequenced)
+   * - The @ref UNIXSocketType (streaming, datagram, or sequenced)
    * - The path to a socket file to connect to (client) or create (server)
    */
   UNIX = 8,
@@ -1866,7 +1866,7 @@ inline p1_ostream& operator<<(p1_ostream& stream, TransportDirection val) {
  *        sockets.
  * @ingroup io_interfaces
  */
-enum class SocketType : uint8_t {
+enum class UNIXSocketType : uint8_t {
   INVALID = 0,
   /**
    * Operate in connection-oriented streaming mode and do not preserve message
@@ -1886,32 +1886,33 @@ enum class SocketType : uint8_t {
 };
 
 /**
- * @brief Get a human-friendly string name for the specified @ref SocketType.
+ * @brief Get a human-friendly string name for the specified @ref
+ *        UNIXSocketType.
  * @ingroup io_interfaces
  *
  * @param val The enum to get the string name for.
  *
  * @return The corresponding string name.
  */
-P1_CONSTEXPR_FUNC const char* to_string(SocketType val) {
+P1_CONSTEXPR_FUNC const char* to_string(UNIXSocketType val) {
   switch (val) {
-    case SocketType::INVALID:
+    case UNIXSocketType::INVALID:
       return "INVALID";
-    case SocketType::STREAM:
+    case UNIXSocketType::STREAM:
       return "STREAM";
-    case SocketType::DATAGRAM:
+    case UNIXSocketType::DATAGRAM:
       return "DATAGRAM";
-    case SocketType::SEQPACKET:
+    case UNIXSocketType::SEQPACKET:
       return "SEQPACKET";
   }
   return "Unrecognized";
 }
 
 /**
- * @brief @ref SocketType stream operator.
+ * @brief @ref UNIXSocketType stream operator.
  * @ingroup io_interfaces
  */
-inline p1_ostream& operator<<(p1_ostream& stream, SocketType val) {
+inline p1_ostream& operator<<(p1_ostream& stream, UNIXSocketType val) {
   stream << to_string(val) << " (" << (int)val << ")";
   return stream;
 }
