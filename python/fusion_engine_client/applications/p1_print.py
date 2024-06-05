@@ -127,7 +127,10 @@ other types of data.
              "specified type(s).")
     parser.add_argument(
         '--source-identifier', '--source-id', action=CSVAction, nargs='*',
-        help="Print the Fusion Engine messages with the listed source identifier(s).")
+        help="Plot the Fusion Engine messages with the listed source identifier(s). Must be integersMay be specified "
+             "multiple times (--source-id 0 --source-id 1), as a space-separated list (--source-id 0 1), or as a "
+             "comma-separated list (--source-id 0,1). If not specified, all available source identifiers present in "
+             "the log will be used.")
     parser.add_argument(
         '-t', '--time', type=str, metavar='[START][:END][:{rel,abs}]',
         help="The desired time range to be analyzed. Both start and end may be omitted to read from beginning or to "
