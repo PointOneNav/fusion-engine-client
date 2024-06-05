@@ -237,6 +237,8 @@ class DataLoader(object):
                be returned. If `None` or an empty list, read all available messages.
         @param time_range An optional @ref TimeRange object specifying desired start and end time bounds of the data to
                be read. See @ref TimeRange for more details.
+        @param source_ids An optional list of one or more source identifiers to be returned. If `None` or an empty list,
+                use all available source identifiers.
 
         @param show_progress If `True`, print the read progress every 10 MB (useful for large files).
         @param ignore_cache If `True`, ignore any cached data from a previous @ref read() call, and reload the requested
@@ -279,6 +281,7 @@ class DataLoader(object):
     def _read(self,
               message_types: Union[Iterable[MessageType], MessageType] = None,
               time_range: TimeRange = None,
+              source_ids: Optional[List[int]] = None,
               show_progress: bool = False,
               ignore_cache: bool = False,
               max_messages: int = None, max_bytes: int = None,
@@ -287,7 +290,7 @@ class DataLoader(object):
               return_numpy: bool = False, keep_messages: bool = False, remove_nan_times: bool = True,
               time_align: TimeAlignmentMode = TimeAlignmentMode.NONE,
               aligned_message_types: Union[list, tuple, set] = None,
-              quiet: bool = False, source_ids: Optional[List[int]] = None) \
+              quiet: bool = False) \
             -> Union[Dict[MessageType, MessageData], MessageData]:
         if quiet:
             logger = SilentLogger(self.logger.name)

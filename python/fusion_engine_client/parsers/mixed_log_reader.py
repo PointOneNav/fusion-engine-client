@@ -1,4 +1,4 @@
-from typing import Iterable, List, Union
+from typing import Iterable, List, Union, Optional
 
 import copy
 from datetime import datetime
@@ -24,9 +24,8 @@ class MixedLogReader(object):
     def __init__(self, input_file, warn_on_gaps: bool = False, show_progress: bool = False,
                  save_index: bool = True, ignore_index: bool = False, max_bytes: int = None,
                  time_range: TimeRange = None, message_types: Union[Iterable[MessageType], MessageType] = None,
-                 return_header: bool = True, return_payload: bool = True,
-                 return_bytes: bool = False, return_offset: bool = False, return_message_index: bool = False,
-                 source_ids: List[int] = None):
+                 source_ids: Optional[List[int]] = None, return_header: bool = True, return_payload: bool = True,
+                 return_bytes: bool = False, return_offset: bool = False, return_message_index: bool = False):
         """!
         @brief Construct a new generator instance.
 
@@ -46,6 +45,8 @@ class MixedLogReader(object):
                be read. See @ref TimeRange for more details.
         @param message_types A list of one or more @ref fusion_engine_client.messages.defs.MessageType "MessageTypes" to
                be returned. If `None` or an empty list, read all available messages.
+        @param source_ids An optional list of one or more source identifiers to be returned. If `None` or an empty list,
+                use all available source identifiers.
         @param return_header If `True`, return the decoded @ref MessageHeader for each message.
         @param return_payload If `True`, parse and return the payload for each message as a subclass of @ref
                MessagePayload. Will return `None` if the payload cannot be parsed.
