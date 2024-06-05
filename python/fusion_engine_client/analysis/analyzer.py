@@ -2569,8 +2569,8 @@ Load and display information stored in a FusionEngine binary file.
              ''.join(['\n- %s' % f[5:] for f in plot_function_names]))
 
     plot_group.add_argument(
-        '--source-identifier', '--source-id', nargs='*', type=int,
-        help="Plot the Fusion Engine messages characterized by the listed source identifier(s).")
+        '--source-identifier', '--source-id', action=CSVAction, nargs='*',
+        help="Plot the Fusion Engine messages with the listed source identifier(s).")
 
     time_group = parser.add_argument_group('Time Control')
     time_group.add_argument(
@@ -2654,7 +2654,14 @@ Load and display information stored in a FusionEngine binary file.
     else:
         output_dir = options.output
 
-    source_id = options.source_identifier
+    if options.source_identifier is None:
+        source_id = None
+    else:
+        try:
+            source_id = [int(s) for s in options.source_identifier]
+        except ValueError:
+            _logger.error('Source identifiers must be integers. Exiting.')
+            sys.exit(1)
 
     # Read pose data from the file.
     analyzer = Analyzer(file=input_path, output_dir=output_dir, ignore_index=options.ignore_index,
