@@ -1601,6 +1601,18 @@ enum class InterfaceConfigType : uint8_t {
    * Payload format: @ref UNIXSocketType
    */
   UNIX_SOCKET_TYPE = 7,
+
+  /**
+   * Configure all settings for the specified interface/transport type.
+   *
+   * Payload format depends on the @ref TransportType%:
+   * - @ref TransportType::SERIAL - @ref SerialConfig
+   * - @ref TransportType::TCP - @ref TCPConfig
+   * - @ref TransportType::UDP - @ref UDPConfig
+   * - @ref TransportType::WEBSOCKET - @ref WebsocketConfig
+   * - @ref TransportType::UNIX - @ref UNIXSocketConfig
+   */
+  ALL_PARAMETERS = 8,
 };
 
 /**
@@ -1636,6 +1648,9 @@ P1_CONSTEXPR_FUNC const char* to_string(InterfaceConfigType type) {
 
     case InterfaceConfigType::UNIX_SOCKET_TYPE:
       return "UNIX Socket Type";
+
+    case InterfaceConfigType::ALL_PARAMETERS:
+      return "All Parameters";
 
     default:
       return "Unrecognized Configuration";
@@ -2217,6 +2232,58 @@ inline p1_ostream& operator<<(p1_ostream& stream, MessageRate val) {
   stream << to_string(val) << " (" << (int)val << ")";
   return stream;
 }
+
+/**
+ * @param TCP client/server interface configuration parameters.
+ * @ingroup io_interfaces
+ */
+struct P1_ALIGNAS(4) TCPConfig {
+  TransportDirection direction = TransportDirection::SERVER;
+  uint8_t reserved[1] = {0};
+  uint16_t port = 0;
+  char remote_address[64] = {0};
+};
+
+/**
+ * @param UDP interface configuration parameters.
+ * @ingroup io_interfaces
+ */
+struct P1_ALIGNAS(4) UDPConfig {
+  uint8_t reserved[2] = {0};
+  uint16_t port = 0;
+  char remote_address[64] = {0};
+};
+
+/**
+ * @param WebSocket client/server interface configuration parameters.
+ * @ingroup io_interfaces
+ */
+struct P1_ALIGNAS(4) WebsocketConfig {
+  TransportDirection direction = TransportDirection::SERVER;
+  uint8_t reserved[1] = {0};
+  uint16_t port = 0;
+  char remote_address[64] = {0};
+};
+
+/**
+ * @param UNIX domain socket client/server interface configuration parameters.
+ * @ingroup io_interfaces
+ */
+struct P1_ALIGNAS(4) UNIXSocketConfig {
+  TransportDirection direction = TransportDirection::SERVER;
+  UNIXSocketType socket_type = UNIXSocketType::STREAM;
+  uint8_t reserved[2] = {0};
+  char path[64] = {0};
+};
+
+/**
+ * @param Serial port (UART) interface configuration parameters.
+ * @ingroup io_interfaces
+ */
+struct P1_ALIGNAS(4) SerialConfig {
+  uint32_t baud_rate = 0;
+  char device_path[64] = {0};
+};
 
 /**
  * @brief I/O interface parameter configuration submessage (used when sending
