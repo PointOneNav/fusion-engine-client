@@ -47,8 +47,9 @@ class MixedLogReader(object):
                be read. See @ref TimeRange for more details.
         @param message_types A list of one or more @ref fusion_engine_client.messages.defs.MessageType "MessageTypes" to
                be returned. If `None` or an empty list, read all available messages.
-        @param source_ids An optional list of one or more source identifiers to be returned. If `None` or an empty list,
-                use all available source identifiers.
+        @param source_ids An optional list of one or more source identifiers to be used when extracting @ref PoseMessage
+               messages. If `None`, use all available source identifiers. If an empty list, use no @ref PoseMessage
+               messages.
         @param return_header If `True`, return the decoded @ref MessageHeader for each message.
         @param return_payload If `True`, parse and return the payload for each message as a subclass of @ref
                MessagePayload. Will return `None` if the payload cannot be parsed.
