@@ -1,8 +1,8 @@
-from enum import Enum, auto
 from typing import Dict, Iterable, Union
 
 from collections import deque
 from datetime import datetime, timezone
+from enum import Enum, auto
 
 from gpstime import gpstime, unix2gps
 import numpy as np
@@ -237,8 +237,8 @@ class DataLoader(object):
                be returned. If `None` or an empty list, read all available messages.
         @param time_range An optional @ref TimeRange object specifying desired start and end time bounds of the data to
                be read. See @ref TimeRange for more details.
-        @param source_ids An optional list of one or more source identifiers to be returned. If `None` or an empty list,
-                use all available source identifiers.
+        @param source_ids An optional list message source identifiers to be returned. If `None`, read messages from
+               available source identifiers.
 
         @param show_progress If `True`, print the read progress every 10 MB (useful for large files).
         @param ignore_cache If `True`, ignore any cached data from a previous @ref read() call, and reload the requested

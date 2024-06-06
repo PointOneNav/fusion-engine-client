@@ -1,4 +1,4 @@
-from typing import Iterable, List, Union, Optional
+from typing import Iterable, List, Set, Union, Optional
 
 import copy
 from datetime import datetime
@@ -46,9 +46,8 @@ class MixedLogReader(object):
                be read. See @ref TimeRange for more details.
         @param message_types A list of one or more @ref fusion_engine_client.messages.defs.MessageType "MessageTypes" to
                be returned. If `None` or an empty list, read all available messages.
-        @param source_ids An optional list of one or more source identifiers to be used when extracting @ref PoseMessage
-               messages. If `None`, use all available source identifiers. If an empty list, use no @ref PoseMessage
-               messages.
+        @param source_ids An optional list message source identifiers to be returned. If `None`, read messages from
+               available source identifiers.
         @param return_header If `True`, return the decoded @ref MessageHeader for each message.
         @param return_payload If `True`, parse and return the payload for each message as a subclass of @ref
                MessagePayload. Will return `None` if the payload cannot be parsed.
@@ -455,7 +454,7 @@ class MixedLogReader(object):
         self.filter_in_place(key=None, clear_existing=True)
 
     def filter_in_place(self, key, clear_existing: Union[bool, str] = False,
-                        source_ids: Iterable[int] = None):
+                        source_ids: Optional[Iterable[int]] = None):
         """!
         @brief Limit the returned messages by type or time.
 
@@ -467,7 +466,13 @@ class MixedLogReader(object):
                - An iterable listing one or more @ref MessageType%s to be returned
                - A `slice` specifying the start/end of the desired absolute (P1) or relative time range
                - A @ref TimeRange object
-        @param clear_existing If `True`, clear any previous filter criteria.
+        @param clear_existing One of the following:
+               - `True` - Clear any previous filter criteria
+               - `False` - Add the new criteria to existing filters
+               - `'message_type'` - Clear previous message type filtering
+               - `'time_range'` - Clear previous time range filtering
+               - `'source_id'` - Clear previous source identifier filtering
+        @param source_ids If set, limit results to messages using one of the specified source identifier values.
 
         @return A reference to this class.
         """
@@ -611,7 +616,7 @@ class MixedLogReader(object):
 
         return self
 
-    def get_available_source_ids(self):
+    def get_available_source_ids(self) -> Set[int]:
         return self.available_source_ids
 
     def _populate_available_source_ids(self, num_messages_to_read: int = 10):
