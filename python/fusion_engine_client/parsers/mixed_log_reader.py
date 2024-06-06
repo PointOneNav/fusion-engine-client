@@ -452,7 +452,7 @@ class MixedLogReader(object):
     def clear_filters(self):
         self.filter_in_place(key=None, clear_existing=True)
 
-    def filter_in_place(self, key, clear_existing: bool = False,
+    def filter_in_place(self, key, clear_existing: Union[bool, str] = False,
                         source_ids: Union[List[int], set[int], tuple[int]] = None):
         """!
         @brief Limit the returned messages by type or time.
@@ -483,15 +483,26 @@ class MixedLogReader(object):
                 # that we just read.
                 prev_offset_bytes = self.index.offset[self.next_index_elem - 1]
 
-        # If requested, clear previous filter criteria.
-        if clear_existing:
-            if self.index is None:
+        if type(clear_existing) == str:
+            # Verify input string and clear accordingly.
+            if clear_existing == 'message_type':
                 self.message_types = copy.deepcopy(self._original_message_types)
+            elif clear_existing == 'time_range':
                 self.time_range = copy.deepcopy(self._original_time_range)
-                self.remove_invalid_p1_time = False
-                self.requested_source_ids = None
+            elif clear_existing == 'source_id':
+                self.requested_source_ids = set()
             else:
-                self.index = self._original_index
+                raise ValueError('Invalid clear_existing flag: %s' % clear_existing)
+        else:
+            # If requested, clear previous filter criteria.
+            if clear_existing:
+                if self.index is None:
+                    self.message_types = copy.deepcopy(self._original_message_types)
+                    self.time_range = copy.deepcopy(self._original_time_range)
+                    self.remove_invalid_p1_time = False
+                    self.requested_source_ids = None
+                else:
+                    self.index = self._original_index
 
         # Set requested source IDs.
         if source_ids is not None:
@@ -504,7 +515,8 @@ class MixedLogReader(object):
                                       'source IDs: {}'.format(unavailable_source_ids))
                 source_ids = list(source_ids.intersection(self.available_source_ids))
                 if len(source_ids) == 0:
-                    raise ValueError("Requested source ID(s) unavailable. Exiting.")
+                    self.logger.debug('Requested source IDs unavailable. Cannot extract data.')
+                    self.filter_in_place(None, clear_existing='source_id')
 
                 if len(unavailable_source_ids) > 0:
                     self.logger.info('Extracting the following available requested source IDs: {}'.format(source_ids))
@@ -604,10 +616,7 @@ class MixedLogReader(object):
         self.available_source_ids = set()
         # Loop over all message types and read N of each type.
         for message_type in np.unique(self.index['type']):
-            try:
-                message_type = MessageType(message_type, raise_on_unrecognized=True)
-            except (KeyError, ValueError) as e:
-                continue
+            message_type = MessageType(message_type, raise_on_unrecognized=False)
             self.filter_in_place(message_type)
             num_messages_read = 0
             while num_messages_read < num_messages_to_read:

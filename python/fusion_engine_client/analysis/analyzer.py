@@ -155,8 +155,10 @@ class Analyzer(object):
 
             self.source_ids = source_ids.intersection(self.reader.source_ids)
             # If the requested source IDs are unavailable, raise error.
-            if len(source_ids) == 0:
-                raise ValueError("Requested source ID(s) unavailable. Exiting.")
+            if len(self.source_ids) == 0:
+                self.logger.warning('Requested source IDs unavailable. Cannot extract data.')
+                log_reader = self.reader.get_log_reader()
+                log_reader.filter_in_place(None, clear_existing='source_id')
 
         if time_axis in ('relative', 'rel'):
             self.time_axis = 'relative'
@@ -482,7 +484,11 @@ class Analyzer(object):
             return
 
         # Read the pose data.
-        result = self.reader.read(message_types=[PoseMessage], source_ids=[min(self.source_ids)], **self.params)
+        if len(self.source_ids) > 0:
+            source_id = [min(self.source_ids)]
+        else:
+            source_id = self.source_ids
+        result = self.reader.read(message_types=[PoseMessage], source_ids=source_id, **self.params)
         pose_data = result[PoseMessage.MESSAGE_TYPE]
 
         if len(pose_data.p1_time) == 0:
@@ -697,7 +703,11 @@ class Analyzer(object):
             return
 
         # Read the pose data.
-        result = self.reader.read(message_types=[PoseMessage], source_ids=[min(self.source_ids)], **self.params)
+        if len(self.source_ids) > 0:
+            source_id = [min(self.source_ids)]
+        else:
+            source_id = self.source_ids
+        result = self.reader.read(message_types=[PoseMessage], source_ids=source_id, **self.params)
         pose_data = result[PoseMessage.MESSAGE_TYPE]
 
         if len(pose_data.p1_time) == 0:
@@ -883,7 +893,7 @@ class Analyzer(object):
         """!
         @brief Plot a map of the position data.
         """
-        if self.output_dir is None:
+        if self.output_dir is None or len(self.source_ids) == 0:
             return
 
         mapbox_token = self.get_mapbox_token(mapbox_token)
