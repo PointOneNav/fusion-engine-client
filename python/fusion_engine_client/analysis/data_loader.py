@@ -1,8 +1,8 @@
-from enum import Enum, auto
-from typing import Dict, Iterable, Union
+from typing import Dict, Iterable, Set, Union
 
 from collections import deque
 from datetime import datetime, timezone
+from enum import Enum, auto
 
 from gpstime import gpstime, unix2gps
 import numpy as np
@@ -184,9 +184,6 @@ class DataLoader(object):
                                      return_bytes=True, return_message_index=True,
                                      omit_internal_sync_from_index=omit_internal_sync_from_index)
 
-        # By default, use all available source IDs. Filtering by source ID may be done with the read() function.
-        self.source_ids = self.reader.available_source_ids
-
         # Read the first message (with P1 time) in the file to set self.t0.
         #
         # Note that we explicitly set a start time since, if the time range is not specified, read() will include
@@ -247,8 +244,8 @@ class DataLoader(object):
                be returned. If `None` or an empty list, read all available messages.
         @param time_range An optional @ref TimeRange object specifying desired start and end time bounds of the data to
                be read. See @ref TimeRange for more details.
-        @param source_ids An optional list of one or more source identifiers to be returned. If `None` or an empty list,
-                use all available source identifiers.
+        @param source_ids An optional list message source identifiers to be returned. If `None`, read messages from
+               available source identifiers.
 
         @param show_progress If `True`, print the read progress every 10 MB (useful for large files).
         @param ignore_cache If `True`, ignore any cached data from a previous @ref read() call, and reload the requested
@@ -319,7 +316,9 @@ class DataLoader(object):
 
         if source_ids is None:
             source_ids = self.reader.get_available_source_ids()
-        if source_ids is not None:
+        elif isinstance(source_ids, int):
+            source_ids = {source_ids}
+        else:
             source_ids = set(source_ids)
 
         # Store the set of parameters used to perform this read along with the cache data. When doing reads for the
@@ -648,6 +647,9 @@ class DataLoader(object):
 
     def get_input_path(self):
         return self.reader.input_file.name
+
+    def get_available_source_ids(self) -> Set[int]:
+        return self.reader.get_available_source_ids()
 
     def _convert_time(self, conversion_type: TimeConversionType,
                       times: Union[Iterable[Union[datetime, gpstime, Timestamp, float]],

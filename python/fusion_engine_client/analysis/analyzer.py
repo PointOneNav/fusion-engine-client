@@ -146,20 +146,23 @@ class Analyzer(object):
         # If source ID was unspecified, use _all_ source IDs found in the log. If source ID _was_ specified, use the
         # intersection of the requested source ID(s) and the available source IDs.
         if source_id is None:
-            self.source_ids = self.reader.source_ids
+            self.source_ids = self.reader.get_available_source_ids()
         else:
             source_ids = set(source_id)
-            unavailable_source_ids = source_ids.difference(self.reader.source_ids)
+            unavailable_source_ids = source_ids.difference(self.reader.get_available_source_ids())
             if len(unavailable_source_ids) > 0:
                 self.logger.warning('Not all source IDs requested are available. Cannot extract the following '
                                     'source IDs: {}'.format(unavailable_source_ids))
 
-            self.source_ids = source_ids.intersection(self.reader.source_ids)
-            # If the requested source IDs are unavailable, raise error.
+            self.source_ids = source_ids.intersection(self.reader.get_available_source_ids())
+            # If the requested pose source IDs are unavailable, warn.
             if len(self.source_ids) == 0:
-                self.logger.warning('Requested source IDs unavailable. Cannot extract data.')
-                log_reader = self.reader.get_log_reader()
-                log_reader.filter_in_place(None, clear_existing='source_id')
+                self.logger.warning('Requested source IDs unavailable. Cannot extract pose data.')
+
+        if len(self.source_ids) > 0:
+            self.default_source_id = min(self.source_ids)
+        else:
+            self.default_source_id = 0
 
         if time_axis in ('relative', 'rel'):
             self.time_axis = 'relative'
@@ -494,11 +497,7 @@ class Analyzer(object):
             return
 
         # Read the pose data.
-        if len(self.source_ids) > 0:
-            source_id = [min(self.source_ids)]
-        else:
-            source_id = self.source_ids
-        result = self.reader.read(message_types=[PoseMessage], source_ids=source_id, **self.params)
+        result = self.reader.read(message_types=[PoseMessage], source_ids=self.default_source_id, **self.params)
         pose_data = result[PoseMessage.MESSAGE_TYPE]
 
         if len(pose_data.p1_time) == 0:
@@ -713,11 +712,7 @@ class Analyzer(object):
             return
 
         # Read the pose data.
-        if len(self.source_ids) > 0:
-            source_id = [min(self.source_ids)]
-        else:
-            source_id = self.source_ids
-        result = self.reader.read(message_types=[PoseMessage], source_ids=source_id, **self.params)
+        result = self.reader.read(message_types=[PoseMessage], source_ids=self.default_source_id, **self.params)
         pose_data = result[PoseMessage.MESSAGE_TYPE]
 
         if len(pose_data.p1_time) == 0:
@@ -841,7 +836,7 @@ class Analyzer(object):
             return
 
         # Read the pose data.
-        result = self.reader.read(message_types=[PoseMessage], source_ids=self.source_ids, **self.params)
+        result = self.reader.read(message_types=[PoseMessage], source_ids=self.default_source_id, **self.params)
         pose_data = result[PoseMessage.MESSAGE_TYPE]
 
         if len(pose_data.p1_time) == 0:
@@ -1577,7 +1572,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             # If we have pose messages _and_ they contain body velocity, we can use that.
             #
             # Note that we are using this to compare vs wheel speeds, so we're only interested in forward speed here.
-            result = self.reader.read(message_types=[PoseMessage], source_ids=self.source_ids, **self.params)
+            result = self.reader.read(message_types=[PoseMessage], source_ids=self.default_source_id, **self.params)
             pose_data = result[PoseMessage.MESSAGE_TYPE]
             if len(pose_data.p1_time) != 0 and np.any(~np.isnan(pose_data.velocity_body_mps[0, :])):
                 nav_engine_p1_time = pose_data.p1_time
@@ -1835,7 +1830,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
 
         # Note that we read the pose data after heading, that way we don't bother reading pose data from disk if there's
         # no heading data in the log.
-        result = self.reader.read(message_types=[PoseMessage], source_ids=self.source_ids, **self.params)
+        result = self.reader.read(message_types=[PoseMessage], source_ids=self.default_source_id, **self.params)
         primary_pose_data = result[PoseMessage.MESSAGE_TYPE]
 
         # Setup the figure.
@@ -2906,7 +2901,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         log_duration_sec, processing_duration_sec, reduced_index = self._calculate_duration(return_index=True)
 
         # Create a table with position solution type statistics.
-        result = self.reader.read(message_types=[PoseMessage], source_ids=self.source_ids, **self.params)
+        result = self.reader.read(message_types=[PoseMessage], source_ids=self.default_source_id, **self.params)
         pose_data = result[PoseMessage.MESSAGE_TYPE]
         num_pose_messages = len(pose_data.solution_type)
         solution_type_count = {}
