@@ -1,6 +1,5 @@
 from typing import Iterable, List, Union, Optional
 
-from collections.abc import Iterable
 import copy
 from datetime import datetime
 import os
