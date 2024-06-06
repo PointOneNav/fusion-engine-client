@@ -43,7 +43,7 @@ if DEFAULT_LOG_BASE_DIR is None:
             DEFAULT_LOG_BASE_DIR = os.path.expanduser("~/point_one/logs")
 
 
-def find_log_by_pattern(pattern, log_base_dir=DEFAULT_LOG_BASE_DIR, allow_multiple=False,
+def find_log_by_pattern(pattern, log_base_dir=DEFAULT_LOG_BASE_DIR, allow_multiple=False, skip_empty_files=True,
                         log_test_filenames=(MANIFEST_FILE_NAME,), return_test_file=False):
     """!
     @brief Perform a pattern match to locate a log directory containing the specified files.
@@ -71,6 +71,7 @@ def find_log_by_pattern(pattern, log_base_dir=DEFAULT_LOG_BASE_DIR, allow_multip
     @param log_base_dir The base directory to be searched.
     @param allow_multiple If `True`, return multiple matching logs if present, and return an empty list if no logs match
            the pattern. Otherwise, raise an exception if either multiple or zero logs are found.
+    @param skip_empty_files If `True`, ignore files that exist but are 0 bytes.
     @param log_test_filenames A list of input files to locate within the log directory. If _one_ of the listed files is
            found, the directory is considered a valid log. If `None` or an empty list, skip the test file requirement.
     @param return_test_file If `True`, return the path to the located test file.
@@ -118,9 +119,17 @@ def find_log_by_pattern(pattern, log_base_dir=DEFAULT_LOG_BASE_DIR, allow_multip
             # - `path/to/foo_/abcd1234`              <-- NO MATCH
             if fnmatch.fnmatch(path, match_pattern) and fnmatch.fnmatch(dirname, last_element):
                 test_file = None
-                for f in log_test_filenames:
+                for i, f in enumerate(log_test_filenames):
                     test_file_path = os.path.join(path, f)
                     if os.path.exists(test_file_path):
+                        # If the file exists but is empty, see if we should skip it. Otherwise, print a warning.
+                        if os.path.getsize(test_file_path) == 0:
+                            if skip_empty_files:
+                                _logger.warning(f"File '{test_file_path}' is 0 bytes. Skipping.")
+                                continue
+                            else:
+                                _logger.error(f"Selected file '{test_file_path}' is 0 bytes.")
+
                         test_file = test_file_path
                         break
 
@@ -154,7 +163,8 @@ def find_log_by_pattern(pattern, log_base_dir=DEFAULT_LOG_BASE_DIR, allow_multip
 
 
 def find_log_file(input_path, candidate_files=None, return_output_dir=False, return_log_id=False,
-                  log_base_dir=DEFAULT_LOG_BASE_DIR, check_exact_match=True, check_pattern_match=True):
+                  log_base_dir=DEFAULT_LOG_BASE_DIR, check_exact_match=True, check_pattern_match=True,
+                  skip_empty_files=True):
     """!
     @brief Locate a log directory containing the specified file(s).
 
@@ -190,6 +200,7 @@ def find_log_file(input_path, candidate_files=None, return_output_dir=False, ret
            only perform a pattern search.
     @param check_pattern_match If `True` and `input_path` does not refer to a log file or directory, perform a pattern
            match using `input_path` as the pattern.
+    @param skip_empty_files If `True`, ignore files that exist but are 0 bytes.
 
     @return The path to the located file or a tuple containing:
             - The path to the located file.
@@ -197,8 +208,8 @@ def find_log_file(input_path, candidate_files=None, return_output_dir=False, ret
             - The log ID string, or `None` if the requested file is not part of a FusionEngine log. Only provided if
               `return_log_id` is `True`.
     """
-    def _get_log_id(file_path):
-        parent_dir = os.path.dirname(os.path.abspath(input_path))
+    def _get_log_id(path):
+        parent_dir = os.path.dirname(os.path.abspath(path))
         return os.path.basename(parent_dir)
 
     # Check if the input path is a file. If so, return it and set the output directory to its parent directory.
@@ -223,12 +234,20 @@ def find_log_file(input_path, candidate_files=None, return_output_dir=False, ret
         log_id = None
 
         def _search_directory(dir_path):
-            for f in candidate_files:
+            for i, f in enumerate(candidate_files):
                 if f is None:
                     continue
 
                 test_path = os.path.join(dir_path, f)
                 if os.path.exists(test_path):
+                    # If the file exists but is empty, see if we should skip it. Otherwise, print a warning.
+                    if os.path.getsize(test_path) == 0:
+                        if skip_empty_files:
+                            _logger.warning(f"File '{test_path}' is 0 bytes. Skipping.")
+                            continue
+                        else:
+                            _logger.error(f"Selected file '{test_path}' is 0 bytes.")
+
                     return test_path, dir_path, _get_log_id(test_path)
             return None, None, None
 
