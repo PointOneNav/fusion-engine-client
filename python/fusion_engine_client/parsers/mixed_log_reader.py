@@ -1,5 +1,6 @@
 from typing import Iterable, List, Union, Optional
 
+from collections.abc import Iterable
 import copy
 from datetime import datetime
 import os
@@ -24,8 +25,9 @@ class MixedLogReader(object):
     def __init__(self, input_file, warn_on_gaps: bool = False, show_progress: bool = False,
                  save_index: bool = True, ignore_index: bool = False, max_bytes: int = None,
                  time_range: TimeRange = None, message_types: Union[Iterable[MessageType], MessageType] = None,
-                 source_ids: Optional[List[int]] = None, return_header: bool = True, return_payload: bool = True,
-                 return_bytes: bool = False, return_offset: bool = False, return_message_index: bool = False):
+                 source_ids: Optional[Iterable[int]] = None, return_header: bool = True,
+                 return_payload: bool = True, return_bytes: bool = False, return_offset: bool = False,
+                 return_message_index: bool = False):
         """!
         @brief Construct a new generator instance.
 
@@ -453,7 +455,7 @@ class MixedLogReader(object):
         self.filter_in_place(key=None, clear_existing=True)
 
     def filter_in_place(self, key, clear_existing: Union[bool, str] = False,
-                        source_ids: Union[List[int], set[int], tuple[int]] = None):
+                        source_ids: Iterable[int] = None):
         """!
         @brief Limit the returned messages by type or time.
 
