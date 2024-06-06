@@ -281,7 +281,7 @@ class DataLoader(object):
     def _read(self,
               message_types: Union[Iterable[MessageType], MessageType] = None,
               time_range: TimeRange = None,
-              source_ids: Optional[List[int]] = None,
+              source_ids: Optional[Iterable[int]] = None,
               show_progress: bool = False,
               ignore_cache: bool = False,
               max_messages: int = None, max_bytes: int = None,
