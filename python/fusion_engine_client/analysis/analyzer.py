@@ -154,11 +154,9 @@ class Analyzer(object):
                                     'source IDs: {}'.format(unavailable_source_ids))
 
             self.source_ids = source_ids.intersection(self.reader.source_ids)
-            # If the requested source IDs are unavailable, raise error.
+            # If the requested pose source IDs are unavailable, warn.
             if len(self.source_ids) == 0:
-                self.logger.warning('Requested source IDs unavailable. Cannot extract data.')
-                log_reader = self.reader.get_log_reader()
-                log_reader.filter_in_place(None, clear_existing='source_id')
+                self.logger.warning('Requested source IDs unavailable. Cannot extract pose data.')
 
         if time_axis in ('relative', 'rel'):
             self.time_axis = 'relative'
