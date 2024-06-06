@@ -158,6 +158,11 @@ class Analyzer(object):
             if len(self.source_ids) == 0:
                 self.logger.warning('Requested source IDs unavailable. Cannot extract pose data.')
 
+        if len(self.source_ids) > 0:
+            self.default_source_id = min(self.source_ids)
+        else:
+            self.default_source_id = 0
+
         if time_axis in ('relative', 'rel'):
             self.time_axis = 'relative'
             self.t0 = self.reader.t0
@@ -482,11 +487,7 @@ class Analyzer(object):
             return
 
         # Read the pose data.
-        if len(self.source_ids) > 0:
-            source_id = [min(self.source_ids)]
-        else:
-            source_id = self.source_ids
-        result = self.reader.read(message_types=[PoseMessage], source_ids=source_id, **self.params)
+        result = self.reader.read(message_types=[PoseMessage], source_ids=self.default_source_id, **self.params)
         pose_data = result[PoseMessage.MESSAGE_TYPE]
 
         if len(pose_data.p1_time) == 0:
@@ -701,11 +702,7 @@ class Analyzer(object):
             return
 
         # Read the pose data.
-        if len(self.source_ids) > 0:
-            source_id = [min(self.source_ids)]
-        else:
-            source_id = self.source_ids
-        result = self.reader.read(message_types=[PoseMessage], source_ids=source_id, **self.params)
+        result = self.reader.read(message_types=[PoseMessage], source_ids=self.default_source_id, **self.params)
         pose_data = result[PoseMessage.MESSAGE_TYPE]
 
         if len(pose_data.p1_time) == 0:
@@ -829,7 +826,7 @@ class Analyzer(object):
             return
 
         # Read the pose data.
-        result = self.reader.read(message_types=[PoseMessage], source_ids=self.source_ids, **self.params)
+        result = self.reader.read(message_types=[PoseMessage], source_ids=self.default_source_id, **self.params)
         pose_data = result[PoseMessage.MESSAGE_TYPE]
 
         if len(pose_data.p1_time) == 0:
@@ -1565,7 +1562,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             # If we have pose messages _and_ they contain body velocity, we can use that.
             #
             # Note that we are using this to compare vs wheel speeds, so we're only interested in forward speed here.
-            result = self.reader.read(message_types=[PoseMessage], source_ids=self.source_ids, **self.params)
+            result = self.reader.read(message_types=[PoseMessage], source_ids=self.default_source_id, **self.params)
             pose_data = result[PoseMessage.MESSAGE_TYPE]
             if len(pose_data.p1_time) != 0 and np.any(~np.isnan(pose_data.velocity_body_mps[0, :])):
                 nav_engine_p1_time = pose_data.p1_time
@@ -1819,7 +1816,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
 
         # Note that we read the pose data after heading, that way we don't bother reading pose data from disk if there's
         # no heading data in the log.
-        result = self.reader.read(message_types=[PoseMessage], source_ids=self.source_ids, **self.params)
+        result = self.reader.read(message_types=[PoseMessage], source_ids=self.default_source_id, **self.params)
         primary_pose_data = result[PoseMessage.MESSAGE_TYPE]
 
         # Setup the figure.
@@ -2248,7 +2245,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         log_duration_sec, processing_duration_sec, reduced_index = self._calculate_duration(return_index=True)
 
         # Create a table with position solution type statistics.
-        result = self.reader.read(message_types=[PoseMessage], source_ids=self.source_ids, **self.params)
+        result = self.reader.read(message_types=[PoseMessage], source_ids=self.default_source_id, **self.params)
         pose_data = result[PoseMessage.MESSAGE_TYPE]
         num_pose_messages = len(pose_data.solution_type)
         solution_type_count = {}
