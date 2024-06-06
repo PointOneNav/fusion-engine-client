@@ -304,7 +304,9 @@ class DataLoader(object):
 
         if source_ids is None:
             source_ids = self.reader.get_available_source_ids()
-        if source_ids is not None:
+        elif isinstance(source_ids, int):
+            source_ids = {source_ids}
+        else:
             source_ids = set(source_ids)
 
         # Store the set of parameters used to perform this read along with the cache data. When doing reads for the

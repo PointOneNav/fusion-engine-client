@@ -82,6 +82,8 @@ class MixedLogReader(object):
         # The source IDs requested by the user. If none were requested, then use all of them.
         if source_ids is None:
             self.requested_source_ids = None
+        elif isinstance(source_ids, int):
+            self.requested_source_ids = {source_ids}
         else:
             self.requested_source_ids = set(source_ids)
         # The source IDs that are available in the log. This will be populated below when
