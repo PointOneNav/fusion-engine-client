@@ -145,15 +145,15 @@ class Analyzer(object):
         # If source ID was unspecified, use _all_ source IDs found in the log. If source ID _was_ specified, use the
         # intersection of the requested source ID(s) and the available source IDs.
         if source_id is None:
-            self.source_ids = self.reader.source_ids
+            self.source_ids = self.reader.get_available_source_ids()
         else:
             source_ids = set(source_id)
-            unavailable_source_ids = source_ids.difference(self.reader.source_ids)
+            unavailable_source_ids = source_ids.difference(self.reader.get_available_source_ids())
             if len(unavailable_source_ids) > 0:
                 self.logger.warning('Not all source IDs requested are available. Cannot extract the following '
                                     'source IDs: {}'.format(unavailable_source_ids))
 
-            self.source_ids = source_ids.intersection(self.reader.source_ids)
+            self.source_ids = source_ids.intersection(self.reader.get_available_source_ids())
             # If the requested pose source IDs are unavailable, warn.
             if len(self.source_ids) == 0:
                 self.logger.warning('Requested source IDs unavailable. Cannot extract pose data.')

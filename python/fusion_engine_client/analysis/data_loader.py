@@ -176,9 +176,6 @@ class DataLoader(object):
         self.reader = MixedLogReader(input_file=path, save_index=save_index, ignore_index=ignore_index,
                                      return_bytes=True, return_message_index=True)
 
-        # By default, use all available source IDs. Filtering by source ID may be done with the read() function.
-        self.source_ids = self.reader.available_source_ids
-
         # Read the first message (with P1 time) in the file to set self.t0.
         #
         # Note that we explicitly set a start time since, if the time range is not specified, read() will include
