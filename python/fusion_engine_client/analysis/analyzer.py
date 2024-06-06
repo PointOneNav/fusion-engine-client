@@ -109,7 +109,7 @@ class Analyzer(object):
                  output_dir: str = None, prefix: str = '',
                  time_range: TimeRange = None, max_messages: int = None,
                  time_axis: str = 'relative',
-                 truncate_long_logs: bool = True):
+                 truncate_long_logs: bool = True, source_id: Optional[List[int]] = None):
         """!
         @brief Create an analyzer for the specified log.
 
@@ -142,6 +142,24 @@ class Analyzer(object):
             'show_progress': True,
             'return_numpy': True
         }
+
+        # If source ID was unspecified, use _all_ source IDs found in the log. If source ID _was_ specified, use the
+        # intersection of the requested source ID(s) and the available source IDs.
+        if source_id is None:
+            self.source_ids = self.reader.source_ids
+        else:
+            source_ids = set(source_id)
+            unavailable_source_ids = source_ids.difference(self.reader.source_ids)
+            if len(unavailable_source_ids) > 0:
+                self.logger.warning('Not all source IDs requested are available. Cannot extract the following '
+                                    'source IDs: {}'.format(unavailable_source_ids))
+
+            self.source_ids = source_ids.intersection(self.reader.source_ids)
+            # If the requested source IDs are unavailable, raise error.
+            if len(self.source_ids) == 0:
+                self.logger.warning('Requested source IDs unavailable. Cannot extract data.')
+                log_reader = self.reader.get_log_reader()
+                log_reader.filter_in_place(None, clear_existing='source_id')
 
         if time_axis in ('relative', 'rel'):
             self.time_axis = 'relative'
@@ -215,7 +233,7 @@ class Analyzer(object):
         figure['layout']['yaxis2'].update(title="Interval (sec)", rangemode="tozero")
 
         # Read the pose data to get P1 and GPS timestamps.
-        result = self.reader.read(message_types=[PoseMessage], **self.params)
+        result = self.reader.read(message_types=[PoseMessage], source_ids=self.source_ids, **self.params)
         pose_data = result[PoseMessage.MESSAGE_TYPE]
 
         if len(pose_data.p1_time) > 0:
@@ -476,7 +494,11 @@ class Analyzer(object):
             return
 
         # Read the pose data.
-        result = self.reader.read(message_types=[PoseMessage], **self.params)
+        if len(self.source_ids) > 0:
+            source_id = [min(self.source_ids)]
+        else:
+            source_id = self.source_ids
+        result = self.reader.read(message_types=[PoseMessage], source_ids=source_id, **self.params)
         pose_data = result[PoseMessage.MESSAGE_TYPE]
 
         if len(pose_data.p1_time) == 0:
@@ -691,7 +713,11 @@ class Analyzer(object):
             return
 
         # Read the pose data.
-        result = self.reader.read(message_types=[PoseMessage], **self.params)
+        if len(self.source_ids) > 0:
+            source_id = [min(self.source_ids)]
+        else:
+            source_id = self.source_ids
+        result = self.reader.read(message_types=[PoseMessage], source_ids=source_id, **self.params)
         pose_data = result[PoseMessage.MESSAGE_TYPE]
 
         if len(pose_data.p1_time) == 0:
@@ -815,7 +841,7 @@ class Analyzer(object):
             return
 
         # Read the pose data.
-        result = self.reader.read(message_types=[PoseMessage], **self.params)
+        result = self.reader.read(message_types=[PoseMessage], source_ids=self.source_ids, **self.params)
         pose_data = result[PoseMessage.MESSAGE_TYPE]
 
         if len(pose_data.p1_time) == 0:
@@ -877,7 +903,7 @@ class Analyzer(object):
         """!
         @brief Plot a map of the position data.
         """
-        if self.output_dir is None:
+        if self.output_dir is None or len(self.source_ids) == 0:
             return
 
         mapbox_token = self.get_mapbox_token(mapbox_token)
@@ -890,29 +916,10 @@ class Analyzer(object):
             self._mapbox_token_missing = True
             mapbox_token = None
 
-        # Read the pose data.
-        result = self.reader.read(message_types=[PoseMessage], **self.params)
-        pose_data = result[PoseMessage.MESSAGE_TYPE]
-
-        if len(pose_data.p1_time) == 0:
-            self.logger.info('No pose data available. Skipping map display.')
-            return
-
-        # Remove invalid solutions.
-        valid_idx = np.logical_and(~np.isnan(pose_data.p1_time), pose_data.solution_type != SolutionType.Invalid)
-        if not np.any(valid_idx):
-            self.logger.info('No valid position solutions detected.')
-            return
-
-        time = pose_data.p1_time[valid_idx] - float(self.t0)
-        solution_type = pose_data.solution_type[valid_idx]
-        lla_deg = pose_data.lla_deg[:, valid_idx]
-        std_enu_m = pose_data.position_std_enu_m[:, valid_idx]
-
         # Add data to the map.
         map_data = []
 
-        def _plot_data(name, idx, marker_style=None):
+        def _plot_data(name, idx, source_id, marker_style=None):
             style = {'mode': 'markers', 'marker': {'size': 8}, 'showlegend': True}
             if marker_style is not None:
                 style['marker'].update(marker_style)
@@ -921,14 +928,44 @@ class Analyzer(object):
                 text = ["Time: %.3f sec (%.3f sec)<br>Std (ENU): (%.2f, %.2f, %.2f) m" %
                         (t, t + float(self.t0), std[0], std[1], std[2])
                         for t, std in zip(time[idx], std_enu_m[:, idx].T)]
-                map_data.append(go.Scattermapbox(lat=lla_deg[0, idx], lon=lla_deg[1, idx], name=name, text=text,
-                                                 **style))
+                # Only put default source ID on map by default.
+                if source_id == min(self.source_ids):
+                    map_data.append(go.Scattermapbox(lat=lla_deg[0, idx], lon=lla_deg[1, idx], name=name, text=text,
+                                                     legendgroup=source_id, **style))
+                else:
+                    map_data.append(go.Scattermapbox(lat=lla_deg[0, idx], lon=lla_deg[1, idx], name=name, text=text,
+                                                     legendgroup=source_id, visible='legendonly', **style))
+
             else:
                 # If there's no data, draw a dummy trace so it shows up in the legend anyway.
                 map_data.append(go.Scattermapbox(lat=[np.nan], lon=[np.nan], name=name, visible='legendonly', **style))
 
-        for type, info in _SOLUTION_TYPE_MAP.items():
-            _plot_data(info.name, solution_type == type, marker_style=info.style)
+        # Read the pose data.
+        for source_id in self.source_ids:
+            result = self.reader.read(message_types=[PoseMessage], source_ids=[source_id], **self.params)
+            pose_data = result[PoseMessage.MESSAGE_TYPE]
+
+            if len(pose_data.p1_time) == 0:
+                self.logger.info('No pose data available for source ID {}. Skipping map display.'.format(source_id))
+                return
+
+            # Remove invalid solutions.
+            valid_idx = np.logical_and(~np.isnan(pose_data.p1_time), pose_data.solution_type != SolutionType.Invalid)
+            if not np.any(valid_idx):
+                self.logger.info('No valid position solutions detected for source ID {}.'.format(source_id))
+                return
+
+            time = pose_data.p1_time[valid_idx] - float(self.t0)
+            solution_type = pose_data.solution_type[valid_idx]
+            lla_deg = pose_data.lla_deg[:, valid_idx]
+            std_enu_m = pose_data.position_std_enu_m[:, valid_idx]
+
+            for type, info in _SOLUTION_TYPE_MAP.items():
+                if len(self.source_ids) > 1:
+                    name = info.name + ' [source_id=' + str(source_id) + ']'
+                else:
+                    name = info.name
+                _plot_data(name, solution_type == type, source_id, marker_style=info.style)
 
         # Create the map.
         title = 'Vehicle Trajectory'
@@ -1540,7 +1577,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             # If we have pose messages _and_ they contain body velocity, we can use that.
             #
             # Note that we are using this to compare vs wheel speeds, so we're only interested in forward speed here.
-            result = self.reader.read(message_types=[PoseMessage], **self.params)
+            result = self.reader.read(message_types=[PoseMessage], source_ids=self.source_ids, **self.params)
             pose_data = result[PoseMessage.MESSAGE_TYPE]
             if len(pose_data.p1_time) != 0 and np.any(~np.isnan(pose_data.velocity_body_mps[0, :])):
                 nav_engine_p1_time = pose_data.p1_time
@@ -1555,7 +1592,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             # direction. This will also be an absolute value, so may not match the wheel data if it is signed and the
             # vehicle is going backward.
             else:
-                result = self.reader.read(message_types=[PoseAuxMessage], **self.params)
+                result = self.reader.read(message_types=[PoseAuxMessage], source_ids=self.source_ids, **self.params)
                 pose_aux_data = result[PoseAuxMessage.MESSAGE_TYPE]
                 if len(pose_aux_data.p1_time) != 0:
                     self.logger.warning('Body forward velocity not available. Estimating |speed| from ENU velocity. '
@@ -1798,7 +1835,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
 
         # Note that we read the pose data after heading, that way we don't bother reading pose data from disk if there's
         # no heading data in the log.
-        result = self.reader.read(message_types=[PoseMessage], **self.params)
+        result = self.reader.read(message_types=[PoseMessage], source_ids=self.source_ids, **self.params)
         primary_pose_data = result[PoseMessage.MESSAGE_TYPE]
 
         # Setup the figure.
@@ -2869,7 +2906,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         log_duration_sec, processing_duration_sec, reduced_index = self._calculate_duration(return_index=True)
 
         # Create a table with position solution type statistics.
-        result = self.reader.read(message_types=[PoseMessage], **self.params)
+        result = self.reader.read(message_types=[PoseMessage], source_ids=self.source_ids, **self.params)
         pose_data = result[PoseMessage.MESSAGE_TYPE]
         num_pose_messages = len(pose_data.solution_type)
         solution_type_count = {}
@@ -3196,6 +3233,13 @@ Load and display information stored in a FusionEngine binary file.
              "Options include:%s" %
              ''.join(['\n- %s' % f[5:] for f in plot_function_names]))
 
+    plot_group.add_argument(
+        '--source-identifier', '--source-id', action=CSVAction, nargs='*',
+        help="Plot the Fusion Engine Pose messages with the listed source identifier(s). Must be integers. May be "
+             "specified multiple times (--source-id 0 --source-id 1), as a space-separated list (--source-id 0 1), or "
+             "as a comma-separated list (--source-id 0,1). If not specified, all available source identifiers present "
+             "in the log will be used.")
+
     time_group = parser.add_argument_group('Time Control')
     time_group.add_argument(
         '--absolute-time', '--abs', action=ExtendedBooleanAction,
@@ -3282,11 +3326,20 @@ Load and display information stored in a FusionEngine binary file.
     else:
         output_dir = options.output
 
+    if options.source_identifier is None:
+        source_id = None
+    else:
+        try:
+            source_id = [int(s) for s in options.source_identifier]
+        except ValueError:
+            _logger.error('Source identifiers must be integers. Exiting.')
+            sys.exit(1)
+
     # Read pose data from the file.
     analyzer = Analyzer(file=input_path, output_dir=output_dir, ignore_index=options.ignore_index,
                         prefix=options.prefix + '.' if options.prefix is not None else '',
                         time_range=time_range, time_axis=options.time_axis,
-                        truncate_long_logs=options.truncate and options.plot is None)
+                        truncate_long_logs=options.truncate and options.plot is None, source_id=source_id)
 
     if options.plot is None:
         analyzer.plot_events()

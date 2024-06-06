@@ -155,6 +155,8 @@ class DataLoader(object):
         self.system_t0 = None
         self.system_t0_ns = None
 
+        self.source_ids = None
+
         self._need_t0 = True
         self._need_system_t0 = True
 
@@ -181,6 +183,9 @@ class DataLoader(object):
         self.reader = MixedLogReader(input_file=path, save_index=save_index, ignore_index=ignore_index,
                                      return_bytes=True, return_message_index=True,
                                      omit_internal_sync_from_index=omit_internal_sync_from_index)
+
+        # By default, use all available source IDs. Filtering by source ID may be done with the read() function.
+        self.source_ids = self.reader.available_source_ids
 
         # Read the first message (with P1 time) in the file to set self.t0.
         #
@@ -242,6 +247,8 @@ class DataLoader(object):
                be returned. If `None` or an empty list, read all available messages.
         @param time_range An optional @ref TimeRange object specifying desired start and end time bounds of the data to
                be read. See @ref TimeRange for more details.
+        @param source_ids An optional list of one or more source identifiers to be returned. If `None` or an empty list,
+                use all available source identifiers.
 
         @param show_progress If `True`, print the read progress every 10 MB (useful for large files).
         @param ignore_cache If `True`, ignore any cached data from a previous @ref read() call, and reload the requested
@@ -285,6 +292,7 @@ class DataLoader(object):
     def _read(self,
               message_types: Union[Iterable[MessageType], MessageType] = None,
               time_range: TimeRange = None,
+              source_ids: Optional[List[int]] = None,
               show_progress: bool = False,
               ignore_cache: bool = False,
               enable_internal_sync: bool = True,
@@ -309,6 +317,11 @@ class DataLoader(object):
         else:
             time_range = TimeRange.parse(time_range)
 
+        if source_ids is None:
+            source_ids = self.reader.get_available_source_ids()
+        if source_ids is not None:
+            source_ids = set(source_ids)
+
         # Store the set of parameters used to perform this read along with the cache data. When doing reads for the
         # requested message type(s) in the future, if the parameters match exactly, we can return the cached data.
         # Otherwise, we need to read from disk again.
@@ -322,6 +335,7 @@ class DataLoader(object):
             'return_bytes': return_bytes,
             'return_message_index': return_message_index,
             'remove_nan_times': remove_nan_times,
+            'source_ids': source_ids,
         }
 
         # If the user requested output in the order that it was logged, we need to ignore cached data since that data
@@ -438,6 +452,7 @@ class DataLoader(object):
 
             self.reader.filter_in_place(time_range)
             self.reader.filter_in_place(message_types)
+            self.reader.filter_in_place(None, source_ids=source_ids)
 
             # If the user is requiring (valid) P1 timestamps, filter to those now.
             if require_p1_time and not system_time_messages_requested:
