@@ -1,4 +1,4 @@
-from typing import Dict, Iterable, Union
+from typing import Dict, Iterable, Set, Union
 
 from collections import deque
 from datetime import datetime, timezone
@@ -634,6 +634,9 @@ class DataLoader(object):
 
     def get_input_path(self):
         return self.reader.input_file.name
+
+    def get_available_source_ids(self) -> Set[int]:
+        return self.reader.get_available_source_ids()
 
     def _convert_time(self, conversion_type: TimeConversionType,
                       times: Union[Iterable[Union[datetime, gpstime, Timestamp, float]],
