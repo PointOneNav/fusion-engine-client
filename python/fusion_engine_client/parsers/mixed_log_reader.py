@@ -483,7 +483,7 @@ class MixedLogReader(object):
                 # that we just read.
                 prev_offset_bytes = self.index.offset[self.next_index_elem - 1]
 
-        if type(clear_existing) == str:
+        if isinstance(clear_existing, str):
             # Verify input string and clear accordingly.
             if clear_existing == 'message_type':
                 self.message_types = copy.deepcopy(self._original_message_types)
