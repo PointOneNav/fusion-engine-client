@@ -724,7 +724,8 @@ class Analyzer(object):
 
         self._add_figure(name="solution_type", figure=figure, title="Solution Type")
 
-    def _plot_displacement(self, source, time, solution_type, displacement_enu_m, std_enu_m):
+    def _plot_displacement(self, source, time, solution_type, displacement_enu_m, std_enu_m,
+                           title='Displacement'):
         """!
         @brief Generate a topocentric (top-down) plot of position displacement, as well as plot of displacement over
                time.
@@ -734,7 +735,7 @@ class Analyzer(object):
 
         # Setup the figure.
         topo_figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=False,
-                                    subplot_titles=['Displacement'])
+                                    subplot_titles=[title])
         topo_figure['layout']['xaxis1'].update(title="East (m)")
         topo_figure['layout']['yaxis1'].update(title="North (m)")
 
@@ -743,10 +744,10 @@ class Analyzer(object):
         time_figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
         for i in range(4):
             time_figure['layout']['xaxis%d' % (i + 1)].update(title=self.p1_time_label, showticklabels=True)
-        time_figure['layout']['yaxis1'].update(title="Displacement (m)")
-        time_figure['layout']['yaxis2'].update(title="Displacement (m)")
-        time_figure['layout']['yaxis3'].update(title="Displacement (m)")
-        time_figure['layout']['yaxis4'].update(title="Displacement (m)")
+        time_figure['layout']['yaxis1'].update(title=f"{title} (m)")
+        time_figure['layout']['yaxis2'].update(title=f"{title} (m)")
+        time_figure['layout']['yaxis3'].update(title=f"{title} (m)")
+        time_figure['layout']['yaxis4'].update(title=f"{title} (m)")
 
         # Remove invalid solutions.
         valid_idx = np.logical_and(~np.isnan(time), solution_type != SolutionType.Invalid)
@@ -815,13 +816,25 @@ class Analyzer(object):
 
         name = source.replace(' ', '_').lower()
         self._add_figure(name=f"{name}_top_down", figure=topo_figure, title=f"{source}: Top-Down (Topocentric)")
-        self._add_figure(name=f"{name}_displacement", figure=time_figure, title=f"{source}: vs. Time")
+        self._add_figure(name=f"{name}_vs_time", figure=time_figure, title=f"{source}: vs. Time")
+
+    def plot_stationary_position_error(self, truth_lla_deg):
+        """!
+        @brief Plot position error vs. a known stationary location.
+
+        @param truth_lla_deg The truth LLA location (in degrees/meters).
+        """
+        truth_ecef_m = np.array(geodetic2ecef(*truth_lla_deg, deg=True))
+        self._plot_pose_displacement(title='Position Error', center_ecef_m=truth_ecef_m)
 
     def plot_pose_displacement(self):
         """!
         @brief Generate a topocentric (top-down) plot of position displacement, as well as plot of displacement over
                time.
         """
+        self._plot_pose_displacement()
+
+    def _plot_pose_displacement(self, title='Pose Displacement', center_ecef_m=None):
         if self.output_dir is None:
             return
 
@@ -847,12 +860,18 @@ class Analyzer(object):
         # Convert to ENU displacement with respect to the median position (we use median instead of centroid just in
         # case there are one or two huge outliers).
         position_ecef_m = np.array(geodetic2ecef(lat=lla_deg[0, :], lon=lla_deg[1, :], alt=lla_deg[2, :], deg=True))
-        center_ecef_m = np.median(position_ecef_m, axis=1)
+
+        if center_ecef_m is None:
+            center_ecef_m = np.median(position_ecef_m, axis=1)
+
         displacement_ecef_m = position_ecef_m - center_ecef_m.reshape(3, 1)
         c_enu_ecef = get_enu_rotation_matrix(*lla_deg[0:2, 0], deg=True)
         displacement_enu_m = c_enu_ecef.dot(displacement_ecef_m)
 
-        self._plot_displacement('Pose Displacement', time, solution_type, displacement_enu_m, std_enu_m)
+        axis_title = 'Error' if title == 'Position Error' else 'Displacement'
+
+        self._plot_displacement(source=title, title=axis_title, time=time, solution_type=solution_type,
+                                displacement_enu_m=displacement_enu_m, std_enu_m=std_enu_m)
 
     def plot_relative_position(self):
         """!
@@ -2787,6 +2806,11 @@ Load and display information stored in a FusionEngine binary file.
              "\n"
              "\nTruncation is disabled if --plot is specified." %
              (Analyzer.LONG_LOG_DURATION_SEC / 3600.0, Analyzer.HIGH_MEASUREMENT_RATE_HZ))
+    plot_group.add_argument(
+        '--reference', '--truth',
+        help="Specify a reference data to use as a truth source for position, velocity, and orientation. Supported "
+             "formats:"
+             "\n- Stationary LLA position: 37.1234, -122.526335, 102.34")
 
     plot_function_names = [n for n in dir(Analyzer) if n.startswith('plot_')]
     plot_group.add_argument(
@@ -2899,6 +2923,16 @@ Load and display information stored in a FusionEngine binary file.
             _logger.error('Source identifiers must be integers. Exiting.')
             sys.exit(1)
 
+    # Parse truth data if specified.
+    truth_lla_deg = None
+    if options.reference is not None:
+        m = re.match(r'^(-?\d+(?:\.\d+)),\s*(-?\d+(?:\.\d+)),\s*(-?\d+(?:\.\d+))$', options.reference)
+        if m:
+            truth_lla_deg = np.array((float(m.group(1)), float(m.group(2)), float(m.group(3))))
+        else:
+            _logger.error('Unrecognized reference data format.')
+            sys.exit(1)
+
     # Read pose data from the file.
     analyzer = Analyzer(file=input_path, output_dir=output_dir, ignore_index=options.ignore_index,
                         prefix=options.prefix + '.' if options.prefix is not None else '',
@@ -2926,6 +2960,9 @@ Load and display information stored in a FusionEngine binary file.
         # By default, we always plot heading measurements (i.e., output from a secondary heading device like an
         # LG69T-AH), separate from other sensor measurements controlled by --measurements.
         analyzer.plot_heading_measurements()
+
+        if truth_lla_deg is not None:
+            analyzer.plot_stationary_position_error(truth_lla_deg)
 
         if options.measurements:
             analyzer.plot_imu()
@@ -2960,6 +2997,11 @@ Load and display information stored in a FusionEngine binary file.
                 analyzer.plot_map(mapbox_token=options.mapbox_token)
             elif func == 'plot_skyplot':
                 analyzer.plot_gnss_skyplot(decimate=False)
+            elif func == 'plot_stationary_position_error':
+                if truth_lla_deg is not None:
+                    analyzer.plot_stationary_position_error(truth_lla_deg)
+                else:
+                    _logger.warning('No truth data available. Cannot plot position error.')
             else:
                 getattr(analyzer, func)()
 
