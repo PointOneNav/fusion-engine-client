@@ -49,15 +49,15 @@ _SOLUTION_TYPE_MAP = {
 }
 
 
-def _data_to_table(col_titles: List[str], values: List[List[Any]], row_major: bool = False):
+def _data_to_table(col_titles: List[str], values: List[List[Any]], row_major: bool = False, id='table'):
     if row_major:
         # If values is row major (outer index is the table rows), transpose it.
         col_values = list(map(list, zip(*values)))
     else:
         col_values = values
 
-    table_html = '''\
-<table>
+    table_html = f'''\
+<table id={id}>
   <tbody style="vertical-align: top">
     <tr style="background-color: #a2c4fa">
 '''
@@ -909,21 +909,21 @@ class Analyzer(object):
             if marker_style is not None:
                 style['marker'].update(marker_style)
 
+            # Only put default source ID on map by default.
+            legendgroup = None if len(self.source_ids) == 1 else source_id
+            visible = None if source_id == min(self.source_ids) else 'legendonly'
+
             if np.any(idx):
                 text = ["Time: %.3f sec (%.3f sec)<br>Std (ENU): (%.2f, %.2f, %.2f) m" %
                         (t, t + float(self.t0), std[0], std[1], std[2])
                         for t, std in zip(time[idx], std_enu_m[:, idx].T)]
-                # Only put default source ID on map by default.
-                if source_id == min(self.source_ids):
-                    map_data.append(go.Scattermapbox(lat=lla_deg[0, idx], lon=lla_deg[1, idx], name=name, text=text,
-                                                     legendgroup=source_id, **style))
-                else:
-                    map_data.append(go.Scattermapbox(lat=lla_deg[0, idx], lon=lla_deg[1, idx], name=name, text=text,
-                                                     legendgroup=source_id, visible='legendonly', **style))
+                map_data.append(go.Scattermapbox(lat=lla_deg[0, idx], lon=lla_deg[1, idx], name=name, text=text,
+                                                 legendgroup=legendgroup, visible=visible, **style))
 
             else:
                 # If there's no data, draw a dummy trace so it shows up in the legend anyway.
-                map_data.append(go.Scattermapbox(lat=[np.nan], lon=[np.nan], name=name, visible='legendonly', **style))
+                map_data.append(go.Scattermapbox(lat=[np.nan], lon=[np.nan], name=name, legendgroup=legendgroup,
+                                                 visible='legendonly', **style))
 
         # Read the pose data.
         for source_id in self.source_ids:
@@ -2213,9 +2213,39 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                 if system_time_ns in times_before_resets:
                     rows[-1][2] = f'{(times_before_resets[system_time_ns]):.3f}'
 
-        table_html = _data_to_table(table_columns, rows, row_major=True)
-        body_html = f"""\
+        table_html = _data_to_table(table_columns, rows, row_major=True, id='event_log')
+        body_html = """\
+<script>
+function UpdateFilter() {
+  var filter = document.getElementById("filter").value.toLowerCase();
+  var invert = document.getElementById("invert").checked;
+  var table = document.getElementById("event_log");
+  var tr = table.getElementsByTagName("tr");
+  for (var i = 0; i < tr.length; ++i) {
+    var tds = tr[i].getElementsByTagName("td");
+    if (tds.length < 6) {
+      continue;
+    }
+
+    var event_type_td = tds[3];
+    var description_td = tds[5];
+    var matches = event_type_td.innerText.toLowerCase().indexOf(filter) > -1 ||
+                  description_td.innerText.toLowerCase().indexOf(filter) > -1;
+    if (filter == "" || (matches && !invert) || (!matches && invert)) {
+      tr[i].style.display = "";
+    }
+    else {
+      tr[i].style.display = "none";
+    }
+  }
+}
+</script>
+""" + f"""\
 <h2>Device Event Log</h2>
+<input type="text" id="filter" onkeyup="UpdateFilter()"
+ placeholder="Filter by event type or description..." style="width: 100%;"><br>
+<input type="checkbox" id="invert" onclick="UpdateFilter()">
+<label for="invert"> Invert Selection</label>
 <pre>{table_html}</pre>
 """
 
