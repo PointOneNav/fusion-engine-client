@@ -882,7 +882,7 @@ class Analyzer(object):
         displacement_enu_m = relative_position_data.relative_position_enu_m[:, valid_idx]
         std_enu_m = relative_position_data.position_std_enu_m[:, valid_idx]
 
-        self._plot_displacement('Relative Position vs.Base Station', time, solution_type, displacement_enu_m, std_enu_m)
+        self._plot_displacement('Position vs. Base Station', time, solution_type, displacement_enu_m, std_enu_m)
 
     def plot_map(self, mapbox_token):
         """!
