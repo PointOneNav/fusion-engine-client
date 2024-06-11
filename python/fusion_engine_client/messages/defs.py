@@ -499,6 +499,11 @@ class MessagePayload:
                                     (pattern, ''.join(['\n  %s' % c for c in class_names]), pattern))
                 # Otherwise, update the set of message types.
                 else:
+                    # If the user requested EventNotificationMessage, and they didn't specify it with a leading "^"
+                    # ("^event", etc.), include DiagEventNotificationMessage as well.
+                    if MessageType.EVENT_NOTIFICATION in matched_types and re_pattern[0] != '^':
+                        matched_types.append(MessageType.DIAG_EVENT_NOTIFICATION)
+
                     result.update(matched_types)
 
         # These types both map to the same message so make sure they're both included if either is.
