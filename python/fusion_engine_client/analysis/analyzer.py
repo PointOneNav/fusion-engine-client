@@ -2140,6 +2140,7 @@ function UpdateFilter() {
   var invert = document.getElementById("invert").checked;
   var table = document.getElementById("event_log");
   var tr = table.getElementsByTagName("tr");
+  var visible_count = 0;
   for (var i = 0; i < tr.length; ++i) {
     var tds = tr[i].getElementsByTagName("td");
     if (tds.length < 6) {
@@ -2152,11 +2153,13 @@ function UpdateFilter() {
                   description_td.innerText.toLowerCase().indexOf(filter) > -1;
     if (filter == "" || (matches && !invert) || (!matches && invert)) {
       tr[i].style.display = "";
+      ++visible_count;
     }
     else {
       tr[i].style.display = "none";
     }
   }
+  document.getElementById("visible_count").innerText = visible_count;
 }
 </script>
 """ + f"""\
@@ -2165,6 +2168,7 @@ function UpdateFilter() {
  placeholder="Filter by event type or description..." style="width: 100%;"><br>
 <input type="checkbox" id="invert" onclick="UpdateFilter()">
 <label for="invert"> Invert Selection</label>
+<br>Displaying <div id="visible_count" style="display: inline;">{len(rows)}</div>/{len(rows)} event notifications.
 <pre>{table_html}</pre>
 """
 
