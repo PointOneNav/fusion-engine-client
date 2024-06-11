@@ -2213,44 +2213,166 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                 if system_time_ns in times_before_resets:
                     rows[-1][2] = f'{(times_before_resets[system_time_ns]):.3f}'
 
-        table_html = _data_to_table(table_columns, rows, row_major=True, id='event_log')
+        table_data = ',\n  '.join([repr(row) for row in rows])
         body_html = """\
 <script>
-function UpdateFilter() {
-  var filter = document.getElementById("filter").value.toLowerCase();
-  var invert = document.getElementById("invert").checked;
-  var table = document.getElementById("event_log");
-  var tr = table.getElementsByTagName("tr");
-  var visible_count = 0;
-  for (var i = 0; i < tr.length; ++i) {
-    var tds = tr[i].getElementsByTagName("td");
-    if (tds.length < 6) {
-      continue;
+// Reference: https://jsfiddle.net/ej7z5kdc/
+class FilteredTable {
+  static next_checkbox_id = 0;
+
+  constructor(columns, data, filter_col_indices, filter_placeholder) {
+    this.columns = columns;
+    this.input_data = data;
+    this.filter_col_indices = filter_col_indices;
+    this.filter_placeholder = filter_placeholder;
+  }
+
+  /** @returns {{match: boolean, $node: Element}[]} */
+  search(filter, invert) {
+    if (!this.$tbody) {
+      return;
     }
 
-    var event_type_td = tds[3];
-    var description_td = tds[5];
-    var matches = event_type_td.innerText.toLowerCase().indexOf(filter) > -1 ||
-                  description_td.innerText.toLowerCase().indexOf(filter) > -1;
-    if (filter == "" || (matches && !invert) || (!matches && invert)) {
-      tr[i].style.display = "";
-      ++visible_count;
-    }
-    else {
-      tr[i].style.display = "none";
+    let count = 0;
+    let results = this.data.map(entry => {
+      const searchable_data = entry.searchable_data;
+      const $node = entry.$node;
+      let matches = false;
+      if (filter === "") {
+        matches = true;
+      }
+      else {
+        for (let i = 0; i < searchable_data.length; ++i) {
+          if (searchable_data[i].indexOf(filter) >= 0) {
+            matches = true;
+            break;
+          }
+        }
+
+        if (invert) {
+          matches = !matches;
+        }
+      }
+      if (matches) {
+        ++count;
+      }
+      return {
+        match: matches,
+        $node,
+      };
+    });
+    return {count: count, results: results};
+  }
+
+  getControls() {
+    this._createTable();
+    return this.$controls;
+  }
+
+  getElement() {
+    this._createTable();
+    return this.$container;
+  }
+
+  _createTable() {
+    if (!this.$container) {
+      const $controls = document.createElement("div");
+      this.$controls = $controls;
+      let checkbox_id = "__checkbox_" + FilteredTable.next_checkbox_id++;
+      $controls.innerHTML = `
+<div><input type="text" class="filter" style="width: 100%;" placeholder="${this.filter_placeholder}"></div>
+<div>
+  <input type="checkbox" class="invert" id="${checkbox_id}">
+  <label for="${checkbox_id}"> Invert Selection</label>
+</div>
+<div>Displaying <div class="count" style="display: inline;"></div>/<div class="total" style="display: inline;"></div> elements.</div>`;
+
+      this.$filter = $controls.querySelector(".filter");
+      this.$invert = $controls.querySelector(".invert");
+      this.$count = $controls.querySelector(".count");
+      this.$total = $controls.querySelector(".total");
+
+      const $container = document.createElement("div");
+      this.$container = $container;
+      $container.innerHTML = `
+<table><tbody style="vertical-align: top"></tbody></table>`;
+
+      this.$tbody = $container.querySelector("tbody");
+
+      // Bind a filter function to the controls.
+      const filterData = () => {
+        const filter = this.$filter.value.toLowerCase();
+        const invert = this.$invert.checked;
+        let results = this.search(filter, invert);
+        results.results.forEach(entry => entry.$node.style.display = entry.match ? "" : "none");
+        this.$count.textContent = results.count;
+      };
+
+      this.$filter.addEventListener("blur", filterData);
+      var typing_timer;
+      this.$filter.addEventListener("keydown", () => {
+        clearTimeout(typing_timer);
+      });
+      this.$filter.addEventListener("keyup", (event) => {
+        clearTimeout(typing_timer);
+        if (event.key === "Enter") {
+          filterData();
+        }
+        else {
+          typing_timer = setTimeout(filterData, 250);
+        }
+      });
+      this.$invert.addEventListener("change", filterData);
+
+      // Populate the table header.
+      const $header_tr = document.createElement("tr");
+      $header_tr.style = "background-color: #a2c4fa";
+      this.columns.map(text => {
+        const $td = document.createElement("th");
+        $td.innerHTML = text;
+        $header_tr.appendChild($td);
+      });
+      this.$tbody.appendChild($header_tr);
+
+      // Populate the table contents, and save a reference to the DOM row nodes with our data.
+      this.data = this.input_data.map(entry => {
+        const $tr = document.createElement("tr");
+        let searchable_data = [];
+        for (let col = 0; col < entry.length; ++col) {
+          const $td = document.createElement("td");
+          $td.innerHTML = entry[col];
+          $tr.appendChild($td);
+          if (this.filter_col_indices.indexOf(col) >= 0) {
+            searchable_data.push(entry[col].toLowerCase());
+          }
+        }
+        this.$tbody.appendChild($tr);
+
+        return {
+          $node: $tr,
+          searchable_data: searchable_data,
+        };
+      });
+
+      this.$count.textContent = this.data.length;
+      this.$total.textContent = this.data.length;
     }
   }
-  document.getElementById("visible_count").innerText = visible_count;
 }
 </script>
 """ + f"""\
 <h2>Device Event Log</h2>
-<input type="text" id="filter" onkeyup="UpdateFilter()"
- placeholder="Filter by event type or description..." style="width: 100%;"><br>
-<input type="checkbox" id="invert" onclick="UpdateFilter()">
-<label for="invert"> Invert Selection</label>
-<br>Displaying <div id="visible_count" style="display: inline;">{len(rows)}</div>/{len(rows)} event notifications.
-<pre>{table_html}</pre>
+<div class="controls"></div>
+<pre><div class="table"></div></pre>
+<script>
+const column_headers = {repr(table_columns)};
+const table_data = [
+{table_data}
+];
+const filtered_table = new FilteredTable(column_headers, table_data, [3, 5], "Filter by event type or description...");
+document.body.querySelector(".controls").appendChild(filtered_table.getControls());
+document.body.querySelector(".table").appendChild(filtered_table.getElement());
+</script>
 """
 
         self._add_page(name='event_log', html_body=body_html, title="Event Log")
