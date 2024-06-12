@@ -43,11 +43,21 @@ namespace messages {
  *
  * The message payload specifies the length of each string (in bytes). It is
  * followed by each of the listed version strings consecutively. The strings are
- * _not_ null terminated.
+ * _not_ null-terminated.
  *
  * ```
  * {MessageHeader, VersionInfoMessage, "Firmware Version", "Engine Version",
  *  "OS Version", "Receiver Version"}
+ * ```
+ *
+ * The following is an example of extracting the firmware and engine version
+ * strings from a byte array containing the entire message:
+ * ```cpp
+ * auto message = *reinterpret_cast<const VersionInfoMessage*>(buffer);
+ * buffer += sizeof(VersionInfoMessage);
+ * std::string fw_version(buffer, message.fw_version_length);
+ * buffer += message.fw_version_length;
+ * std::string engine_version(buffer, message.engine_version_length);
  * ```
  */
 struct P1_ALIGNAS(4) VersionInfoMessage : public MessagePayload {
@@ -70,20 +80,6 @@ struct P1_ALIGNAS(4) VersionInfoMessage : public MessagePayload {
   uint8_t rx_version_length = 0;
 
   uint8_t reserved[4] = {0};
-
-  /**
-   * The beginning of the firmware version string.
-   *
-   * All other version strings follow immediately after this one in the data
-   * buffer. For example, the FusionEngine version string can be obtained as
-   * follows:
-   * ```cpp
-   * std::string engine_version_str(
-   *     fw_version_str + message.fw_version_length,
-   *     message.engine_version_length);
-   * ```
-   */
-  //char fw_version_str[0];
 };
 
 /**
@@ -153,19 +149,30 @@ inline p1_ostream& operator<<(p1_ostream& stream, DeviceType val) {
  *        1.0).
  * @ingroup device_status
  *
- * This message contains ID data for each of the following, where available:
- * - HW - A unique ROM identifier pulled from the device HW (for example, a CPU
- *   serial number)
+ * This message contains ID fields for each of the following, where applicable.
+ * - Hardware - A unique ROM identifier pulled from the device hardware (for
+ *   example, a CPU serial number)
  * - User - A value set by the user to identify a device
  * - Receiver - A unique ROM identifier pulled from the GNSS receiver
  *
- * The message payload specifies the length of each string (in bytes). It is
- * followed by each of the listed IDs consecutively. The values are _not_ null
- * terminated and the way each field is populated (strings or binary) depends on
- * the type of device, indicated by @ref device_type.
+ * The message payload specifies the length of each field (in bytes), and is
+ * followed by each of the ID values. ID values may be strings or binary,
+ * depending on the type of device (@ref device_type). Strings are _not_
+ * null-terminated.
  *
  * ```
- * {MessageHeader, VersionInfoMessage, "HW ID", "User ID", "Receiver ID"}
+ * {MessageHeader, DeviceIDMessage, "HW ID", "User ID", "Receiver ID"}
+ * ```
+ *
+ * The following is an example of extracting the hardware and user IDs from a
+ * byte array containing the entire message (assuming both are strings for this
+ * example device):
+ * ```cpp
+ * auto message = *reinterpret_cast<const DeviceIDMessage*>(buffer);
+ * buffer += sizeof(DeviceIDMessage);
+ * std::string hw_id(buffer, message.hw_id_length);
+ * buffer += message.hw_id_length;
+ * std::string user_id(buffer, message.user_id_length);
  * ```
  */
 struct P1_ALIGNAS(4) DeviceIDMessage : public MessagePayload {
@@ -178,7 +185,7 @@ struct P1_ALIGNAS(4) DeviceIDMessage : public MessagePayload {
   /** The type of device this message originated from.*/
   DeviceType device_type = DeviceType::UNKNOWN;
 
-  /** The length of the HW ID (in bytes). */
+  /** The length of the harware ID (in bytes). */
   uint8_t hw_id_length = 0;
 
   /** The length of the user specified ID (in bytes). */
@@ -188,25 +195,20 @@ struct P1_ALIGNAS(4) DeviceIDMessage : public MessagePayload {
   uint8_t receiver_id_length = 0;
 
   uint8_t reserved[4] = {0};
-
-  /**
-   * The beginning of the hw ID data.
-   *
-   * All other ID strings follow immediately after this one in the data buffer.
-   * For example, the user ID can be obtained as follows:
-   * ```cpp
-   * std::vector<uint8_t> user_id_data(
-   *     hw_id_data + message.hw_id_length,
-   *     hw_id_data + message.hw_id_length + message.user_id_length);
-   * ```
-   */
-  //uint8_t hw_id_data[0];
 };
 
 /**
  * @brief Notification of a system event for logging purposes (@ref
  *        MessageType::EVENT_NOTIFICATION, version 1.0).
  * @ingroup device_status
+ *
+ * This message is followed by a string describing the event or additional
+ * binary content, depending on the type of event. The length of the description
+ * is @ref event_description_len_bytes. Strings are _not_ null-terminated.
+ *
+ * ```
+ * {MessageHeader, EventNotificationMessage, "Description"}
+ * ```
  */
 struct P1_ALIGNAS(4) EventNotificationMessage : public MessagePayload {
   enum class EventType : uint8_t {
@@ -278,14 +280,6 @@ struct P1_ALIGNAS(4) EventNotificationMessage : public MessagePayload {
   uint16_t event_description_len_bytes = 0;
 
   uint8_t reserved2[2] = {0};
-
-  /**
-   * This is a dummy entry to provide a pointer to this offset.
-   *
-   * This is used for populating string describing the event, or other binary
-   * content where applicable.
-   */
-  //char* event_description[0];
 };
 
 /**
