@@ -234,7 +234,7 @@ class Analyzer(object):
         figure['layout']['yaxis2'].update(title="Interval (sec)", rangemode="tozero")
 
         # Read the pose data to get P1 and GPS timestamps.
-        result = self.reader.read(message_types=[PoseMessage], source_ids=self.source_ids, **self.params)
+        result = self.reader.read(message_types=[PoseMessage], source_ids=self.default_source_id, **self.params)
         pose_data = result[PoseMessage.MESSAGE_TYPE]
 
         if len(pose_data.p1_time) > 0:
