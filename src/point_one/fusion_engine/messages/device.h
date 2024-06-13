@@ -270,7 +270,7 @@ struct P1_ALIGNAS(4) EventNotificationMessage : public MessagePayload {
 
   uint8_t reserved1[3] = {0};
 
-  /** The current system timestamp (in ns).*/
+  /** The system time when the event occurred (in ns).*/
   int64_t system_time_ns = 0;
 
   /** A bitmask of flags associated with the event. */
