@@ -425,10 +425,10 @@ inline p1_ostream& operator<<(p1_ostream& stream, GearType val) {
  * describing the vehicle sensor configuration (speed data signed/unsigned,
  * etc.).
  *
- * Some platforms may have an additional voltage signal used to indicate
- * direction of motion, have direction or gear information available from a
- * vehicle CAN bus, etc. If direction/gear information is available, it may be
- * provided in the @ref gear field.
+ * Some platforms may have an additional signal used to indicate direction of
+ * motion, have direction or gear information available from a vehicle CAN bus,
+ * etc. If direction/gear information is available, it may be provided in the
+ * @ref gear field.
  *
  * To send wheel tick counts from software, use @ref WheelTickInput instead.
  *
@@ -642,10 +642,10 @@ struct P1_ALIGNAS(4) RawWheelSpeedOutput : public MessagePayload {
  * describing the vehicle sensor configuration (speed data signed/unsigned,
  * etc.).
  *
- * Some platforms may have an additional voltage signal used to indicate
- * direction of motion, have direction or gear information available from a
- * vehicle CAN bus, etc. If direction/gear information is available, it may be
- * provided in the @ref gear field.
+ * Some platforms may have an additional signal used to indicate direction of
+ * motion, have direction or gear information available from a vehicle CAN bus,
+ * etc. If direction/gear information is available, it may be provided in the
+ * @ref gear field.
  *
  * To send wheel tick counts from software, use @ref VehicleTickInput instead.
  *
@@ -809,20 +809,18 @@ struct P1_ALIGNAS(4) RawVehicleSpeedOutput : public MessagePayload {
  * @ingroup measurement_messages
  *
  * This message is an input to the device, used to convey the wheel encoder tick
- * counts for one or more wheels, received through software (e.g., vehicle CAN
- * bus) or captured in hardware from external voltage pulses. The number and
- * type of wheels expected, and the interpretation of the tick count values,
- * varies by vehicle.
+ * counts for one or more wheels. The number and type of wheels expected, and
+ * the interpretation of the tick count values, varies by vehicle.
  *
  * To use wheel encoder data, you must first configure the device by issuing a
  * @ref SetConfigMessage message containing a @ref WheelConfig payload
  * describing the vehicle sensor configuration (tick counts signed/unsigned,
  * etc.).
  *
- * Some platforms may have an additional voltage signal used to indicate
- * direction of motion, have direction or gear information available from a
- * vehicle CAN bus, etc. If direction/gear information is available, it may be
- * provided in the @ref gear field.
+ * Some platforms may have an additional signal used to indicate direction of
+ * motion, have direction or gear information available from a vehicle CAN bus,
+ * etc. If direction/gear information is available, it may be provided in the
+ * @ref gear field.
  *
  * See also @ref RawWheelTickOutput for measurement output.
  */
@@ -878,9 +876,14 @@ struct P1_ALIGNAS(4) WheelTickInput : public MessagePayload {
  * @ingroup measurement_messages
  *
  * This message is an output from the device that contains wheel encoder tick
- * counts for each individual wheel on the vehicle. These measurements come
- * directly from the sensor, and do not have any corrections or calibration
- * applied.
+ * counts for each individual wheel on the vehicle. Wheel ticks may be captured
+ * in hardware from an external voltage pulse, conveyed via software using a
+ * @ref WheelTickInput message, or decoded from a vehicle CAN bus. The number
+ * and type of wheels expected, and the interpretation of the tick count values,
+ * varies by vehicle.
+ *
+ * These measurements come directly from the sensor, and do not have any
+ * corrections or calibration applied.
  *
  * See also @ref WheelTickInput.
  */
@@ -942,20 +945,20 @@ struct P1_ALIGNAS(4) RawWheelTickOutput : public MessagePayload {
  *
  * This message is an input to the device, used to convey a single wheel encoder
  * tick count representing the along-track speed of the vehicle
- * (forward/backward). Tick data may be received through software (e.g., vehicle
- * CAN bus) or captured in hardware from external voltage pulses.The
- * interpretation of the tick count values varies by vehicle.
+ * (forward/backward). The interpretation of the tick count values varies by
+ * vehicle.
  *
  * To use wheel encoder data, you must first configure the device by issuing a
  * @ref SetConfigMessage message containing either a @ref WheelConfig payload
- * (software source) or @ref HardwareTickConfig payload (hardware voltage)
  * describing the vehicle sensor configuration (tick counts signed/unsigned,
- * etc.).
+ * etc.). Note that you should _not_ use the @ref HardwareTickConfig payload,
+ * which is used when configuring the device to capture a wheel tick voltage
+ * signal in hardware.
  *
- * Some platforms may have an additional voltage signal used to indicate
- * direction of motion, have direction or gear information available from a
- * vehicle CAN bus, etc. If direction/gear information is available, it may be
- * provided in the @ref gear field.
+ * Some platforms may have an additional signal used to indicate direction of
+ * motion, have direction or gear information available from a vehicle CAN bus,
+ * etc. If direction/gear information is available, it may be provided in the
+ * @ref gear field.
  *
  * See also @ref RawVehicleTickOutput for measurement output.
  */
@@ -994,6 +997,11 @@ struct P1_ALIGNAS(4) VehicleTickInput : public MessagePayload {
  *
  * This message is an output from the device that contains a wheel encoder tick
  * count representing the along-track speed of the vehicle (forward/backward).
+ * Wheel ticks may be captured in hardware from an external voltage pulse,
+ * conveyed via software using a @ref VehicleTickInput message, or decoded from
+ * a vehicle CAN bus. The interpretation of the tick count values varies by
+ * vehicle.
+ *
  * This value comes directly from the sensor, and does not have any corrections
  * or calibration applied.
  *

@@ -1,5 +1,5 @@
 from .internal_defs import *
-from ..control import EventNotificationMessage
+from ..device import EventNotificationMessage
 
 
 class DiagEventNotificationMessage(EventNotificationMessage):

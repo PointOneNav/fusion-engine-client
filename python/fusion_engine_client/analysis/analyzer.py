@@ -236,7 +236,7 @@ class Analyzer(object):
         figure['layout']['yaxis2'].update(title="Interval (sec)", rangemode="tozero")
 
         # Read the pose data to get P1 and GPS timestamps.
-        result = self.reader.read(message_types=[PoseMessage], source_ids=self.source_ids, **self.params)
+        result = self.reader.read(message_types=[PoseMessage], source_ids=self.default_source_id, **self.params)
         pose_data = result[PoseMessage.MESSAGE_TYPE]
 
         if len(pose_data.p1_time) > 0:
@@ -1587,7 +1587,8 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             # direction. This will also be an absolute value, so may not match the wheel data if it is signed and the
             # vehicle is going backward.
             else:
-                result = self.reader.read(message_types=[PoseAuxMessage], source_ids=self.source_ids, **self.params)
+                result = self.reader.read(message_types=[PoseAuxMessage], source_ids=self.default_source_id,
+                                          **self.params)
                 pose_aux_data = result[PoseAuxMessage.MESSAGE_TYPE]
                 if len(pose_aux_data.p1_time) != 0:
                     self.logger.warning('Body forward velocity not available. Estimating |speed| from ENU velocity. '
