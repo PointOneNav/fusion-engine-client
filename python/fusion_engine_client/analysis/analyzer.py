@@ -2997,9 +2997,12 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
 
         message_table = _data_to_table(['Message Type', 'Count'], [message_types, message_counts])
 
+        params_no_numpy = copy.deepcopy(self.params)
+        params_no_numpy['return_numpy'] = False
+
         # Create a software version table.
         result = self.reader.read(message_types=[VersionInfoMessage.MESSAGE_TYPE], remove_nan_times=False,
-                                  **self.params)
+                                  **params_no_numpy)
         if len(result[VersionInfoMessage.MESSAGE_TYPE].messages) != 0:
             version = result[VersionInfoMessage.MESSAGE_TYPE].messages[-1]
             version_types = {'fw': 'Firmware', 'engine': 'FusionEngine', 'os': 'OS', 'rx': 'GNSS Receiver'}
@@ -3009,7 +3012,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             version_table = 'No version information.'
 
         # Check the last CrashLog
-        result = self.reader.read(message_types=[PlatformStorageDataMessage], remove_nan_times=False, **self.params)
+        result = self.reader.read(message_types=[PlatformStorageDataMessage], remove_nan_times=False, **params_no_numpy)
         crash_type, crash_count = self._parse_crash_log(result[PlatformStorageDataMessage.MESSAGE_TYPE].messages)
         crash_table = _data_to_table(['Last Crash Type', 'Crash Count'], [[crash_type.name], [crash_count]])
 
