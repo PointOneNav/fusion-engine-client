@@ -2341,9 +2341,12 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
 
         message_table = _data_to_table(['Message Type', 'Count'], [message_types, message_counts])
 
+        params_no_numpy = copy.deepcopy(self.params)
+        params_no_numpy['return_numpy'] = False
+
         # Create a software version table.
         result = self.reader.read(message_types=[VersionInfoMessage.MESSAGE_TYPE], remove_nan_times=False,
-                                  **self.params)
+                                  **params_no_numpy)
         if len(result[VersionInfoMessage.MESSAGE_TYPE].messages) != 0:
             version = result[VersionInfoMessage.MESSAGE_TYPE].messages[-1]
             version_types = {'fw': 'Firmware', 'engine': 'FusionEngine', 'os': 'OS', 'rx': 'GNSS Receiver'}
