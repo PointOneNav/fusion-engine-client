@@ -122,7 +122,7 @@ class FileIndex(object):
     # - Fractional timestamp is floored so time 123.4 becomes 123. The data read should not assume that an entry's
     #   timestamp is its exact time
     _RAW_DTYPE = np.dtype([('int', '<u4'), ('type', '<u2'), ('offset', '<u8')])
-
+    _INVALID_INDEX = 0xFFFFFFFFFFFFFFFF
     _DTYPE = np.dtype([('time', '<f8'), ('type', '<u2'), ('offset', '<u8'), ('message_index', '<u8')])
 
     def __init__(self,
@@ -282,7 +282,7 @@ class FileIndex(object):
             data = self._data
             if data['type'][-1] != self.enum_class_invalid and data_path is not None:
                 file_size_bytes = os.stat(data_path).st_size
-                data = np.append(data, np.array((np.nan, self.enum_class_invalid, file_size_bytes, -1),
+                data = np.append(data, np.array((np.nan, self.enum_class_invalid, file_size_bytes, self._INVALID_INDEX),
                                                 dtype=FileIndex._DTYPE))
 
             raw_data = FileIndex._to_raw(data)
