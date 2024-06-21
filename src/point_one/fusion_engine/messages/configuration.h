@@ -682,6 +682,7 @@ enum class VehicleModel : uint16_t {
   MAN_TGX = 140,
 
   FACTION = 160,
+  FACTION_V2 = 161,
 
   LINCOLN_MKZ = 180,
 
@@ -731,6 +732,8 @@ P1_CONSTEXPR_FUNC const char* to_string(VehicleModel vehicle_model) {
       return "MAN_TGX";
     case VehicleModel::FACTION:
       return "FACTION";
+    case VehicleModel::FACTION_V2:
+      return "FACTION_V2";
     case VehicleModel::LINCOLN_MKZ:
       return "LINCOLN_MKZ";
     case VehicleModel::BMW_7:
