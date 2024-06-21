@@ -106,6 +106,7 @@ class VehicleModel(IntEnum):
     MAN_TGX = 140
 
     FACTION = 160
+    FACTION_V2 = 161
 
     LINCOLN_MKZ = 180
 
