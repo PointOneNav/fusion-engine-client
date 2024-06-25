@@ -275,7 +275,7 @@ def get_message_type_string(protocol: ProtocolType, message_id: int):
 def _define_enum_config_classes(enum_type, construct_type=Int8ul):
     class EnumVal(NamedTuple):
         value: enum_type = list(enum_type)[0]
-    construct = AutoEnum(construct_type, enum_type)
+    construct = Struct("value" / AutoEnum(construct_type, enum_type))
     return EnumVal, construct
 
 
