@@ -753,6 +753,35 @@ class _ConfigClassGenerator:
 _conf_gen = _ConfigClassGenerator()
 
 
+########################################################################################################################
+# Device configuration settings (lever arms, orientation, wheel speed settings, etc.).
+#
+# The classes below may be passed to a SetConfigMessage or returned by a ConfigResponseMessage using the `config_object`
+# field. For example:
+# ```
+# SetConfigMessage(GNSSLeverArmConfig(0.4, 0.0, 1.2))
+# SetConfigMessage(EnabledGNSSSystemsConfig(SatelliteType.GPS, SatelliteType.GALILEO))
+#
+# GetConfigMessage(GNSSLeverArmConfig)
+# config_response.config_object.x == 0.4
+# ```
+#
+# Note that many of these configuration classes share common parameters, and their fields are defined by their specified
+# base classes. For example, `GNSSLeverArmConfig` inherits from `Point3F` and contains `x`, `y`, and `z` fields as
+# follows:
+# ```
+# class Point3F(NamedTuple):
+#     """!
+#     @brief 3D coordinate specifier, stored as 32-bit float values.
+#     """
+#     x: float = math.nan
+#     y: float = math.nan
+#     z: float = math.nan
+# class GNSSLeverArmConfig(_conf_gen.Point3F): ...
+# ```
+########################################################################################################################
+
+
 @_conf_gen.create_config_class(ConfigType.DEVICE_LEVER_ARM, _conf_gen.Point3FConstruct)
 class DeviceLeverArmConfig(_conf_gen.Point3F):
     """!
@@ -950,6 +979,33 @@ class HardwareTickConfig(_conf_gen.HardwareTickConfig):
     pass
 
 
+@_conf_gen.create_config_class(ConfigType.INVALID, _conf_gen.EmptyConstruct)
+class InvalidConfig(_conf_gen.Empty):
+    """!
+    @brief Placeholder for empty invalid configuration messages.
+    """
+    pass
+
+
+########################################################################################################################
+# Input/output interface controls.
+#
+# When configuring I/O interfaces, you must specify the desired interface:
+#
+# Examples:
+# ```
+# SetConfigMessage(
+#     InterfaceDiagnosticMessagesEnabled(True),
+#     interface=InterfaceID(TransportType.TCP, 0))
+#
+# GetConfigMessage(
+#     InterfaceDiagnosticMessagesEnabled,
+#     interface=InterfaceID(TransportType.TCP, 0))
+# config_response.config_object.value == True
+# ```
+########################################################################################################################
+
+
 @_conf_gen.create_interface_config_class(InterfaceConfigType.BAUD_RATE, _conf_gen.UInt32Construct)
 class InterfaceBaudRateConfig(_conf_gen.IntegerVal):
     """!
@@ -1002,14 +1058,6 @@ class InterfaceSocketTypeConfig(_conf_gen.SocketTypeVal):
 class InterfaceDiagnosticMessagesEnabled(_conf_gen.BoolVal):
     """!
     @brief Enable/disable output of diagnostic data on this interface.
-    """
-    pass
-
-
-@_conf_gen.create_config_class(ConfigType.INVALID, _conf_gen.EmptyConstruct)
-class InvalidConfig(_conf_gen.Empty):
-    """!
-    @brief Placeholder for empty invalid configuration messages.
     """
     pass
 
