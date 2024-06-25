@@ -1187,7 +1187,9 @@ class GetConfigMessage(MessagePayload):
 
     def __init__(self,
                  config_type: Union[ConfigType, _ConfigClassGenerator.ConfigClass] = ConfigType.INVALID,
-                 request_source: ConfigurationSource = ConfigurationSource.ACTIVE, interface_header: Optional[InterfaceConfigSubmessage]=None):
+                 request_source: ConfigurationSource = ConfigurationSource.ACTIVE,
+                 interface: Optional[InterfaceID] = None,
+                 interface_header: Optional[InterfaceConfigSubmessage] = None):
         self.request_source = request_source
 
         if isinstance(config_type, ConfigType):
@@ -1195,6 +1197,11 @@ class GetConfigMessage(MessagePayload):
         else:
             self.config_type = config_type.GetType()
 
+        if interface_header is None and interface is not None:
+            if issubclass(config_type, _ConfigClassGenerator.InterfaceConfigClass):
+                interface_header = InterfaceConfigSubmessage(interface=interface, subtype=config_type.GetSubtype())
+            else:
+                raise ValueError('Interface configuration subtype not specified. Cannot construct header.')
         self.interface_header = interface_header
 
         self.__validate_interface_header()
