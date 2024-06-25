@@ -58,6 +58,7 @@ class InterfaceConfigType(IntEnum):
   ENABLED = 5
   DIRECTION = 6
   SOCKET_TYPE = 7
+  ALL_PARAMETERS = 8
 
 
 class Direction(IntEnum):
@@ -997,6 +998,9 @@ class InvalidConfig(_conf_gen.Empty):
 # SetConfigMessage(
 #     InterfaceDiagnosticMessagesEnabled(True),
 #     interface=InterfaceID(TransportType.TCP, 0))
+# SetConfigMessage(
+#     TCPConfig(direction=TransportDirection.CLIENT, remote_address='remote-hostname', port=1234),
+#     interface=InterfaceID(TransportType.TCP, 1))
 #
 # GetConfigMessage(
 #     InterfaceDiagnosticMessagesEnabled,
@@ -1060,6 +1064,105 @@ class InterfaceDiagnosticMessagesEnabled(_conf_gen.BoolVal):
     @brief Enable/disable output of diagnostic data on this interface.
     """
     pass
+
+
+_TCPConfigConstruct = Struct(
+    "enabled" / Flag,
+    "direction" / AutoEnum(Int8ul, TransportDirection),
+    "port"/ Int16ul,
+    "remote_address" / PaddedString(64, 'utf8'),
+)
+
+
+@_conf_gen.create_interface_config_class(InterfaceConfigType.ALL_PARAMETERS, _TCPConfigConstruct,
+                                         transport_type=TransportType.TCP)
+class TCPConfig(NamedTuple):
+    """!
+    @brief TCP client/server configuration settings.
+    """
+    enabled: bool = True
+    direction: TransportDirection = TransportDirection.SERVER
+    port: int = 0
+    remote_address: str = ''
+
+
+_UDPConfigConstruct = Struct(
+    "enabled" / Flag,
+    Padding(1),
+    "port"/ Int16ul,
+    "remote_address" / PaddedString(64, 'utf8'),
+)
+
+
+@_conf_gen.create_interface_config_class(InterfaceConfigType.ALL_PARAMETERS, _UDPConfigConstruct,
+                                         transport_type=TransportType.UDP)
+class UDPConfig(NamedTuple):
+    """!
+    @brief UDP interface configuration settings.
+    """
+    enabled: bool = True
+    port: int = 0
+    remote_address: str = ''
+
+
+_WebsocketConfigConstruct = Struct(
+    "enabled" / Flag,
+    "direction" / AutoEnum(Int8ul, TransportDirection),
+    "port"/ Int16ul,
+    "remote_address" / PaddedString(64, 'utf8'),
+)
+
+
+@_conf_gen.create_interface_config_class(InterfaceConfigType.ALL_PARAMETERS, _WebsocketConfigConstruct,
+                                         transport_type=TransportType.WEBSOCKET)
+class WebsocketConfig(NamedTuple):
+    """!
+    @brief WebSocket client/server configuration settings.
+    """
+    enabled: bool = True
+    direction: TransportDirection = TransportDirection.SERVER
+    port: int = 0
+    remote_address: str = ''
+
+
+_UNIXSocketConfigConstruct = Struct(
+    "enabled" / Flag,
+    "direction" / AutoEnum(Int8ul, TransportDirection),
+    "socket_type" / AutoEnum(Int8ul, SocketType),
+    Padding(1),
+    "path" / PaddedString(64, 'utf8'),
+)
+
+
+@_conf_gen.create_interface_config_class(InterfaceConfigType.ALL_PARAMETERS, _UNIXSocketConfigConstruct,
+                                         transport_type=TransportType.UNIX)
+class UNIXSocketConfig(NamedTuple):
+    """!
+    @brief UNIX domain socket client/server configuration settings.
+    """
+    enabled: bool = True
+    direction: TransportDirection = TransportDirection.SERVER
+    socket_type: SocketType = SocketType.STREAM
+    path: str = ''
+
+
+_SerialConfigConstruct = Struct(
+    "enabled" / Flag,
+    Padding(3),
+    "baud_rate" / Int32ul,
+    "path" / PaddedString(64, 'utf8'),
+)
+
+
+@_conf_gen.create_interface_config_class(InterfaceConfigType.ALL_PARAMETERS, _SerialConfigConstruct,
+                                         transport_type=TransportType.SERIAL)
+class SerialConfig(NamedTuple):
+    """!
+    @brief Serial port (UART) configuration settings.
+    """
+    enabled: bool = True
+    baud_rate: int = 0
+    path: str = ''
 
 
 class InterfaceConfigSubmessage(NamedTuple):
