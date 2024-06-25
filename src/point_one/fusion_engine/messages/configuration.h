@@ -1545,12 +1545,14 @@ enum class InterfaceConfigType : uint8_t {
   BAUD_RATE = 2,
 
   /**
-   * Configure the network address for a client to connect to.
+   * Configure the network address for a client to connect to, or the path to a
+   * local file.
    *
-   * For UNIX domain sockets, this string represents the path to the local
-   * socket file.
+   * For UNIX domain sockets and serial ports, this string represents the path
+   * to the local socket or device file.
    *
    * Valid for:
+   * - @ref TransportType::SERIAL
    * - @ref TransportType::TCP
    * - @ref TransportType::UDP
    * - @ref TransportType::UNIX
@@ -1558,6 +1560,8 @@ enum class InterfaceConfigType : uint8_t {
    * Payload format: `char[64]` containing a NULL terminated string.
    */
   REMOTE_ADDRESS = 3,
+  /** Alias for `REMOTE_ADDRESS`. */
+  PATH = 3,
 
   /**
    * Configure the network port.

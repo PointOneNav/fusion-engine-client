@@ -53,6 +53,7 @@ class InterfaceConfigType(IntEnum):
   OUTPUT_DIAGNOSTICS_MESSAGES = 1
   BAUD_RATE = 2
   REMOTE_ADDRESS = 3
+  PATH = 3  # Alias for REMOTE_ADDRESS
   PORT = 4
   ENABLED = 5
   DIRECTION = 6
