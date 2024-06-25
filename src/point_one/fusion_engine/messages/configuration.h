@@ -2238,8 +2238,8 @@ inline p1_ostream& operator<<(p1_ostream& stream, MessageRate val) {
  * @ingroup io_interfaces
  */
 struct P1_ALIGNAS(4) TCPConfig {
+  uint8_t enabled = 1;
   TransportDirection direction = TransportDirection::SERVER;
-  uint8_t reserved[1] = {0};
   uint16_t port = 0;
   char remote_address[64] = {0};
 };
@@ -2249,7 +2249,8 @@ struct P1_ALIGNAS(4) TCPConfig {
  * @ingroup io_interfaces
  */
 struct P1_ALIGNAS(4) UDPConfig {
-  uint8_t reserved[2] = {0};
+  uint8_t enabled = 1;
+  uint8_t reserved[1] = {0};
   uint16_t port = 0;
   char remote_address[64] = {0};
 };
@@ -2259,8 +2260,8 @@ struct P1_ALIGNAS(4) UDPConfig {
  * @ingroup io_interfaces
  */
 struct P1_ALIGNAS(4) WebsocketConfig {
+  uint8_t enabled = 1;
   TransportDirection direction = TransportDirection::SERVER;
-  uint8_t reserved[1] = {0};
   uint16_t port = 0;
   char remote_address[64] = {0};
 };
@@ -2270,9 +2271,10 @@ struct P1_ALIGNAS(4) WebsocketConfig {
  * @ingroup io_interfaces
  */
 struct P1_ALIGNAS(4) UNIXSocketConfig {
+  uint8_t enabled = 1;
   TransportDirection direction = TransportDirection::SERVER;
   UNIXSocketType socket_type = UNIXSocketType::STREAM;
-  uint8_t reserved[2] = {0};
+  uint8_t reserved[1] = {0};
   char path[64] = {0};
 };
 
@@ -2281,6 +2283,8 @@ struct P1_ALIGNAS(4) UNIXSocketConfig {
  * @ingroup io_interfaces
  */
 struct P1_ALIGNAS(4) SerialConfig {
+  uint8_t enabled = 1;
+  uint8_t reserved[3] = {0};
   uint32_t baud_rate = 0;
   char device_path[64] = {0};
 };
