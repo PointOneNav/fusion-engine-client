@@ -2235,7 +2235,7 @@ inline p1_ostream& operator<<(p1_ostream& stream, MessageRate val) {
 }
 
 /**
- * @param TCP client/server interface configuration parameters.
+ * @brief TCP client/server interface configuration parameters.
  * @ingroup io_interfaces
  */
 struct P1_ALIGNAS(4) TCPConfig {
@@ -2246,7 +2246,7 @@ struct P1_ALIGNAS(4) TCPConfig {
 };
 
 /**
- * @param UDP interface configuration parameters.
+ * @brief UDP interface configuration parameters.
  * @ingroup io_interfaces
  */
 struct P1_ALIGNAS(4) UDPConfig {
@@ -2257,7 +2257,7 @@ struct P1_ALIGNAS(4) UDPConfig {
 };
 
 /**
- * @param WebSocket client/server interface configuration parameters.
+ * @brief WebSocket client/server interface configuration parameters.
  * @ingroup io_interfaces
  */
 struct P1_ALIGNAS(4) WebsocketConfig {
@@ -2268,7 +2268,7 @@ struct P1_ALIGNAS(4) WebsocketConfig {
 };
 
 /**
- * @param UNIX domain socket client/server interface configuration parameters.
+ * @brief UNIX domain socket client/server interface configuration parameters.
  * @ingroup io_interfaces
  */
 struct P1_ALIGNAS(4) UNIXSocketConfig {
@@ -2280,7 +2280,7 @@ struct P1_ALIGNAS(4) UNIXSocketConfig {
 };
 
 /**
- * @param Serial port (UART) interface configuration parameters.
+ * @brief Serial port (UART) interface configuration parameters.
  * @ingroup io_interfaces
  */
 struct P1_ALIGNAS(4) SerialConfig {
