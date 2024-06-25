@@ -2854,8 +2854,8 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         else:
             id_to_name = {}
 
-        figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=True,
-                               subplot_titles=['Code Execution'])
+        figure = make_subplots(rows=2, cols=1, print_grid=False, shared_xaxes=True,
+                               subplot_titles=['Code Execution', 'Execution Durations'])
 
         figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
         figure['layout']['xaxis'].update(title=self.system_time_label)
@@ -2872,21 +2872,36 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             action = point_data[1, :].astype(int)
             color = plotly.colors.DEFAULT_PLOTLY_COLORS[i % len(plotly.colors.DEFAULT_PLOTLY_COLORS)]
 
-            idx = action == ProfileExecutionEntry.START
-            if np.any(idx):
-                figure.add_trace(go.Scattergl(x=time_sec[idx], y=[id] * np.sum(idx),
+            start_idx = action == ProfileExecutionEntry.START
+            if np.any(start_idx):
+                figure.add_trace(go.Scattergl(x=time_sec[start_idx], y=[id] * np.sum(start_idx),
                                               name=name + ' (start)', legendgroup=id, hoverlabel={'namelength': -1},
                                               mode='markers',
                                               marker={'color': color, 'size': 12, 'symbol': 'triangle-right'}),
                                  1, 1)
 
-            idx = action == ProfileExecutionEntry.STOP
-            if np.any(idx):
-                figure.add_trace(go.Scattergl(x=time_sec[idx], y=[id] * np.sum(idx),
+            stop_idx = action == ProfileExecutionEntry.STOP
+            if np.any(stop_idx):
+                durations = np.zeros(np.sum(stop_idx))
+                for i, idx in enumerate(np.where(stop_idx)[0]):
+                    filtered_time_sec = time_sec[:idx]
+                    filtered_start_idx = start_idx[:idx]
+                    matches = filtered_time_sec[filtered_start_idx]
+                    if len(matches) > 0:
+                        durations[i] = time_sec[idx] - matches[-1]
+
+                figure.add_trace(go.Scattergl(x=time_sec[stop_idx], y=[id] * np.sum(stop_idx),
                                               name=name + ' (stop)', legendgroup=id, hoverlabel={'namelength': -1},
+                                              text = [f'Duration {d}s' for d in durations],
                                               mode='markers',
                                               marker={'color': color, 'size': 12, 'symbol': 'triangle-left-open'}),
                                  1, 1)
+                
+                figure.add_trace(go.Scattergl(x=time_sec[stop_idx], y=durations,
+                                name=name, legendgroup=id, hoverlabel={'namelength': -1},
+                                mode='markers'),
+                    2, 1)
+
 
         self._add_figure(name="profile_execution", figure=figure, title="Profiling: Code Execution")
 
