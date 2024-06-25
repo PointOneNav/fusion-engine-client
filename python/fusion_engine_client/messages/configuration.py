@@ -320,7 +320,7 @@ class _ConfigClassGenerator:
 
     class InterfaceConfigClass(ConfigClass):
         """!
-        @brief Abstract base class for accessing configuration types.
+        @brief Abstract base class for accessing I/O interface configuration types.
         """
         @classmethod
         def GetType(cls) -> ConfigType:

@@ -1603,7 +1603,8 @@ enum class InterfaceConfigType : uint8_t {
   UNIX_SOCKET_TYPE = 7,
 
   /**
-   * Configure all settings for the specified interface/transport type.
+   * Configure all settings for the specified interface/transport type in a
+   * single operation.
    *
    * Payload format depends on the @ref TransportType%:
    * - @ref TransportType::SERIAL - @ref SerialConfig
