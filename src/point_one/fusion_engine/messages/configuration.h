@@ -2287,7 +2287,7 @@ struct P1_ALIGNAS(4) SerialConfig {
   uint8_t enabled = 1;
   uint8_t reserved[3] = {0};
   uint32_t baud_rate = 0;
-  char device_path[64] = {0};
+  char path[64] = {0};
 };
 
 /**
