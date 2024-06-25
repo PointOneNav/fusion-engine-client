@@ -159,6 +159,7 @@ EMSCRIPTEN_BINDINGS(configuration) {
       .value("PEUGEOT_206", VehicleModel::PEUGEOT_206)
       .value("MAN_TGX", VehicleModel::MAN_TGX)
       .value("FACTION", VehicleModel::FACTION)
+      .value("FACTION_V2", VehicleModel::FACTION_V2)
       .value("LINCOLN_MKZ", VehicleModel::LINCOLN_MKZ)
       .value("BMW_7", VehicleModel::BMW_7)
       .value("BMW_MOTORRAD", VehicleModel::BMW_MOTORRAD)
@@ -297,11 +298,9 @@ EMSCRIPTEN_BINDINGS(configuration) {
       .value("INVALID", TransportType::INVALID)
       .value("SERIAL", TransportType::SERIAL)
       .value("FILE", TransportType::FILE)
-      .value("TCP_CLIENT", TransportType::TCP_CLIENT)
-      .value("TCP_SERVER", TransportType::TCP_SERVER)
-      .value("UDP_CLIENT", TransportType::UDP_CLIENT)
-      .value("UDP_SERVER", TransportType::UDP_SERVER)
-      .value("WEBSOCKET_SERVER", TransportType::WEBSOCKET_SERVER)
+      .value("TCP", TransportType::TCP)
+      .value("UDP", TransportType::UDP)
+      .value("WEBSOCKET", TransportType::WEBSOCKET)
       .value("CURRENT", TransportType::CURRENT)
       .value("ALL", TransportType::ALL);
 
