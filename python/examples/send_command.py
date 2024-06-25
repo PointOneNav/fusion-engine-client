@@ -68,6 +68,8 @@ The path to the target FusionEngine device:
     #                          protocol=ProtocolType.FUSION_ENGINE,
     #                          message_id=MessageType.POSE,
     #                          rate=MessageRate.ON_CHANGE)
+    # message = SetConfigMessage(InterfaceDirectionConfig(TransportDirection.SERVER),
+    #                            interface=InterfaceID(TransportType.TCP, 0))
     # message = FaultControlMessage(payload=FaultControlMessage.EnableGNSS(False))
 
     # Connect to the device.
