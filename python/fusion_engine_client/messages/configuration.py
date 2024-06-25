@@ -170,6 +170,19 @@ class TransportType(IntEnum):
     ALL = 255
 
 
+class InterfaceID(NamedTuple):
+    type: TransportType = TransportType.INVALID
+    index: int = 0
+
+
+_InterfaceIDConstructRaw = Struct(
+    "type" / AutoEnum(Int8ul, TransportType),
+    "index" / Int8ul,
+    Padding(2)
+)
+_InterfaceIDConstruct = NamedTupleAdapter(InterfaceID, _InterfaceIDConstructRaw)
+
+
 class TransportDirection(IntEnum):
     INVALID = 0
     SERVER = 1
@@ -355,7 +368,7 @@ class _ConfigClassGenerator:
             return InnerClass
         return inner
 
-    def create_interface_config_class(self, config_subtype, construct_class):
+    def create_interface_config_class(self, config_subtype, construct_class, transport_type: TransportType = None):
         """!
         @brief Decorator for generating InterfaceConfigClass children.
 
@@ -370,10 +383,18 @@ class _ConfigClassGenerator:
             InnerClass.__name__ = config_class.__name__
 
             # Register the construct with the MessageType.
-            self.INTERFACE_CONFIG_MAP[config_subtype] = NamedTupleAdapter(InnerClass, construct_class)
+            self.INTERFACE_CONFIG_MAP[(transport_type, config_subtype)] = NamedTupleAdapter(InnerClass, construct_class)
 
             return InnerClass
         return inner
+
+    def find_interface_config_construct(self, interface: InterfaceID, config_subtype: InterfaceConfigType):
+        construct_obj = _conf_gen.INTERFACE_CONFIG_MAP.get((interface.type, config_subtype), None)
+        if construct_obj is None:
+            construct_obj = _conf_gen.INTERFACE_CONFIG_MAP.get((None, config_subtype), None)
+            if construct_obj is None:
+                raise KeyError(f'No interface config mapping found for {interface}, config type {config_subtype}.')
+        return construct_obj
 
     class Point3F(NamedTuple):
         """!
@@ -992,19 +1013,6 @@ class InvalidConfig(_conf_gen.Empty):
     pass
 
 
-class InterfaceID(NamedTuple):
-    type: TransportType = TransportType.INVALID
-    index: int = 0
-
-
-_InterfaceIDConstructRaw = Struct(
-    "type" / AutoEnum(Int8ul, TransportType),
-    "index" / Int8ul,
-    Padding(2)
-)
-_InterfaceIDConstruct = NamedTupleAdapter(InterfaceID, _InterfaceIDConstructRaw)
-
-
 class InterfaceConfigSubmessage(NamedTuple):
     interface: InterfaceID = InterfaceID()
     subtype: InterfaceConfigType = InterfaceConfigType.INVALID
@@ -1093,7 +1101,7 @@ class SetConfigMessage(MessagePayload):
 
         if submessage:
             data = _InterfaceConfigSubmessageConstruct.build(submessage)
-            construct_obj = _conf_gen.INTERFACE_CONFIG_MAP[submessage.subtype]
+            construct_obj = _conf_gen.find_interface_config_construct(self.interface, submessage.subtype)
         else:
             data = bytes()
             construct_obj = _conf_gen.CONFIG_MAP[config_type]
@@ -1120,7 +1128,7 @@ class SetConfigMessage(MessagePayload):
             interface_header = _InterfaceConfigSubmessageConstruct.parse(header_data)
             subtype = interface_header.subtype
             self.interface = interface_header.interface
-            construct_obj = _conf_gen.INTERFACE_CONFIG_MAP[subtype]
+            construct_obj = _conf_gen.find_interface_config_construct(self.interface, subtype)
         else:
             construct_obj = _conf_gen.CONFIG_MAP[parsed.config_type]
 
@@ -1351,7 +1359,7 @@ class ConfigResponseMessage(MessagePayload):
 
         if submessage:
             data = _InterfaceConfigSubmessageConstruct.build(submessage)
-            construct_obj = _conf_gen.INTERFACE_CONFIG_MAP[submessage.subtype]
+            construct_obj = _conf_gen.find_interface_config_construct(self.interface, submessage.subtype)
         else:
             data = bytes()
             construct_obj = _conf_gen.CONFIG_MAP[config_type]
@@ -1381,7 +1389,7 @@ class ConfigResponseMessage(MessagePayload):
             interface_header = _InterfaceConfigSubmessageConstruct.parse(header_data)
             subtype = interface_header.subtype
             self.interface = interface_header.interface
-            construct_obj = _conf_gen.INTERFACE_CONFIG_MAP[subtype]
+            construct_obj = _conf_gen.find_interface_config_construct(self.interface, subtype)
         else:
             self.interface = None
             construct_obj = _conf_gen.CONFIG_MAP[parsed.config_type]
