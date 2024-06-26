@@ -1,3 +1,3 @@
 __all__ = ['analysis', 'applications', 'messages', 'parsers', 'utils']
-__version__ = '1.23.3'
+__version__ = '1.23.4'
 __author__ = 'Point One Navigation'
