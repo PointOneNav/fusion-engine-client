@@ -365,8 +365,20 @@ jobs:
         python -m pytest
 
     - name: Build A Python Distribution
+      # Note: We are explicitly using twine 5.0.0 here. There is a bug in twine 5.1.0 (released 5/16/2024) where they
+      # are not populating the Home-page field in their distribution's wheel metadata file, which causes the twine
+      # library it to fail on import with the following error:
+      #   Traceback (most recent call last):
+      #     File ".../twine", line 5, in <module>
+      #       from twine.__main__ import main
+      #     File ".../site-packages/twine/__init__.py", line 40, in <module>
+      #       __uri__ = metadata["home-page"]
+      #                 ~~~~~~~~^^^^^^^^^^^^^
+      #     File ".../site-packages/importlib_metadata/_adapters.py", line 54, in __getitem__
+      #       raise KeyError(item)
+      #   KeyError: 'home-page'
       run: |
-        pip install build twine
+        pip install build==1.2.1 twine==5.0.0
         python -m build
         twine check dist/*
 
