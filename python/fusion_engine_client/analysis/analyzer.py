@@ -1148,13 +1148,9 @@ class Analyzer(object):
 
         # Set up the figure.
         figure = make_subplots(
-            rows=4, cols=1,  print_grid=False, shared_xaxes=True,
+            rows=2, cols=1,  print_grid=False, shared_xaxes=True,
             subplot_titles=["Azimuth Angle",
-                            "Elevation Angle", None, None],
-            specs=[[{'rowspan': 2}],
-                   [None],
-                   [{'rowspan': 2}],
-                   [None]])
+                            "Elevation Angle"])
         figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
         figure['layout']['xaxis1'].update(title=self.p1_time_label, showticklabels=True)
         figure['layout']['xaxis2'].update(title=self.p1_time_label, showticklabels=True)
@@ -1168,7 +1164,7 @@ class Analyzer(object):
         svs = sorted(list(data_by_sv.keys()))
         color_by_sv = self._assign_colors(svs)
 
-        for i, sv in enumerate(svs[::-1]):
+        for sv in svs:
             name = satellite_to_string(sv, short=False)
             system = get_system(sv)
             sv_data = data_by_sv[sv]
@@ -1195,7 +1191,7 @@ class Analyzer(object):
                                             marker={'color': color_by_sv[sv], 'symbol': 'circle', 'size': 8},
                                             showlegend=False,
                                             legendgroup=name),
-                                3, 1)
+                                2, 1)
             indices_by_system[system].append(len(figure.data) - 1)
 
         # Add signal type selection buttons.
@@ -1218,7 +1214,7 @@ class Analyzer(object):
             'yanchor': 'top'
         }]
 
-        self._add_figure(name='satellite_azimuth_elevation', figure=figure, title='Satellite Azimuth & Elevation')
+        self._add_figure(name='gnss_azimuth_elevation', figure=figure, title='GNSS Azimuth & Elevation Vs. Time')
 
     def plot_gnss_signal_status(self):
         filename = 'gnss_signal_status'
