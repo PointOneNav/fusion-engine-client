@@ -1145,6 +1145,87 @@ class Analyzer(object):
 
         self._add_figure(name='gnss_cn0', figure=figure, title='GNSS C/N0 vs. Time')
 
+    def plot_gnss_azimuth_elevation(self):
+        """!
+        @brief Plot GNSS azimuth/elevation angles.
+        """
+        result = self.reader.read(message_types=GNSSSatelliteMessage, **self.params)
+        data = result[GNSSSatelliteMessage.MESSAGE_TYPE]
+
+        if len(data.p1_time) == 0:
+            self.logger.info('No satellite data available. Skipping azimuth/elevation plot.')
+            return
+
+        # Set up the figure.
+        figure = make_subplots(
+            rows=2, cols=1,  print_grid=False, shared_xaxes=True,
+            subplot_titles=["Azimuth Angle",
+                            "Elevation Angle"])
+        figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
+        figure['layout']['xaxis1'].update(title=self.p1_time_label, showticklabels=True)
+        figure['layout']['xaxis2'].update(title=self.p1_time_label, showticklabels=True)
+        figure['layout']['yaxis1'].update(title="Degrees")
+        figure['layout']['yaxis2'].update(title="Degrees")
+
+        # Assign colors to each satellite.
+        data_by_sv = GNSSSatelliteMessage.group_by_sv(data)
+        svs_by_system = defaultdict(set)
+        indices_by_system = defaultdict(list)
+        svs = sorted(list(data_by_sv.keys()))
+        color_by_sv = self._assign_colors(svs)
+
+        for sv in svs:
+            name = satellite_to_string(sv, short=False)
+            system = get_system(sv)
+            sv_data = data_by_sv[sv]
+            svs_by_system[system].add(sv)
+
+            az_deg = sv_data['azimuth_deg']
+            el_deg = sv_data['elevation_deg']
+
+            time = sv_data['p1_time'] - float(self.t0)
+
+            # Plot the data. We set styles for coloring by SV.
+            text = ["P1: %.3f sec" % (t + float(self.t0)) for t in time]
+            figure.add_trace(go.Scattergl(x=time, y=az_deg, text=text,
+                                            name=name, hoverlabel={'namelength': -1},
+                                            mode='markers',
+                                            marker={'color': color_by_sv[sv], 'symbol': 'circle', 'size': 8},
+                                            showlegend=True,
+                                            legendgroup=name),
+                                1, 1)
+            indices_by_system[system].append(len(figure.data) - 1)
+            figure.add_trace(go.Scattergl(x=time, y=el_deg, text=text,
+                                            name=name, hoverlabel={'namelength': -1},
+                                            mode='markers',
+                                            marker={'color': color_by_sv[sv], 'symbol': 'circle', 'size': 8},
+                                            showlegend=False,
+                                            legendgroup=name),
+                                2, 1)
+            indices_by_system[system].append(len(figure.data) - 1)
+
+        # Add signal type selection buttons.
+        num_traces = len(figure.data)
+        buttons = [dict(label='All', method='restyle', args=['visible', [True] * num_traces])]
+        for system, indices in sorted(indices_by_system.items()):
+            if len(indices) == 0:
+                continue
+            visible = np.full((num_traces,), False)
+            visible[indices] = True
+            buttons.append(dict(label=f'{str(system)} ({len(svs_by_system[system])})', method='restyle',
+                                args=['visible', visible]))
+        figure['layout']['updatemenus'] = [{
+            'type': 'buttons',
+            'direction': 'left',
+            'buttons': buttons,
+            'x': 0.0,
+            'xanchor': 'left',
+            'y': 1.1,
+            'yanchor': 'top'
+        }]
+
+        self._add_figure(name='gnss_azimuth_elevation', figure=figure, title='GNSS Azimuth & Elevation Vs. Time')
+
     def plot_gnss_signal_status(self):
         filename = 'gnss_signal_status'
         figure_title = "GNSS Signal Status"
@@ -3354,6 +3435,7 @@ Load and display information stored in a FusionEngine binary file.
         analyzer.plot_gnss_cn0()
         analyzer.plot_gnss_signal_status()
         analyzer.plot_gnss_skyplot()
+        analyzer.plot_gnss_azimuth_elevation()
         analyzer.plot_gnss_corrections_status()
         analyzer.plot_dop()
 
