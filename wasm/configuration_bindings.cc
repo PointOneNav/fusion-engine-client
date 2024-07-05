@@ -42,16 +42,10 @@ EMSCRIPTEN_BINDINGS(configuration) {
       .value("USER_DEVICE_ID", ConfigType::USER_DEVICE_ID)
       .value("LBAND_PARAMETERS", ConfigType::LBAND_PARAMETERS);
 
-  enum_<InterfaceConfigType>("InterfaceConfigType")
-      .value("INVALID", InterfaceConfigType::INVALID)
-      .value("OUTPUT_DIAGNOSTICS_MESSAGES", InterfaceConfigType::OUTPUT_DIAGNOSTICS_MESSAGES)
-      .value("BAUD_RATE", InterfaceConfigType::BAUD_RATE)
-      .value("REMOTE_ADDRESS", InterfaceConfigType::REMOTE_ADDRESS)
-      .value("PORT", InterfaceConfigType::PORT);
-
   enum_<ConfigurationSource>("ConfigurationSource")
       .value("ACTIVE", ConfigurationSource::ACTIVE)
-      .value("SAVED", ConfigurationSource::SAVED);
+      .value("SAVED", ConfigurationSource::SAVED)
+      .value("DEFAULT", ConfigurationSource::DEFAULT);
 
   enum_<SaveAction>("SaveAction")
       .value("SAVE", SaveAction::SAVE)
@@ -240,7 +234,8 @@ EMSCRIPTEN_BINDINGS(configuration) {
   enum_<IonoDelayModel>("IonoDelayModel")
       .value("AUTO", IonoDelayModel::AUTO)
       .value("OFF", IonoDelayModel::OFF)
-      .value("KLOBUCHAR", IonoDelayModel::KLOBUCHAR);
+      .value("KLOBUCHAR", IonoDelayModel::KLOBUCHAR)
+      .value("SBAS", IonoDelayModel::SBAS);
 
   class_<IonosphereConfig>("IonosphereConfig")
       .constructor<>()
@@ -259,17 +254,66 @@ EMSCRIPTEN_BINDINGS(configuration) {
        .ARRAY_PROPERTY(TroposphereConfig, reserved)
        .STRUCT_FUNCTIONS(TroposphereConfig);
 
-  class_<LBandConfig>("LBandConfig")
-       .constructor<>()
-       .property("center_frequency_hz", &LBandConfig::center_frequency_hz)
-       .property("search_window_hz", &LBandConfig::search_window_hz)
-       .property("filter_data_by_service_id", &LBandConfig::filter_data_by_service_id)
-       .property("use_descrambler", &LBandConfig::use_descrambler)
-       .property("pmp_service_id", &LBandConfig::pmp_service_id)
-       .property("pmp_unique_word", &LBandConfig::pmp_unique_word)
-       .property("pmp_data_rate_bps", &LBandConfig::pmp_data_rate_bps)
-       .property("descrambler_init", &LBandConfig::descrambler_init)
-       .STRUCT_FUNCTIONS(LBandConfig);
+  enum_<DataType>("DataType")
+      .value("CALIBRATION_STATE", DataType::CALIBRATION_STATE)
+      .value("CRASH_LOG", DataType::CRASH_LOG)
+      .value("FILTER_STATE", DataType::FILTER_STATE)
+      .value("USER_CONFIG", DataType::USER_CONFIG)
+      .value("INVALID", DataType::INVALID);
+
+  static auto ImportDataMessage_MESSAGE_TYPE = ImportDataMessage::MESSAGE_TYPE;
+  static auto ImportDataMessage_MESSAGE_VERSION =
+      ImportDataMessage::MESSAGE_VERSION;
+  class_<ImportDataMessage>("ImportDataMessage")
+      .constructor<>()
+      .class_property("MESSAGE_TYPE", &ImportDataMessage_MESSAGE_TYPE)
+      .class_property("MESSAGE_VERSION", &ImportDataMessage_MESSAGE_VERSION)
+      .property("data_type", &ImportDataMessage::data_type)
+      .property("source", &ImportDataMessage::source)
+      .ARRAY_PROPERTY(ImportDataMessage, reserved1)
+      .property("data_version", &ImportDataMessage::data_version)
+      .ARRAY_PROPERTY(ImportDataMessage, reserved2)
+      .property("data_length_bytes", &ImportDataMessage::data_length_bytes)
+      .STRUCT_FUNCTIONS(ImportDataMessage);
+
+  static auto ExportDataMessage_MESSAGE_TYPE = ExportDataMessage::MESSAGE_TYPE;
+  static auto ExportDataMessage_MESSAGE_VERSION =
+      ExportDataMessage::MESSAGE_VERSION;
+  class_<ExportDataMessage>("ExportDataMessage")
+      .constructor<>()
+      .class_property("MESSAGE_TYPE", &ExportDataMessage_MESSAGE_TYPE)
+      .class_property("MESSAGE_VERSION", &ExportDataMessage_MESSAGE_VERSION)
+      .property("data_type", &ExportDataMessage::data_type)
+      .property("source", &ExportDataMessage::source)
+      .ARRAY_PROPERTY(ExportDataMessage, reserved)
+      .STRUCT_FUNCTIONS(ExportDataMessage);
+
+  static auto PlatformStorageDataMessage_MESSAGE_TYPE =
+      PlatformStorageDataMessage::MESSAGE_TYPE;
+  static auto PlatformStorageDataMessage_VERSION =
+      PlatformStorageDataMessage::MESSAGE_VERSION;
+  class_<PlatformStorageDataMessage>("PlatformStorageDataMessage")
+      .constructor<>()
+      .class_property("MESSAGE_TYPE", &PlatformStorageDataMessage_MESSAGE_TYPE)
+      .class_property("MESSAGE_VERSION", &PlatformStorageDataMessage_VERSION)
+      .property("data_type", &PlatformStorageDataMessage::data_type)
+      .property("response", &PlatformStorageDataMessage::response)
+      .property("source", &PlatformStorageDataMessage::source)
+      .ARRAY_PROPERTY(PlatformStorageDataMessage, reserved)
+      .property("data_version", &PlatformStorageDataMessage::data_version)
+      .property("data_length_bytes",
+                &PlatformStorageDataMessage::data_length_bytes)
+      .STRUCT_FUNCTIONS(PlatformStorageDataMessage);
+
+  enum_<InterfaceConfigType>("InterfaceConfigType")
+      .value("INVALID", InterfaceConfigType::INVALID)
+      .value("OUTPUT_DIAGNOSTICS_MESSAGES", InterfaceConfigType::OUTPUT_DIAGNOSTICS_MESSAGES)
+      .value("BAUD_RATE", InterfaceConfigType::BAUD_RATE)
+      .value("REMOTE_ADDRESS", InterfaceConfigType::REMOTE_ADDRESS)
+      .value("PORT", InterfaceConfigType::PORT)
+      .value("ENABLED", InterfaceConfigType::ENABLED)
+      .value("DIRECTION", InterfaceConfigType::DIRECTION)
+      .value("SOCKET_TYPE", InterfaceConfigType::SOCKET_TYPE);
 
   enum_<ProtocolType>("ProtocolType")
       .value("INVALID", ProtocolType::INVALID)
@@ -303,6 +347,17 @@ EMSCRIPTEN_BINDINGS(configuration) {
       .value("WEBSOCKET", TransportType::WEBSOCKET)
       .value("CURRENT", TransportType::CURRENT)
       .value("ALL", TransportType::ALL);
+
+  enum_<TransportDirection>("TransportDirection")
+      .value("INVALID", TransportDirection::INVALID)
+      .value("SERVER", TransportDirection::SERVER)
+      .value("CLIENT", TransportDirection::CLIENT);
+
+  enum_<SocketType>("SocketType")
+      .value("INVALID", SocketType::INVALID)
+      .value("STREAM", SocketType::STREAM)
+      .value("DATAGRAM", SocketType::DATAGRAM)
+      .value("SEQPACKET", SocketType::SEQPACKET);
 
   class_<InterfaceID>("InterfaceID")
       .constructor<>()
@@ -346,6 +401,13 @@ EMSCRIPTEN_BINDINGS(configuration) {
       .value("INTERVAL_30_S", MessageRate::INTERVAL_30_S)
       .value("INTERVAL_60_S", MessageRate::INTERVAL_60_S)
       .value("DEFAULT", MessageRate::DEFAULT);
+
+  class_<InterfaceConfigSubmessage>("InterfaceConfigSubmessage")
+      .constructor<>()
+      .property("interface", &InterfaceConfigSubmessage::interface)
+      .property("subtype", &InterfaceConfigSubmessage::subtype)
+      .ARRAY_PROPERTY(InterfaceConfigSubmessage, reserved)
+      .STRUCT_FUNCTIONS(InterfaceConfigSubmessage);
 
   static auto SetMessageRate_MESSAGE_TYPE = SetMessageRate::MESSAGE_TYPE;
   static auto SetMessageRate_MESSAGE_VERSION = SetMessageRate::MESSAGE_VERSION;
@@ -417,61 +479,15 @@ EMSCRIPTEN_BINDINGS(configuration) {
       .property("output_interface", &MessageRateResponse::output_interface)
       .STRUCT_FUNCTIONS(MessageRateResponse);
 
-  enum_<DataType>("DataType")
-      .value("CALIBRATION_STATE", DataType::CALIBRATION_STATE)
-      .value("CRASH_LOG", DataType::CRASH_LOG)
-      .value("FILTER_STATE", DataType::FILTER_STATE)
-      .value("USER_CONFIG", DataType::USER_CONFIG)
-      .value("INVALID", DataType::INVALID);
-
-  static auto ImportDataMessage_MESSAGE_TYPE = ImportDataMessage::MESSAGE_TYPE;
-  static auto ImportDataMessage_MESSAGE_VERSION =
-      ImportDataMessage::MESSAGE_VERSION;
-  class_<ImportDataMessage>("ImportDataMessage")
-      .constructor<>()
-      .class_property("MESSAGE_TYPE", &ImportDataMessage_MESSAGE_TYPE)
-      .class_property("MESSAGE_VERSION", &ImportDataMessage_MESSAGE_VERSION)
-      .property("data_type", &ImportDataMessage::data_type)
-      .property("source", &ImportDataMessage::source)
-      .ARRAY_PROPERTY(ImportDataMessage, reserved1)
-      .property("data_version", &ImportDataMessage::data_version)
-      .ARRAY_PROPERTY(ImportDataMessage, reserved2)
-      .property("data_length_bytes", &ImportDataMessage::data_length_bytes)
-      .STRUCT_FUNCTIONS(ImportDataMessage);
-
-  static auto ExportDataMessage_MESSAGE_TYPE = ExportDataMessage::MESSAGE_TYPE;
-  static auto ExportDataMessage_MESSAGE_VERSION =
-      ExportDataMessage::MESSAGE_VERSION;
-  class_<ExportDataMessage>("ExportDataMessage")
-      .constructor<>()
-      .class_property("MESSAGE_TYPE", &ExportDataMessage_MESSAGE_TYPE)
-      .class_property("MESSAGE_VERSION", &ExportDataMessage_MESSAGE_VERSION)
-      .property("data_type", &ExportDataMessage::data_type)
-      .property("source", &ExportDataMessage::source)
-      .ARRAY_PROPERTY(ExportDataMessage, reserved)
-      .STRUCT_FUNCTIONS(ExportDataMessage);
-
-  static auto PlatformStorageDataMessage_MESSAGE_TYPE =
-      PlatformStorageDataMessage::MESSAGE_TYPE;
-  static auto PlatformStorageDataMessage_VERSION =
-      PlatformStorageDataMessage::MESSAGE_VERSION;
-  class_<PlatformStorageDataMessage>("PlatformStorageDataMessage")
-      .constructor<>()
-      .class_property("MESSAGE_TYPE", &PlatformStorageDataMessage_MESSAGE_TYPE)
-      .class_property("MESSAGE_VERSION", &PlatformStorageDataMessage_VERSION)
-      .property("data_type", &PlatformStorageDataMessage::data_type)
-      .property("response", &PlatformStorageDataMessage::response)
-      .property("source", &PlatformStorageDataMessage::source)
-      .ARRAY_PROPERTY(PlatformStorageDataMessage, reserved)
-      .property("data_version", &PlatformStorageDataMessage::data_version)
-      .property("data_length_bytes",
-                &PlatformStorageDataMessage::data_length_bytes)
-      .STRUCT_FUNCTIONS(PlatformStorageDataMessage);
-
-  class_<InterfaceConfigSubmessage>("InterfaceConfigSubmessage")
-      .constructor<>()
-      .property("interface", &InterfaceConfigSubmessage::interface)
-      .property("subtype", &InterfaceConfigSubmessage::subtype)
-      .ARRAY_PROPERTY(InterfaceConfigSubmessage, reserved)
-      .STRUCT_FUNCTIONS(InterfaceConfigSubmessage);
+  class_<LBandConfig>("LBandConfig")
+       .constructor<>()
+       .property("center_frequency_hz", &LBandConfig::center_frequency_hz)
+       .property("search_window_hz", &LBandConfig::search_window_hz)
+       .property("filter_data_by_service_id", &LBandConfig::filter_data_by_service_id)
+       .property("use_descrambler", &LBandConfig::use_descrambler)
+       .property("pmp_service_id", &LBandConfig::pmp_service_id)
+       .property("pmp_unique_word", &LBandConfig::pmp_unique_word)
+       .property("pmp_data_rate_bps", &LBandConfig::pmp_data_rate_bps)
+       .property("descrambler_init", &LBandConfig::descrambler_init)
+       .STRUCT_FUNCTIONS(LBandConfig);
 }

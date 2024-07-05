@@ -40,6 +40,7 @@ EMSCRIPTEN_BINDINGS(defs) {
 
        // Device status messages
        .value("SYSTEM_STATUS", MessageType::SYSTEM_STATUS)
+       .value("SSR_STATUS", MessageType::SSR_STATUS)
 
       // Sensor measurement messages.
       .value("IMU_OUTPUT", MessageType::IMU_OUTPUT)
