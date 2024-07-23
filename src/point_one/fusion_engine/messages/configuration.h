@@ -1710,34 +1710,6 @@ inline p1_ostream& operator<<(p1_ostream& stream, ProtocolType val) {
 }
 
 /**
- * @brief Identifies a message type.
- */
-struct alignas(4) MsgType {
-  ProtocolType protocol = ProtocolType::INVALID;
-  uint8_t reserved[1] = {0};
-  uint16_t msg_id = 0;
-};
-
-/**
- * @brief An output rate for a message.
- */
-struct alignas(4) MsgRate {
-  /**
-   * @brief Reserved value for @ref update_period_ms to indicate that the
-   *        message should come out at its max rate.
-   *
-   * Also used for messages that output at a fixed rate.
-   */
-  static constexpr uint16_t MAX_RATE = 0xFFFF;
-
-  /** @brief The type of message to configure. */
-  MsgType type;
-  /** @brief The desired message update interval (in ms). */
-  uint16_t update_period_ms = 0;
-  uint8_t reserved[2] = {0};
-};
-
-/**
  * @brief Type of I/O interface transport.
  * @ingroup io_interfaces
  */
