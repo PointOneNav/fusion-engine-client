@@ -724,6 +724,39 @@ class Analyzer(object):
 
         self._add_figure(name="solution_type", figure=figure, title="Solution Type")
 
+    def plot_stationary_status(self):
+        """!
+        @brief Plot the staionary status over time.
+        """
+        if self.output_dir is None:
+            return
+
+        # Read the pose data.
+        result = self.reader.read(message_types=[PoseMessage], source_ids=self.default_source_id, **self.params)
+        pose_data = result[PoseMessage.MESSAGE_TYPE]
+
+        if len(pose_data.p1_time) == 0:
+            self.logger.info('No pose data available. Skipping solution type plot.')
+            return
+
+        # Set up the figure.
+        figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=True, subplot_titles=['Stationary Status'])
+
+        figure['layout']['xaxis'].update(title=self.p1_time_label)
+        figure['layout']['yaxis1'].update(title="Stationary Status",
+                                          ticktext=['Nonstationary', 'Stationary'],
+                                          tickvals=[0, 1])
+
+        time = pose_data.p1_time - float(self.t0)
+
+        # Extract the stationary status from the pose data flags.
+        stationary_status = pose_data.flags & PoseMessage.FLAG_STATIONARY
+
+        text = ["Time: %.3f sec (%.3f sec)" % (t, t + float(self.t0)) for t in time]
+        figure.add_trace(go.Scattergl(x=time, y=stationary_status, text=text, mode='markers'), 1, 1)
+
+        self._add_figure(name="stationary_status", figure=figure, title="Stationary Status")
+
     def _plot_displacement(self, source, time, solution_type, displacement_enu_m, std_enu_m,
                            title='Displacement'):
         """!
@@ -2944,6 +2977,7 @@ Load and display information stored in a FusionEngine binary file.
         analyzer.plot_time_scale()
 
         analyzer.plot_solution_type()
+        analyzer.plot_stationary_status()
         analyzer.plot_reset_timing()
         analyzer.plot_pose()
         analyzer.plot_pose_displacement()
