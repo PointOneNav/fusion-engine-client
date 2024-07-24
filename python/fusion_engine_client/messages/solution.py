@@ -20,7 +20,7 @@ class PoseMessage(MessagePayload):
 
     FLAG_STATIONARY = 0x1
 
-    _STRUCT = struct.Struct('<Bx h ddd fff ddd fff ddd fff fff')
+    _STRUCT = struct.Struct('<BB h ddd fff ddd fff ddd fff fff')
 
     def __init__(self):
         self.p1_time = Timestamp()
