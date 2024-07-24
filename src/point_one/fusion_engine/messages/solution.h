@@ -42,8 +42,8 @@ struct P1_ALIGNAS(4) PoseMessage : public MessagePayload {
   static constexpr uint8_t MESSAGE_VERSION = 1;
   static constexpr int16_t INVALID_UNDULATION = INT16_MIN;
 
-  static constexpr uint8_t NONSTATIONARY = 0x00000000;
-  static constexpr uint8_t STATIONARY = 0x00000001;
+  /** Set this flag if the device is stationary. */
+  static constexpr uint8_t FLAG_STATIONARY = 0x01;
 
   /** The time of the message, in P1 time (beginning at power-on). */
   Timestamp p1_time;
@@ -54,8 +54,8 @@ struct P1_ALIGNAS(4) PoseMessage : public MessagePayload {
   /** The type of this position solution. */
   SolutionType solution_type;
 
-  /** Signals device dynamic status (stationary or nonstationary). */
-  uint8_t dynamic_status = NONSTATIONARY;
+  /** A bitmask of flags associated with the pose data. */
+  uint8_t flags = 0x0;
 
   /**
    * The geoid undulation at at the current location (i.e., the difference
