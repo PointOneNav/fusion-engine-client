@@ -160,7 +160,7 @@ class PoseMessage(MessagePayload):
             'p1_time': np.array([float(m.p1_time) for m in messages]),
             'gps_time': np.array([float(m.gps_time) for m in messages]),
             'solution_type': np.array([int(m.solution_type) for m in messages], dtype=int),
-            'flags': np.array([m.flags for m in messages]),
+            'flags': np.array([m.flags for m in messages], dtype=int),
             'undulation': np.array([m.undulation_m for m in messages]),
             'lla_deg': np.array([m.lla_deg for m in messages]).T,
             'ypr_deg': np.array([m.ypr_deg for m in messages]).T,

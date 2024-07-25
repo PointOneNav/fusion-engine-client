@@ -42,7 +42,7 @@ struct P1_ALIGNAS(4) PoseMessage : public MessagePayload {
   static constexpr uint8_t MESSAGE_VERSION = 1;
   static constexpr int16_t INVALID_UNDULATION = INT16_MIN;
 
-  /** Set this flag if the device is stationary. */
+  /** Set if the device is stationary. */
   static constexpr uint8_t FLAG_STATIONARY = 0x01;
 
   /** The time of the message, in P1 time (beginning at power-on). */

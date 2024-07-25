@@ -744,8 +744,8 @@ class Analyzer(object):
 
         figure['layout']['xaxis'].update(title=self.p1_time_label)
         figure['layout']['yaxis1'].update(title="Stationary Status",
-                                          ticktext=['Nonstationary', 'Stationary'],
-                                          tickvals=[0, 1])
+                                          ticktext=['Moving', 'Stationary'],
+                                          tickvals=[0, PoseMessage.FLAG_STATIONARY])
 
         time = pose_data.p1_time - float(self.t0)
 
