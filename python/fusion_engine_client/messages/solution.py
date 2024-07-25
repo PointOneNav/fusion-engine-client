@@ -18,13 +18,17 @@ class PoseMessage(MessagePayload):
 
     INVALID_UNDULATION = -32768
 
-    _STRUCT = struct.Struct('<Bx h ddd fff ddd fff ddd fff fff')
+    FLAG_STATIONARY = 0x1
+
+    _STRUCT = struct.Struct('<BB h ddd fff ddd fff ddd fff fff')
 
     def __init__(self):
         self.p1_time = Timestamp()
         self.gps_time = Timestamp()
 
         self.solution_type = SolutionType.Invalid
+
+        self.flags = 0x0
 
         # Added in version 1.1.
         self.undulation_m = np.nan
@@ -60,6 +64,7 @@ class PoseMessage(MessagePayload):
         self._STRUCT.pack_into(
             buffer, offset,
             int(self.solution_type),
+            self.flags,
             undulation_cm,
             self.lla_deg[0], self.lla_deg[1], self.lla_deg[2],
             self.position_std_enu_m[0], self.position_std_enu_m[1], self.position_std_enu_m[2],
@@ -84,6 +89,7 @@ class PoseMessage(MessagePayload):
         offset += self.gps_time.unpack(buffer, offset)
 
         (solution_type_int,
+         flags,
          undulation_cm,
          self.lla_deg[0], self.lla_deg[1], self.lla_deg[2],
          self.position_std_enu_m[0], self.position_std_enu_m[1], self.position_std_enu_m[2],
@@ -103,6 +109,8 @@ class PoseMessage(MessagePayload):
             self.undulation_m = undulation_cm * 1e-2
 
         self.solution_type = SolutionType(solution_type_int)
+
+        self.flags = flags
 
         return offset - initial_offset
 
@@ -152,6 +160,7 @@ class PoseMessage(MessagePayload):
             'p1_time': np.array([float(m.p1_time) for m in messages]),
             'gps_time': np.array([float(m.gps_time) for m in messages]),
             'solution_type': np.array([int(m.solution_type) for m in messages], dtype=int),
+            'flags': np.array([m.flags for m in messages], dtype=int),
             'undulation': np.array([m.undulation_m for m in messages]),
             'lla_deg': np.array([m.lla_deg for m in messages]).T,
             'ypr_deg': np.array([m.ypr_deg for m in messages]).T,
