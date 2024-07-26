@@ -28,7 +28,7 @@ namespace messages {
 
 /**
  * @brief Platform pose solution: position, velocity, attitude (@ref
- *        MessageType::POSE, version 1.1).
+ *        MessageType::POSE, version 1.2).
  * @ingroup solution_messages
  *
  * @note
@@ -39,7 +39,7 @@ namespace messages {
  */
 struct P1_ALIGNAS(4) PoseMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::POSE;
-  static constexpr uint8_t MESSAGE_VERSION = 1;
+  static constexpr uint8_t MESSAGE_VERSION = 2;
   static constexpr int16_t INVALID_UNDULATION = INT16_MIN;
 
   /** Set if the device is stationary. */
@@ -54,7 +54,11 @@ struct P1_ALIGNAS(4) PoseMessage : public MessagePayload {
   /** The type of this position solution. */
   SolutionType solution_type;
 
-  /** A bitmask of flags associated with the pose data. */
+  /**
+   * A bitmask of flags associated with the pose data.
+   *
+   * Added in @ref PoseMessage version 1.2.
+   */
   uint8_t flags = 0x0;
 
   /**
