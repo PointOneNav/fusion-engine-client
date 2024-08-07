@@ -86,6 +86,7 @@ enum class MessageType : uint16_t {
   FAULT_CONTROL = 13006, ///< @ref FaultControlMessage
   DEVICE_ID = 13007, ///< @ref DeviceIDMessage
   STARTUP_REQUEST = 13008, ///< @ref StartupRequest
+  SPI_CMD = 13009, ///< @ref SpiCommand
 
   SET_CONFIG = 13100, ///< @ref SetConfigMessage
   GET_CONFIG = 13101, ///< @ref GetConfigMessage
@@ -100,6 +101,7 @@ enum class MessageType : uint16_t {
   GET_MESSAGE_RATE = 13221, ///< @ref GetMessageRate
   MESSAGE_RATE_RESPONSE = 13222, ///< @ref MessageRateResponse
   SUPPORTED_IO_INTERFACES = 13223, ///< @ref SupportedIOInterfacesMessage
+
 
   LBAND_FRAME = 14000, ///< @ref LBandFrameMessage
 
@@ -227,6 +229,9 @@ P1_CONSTEXPR_FUNC const char* to_string(MessageType type) {
     case MessageType::STARTUP_REQUEST:
       return "Startup Request";
 
+    case MessageType::SPI_CMD:
+      return "SPI Command";
+
     case MessageType::DEVICE_ID:
       return "Device ID Information";
 
@@ -297,6 +302,7 @@ P1_CONSTEXPR_FUNC bool IsCommand(MessageType message_type) {
     case MessageType::RESET_REQUEST:
     case MessageType::STARTUP_REQUEST:
     case MessageType::SHUTDOWN_REQUEST:
+    case MessageType::SPI_CMD:
     case MessageType::FAULT_CONTROL:
     case MessageType::SET_CONFIG:
     case MessageType::GET_CONFIG:
