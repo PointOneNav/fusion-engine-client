@@ -12,3 +12,4 @@
 #include "point_one/fusion_engine/messages/device.h"
 #include "point_one/fusion_engine/messages/measurements.h"
 #include "point_one/fusion_engine/messages/solution.h"
+#include "point_one/fusion_engine/messages/uart_to_st5635.h"

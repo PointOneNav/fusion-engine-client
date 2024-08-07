@@ -56,6 +56,7 @@ cc_library(
         "src/point_one/fusion_engine/messages/measurements.h",
         "src/point_one/fusion_engine/messages/signal_defs.h",
         "src/point_one/fusion_engine/messages/solution.h",
+        "src/point_one/fusion_engine/messages/uart_to_st5635.h",
     ],
     deps = [
         ":common",
