@@ -416,7 +416,9 @@ class MixedLogReader(object):
         if file_size is None:
             file_size = min(self.file_size_bytes, self.max_bytes)
 
-        if self.total_bytes_read - self.last_print_bytes > 10e6 or self.total_bytes_read == file_size:
+        if self.total_bytes_read < self.last_print_bytes or \
+           self.total_bytes_read - self.last_print_bytes > 10e6 or \
+           self.total_bytes_read == file_size:
             elapsed_sec = (datetime.now() - self.start_time).total_seconds()
             self.logger.log(logging.INFO if show_progress else logging.DEBUG,
                             'Processed %d/%d bytes (%.1f%%). [elapsed=%.1f sec, rate=%.1f MB/s]' %
