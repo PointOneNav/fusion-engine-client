@@ -591,6 +591,8 @@ class MixedLogReader(object):
         if self.index is not None:
             if len(self.index) == 0:
                 self.next_index_elem = 0
+            elif prev_offset_bytes < 0:
+                self.next_index_elem = 0
             else:
                 idx = np.argmax(self.index.offset > prev_offset_bytes)
                 if idx == 0 and self.index.offset[0] <= prev_offset_bytes:
