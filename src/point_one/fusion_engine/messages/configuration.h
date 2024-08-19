@@ -2254,7 +2254,7 @@ inline p1_ostream& operator<<(p1_ostream& stream, MessageRate val) {
  */
 struct P1_ALIGNAS(4) InterfaceConfigSubmessage {
   /**
-   * The interface ID to target.
+   * The ID of the interface to be configured or queried.
    *
    * @note
    * TransportType::ALL is not supported.
