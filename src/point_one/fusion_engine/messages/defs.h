@@ -87,6 +87,8 @@ enum class MessageType : uint16_t {
   DEVICE_ID = 13007, ///< @ref DeviceIDMessage
   STARTUP_REQUEST = 13008, ///< @ref StartupRequest
   SPI_CMD = 13009, ///< @ref SpiCommand
+  SPI_CMD_RESPONSE = 13010, ///< @ref SpiResponseMessage
+  SPI_LBAND_PACKET = 13011, ///< @ref SpiResponseMessage
 
   SET_CONFIG = 13100, ///< @ref SetConfigMessage
   GET_CONFIG = 13101, ///< @ref GetConfigMessage
@@ -232,6 +234,12 @@ P1_CONSTEXPR_FUNC const char* to_string(MessageType type) {
     case MessageType::SPI_CMD:
       return "SPI Command";
 
+    case MessageType::SPI_CMD_RESPONSE:
+      return "SPI Command Response";
+
+    case MessageType::SPI_LBAND_PACKET:
+      return "SPI Lband Packet";
+
     case MessageType::DEVICE_ID:
       return "Device ID Information";
 
@@ -303,6 +311,8 @@ P1_CONSTEXPR_FUNC bool IsCommand(MessageType message_type) {
     case MessageType::STARTUP_REQUEST:
     case MessageType::SHUTDOWN_REQUEST:
     case MessageType::SPI_CMD:
+    case MessageType::SPI_CMD_RESPONSE:
+    case MessageType::SPI_LBAND_PACKET:
     case MessageType::FAULT_CONTROL:
     case MessageType::SET_CONFIG:
     case MessageType::GET_CONFIG:

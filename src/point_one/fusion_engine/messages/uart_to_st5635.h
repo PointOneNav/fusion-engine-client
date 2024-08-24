@@ -39,18 +39,17 @@ namespace messages {
  *        MessageType::COMMAND_RESPONSE, version 1.0).
  * @ingroup device_control
  */
-//            struct P1_ALIGNAS(4) SpiCommandResponseMessage : public MessagePayload {
-//                static constexpr MessageType MESSAGE_TYPE = MessageType::COMMAND_RESPONSE;
-//                static constexpr uint8_t MESSAGE_VERSION = 0;
-//
-//                /** The sequence number of the command that triggered this response. */
-//                uint32_t source_seq_number = 0;
-//
-//                /** The response status (success, error, etc.). */
-//                Response response = Response::OK;
-//
-//                uint8_t reserved[3] = {0};
-//            };
+        struct P1_ALIGNAS(4) SpiCmdResponse : public MessagePayload {
+            static constexpr MessageType MESSAGE_TYPE = MessageType::SPI_CMD_RESPONSE;
+            static constexpr uint8_t MESSAGE_VERSION = 0;
+
+            int64_t system_time_ns = 0;
+            uint8_t data_0 = 0;
+            uint8_t data_1 = 0;
+            uint8_t data_2 = 0;
+            uint8_t data_3 = 0;
+
+        };
 
 /**
  * @brief Request transmission of a specified message type, (@ref
@@ -97,8 +96,18 @@ namespace messages {
 
                 uint8_t cmd = 0;
                 uint8_t address = 0;
-                uint8_t num_dummy = 0;
+                uint8_t val1 = 0;
+                uint8_t val2 = 0;
             };
+
+
+
+        struct P1_ALIGNAS(4) SpiLbandPacket : public MessagePayload {
+            static constexpr MessageType MESSAGE_TYPE = MessageType::SPI_LBAND_PACKET;
+            static constexpr uint8_t MESSAGE_VERSION = 0;
+            uint32_t msg_counter;
+            uint8_t packet[260];
+        };
 
 
 
