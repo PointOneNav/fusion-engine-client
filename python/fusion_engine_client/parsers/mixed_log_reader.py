@@ -627,6 +627,8 @@ class MixedLogReader(object):
 
     def _populate_available_source_ids(self, num_messages_to_read: int = 10):
         self.available_source_ids = set()
+        # This function requires that the header is returned. Store the current
+        # `self.return_header` value.
         stored_return_header = self.return_header
         self.return_header = True
         # Loop over all message types and read N of each type.
