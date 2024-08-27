@@ -627,6 +627,8 @@ class MixedLogReader(object):
 
     def _populate_available_source_ids(self, num_messages_to_read: int = 10):
         self.available_source_ids = set()
+        stored_return_header = self.return_header
+        self.return_header = True
         # Loop over all message types and read N of each type.
         for message_type in np.unique(self.index['type']):
             message_type = MessageType(message_type, raise_on_unrecognized=False)
@@ -644,6 +646,7 @@ class MixedLogReader(object):
 
             self.clear_filters()
 
+        self.return_header = stored_return_header
         self.rewind()
 
     def __iter__(self):
