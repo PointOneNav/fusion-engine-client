@@ -319,12 +319,12 @@ jobs:
         echo "Setting tag to: ${GIT_TAG}"
 
     - name: Get Documentation Artifact
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v4.1.7
       with:
         name: fusion-engine-client-docs.tar.gz
 
     - name: Get Versioned Files
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v4.1.7
       with:
         name: version-docs.tar.gz
 
@@ -386,12 +386,12 @@ jobs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
     steps:
     - name: Get Documentation Artifact
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v4.1.7
       with:
         name: fusion-engine-client-docs.tar.gz
 
     - name: Get Python Distribution Artifact
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v4.1.7
       with:
         name: python_dist
         path: python/dist
