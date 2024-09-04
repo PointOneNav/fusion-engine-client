@@ -79,6 +79,8 @@ class Response(IntEnum):
     NO_DATA_STORED = 8
     ## The device is in a state where it can't process the command.
     UNAVAILABLE = 9
+    ## A interface specified in the command is invalid, or unsupported on the target device.
+    UNSUPPORTED_INTERFACE = 10
 
 
 class MessageType(IntEnum):
