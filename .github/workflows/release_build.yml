@@ -286,13 +286,13 @@ jobs:
         tar czf version-docs.tar.gz docs/include_header.js docs/versions.html
 
     - name: Upload Artifact
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v4
       with:
         name: fusion-engine-client-docs.tar.gz
         path: fusion-engine-client-docs.tar.gz
 
     - name: Upload Versioned Files
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v4
       with:
         name: version-docs.tar.gz
         path: version-docs.tar.gz
@@ -319,12 +319,12 @@ jobs:
         echo "Setting tag to: ${GIT_TAG}"
 
     - name: Get Documentation Artifact
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v4
       with:
         name: fusion-engine-client-docs.tar.gz
 
     - name: Get Versioned Files
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v4
       with:
         name: version-docs.tar.gz
 
@@ -371,7 +371,7 @@ jobs:
         twine check dist/*
 
     - name: Upload Artifact
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v4
       with:
         name: python_dist
         path: python/dist
@@ -386,12 +386,12 @@ jobs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
     steps:
     - name: Get Documentation Artifact
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v4
       with:
         name: fusion-engine-client-docs.tar.gz
 
     - name: Get Python Distribution Artifact
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v4
       with:
         name: python_dist
         path: python/dist

@@ -419,6 +419,11 @@ enum class Response : uint8_t {
    * The device is in a state where it can't process the command.
    */
   UNAVAILABLE = 9,
+  /**
+   * An interface specified in the command is invalid, or unsupported on the
+   * target device.
+   */
+  UNSUPPORTED_INTERFACE = 10,
 };
 
 /**
@@ -450,9 +455,10 @@ P1_CONSTEXPR_FUNC const char* to_string(Response val) {
       return "No Data Stored";
     case Response::UNAVAILABLE:
       return "Device Unavailable";
-    default:
-      return "Unrecognized";
+    case Response::UNSUPPORTED_INTERFACE:
+      return "Unsupported Interface";
   }
+  return "Unrecognized";
 }
 
 /**
