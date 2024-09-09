@@ -415,7 +415,7 @@ enum class Response : uint8_t {
    */
   UNAVAILABLE = 9,
   /**
-   * A interface specified in the command is invalid, or unsupported on the
+   * An interface specified in the command is invalid, or unsupported on the
    * target device.
    */
   UNSUPPORTED_INTERFACE = 10,
@@ -451,7 +451,7 @@ P1_CONSTEXPR_FUNC const char* to_string(Response val) {
     case Response::UNAVAILABLE:
       return "Device Unavailable";
     case Response::UNSUPPORTED_INTERFACE:
-      return "Interface ID Error";
+      return "Unsupported Interface";
   }
   return "Unrecognized";
 }
