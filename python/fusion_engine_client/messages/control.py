@@ -131,6 +131,8 @@ class ResetRequest(MessagePayload):
     RESTART_NAVIGATION_ENGINE = 0x00000001
     ## Delete all GNSS corrections information.
     RESET_GNSS_CORRECTIONS = 0x00000002
+    ## Delete all GNSS time information. */
+    RESET_TIME = 0x00000004
     ## @}
 
     ##

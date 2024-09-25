@@ -123,6 +123,8 @@ struct P1_ALIGNAS(4) ResetRequest : public MessagePayload {
   static constexpr uint32_t RESET_POSITION_DATA = 0x00000100;
   /** Delete all saved satellite ephemeris. */
   static constexpr uint32_t RESET_EPHEMERIS = 0x00000200;
+  /** Delete all GNSS time information. */
+  static constexpr uint32_t RESET_TIME = 0x00000004;
   /**
    * Reset bias estimates, and other IMU corrections that are typically
    * estimated quickly.
