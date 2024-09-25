@@ -260,10 +260,10 @@ class ResetRequest(MessagePayload):
     WARM_START = 0x00000201
 
     ##
-    # Perform a PVT reset: reset all position, velocity, orientation, and time
+    # Perform a Pose reset: reset all position, velocity, and orientation
     # information (i.e., the navigation engine's kinematic state).
     #
-    # A PVT reset is typically used to reset the kinematic portion of the
+    # A Pose reset is typically used to reset the kinematic portion of the
     # navigation engine's state if you are experiencing errors on startup or
     # after a @ref HOT_START.
     #
@@ -281,7 +281,7 @@ class ResetRequest(MessagePayload):
     # - User configuration settings (@ref RESET_CONFIG)
     # - Reboot GNSS measurement engine (@ref REBOOT_GNSS_MEASUREMENT_ENGINE)
     # - Reboot navigation processor (@ref REBOOT_NAVIGATION_PROCESSOR)
-    PVT_RESET = 0x000001FF
+    POSE_RESET = 0x000001FF
 
     ##
     # Perform a device cold start.
@@ -367,8 +367,8 @@ class ResetRequest(MessagePayload):
             return 'HOT_START'
         elif mask == cls.WARM_START:
             return 'WARM_START'
-        elif mask == cls.PVT_RESET:
-            return 'PVT_RESET'
+        elif mask == cls.POSE_RESET:
+            return 'POSE_RESET'
         elif mask == cls.COLD_START:
             return 'COLD_START'
         elif mask == cls.FACTORY_RESET:

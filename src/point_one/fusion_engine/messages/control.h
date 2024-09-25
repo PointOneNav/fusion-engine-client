@@ -256,10 +256,10 @@ struct P1_ALIGNAS(4) ResetRequest : public MessagePayload {
   static constexpr uint32_t WARM_START = 0x00000201;
 
   /**
-   * Perform a PVT reset: reset all position, velocity, orientation, and time
+   * Perform a Pose reset: reset all position, velocity, and orientation
    * information (i.e., the navigation engine's kinematic state).
    *
-   * A PVT reset is typically used to reset the kinematic portion of the
+   * A Pose reset is typically used to reset the kinematic portion of the
    * navigation engine's state if you are experiencing errors on startup or
    * after a @ref HOT_START.
    *
@@ -278,7 +278,7 @@ struct P1_ALIGNAS(4) ResetRequest : public MessagePayload {
    * - Reboot GNSS measurement engine (@ref REBOOT_GNSS_MEASUREMENT_ENGINE)
    * - Reboot navigation processor (@ref REBOOT_NAVIGATION_PROCESSOR)
    */
-  static constexpr uint32_t PVT_RESET = 0x000001FF;
+  static constexpr uint32_t POSE_RESET = 0x000001FF;
 
   /**
    * Perform a device cold start.
