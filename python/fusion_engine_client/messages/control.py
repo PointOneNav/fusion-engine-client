@@ -132,7 +132,7 @@ class ResetRequest(MessagePayload):
     ## Delete all GNSS corrections information.
     RESET_GNSS_CORRECTIONS = 0x00000002
     ## Delete all GNSS time information. */
-    RESET_TIME = 0x00000004
+    RESET_GNSS_TIME = 0x00000004
     ## @}
 
     ##
