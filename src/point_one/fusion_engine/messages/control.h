@@ -110,7 +110,7 @@ struct P1_ALIGNAS(4) ResetRequest : public MessagePayload {
   static constexpr uint32_t RESTART_NAVIGATION_ENGINE = 0x00000001;
   /** Delete all GNSS corrections information. */
   static constexpr uint32_t RESET_GNSS_CORRECTIONS = 0x00000002;
-    /** Delete all GNSS time information. */
+  /** Delete all GNSS time information. */
   static constexpr uint32_t RESET_GNSS_TIME = 0x00000004;
   /** @} */
 
