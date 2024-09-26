@@ -278,7 +278,7 @@ struct P1_ALIGNAS(4) ResetRequest : public MessagePayload {
    * - Reboot GNSS measurement engine (@ref REBOOT_GNSS_MEASUREMENT_ENGINE)
    * - Reboot navigation processor (@ref REBOOT_NAVIGATION_PROCESSOR)
    */
-  static constexpr uint32_t POSE_RESET = 0x000001FF;
+  static constexpr uint32_t POSE_RESET = 0x000001FB;
 
   /**
    * Perform a device cold start.

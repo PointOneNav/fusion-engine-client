@@ -281,7 +281,7 @@ class ResetRequest(MessagePayload):
     # - User configuration settings (@ref RESET_CONFIG)
     # - Reboot GNSS measurement engine (@ref REBOOT_GNSS_MEASUREMENT_ENGINE)
     # - Reboot navigation processor (@ref REBOOT_NAVIGATION_PROCESSOR)
-    POSE_RESET = 0x000001FF
+    POSE_RESET = 0x000001FB
 
     ##
     # Perform a device cold start.
