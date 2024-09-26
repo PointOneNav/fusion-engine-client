@@ -110,6 +110,8 @@ struct P1_ALIGNAS(4) ResetRequest : public MessagePayload {
   static constexpr uint32_t RESTART_NAVIGATION_ENGINE = 0x00000001;
   /** Delete all GNSS corrections information. */
   static constexpr uint32_t RESET_GNSS_CORRECTIONS = 0x00000002;
+  /** Delete all GNSS time information. */
+  static constexpr uint32_t RESET_GNSS_TIME = 0x00000004;
   /** @} */
 
   /**
@@ -190,8 +192,8 @@ struct P1_ALIGNAS(4) ResetRequest : public MessagePayload {
    * - Flush internal data buffers on the device
    *
    * Note that this does _not_ reset the navigation engine's position data,
-   * training parameters, or calibration. If the navigation engine has existing
-   * position information, it will be used.
+   * GNSS times, training parameters, or calibration. If the navigation engine
+   * has existing position information, it will be used.
    *
    * This reset may be combined with other resets as needed to clear additional
    * information.
@@ -215,6 +217,7 @@ struct P1_ALIGNAS(4) ResetRequest : public MessagePayload {
    *
    * Not reset/performed:
    * - All runtime data (GNSS corrections (@ref RESET_GNSS_CORRECTIONS), etc.)
+   * - GNSS times (@ref RESET_GNSS_TIME)
    * - Position, velocity, orientation (@ref RESET_POSITION_DATA)
    * - GNSS ephemeris data (@ref RESET_EPHEMERIS)
    * - Fast IMU corrections (@ref RESET_FAST_IMU_CORRECTIONS)
@@ -242,6 +245,7 @@ struct P1_ALIGNAS(4) ResetRequest : public MessagePayload {
    *
    * Not reset/performed:
    * - All runtime data (GNSS corrections (@ref RESET_GNSS_CORRECTIONS), etc.)
+   * - GNSS times (@ref RESET_GNSS_TIME)
    * - Position, velocity, orientation (@ref RESET_POSITION_DATA)
    * - Fast IMU corrections (@ref RESET_FAST_IMU_CORRECTIONS)
    * - Training parameters (slowly estimated IMU corrections, temperature
@@ -254,10 +258,10 @@ struct P1_ALIGNAS(4) ResetRequest : public MessagePayload {
   static constexpr uint32_t WARM_START = 0x00000201;
 
   /**
-   * Perform a PVT reset: reset all position, velocity, orientation, and time
+   * Perform a pose reset: reset all position, velocity, and orientation
    * information (i.e., the navigation engine's kinematic state).
    *
-   * A PVT reset is typically used to reset the kinematic portion of the
+   * A pose reset is typically used to reset the kinematic portion of the
    * navigation engine's state if you are experiencing errors on startup or
    * after a @ref HOT_START.
    *
@@ -267,6 +271,7 @@ struct P1_ALIGNAS(4) ResetRequest : public MessagePayload {
    * - Position, velocity, orientation (@ref RESET_POSITION_DATA)
    *
    * Not reset/performed:
+   * - GNSS times (@ref RESET_GNSS_TIME)
    * - GNSS ephemeris data (@ref RESET_EPHEMERIS)
    * - Fast IMU corrections (@ref RESET_FAST_IMU_CORRECTIONS)
    * - Training parameters (slowly estimated IMU corrections, temperature
@@ -276,7 +281,7 @@ struct P1_ALIGNAS(4) ResetRequest : public MessagePayload {
    * - Reboot GNSS measurement engine (@ref REBOOT_GNSS_MEASUREMENT_ENGINE)
    * - Reboot navigation processor (@ref REBOOT_NAVIGATION_PROCESSOR)
    */
-  static constexpr uint32_t PVT_RESET = 0x000001FF;
+  static constexpr uint32_t POSE_RESET = 0x000001FB;
 
   /**
    * Perform a device cold start.
@@ -287,6 +292,7 @@ struct P1_ALIGNAS(4) ResetRequest : public MessagePayload {
    * To be reset:
    * - The navigation engine (@ref RESTART_NAVIGATION_ENGINE)
    * - All runtime data (GNSS corrections (@ref RESET_GNSS_CORRECTIONS), etc.)
+   * - GNSS times (@ref RESET_GNSS_TIME)
    * - Position, velocity, orientation (@ref RESET_POSITION_DATA)
    * - GNSS ephemeris data (@ref RESET_EPHEMERIS)
    * - Fast IMU corrections (@ref RESET_FAST_IMU_CORRECTIONS)

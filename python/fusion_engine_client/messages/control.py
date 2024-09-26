@@ -131,6 +131,8 @@ class ResetRequest(MessagePayload):
     RESTART_NAVIGATION_ENGINE = 0x00000001
     ## Delete all GNSS corrections information.
     RESET_GNSS_CORRECTIONS = 0x00000002
+    ## Delete all GNSS time information. */
+    RESET_GNSS_TIME = 0x00000004
     ## @}
 
     ##
@@ -221,6 +223,7 @@ class ResetRequest(MessagePayload):
     #
     # Not reset/performed:
     # - All runtime data (GNSS corrections (@ref RESET_GNSS_CORRECTIONS), etc.)
+    # - GNSS times (@ref RESET_GNSS_TIME)
     # - Position, velocity, orientation (@ref RESET_POSITION_DATA)
     # - GNSS ephemeris data (@ref RESET_EPHEMERIS)
     # - Fast IMU corrections (@ref RESET_FAST_IMU_CORRECTIONS)
@@ -247,6 +250,7 @@ class ResetRequest(MessagePayload):
     #
     # Not reset/performed:
     # - All runtime data (GNSS corrections (@ref RESET_GNSS_CORRECTIONS), etc.)
+    # - GNSS times (@ref RESET_GNSS_TIME)
     # - Position, velocity, orientation (@ref RESET_POSITION_DATA)
     # - Fast IMU corrections (@ref RESET_FAST_IMU_CORRECTIONS)
     # - Training parameters (slowly estimated IMU corrections, temperature
@@ -258,10 +262,10 @@ class ResetRequest(MessagePayload):
     WARM_START = 0x00000201
 
     ##
-    # Perform a PVT reset: reset all position, velocity, orientation, and time
+    # Perform a pose reset: reset all position, velocity, and orientation
     # information (i.e., the navigation engine's kinematic state).
     #
-    # A PVT reset is typically used to reset the kinematic portion of the
+    # A pose reset is typically used to reset the kinematic portion of the
     # navigation engine's state if you are experiencing errors on startup or
     # after a @ref HOT_START.
     #
@@ -271,6 +275,7 @@ class ResetRequest(MessagePayload):
     # - Position, velocity, orientation (@ref RESET_POSITION_DATA)
     #
     # Not reset/performed:
+    # - GNSS times (@ref RESET_GNSS_TIME)
     # - GNSS ephemeris data (@ref RESET_EPHEMERIS)
     # - Fast IMU corrections (@ref RESET_FAST_IMU_CORRECTIONS)
     # - Training parameters (slowly estimated IMU corrections, temperature
@@ -279,7 +284,7 @@ class ResetRequest(MessagePayload):
     # - User configuration settings (@ref RESET_CONFIG)
     # - Reboot GNSS measurement engine (@ref REBOOT_GNSS_MEASUREMENT_ENGINE)
     # - Reboot navigation processor (@ref REBOOT_NAVIGATION_PROCESSOR)
-    PVT_RESET = 0x000001FF
+    POSE_RESET = 0x000001FB
 
     ##
     # Perform a device cold start.
@@ -290,6 +295,7 @@ class ResetRequest(MessagePayload):
     # To be reset:
     # - The navigation engine (@ref RESTART_NAVIGATION_ENGINE)
     # - All runtime data (GNSS corrections (@ref RESET_GNSS_CORRECTIONS), etc.)
+    # - GNSS times (@ref RESET_GNSS_TIME)
     # - Position, velocity, orientation (@ref RESET_POSITION_DATA)
     # - GNSS ephemeris data (@ref RESET_EPHEMERIS)
     # - Fast IMU corrections (@ref RESET_FAST_IMU_CORRECTIONS)
@@ -365,8 +371,8 @@ class ResetRequest(MessagePayload):
             return 'HOT_START'
         elif mask == cls.WARM_START:
             return 'WARM_START'
-        elif mask == cls.PVT_RESET:
-            return 'PVT_RESET'
+        elif mask == cls.POSE_RESET:
+            return 'POSE_RESET'
         elif mask == cls.COLD_START:
             return 'COLD_START'
         elif mask == cls.FACTORY_RESET:
