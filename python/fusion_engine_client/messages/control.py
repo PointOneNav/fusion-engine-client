@@ -223,6 +223,7 @@ class ResetRequest(MessagePayload):
     #
     # Not reset/performed:
     # - All runtime data (GNSS corrections (@ref RESET_GNSS_CORRECTIONS), etc.)
+    # - GNSS times (@ref RESET_GNSS_TIME)
     # - Position, velocity, orientation (@ref RESET_POSITION_DATA)
     # - GNSS ephemeris data (@ref RESET_EPHEMERIS)
     # - Fast IMU corrections (@ref RESET_FAST_IMU_CORRECTIONS)
@@ -249,6 +250,7 @@ class ResetRequest(MessagePayload):
     #
     # Not reset/performed:
     # - All runtime data (GNSS corrections (@ref RESET_GNSS_CORRECTIONS), etc.)
+    # - GNSS times (@ref RESET_GNSS_TIME)
     # - Position, velocity, orientation (@ref RESET_POSITION_DATA)
     # - Fast IMU corrections (@ref RESET_FAST_IMU_CORRECTIONS)
     # - Training parameters (slowly estimated IMU corrections, temperature
@@ -273,6 +275,7 @@ class ResetRequest(MessagePayload):
     # - Position, velocity, orientation (@ref RESET_POSITION_DATA)
     #
     # Not reset/performed:
+    # - GNSS times (@ref RESET_GNSS_TIME)
     # - GNSS ephemeris data (@ref RESET_EPHEMERIS)
     # - Fast IMU corrections (@ref RESET_FAST_IMU_CORRECTIONS)
     # - Training parameters (slowly estimated IMU corrections, temperature
@@ -292,6 +295,7 @@ class ResetRequest(MessagePayload):
     # To be reset:
     # - The navigation engine (@ref RESTART_NAVIGATION_ENGINE)
     # - All runtime data (GNSS corrections (@ref RESET_GNSS_CORRECTIONS), etc.)
+    # - GNSS times (@ref RESET_GNSS_TIME)
     # - Position, velocity, orientation (@ref RESET_POSITION_DATA)
     # - GNSS ephemeris data (@ref RESET_EPHEMERIS)
     # - Fast IMU corrections (@ref RESET_FAST_IMU_CORRECTIONS)
