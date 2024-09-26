@@ -110,6 +110,8 @@ struct P1_ALIGNAS(4) ResetRequest : public MessagePayload {
   static constexpr uint32_t RESTART_NAVIGATION_ENGINE = 0x00000001;
   /** Delete all GNSS corrections information. */
   static constexpr uint32_t RESET_GNSS_CORRECTIONS = 0x00000002;
+    /** Delete all GNSS time information. */
+  static constexpr uint32_t RESET_TIME = 0x00000004;
   /** @} */
 
   /**
@@ -123,8 +125,6 @@ struct P1_ALIGNAS(4) ResetRequest : public MessagePayload {
   static constexpr uint32_t RESET_POSITION_DATA = 0x00000100;
   /** Delete all saved satellite ephemeris. */
   static constexpr uint32_t RESET_EPHEMERIS = 0x00000200;
-  /** Delete all GNSS time information. */
-  static constexpr uint32_t RESET_TIME = 0x00000004;
   /**
    * Reset bias estimates, and other IMU corrections that are typically
    * estimated quickly.
@@ -256,10 +256,10 @@ struct P1_ALIGNAS(4) ResetRequest : public MessagePayload {
   static constexpr uint32_t WARM_START = 0x00000201;
 
   /**
-   * Perform a Pose reset: reset all position, velocity, and orientation
+   * Perform a pose reset: reset all position, velocity, and orientation
    * information (i.e., the navigation engine's kinematic state).
    *
-   * A Pose reset is typically used to reset the kinematic portion of the
+   * A pose reset is typically used to reset the kinematic portion of the
    * navigation engine's state if you are experiencing errors on startup or
    * after a @ref HOT_START.
    *

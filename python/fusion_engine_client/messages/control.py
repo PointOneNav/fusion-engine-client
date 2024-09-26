@@ -260,10 +260,10 @@ class ResetRequest(MessagePayload):
     WARM_START = 0x00000201
 
     ##
-    # Perform a Pose reset: reset all position, velocity, and orientation
+    # Perform a pose reset: reset all position, velocity, and orientation
     # information (i.e., the navigation engine's kinematic state).
     #
-    # A Pose reset is typically used to reset the kinematic portion of the
+    # A pose reset is typically used to reset the kinematic portion of the
     # navigation engine's state if you are experiencing errors on startup or
     # after a @ref HOT_START.
     #
