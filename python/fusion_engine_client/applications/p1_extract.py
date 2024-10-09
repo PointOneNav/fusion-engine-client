@@ -36,7 +36,7 @@ Extract FusionEngine message contents from a binary file containing mixed data
              "\n"
              "Supported types:\n%s" % '\n'.join(['- %s' % c for c in message_type_by_name.keys()]))
     parser.add_argument('-o', '--output', type=str, metavar='DIR',
-                        help="The directory where output will be stored. Defaults to the parent directory of the input"
+                        help="The directory where output will be stored. Defaults to the parent directory of the input "
                              "file, or to the log directory if reading from a log.")
     parser.add_argument('-p', '--prefix', type=str,
                         help="Use the specified prefix for the output file: `<prefix>.p1log`. Otherwise, use the "
