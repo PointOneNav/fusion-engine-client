@@ -37,6 +37,9 @@ type.
              "file does not exist, do not generate one. Otherwise, a .p1i file will be created automatically to "
              "improve data read speed in the future.")
     log_parser.add_argument(
+        '--original', action="store_true",
+        help='When loading from a log, load the recorded FusionEngine output file instead of playback results.')
+    log_parser.add_argument(
         '--log-base-dir', metavar='DIR', default=DEFAULT_LOG_BASE_DIR,
         help="The base directory containing FusionEngine logs to be searched if a log pattern is specified.")
     log_parser.add_argument(
@@ -61,7 +64,7 @@ type.
 
     # Locate the input file and set the output directory.
     input_path, output_dir, log_id = locate_log(input_path=options.log, log_base_dir=options.log_base_dir,
-                                                return_log_id=True,
+                                                return_log_id=True, load_original=options.original,
                                                 extract_fusion_engine_data=False, return_output_dir=True)
     if input_path is None:
         # locate_log() will log an error.
