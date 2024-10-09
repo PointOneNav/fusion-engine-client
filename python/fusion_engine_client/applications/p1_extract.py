@@ -74,14 +74,14 @@ Extract FusionEngine message contents from a binary file containing mixed data
                                                        log_base_dir=options.log_base_dir)
 
         if log_id is None:
-            print('Loading %s.' % os.path.basename(input_path))
+            logger.info('Loading %s.' % os.path.basename(input_path))
         else:
-            print('Loading %s from log %s.' % (os.path.basename(input_path), log_id))
+            logger.info('Loading %s from log %s.' % (os.path.basename(input_path), log_id))
 
         if options.output is not None:
             output_dir = options.output
     except FileNotFoundError as e:
-        print(str(e))
+        logger.error(str(e))
         sys.exit(1)
 
     # If the user specified a set of message names, lookup their type values. Below, we will limit the printout to only
