@@ -119,7 +119,7 @@ Extract FusionEngine message contents from a binary file containing mixed data
         if valid_count > 0:
             logger.info('Found %d valid FusionEngine messages.' % valid_count)
         else:
-            logger.debug('No FusionEngine messages found.')
+            logger.info('No FusionEngine messages found.')
 
     logger.info(f"Output stored in '{output_path}'.")
 
