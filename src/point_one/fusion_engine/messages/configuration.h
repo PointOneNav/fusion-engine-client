@@ -1483,11 +1483,24 @@ struct P1_ALIGNAS(4) ExportDataMessage {
  * - Version 1: Added data_validity field.
  * - Version 2: Changed data_validity to a @ref Response enum and added
  *              @ref source field.
+ * - Version 3: Added flags field.
  */
 struct P1_ALIGNAS(4) PlatformStorageDataMessage {
   static constexpr MessageType MESSAGE_TYPE =
       MessageType::PLATFORM_STORAGE_DATA;
-  static constexpr uint8_t MESSAGE_VERSION = 2;
+  static constexpr uint8_t MESSAGE_VERSION = 3;
+
+  /**
+   * @ref DataType::USER_CONFIG flag that does not specify what platform the
+   * configuration corresponds to.
+   */
+  static constexpr uint8_t FLAG_USER_CONFIG_PLATFORM_NOT_SPECIFIED = 0;
+  /** @ref DataType::USER_CONFIG flag for posix platforms. */
+  static constexpr uint8_t FLAG_USER_CONFIG_PLATFORM_POSIX = 1;
+  /** @ref DataType::USER_CONFIG flag for embedded platforms. */
+  static constexpr uint8_t FLAG_USER_CONFIG_PLATFORM_EMBEDDED = 2;
+  /** @ref DataType::USER_CONFIG flag for embedded SSR platforms. */
+  static constexpr uint8_t FLAG_USER_CONFIG_PLATFORM_EMBEDDED_SSR = 3;
 
   /**
    * The type of data contained in this message.
@@ -1503,7 +1516,8 @@ struct P1_ALIGNAS(4) PlatformStorageDataMessage {
    * ConfigurationSource::ACTIVE.
    */
   ConfigurationSource source = ConfigurationSource::ACTIVE;
-  uint8_t reserved[1] = {0};
+  /** @ref DataType specific flags. */
+  uint8_t flags = 0;
   /** Version of data contents. */
   DataVersion data_version;
   /** Number of bytes in data contents. */

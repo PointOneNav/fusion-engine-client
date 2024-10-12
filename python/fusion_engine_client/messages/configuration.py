@@ -1772,13 +1772,18 @@ class PlatformStorageDataMessage(MessagePayload):
     @brief Device storage data response.
     """
     MESSAGE_TYPE = MessageType.PLATFORM_STORAGE_DATA
-    MESSAGE_VERSION = 2
+    MESSAGE_VERSION = 3
+
+    FLAG_USER_CONFIG_PLATFORM_NOT_SPECIFIED = 0
+    FLAG_USER_CONFIG_PLATFORM_POSIX = 1
+    FLAG_USER_CONFIG_PLATFORM_EMBEDDED = 2
+    FLAG_USER_CONFIG_PLATFORM_EMBEDDED_SSR = 3
 
     PlatformStorageDataMessageConstruct = Struct(
         "data_type" / AutoEnum(Int8ul, DataType),
         "response" / AutoEnum(Int8ul, Response),
         "source" / AutoEnum(Int8ul, ConfigurationSource),
-        Padding(1),
+        "flags" / Int8ul,
         "data_version" / _DataVersionConstruct,
         "data_length_bytes" / Int32ul,
         "data" / Bytes(this.data_length_bytes),
@@ -1788,6 +1793,7 @@ class PlatformStorageDataMessage(MessagePayload):
         self.data_version = DataVersion(0, 0)
         self.data_type = DataType.INVALID
         self.response = Response.DATA_CORRUPTED
+        self.flags = 0
         self.source = ConfigurationSource.ACTIVE
         self.data = bytes()
 
@@ -1805,14 +1811,14 @@ class PlatformStorageDataMessage(MessagePayload):
     def __repr__(self):
         result = super().__repr__()[:-1]
         result += f', response={self.response}, type={self.data_type}, source={self.source}, ' \
-                  f'version={self.data_version}, size={len(self.data)} B]'
+                  f'flags= {self.flags}, version={self.data_version}, size={len(self.data)} B]'
         return result
 
     def __str__(self):
         return construct_message_to_string(
             message=self, construct=self.PlatformStorageDataMessageConstruct,
             title=f'Platform Storage Data ({str(self.data_type)}, {len(self.data)} B)',
-            fields=['response', 'source', 'data_version'])
+            fields=['response', 'source', 'flags', 'data_version'])
 
     def calcsize(self) -> int:
         return len(self.pack())
