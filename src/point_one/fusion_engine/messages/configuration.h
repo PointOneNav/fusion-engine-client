@@ -1480,14 +1480,24 @@ struct P1_ALIGNAS(4) ExportDataMessage {
  * See also @ref ExportDataMessage.
  *
  * Changes:
- * - Version 1: Added data_validity field.
+ * - Version 1: Added `data_validity` field.
  * - Version 2: Changed data_validity to a @ref Response enum and added
  *              @ref source field.
+ * - Version 3: Added @ref flags field.
  */
 struct P1_ALIGNAS(4) PlatformStorageDataMessage {
   static constexpr MessageType MESSAGE_TYPE =
       MessageType::PLATFORM_STORAGE_DATA;
-  static constexpr uint8_t MESSAGE_VERSION = 2;
+  static constexpr uint8_t MESSAGE_VERSION = 3;
+
+  /** @ref DataType::USER_CONFIG flag field is not set. */
+  static constexpr uint8_t FLAG_USER_CONFIG_PLATFORM_NOT_SPECIFIED = 0;
+  /** @ref DataType::USER_CONFIG flag for POSIX platforms. */
+  static constexpr uint8_t FLAG_USER_CONFIG_PLATFORM_POSIX = 1;
+  /** @ref DataType::USER_CONFIG flag for embedded platforms. */
+  static constexpr uint8_t FLAG_USER_CONFIG_PLATFORM_EMBEDDED = 2;
+  /** @ref DataType::USER_CONFIG flag for embedded SSR platforms. */
+  static constexpr uint8_t FLAG_USER_CONFIG_PLATFORM_EMBEDDED_SSR = 3;
 
   /**
    * The type of data contained in this message.
@@ -1503,7 +1513,16 @@ struct P1_ALIGNAS(4) PlatformStorageDataMessage {
    * ConfigurationSource::ACTIVE.
    */
   ConfigurationSource source = ConfigurationSource::ACTIVE;
-  uint8_t reserved[1] = {0};
+  /**
+   * @ref DataType specific flags.
+   *
+   * Currently, only defined for @ref DataType::USER_CONFIG contents. This value
+   * can optionally set to one of the `FLAG_USER_CONFIG_PLATFORM_*` values to
+   * indicate which type of platform the UserConfig is valid for. This value
+   * can be left at `0` for backwards compatibility or to indicate the platform
+   * type is unknown.
+   */
+  uint8_t flags = 0;
   /** Version of data contents. */
   DataVersion data_version;
   /** Number of bytes in data contents. */
