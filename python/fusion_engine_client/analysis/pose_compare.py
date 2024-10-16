@@ -181,7 +181,7 @@ class PoseCompare(object):
                 # Extract necessary data.
                 # Convert GPS time to P1 time.
                 gps_time = data[:, 0]
-                lla_deg = data[:, 1:4].reshape(3, data.shape[0])
+                lla_deg = data[:, 1:4].T
                 height_ellipsoid_m = data[:, 4]
                 pos_type = data[:, 5]
                 solution_status = data[:, 6]
@@ -189,8 +189,8 @@ class PoseCompare(object):
                 lat_std_dev_m = data[:, 8]
                 lon_std_dev_m = data[:, 9]
                 height_std_enu_m = data[:, 10]
-                # TODO: Figure out how to extract pos std enu.
-                pos_std_enu_m = data[:, 8:12].reshape(3, data.shape[0])
+                # TODO: Figure out how to extract pos std enu from given LLA data.
+                pos_std_enu_m = data[:, 8:12].T
 
                 # Extract parameters for GPS time to P1 time mapping.
                 valid_idx = np.where(~np.isnan(self.test_pose.p1_time) & ~np.isnan(self.test_pose.gps_time))[0][0]
