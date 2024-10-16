@@ -136,9 +136,16 @@ class NovatelData:
         self.gps_time = gps_time[idx]
         self.solution_type = position_type[idx]
         # Translate solution type values.
-        # TODO Make any necessary adjustments to this logic to incorporate correct solution types.
-        self.solution_type[(self.solution_type == 1) | (self.solution_type == 2)] = SolutionType.RTKFixed
-        self.solution_type[(self.solution_type == 32) | (self.solution_type == 34) | (self.solution_type == 50)] = SolutionType.RTKFloat
+        # From BESTPOS documentation:
+        # 48: L1_INT, Single-frequency RTK solution with carrier phase ambiguities resolved to integers
+        # 49: WIDE_INT, Multi-frequency RTK solution with carrier phase ambiguities resolved to wide-lane integers
+        # 50: NARROW_INT, Multi-frequency RTK solution with carrier phase ambiguities resolved to narrow-lane integers
+        self.solution_type[(self.solution_type == 48) | (self.solution_type == 49) | (self.solution_type == 50)] = SolutionType.RTKFixed
+
+        # From BESTPOS documentation:
+        # 32: L1_FLOAT: Single-frequency RTK solution with unresolved, float carrier phase ambiguities
+        # 34: NARROW_FLOAT: Multi-frequency RTK solution with unresolved, float carrier phase ambiguities
+        self.solution_type[(self.solution_type == 32) | (self.solution_type == 34)] = SolutionType.RTKFloat
         self.lla_deg = lla_deg[:, idx]
         self.position_std_enu_m = pos_std_enu_m[:, idx]
         # Calculate P1 times. Assume that GPS to P1 time mapping is an affine transformation.
