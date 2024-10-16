@@ -228,8 +228,10 @@ class PoseCompare(object):
                 lat_std_dev_m = data[:, 8]
                 lon_std_dev_m = data[:, 9]
                 height_std_enu_m = data[:, 10]
-                # TODO: Figure out how to extract pos std enu from given LLA data.
+                # TODO: Figure out how to extract pos std enu from given LLA data. For now, just report NaNs.
                 pos_std_enu_m = data[:, 8:12].T
+                pos_std_enu_m = np.full(pos_std_enu_m.shape, np.nan)
+
 
                 # Extract parameters for GPS time to P1 time mapping.
                 valid_idx = np.where(~np.isnan(self.test_pose.p1_time) & ~np.isnan(self.test_pose.gps_time))[0][0]
