@@ -144,6 +144,21 @@ class NovatelData:
         # Calculate P1 times. Assume that GPS to P1 time mapping is an affine transformation.
         self.p1_time = gps_to_p1_slope * (self.gps_time - gps_time_sample) + p1_time_sample
 
+        """!
+        @brief Reduce the size of all member arrays to only encompass given time range.
+
+        @param min_p1_time Minimum P1 time to include.
+        @param max_p1_time Maximum P1 time to include.
+
+        """
+    def reduce_data(self, min_p1_time, max_p1_time):
+        reduced_idx = np.logical_and(min_p1_time <= self.p1_time, self.p1_time <= max_p1_time)
+        self.p1_time = self.p1_time[reduced_idx]
+        self.gps_time = self.gps_time[reduced_idx]
+        self.solution_type = self.solution_type[reduced_idx]
+        self.lla_deg = self.lla_deg[:, reduced_idx]
+        self.position_std_enu_m = self.position_std_enu_m[:, reduced_idx]
+
 
 class PoseCompare(object):
     logger = _logger
@@ -223,6 +238,9 @@ class PoseCompare(object):
                                                   gps_to_p1_slope,
                                                   self.test_pose.p1_time[valid_idx],
                                                   self.test_pose.gps_time[valid_idx])
+
+                # Reduce data to only include times that are contained in test data.
+                self.reference_pose.reduce_data(min(self.test_pose.p1_time), max(self.test_pose.p1_time))
 
             else:
                 self.reference_pose = DataLoader(file_reference, ignore_index=ignore_index).read(
