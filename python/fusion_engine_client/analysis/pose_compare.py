@@ -109,6 +109,24 @@ _page_template = '''\
 </html>
 '''
 
+class NovatelData:
+    def __init__(self, gps_time, position_type, lla_deg, pos_std_enu_m, gps_to_p1_slope, p1_time_sample, gps_time_sample):
+        # Only use fixed or float solutions.
+        idx = (position_type == 1) | (position_type == 2) | (position_type == 32) | (position_type == 34) | (position_type == 50)
+        self.gps_time = gps_time[idx]
+        self.solution_type = position_type[idx]
+        # Translate solution type values.
+        # TODO Make any necessary adjustments to this logic.
+        self.solution_type[(self.solution_type == 1) | (self.solution_type == 2)] = SolutionType.RTKFixed
+        self.solution_type[(self.solution_type == 32) | (self.solution_type == 34) | (self.solution_type == 50)] = SolutionType.RTKFloat
+        self.lla_deg = lla_deg[:, idx]
+        self.position_std_enu_m = pos_std_enu_m[:, idx]
+        # Calculate P1 times.
+        self.p1_time = gps_to_p1_slope * (self.gps_time - gps_time_sample) + p1_time_sample
+
+def get_gps_to_p1_slope(gps_time_1, gps_time_2, p1_time_1, p1_time_2):
+    return (p1_time_2 - p1_time_1) / (gps_time_2 - gps_time_1)
+
 
 class PoseCompare(object):
     logger = _logger
@@ -154,8 +172,35 @@ class PoseCompare(object):
             raise ValueError('Test log did not contain pose data.')
 
         if isinstance(file_reference, str):
-            self.reference_pose = DataLoader(file_reference, ignore_index=ignore_index).read(
-                message_types=[PoseMessage], **self.params)[PoseMessage.MESSAGE_TYPE]
+            # Check if this is a CSV file and parse if needed.
+            if os.path.basename(file_reference) == 'novatel.csv':
+                # Perform correct action
+                data = np.genfromtxt(file_reference, delimiter=',')
+                if len(data.shape) == 1:
+                    data = data.reshape((data.shape[0], 1))
+                # Extract necessary data.
+                # Convert GPS time to P1 time.
+                gps_time = data[:, 0]
+                lla_deg = data[:, 1:4].reshape(3, data.shape[0])
+                height_ellipsoid_m = data[:, 4]
+                pos_type = data[:, 5]
+                solution_status = data[:, 6]
+                time_status = data[:, 7]
+                lat_std_dev_m = data[:, 8]
+                lon_std_dev_m = data[:, 9]
+                height_std_enu_m = data[:, 10]
+                # TODO: Figure out how to extract pos std enu.
+                pos_std_enu_m = data[:, 8:12].reshape(3, data.shape[0])
+
+                # Extract parameters for GPS time to P1 time mapping.
+                valid_idx = np.where(~np.isnan(self.test_pose.p1_time) & ~np.isnan(self.test_pose.gps_time))[0][0]
+
+                gps_to_p1_slope = get_gps_to_p1_slope(self.test_pose.gps_time[valid_idx], self.test_pose.gps_time[valid_idx+1], self.test_pose.p1_time[valid_idx], self.test_pose.p1_time[valid_idx + 1])
+                self.reference_pose = NovatelData(gps_time, pos_type, lla_deg, pos_std_enu_m, gps_to_p1_slope, self.test_pose.p1_time[valid_idx], self.test_pose.gps_time[valid_idx])
+
+            else:
+                self.reference_pose = DataLoader(file_reference, ignore_index=ignore_index).read(
+                    message_types=[PoseMessage], **self.params)[PoseMessage.MESSAGE_TYPE]
         else:
             self.reference_pose = file_reference.read(
                 message_types=[PoseMessage], **self.params)[PoseMessage.MESSAGE_TYPE]
