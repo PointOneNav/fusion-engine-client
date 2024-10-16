@@ -109,23 +109,40 @@ _page_template = '''\
 </html>
 '''
 
+
+def get_gps_to_p1_slope(gps_time_1, gps_time_2, p1_time_1, p1_time_2):
+    return (p1_time_2 - p1_time_1) / (gps_time_2 - gps_time_1)
+
+
 class NovatelData:
-    def __init__(self, gps_time, position_type, lla_deg, pos_std_enu_m, gps_to_p1_slope, p1_time_sample, gps_time_sample):
+    def __init__(self,
+                 gps_time, position_type, lla_deg, pos_std_enu_m,
+                 gps_to_p1_slope, p1_time_sample, gps_time_sample):
+        """!
+        @brief Create a data object that contains data from a Novatel CSV file and replicates the functionality of a
+               @ref DataLoader object.
+
+        @param gps_time An array containing GPS times.
+        @param position_type An array containing Novatel position types.
+        @param lla_deg An array containing latitude, longitude, and altitude.
+        @param pos_std_enu_m An array containing standard deviation of position in the ENU frame.
+        @param gps_to_p1_slope The slope that defines the affine transformation between GPS time and P1 time.
+        @param p1_time_sample A valid P1 time that is part of the affine transformation between GPS time and P1 time.
+        @param gps_time_sample A valid GPS time that is part of the affine transformation between GPS time and P1 time.
+        """
+
         # Only use fixed or float solutions.
         idx = (position_type == 1) | (position_type == 2) | (position_type == 32) | (position_type == 34) | (position_type == 50)
         self.gps_time = gps_time[idx]
         self.solution_type = position_type[idx]
         # Translate solution type values.
-        # TODO Make any necessary adjustments to this logic.
+        # TODO Make any necessary adjustments to this logic to incorporate correct solution types.
         self.solution_type[(self.solution_type == 1) | (self.solution_type == 2)] = SolutionType.RTKFixed
         self.solution_type[(self.solution_type == 32) | (self.solution_type == 34) | (self.solution_type == 50)] = SolutionType.RTKFloat
         self.lla_deg = lla_deg[:, idx]
         self.position_std_enu_m = pos_std_enu_m[:, idx]
-        # Calculate P1 times.
+        # Calculate P1 times. Assume that GPS to P1 time mapping is an affine transformation.
         self.p1_time = gps_to_p1_slope * (self.gps_time - gps_time_sample) + p1_time_sample
-
-def get_gps_to_p1_slope(gps_time_1, gps_time_2, p1_time_1, p1_time_2):
-    return (p1_time_2 - p1_time_1) / (gps_time_2 - gps_time_1)
 
 
 class PoseCompare(object):
@@ -195,8 +212,17 @@ class PoseCompare(object):
                 # Extract parameters for GPS time to P1 time mapping.
                 valid_idx = np.where(~np.isnan(self.test_pose.p1_time) & ~np.isnan(self.test_pose.gps_time))[0][0]
 
-                gps_to_p1_slope = get_gps_to_p1_slope(self.test_pose.gps_time[valid_idx], self.test_pose.gps_time[valid_idx+1], self.test_pose.p1_time[valid_idx], self.test_pose.p1_time[valid_idx + 1])
-                self.reference_pose = NovatelData(gps_time, pos_type, lla_deg, pos_std_enu_m, gps_to_p1_slope, self.test_pose.p1_time[valid_idx], self.test_pose.gps_time[valid_idx])
+                gps_to_p1_slope = get_gps_to_p1_slope(self.test_pose.gps_time[valid_idx],
+                                                      self.test_pose.gps_time[valid_idx+1],
+                                                      self.test_pose.p1_time[valid_idx],
+                                                      self.test_pose.p1_time[valid_idx+1])
+                self.reference_pose = NovatelData(gps_time,
+                                                  pos_type,
+                                                  lla_deg,
+                                                  pos_std_enu_m,
+                                                  gps_to_p1_slope,
+                                                  self.test_pose.p1_time[valid_idx],
+                                                  self.test_pose.gps_time[valid_idx])
 
             else:
                 self.reference_pose = DataLoader(file_reference, ignore_index=ignore_index).read(
@@ -460,7 +486,10 @@ class PoseCompare(object):
 
         reference_lla_deg = self.reference_pose.lla_deg[:, self.pose_index_maps[1]]
         valid_reference_ecef = np.array(geodetic2ecef(
-            lat=reference_lla_deg[0, valid_idx], lon=reference_lla_deg[1, valid_idx], alt=reference_lla_deg[2, valid_idx], deg=True))
+            lat=reference_lla_deg[0, valid_idx],
+            lon=reference_lla_deg[1, valid_idx],
+            alt=reference_lla_deg[2, valid_idx],
+            deg=True))
 
         time = test_gps_times[valid_idx] - float(self.t0)
         solution_type = test_solution_types[valid_idx]
