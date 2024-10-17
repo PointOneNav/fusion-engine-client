@@ -116,8 +116,7 @@ def get_gps_to_p1_slope(gps_time_1, gps_time_2, p1_time_1, p1_time_2):
 
 class NovatelData:
     def __init__(self,
-                 gps_time, position_type, lla_deg, pos_std_enu_m,
-                 gps_to_p1_slope, p1_time_sample, gps_time_sample):
+                 gps_time, position_type, lla_deg, pos_std_enu_m):
         """!
         @brief Create a data object that contains data from a Novatel CSV file and replicates the functionality of a
                @ref DataLoader object.
@@ -126,9 +125,6 @@ class NovatelData:
         @param position_type An array containing Novatel position types.
         @param lla_deg An array containing latitude, longitude, and altitude.
         @param pos_std_enu_m An array containing standard deviation of position in the ENU frame.
-        @param gps_to_p1_slope The slope that defines the affine transformation between GPS time and P1 time.
-        @param p1_time_sample A valid P1 time that is part of the affine transformation between GPS time and P1 time.
-        @param gps_time_sample A valid GPS time that is part of the affine transformation between GPS time and P1 time.
         """
 
         # Only use fixed or float solutions.
@@ -148,8 +144,10 @@ class NovatelData:
         self.solution_type[(self.solution_type == 32) | (self.solution_type == 34)] = SolutionType.RTKFloat
         self.lla_deg = lla_deg[:, idx]
         self.position_std_enu_m = pos_std_enu_m[:, idx]
-        # Calculate P1 times. Assume that GPS to P1 time mapping is an affine transformation.
-        self.p1_time = gps_to_p1_slope * (self.gps_time - gps_time_sample) + p1_time_sample
+        # Calculate synthetic P1 times assuming constant stream of messages.
+        rate = np.round(np.median(np.diff(self.gps_time)), 4)
+        _logger.info(f'Novatel rate: {rate}')
+        self.p1_time = np.arange(0, len(self.gps_time)) * rate
 
         """!
         @brief Reduce the size of all member arrays to only encompass given time range.
@@ -212,7 +210,7 @@ class PoseCompare(object):
 
         if isinstance(file_reference, str):
             # Check if this is a CSV file and parse if needed.
-            if os.path.basename(file_reference) == 'novatel.csv':
+            if re.match(r'novatel.+\.csv', os.path.basename(file_reference)):
                 # Perform correct action
                 data = np.genfromtxt(file_reference, delimiter=',')
                 if len(data.shape) == 1:
@@ -220,8 +218,8 @@ class PoseCompare(object):
                 # Extract necessary data.
                 # Convert GPS time to P1 time.
                 gps_time = data[:, 0]
-                lla_deg = data[:, 1:4].T
-                height_ellipsoid_m = data[:, 4]
+                lla_deg = data[:, [1,2,4]].T
+                height_msl_m = data[:, 3]
                 pos_type = data[:, 5]
                 solution_status = data[:, 6]
                 time_status = data[:, 7]
@@ -232,25 +230,10 @@ class PoseCompare(object):
                 pos_std_enu_m = data[:, 8:12].T
                 pos_std_enu_m = np.full(pos_std_enu_m.shape, np.nan)
 
-
-                # Extract parameters for GPS time to P1 time mapping.
-                valid_idx = np.where(~np.isnan(self.test_pose.p1_time) & ~np.isnan(self.test_pose.gps_time))[0][0]
-
-                gps_to_p1_slope = get_gps_to_p1_slope(self.test_pose.gps_time[valid_idx],
-                                                      self.test_pose.gps_time[valid_idx+1],
-                                                      self.test_pose.p1_time[valid_idx],
-                                                      self.test_pose.p1_time[valid_idx+1])
                 self.reference_pose = NovatelData(gps_time,
                                                   pos_type,
                                                   lla_deg,
-                                                  pos_std_enu_m,
-                                                  gps_to_p1_slope,
-                                                  self.test_pose.p1_time[valid_idx],
-                                                  self.test_pose.gps_time[valid_idx])
-
-                # Reduce data to only include times that are contained in test data.
-                self.reference_pose.reduce_data(min(self.test_pose.p1_time), max(self.test_pose.p1_time))
-
+                                                  pos_std_enu_m)
             else:
                 self.reference_pose = DataLoader(file_reference, ignore_index=ignore_index).read(
                     message_types=[PoseMessage], **self.params)[PoseMessage.MESSAGE_TYPE]

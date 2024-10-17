@@ -178,9 +178,6 @@ This tool downloads the relevant files from S3 and prompts stdin before moving o
         reference = reference_path
         reference_device = os.path.basename(reference_path)
 
-    test_guids = [options.key_for_log_in_drive]
-    log_paths[options.key_for_log_in_drive] = "2024-10-10/p1-lexus-rack-1/46fa318ace544d38b6423320d4c69c67/"
-
     for guid in test_guids:
         _logger.info(f'Comparing log: {log_paths[guid]}')
         test_device = get_device_name_from_path(log_paths[guid])
