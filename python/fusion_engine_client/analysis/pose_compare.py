@@ -210,7 +210,7 @@ class PoseCompare(object):
 
         if isinstance(file_reference, str):
             # Check if this is a CSV file and parse if needed.
-            if re.match(r'novatel.+\.csv', os.path.basename(file_reference)):
+            if re.match(r'novatel.*\.csv', os.path.basename(file_reference)):
                 # Perform correct action
                 data = np.genfromtxt(file_reference, delimiter=',')
                 if len(data.shape) == 1:
