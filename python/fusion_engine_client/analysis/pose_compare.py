@@ -127,10 +127,12 @@ class NovatelData:
         @param pos_std_enu_m An array containing standard deviation of position in the ENU frame.
         """
 
-        # Only use fixed or float solutions.
-        idx = (position_type == 1) | (position_type == 2) | (position_type == 32) | (position_type == 34) | (position_type == 50)
+        idx = ~np.isnan(position_type)
         self.gps_time = gps_time[idx]
         self.solution_type = position_type[idx]
+        self.lla_deg = lla_deg[:, idx]
+        self.position_std_enu_m = pos_std_enu_m[:, idx]
+
         # Translate solution type values.
         # From BESTPOS documentation:
         # 48: L1_INT, Single-frequency RTK solution with carrier phase ambiguities resolved to integers
@@ -139,11 +141,35 @@ class NovatelData:
         self.solution_type[(self.solution_type == 48) | (self.solution_type == 49) | (self.solution_type == 50)] = SolutionType.RTKFixed
 
         # From BESTPOS documentation:
-        # 32: L1_FLOAT: Single-frequency RTK solution with unresolved, float carrier phase ambiguities
-        # 34: NARROW_FLOAT: Multi-frequency RTK solution with unresolved, float carrier phase ambiguities
+        # 32: L1_FLOAT, Single-frequency RTK solution with unresolved, float carrier phase ambiguities
+        # 34: NARROW_FLOAT, Multi-frequency RTK solution with unresolved, float carrier phase ambiguities
         self.solution_type[(self.solution_type == 32) | (self.solution_type == 34)] = SolutionType.RTKFloat
-        self.lla_deg = lla_deg[:, idx]
-        self.position_std_enu_m = pos_std_enu_m[:, idx]
+
+        # From BESTPOS documentation:
+        # 1: FIXEDPOS, Position has been fixed by the FIX position command or by position averaging
+        # 2: FIXEDHEIGHT, Position has been fixed by the FIX height or FIX auto command or by position averaging
+        # 8: DOPPLER_VELOCITY, Velocity computed using instantaneous Doppler
+        # 19: PROPAGATED, Propagated by a Kalman filter without new observations
+        # 51: RTK_DIRECT_INS, RTK status where the RTK filter is directly initialized from the INS filter
+        # 52: INS_SBAS, INS position, where the last applied position update used a GNSS solution computed using corrections from an SBAS (WAAS) solution
+        # 53: INS_PSRSP, INS position, where the last applied position update used a single point GNSS (SINGLE) solution
+        # 54: INS_PSRDIFF, INS position, where the last applied position update used a pseudorange differential GNSS (PSRDIFF) solution
+        # 55: INS_RTKFLOAT, INS position, where the last applied position update used a floating ambiguity RTK (L1_FLOAT or NARROW_FLOAT) solution
+        # 56: INS_RTKFIXED, INS position, where the last applied position update used a fixed integer ambiguity RTK (L1_INT, WIDE_INT or NARROW_INT) solution
+        self.solution_type[(self.solution_type == 1) | (self.solution_type == 2) | (self.solution_type == 8) |
+                           (self.solution_type == 19) | (self.solution_type == 51) | (self.solution_type == 52) |
+                           (self.solution_type == 53) | (self.solution_type == 54) | (self.solution_type == 55) |
+                           (self.solution_type == 56)] = SolutionType.Integrate
+
+        # From BESTPOS documentation:
+        # 16: SINGLE, Solution calculated using only data supplied by GNSS satellites.
+        # 18: WAAS, Solution calculated using corrections from an SBAS satellite
+        self.solution_type[(self.solution_type == 16) | (self.solution_type == 18)] = SolutionType.AutonomousGPS
+
+        # From BESTPOS documentation:
+        # 17: PSRDIFF, Solution calculated using pseudorange differential (DGPS, DGNSS) corrections
+        self.solution_type[(self.solution_type == 17)] = SolutionType.DGPS
+
         # Calculate synthetic P1 times assuming constant stream of messages.
         rate = np.round(np.median(np.diff(self.gps_time)), 4)
         _logger.info(f'Novatel rate: {rate}')
