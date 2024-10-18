@@ -110,10 +110,6 @@ _page_template = '''\
 '''
 
 
-def get_gps_to_p1_slope(gps_time_1, gps_time_2, p1_time_1, p1_time_2):
-    return (p1_time_2 - p1_time_1) / (gps_time_2 - gps_time_1)
-
-
 class NovatelData:
     def __init__(self,
                  gps_time, position_type, lla_deg, pos_std_enu_m):
