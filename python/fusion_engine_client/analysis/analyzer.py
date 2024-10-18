@@ -3042,7 +3042,7 @@ Load and display information stored in a FusionEngine binary file.
     analyzer.generate_index(auto_open=not options.no_index)
 
     _logger.info("Output stored in '%s'." % os.path.abspath(output_dir))
-
+    return analyzer
 
 if __name__ == "__main__":
     main()
