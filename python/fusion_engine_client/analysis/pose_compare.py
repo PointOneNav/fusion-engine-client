@@ -138,12 +138,15 @@ class NovatelData:
         # 48: L1_INT, Single-frequency RTK solution with carrier phase ambiguities resolved to integers
         # 49: WIDE_INT, Multi-frequency RTK solution with carrier phase ambiguities resolved to wide-lane integers
         # 50: NARROW_INT, Multi-frequency RTK solution with carrier phase ambiguities resolved to narrow-lane integers
-        self.solution_type[(self.solution_type == 48) | (self.solution_type == 49) | (self.solution_type == 50)] = SolutionType.RTKFixed
+        # 56: INS_RTKFIXED, INS position, where the last applied position update used a fixed integer ambiguity RTK (L1_INT, WIDE_INT or NARROW_INT) solution
+        self.solution_type[(self.solution_type == 48) | (self.solution_type == 49) | (self.solution_type == 50) |
+                           (self.solution_type == 56)] = SolutionType.RTKFixed
 
         # From BESTPOS documentation:
         # 32: L1_FLOAT, Single-frequency RTK solution with unresolved, float carrier phase ambiguities
         # 34: NARROW_FLOAT, Multi-frequency RTK solution with unresolved, float carrier phase ambiguities
-        self.solution_type[(self.solution_type == 32) | (self.solution_type == 34)] = SolutionType.RTKFloat
+        # 55: INS_RTKFLOAT, INS position, where the last applied position update used a floating ambiguity RTK (L1_FLOAT or NARROW_FLOAT) solution
+        self.solution_type[(self.solution_type == 32) | (self.solution_type == 34) | (self.solution_type == 55)] = SolutionType.RTKFloat
 
         # From BESTPOS documentation:
         # 1: FIXEDPOS, Position has been fixed by the FIX position command or by position averaging
@@ -151,24 +154,21 @@ class NovatelData:
         # 8: DOPPLER_VELOCITY, Velocity computed using instantaneous Doppler
         # 19: PROPAGATED, Propagated by a Kalman filter without new observations
         # 51: RTK_DIRECT_INS, RTK status where the RTK filter is directly initialized from the INS filter
-        # 52: INS_SBAS, INS position, where the last applied position update used a GNSS solution computed using corrections from an SBAS (WAAS) solution
-        # 53: INS_PSRSP, INS position, where the last applied position update used a single point GNSS (SINGLE) solution
-        # 54: INS_PSRDIFF, INS position, where the last applied position update used a pseudorange differential GNSS (PSRDIFF) solution
-        # 55: INS_RTKFLOAT, INS position, where the last applied position update used a floating ambiguity RTK (L1_FLOAT or NARROW_FLOAT) solution
-        # 56: INS_RTKFIXED, INS position, where the last applied position update used a fixed integer ambiguity RTK (L1_INT, WIDE_INT or NARROW_INT) solution
         self.solution_type[(self.solution_type == 1) | (self.solution_type == 2) | (self.solution_type == 8) |
-                           (self.solution_type == 19) | (self.solution_type == 51) | (self.solution_type == 52) |
-                           (self.solution_type == 53) | (self.solution_type == 54) | (self.solution_type == 55) |
-                           (self.solution_type == 56)] = SolutionType.Integrate
+                           (self.solution_type == 19) | (self.solution_type == 51)] = SolutionType.Integrate
 
         # From BESTPOS documentation:
         # 16: SINGLE, Solution calculated using only data supplied by GNSS satellites.
         # 18: WAAS, Solution calculated using corrections from an SBAS satellite
-        self.solution_type[(self.solution_type == 16) | (self.solution_type == 18)] = SolutionType.AutonomousGPS
+        # 52: INS_SBAS, INS position, where the last applied position update used a GNSS solution computed using corrections from an SBAS (WAAS) solution
+        # 53: INS_PSRSP, INS position, where the last applied position update used a single point GNSS (SINGLE) solution
+        self.solution_type[(self.solution_type == 16) | (self.solution_type == 18) | (self.solution_type == 52) |
+                           (self.solution_type == 53)] = SolutionType.AutonomousGPS
 
         # From BESTPOS documentation:
         # 17: PSRDIFF, Solution calculated using pseudorange differential (DGPS, DGNSS) corrections
-        self.solution_type[(self.solution_type == 17)] = SolutionType.DGPS
+        # 54: INS_PSRDIFF, INS position, where the last applied position update used a pseudorange differential GNSS (PSRDIFF) solution
+        self.solution_type[(self.solution_type == 17) | (self.solution_type == 54)] = SolutionType.DGPS
 
         # Calculate synthetic P1 times assuming constant stream of messages.
         rate = np.round(np.median(np.diff(self.gps_time)), 4)
