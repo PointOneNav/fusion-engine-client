@@ -124,23 +124,29 @@ This tool downloads the relevant files from S3 and prompts stdin before moving o
 
     drive_meta = json.loads(drive_meta_data.decode('utf-8'))
 
-    logs_to_download = []
+    reference_guid = drive_meta.get('drive_reference_log', None)
+    if reference_guid is None and options.reference is None:
+        _logger.error('No reference found in configuration file and no reference path provided.')
+        exit(1)
+
     if options.reference is None:
-        reference_guid = drive_meta['drive_reference_log']
         _logger.info(f'Using reference log: {reference_guid}')
-        logs_to_download = [reference_guid]
     else:
-        reference_guid = None
-        reference_path = options.reference
         _logger.info('Attempting to use external data as reference.')
+        reference_path = options.reference
         if not os.path.exists(reference_path):
             _logger.error(f"Could't find reference data: {reference_path}.")
             exit(1)
 
     test_guids = drive_meta['drive_logs']
 
+    logs_to_download = []
     log_paths = {}
-    for guid in test_guids:
+    for guid in [reference_guid] + test_guids:
+        # If a reference path was provided, do not attempt to use cached reference log.
+        if guid == reference_guid and options.reference is not None:
+            continue
+
         matches = glob.glob(str(LOG_DIR / f'*{guid}.p1log'))
         if len(matches) > 0:
             log_paths[guid] = Path(matches[0])
