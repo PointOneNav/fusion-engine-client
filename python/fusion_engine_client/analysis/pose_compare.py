@@ -169,7 +169,8 @@ class NovatelData:
         # Calculate synthetic P1 times assuming constant stream of messages.
         rate = np.round(np.median(np.diff(self.gps_time)), 4)
         _logger.info(f'Novatel rate: {rate}')
-        self.p1_time = np.arange(0, len(self.gps_time)) * rate
+        self.p1_time = np.arange(0, len(gps_time)) * rate
+        self.p1_time = self.p1_time[idx]
 
 
 class PoseCompare(object):
