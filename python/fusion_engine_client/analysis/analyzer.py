@@ -2812,7 +2812,7 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
         return {e: colors[i % len(colors)] for i, e in enumerate(elements)}
 
 
-def main():
+def main(args=None):
     parser = ArgumentParser(description="""\
 Load and display information stored in a FusionEngine binary file.
 """)
@@ -2908,7 +2908,7 @@ Load and display information stored in a FusionEngine binary file.
         '-v', '--verbose', action='count', default=0,
         help="Print verbose/trace debugging messages.")
 
-    options = parser.parse_args()
+    options = parser.parse_args(args=args)
 
     # Configure logging.
     if options.verbose >= 1:
