@@ -814,6 +814,7 @@ class Analyzer(object):
         time_figure.update_layout(title_text=extra_text)
 
         # Plot the data.
+        max_3d_diff_m = [0.0]
         def _plot_data(name, idx, marker_style=None):
             style = {'mode': 'markers', 'marker': {'size': 8}, 'showlegend': True, 'legendgroup': name,
                      'hoverlabel': {'namelength': -1}}
@@ -828,7 +829,9 @@ class Analyzer(object):
                 topo_figure.add_trace(go.Scattergl(x=displacement_enu_m[0, idx], y=displacement_enu_m[1, idx],
                                                    name=name, text=text, **style), 1, 1)
 
-                time_figure.add_trace(go.Scattergl(x=time[idx], y=np.linalg.norm(displacement_enu_m[:, idx], axis=0),
+                displacement_3d_m = np.linalg.norm(displacement_enu_m[:, idx], axis=0)
+                max_3d_diff_m[0] = max(max_3d_diff_m[0], np.nanmax(displacement_3d_m))
+                time_figure.add_trace(go.Scattergl(x=time[idx], y=displacement_3d_m,
                                                    name=name, text=text, **style), 1, 1)
                 style['showlegend'] = False
                 time_figure.add_trace(go.Scattergl(x=time[idx], y=displacement_enu_m[0, idx], name=name,
@@ -846,6 +849,12 @@ class Analyzer(object):
 
         for type, info in _SOLUTION_TYPE_MAP.items():
             _plot_data(info.name, solution_type == type, marker_style=info.style)
+
+        # Set the 3D displacement Y-axis limits to start at 0 and encompass the data.
+        max_y = 1.2 * max_3d_diff_m[0]
+        if max_y == 0.0:
+            max_y = 1.0
+        time_figure['layout']['yaxis1'].update(range=[0, max_y])
 
         name = source.replace(' ', '_').lower()
         self._add_figure(name=f"{name}_top_down", figure=topo_figure, title=f"{source}: Top-Down (Topocentric)")
