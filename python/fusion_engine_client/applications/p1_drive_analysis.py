@@ -81,6 +81,9 @@ This tool downloads the relevant files from S3 and prompts stdin before moving o
         help="The full S3 key for one of the logs in the drive.\n"
              "Ex. '2024-04-04/p1-lexus-rack-2/a0a0ff472ea342809d05380d8fe54399'")
 
+    parser.add_argument(
+        '--reference', help="Specify reference path.")
+
     options = parser.parse_args()
 
     # Configure logging.
@@ -121,15 +124,29 @@ This tool downloads the relevant files from S3 and prompts stdin before moving o
 
     drive_meta = json.loads(drive_meta_data.decode('utf-8'))
 
-    reference_guid = drive_meta['drive_reference_log']
+    reference_guid = drive_meta.get('drive_reference_log', None)
+    if reference_guid is None and options.reference is None:
+        _logger.error('No reference found in configuration file and no reference path provided.')
+        exit(1)
 
-    _logger.info(f'Using reference log: {reference_guid}')
+    if options.reference is None:
+        _logger.info(f'Using reference log: {reference_guid}')
+    else:
+        _logger.info('Attempting to use external data as reference.')
+        reference_path = options.reference
+        if not os.path.exists(reference_path):
+            _logger.error(f"Could't find reference data: {reference_path}.")
+            exit(1)
 
     test_guids = drive_meta['drive_logs']
 
     logs_to_download = []
     log_paths = {}
     for guid in [reference_guid] + test_guids:
+        # If a reference path was provided, do not attempt to use cached reference log.
+        if guid == reference_guid and options.reference is not None:
+            continue
+
         matches = glob.glob(str(LOG_DIR / f'*{guid}.p1log'))
         if len(matches) > 0:
             log_paths[guid] = Path(matches[0])
@@ -160,12 +177,18 @@ This tool downloads the relevant files from S3 and prompts stdin before moving o
 
             s3_client.download_file(S3_DEFAULT_INGEST_BUCKET, reference_p1log_key, log_paths[guid])
 
-    reference_device = get_device_name_from_path(log_paths[reference_guid])
+    if options.reference is None:
+        reference = log_paths[reference_guid]
+        reference_device = get_device_name_from_path(reference)
+    else:
+        reference = reference_path
+        reference_device = os.path.basename(reference_path)
+
     for guid in test_guids:
         _logger.info(f'Comparing log: {log_paths[guid]}')
         test_device = get_device_name_from_path(log_paths[guid])
         sys.argv = ['pose_compare_main', str(log_paths[guid]),  str(
-            log_paths[reference_guid]), '--time-axis=rel', f'--test-device-name={test_device}', f'--reference-device-name={reference_device}']
+            reference), '--time-axis=rel', f'--test-device-name={test_device}', f'--reference-device-name={reference_device}']
         try:
             pose_compare_main()
         except Exception as e:

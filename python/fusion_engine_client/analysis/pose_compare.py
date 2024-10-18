@@ -110,6 +110,69 @@ _page_template = '''\
 '''
 
 
+class NovatelData:
+    def __init__(self,
+                 gps_time, position_type, lla_deg, pos_std_enu_m):
+        """!
+        @brief Create a data object that contains data from a Novatel CSV file and replicates the functionality of a
+               @ref DataLoader object.
+
+        @param gps_time An array containing GPS times.
+        @param position_type An array containing Novatel position types.
+        @param lla_deg An array containing latitude, longitude, and altitude.
+        @param pos_std_enu_m An array containing standard deviation of position in the ENU frame.
+        """
+
+        idx = ~np.isnan(position_type)
+        self.gps_time = gps_time[idx]
+        self.solution_type = position_type[idx]
+        self.lla_deg = lla_deg[:, idx]
+        self.position_std_enu_m = pos_std_enu_m[:, idx]
+
+        # Translate solution type values.
+        # From BESTPOS documentation:
+        # 48: L1_INT, Single-frequency RTK solution with carrier phase ambiguities resolved to integers
+        # 49: WIDE_INT, Multi-frequency RTK solution with carrier phase ambiguities resolved to wide-lane integers
+        # 50: NARROW_INT, Multi-frequency RTK solution with carrier phase ambiguities resolved to narrow-lane integers
+        # 56: INS_RTKFIXED, INS position, where the last applied position update used a fixed integer ambiguity RTK (L1_INT, WIDE_INT or NARROW_INT) solution
+        self.solution_type[(self.solution_type == 48) | (self.solution_type == 49) | (self.solution_type == 50) |
+                           (self.solution_type == 56)] = SolutionType.RTKFixed
+
+        # From BESTPOS documentation:
+        # 32: L1_FLOAT, Single-frequency RTK solution with unresolved, float carrier phase ambiguities
+        # 34: NARROW_FLOAT, Multi-frequency RTK solution with unresolved, float carrier phase ambiguities
+        # 55: INS_RTKFLOAT, INS position, where the last applied position update used a floating ambiguity RTK (L1_FLOAT or NARROW_FLOAT) solution
+        self.solution_type[(self.solution_type == 32) | (self.solution_type == 34) | (self.solution_type == 55)] = SolutionType.RTKFloat
+
+        # From BESTPOS documentation:
+        # 1: FIXEDPOS, Position has been fixed by the FIX position command or by position averaging
+        # 2: FIXEDHEIGHT, Position has been fixed by the FIX height or FIX auto command or by position averaging
+        # 8: DOPPLER_VELOCITY, Velocity computed using instantaneous Doppler
+        # 19: PROPAGATED, Propagated by a Kalman filter without new observations
+        # 51: RTK_DIRECT_INS, RTK status where the RTK filter is directly initialized from the INS filter
+        self.solution_type[(self.solution_type == 1) | (self.solution_type == 2) | (self.solution_type == 8) |
+                           (self.solution_type == 19) | (self.solution_type == 51)] = SolutionType.Integrate
+
+        # From BESTPOS documentation:
+        # 16: SINGLE, Solution calculated using only data supplied by GNSS satellites.
+        # 18: WAAS, Solution calculated using corrections from an SBAS satellite
+        # 52: INS_SBAS, INS position, where the last applied position update used a GNSS solution computed using corrections from an SBAS (WAAS) solution
+        # 53: INS_PSRSP, INS position, where the last applied position update used a single point GNSS (SINGLE) solution
+        self.solution_type[(self.solution_type == 16) | (self.solution_type == 18) | (self.solution_type == 52) |
+                           (self.solution_type == 53)] = SolutionType.AutonomousGPS
+
+        # From BESTPOS documentation:
+        # 17: PSRDIFF, Solution calculated using pseudorange differential (DGPS, DGNSS) corrections
+        # 54: INS_PSRDIFF, INS position, where the last applied position update used a pseudorange differential GNSS (PSRDIFF) solution
+        self.solution_type[(self.solution_type == 17) | (self.solution_type == 54)] = SolutionType.DGPS
+
+        # Calculate synthetic P1 times assuming constant stream of messages.
+        rate = np.round(np.median(np.diff(self.gps_time)), 4)
+        _logger.info(f'Novatel rate: {rate}')
+        self.p1_time = np.arange(0, len(gps_time)) * rate
+        self.p1_time = self.p1_time[idx]
+
+
 class PoseCompare(object):
     logger = _logger
 
@@ -154,8 +217,34 @@ class PoseCompare(object):
             raise ValueError('Test log did not contain pose data.')
 
         if isinstance(file_reference, str):
-            self.reference_pose = DataLoader(file_reference, ignore_index=ignore_index).read(
-                message_types=[PoseMessage], **self.params)[PoseMessage.MESSAGE_TYPE]
+            # Check if this is a CSV file and parse if needed.
+            if re.match(r'novatel.*\.csv', os.path.basename(file_reference)):
+                # Perform correct action
+                data = np.genfromtxt(file_reference, delimiter=',')
+                if len(data.shape) == 1:
+                    data = data.reshape((data.shape[0], 1))
+                # Extract necessary data.
+                # Convert GPS time to P1 time.
+                gps_time = data[:, 0]
+                lla_deg = data[:, [1,2,4]].T
+                height_msl_m = data[:, 3]
+                pos_type = data[:, 5]
+                solution_status = data[:, 6]
+                time_status = data[:, 7]
+                lat_std_dev_m = data[:, 8]
+                lon_std_dev_m = data[:, 9]
+                height_std_enu_m = data[:, 10]
+                # TODO: Figure out how to extract pos std enu from given LLA data. For now, just report NaNs.
+                pos_std_enu_m = data[:, 8:12].T
+                pos_std_enu_m = np.full(pos_std_enu_m.shape, np.nan)
+
+                self.reference_pose = NovatelData(gps_time,
+                                                  pos_type,
+                                                  lla_deg,
+                                                  pos_std_enu_m)
+            else:
+                self.reference_pose = DataLoader(file_reference, ignore_index=ignore_index).read(
+                    message_types=[PoseMessage], **self.params)[PoseMessage.MESSAGE_TYPE]
         else:
             self.reference_pose = file_reference.read(
                 message_types=[PoseMessage], **self.params)[PoseMessage.MESSAGE_TYPE]
@@ -415,7 +504,10 @@ class PoseCompare(object):
 
         reference_lla_deg = self.reference_pose.lla_deg[:, self.pose_index_maps[1]]
         valid_reference_ecef = np.array(geodetic2ecef(
-            lat=reference_lla_deg[0, valid_idx], lon=reference_lla_deg[1, valid_idx], alt=reference_lla_deg[2, valid_idx], deg=True))
+            lat=reference_lla_deg[0, valid_idx],
+            lon=reference_lla_deg[1, valid_idx],
+            alt=reference_lla_deg[2, valid_idx],
+            deg=True))
 
         time = test_gps_times[valid_idx] - float(self.t0)
         solution_type = test_solution_types[valid_idx]
