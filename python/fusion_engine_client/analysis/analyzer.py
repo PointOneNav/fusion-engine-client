@@ -858,18 +858,18 @@ class Analyzer(object):
         @param truth_lla_deg The truth LLA location (in degrees/meters).
         """
         truth_ecef_m = np.array(geodetic2ecef(*truth_lla_deg, deg=True))
-        self._plot_pose_displacement(title='Position Error', center_ecef_m=truth_ecef_m)
+        return self._plot_pose_displacement(title='Position Error', center_ecef_m=truth_ecef_m)
 
     def plot_pose_displacement(self):
         """!
         @brief Generate a topocentric (top-down) plot of position displacement, as well as plot of displacement over
                time.
         """
-        self._plot_pose_displacement()
+        return self._plot_pose_displacement()
 
     def _plot_pose_displacement(self, title='Pose Displacement', center_ecef_m=None):
         if self.output_dir is None:
-            return
+            return None
 
         # Read the pose data.
         result = self.reader.read(message_types=[PoseMessage], source_ids=self.default_source_id, **self.params)
@@ -877,13 +877,13 @@ class Analyzer(object):
 
         if len(pose_data.p1_time) == 0:
             self.logger.info('No pose data available. Skipping displacement plots.')
-            return
+            return None
 
         # Remove invalid solutions.
         valid_idx = np.logical_and(~np.isnan(pose_data.p1_time), pose_data.solution_type != SolutionType.Invalid)
         if not np.any(valid_idx):
             self.logger.info('No valid position solutions detected. Skipping displacement plots.')
-            return
+            return None
 
         time = pose_data.p1_time[valid_idx] - float(self.t0)
         solution_type = pose_data.solution_type[valid_idx]
@@ -905,6 +905,8 @@ class Analyzer(object):
 
         self._plot_displacement(source=title, title=axis_title, time=time, solution_type=solution_type,
                                 displacement_enu_m=displacement_enu_m, std_enu_m=std_enu_m)
+
+        return displacement_enu_m
 
     def plot_relative_position(self):
         """!
