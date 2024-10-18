@@ -88,6 +88,10 @@ FusionEngine message specification.
     
 ### Usage Instructions
 
+> Note for Windows users: You must install Python using an installer from
+> https://www.python.org/downloads/windows/ and select "Add python.exe to PATH". (Do not install Python using Microsoft
+> Store.)
+
 #### Install From PyPI
 
 1. Install Python (3.6 or later) and pip.
