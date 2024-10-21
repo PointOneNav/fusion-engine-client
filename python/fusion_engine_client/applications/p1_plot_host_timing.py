@@ -134,15 +134,19 @@ python/fusion_engine_client/applications/p1_dump_pcap.py generates the host time
         _logger.error(f'Host time file "{host_mapper.index_path}" not found.')
         sys.exit(1)
     host_mapper.load_from_file()
-    # Host times map 1-to-1 with reader.index entries.
-    host_times = host_mapper.map_to_msg_offsets(reader.index.offset)
 
     output_dir = Path(input_path).parent
     prefix = os.path.splitext(os.path.basename(input_path))[0]
 
     # Process all data in the file.
+    # Don't apply message and time filtering so message_index isn't filtered. It needs to map 1-1 with the unfiltered
+    # index made with host_mapper.
     reader = MixedLogReader(input_path, return_offset=True, show_progress=options.progress,
-                            ignore_index=not read_index, message_types=message_types, time_range=time_range)
+                            ignore_index=not read_index)
+    # Host times map 1-to-1 with reader.index entries.
+    host_times = host_mapper.map_to_msg_offsets(reader.index.offset)
+    # Now apply time filter (messages are filtered implicitly by the "for loop" below).
+    reader.filter_in_place(time_range)
 
     for type in message_types:
         # Filter host times to indexes that match message type.
