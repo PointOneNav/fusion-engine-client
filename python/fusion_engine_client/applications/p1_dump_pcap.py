@@ -40,6 +40,10 @@ or
 To capture a *.pcap file use a command like:
 `sudo tcpdump -i any -nn -w /tmp/capture.pcap src 192.168.1.124`
 which would capture all data sent from `192.168.1.124` to the host.
+
+To simulate an application connecting over TCP, you can run:
+`netcat 192.168.1.124 30200 > /dev/null`
+to open a TCP connection.
 """)
 
     parser.add_argument('-o', '--output', type=str, metavar='DIR',
@@ -125,6 +129,7 @@ which would capture all data sent from `192.168.1.124` to the host.
 
     for stream in streams.values():
         logger.info(f"{stream.bytes} B stored in '{stream.data_fd.name}'.")
+        stream.data_fd.close()
 
 
 if __name__ == "__main__":
