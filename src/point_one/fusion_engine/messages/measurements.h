@@ -1261,6 +1261,45 @@ struct P1_ALIGNAS(4) RawHeadingOutput : public MessagePayload {
   float baseline_distance_m = NAN;
 };
 
+
+/**
+ * @brief A packet of data to be logged for playback. (@ref
+ *        InternalMessageType::INPUT_DATA_WRAPPER).
+ * @ingroup measurement_messages
+ *
+ * This message has the remainder of the payload_size_bytes filled with the data
+ * to be logged for playback.
+ *
+ * ```
+ * {MessageHeader, InputDataWrapperMessage, [wrapped data for playback]}
+ * ```
+ */
+struct P1_ALIGNAS(4) InputDataWrapperMessage {
+  static constexpr MessageType MESSAGE_TYPE = MessageType::INPUT_DATA_WRAPPER;
+  static constexpr uint8_t MESSAGE_VERSION = 0;
+
+  // Default member initializers for bit-fields only available with c++20.
+  InputDataWrapperMessage() : system_time_cs(0) {}
+
+  /**
+   * 5 byte system wall-clock timestamp in centiseconds (hundredths of a
+   * second). Set to POSIX time (time since 1/1/1970) where available.
+   */
+  uint64_t system_time_cs : 40;
+
+  uint8_t reserved[1] = {0};
+
+  /** Type identifier for the serialized message to follow. */
+  uint16_t data_type = 0;
+
+  /**
+   * The rest of this message contains the wrapped data. The size of the data is
+   * found by subtracting the size of the other fields in this message from the
+   * header `payload_size_bytes`. The data is interpreted based on the value of
+   * `data_type`.
+   */
+};
+
 #pragma pack(pop)
 
 } // namespace messages
