@@ -86,9 +86,6 @@ enum class MessageType : uint16_t {
   FAULT_CONTROL = 13006, ///< @ref FaultControlMessage
   DEVICE_ID = 13007, ///< @ref DeviceIDMessage
   STARTUP_REQUEST = 13008, ///< @ref StartupRequest
-  SPI_CMD = 13009, ///< @ref SpiCmd
-  SPI_CMD_RESPONSE = 13010, ///< @ref SpiCmdResponse
-  SPI_LBAND_PACKET = 13011, ///< @ref SpiLbandPacket
 
   SET_CONFIG = 13100, ///< @ref SetConfigMessage
   GET_CONFIG = 13101, ///< @ref GetConfigMessage
@@ -107,8 +104,11 @@ enum class MessageType : uint16_t {
 
   LBAND_FRAME = 14000, ///< @ref LBandFrameMessage
 
+  ST5635_COMMAND = 14100, ///< @ref ST5635Command
+  ST5635_COMMAND_RESPONSE = 14101, ///< @ref ST5635CommandResponse
+
   /// The maximum defined @ref MessageType enum value.
-  MAX_VALUE = LBAND_FRAME,
+  MAX_VALUE = ST5635_COMMAND_RESPONSE,
 };
 
 /**
@@ -231,15 +231,6 @@ P1_CONSTEXPR_FUNC const char* to_string(MessageType type) {
     case MessageType::STARTUP_REQUEST:
       return "Startup Request";
 
-    case MessageType::SPI_CMD:
-      return "SPI Command";
-
-    case MessageType::SPI_CMD_RESPONSE:
-      return "SPI Command Response";
-
-    case MessageType::SPI_LBAND_PACKET:
-      return "SPI Lband Packet";
-
     case MessageType::DEVICE_ID:
       return "Device ID Information";
 
@@ -284,6 +275,12 @@ P1_CONSTEXPR_FUNC const char* to_string(MessageType type) {
 
     case MessageType::LBAND_FRAME:
       return "L-band Frame Contents";
+
+    case MessageType::ST5635_COMMAND:
+      return "ST5635 Command";
+
+    case MessageType::ST5635_COMMAND_RESPONSE:
+      return "ST5635 Command Response";
   }
   return "Unrecognized Message";
 }
@@ -313,9 +310,6 @@ P1_CONSTEXPR_FUNC bool IsCommand(MessageType message_type) {
     case MessageType::RESET_REQUEST:
     case MessageType::STARTUP_REQUEST:
     case MessageType::SHUTDOWN_REQUEST:
-    case MessageType::SPI_CMD:
-    case MessageType::SPI_CMD_RESPONSE:
-    case MessageType::SPI_LBAND_PACKET:
     case MessageType::FAULT_CONTROL:
     case MessageType::SET_CONFIG:
     case MessageType::GET_CONFIG:
@@ -324,6 +318,7 @@ P1_CONSTEXPR_FUNC bool IsCommand(MessageType message_type) {
     case MessageType::EXPORT_DATA:
     case MessageType::SET_MESSAGE_RATE:
     case MessageType::GET_MESSAGE_RATE:
+    case MessageType::ST5635_COMMAND:
       return true;
     case MessageType::INVALID:
     case MessageType::POSE:
@@ -363,6 +358,7 @@ P1_CONSTEXPR_FUNC bool IsCommand(MessageType message_type) {
     case MessageType::MESSAGE_RATE_RESPONSE:
     case MessageType::SUPPORTED_IO_INTERFACES:
     case MessageType::LBAND_FRAME:
+    case MessageType::ST5635_COMMAND_RESPONSE:
       return false;
   }
   return false;
