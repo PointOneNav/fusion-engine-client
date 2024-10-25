@@ -1261,17 +1261,16 @@ struct P1_ALIGNAS(4) RawHeadingOutput : public MessagePayload {
   float baseline_distance_m = NAN;
 };
 
-
 /**
- * @brief A packet of data to be logged for playback. (@ref
- *        InternalMessageType::INPUT_DATA_WRAPPER).
+ * @brief A packet of data with an external definition. (@ref
+ *        MessageType::INPUT_DATA_WRAPPER).
  * @ingroup measurement_messages
  *
- * This message has the remainder of the payload_size_bytes filled with the data
- * to be logged for playback.
+ * This message has the remainder of the payload_size_bytes filled with the
+ * wrapped data.
  *
  * ```
- * {MessageHeader, InputDataWrapperMessage, [wrapped data for playback]}
+ * {MessageHeader, InputDataWrapperMessage, [wrapped data]}
  * ```
  */
 struct P1_ALIGNAS(4) InputDataWrapperMessage {
