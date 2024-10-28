@@ -1277,6 +1277,18 @@ struct P1_ALIGNAS(4) InputDataWrapperMessage {
   static constexpr MessageType MESSAGE_TYPE = MessageType::INPUT_DATA_WRAPPER;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
+// The MSVC compiler does not allow unaligned bit fields:
+// https://stackoverflow.com/questions/4310728/forcing-unaligned-bitfield-packing-in-msvc
+// unlike Clang and GCC. This means that `uint64_t system_time_cs : 40;` is 5
+// bytes in GCC and 8 bytes in MSVC. This means that on MSVC you'd need to cast
+// @ref system_time_cs_bytes to read and write the timestamp.
+#if defined(_MSC_VER)
+  /**
+   * 5 byte system wall-clock timestamp in centiseconds (hundredths of a
+   * second). Set to POSIX time (time since 1/1/1970) where available.
+   */
+  uint8_t system_time_cs_bytes[5] = {0};
+#else
   // Default member initializers for bit-fields only available with c++20.
   InputDataWrapperMessage() : system_time_cs(0) {}
 
@@ -1285,6 +1297,7 @@ struct P1_ALIGNAS(4) InputDataWrapperMessage {
    * second). Set to POSIX time (time since 1/1/1970) where available.
    */
   uint64_t system_time_cs : 40;
+#endif
 
   uint8_t reserved[1] = {0};
 
