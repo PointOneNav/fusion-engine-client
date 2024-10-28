@@ -1435,7 +1435,10 @@ class InputDataWrapperMessage(MessagePayload):
 
     def __str__(self):
         return construct_message_to_string(message=self, construct=self.Construct,
-                                           value_to_string={'data': lambda x: f'{len(x)} B payload'},
+                                           value_to_string={
+                                               'data': lambda x: f'{len(x)} B payload',
+                                               'data_type': lambda x: f'{x} (0x{x:02x})',
+                                           },
                                            title=f'Data Wrapper')
 
     def calcsize(self) -> int:
