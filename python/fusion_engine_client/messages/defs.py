@@ -515,6 +515,11 @@ class MessagePayload:
         elif MessageType.PLATFORM_STORAGE_DATA in result:
             result.add(MessageType.LEGACY_PLATFORM_STORAGE_DATA)
 
+        if MessageType.LEGACY_INPUT_DATA_WRAPPER in result:
+            result.add(MessageType.INPUT_DATA_WRAPPER)
+        elif MessageType.INPUT_DATA_WRAPPER in result:
+            result.add(MessageType.LEGACY_INPUT_DATA_WRAPPER)
+
         if return_class:
             result = {cls.message_type_to_class[t] for t in result}
 
