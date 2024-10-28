@@ -1311,6 +1311,8 @@ struct P1_ALIGNAS(4) InputDataWrapperMessage {
    * `data_type`.
    */
 };
+static_assert(sizeof(InputDataWrapperMessage) == 8,
+              "InputDataWrapperMessage does not match expected packed size.");
 
 #pragma pack(pop)
 
