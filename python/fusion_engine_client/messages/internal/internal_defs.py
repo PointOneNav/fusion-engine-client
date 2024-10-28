@@ -2,6 +2,7 @@ from aenum import extend_enum
 
 from ..defs import *
 from ..configuration import PlatformStorageDataMessage
+from ..measurements import InputDataWrapperMessage
 
 
 class InternalSync:
@@ -37,8 +38,7 @@ class InternalMessageType(IntEnum):
 
     # Legacy Internal Alias
     LEGACY_PLATFORM_STORAGE_DATA = 20105
-
-    INPUT_DATA_WRAPPER = 20200
+    LEGACY_INPUT_DATA_WRAPPER = 20200
 
     # Command and control messages.
     DIAG_EVENT_NOTIFICATION = 23004
@@ -50,3 +50,4 @@ for entry in InternalMessageType:
 
 # Register the deprecated legacy message type with the PlatformStorageDataMessage class.
 MessagePayload.message_type_to_class[MessageType.LEGACY_PLATFORM_STORAGE_DATA] = PlatformStorageDataMessage
+MessagePayload.message_type_to_class[MessageType.LEGACY_INPUT_DATA_WRAPPER] = InputDataWrapperMessage

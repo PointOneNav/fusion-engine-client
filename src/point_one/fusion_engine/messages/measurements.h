@@ -1261,6 +1261,63 @@ struct P1_ALIGNAS(4) RawHeadingOutput : public MessagePayload {
   float baseline_distance_m = NAN;
 };
 
+/**
+ * @brief A block of incoming sensor data whose definition depends on the value
+ *        of @ ref data_type. (@ref MessageType::INPUT_DATA_WRAPPER).
+ * @ingroup measurement_messages
+ *
+ * This message has the remainder of the payload_size_bytes filled with the
+ * wrapped data. The payload is not guaranteed to be aligned to a specific
+ * message boundary, or to contain complete messages.
+ *
+ * ```
+ * {MessageHeader, InputDataWrapperMessage, [wrapped data]}
+ * ```
+ */
+struct P1_ALIGNAS(4) InputDataWrapperMessage {
+  static constexpr MessageType MESSAGE_TYPE = MessageType::INPUT_DATA_WRAPPER;
+  static constexpr uint8_t MESSAGE_VERSION = 0;
+
+#if !defined(_MSC_VER)
+  // Default member initializers for bit-fields only available with c++20.
+  InputDataWrapperMessage() : system_time_cs(0) {}
+#endif
+
+// The MSVC compiler does not allow unaligned bit fields:
+// https://stackoverflow.com/questions/4310728/forcing-unaligned-bitfield-packing-in-msvc
+// unlike Clang and GCC. This means that `uint64_t system_time_cs : 40;` is 5
+// bytes in GCC and 8 bytes in MSVC. On MSVC, you must cast
+// @ref system_time_cs_bytes to read and write the timestamp.
+#if defined(_MSC_VER)
+  /**
+   * 5 byte system wall-clock timestamp in centiseconds (hundredths of a
+   * second). Set to POSIX time (time since 1/1/1970) where available.
+   */
+  uint8_t system_time_cs_bytes[5] = {0};
+#else
+  /**
+   * 5 byte system wall-clock timestamp in centiseconds (hundredths of a
+   * second). Set to POSIX time (time since 1/1/1970) where available.
+   */
+  uint64_t system_time_cs : 40;
+#endif
+
+  uint8_t reserved[1] = {0};
+
+  /** Type identifier for the serialized message to follow. */
+  uint16_t data_type = 0;
+
+  /**
+   * The rest of this message contains the wrapped data. The size of the data is
+   * found by subtracting the size of the other fields in this message from the
+   * header `payload_size_bytes` (i.e. `size_t content_size =
+   * header->payload_size_bytes - sizeof(InputDataWrapperMessage)`). The data is
+   * interpreted based on the value of `data_type`.
+   */
+};
+static_assert(sizeof(InputDataWrapperMessage) == 8,
+              "InputDataWrapperMessage does not match expected packed size.");
+
 #pragma pack(pop)
 
 } // namespace messages

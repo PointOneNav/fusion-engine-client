@@ -146,6 +146,7 @@ class MessageType(IntEnum):
     IMPORT_DATA = 13110
     EXPORT_DATA = 13111
     PLATFORM_STORAGE_DATA = 13113
+    INPUT_DATA_WRAPPER = 13120
 
     SET_MESSAGE_RATE = 13220
     GET_MESSAGE_RATE = 13221
@@ -513,6 +514,11 @@ class MessagePayload:
             result.add(MessageType.PLATFORM_STORAGE_DATA)
         elif MessageType.PLATFORM_STORAGE_DATA in result:
             result.add(MessageType.LEGACY_PLATFORM_STORAGE_DATA)
+
+        if MessageType.LEGACY_INPUT_DATA_WRAPPER in result:
+            result.add(MessageType.INPUT_DATA_WRAPPER)
+        elif MessageType.INPUT_DATA_WRAPPER in result:
+            result.add(MessageType.LEGACY_INPUT_DATA_WRAPPER)
 
         if return_class:
             result = {cls.message_type_to_class[t] for t in result}
