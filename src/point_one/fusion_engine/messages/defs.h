@@ -95,6 +95,7 @@ enum class MessageType : uint16_t {
   IMPORT_DATA = 13110, ///< @ref ImportDataMessage
   EXPORT_DATA = 13111, ///< @ref ExportDataMessage
   PLATFORM_STORAGE_DATA = 13113, ///< @ref PlatformStorageDataMessage
+  INPUT_DATA_WRAPPER = 13120, ///< @ref InputDataWrapperMessage
 
   SET_MESSAGE_RATE = 13220, ///< @ref SetMessageRate
   GET_MESSAGE_RATE = 13221, ///< @ref GetMessageRate
@@ -266,6 +267,9 @@ P1_CONSTEXPR_FUNC const char* to_string(MessageType type) {
     case MessageType::PLATFORM_STORAGE_DATA:
       return "Platform Data Contents";
 
+    case MessageType::INPUT_DATA_WRAPPER:
+      return "Wrapped Input Data";
+
     case MessageType::LBAND_FRAME:
       return "L-band Frame Contents";
   }
@@ -340,6 +344,7 @@ P1_CONSTEXPR_FUNC bool IsCommand(MessageType message_type) {
     case MessageType::DEVICE_ID:
     case MessageType::CONFIG_RESPONSE:
     case MessageType::PLATFORM_STORAGE_DATA:
+    case MessageType::INPUT_DATA_WRAPPER:
     case MessageType::MESSAGE_RATE_RESPONSE:
     case MessageType::SUPPORTED_IO_INTERFACES:
     case MessageType::LBAND_FRAME:
