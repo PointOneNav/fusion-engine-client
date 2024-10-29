@@ -36,6 +36,27 @@ namespace messages {
  ******************************************************************************/
 
 /**
+ * @brief A command to be sent to an attached STA5635 front end. (@ref
+ *        MessageType::STA5635_COMMAND, version 1.0).
+ * @ingroup sta5635
+ *
+ * See the STA5635 data sheet for the allowed command, address, and data values.
+ */
+struct P1_ALIGNAS(4) STA5635Command : public MessagePayload {
+  static constexpr MessageType MESSAGE_TYPE = MessageType::STA5635_COMMAND;
+  static constexpr uint8_t MESSAGE_VERSION = 0;
+
+  /** The STA5635 command code to be issued. */
+  uint8_t command = 0;
+  /** The address of the STA5635 register to be accessed. */
+  uint8_t address = 0;
+  /**
+   * The value to be sent to the device, where `data[0]` contains the MSB.
+   */
+  uint8_t data[2] = {0};
+};
+
+/**
  * @brief Result from a STA5635 sent in response to an @ref STA5635Command (@ref
  *        MessageType::STA5635_COMMAND_RESPONSE, version 1.0).
  * @ingroup sta5635
@@ -60,27 +81,6 @@ struct P1_ALIGNAS(4) STA5635CommandResponse : public MessagePayload {
    * the response.
    */
   uint8_t data[4] = {0};
-};
-
-/**
- * @brief A command to be sent to an attached STA5635 front end. (@ref
- *        MessageType::STA5635_COMMAND, version 1.0).
- * @ingroup sta5635
- *
- * See the STA5635 data sheet for the allowed command, address, and data values.
- */
-struct P1_ALIGNAS(4) STA5635Command : public MessagePayload {
-  static constexpr MessageType MESSAGE_TYPE = MessageType::STA5635_COMMAND;
-  static constexpr uint8_t MESSAGE_VERSION = 0;
-
-  /** The STA5635 command code to be issued. */
-  uint8_t command = 0;
-  /** The address of the STA5635 register to be accessed. */
-  uint8_t address = 0;
-  /**
-   * The value to be sent to the device, where `data[0]` contains the MSB.
-   */
-  uint8_t data[2] = {0};
 };
 
 #pragma pack(pop)
