@@ -75,7 +75,7 @@ struct P1_ALIGNAS(4) STA5635CommandResponse : public MessagePayload {
    * The sequence number contained in the @ref STA5635Command to which this
    * response belongs.
    */
-  uint32_t sequence_number = 0;
+  uint32_t command_sequence_number = 0;
   /**
    * The response from the device, where `data[0]` contains the first byte in
    * the response.
