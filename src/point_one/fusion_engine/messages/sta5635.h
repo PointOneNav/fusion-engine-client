@@ -1,5 +1,5 @@
 /**************************************************************************/ /**
- * @brief Command/control support for an attached ST5365 RF front-end.
+ * @brief Command/control support for an attached STA5635 RF front-end.
  * @file
  ******************************************************************************/
 
@@ -19,16 +19,16 @@ namespace messages {
 #pragma pack(push, 1)
 
 /**************************************************************************/ /**
- * @defgroup st5635 ST5635 Command/Control Messages
- * @brief Messages for interacting with an attached ST5635 RF front-end device.
+ * @defgroup sta5635 STA5635 Command/Control Messages
+ * @brief Messages for interacting with an attached STA5635 RF front-end device.
  * @ingroup device_control
  *
  * These messages are intended to be used only for devices with an
- * STMicroelectronics ST5635 RF front-end where direct user control of the
+ * STMicroelectronics STA5635 RF front-end where direct user control of the
  * front-end is needed. This is not common and should not be used on most
  * platforms.
  *
- * For platforms using an ST5635, the device will output @ref LBandFrameMessage
+ * For platforms using an STA5635, the device will output @ref LBandFrameMessage
  * containing I/Q samples from the RF front-end. The format and use of the I/Q
  * samples is platform-specific.
  *
@@ -36,13 +36,13 @@ namespace messages {
  ******************************************************************************/
 
 /**
- * @brief Result from a ST5635 sent in response to an @ref ST5635Command (@ref
- *        MessageType::ST5635_COMMAND_RESPONSE, version 1.0).
- * @ingroup st5635
+ * @brief Result from a STA5635 sent in response to an @ref STA5635Command (@ref
+ *        MessageType::STA5635_COMMAND_RESPONSE, version 1.0).
+ * @ingroup sta5635
  */
-struct P1_ALIGNAS(4) ST5635CommandResponse : public MessagePayload {
+struct P1_ALIGNAS(4) STA5635CommandResponse : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE =
-      MessageType::ST5635_COMMAND_RESPONSE;
+      MessageType::STA5635_COMMAND_RESPONSE;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
   /**
@@ -58,19 +58,19 @@ struct P1_ALIGNAS(4) ST5635CommandResponse : public MessagePayload {
 };
 
 /**
- * @brief ~SPI~ Command to be sent to an attached ST5635 front end. (@ref
- *        MessageType::ST5635_COMMAND, version 1.0).
- * @ingroup st5635
+ * @brief A command to be sent to an attached STA5635 front end. (@ref
+ *        MessageType::STA5635_COMMAND, version 1.0).
+ * @ingroup sta5635
  */
-struct P1_ALIGNAS(4) ST5635Command : public MessagePayload {
-  static constexpr MessageType MESSAGE_TYPE = MessageType::ST5635_COMMAND;
+struct P1_ALIGNAS(4) STA5635Command : public MessagePayload {
+  static constexpr MessageType MESSAGE_TYPE = MessageType::STA5635_COMMAND;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
   /**
    * See the STA5635 data sheet for the values below can be.
    */
-  uint8_t command = 0; // ST5635 command code
-  uint8_t address = 0; // ST5635 register address
+  uint8_t command = 0; // STA5635 command code
+  uint8_t address = 0; // STA5635 register address
   uint8_t value_msb = 0; // STA5635 register value msb
   uint8_t value_lsb = 0; // STA5635 register value lsb
 };
