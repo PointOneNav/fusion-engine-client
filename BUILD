@@ -56,11 +56,21 @@ cc_library(
         "src/point_one/fusion_engine/messages/measurements.h",
         "src/point_one/fusion_engine/messages/signal_defs.h",
         "src/point_one/fusion_engine/messages/solution.h",
-        "src/point_one/fusion_engine/messages/sta5635.h",
     ],
     deps = [
         ":common",
         ":data_version",
+    ],
+)
+
+# STA5635 RF front-end message definitions.
+cc_library(
+    name = "sta5635",
+    hdrs = [
+        "src/point_one/fusion_engine/messages/sta5635.h",
+    ],
+    deps = [
+        ":core_headers",
     ],
 )
 
