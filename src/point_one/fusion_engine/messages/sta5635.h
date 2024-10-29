@@ -50,29 +50,37 @@ struct P1_ALIGNAS(4) STA5635CommandResponse : public MessagePayload {
    * this is not synchronized to P1 or GNSS time.
    */
   int64_t system_time_ns = 0;
+  /**
+   * The sequence number contained in the @ref STA5635Command to which this
+   * response belongs.
+   */
   uint32_t sequence_number = 0;
-  uint8_t data_0 = 0;
-  uint8_t data_1 = 0;
-  uint8_t data_2 = 0;
-  uint8_t data_3 = 0;
+  /**
+   * The response from the device, where `data[0]` contains the first byte in
+   * the response.
+   */
+  uint8_t data[4] = {0};
 };
 
 /**
  * @brief A command to be sent to an attached STA5635 front end. (@ref
  *        MessageType::STA5635_COMMAND, version 1.0).
  * @ingroup sta5635
+ *
+ * See the STA5635 data sheet for the allowed command, address, and data values.
  */
 struct P1_ALIGNAS(4) STA5635Command : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::STA5635_COMMAND;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
+  /** The STA5635 command code to be issued. */
+  uint8_t command = 0;
+  /** The address of the STA5635 register to be accessed. */
+  uint8_t address = 0;
   /**
-   * See the STA5635 data sheet for the values below can be.
+   * The value to be sent to the device, where `data[0]` contains the MSB.
    */
-  uint8_t command = 0; // STA5635 command code
-  uint8_t address = 0; // STA5635 register address
-  uint8_t value_msb = 0; // STA5635 register value msb
-  uint8_t value_lsb = 0; // STA5635 register value lsb
+  uint8_t data[2] = {0};
 };
 
 #pragma pack(pop)
