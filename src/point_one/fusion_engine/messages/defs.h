@@ -104,8 +104,11 @@ enum class MessageType : uint16_t {
 
   LBAND_FRAME = 14000, ///< @ref LBandFrameMessage
 
+  STA5635_COMMAND = 14100, ///< @ref STA5635Command
+  STA5635_COMMAND_RESPONSE = 14101, ///< @ref STA5635CommandResponse
+
   /// The maximum defined @ref MessageType enum value.
-  MAX_VALUE = LBAND_FRAME,
+  MAX_VALUE = STA5635_COMMAND_RESPONSE,
 };
 
 /**
@@ -272,6 +275,12 @@ P1_CONSTEXPR_FUNC const char* to_string(MessageType type) {
 
     case MessageType::LBAND_FRAME:
       return "L-band Frame Contents";
+
+    case MessageType::STA5635_COMMAND:
+      return "STA5635 Command";
+
+    case MessageType::STA5635_COMMAND_RESPONSE:
+      return "STA5635 Command Response";
   }
   return "Unrecognized Message";
 }
@@ -309,6 +318,7 @@ P1_CONSTEXPR_FUNC bool IsCommand(MessageType message_type) {
     case MessageType::EXPORT_DATA:
     case MessageType::SET_MESSAGE_RATE:
     case MessageType::GET_MESSAGE_RATE:
+    case MessageType::STA5635_COMMAND:
       return true;
     case MessageType::INVALID:
     case MessageType::POSE:
@@ -348,6 +358,7 @@ P1_CONSTEXPR_FUNC bool IsCommand(MessageType message_type) {
     case MessageType::MESSAGE_RATE_RESPONSE:
     case MessageType::SUPPORTED_IO_INTERFACES:
     case MessageType::LBAND_FRAME:
+    case MessageType::STA5635_COMMAND_RESPONSE:
       return false;
   }
   return false;
@@ -368,6 +379,7 @@ P1_CONSTEXPR_FUNC bool IsResponse(MessageType message_type) {
     case MessageType::COMMAND_RESPONSE:
     case MessageType::CONFIG_RESPONSE:
     case MessageType::MESSAGE_RATE_RESPONSE:
+    case MessageType::STA5635_COMMAND_RESPONSE:
       return true;
     default:
       return false;

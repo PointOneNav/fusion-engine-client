@@ -63,6 +63,17 @@ cc_library(
     ],
 )
 
+# STA5635 RF front-end message definitions.
+cc_library(
+    name = "sta5635",
+    hdrs = [
+        "src/point_one/fusion_engine/messages/sta5635.h",
+    ],
+    deps = [
+        ":core_headers",
+    ],
+)
+
 # ROS translation message definitions.
 cc_library(
     name = "ros_support",
