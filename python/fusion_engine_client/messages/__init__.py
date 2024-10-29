@@ -2,6 +2,7 @@ from .core import *
 from .fault_control import *
 from .internal import *
 from . import ros
+from . import sta5635
 
 message_type_to_class = MessagePayload.message_type_to_class
 message_type_by_name = MessagePayload.message_type_by_name

@@ -824,6 +824,7 @@ class Analyzer(object):
         time_figure.update_layout(title_text=extra_text)
 
         # Plot the data.
+        max_3d_diff_m = [0.0]
         def _plot_data(name, idx, marker_style=None):
             style = {'mode': 'markers', 'marker': {'size': 8}, 'showlegend': True, 'legendgroup': name,
                      'hoverlabel': {'namelength': -1}}
@@ -838,7 +839,9 @@ class Analyzer(object):
                 topo_figure.add_trace(go.Scattergl(x=displacement_enu_m[0, idx], y=displacement_enu_m[1, idx],
                                                    name=name, text=text, **style), 1, 1)
 
-                time_figure.add_trace(go.Scattergl(x=time[idx], y=np.linalg.norm(displacement_enu_m[:, idx], axis=0),
+                displacement_3d_m = np.linalg.norm(displacement_enu_m[:, idx], axis=0)
+                max_3d_diff_m[0] = max(max_3d_diff_m[0], np.nanmax(displacement_3d_m))
+                time_figure.add_trace(go.Scattergl(x=time[idx], y=displacement_3d_m,
                                                    name=name, text=text, **style), 1, 1)
                 style['showlegend'] = False
                 time_figure.add_trace(go.Scattergl(x=time[idx], y=displacement_enu_m[0, idx], name=name,
@@ -857,6 +860,12 @@ class Analyzer(object):
         for type, info in _SOLUTION_TYPE_MAP.items():
             _plot_data(info.name, solution_type == type, marker_style=info.style)
 
+        # Set the 3D displacement Y-axis limits to start at 0 and encompass the data.
+        max_y = 1.2 * max_3d_diff_m[0]
+        if max_y == 0.0:
+            max_y = 1.0
+        time_figure['layout']['yaxis1'].update(range=[0, max_y])
+
         name = source.replace(' ', '_').lower()
         self._add_figure(name=f"{name}_top_down", figure=topo_figure, title=f"{source}: Top-Down (Topocentric)")
         self._add_figure(name=f"{name}_vs_time", figure=time_figure, title=f"{source}: vs. Time")
@@ -868,18 +877,18 @@ class Analyzer(object):
         @param truth_lla_deg The truth LLA location (in degrees/meters).
         """
         truth_ecef_m = np.array(geodetic2ecef(*truth_lla_deg, deg=True))
-        self._plot_pose_displacement(title='Position Error', center_ecef_m=truth_ecef_m)
+        return self._plot_pose_displacement(title='Position Error', center_ecef_m=truth_ecef_m)
 
     def plot_pose_displacement(self):
         """!
         @brief Generate a topocentric (top-down) plot of position displacement, as well as plot of displacement over
                time.
         """
-        self._plot_pose_displacement()
+        return self._plot_pose_displacement()
 
     def _plot_pose_displacement(self, title='Pose Displacement', center_ecef_m=None):
         if self.output_dir is None:
-            return
+            return None
 
         # Read the pose data.
         result = self.reader.read(message_types=[PoseMessage], source_ids=self.default_source_id, **self.params)
@@ -887,13 +896,13 @@ class Analyzer(object):
 
         if len(pose_data.p1_time) == 0:
             self.logger.info('No pose data available. Skipping displacement plots.')
-            return
+            return None
 
         # Remove invalid solutions.
         valid_idx = np.logical_and(~np.isnan(pose_data.p1_time), pose_data.solution_type != SolutionType.Invalid)
         if not np.any(valid_idx):
             self.logger.info('No valid position solutions detected. Skipping displacement plots.')
-            return
+            return None
 
         time = pose_data.p1_time[valid_idx] - float(self.t0)
         solution_type = pose_data.solution_type[valid_idx]
@@ -915,6 +924,8 @@ class Analyzer(object):
 
         self._plot_displacement(source=title, title=axis_title, time=time, solution_type=solution_type,
                                 displacement_enu_m=displacement_enu_m, std_enu_m=std_enu_m)
+
+        return displacement_enu_m
 
     def plot_relative_position(self):
         """!
@@ -3476,7 +3487,7 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
         return {e: colors[i % len(colors)] for i, e in enumerate(elements)}
 
 
-def main():
+def main(args=None):
     parser = ArgumentParser(description="""\
 Load and display information stored in a FusionEngine binary file.
 """)
@@ -3579,7 +3590,7 @@ Load and display information stored in a FusionEngine binary file.
         '-v', '--verbose', action='count', default=0,
         help="Print verbose/trace debugging messages.")
 
-    options = parser.parse_args()
+    options = parser.parse_args(args=args)
 
     # Configure logging.
     if options.verbose >= 1:
@@ -3731,7 +3742,7 @@ Load and display information stored in a FusionEngine binary file.
     analyzer.generate_index(auto_open=not options.no_index)
 
     _logger.info("Output stored in '%s'." % os.path.abspath(output_dir))
-
+    return analyzer
 
 if __name__ == "__main__":
     main()

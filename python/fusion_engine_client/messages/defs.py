@@ -155,6 +155,9 @@ class MessageType(IntEnum):
 
     LBAND_FRAME = 14000
 
+    STA5635_COMMAND = 14100
+    STA5635_COMMAND_RESPONSE = 14101
+
     RESERVED = 20000
 
     @classmethod
