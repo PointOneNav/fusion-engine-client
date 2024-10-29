@@ -36,7 +36,7 @@ namespace messages {
  ******************************************************************************/
 
 /**
- * @brief A command to be sent to an attached STA5635 front end. (@ref
+ * @brief A command to be sent to an attached STA5635 RF front-end. (@ref
  *        MessageType::STA5635_COMMAND, version 1.0).
  * @ingroup sta5635
  *
@@ -57,8 +57,8 @@ struct P1_ALIGNAS(4) STA5635Command : public MessagePayload {
 };
 
 /**
- * @brief Result from a STA5635 sent in response to an @ref STA5635Command (@ref
- *        MessageType::STA5635_COMMAND_RESPONSE, version 1.0).
+ * @brief Result from an STA5635 sent in response to an @ref STA5635Command.
+ *        (@ref MessageType::STA5635_COMMAND_RESPONSE, version 1.0).
  * @ingroup sta5635
  */
 struct P1_ALIGNAS(4) STA5635CommandResponse : public MessagePayload {
