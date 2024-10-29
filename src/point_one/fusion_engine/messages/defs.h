@@ -379,6 +379,7 @@ P1_CONSTEXPR_FUNC bool IsResponse(MessageType message_type) {
     case MessageType::COMMAND_RESPONSE:
     case MessageType::CONFIG_RESPONSE:
     case MessageType::MESSAGE_RATE_RESPONSE:
+    case MessageType::STA5635_COMMAND_RESPONSE:
       return true;
     default:
       return false;
