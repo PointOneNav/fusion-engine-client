@@ -41,6 +41,12 @@ class STA5635Command(MessagePayload):
         result += f', command=0x{self.command:02X}, address=0x{self.address:02X}, data={self.data}]'
         return result
 
+    def __str__(self):
+        return construct_message_to_string(message=self, value_to_string={
+            'command': lambda x: f'0x{x:02X}',
+            'address': lambda x: f'0x{x:02X}',
+        })
+
 
 class STA5635CommandResponse(MessagePayload):
     """!
