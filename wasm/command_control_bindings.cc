@@ -61,7 +61,7 @@ EMSCRIPTEN_BINDINGS(control) {
  static auto ResetRequest_DIAGNOSTIC_LOG_RESET = ResetRequest::DIAGNOSTIC_LOG_RESET;
  static auto ResetRequest_HOT_START = ResetRequest::HOT_START;
  static auto ResetRequest_WARM_START = ResetRequest::WARM_START;
- static auto ResetRequest_PVT_RESET = ResetRequest::PVT_RESET;
+ static auto ResetRequest_POSE_RESET = ResetRequest::POSE_RESET;
  static auto ResetRequest_COLD_START = ResetRequest::COLD_START;
  static auto ResetRequest_FACTORY_RESET = ResetRequest::FACTORY_RESET;
  class_<ResetRequest>("ResetRequest")
@@ -89,7 +89,7 @@ EMSCRIPTEN_BINDINGS(control) {
       .class_property("HOT_START", &ResetRequest_HOT_START)
       .class_property("WARM_START", &ResetRequest_WARM_START)
       .class_property("COLD_START", &ResetRequest_COLD_START)
-      .class_property("PVT_RESET", &ResetRequest_PVT_RESET)
+      .class_property("POSE_RESET", &ResetRequest_POSE_RESET)
       .class_property("FACTORY_RESET", &ResetRequest_FACTORY_RESET)
       .property("reset_mask", &ResetRequest::reset_mask)
       .STRUCT_FUNCTIONS(ResetRequest);

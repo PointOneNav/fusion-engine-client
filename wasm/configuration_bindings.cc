@@ -290,16 +290,28 @@ EMSCRIPTEN_BINDINGS(configuration) {
 
   static auto PlatformStorageDataMessage_MESSAGE_TYPE =
       PlatformStorageDataMessage::MESSAGE_TYPE;
-  static auto PlatformStorageDataMessage_VERSION =
+  static auto PlatformStorageDataMessage_MESSAGE_VERSION =
       PlatformStorageDataMessage::MESSAGE_VERSION;
+  static auto PlatformStorageDataMessage_FLAG_USER_CONFIG_PLATFORM_NOT_SPECIFIED =
+        PlatformStorageDataMessage::FLAG_USER_CONFIG_PLATFORM_NOT_SPECIFIED;
+  static auto PlatformStorageDataMessage_FLAG_USER_CONFIG_PLATFORM_POSIX =
+        PlatformStorageDataMessage::FLAG_USER_CONFIG_PLATFORM_POSIX;
+  static auto PlatformStorageDataMessage_FLAG_USER_CONFIG_PLATFORM_EMBEDDED =
+        PlatformStorageDataMessage::FLAG_USER_CONFIG_PLATFORM_EMBEDDED;
+  static auto PlatformStorageDataMessage_FLAG_USER_CONFIG_PLATFORM_EMBEDDED_SSR =
+        PlatformStorageDataMessage::FLAG_USER_CONFIG_PLATFORM_EMBEDDED_SSR;
   class_<PlatformStorageDataMessage>("PlatformStorageDataMessage")
       .constructor<>()
       .class_property("MESSAGE_TYPE", &PlatformStorageDataMessage_MESSAGE_TYPE)
-      .class_property("MESSAGE_VERSION", &PlatformStorageDataMessage_VERSION)
+      .class_property("MESSAGE_VERSION", &PlatformStorageDataMessage_MESSAGE_VERSION)
+      .class_property("FLAG_USER_CONFIG_PLATFORM_NOT_SPECIFIED", &PlatformStorageDataMessage_FLAG_USER_CONFIG_PLATFORM_NOT_SPECIFIED)
+      .class_property("FLAG_USER_CONFIG_PLATFORM_POSIX", &PlatformStorageDataMessage_FLAG_USER_CONFIG_PLATFORM_POSIX)
+      .class_property("FLAG_USER_CONFIG_PLATFORM_EMBEDDED", &PlatformStorageDataMessage_FLAG_USER_CONFIG_PLATFORM_EMBEDDED)
+      .class_property("FLAG_USER_CONFIG_PLATFORM_EMBEDDED_SSR", &PlatformStorageDataMessage_FLAG_USER_CONFIG_PLATFORM_EMBEDDED_SSR)
       .property("data_type", &PlatformStorageDataMessage::data_type)
       .property("response", &PlatformStorageDataMessage::response)
       .property("source", &PlatformStorageDataMessage::source)
-      .ARRAY_PROPERTY(PlatformStorageDataMessage, reserved)
+      .property("flags", &PlatformStorageDataMessage::flags)
       .property("data_version", &PlatformStorageDataMessage::data_version)
       .property("data_length_bytes",
                 &PlatformStorageDataMessage::data_length_bytes)
@@ -321,22 +333,6 @@ EMSCRIPTEN_BINDINGS(configuration) {
       .value("NMEA", ProtocolType::NMEA)
       .value("RTCM", ProtocolType::RTCM)
       .value("ALL", ProtocolType::ALL);
-
-  class_<MsgType>("MsgType")
-      .constructor<>()
-      .property("protocol", &MsgType::protocol)
-      .ARRAY_PROPERTY(MsgType, reserved)
-      .property("msg_id", &MsgType::msg_id)
-      .STRUCT_FUNCTIONS(MsgType);
-
-  static auto MsgRate_MAX_RATE = MsgRate::MAX_RATE;
-  class_<MsgRate>("MsgRate")
-      .constructor<>()
-      .class_property("MAX_RATE", &MsgRate_MAX_RATE)
-      .property("type", &MsgRate::type)
-      .property("update_period_ms", &MsgRate::update_period_ms)
-      .ARRAY_PROPERTY(MsgRate, reserved)
-      .STRUCT_FUNCTIONS(MsgRate);
 
   enum_<TransportType>("TransportType")
       .value("INVALID", TransportType::INVALID)

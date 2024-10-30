@@ -17,6 +17,7 @@ EMSCRIPTEN_BINDINGS(solution) {
   static auto PoseMessage_MESSAGE_TYPE = PoseMessage::MESSAGE_TYPE;
   static auto PoseMessage_MESSAGE_VERSION = PoseMessage::MESSAGE_VERSION;
   static auto PoseMessage_INVALID_UNDULATION = PoseMessage::INVALID_UNDULATION;
+  static auto PoseMessage_FLAG_STATIONARY = PoseMessage::FLAG_STATIONARY;
   class_<PoseMessage>("PoseMessage")
       .constructor<>()
       .class_property("MESSAGE_TYPE", &PoseMessage_MESSAGE_TYPE)

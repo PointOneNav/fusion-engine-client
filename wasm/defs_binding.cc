@@ -91,6 +91,7 @@ EMSCRIPTEN_BINDINGS(defs) {
       .value("IMPORT_DATA", MessageType::IMPORT_DATA)
       .value("EXPORT_DATA", MessageType::EXPORT_DATA)
       .value("PLATFORM_STORAGE_DATA", MessageType::PLATFORM_STORAGE_DATA)
+      .value("INPUT_DATA_WRAPPER", MessageType::INPUT_DATA_WRAPPER)
 
       .value("SET_MESSAGE_RATE", MessageType::SET_MESSAGE_RATE)
       .value("GET_MESSAGE_RATE", MessageType::GET_MESSAGE_RATE)
@@ -110,7 +111,8 @@ EMSCRIPTEN_BINDINGS(defs) {
              Response::INCONSISTENT_PAYLOAD_LENGTH)
       .value("DATA_CORRUPTED", Response::DATA_CORRUPTED)
       .value("NO_DATA_STORED", Response::NO_DATA_STORED)
-      .value("UNAVAILABLE", Response::UNAVAILABLE);
+      .value("UNAVAILABLE", Response::UNAVAILABLE)
+      .value("UNSUPPORTED_INTERFACE", Response::UNSUPPORTED_INTERFACE);
 
   enum_<SolutionType>("SolutionType")
       .value("Invalid", SolutionType::Invalid)
