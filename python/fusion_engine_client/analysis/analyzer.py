@@ -867,16 +867,16 @@ class Analyzer(object):
         @param truth_lla_deg The truth LLA location (in degrees/meters).
         """
         truth_ecef_m = np.array(geodetic2ecef(*truth_lla_deg, deg=True))
-        return self._plot_pose_displacement(title='Position Error', center_ecef_m=truth_ecef_m)
+        return self._plot_pose_displacement(title='Position Error', reference=truth_ecef_m)
 
     def plot_pose_displacement(self):
         """!
-        @brief Generate a topocentric (top-down) plot of position displacement, as well as plot of displacement over
-               time.
+        @brief Generate a topocentric (top-down) plot of position displacement vs the median position, as well as plot
+               of displacement over time.
         """
-        return self._plot_pose_displacement()
+        return self._plot_pose_displacement(reference='median')
 
-    def _plot_pose_displacement(self, title='Pose Displacement', center_ecef_m=None):
+    def _plot_pose_displacement(self, title='Pose Displacement', reference=None):
         if self.output_dir is None:
             return None
 
@@ -903,16 +903,30 @@ class Analyzer(object):
         # case there are one or two huge outliers).
         position_ecef_m = np.array(geodetic2ecef(lat=lla_deg[0, :], lon=lla_deg[1, :], alt=lla_deg[2, :], deg=True))
 
-        if center_ecef_m is None:
-            center_ecef_m = np.median(position_ecef_m, axis=1)
+        if reference is None:
+            reference = 'median'
 
-        displacement_ecef_m = position_ecef_m - center_ecef_m.reshape(3, 1)
+        if isinstance(reference, str):
+            if reference == 'first':
+                reference_ecef_m = position_ecef_m[:, 0]
+                title_suffix = ' From First Position'
+            elif reference == 'median':
+                reference_ecef_m = position_ecef_m[:, 0]
+                title_suffix = ' From Median Position'
+            else:
+                raise ValueError('Unrecognized reference specifier.')
+        else:
+            reference_ecef_m = reference
+            title_suffix = ''
+
+        displacement_ecef_m = position_ecef_m - reference_ecef_m.reshape(3, 1)
         c_enu_ecef = get_enu_rotation_matrix(*lla_deg[0:2, 0], deg=True)
         displacement_enu_m = c_enu_ecef.dot(displacement_ecef_m)
 
         axis_title = 'Error' if title == 'Position Error' else 'Displacement'
 
-        self._plot_displacement(source=title, title=axis_title, time=time, solution_type=solution_type,
+        self._plot_displacement(source=f'{title}{title_suffix}', title=axis_title,
+                                time=time, solution_type=solution_type,
                                 displacement_enu_m=displacement_enu_m, std_enu_m=std_enu_m)
 
         return displacement_enu_m
