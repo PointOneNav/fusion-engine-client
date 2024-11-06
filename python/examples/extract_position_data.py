@@ -164,7 +164,7 @@ Extract position data to both CSV and KML files.
                 'Yaw (deg), Pitch, Roll, Velocity East (m/s), North, Up\n')
         for pose, pose_aux, gnss in zip(pose_data.messages, pose_aux_data.messages, gnss_info.messages):
             format = '%.6f, %.6f, %d, %.8f, %.8f, %.3f, %d, ' \
-                     '%.1f, %.1f, %.1f, %.1f, %.1f, %.1f\n'
+                     '%.3f, %.3f, %.3f, %.3f, %.3f, %.3f\n'
             f.write(format %
                     (pose.p1_time, pose.gps_time, pose.solution_type, *pose.lla_deg, gnss.num_svs,
                      *pose.ypr_deg, *pose_aux.velocity_enu_mps))
