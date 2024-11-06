@@ -154,6 +154,11 @@ Extract position data to both CSV and KML files.
         logger.warning('No pose data found in log file.')
         sys.exit(2)
 
+    if len(pose_aux_data.messages) == 0:
+        logger.warning('No PoseAux messages found in log file. ENU velocity will be NAN.')
+    if len(gnss_info.messages) == 0:
+        logger.warning('No GNSSInfo messages found in log file. Satellite count will be 0.')
+
     output_prefix = os.path.join(output_dir, os.path.splitext(os.path.basename(input_path))[0])
 
     # Generate a CSV file.
