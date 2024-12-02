@@ -785,3 +785,11 @@ def PackedDataToBuffer(packed_data: bytes, buffer: Optional[bytes] = None, offse
         return buffer
     else:
         return len(packed_data)
+
+
+def yaw_to_heading(yaw_deg: Union[float, np.ndarray]):
+    return 90.0 - yaw_deg
+
+
+def heading_to_yaw(heading_deg: Union[float, np.ndarray]):
+    return 90.0 - heading_deg
