@@ -1222,7 +1222,7 @@ struct P1_ALIGNAS(4) HardwareTickConfig {
  * If one value is NOT set, the system will not output the corrected
  * heading message.
  *
- * @ref GNSSHeadingOutput
+ * @ref GNSSAttitudeOutput
  */
 struct P1_ALIGNAS(4) HeadingBias {
   /**

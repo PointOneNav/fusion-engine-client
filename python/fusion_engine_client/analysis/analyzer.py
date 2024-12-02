@@ -1943,24 +1943,24 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
 
         self._add_figure(name=filename, figure=figure, title=figure_title)
 
-    def plot_gnss_heading_measurements(self):
+    def plot_gnss_attitude_measurements(self):
         """!
-        @brief Generate time series plots for GNSS heading (degrees) and baseline distance (meters) data.
+        @brief Generate time series plots for GNSS attitude (degrees) and baseline distance (meters) data.
         """
         if self.output_dir is None:
             return
 
-        # Read the heading measurement data.
-        result = self.reader.read(message_types=[RawGNSSHeadingOutput, GNSSHeadingOutput], **self.params)
-        raw_heading_data = result[RawGNSSHeadingOutput.MESSAGE_TYPE]
-        heading_data = result[GNSSHeadingOutput.MESSAGE_TYPE]
+        # Read the attitude measurement data.
+        result = self.reader.read(message_types=[RawGNSSAttitudeOutput, GNSSAttitudeOutput], **self.params)
+        raw_heading_data = result[RawGNSSAttitudeOutput.MESSAGE_TYPE]
+        heading_data = result[GNSSAttitudeOutput.MESSAGE_TYPE]
 
         if (len(heading_data.p1_time) == 0) and (len(raw_heading_data.p1_time) == 0):
-            self.logger.info('No GNSS heading measurement data available. Skipping plot.')
+            self.logger.info('No GNSS attitude measurement data available. Skipping plot.')
             return
 
-        # Note that we read the pose data after heading, that way we don't bother reading pose data from disk if there's
-        # no heading data in the log.
+        # Note that we read the pose data after attitude, that way we don't bother reading pose data from disk if
+        # there's no heading data in the log.
         result = self.reader.read(message_types=[PoseMessage], source_ids=self.default_source_id, **self.params)
         primary_pose_data = result[PoseMessage.MESSAGE_TYPE]
 
@@ -2187,7 +2187,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                 row=3, col=1
             )
 
-        self._add_figure(name='gnss_heading_measurement', figure=fig, title='Measurements: GNSS Heading')
+        self._add_figure(name='gnss_attitude_measurement', figure=fig, title='Measurements: GNSS Attitude')
 
     def plot_system_status_profiling(self):
         """!
@@ -3001,9 +3001,9 @@ Load and display information stored in a FusionEngine binary file.
         analyzer.plot_gnss_corrections_status()
         analyzer.plot_dop()
 
-        # By default, we always plot heading measurements (i.e., output from a secondary heading device like an
+        # By default, we always plot attitude measurements (i.e., output from a secondary GNSS attitude sensor like an
         # LG69T-AH), separate from other sensor measurements controlled by --measurements.
-        analyzer.plot_gnss_heading_measurements()
+        analyzer.plot_gnss_attitude_measurements()
 
         if truth_lla_deg is not None:
             analyzer.plot_stationary_position_error(truth_lla_deg)

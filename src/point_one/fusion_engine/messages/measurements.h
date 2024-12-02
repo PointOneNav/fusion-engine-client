@@ -1134,20 +1134,20 @@ struct P1_ALIGNAS(4) DeprecatedVehicleSpeedMeasurement : public MessagePayload {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-// Heading Sensor Definitions
+// Attitude Sensor Definitions
 ////////////////////////////////////////////////////////////////////////////////
 
 /**
- * @brief Multi-antenna GNSS heading sensor measurement output with offset
- *        corrections applied (@ref MessageType::GNSS_HEADING_OUTPUT, version
+ * @brief Multi-antenna GNSS attitude sensor measurement output with offset
+ *        corrections applied (@ref MessageType::GNSS_ATTITUDE_OUTPUT, version
  *        1.0).
  * @ingroup measurement_messages
  *
- * This message is an output from the device contaning heading/orientation
- * measurements generated using multiple GNSS antennas/receivers. On supported
- * devices, the device will measure vehicle yaw (heading) and pitch based on the
- * relative positions of two GNSS antennas. When more than two antennas are
- * present, the device may additionally measure roll angle.
+ * This message is an output from the device contaning orientation measurements
+ * generated using multiple GNSS antennas/receivers. On supported devices, the
+ * device will measure vehicle yaw (heading) and pitch based on the relative
+ * positions of two GNSS antennas. When more than two antennas are present, the
+ * device may additionally measure roll angle.
  *
  * @note
  * This message contains vehicle body angle measurements generated from GNSS
@@ -1157,10 +1157,10 @@ struct P1_ALIGNAS(4) DeprecatedVehicleSpeedMeasurement : public MessagePayload {
  *
  * The measurements in this message have user-specified corrections applied for
  * the horizontal and vertical offsets between the two GNSS antennas. See also
- * @ref RawGNSSHeadingOutput.
+ * @ref RawGNSSAttitudeOutput.
  */
-struct P1_ALIGNAS(4) GNSSHeadingOutput : public MessagePayload {
-  static constexpr MessageType MESSAGE_TYPE = MessageType::GNSS_HEADING_OUTPUT;
+struct P1_ALIGNAS(4) GNSSAttitudeOutput : public MessagePayload {
+  static constexpr MessageType MESSAGE_TYPE = MessageType::GNSS_ATTITUDE_OUTPUT;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
   /**
@@ -1205,8 +1205,8 @@ struct P1_ALIGNAS(4) GNSSHeadingOutput : public MessagePayload {
 };
 
 /**
- * @brief Raw (uncorrected) GNSS heading sensor measurement output (@ref
- *        MessageType::RAW_GNSS_HEADING_OUTPUT, version 1.0).
+ * @brief Raw (uncorrected) GNSS attitude sensor measurement output (@ref
+ *        MessageType::RAW_GNSS_ATTITUDE_OUTPUT, version 1.0).
  * @ingroup measurement_messages
  *
  * This message is an output from the device contaning raw orientation
@@ -1216,11 +1216,11 @@ struct P1_ALIGNAS(4) GNSSHeadingOutput : public MessagePayload {
  * secondary GNSS antenna.
  *
  * For vehicle body angle measurements, and for measurements corrected for
- * horizontal/vertical offsets, see @ref GNSSHeadingOutput.
+ * horizontal/vertical offsets, see @ref GNSSAttitudeOutput.
  */
-struct P1_ALIGNAS(4) RawGNSSHeadingOutput : public MessagePayload {
+struct P1_ALIGNAS(4) RawGNSSAttitudeOutput : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE =
-      MessageType::RAW_GNSS_HEADING_OUTPUT;
+      MessageType::RAW_GNSS_ATTITUDE_OUTPUT;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
   /**

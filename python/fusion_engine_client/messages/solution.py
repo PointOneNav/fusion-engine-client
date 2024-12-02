@@ -818,7 +818,7 @@ class RelativeENUPositionMessage(MessagePayload):
     This message represents the relationship between the navigation engine's
     position solution and a nearby RTK base station. It is not used to convey
     unfiltered vehicle body orientation measurements generated using multiple
-    GNSS antennas. See @ref GNSSHeadingOutput instead.
+    GNSS antennas. See @ref GNSSAttitudeOutput instead.
     """
     MESSAGE_TYPE = MessageType.RELATIVE_ENU_POSITION
     MESSAGE_VERSION = 0

@@ -507,7 +507,7 @@ struct P1_ALIGNAS(4) CalibrationStatusMessage : public MessagePayload {
  * This message represents the relationship between the navigation engine's
  * position solution and a nearby RTK base station. It is not used to convey
  * unfiltered vehicle body orientation measurements generated using multiple
- * GNSS antennas. See @ref GNSSHeadingOutput instead.
+ * GNSS antennas. See @ref GNSSAttitudeOutput instead.
  */
 struct P1_ALIGNAS(4) RelativeENUPositionMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE =

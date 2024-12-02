@@ -1169,11 +1169,11 @@ Vehicle Speed Measurement @ {str(self.details.p1_time)}
 ################################################################################
 
 
-class GNSSHeadingOutput(MessagePayload):
+class GNSSAttitudeOutput(MessagePayload):
     """!
-    @brief Multi-antenna GNSS heading sensor measurement output with offset corrections applied.
+    @brief Multi-antenna GNSS attitude sensor measurement output with offset corrections applied.
     """
-    MESSAGE_TYPE = MessageType.GNSS_HEADING_OUTPUT
+    MESSAGE_TYPE = MessageType.GNSS_ATTITUDE_OUTPUT
     MESSAGE_VERSION = 0
 
     _STRUCT = struct.Struct('<B3xL3ff')
@@ -1249,7 +1249,7 @@ class GNSSHeadingOutput(MessagePayload):
 
     def __str__(self):
         return f"""\
-GNSS Heading Output @ {str(self.details.p1_time)}
+GNSS Attitude Output @ {str(self.details.p1_time)}
   Solution Type: {self.solution_type}
   YPR (ENU) (deg): {self.ypr_deg[0]:.2f}, {self.ypr_deg[1]:.2f}, {self.ypr_deg[2]:.2f}
   Heading (deg): {self.heading_true_north_deg:.2f}"""
@@ -1259,7 +1259,7 @@ GNSS Heading Output @ {str(self.details.p1_time)}
         return cls._STRUCT.size + MeasurementDetails.calcsize()
 
     @classmethod
-    def to_numpy(cls, messages: Sequence['GNSSHeadingOutput']):
+    def to_numpy(cls, messages: Sequence['GNSSAttitudeOutput']):
         result = {
             'solution_type': np.array([int(m.solution_type) for m in messages], dtype=int),
             'flags': np.array([int(m.flags) for m in messages], dtype=np.uint32),
@@ -1270,11 +1270,11 @@ GNSS Heading Output @ {str(self.details.p1_time)}
         return result
 
 
-class RawGNSSHeadingOutput(MessagePayload):
+class RawGNSSAttitudeOutput(MessagePayload):
     """!
-    @brief Raw (uncorrected) GNSS heading sensor measurement output.
+    @brief Raw (uncorrected) GNSS attitude sensor measurement output.
     """
-    MESSAGE_TYPE = MessageType.RAW_GNSS_HEADING_OUTPUT
+    MESSAGE_TYPE = MessageType.RAW_GNSS_ATTITUDE_OUTPUT
     MESSAGE_VERSION = 0
 
     _STRUCT = struct.Struct('<B3xL3f3fff')
@@ -1283,7 +1283,7 @@ class RawGNSSHeadingOutput(MessagePayload):
         ## Measurement timestamps, if available. See @ref measurement_messages.
         self.details = MeasurementDetails()
 
-        ## Set to @ref SolutionType::RTKFixed when heading is available, or @ref SolutionType::Invalid otherwise.
+        ## Set to @ref SolutionType::RTKFixed when attitude is available, or @ref SolutionType::Invalid otherwise.
         self.solution_type = SolutionType.Invalid
         ## A bitmask of flags associated with the solution.
         self.flags = 0
@@ -1367,7 +1367,7 @@ class RawGNSSHeadingOutput(MessagePayload):
 
     def __str__(self):
         return f"""\
-Raw GNSS Heading Output @ {str(self.details.p1_time)}
+Raw GNSS Attitude Output @ {str(self.details.p1_time)}
   Solution Type: {self.solution_type}
   Relative position (ENU) (m): {self.relative_position_enu_m[0]:.2f}, {self.relative_position_enu_m[1]:.2f}, {self.relative_position_enu_m[2]:.2f}
   Position std (ENU) (m): {self.position_std_enu_m[0]:.2f}, {self.position_std_enu_m[1]:.2f}, {self.position_std_enu_m[2]:.2f}
@@ -1379,7 +1379,7 @@ Raw GNSS Heading Output @ {str(self.details.p1_time)}
         return cls._STRUCT.size + MeasurementDetails.calcsize()
 
     @classmethod
-    def to_numpy(cls, messages: Sequence['RawGNSSHeadingOutput']):
+    def to_numpy(cls, messages: Sequence['RawGNSSAttitudeOutput']):
         result = {
             'solution_type': np.array([int(m.solution_type) for m in messages], dtype=int),
             'flags': np.array([int(m.flags) for m in messages], dtype=np.uint32),
