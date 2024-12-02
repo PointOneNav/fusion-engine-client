@@ -1189,19 +1189,17 @@ struct P1_ALIGNAS(4) GNSSAttitudeOutput : public MessagePayload {
    *
    * If any angles are not available, they will be set to `NAN`. For
    * dual-antenna systems, the device will measure yaw and pitch, but not roll.
+   *
+   * Note that yaw is measured from east in a counter-clockwise direction. For
+   * example, north is +90 degrees. Heading with respect to true north can be
+   * computed as `heading = 90.0 - ypr_deg[0]`.
    */
   float ypr_deg[3] = {NAN, NAN, NAN};
 
   /**
-   * The heading angle (in degrees) with respect to true north, pointing from
-   * the primary antenna to the secondary antenna.
-   *
-   * The reported angle includes the user-specified heading offset correction.
-   *
-   * @note
-   * Reported in the range [0, 360).
+   * The standard deviation of the orientation measurement (in degrees).
    */
-  float heading_true_north_deg = NAN;
+  float ypr_std_deg[3] = {NAN, NAN, NAN};
 };
 
 /**
@@ -1253,24 +1251,20 @@ struct P1_ALIGNAS(4) RawGNSSAttitudeOutput : public MessagePayload {
   float relative_position_enu_m[3] = {NAN, NAN, NAN};
 
   /**
-   * The position standard deviation (in meters), resolved with respect to the
-   * local ENU tangent plane: east, north, up.
+   * The standard deviation of the relative position vector (in meters),
+   * resolved with respect to the local ENU tangent plane: east, north, up.
    */
   float position_std_enu_m[3] = {NAN, NAN, NAN};
-
-  /**
-   * The measured heading angle (in degrees) with respect to true north,
-   * pointing from the primary antenna to the secondary antenna.
-   *
-   * @note
-   * Reported in the range [0, 360).
-   */
-  float heading_true_north_deg = NAN;
 
   /**
    * The estimated distance between primary and secondary antennas (in meters).
    */
   float baseline_distance_m = NAN;
+
+  /**
+   * The standard deviation of the baseline distance estimate (in meters).
+   */
+  float baseline_distance_std_m = NAN;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

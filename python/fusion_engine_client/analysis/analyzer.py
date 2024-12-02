@@ -2012,10 +2012,11 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         # Corrected heading plot
         if len(heading_data.p1_time) > 0:
             heading_time = heading_data.p1_time - float(self.t0)
+            heading_deg = 90.0 - heading_data.ypr_deg[0, :]
             fig.add_trace(
                 go.Scatter(
                     x=heading_time,
-                    y=heading_data.heading_true_north_deg,
+                    y=heading_deg,
                     customdata=heading_data.p1_time,
                     mode='markers',
                     marker={'size': 2, "color": "green"},
@@ -2030,6 +2031,9 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         # Uncorrected heading plot
         if len(raw_heading_data.p1_time) > 0:
             raw_heading_time = raw_heading_data.p1_time - float(self.t0)
+            raw_heading_deg = np.degrees(np.arctan2(raw_heading_data.relative_position_enu_m[1, :],
+                                                    raw_heading_data.relative_position_enu_m[0, :]))
+
             # Compute heading uncertainty envelop.
             denom = raw_heading_data.relative_position_enu_m[0]**2 + raw_heading_data.relative_position_enu_m[1]**2
             dh_e = raw_heading_data.relative_position_enu_m[0] / denom
@@ -2047,7 +2051,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             fig.add_trace(
                 go.Scatter(
                     x=raw_heading_time,
-                    y=raw_heading_data.heading_true_north_deg,
+                    y=raw_heading_deg,
                     customdata=raw_heading_data.p1_time,
                     mode='markers',
                     marker={'size': 2, "color": "red"},
@@ -2058,12 +2062,12 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                 ),
                 row=1, col=1
             )
-            idx = ~np.isnan(raw_heading_data.heading_true_north_deg)
+            idx = ~np.isnan(raw_heading_deg)
 
             fig.add_trace(
                 go.Scatter(
                     x=raw_heading_time[idx],
-                    y=raw_heading_data.heading_true_north_deg[idx] + envelope[idx],
+                    y=raw_heading_deg[idx] + envelope[idx],
                     mode='lines',
                     marker={'size': 2, "color": "red"},
                     line=dict(width=0),
@@ -2077,7 +2081,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             fig.add_trace(
                 go.Scatter(
                     x=raw_heading_time[idx],
-                    y=raw_heading_data.heading_true_north_deg[idx] - envelope[idx],
+                    y=raw_heading_deg[idx] - envelope[idx],
                     mode='lines',
                     marker={'size': 2, "color": "red"},
                     line=dict(width=0),
