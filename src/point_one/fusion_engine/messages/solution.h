@@ -32,7 +32,7 @@ namespace messages {
  * @ingroup solution_messages
  *
  * @note
- * All data is timestamped using the Point One Time, which is a monotonic
+ * All data is timestamped using Point One (P1) time, which is a monotonic
  * timestamp referenced to the start of the device. Corresponding messages (@ref
  * GNSSInfoMessage, @ref GNSSSatelliteMessage, etc.) may be associated using
  * their @ref p1_time values.
@@ -502,12 +502,6 @@ struct P1_ALIGNAS(4) CalibrationStatusMessage : public MessagePayload {
  * @brief Relative ENU position to base station (@ref
  *        MessageType::RELATIVE_ENU_POSITION, version 1.1).
  * @ingroup solution_messages
- *
- * @note
- * All data is timestamped using the Point One Time, which is a monotonic
- * timestamp referenced to the start of the device. Corresponding messages (@ref
- * PoseMessage, @ref GNSSSatelliteMessage, etc.) may be associated using
- * their @ref p1_time values.
  */
 struct P1_ALIGNAS(4) RelativeENUPositionMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE =
