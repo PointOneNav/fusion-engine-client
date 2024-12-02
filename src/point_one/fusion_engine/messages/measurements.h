@@ -1261,6 +1261,10 @@ struct P1_ALIGNAS(4) RawHeadingOutput : public MessagePayload {
   float baseline_distance_m = NAN;
 };
 
+////////////////////////////////////////////////////////////////////////////////
+// Binary Sensor Data Definitions
+////////////////////////////////////////////////////////////////////////////////
+
 /**
  * @brief A block of incoming sensor data whose definition depends on the value
  *        of @ ref data_type. (@ref MessageType::INPUT_DATA_WRAPPER).

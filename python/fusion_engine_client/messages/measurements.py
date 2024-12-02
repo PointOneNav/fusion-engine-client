@@ -1391,6 +1391,10 @@ Raw Heading Output @ {str(self.details.p1_time)}
         result.update(MeasurementDetails.to_numpy([m.details for m in messages]))
         return result
 
+################################################################################
+# Binary Sensor Data Definitions
+################################################################################
+
 
 class InputDataWrapperMessage(MessagePayload):
     """!
