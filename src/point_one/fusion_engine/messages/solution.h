@@ -502,6 +502,12 @@ struct P1_ALIGNAS(4) CalibrationStatusMessage : public MessagePayload {
  * @brief Relative ENU position to base station (@ref
  *        MessageType::RELATIVE_ENU_POSITION, version 1.1).
  * @ingroup solution_messages
+ *
+ * @note
+ * This message represents the relationship between the navigation engine's
+ * position solution and a nearby RTK base station. It is not used to convey
+ * unfiltered vehicle body orientation measurements generated using multiple
+ * GNSS antennas. See @ref GNSSHeadingOutput instead.
  */
 struct P1_ALIGNAS(4) RelativeENUPositionMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE =
