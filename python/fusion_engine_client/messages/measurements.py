@@ -1165,15 +1165,15 @@ Vehicle Speed Measurement @ {str(self.details.p1_time)}
         return result
 
 ################################################################################
-# Heading Sensor Definitions
+# GNSS Heading Sensor Definitions
 ################################################################################
 
 
-class HeadingOutput(MessagePayload):
+class GNSSHeadingOutput(MessagePayload):
     """!
-    @brief Heading sensor measurement output with heading bias corrections applied.
+    @brief Multi-antenna GNSS heading sensor measurement output with offset corrections applied.
     """
-    MESSAGE_TYPE = MessageType.HEADING_OUTPUT
+    MESSAGE_TYPE = MessageType.GNSS_HEADING_OUTPUT
     MESSAGE_VERSION = 0
 
     _STRUCT = struct.Struct('<B3xL3ff')
@@ -1188,13 +1188,13 @@ class HeadingOutput(MessagePayload):
         self.flags = 0
 
         ##
-        # The measured YPR vector (in degrees), resolved in the ENU frame, after applying horizontal (yaw) and vertical
-        # (pitch) bias corrections.
+        # The measured vehicle body orientation (in degrees), after applying horizontal (yaw) and vertical (pitch)
+        # offset corrections.
         self.ypr_deg = np.full((3,), np.nan)
 
         ##
         # The heading angle (in degrees) with respect to true north, pointing from the primary antenna to the secondary
-        # antenna, after applying bias corrections.
+        # antenna, after applying offset corrections.
         #
         # @note
         # Reported in the range [0, 360).
@@ -1249,7 +1249,7 @@ class HeadingOutput(MessagePayload):
 
     def __str__(self):
         return f"""\
-Heading Output @ {str(self.details.p1_time)}
+GNSS Heading Output @ {str(self.details.p1_time)}
   Solution Type: {self.solution_type}
   YPR (ENU) (deg): {self.ypr_deg[0]:.2f}, {self.ypr_deg[1]:.2f}, {self.ypr_deg[2]:.2f}
   Heading (deg): {self.heading_true_north_deg:.2f}"""
@@ -1259,7 +1259,7 @@ Heading Output @ {str(self.details.p1_time)}
         return cls._STRUCT.size + MeasurementDetails.calcsize()
 
     @classmethod
-    def to_numpy(cls, messages: Sequence['HeadingOutput']):
+    def to_numpy(cls, messages: Sequence['GNSSHeadingOutput']):
         result = {
             'solution_type': np.array([int(m.solution_type) for m in messages], dtype=int),
             'flags': np.array([int(m.flags) for m in messages], dtype=np.uint32),
@@ -1270,11 +1270,11 @@ Heading Output @ {str(self.details.p1_time)}
         return result
 
 
-class RawHeadingOutput(MessagePayload):
+class RawGNSSHeadingOutput(MessagePayload):
     """!
-    @brief Raw (uncorrected) heading sensor measurement output.
+    @brief Raw (uncorrected) GNSS heading sensor measurement output.
     """
-    MESSAGE_TYPE = MessageType.RAW_HEADING_OUTPUT
+    MESSAGE_TYPE = MessageType.RAW_GNSS_HEADING_OUTPUT
     MESSAGE_VERSION = 0
 
     _STRUCT = struct.Struct('<B3xL3f3fff')
@@ -1367,7 +1367,7 @@ class RawHeadingOutput(MessagePayload):
 
     def __str__(self):
         return f"""\
-Raw Heading Output @ {str(self.details.p1_time)}
+Raw GNSS Heading Output @ {str(self.details.p1_time)}
   Solution Type: {self.solution_type}
   Relative position (ENU) (m): {self.relative_position_enu_m[0]:.2f}, {self.relative_position_enu_m[1]:.2f}, {self.relative_position_enu_m[2]:.2f}
   Position std (ENU) (m): {self.position_std_enu_m[0]:.2f}, {self.position_std_enu_m[1]:.2f}, {self.position_std_enu_m[2]:.2f}
@@ -1379,7 +1379,7 @@ Raw Heading Output @ {str(self.details.p1_time)}
         return cls._STRUCT.size + MeasurementDetails.calcsize()
 
     @classmethod
-    def to_numpy(cls, messages: Sequence['RawHeadingOutput']):
+    def to_numpy(cls, messages: Sequence['RawGNSSHeadingOutput']):
         result = {
             'solution_type': np.array([int(m.solution_type) for m in messages], dtype=int),
             'flags': np.array([int(m.flags) for m in messages], dtype=np.uint32),

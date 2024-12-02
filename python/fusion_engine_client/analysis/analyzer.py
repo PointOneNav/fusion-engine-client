@@ -1943,20 +1943,20 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
 
         self._add_figure(name=filename, figure=figure, title=figure_title)
 
-    def plot_heading_measurements(self):
+    def plot_gnss_heading_measurements(self):
         """!
-        @brief Generate time series plots for heading (degrees) and baseline distance (meters) data.
+        @brief Generate time series plots for GNSS heading (degrees) and baseline distance (meters) data.
         """
         if self.output_dir is None:
             return
 
         # Read the heading measurement data.
-        result = self.reader.read(message_types=[RawHeadingOutput, HeadingOutput], **self.params)
-        raw_heading_data = result[RawHeadingOutput.MESSAGE_TYPE]
-        heading_data = result[HeadingOutput.MESSAGE_TYPE]
+        result = self.reader.read(message_types=[RawGNSSHeadingOutput, GNSSHeadingOutput], **self.params)
+        raw_heading_data = result[RawGNSSHeadingOutput.MESSAGE_TYPE]
+        heading_data = result[GNSSHeadingOutput.MESSAGE_TYPE]
 
         if (len(heading_data.p1_time) == 0) and (len(raw_heading_data.p1_time) == 0):
-            self.logger.info('No heading measurement data available. Skipping plot.')
+            self.logger.info('No GNSS heading measurement data available. Skipping plot.')
             return
 
         # Note that we read the pose data after heading, that way we don't bother reading pose data from disk if there's
@@ -1987,7 +1987,6 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
 
         fig.update_layout(title='Heading Plots', legend_traceorder='normal', modebar_add=['v1hovermode'])
 
-
         # Display the navigation engine's heading estimate, if available, for comparison with the heading sensor
         # measurement.
         if primary_pose_data is not None:
@@ -2003,7 +2002,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                         customdata=primary_pose_data.p1_time,
                         mode='lines',
                         line={'color': 'yellow'},
-                        name='Primary Device Heading Estimate',
+                        name='Navigation Engine Heading Estimate',
                         hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
                                       '<br><b>Heading</b>: %{y:.2f} deg'
                     ),
@@ -2188,7 +2187,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                 row=3, col=1
             )
 
-        self._add_figure(name='heading_measurement', figure=fig, title='Measurements: Heading')
+        self._add_figure(name='gnss_heading_measurement', figure=fig, title='Measurements: GNSS Heading')
 
     def plot_system_status_profiling(self):
         """!
@@ -3004,7 +3003,7 @@ Load and display information stored in a FusionEngine binary file.
 
         # By default, we always plot heading measurements (i.e., output from a secondary heading device like an
         # LG69T-AH), separate from other sensor measurements controlled by --measurements.
-        analyzer.plot_heading_measurements()
+        analyzer.plot_gnss_heading_measurements()
 
         if truth_lla_deg is not None:
             analyzer.plot_stationary_position_error(truth_lla_deg)

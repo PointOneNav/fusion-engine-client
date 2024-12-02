@@ -47,9 +47,9 @@ enum class MessageType : uint16_t {
 
   // Sensor measurement messages.
   IMU_OUTPUT = 11000, ///< @ref IMUOutput
-  RAW_HEADING_OUTPUT = 11001, ///< @ref RawHeadingOutput
+  RAW_GNSS_HEADING_OUTPUT = 11001, ///< @ref RawGNSSHeadingOutput
   RAW_IMU_OUTPUT = 11002, ///< @ref RawIMUOutput
-  HEADING_OUTPUT = 11003, ///< @ref HeadingOutput
+  GNSS_HEADING_OUTPUT = 11003, ///< @ref GNSSHeadingOutput
   IMU_INPUT = 11004, ///< @ref IMUInput
 
   // Vehicle measurement messages.
@@ -151,14 +151,14 @@ P1_CONSTEXPR_FUNC const char* to_string(MessageType type) {
     case MessageType::IMU_OUTPUT:
       return "IMU Output";
 
-    case MessageType::RAW_HEADING_OUTPUT:
-      return "Raw heading output";
+    case MessageType::RAW_GNSS_HEADING_OUTPUT:
+      return "Raw GNSS Heading Output";
 
     case MessageType::RAW_IMU_OUTPUT:
       return "Raw IMU Output";
 
-    case MessageType::HEADING_OUTPUT:
-      return "Heading Output";
+    case MessageType::GNSS_HEADING_OUTPUT:
+      return "GNSS Heading Output";
 
     case MessageType::IMU_INPUT:
       return "IMU Input";
@@ -320,6 +320,7 @@ P1_CONSTEXPR_FUNC bool IsCommand(MessageType message_type) {
     case MessageType::GET_MESSAGE_RATE:
     case MessageType::STA5635_COMMAND:
       return true;
+
     case MessageType::INVALID:
     case MessageType::POSE:
     case MessageType::GNSS_INFO:
@@ -329,9 +330,9 @@ P1_CONSTEXPR_FUNC bool IsCommand(MessageType message_type) {
     case MessageType::RELATIVE_ENU_POSITION:
     case MessageType::SYSTEM_STATUS:
     case MessageType::IMU_OUTPUT:
-    case MessageType::RAW_HEADING_OUTPUT:
+    case MessageType::RAW_GNSS_HEADING_OUTPUT:
     case MessageType::RAW_IMU_OUTPUT:
-    case MessageType::HEADING_OUTPUT:
+    case MessageType::GNSS_HEADING_OUTPUT:
     case MessageType::IMU_INPUT:
     case MessageType::DEPRECATED_WHEEL_SPEED_MEASUREMENT:
     case MessageType::DEPRECATED_VEHICLE_SPEED_MEASUREMENT:

@@ -1138,19 +1138,29 @@ struct P1_ALIGNAS(4) DeprecatedVehicleSpeedMeasurement : public MessagePayload {
 ////////////////////////////////////////////////////////////////////////////////
 
 /**
- * @brief Heading sensor measurement output with heading bias corrections
- *        applied (@ref MessageType::HEADING_OUTPUT, version 1.0).
+ * @brief Multi-antenna GNSS heading sensor measurement output with offset
+ *        corrections applied (@ref MessageType::GNSS_HEADING_OUTPUT, version
+ *        1.0).
  * @ingroup measurement_messages
  *
- * This message is an output from the device contaning heading sensor
- * measurements after applying user-specified horizontal and vertical bias
- * corrections to account for the orientation of the primary and secondary GNSS
- * antennas.
+ * This message is an output from the device contaning heading/orientation
+ * measurements generated using multiple GNSS antennas/receivers. On supported
+ * devices, the device will measure vehicle yaw (heading) and pitch based on the
+ * relative positions of two GNSS antennas. When more than two antennas are
+ * present, the device may additionally measure roll angle.
  *
- * See also @ref RawHeadingOutput.
+ * @note
+ * This message contains vehicle body angle measurements generated from GNSS
+ * measurements. These measurements inputs to the navigation engine, not the
+ * filtered output from engine. They may be less accurate than the vehicle body
+ * orientation estimate in @ref PoseMessage.
+ *
+ * The measurements in this message have user-specified corrections applied for
+ * the horizontal and vertical offsets between the two GNSS antennas. See also
+ * @ref RawGNSSHeadingOutput.
  */
-struct P1_ALIGNAS(4) HeadingOutput : public MessagePayload {
-  static constexpr MessageType MESSAGE_TYPE = MessageType::HEADING_OUTPUT;
+struct P1_ALIGNAS(4) GNSSHeadingOutput : public MessagePayload {
+  static constexpr MessageType MESSAGE_TYPE = MessageType::GNSS_HEADING_OUTPUT;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
   /**
@@ -1171,25 +1181,22 @@ struct P1_ALIGNAS(4) HeadingOutput : public MessagePayload {
   uint32_t flags = 0;
 
   /**
-   * The measured YPR vector (in degrees), resolved in the ENU frame.
+   * The measured vehicle body orientation (in degrees).
    *
    * YPR is defined as an intrinsic Euler-321 rotation, i.e., yaw, pitch, then
-   * roll.
+   * roll with respect to the local ENU tangent plane. See @ref
+   * PoseMessage::ypr_deg for a complete rotation definition.
    *
-   * @note
-   * This field contains the measured attitude information (@ref
-   * RawHeadingOutput) from a secondary heading device after applying @ref
-   * ConfigType::HEADING_BIAS configuration settings for yaw (horizontal) and
-   * pitch (vertical) offsets between the primary and secondary GNSS antennas.
-   * If either bias value is not specified, the corresponding measurement values
-   * will be set to `NAN`.
+   * If any angles are not available, they will be set to `NAN`. For
+   * dual-antenna systems, the device will measure yaw and pitch, but not roll.
    */
   float ypr_deg[3] = {NAN, NAN, NAN};
 
   /**
    * The heading angle (in degrees) with respect to true north, pointing from
-   * the primary antenna to the secondary  antenna, after applying bias
-   * corrections.
+   * the primary antenna to the secondary antenna.
+   *
+   * The reported angle includes the user-specified heading offset correction.
    *
    * @note
    * Reported in the range [0, 360).
@@ -1198,17 +1205,22 @@ struct P1_ALIGNAS(4) HeadingOutput : public MessagePayload {
 };
 
 /**
- * @brief Raw (uncorrected) heading sensor measurement output (@ref
- *        MessageType::RAW_HEADING_OUTPUT, version 1.0).
+ * @brief Raw (uncorrected) GNSS heading sensor measurement output (@ref
+ *        MessageType::RAW_GNSS_HEADING_OUTPUT, version 1.0).
  * @ingroup measurement_messages
  *
- * This message is an output from the device contaning raw heading sensor
- * measurements that have not been corrected for mounting angle biases.
+ * This message is an output from the device contaning raw orientation
+ * measurements generated using multiple GNSS antennas/receivers that have not
+ * been corrected for horizontal/vertical offsets between the antennas. Here,
+ * orientation is represented as the vector from a primary GNSS antenna to a
+ * secondary GNSS antenna.
  *
- * See also @ref HeadingOutput.
+ * For vehicle body angle measurements, and for measurements corrected for
+ * horizontal/vertical offsets, see @ref GNSSHeadingOutput.
  */
-struct P1_ALIGNAS(4) RawHeadingOutput : public MessagePayload {
-  static constexpr MessageType MESSAGE_TYPE = MessageType::RAW_HEADING_OUTPUT;
+struct P1_ALIGNAS(4) RawGNSSHeadingOutput : public MessagePayload {
+  static constexpr MessageType MESSAGE_TYPE =
+      MessageType::RAW_GNSS_HEADING_OUTPUT;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
   /**
