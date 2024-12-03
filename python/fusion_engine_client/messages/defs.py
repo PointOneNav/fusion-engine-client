@@ -589,6 +589,13 @@ class MessagePayload:
         else:
             return getattr(self, 'p1_time', None)
 
+    def get_gps_time(self) -> Timestamp:
+        measurement_details = getattr(self, 'details', None)
+        if isinstance(measurement_details, MeasurementDetails):
+            if measurement_details.measurement_time_source == SystemTimeSource.GPS_TIME:
+                return measurement_details.measurement_time
+        return getattr(self, 'gps_time', None)
+
     def get_system_time_ns(self) -> float:
         measurement_details = getattr(self, 'details', None)
         if isinstance(measurement_details, MeasurementDetails):
