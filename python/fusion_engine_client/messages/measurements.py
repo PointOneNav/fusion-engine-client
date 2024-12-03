@@ -1297,7 +1297,7 @@ class RawGNSSAttitudeOutput(MessagePayload):
     MESSAGE_TYPE = MessageType.RAW_GNSS_ATTITUDE_OUTPUT
     MESSAGE_VERSION = 0
 
-    _STRUCT = struct.Struct('<B3xL3f3fff')
+    _STRUCT = struct.Struct('<B3xL3f3f')
 
     def __init__(self):
         ## Measurement timestamps, if available. See @ref measurement_messages.
@@ -1370,9 +1370,7 @@ class RawGNSSAttitudeOutput(MessagePayload):
          self.relative_position_enu_m[2],
          self.position_std_enu_m[0],
          self.position_std_enu_m[1],
-         self.position_std_enu_m[2],
-         self.baseline_distance_m,
-         self.baseline_distance_std_m) = self._STRUCT.unpack_from(buffer, offset)
+         self.position_std_enu_m[2]) = self._STRUCT.unpack_from(buffer, offset)
         offset += self._STRUCT.size
 
         self.solution_type = SolutionType(solution_type_int)
@@ -1383,8 +1381,7 @@ class RawGNSSAttitudeOutput(MessagePayload):
         result = super().__repr__()[:-1]
         enu_str = '(%.2f, %.2f, %.3f)' % tuple(self.relative_position_enu_m)
         heading_deg = self.get_heading_deg()
-        result += f', solution_type={self.solution_type}, enu={enu_str} m, heading={heading_deg:.1f} deg, ' \
-                  f'baseline={self.baseline_distance_m} m]'
+        result += f', solution_type={self.solution_type}, enu={enu_str} m, heading={heading_deg:.1f} deg]'
         return result
 
     def __str__(self):
@@ -1393,9 +1390,7 @@ Raw GNSS Attitude Output @ {str(self.details.p1_time)}
   Solution Type: {self.solution_type}
   Relative position (ENU) (m): {self.relative_position_enu_m[0]:.2f}, {self.relative_position_enu_m[1]:.2f}, {self.relative_position_enu_m[2]:.2f}
   Position std (ENU) (m): {self.position_std_enu_m[0]:.2f}, {self.position_std_enu_m[1]:.2f}, {self.position_std_enu_m[2]:.2f}
-  Heading (deg): {self.get_heading_deg():.2f}
-  Baseline distance (m): {self.baseline_distance_m:.2f}
-  Baseline std (m): {self.baseline_distance_std_m:.2f}"""
+  Heading (deg): {self.get_heading_deg():.2f}"""
 
     @classmethod
     def calcsize(cls) -> int:
@@ -1408,8 +1403,6 @@ Raw GNSS Attitude Output @ {str(self.details.p1_time)}
             'flags': np.array([int(m.flags) for m in messages], dtype=np.uint32),
             'relative_position_enu_m': np.array([m.relative_position_enu_m for m in messages]).T,
             'position_std_enu_m': np.array([m.position_std_enu_m for m in messages]).T,
-            'baseline_distance_m': np.array([float(m.baseline_distance_m) for m in messages]),
-            'baseline_distance_std_m': np.array([float(m.baseline_distance_std_m) for m in messages]),
         }
         result.update(MeasurementDetails.to_numpy([m.details for m in messages]))
         return result

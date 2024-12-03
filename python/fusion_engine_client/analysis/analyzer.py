@@ -2046,6 +2046,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             raw_heading_time = raw_heading_data.p1_time - float(self.t0)
             raw_heading_deg = np.degrees(np.arctan2(raw_heading_data.relative_position_enu_m[1, :],
                                                     raw_heading_data.relative_position_enu_m[0, :]))
+            raw_baseline_distance_m = np.linalg.norm(raw_heading_data.relative_position_enu_m, axis=0)
 
             # Compute heading uncertainty envelop.
             denom = raw_heading_data.relative_position_enu_m[0]**2 + raw_heading_data.relative_position_enu_m[1]**2
@@ -2058,7 +2059,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             )
 
             envelope = np.arctan(
-                (2 * heading_std / raw_heading_data.baseline_distance_m)
+                (2 * heading_std / raw_baseline_distance_m)
             )
             envelope *= 180. / np.pi
             fig.add_trace(
@@ -2147,7 +2148,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             fig.add_trace(
                 go.Scatter(
                     x=raw_heading_time,
-                    y=raw_heading_data.baseline_distance_m,
+                    y=raw_baseline_distance_m,
                     customdata=raw_heading_data.p1_time,
                     marker={'size': 2, "color": "red"},
                     hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'

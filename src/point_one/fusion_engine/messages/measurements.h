@@ -1265,16 +1265,6 @@ struct P1_ALIGNAS(4) RawGNSSAttitudeOutput : public MessagePayload {
    * resolved with respect to the local ENU tangent plane: east, north, up.
    */
   float position_std_enu_m[3] = {NAN, NAN, NAN};
-
-  /**
-   * The estimated distance between primary and secondary antennas (in meters).
-   */
-  float baseline_distance_m = NAN;
-
-  /**
-   * The standard deviation of the baseline distance estimate (in meters).
-   */
-  float baseline_distance_std_m = NAN;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
