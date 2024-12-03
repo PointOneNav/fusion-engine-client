@@ -1,3 +1,4 @@
+import math
 import struct
 from typing import Sequence
 
@@ -1165,18 +1166,18 @@ Vehicle Speed Measurement @ {str(self.details.p1_time)}
         return result
 
 ################################################################################
-# Heading Sensor Definitions
+# GNSS Heading Sensor Definitions
 ################################################################################
 
 
-class HeadingOutput(MessagePayload):
+class GNSSAttitudeOutput(MessagePayload):
     """!
-    @brief Heading sensor measurement output with heading bias corrections applied.
+    @brief Multi-antenna GNSS attitude sensor measurement output with offset corrections applied.
     """
-    MESSAGE_TYPE = MessageType.HEADING_OUTPUT
+    MESSAGE_TYPE = MessageType.GNSS_ATTITUDE_OUTPUT
     MESSAGE_VERSION = 0
 
-    _STRUCT = struct.Struct('<B3xL3ff')
+    _STRUCT = struct.Struct('<B3xI3f3f2f')
 
     def __init__(self):
         ## Measurement timestamps, if available. See @ref measurement_messages.
@@ -1184,21 +1185,26 @@ class HeadingOutput(MessagePayload):
 
         ## Set to @ref SolutionType::RTKFixed when heading is available, or @ref SolutionType::Invalid otherwise.
         self.solution_type = SolutionType.Invalid
+
         ## A bitmask of flags associated with the solution
         self.flags = 0
 
         ##
-        # The measured YPR vector (in degrees), resolved in the ENU frame, after applying horizontal (yaw) and vertical
-        # (pitch) bias corrections.
+        # The measured vehicle body orientation (in degrees), after applying horizontal (yaw) and vertical (pitch)
+        # offset corrections.
         self.ypr_deg = np.full((3,), np.nan)
 
         ##
-        # The heading angle (in degrees) with respect to true north, pointing from the primary antenna to the secondary
-        # antenna, after applying bias corrections.
-        #
-        # @note
-        # Reported in the range [0, 360).
-        self.heading_true_north_deg = np.nan
+        # The standard deviation of the orientation measurement (in degrees).
+        self.ypr_std_deg = np.full((3,), np.nan)
+
+        ##
+        # The estimated distance between primary and secondary antennas (in meters).
+        self.baseline_distance_m = np.nan
+
+        ##
+        # The standard deviation of the baseline distance estimate (in meters).
+        self.baseline_distance_std_m = np.nan
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
@@ -1216,7 +1222,11 @@ class HeadingOutput(MessagePayload):
             self.ypr_deg[0],
             self.ypr_deg[1],
             self.ypr_deg[2],
-            self.heading_true_north_deg)
+            self.ypr_std_deg[0],
+            self.ypr_std_deg[1],
+            self.ypr_std_deg[2],
+            self.baseline_distance_m,
+            self.baseline_distance_std_m)
         offset += self._STRUCT.size
 
         if return_buffer:
@@ -1234,7 +1244,11 @@ class HeadingOutput(MessagePayload):
          self.ypr_deg[0],
          self.ypr_deg[1],
          self.ypr_deg[2],
-         self.heading_true_north_deg) = \
+         self.ypr_std_deg[0],
+         self.ypr_std_deg[1],
+         self.ypr_std_deg[2],
+         self.baseline_distance_m,
+         self.baseline_distance_std_m) = \
             self._STRUCT.unpack_from(buffer, offset)
         offset += self._STRUCT.size
 
@@ -1244,46 +1258,61 @@ class HeadingOutput(MessagePayload):
 
     def __repr__(self):
         result = super().__repr__()[:-1]
-        result += f', solution_type={self.solution_type}, heading={self.heading_true_north_deg:.1f} deg]'
+        ypr_str = '(%.1f, %.1f, %.1f)' % tuple(self.ypr_deg)
+        result += f', solution_type={self.solution_type}, ypr={ypr_str} deg, ' \
+                  f'baseline={self.baseline_distance_m} m]'
         return result
 
     def __str__(self):
+        gps_time = self.get_gps_time()
+        if gps_time is not None:
+            gps_str = f'{str(gps_time).replace("GPS: ", "")}'
+            utc_str = f'{datetime_to_string(gps_time.as_utc())}'
+        else:
+            gps_str = 'None'
+            utc_str = 'None'
         return f"""\
-Heading Output @ {str(self.details.p1_time)}
+GNSS Attitude Output @ {str(self.details.p1_time)}
+  GPS time: {gps_str}
+  UTC time: {utc_str}
   Solution Type: {self.solution_type}
-  YPR (ENU) (deg): {self.ypr_deg[0]:.2f}, {self.ypr_deg[1]:.2f}, {self.ypr_deg[2]:.2f}
-  Heading (deg): {self.heading_true_north_deg:.2f}"""
+  YPR (deg): {self.ypr_deg[0]:.2f}, {self.ypr_deg[1]:.2f}, {self.ypr_deg[2]:.2f}
+  YPR std (deg): {self.ypr_std_deg[0]:.2f}, {self.ypr_std_deg[1]:.2f}, {self.ypr_std_deg[2]:.2f}
+  Baseline distance (m): {self.baseline_distance_m:.2f}
+  Baseline std (m): {self.baseline_distance_std_m:.2f}"""
 
     @classmethod
     def calcsize(cls) -> int:
         return cls._STRUCT.size + MeasurementDetails.calcsize()
 
     @classmethod
-    def to_numpy(cls, messages: Sequence['HeadingOutput']):
+    def to_numpy(cls, messages: Sequence['GNSSAttitudeOutput']):
         result = {
             'solution_type': np.array([int(m.solution_type) for m in messages], dtype=int),
             'flags': np.array([int(m.flags) for m in messages], dtype=np.uint32),
             'ypr_deg': np.array([m.ypr_deg for m in messages]).T,
-            'heading_true_north_deg': np.array([m.heading_true_north_deg for m in messages], dtype=float),
+            'ypr_std_deg': np.array([m.ypr_std_deg for m in messages]).T,
+            'baseline_distance_m': np.array([float(m.baseline_distance_m) for m in messages]),
+            'baseline_distance_std_m': np.array([float(m.baseline_distance_std_m) for m in messages]),
         }
         result.update(MeasurementDetails.to_numpy([m.details for m in messages]))
         return result
 
 
-class RawHeadingOutput(MessagePayload):
+class RawGNSSAttitudeOutput(MessagePayload):
     """!
-    @brief Raw (uncorrected) heading sensor measurement output.
+    @brief Raw (uncorrected) GNSS attitude sensor measurement output.
     """
-    MESSAGE_TYPE = MessageType.RAW_HEADING_OUTPUT
+    MESSAGE_TYPE = MessageType.RAW_GNSS_ATTITUDE_OUTPUT
     MESSAGE_VERSION = 0
 
-    _STRUCT = struct.Struct('<B3xL3f3fff')
+    _STRUCT = struct.Struct('<B3xL3f3f')
 
     def __init__(self):
         ## Measurement timestamps, if available. See @ref measurement_messages.
         self.details = MeasurementDetails()
 
-        ## Set to @ref SolutionType::RTKFixed when heading is available, or @ref SolutionType::Invalid otherwise.
+        ## Set to @ref SolutionType::RTKFixed when attitude is available, or @ref SolutionType::Invalid otherwise.
         self.solution_type = SolutionType.Invalid
         ## A bitmask of flags associated with the solution.
         self.flags = 0
@@ -1292,22 +1321,22 @@ class RawHeadingOutput(MessagePayload):
         # The position of the secondary GNSS antenna relative to the primary antenna (in meters), resolved with respect
         # to the local ENU tangent plane: east, north, up.
         self.relative_position_enu_m = np.full((3,), np.nan)
+
         ##
         # The position standard deviation (in meters), resolved with respect to the
         # local ENU tangent plane: east, north, up.
         self.position_std_enu_m = np.full((3,), np.nan)
 
         ##
-        # The heading between the primary device antenna and the secondary (in degrees) with
-        # respect to true north.
-        #
-        # @note
-        # Reported in the range [0, 360).
-        self.heading_true_north_deg = np.nan
-
-        ##
         # The estimated distance between primary and secondary antennas (in meters).
         self.baseline_distance_m = np.nan
+
+        ##
+        # The standard deviation of the baseline distance estimate (in meters).
+        self.baseline_distance_std_m = np.nan
+
+    def get_heading_deg(self):
+        return math.degrees(math.atan2(self.relative_position_enu_m[1], self.relative_position_enu_m[0]))
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
@@ -1329,8 +1358,8 @@ class RawHeadingOutput(MessagePayload):
             self.position_std_enu_m[0],
             self.position_std_enu_m[1],
             self.position_std_enu_m[2],
-            self.heading_true_north_deg,
-            self.baseline_distance_m)
+            self.baseline_distance_m,
+            self.baseline_distance_std_m)
         offset += self._STRUCT.size
 
         if return_buffer:
@@ -1350,9 +1379,7 @@ class RawHeadingOutput(MessagePayload):
          self.relative_position_enu_m[2],
          self.position_std_enu_m[0],
          self.position_std_enu_m[1],
-         self.position_std_enu_m[2],
-         self.heading_true_north_deg,
-         self.baseline_distance_m) = self._STRUCT.unpack_from(buffer, offset)
+         self.position_std_enu_m[2]) = self._STRUCT.unpack_from(buffer, offset)
         offset += self._STRUCT.size
 
         self.solution_type = SolutionType(solution_type_int)
@@ -1361,35 +1388,46 @@ class RawHeadingOutput(MessagePayload):
 
     def __repr__(self):
         result = super().__repr__()[:-1]
-        result += f', solution_type={self.solution_type}, heading={self.heading_true_north_deg:.1f} deg, ' \
-                  f'baseline={self.baseline_distance_m} m]'
+        enu_str = '(%.2f, %.2f, %.3f)' % tuple(self.relative_position_enu_m)
+        heading_deg = self.get_heading_deg()
+        result += f', solution_type={self.solution_type}, enu={enu_str} m, heading={heading_deg:.1f} deg]'
         return result
 
     def __str__(self):
+        gps_time = self.get_gps_time()
+        if gps_time is not None:
+            gps_str = f'{str(gps_time).replace("GPS: ", "")}'
+            utc_str = f'{datetime_to_string(gps_time.as_utc())}'
+        else:
+            gps_str = 'None'
+            utc_str = 'None'
         return f"""\
-Raw Heading Output @ {str(self.details.p1_time)}
+Raw GNSS Attitude Output @ {str(self.details.p1_time)}
+  GPS time: {gps_str}
+  UTC time: {utc_str}
   Solution Type: {self.solution_type}
   Relative position (ENU) (m): {self.relative_position_enu_m[0]:.2f}, {self.relative_position_enu_m[1]:.2f}, {self.relative_position_enu_m[2]:.2f}
   Position std (ENU) (m): {self.position_std_enu_m[0]:.2f}, {self.position_std_enu_m[1]:.2f}, {self.position_std_enu_m[2]:.2f}
-  Heading (deg): {self.heading_true_north_deg:.2f}
-  Baseline distance (m): {self.baseline_distance_m:.2f}"""
+  Heading (deg): {self.get_heading_deg():.2f}"""
 
     @classmethod
     def calcsize(cls) -> int:
         return cls._STRUCT.size + MeasurementDetails.calcsize()
 
     @classmethod
-    def to_numpy(cls, messages: Sequence['RawHeadingOutput']):
+    def to_numpy(cls, messages: Sequence['RawGNSSAttitudeOutput']):
         result = {
             'solution_type': np.array([int(m.solution_type) for m in messages], dtype=int),
             'flags': np.array([int(m.flags) for m in messages], dtype=np.uint32),
             'relative_position_enu_m': np.array([m.relative_position_enu_m for m in messages]).T,
             'position_std_enu_m': np.array([m.position_std_enu_m for m in messages]).T,
-            'heading_true_north_deg': np.array([float(m.heading_true_north_deg) for m in messages]),
-            'baseline_distance_m': np.array([float(m.baseline_distance_m) for m in messages]),
         }
         result.update(MeasurementDetails.to_numpy([m.details for m in messages]))
         return result
+
+################################################################################
+# Binary Sensor Data Definitions
+################################################################################
 
 
 class InputDataWrapperMessage(MessagePayload):
