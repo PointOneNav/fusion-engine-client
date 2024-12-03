@@ -1264,8 +1264,17 @@ class GNSSAttitudeOutput(MessagePayload):
         return result
 
     def __str__(self):
+        gps_time = self.get_gps_time()
+        if gps_time is not None:
+            gps_str = f'{str(gps_time).replace("GPS: ", "")}'
+            utc_str = f'{datetime_to_string(gps_time.as_utc())}'
+        else:
+            gps_str = 'None'
+            utc_str = 'None'
         return f"""\
 GNSS Attitude Output @ {str(self.details.p1_time)}
+  GPS time: {gps_str}
+  UTC time: {utc_str}
   Solution Type: {self.solution_type}
   YPR (deg): {self.ypr_deg[0]:.2f}, {self.ypr_deg[1]:.2f}, {self.ypr_deg[2]:.2f}
   YPR std (deg): {self.ypr_std_deg[0]:.2f}, {self.ypr_std_deg[1]:.2f}, {self.ypr_std_deg[2]:.2f}
@@ -1385,8 +1394,17 @@ class RawGNSSAttitudeOutput(MessagePayload):
         return result
 
     def __str__(self):
+        gps_time = self.get_gps_time()
+        if gps_time is not None:
+            gps_str = f'{str(gps_time).replace("GPS: ", "")}'
+            utc_str = f'{datetime_to_string(gps_time.as_utc())}'
+        else:
+            gps_str = 'None'
+            utc_str = 'None'
         return f"""\
 Raw GNSS Attitude Output @ {str(self.details.p1_time)}
+  GPS time: {gps_str}
+  UTC time: {utc_str}
   Solution Type: {self.solution_type}
   Relative position (ENU) (m): {self.relative_position_enu_m[0]:.2f}, {self.relative_position_enu_m[1]:.2f}, {self.relative_position_enu_m[2]:.2f}
   Position std (ENU) (m): {self.position_std_enu_m[0]:.2f}, {self.position_std_enu_m[1]:.2f}, {self.position_std_enu_m[2]:.2f}
