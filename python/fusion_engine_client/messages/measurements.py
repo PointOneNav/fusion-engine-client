@@ -1177,7 +1177,7 @@ class GNSSAttitudeOutput(MessagePayload):
     MESSAGE_TYPE = MessageType.GNSS_ATTITUDE_OUTPUT
     MESSAGE_VERSION = 0
 
-    _STRUCT = struct.Struct('<B3xI3f3f')
+    _STRUCT = struct.Struct('<B3xI3f3f2f')
 
     def __init__(self):
         ## Measurement timestamps, if available. See @ref measurement_messages.
@@ -1198,6 +1198,14 @@ class GNSSAttitudeOutput(MessagePayload):
         # The standard deviation of the orientation measurement (in degrees).
         self.ypr_std_deg = np.full((3,), np.nan)
 
+        ##
+        # The estimated distance between primary and secondary antennas (in meters).
+        self.baseline_distance_m = np.nan
+
+        ##
+        # The standard deviation of the baseline distance estimate (in meters).
+        self.baseline_distance_std_m = np.nan
+
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
             buffer = bytearray(self.calcsize())
@@ -1216,7 +1224,9 @@ class GNSSAttitudeOutput(MessagePayload):
             self.ypr_deg[2],
             self.ypr_std_deg[0],
             self.ypr_std_deg[1],
-            self.ypr_std_deg[2])
+            self.ypr_std_deg[2],
+            self.baseline_distance_m,
+            self.baseline_distance_std_m)
         offset += self._STRUCT.size
 
         if return_buffer:
@@ -1236,7 +1246,9 @@ class GNSSAttitudeOutput(MessagePayload):
          self.ypr_deg[2],
          self.ypr_std_deg[0],
          self.ypr_std_deg[1],
-         self.ypr_std_deg[2]) = \
+         self.ypr_std_deg[2],
+         self.baseline_distance_m,
+         self.baseline_distance_std_m) = \
             self._STRUCT.unpack_from(buffer, offset)
         offset += self._STRUCT.size
 
@@ -1247,7 +1259,8 @@ class GNSSAttitudeOutput(MessagePayload):
     def __repr__(self):
         result = super().__repr__()[:-1]
         ypr_str = '(%.1f, %.1f, %.1f)' % tuple(self.ypr_deg)
-        result += f', solution_type={self.solution_type}, ypr={ypr_str} deg]'
+        result += f', solution_type={self.solution_type}, ypr={ypr_str} deg, ' \
+                  f'baseline={self.baseline_distance_m} m]'
         return result
 
     def __str__(self):
@@ -1255,7 +1268,9 @@ class GNSSAttitudeOutput(MessagePayload):
 GNSS Attitude Output @ {str(self.details.p1_time)}
   Solution Type: {self.solution_type}
   YPR (deg): {self.ypr_deg[0]:.2f}, {self.ypr_deg[1]:.2f}, {self.ypr_deg[2]:.2f}
-  YPR std (deg): {self.ypr_std_deg[0]:.2f}, {self.ypr_std_deg[1]:.2f}, {self.ypr_std_deg[2]:.2f}"""
+  YPR std (deg): {self.ypr_std_deg[0]:.2f}, {self.ypr_std_deg[1]:.2f}, {self.ypr_std_deg[2]:.2f}
+  Baseline distance (m): {self.baseline_distance_m:.2f}
+  Baseline std (m): {self.baseline_distance_std_m:.2f}"""
 
     @classmethod
     def calcsize(cls) -> int:
@@ -1268,6 +1283,8 @@ GNSS Attitude Output @ {str(self.details.p1_time)}
             'flags': np.array([int(m.flags) for m in messages], dtype=np.uint32),
             'ypr_deg': np.array([m.ypr_deg for m in messages]).T,
             'ypr_std_deg': np.array([m.ypr_std_deg for m in messages]).T,
+            'baseline_distance_m': np.array([float(m.baseline_distance_m) for m in messages]),
+            'baseline_distance_std_m': np.array([float(m.baseline_distance_std_m) for m in messages]),
         }
         result.update(MeasurementDetails.to_numpy([m.details for m in messages]))
         return result

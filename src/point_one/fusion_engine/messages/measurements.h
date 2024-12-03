@@ -1200,6 +1200,16 @@ struct P1_ALIGNAS(4) GNSSAttitudeOutput : public MessagePayload {
    * The standard deviation of the orientation measurement (in degrees).
    */
   float ypr_std_deg[3] = {NAN, NAN, NAN};
+
+  /**
+   * The estimated distance between primary and secondary antennas (in meters).
+   */
+  float baseline_distance_m = NAN;
+
+  /**
+   * The standard deviation of the baseline distance estimate (in meters).
+   */
+  float baseline_distance_std_m = NAN;
 };
 
 /**

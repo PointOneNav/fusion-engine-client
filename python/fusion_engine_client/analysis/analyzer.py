@@ -2028,6 +2028,19 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                 row=1, col=1
             )
 
+            fig.add_trace(
+                go.Scatter(
+                    x=heading_time,
+                    y=heading_data.baseline_distance_m,
+                    customdata=heading_data.p1_time,
+                    marker={'size': 2, "color": "green"},
+                    hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
+                                  '<br><b>Baseline</b>: %{y:.2f} m',
+                    name='Baseline'
+                ),
+                row=2, col=1
+            )
+
         # Uncorrected heading plot
         if len(raw_heading_data.p1_time) > 0:
             raw_heading_time = raw_heading_data.p1_time - float(self.t0)
