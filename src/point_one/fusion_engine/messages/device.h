@@ -329,11 +329,6 @@ inline p1_ostream& operator<<(p1_ostream& stream, RTKOutputSource source) {
  * @brief System status information (@ref
  *        MessageType::SYSTEM_STATUS, version 1.0).
  * @ingroup device_status
- *
- * @note
- * All data is timestamped using the Point One Time, which is a monotonic
- * timestamp referenced to the start of the device. Corresponding messages (@ref
- * SystemStatusMessage) may be associated using their @ref p1_time values.
  */
 
 struct P1_ALIGNAS(4) SystemStatusMessage : public MessagePayload {

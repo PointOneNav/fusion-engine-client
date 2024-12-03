@@ -32,7 +32,7 @@ namespace messages {
  * @ingroup solution_messages
  *
  * @note
- * All data is timestamped using the Point One Time, which is a monotonic
+ * All data is timestamped using Point One (P1) time, which is a monotonic
  * timestamp referenced to the start of the device. Corresponding messages (@ref
  * GNSSInfoMessage, @ref GNSSSatelliteMessage, etc.) may be associated using
  * their @ref p1_time values.
@@ -504,10 +504,10 @@ struct P1_ALIGNAS(4) CalibrationStatusMessage : public MessagePayload {
  * @ingroup solution_messages
  *
  * @note
- * All data is timestamped using the Point One Time, which is a monotonic
- * timestamp referenced to the start of the device. Corresponding messages (@ref
- * PoseMessage, @ref GNSSSatelliteMessage, etc.) may be associated using
- * their @ref p1_time values.
+ * This message represents the relationship between the navigation engine's
+ * position solution and a nearby RTK base station. It is not used to convey
+ * unfiltered vehicle body orientation measurements generated using multiple
+ * GNSS antennas. See @ref GNSSAttitudeOutput instead.
  */
 struct P1_ALIGNAS(4) RelativeENUPositionMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE =

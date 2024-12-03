@@ -1953,9 +1953,9 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
 
         self._add_figure(name=filename, figure=figure, title=figure_title)
 
-    def plot_heading_measurements(self):
+    def plot_gnss_attitude_measurements(self):
         """!
-        @brief Generate time series plots for heading (degrees) and baseline distance (meters) data.
+        @brief Generate time series plots for GNSS attitude (degrees) and baseline distance (meters) data.
         """
         if self.output_dir is None:
             return
@@ -1964,17 +1964,17 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         #
         # Internal: We explicitly disable internal sync here to avoid overlap between wrapped RawHeadingOutput from the
         # secondary device and the rewritten versions containing primary device P1 timestamps and sequence numbers.
-        result = self.reader.read(message_types=[RawHeadingOutput, HeadingOutput],
+        result = self.reader.read(message_types=[RawGNSSAttitudeOutput, GNSSAttitudeOutput],
                                   enable_internal_sync=False, **self.params)
-        raw_heading_data = result[RawHeadingOutput.MESSAGE_TYPE]
-        heading_data = result[HeadingOutput.MESSAGE_TYPE]
+        raw_heading_data = result[RawGNSSAttitudeOutput.MESSAGE_TYPE]
+        heading_data = result[GNSSAttitudeOutput.MESSAGE_TYPE]
 
         if (len(heading_data.p1_time) == 0) and (len(raw_heading_data.p1_time) == 0):
-            self.logger.info('No heading measurement data available. Skipping plot.')
+            self.logger.info('No GNSS attitude measurement data available. Skipping plot.')
             return
 
-        # Note that we read the pose data after heading, that way we don't bother reading pose data from disk if there's
-        # no heading data in the log.
+        # Note that we read the pose data after attitude, that way we don't bother reading pose data from disk if
+        # there's no heading data in the log.
         result = self.reader.read(message_types=[PoseMessage], source_ids=self.default_source_id, **self.params)
         primary_pose_data = result[PoseMessage.MESSAGE_TYPE]
 
@@ -2016,7 +2016,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                         customdata=primary_pose_data.p1_time,
                         mode='lines',
                         line={'color': 'yellow'},
-                        name='Primary Device Heading Estimate',
+                        name='Navigation Engine Heading Estimate',
                         hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
                                       '<br><b>Heading</b>: %{y:.2f} deg'
                     ),
@@ -2026,10 +2026,11 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         # Corrected heading plot
         if len(heading_data.p1_time) > 0:
             heading_time = heading_data.p1_time - float(self.t0)
+            heading_deg = 90.0 - heading_data.ypr_deg[0, :]
             fig.add_trace(
                 go.Scatter(
                     x=heading_time,
-                    y=heading_data.heading_true_north_deg,
+                    y=heading_deg,
                     customdata=heading_data.p1_time,
                     mode='markers',
                     marker={'size': 2, "color": "green"},
@@ -2041,9 +2042,26 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                 row=1, col=1
             )
 
+            fig.add_trace(
+                go.Scatter(
+                    x=heading_time,
+                    y=heading_data.baseline_distance_m,
+                    customdata=heading_data.p1_time,
+                    marker={'size': 2, "color": "green"},
+                    hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
+                                  '<br><b>Baseline</b>: %{y:.2f} m',
+                    name='Baseline'
+                ),
+                row=2, col=1
+            )
+
         # Uncorrected heading plot
         if len(raw_heading_data.p1_time) > 0:
             raw_heading_time = raw_heading_data.p1_time - float(self.t0)
+            raw_heading_deg = np.degrees(np.arctan2(raw_heading_data.relative_position_enu_m[1, :],
+                                                    raw_heading_data.relative_position_enu_m[0, :]))
+            raw_baseline_distance_m = np.linalg.norm(raw_heading_data.relative_position_enu_m, axis=0)
+
             # Compute heading uncertainty envelop.
             denom = raw_heading_data.relative_position_enu_m[0]**2 + raw_heading_data.relative_position_enu_m[1]**2
             dh_e = raw_heading_data.relative_position_enu_m[0] / denom
@@ -2055,13 +2073,13 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             )
 
             envelope = np.arctan(
-                (2 * heading_std / raw_heading_data.baseline_distance_m)
+                (2 * heading_std / raw_baseline_distance_m)
             )
             envelope *= 180. / np.pi
             fig.add_trace(
                 go.Scatter(
                     x=raw_heading_time,
-                    y=raw_heading_data.heading_true_north_deg,
+                    y=raw_heading_deg,
                     customdata=raw_heading_data.p1_time,
                     mode='markers',
                     marker={'size': 2, "color": "red"},
@@ -2072,12 +2090,12 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                 ),
                 row=1, col=1
             )
-            idx = ~np.isnan(raw_heading_data.heading_true_north_deg)
+            idx = ~np.isnan(raw_heading_deg)
 
             fig.add_trace(
                 go.Scatter(
                     x=raw_heading_time[idx],
-                    y=raw_heading_data.heading_true_north_deg[idx] + envelope[idx],
+                    y=raw_heading_deg[idx] + envelope[idx],
                     mode='lines',
                     marker={'size': 2, "color": "red"},
                     line=dict(width=0),
@@ -2091,7 +2109,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             fig.add_trace(
                 go.Scatter(
                     x=raw_heading_time[idx],
-                    y=raw_heading_data.heading_true_north_deg[idx] - envelope[idx],
+                    y=raw_heading_deg[idx] - envelope[idx],
                     mode='lines',
                     marker={'size': 2, "color": "red"},
                     line=dict(width=0),
@@ -2144,7 +2162,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             fig.add_trace(
                 go.Scatter(
                     x=raw_heading_time,
-                    y=raw_heading_data.baseline_distance_m,
+                    y=raw_baseline_distance_m,
                     customdata=raw_heading_data.p1_time,
                     marker={'size': 2, "color": "red"},
                     hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
@@ -2201,7 +2219,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                 row=3, col=1
             )
 
-        self._add_figure(name='heading_measurement', figure=fig, title='Measurements: Heading')
+        self._add_figure(name='gnss_attitude_measurement', figure=fig, title='Measurements: GNSS Attitude')
 
     def plot_system_status_profiling(self):
         """!
@@ -3674,9 +3692,9 @@ Load and display information stored in a FusionEngine binary file.
         analyzer.plot_gnss_corrections_status()
         analyzer.plot_dop()
 
-        # By default, we always plot heading measurements (i.e., output from a secondary heading device like an
+        # By default, we always plot attitude measurements (i.e., output from a secondary GNSS attitude sensor like an
         # LG69T-AH), separate from other sensor measurements controlled by --measurements.
-        analyzer.plot_heading_measurements()
+        analyzer.plot_gnss_attitude_measurements()
 
         if truth_lla_deg is not None:
             analyzer.plot_stationary_position_error(truth_lla_deg)

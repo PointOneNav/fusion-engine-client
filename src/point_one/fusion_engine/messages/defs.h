@@ -48,10 +48,12 @@ enum class MessageType : uint16_t {
 
   // Sensor measurement messages.
   IMU_OUTPUT = 11000, ///< @ref IMUOutput
-  RAW_HEADING_OUTPUT = 11001, ///< @ref RawHeadingOutput
+  DEPRECATED_RAW_HEADING_OUTPUT = 11001,
   RAW_IMU_OUTPUT = 11002, ///< @ref RawIMUOutput
-  HEADING_OUTPUT = 11003, ///< @ref HeadingOutput
+  DEPRECATED_HEADING_OUTPUT = 11003,
   IMU_INPUT = 11004, ///< @ref IMUInput
+  GNSS_ATTITUDE_OUTPUT = 11005, ///< @ref GNSSAttitudeOutput
+  RAW_GNSS_ATTITUDE_OUTPUT = 11006, ///< @ref RawGNSSAttitudeOutput
 
   // Vehicle measurement messages.
   DEPRECATED_WHEEL_SPEED_MEASUREMENT =
@@ -155,17 +157,23 @@ P1_CONSTEXPR_FUNC const char* to_string(MessageType type) {
     case MessageType::IMU_OUTPUT:
       return "IMU Output";
 
-    case MessageType::RAW_HEADING_OUTPUT:
-      return "Raw heading output";
+    case MessageType::DEPRECATED_RAW_HEADING_OUTPUT:
+      return "Raw GNSS Heading Output";
 
     case MessageType::RAW_IMU_OUTPUT:
       return "Raw IMU Output";
 
-    case MessageType::HEADING_OUTPUT:
-      return "Heading Output";
+    case MessageType::DEPRECATED_HEADING_OUTPUT:
+      return "GNSS Heading Output";
 
     case MessageType::IMU_INPUT:
       return "IMU Input";
+
+    case MessageType::GNSS_ATTITUDE_OUTPUT:
+      return "GNSS Attitude Output";
+
+    case MessageType::RAW_GNSS_ATTITUDE_OUTPUT:
+      return "Raw GNSS Attitude Output";
 
     case MessageType::DEPRECATED_WHEEL_SPEED_MEASUREMENT:
       return "Wheel Speed Measurement";
@@ -324,6 +332,7 @@ P1_CONSTEXPR_FUNC bool IsCommand(MessageType message_type) {
     case MessageType::GET_MESSAGE_RATE:
     case MessageType::STA5635_COMMAND:
       return true;
+
     case MessageType::INVALID:
     case MessageType::POSE:
     case MessageType::GNSS_INFO:
@@ -334,10 +343,12 @@ P1_CONSTEXPR_FUNC bool IsCommand(MessageType message_type) {
     case MessageType::SYSTEM_STATUS:
     case MessageType::SSR_STATUS:
     case MessageType::IMU_OUTPUT:
-    case MessageType::RAW_HEADING_OUTPUT:
+    case MessageType::DEPRECATED_RAW_HEADING_OUTPUT:
     case MessageType::RAW_IMU_OUTPUT:
-    case MessageType::HEADING_OUTPUT:
+    case MessageType::DEPRECATED_HEADING_OUTPUT:
     case MessageType::IMU_INPUT:
+    case MessageType::GNSS_ATTITUDE_OUTPUT:
+    case MessageType::RAW_GNSS_ATTITUDE_OUTPUT:
     case MessageType::DEPRECATED_WHEEL_SPEED_MEASUREMENT:
     case MessageType::DEPRECATED_VEHICLE_SPEED_MEASUREMENT:
     case MessageType::WHEEL_TICK_INPUT:

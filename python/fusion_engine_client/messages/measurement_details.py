@@ -131,6 +131,12 @@ class MeasurementDetails(object):
             'p1_time': p1_time,
         }
 
+        idx = time_source == SystemTimeSource.GPS_TIME
+        if np.any(idx):
+            gps_time = np.full_like(time_source, np.nan)
+            gps_time[idx] = measurement_time[idx]
+            result['gps_time'] = gps_time
+
         idx = time_source == SystemTimeSource.TIMESTAMPED_ON_RECEPTION
         if np.any(idx):
             system_time = np.full_like(time_source, np.nan)

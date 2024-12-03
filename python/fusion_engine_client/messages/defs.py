@@ -100,10 +100,12 @@ class MessageType(IntEnum):
 
     # Sensor measurement messages.
     IMU_OUTPUT = 11000
-    RAW_HEADING_OUTPUT = 11001
+    DEPRECATED_RAW_HEADING_OUTPUT = 11001
     RAW_IMU_OUTPUT = 11002
-    HEADING_OUTPUT = 11003
+    DEPRECATED_HEADING_OUTPUT = 11003
     IMU_INPUT = 11004
+    GNSS_ATTITUDE_OUTPUT = 11005
+    RAW_GNSS_ATTITUDE_OUTPUT = 11006
 
     # Vehicle measurement messages.
     DEPRECATED_WHEEL_SPEED_MEASUREMENT = 11101
@@ -607,6 +609,13 @@ class MessagePayload:
         else:
             return getattr(self, 'p1_time', None)
 
+    def get_gps_time(self) -> Timestamp:
+        measurement_details = getattr(self, 'details', None)
+        if isinstance(measurement_details, MeasurementDetails):
+            if measurement_details.measurement_time_source == SystemTimeSource.GPS_TIME:
+                return measurement_details.measurement_time
+        return getattr(self, 'gps_time', None)
+
     def get_system_time_ns(self) -> float:
         measurement_details = getattr(self, 'details', None)
         if isinstance(measurement_details, MeasurementDetails):
@@ -805,3 +814,11 @@ def PackedDataToBuffer(packed_data: bytes, buffer: Optional[bytes] = None, offse
         return buffer
     else:
         return len(packed_data)
+
+
+def yaw_to_heading(yaw_deg: Union[float, np.ndarray]):
+    return 90.0 - yaw_deg
+
+
+def heading_to_yaw(heading_deg: Union[float, np.ndarray]):
+    return 90.0 - heading_deg
