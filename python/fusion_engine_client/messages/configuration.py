@@ -30,7 +30,8 @@ class ConfigType(IntEnum):
     VEHICLE_DETAILS = 20
     WHEEL_CONFIG = 21
     HARDWARE_TICK_CONFIG = 22
-    HEADING_BIAS = 23
+    DEPRECATED_HEADING_BIAS = 23
+    GNSS_AUX_LEVER_ARM = 24
     ENABLED_GNSS_SYSTEMS = 50
     ENABLED_GNSS_FREQUENCY_BANDS = 51
     LEAP_SECOND = 52
@@ -654,19 +655,6 @@ class _ConfigClassGenerator:
         "wheel_ticks_to_m" / Float32l,
     )
 
-    class HeadingBias(NamedTuple):
-        """!
-        @brief Horizontal and vertical heading bias configuration settings.
-        """
-        horizontal_bias_deg: float = math.nan
-        vertical_bias_deg: float = math.nan
-
-
-    HeadingBiasConstruct = Struct(
-        "horizontal_bias_deg" / Float32l,
-        "vertical_bias_deg" / Float32l,
-    )
-
     class IonosphereConfig(NamedTuple):
         """!
         @brief Ionospheric delay model configuration.
@@ -754,13 +742,22 @@ class DeviceLeverArmConfig(_conf_gen.Point3F):
 @_conf_gen.create_config_class(ConfigType.GNSS_LEVER_ARM, _conf_gen.Point3FConstruct)
 class GNSSLeverArmConfig(_conf_gen.Point3F):
     """!
-    @brief The location of the GNSS antenna with respect to the vehicle body frame, resolved in the vehicle body frame
-           (in meters).
+    @brief The location of the primary GNSS antenna with respect to the vehicle body frame, resolved in the vehicle body
+           frame (in meters).
     """
     pass
 
 # Alias for convenience.
 GnssLeverArmConfig = GNSSLeverArmConfig
+
+
+@_conf_gen.create_config_class(ConfigType.GNSS_AUX_LEVER_ARM, _conf_gen.Point3FConstruct)
+class GNSSAuxLeverArmConfig(_conf_gen.Point3F):
+    """!
+    @brief The location of the secondary GNSS antenna with respect to the vehicle body frame on a dual-antenna platform,
+           resolved in the vehicle body frame (in meters).
+    """
+    pass
 
 
 @_conf_gen.create_config_class(ConfigType.OUTPUT_LEVER_ARM, _conf_gen.Point3FConstruct)
@@ -926,14 +923,6 @@ class WheelConfig(_conf_gen.WheelConfig):
 class HardwareTickConfig(_conf_gen.HardwareTickConfig):
     """!
     @brief Tick configuration settings.
-    """
-    pass
-
-
-@_conf_gen.create_config_class(ConfigType.HEADING_BIAS, _conf_gen.HeadingBiasConstruct)
-class HeadingBias(_conf_gen.HeadingBias):
-    """!
-    @brief Horizontal and vertical heading bias.
     """
     pass
 
