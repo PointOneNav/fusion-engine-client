@@ -38,8 +38,8 @@ enum class ConfigType : uint16_t {
   INVALID = 0,
 
   /**
-   * The location of the device IMU with respect to the vehicle body frame (in
-   * meters).
+   * The location of the device IMU with respect to the vehicle body frame,
+   * resolved in the vehicle body frame (in meters).
    *
    * Payload format: @ref Point3f
    */
@@ -53,8 +53,8 @@ enum class ConfigType : uint16_t {
   DEVICE_COARSE_ORIENTATION = 17,
 
   /**
-   * The location of the GNSS antenna with respect to the vehicle body frame (in
-   * meters).
+   * The location of the GNSS antenna with respect to the vehicle body frame,
+   * resolved in the vehicle body frame (in meters).
    *
    * Payload format: @ref Point3f
    */
@@ -62,7 +62,7 @@ enum class ConfigType : uint16_t {
 
   /**
    * The offset of the desired output location with respect to the vehicle
-   * body frame (in meters).
+   * body frame, resolved in the vehicle body frame (in meters).
    *
    * Payload format: @ref Point3f
    */
