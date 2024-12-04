@@ -745,7 +745,8 @@ _conf_gen = _ConfigClassGenerator()
 @_conf_gen.create_config_class(ConfigType.DEVICE_LEVER_ARM, _conf_gen.Point3FConstruct)
 class DeviceLeverArmConfig(_conf_gen.Point3F):
     """!
-    @brief The location of the device IMU with respect to the vehicle body frame (in meters).
+    @brief The location of the device IMU with respect to the vehicle body frame, resolved in the vehicle body frame (in
+           meters).
     """
     pass
 
@@ -753,7 +754,8 @@ class DeviceLeverArmConfig(_conf_gen.Point3F):
 @_conf_gen.create_config_class(ConfigType.GNSS_LEVER_ARM, _conf_gen.Point3FConstruct)
 class GNSSLeverArmConfig(_conf_gen.Point3F):
     """!
-    @brief The location of the GNSS antenna with respect to the vehicle body frame (in meters).
+    @brief The location of the GNSS antenna with respect to the vehicle body frame, resolved in the vehicle body frame
+           (in meters).
     """
     pass
 
@@ -764,7 +766,8 @@ GnssLeverArmConfig = GNSSLeverArmConfig
 @_conf_gen.create_config_class(ConfigType.OUTPUT_LEVER_ARM, _conf_gen.Point3FConstruct)
 class OutputLeverArmConfig(_conf_gen.Point3F):
     """!
-    @brief The location of the desired output location with respect to the vehicle body frame (in meters).
+    @brief The location of the desired output location with respect to the vehicle body frame, resolved in the vehicle
+           body frame (in meters).
     """
     pass
 
