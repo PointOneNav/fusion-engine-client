@@ -2,6 +2,7 @@ from collections import defaultdict
 from datetime import datetime
 import math
 import os
+import select
 import socket
 import sys
 import time
@@ -86,6 +87,10 @@ def run_client(options, transport):
     if generating_csv:
         output_file.write(b'host_time,type,p1_time,sys_time\n')
 
+    # Configure the socket for non-blocking reads.
+    if isinstance(transport, socket.socket):
+        transport.setblocking(0)
+
     # Listen for incoming data.
     decoder = FusionEngineDecoder(warn_on_unrecognized=not options.quiet and not options.summary, return_bytes=True)
     bytes_received = 0
@@ -109,7 +114,11 @@ def run_client(options, transport):
             # Read some data.
             try:
                 if isinstance(transport, socket.socket):
-                    received_data = transport.recv(1024)
+                    ready = select.select([transport], [], [], 1.0)
+                    if ready[0]:
+                        received_data = transport.recv(1024)
+                    else:
+                        received_data = []
                 else:
                     received_data = transport.read(1024)
 
