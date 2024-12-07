@@ -87,6 +87,9 @@ contents and/or log the messages to disk.
     messages_received = 0
     start_time = datetime.now()
     last_print_time = start_time
+    def _print_status(now):
+        logger.info('Status: [bytes_received=%d, messages_received=%d, elapsed_time=%d sec]' %
+                    (bytes_received, messages_received, (now - start_time).total_seconds()))
     while True:
         # Read some data.
         try:
@@ -96,8 +99,7 @@ contents and/or log the messages to disk.
             if not options.quiet:
                 now = datetime.now()
                 if (now - last_print_time).total_seconds() > 5.0:
-                    logger.info('Status: [bytes_received=%d, messages_received=%d, elapsed_time=%d sec]' %
-                                (bytes_received, messages_received, (now - start_time).total_seconds()))
+                    _print_status(now)
                     last_print_time = now
         except serial.SerialException as e:
             logger.error('Unexpected error reading from device:\r%s' % str(e))
@@ -137,5 +139,4 @@ contents and/or log the messages to disk.
     if not options.quiet:
         now = datetime.now()
         elapsed_sec = (now - last_print_time).total_seconds() if last_print_time else 0.0
-        logger.info('Status: [bytes_received=%d, messages_received=%d, elapsed_time=%d sec]' %
-                    (bytes_received, messages_received, (now - start_time).total_seconds()))
+        _print_status(now)
