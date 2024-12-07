@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 
+from collections import defaultdict
 from datetime import datetime
 import os
 import sys
+
+import colorama
 
 try:
     import serial
@@ -15,7 +18,8 @@ except ImportError:
 root_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, root_dir)
 
-from fusion_engine_client.applications.p1_print import add_print_format_argument, print_message
+from fusion_engine_client.applications.p1_print import \
+    MessageStatsEntry, add_print_format_argument, print_message, print_summary_table
 from fusion_engine_client.parsers import FusionEngineDecoder
 from fusion_engine_client.utils import trace as logging
 from fusion_engine_client.utils.argument_parser import ArgumentParser
@@ -40,6 +44,8 @@ contents and/or log the messages to disk.
                         help="The path to a file where incoming data will be stored.")
     parser.add_argument('-q', '--quiet', dest='quiet', action='store_true',
                         help="Do not print anything to the console.")
+    parser.add_argument('-s', '--summary', action='store_true',
+                        help="Print a summary of the incoming messages instead of the message content.")
     parser.add_argument('-v', '--verbose', action='count', default=0,
                         help="Print verbose/trace debugging messages.")
 
@@ -82,14 +88,23 @@ contents and/or log the messages to disk.
     port = serial.Serial(port=options.port, baudrate=options.baud, timeout=1.0)
 
     # Listen for incoming data.
-    decoder = FusionEngineDecoder(warn_on_unrecognized=not options.quiet, return_bytes=True)
+    decoder = FusionEngineDecoder(warn_on_unrecognized=not options.quiet and not options.summary, return_bytes=True)
     bytes_received = 0
     messages_received = 0
+    message_stats = defaultdict(MessageStatsEntry)
     start_time = datetime.now()
     last_print_time = start_time
+    print_timeout_sec = 1.0 if options.summary else 5.0
+
     def _print_status(now):
+        if options.summary:
+            # Clear the terminal.
+            print(colorama.ansi.CSI + 'H' + colorama.ansi.CSI + 'J', end='')
         logger.info('Status: [bytes_received=%d, messages_received=%d, elapsed_time=%d sec]' %
                     (bytes_received, messages_received, (now - start_time).total_seconds()))
+        if options.summary:
+            print_summary_table(message_stats, logger=logger)
+
     try:
         while True:
             # Read some data.
@@ -129,7 +144,11 @@ contents and/or log the messages to disk.
                         output_file.write(raw_data)
 
                     if options.display:
-                        print_message(header, message, format=options.display_format, logger=logger)
+                        if options.summary:
+                            if (now - last_print_time).total_seconds() > 0.1:
+                                _print_status(now)
+                        else:
+                            print_message(header, message, format=options.display_format, logger=logger)
     except KeyboardInterrupt:
         pass
 
@@ -140,7 +159,7 @@ contents and/or log the messages to disk.
     if output_file is not None:
         output_file.close()
 
-    if not options.quiet:
+    if not options.quiet and not options.summary:
         now = datetime.now()
         elapsed_sec = (now - last_print_time).total_seconds() if last_print_time else 0.0
         _print_status(now)
