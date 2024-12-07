@@ -90,44 +90,48 @@ contents and/or log the messages to disk.
     def _print_status(now):
         logger.info('Status: [bytes_received=%d, messages_received=%d, elapsed_time=%d sec]' %
                     (bytes_received, messages_received, (now - start_time).total_seconds()))
-    while True:
-        # Read some data.
-        try:
-            received_data = port.read(1024)
-            bytes_received += len(received_data)
+    try:
+        while True:
+            # Read some data.
+            try:
+                received_data = port.read(1024)
+                bytes_received += len(received_data)
 
-            if not options.quiet:
                 now = datetime.now()
-                if (now - last_print_time).total_seconds() > 5.0:
-                    _print_status(now)
-                    last_print_time = now
-        except serial.SerialException as e:
-            logger.error('Unexpected error reading from device:\r%s' % str(e))
-            break
-        except KeyboardInterrupt:
-            break
+                if not options.quiet:
+                    if (now - last_print_time).total_seconds() > print_timeout_sec:
+                        _print_status(now)
+                        last_print_time = now
+            except serial.SerialException as e:
+                logger.error('Unexpected error reading from device:\r%s' % str(e))
+                break
 
-        # If logging in raw format, write the data to disk as is.
-        if generating_raw_log:
-            output_file.write(received_data)
+            # If logging in raw format, write the data to disk as is.
+            if generating_raw_log:
+                output_file.write(received_data)
 
-        # Decode the incoming data and print the contents of any complete messages.
-        #
-        # Note that we pass the data to the decoder, even if --no-display was requested, for three reasons:
-        # - So that we get a count of the number of incoming messages
-        # - So we print warnings if the CRC fails on any of the incoming data
-        # - If we are logging in *.p1log format, so the decoder can extract the FusionEngine data from any
-        #   non-FusionEngine data in the stream
-        messages = decoder.on_data(received_data)
-        messages_received += len(messages)
+            # Decode the incoming data and print the contents of any complete messages.
+            #
+            # Note that we pass the data to the decoder, even if --no-display was requested, for three reasons:
+            # - So that we get a count of the number of incoming messages
+            # - So we print warnings if the CRC fails on any of the incoming data
+            # - If we are logging in *.p1log format, so the decoder can extract the FusionEngine data from any
+            #   non-FusionEngine data in the stream
+            messages = decoder.on_data(received_data)
+            messages_received += len(messages)
 
-        if options.display or generating_p1log:
-            for (header, message, raw_data) in messages:
-                if generating_p1log:
-                    output_file.write(raw_data)
+            if options.display or generating_p1log:
+                for (header, message, raw_data) in messages:
+                    entry = message_stats[header.message_type]
+                    entry.update(header, message)
 
-                if options.display:
-                    print_message(header, message, format=options.display_format, logger=logger)
+                    if generating_p1log:
+                        output_file.write(raw_data)
+
+                    if options.display:
+                        print_message(header, message, format=options.display_format, logger=logger)
+    except KeyboardInterrupt:
+        pass
 
     # Close the serial port.
     port.close()
