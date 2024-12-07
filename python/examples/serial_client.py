@@ -40,6 +40,8 @@ contents and/or log the messages to disk.
                         help="The path to a file where incoming data will be stored.")
     parser.add_argument('-q', '--quiet', dest='quiet', action='store_true',
                         help="Do not print anything to the console.")
+    parser.add_argument('-v', '--verbose', action='count', default=0,
+                        help="Print verbose/trace debugging messages.")
 
     parser.add_argument('port',
                         help="The serial device to use (e.g., /dev/ttyUSB0, COM1)")
@@ -48,9 +50,19 @@ contents and/or log the messages to disk.
     if options.quiet:
         options.display = False
 
-    logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s:%(lineno)d - %(message)s', stream=sys.stdout)
+    # Configure logging.
+    if options.verbose >= 1:
+        logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(name)s:%(lineno)d - %(message)s',
+                            stream=sys.stdout)
+        if options.verbose == 1:
+            logging.getLogger('point_one.fusion_engine').setLevel(logging.DEBUG)
+        else:
+            logging.getLogger('point_one.fusion_engine').setLevel(
+                logging.getTraceLevel(depth=options.verbose - 1))
+    else:
+        logging.basicConfig(level=logging.INFO, format='%(message)s', stream=sys.stdout)
+
     logger = logging.getLogger('point_one.fusion_engine')
-    logger.setLevel(logging.INFO)
 
     # Open the output file if logging was requested.
     if options.output is not None:
@@ -84,11 +96,11 @@ contents and/or log the messages to disk.
             if not options.quiet:
                 now = datetime.now()
                 if (now - last_print_time).total_seconds() > 5.0:
-                    print('Status: [bytes_received=%d, messages_received=%d elapsed_time=%d sec]' %
-                          (bytes_received, messages_received, (now - start_time).total_seconds()))
+                    logger.info('Status: [bytes_received=%d, messages_received=%d, elapsed_time=%d sec]' %
+                                (bytes_received, messages_received, (now - start_time).total_seconds()))
                     last_print_time = now
         except serial.SerialException as e:
-            print('Unexpected error reading from device:\r%s' % str(e))
+            logger.error('Unexpected error reading from device:\r%s' % str(e))
             break
         except KeyboardInterrupt:
             break
@@ -113,7 +125,7 @@ contents and/or log the messages to disk.
                     output_file.write(raw_data)
 
                 if options.display:
-                    print_message(header, message, format=options.display_format)
+                    print_message(header, message, format=options.display_format, logger=logger)
 
     # Close the serial port.
     port.close()
@@ -125,5 +137,5 @@ contents and/or log the messages to disk.
     if not options.quiet:
         now = datetime.now()
         elapsed_sec = (now - last_print_time).total_seconds() if last_print_time else 0.0
-        print('Status: [bytes_received=%d, messages_received=%d elapsed_time=%d sec]' %
-              (bytes_received, messages_received, elapsed_sec))
+        logger.info('Status: [bytes_received=%d, messages_received=%d, elapsed_time=%d sec]' %
+                    (bytes_received, messages_received, (now - start_time).total_seconds()))
