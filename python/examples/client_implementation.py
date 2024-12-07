@@ -1,8 +1,10 @@
 from collections import defaultdict
 from datetime import datetime
+import math
 import os
 import socket
 import sys
+import time
 
 import colorama
 
@@ -28,10 +30,12 @@ from fusion_engine_client.utils.argument_parser import ArgumentParser
 
 def define_arguments(parser):
     add_print_format_argument(parser, '--display-format')
-    parser.add_argument('-f', '--format', default='p1log', choices=('p1log', 'raw'),
-                        help="The format of the file to be generated when --output is enabled."
-                             "If 'p1log' (default), create a *.p1log file containing only FusionEngine messages."
-                             "If 'raw', create a generic binary file containing all incoming data.")
+    parser.add_argument('-f', '--format', default='p1log', choices=('p1log', 'raw', 'csv'),
+                        help="""\
+The format of the file to be generated when --output is enabled:
+- p1log - Create a *.p1log file containing only FusionEngine messages (default)
+- raw - Create a generic binary file containing all incoming data
+- csv - Create a CSV file with the received message types and timestamps""")
     parser.add_argument('-n', '--no-display', dest='display', action='store_false',
                         help="Do not display the incoming message contents.")
     parser.add_argument('-o', '--output', type=str,
@@ -77,6 +81,10 @@ def run_client(options, transport):
 
     generating_raw_log = (output_file is not None and options.format == 'raw')
     generating_p1log = (output_file is not None and options.format == 'p1log')
+    generating_csv = (output_file is not None and options.format == 'csv')
+
+    if generating_csv:
+        output_file.write(b'host_time,type,p1_time,sys_time\n')
 
     # Listen for incoming data.
     decoder = FusionEngineDecoder(warn_on_unrecognized=not options.quiet and not options.summary, return_bytes=True)
@@ -137,6 +145,14 @@ def run_client(options, transport):
 
                     if generating_p1log:
                         output_file.write(raw_data)
+
+                    if generating_csv:
+                        p1_time = message.get_p1_time()
+                        sys_time = message.get_system_time_sec()
+                        p1_str = str(p1_time.seconds) if p1_time is not None and not math.isnan(p1_time) else ''
+                        sys_str = str(sys_time) if sys_time is not None and not math.isnan(sys_time) else ''
+                        output_file.write(
+                            f'{time.monotonic()},{header.message_type},{p1_str},{sys_str}\n'.encode('utf-8'))
 
                     if options.display:
                         if options.summary:
