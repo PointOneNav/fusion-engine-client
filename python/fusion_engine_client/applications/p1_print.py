@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+from typing import Dict
+
 from collections import defaultdict
 import sys
 
@@ -93,6 +95,37 @@ def print_message(header, contents, offset_bytes=None, format='pretty', bytes=No
         parts.insert(1, byte_string)
 
     logger.info('\n'.join(parts))
+
+
+class MessageStatsEntry:
+    def __init__(self):
+        self.count = 0
+        self.total_bytes = 0
+
+    def update(self, header: MessageHeader, message: MessagePayload):
+        self.count += 1
+        self.total_bytes = header.get_message_size()
+
+
+def print_summary_table(message_stats: Dict[MessageType, MessageStatsEntry], logger=None):
+    if logger is None:
+        logger = _logger
+
+    format_string = '| {:<50} | {:>5} | {:>8} |'
+    logger.info(format_string.format('Message Name', 'Type', 'Count'))
+    logger.info(format_string.format('-' * 50, '-' * 5, '-' * 8))
+    total_messages = 0
+    for type, entry in sorted(message_stats.items(), key=lambda x: int(x[0])):
+        if type in message_type_to_class:
+            name = message_type_to_class[type].__name__
+        elif type.is_unrecognized():
+            name = str(type)
+        else:
+            name = f'Unsupported ({str(type)})'
+        logger.info(format_string.format(name, int(type), entry.count))
+        total_messages += entry.count
+    logger.info(format_string.format('-' * 50, '-' * 5, '-' * 8))
+    logger.info(format_string.format('Total', '', total_messages))
 
 
 def main():
@@ -240,8 +273,7 @@ other types of data.
     total_messages = 0
     bytes_decoded = 0
 
-    def create_stats_entry(): return {'count': 0}
-    message_stats = defaultdict(create_stats_entry)
+    message_stats = defaultdict(MessageStatsEntry)
     try:
         for header, message, data, offset_bytes in reader:
             total_decoded_messages += 1
@@ -255,7 +287,7 @@ other types of data.
             bytes_decoded += len(data)
             if options.summary:
                 entry = message_stats[header.message_type]
-                entry['count'] += 1
+                entry.update(header, message)
 
                 if message is not None:
                     p1_time = message.get_p1_time()
@@ -321,20 +353,7 @@ other types of data.
         _logger.info('Total data read: %d B' % reader.get_bytes_read())
         _logger.info('Selected data size: %d B' % bytes_decoded)
         _logger.info('')
-
-        format_string = '| {:<50} | {:>5} | {:>8} |'
-        _logger.info(format_string.format('Message Name', 'Type', 'Count'))
-        _logger.info(format_string.format('-' * 50, '-' * 5, '-' * 8))
-        for type, info in sorted(message_stats.items(), key=lambda x: int(x[0])):
-            if type in message_type_to_class:
-                name = message_type_to_class[type].__name__
-            elif type.is_unrecognized():
-                name = str(type)
-            else:
-                name = f'Unsupported ({str(type)})'
-            _logger.info(format_string.format(name, int(type), info['count']))
-        _logger.info(format_string.format('-' * 50, '-' * 5, '-' * 8))
-        _logger.info(format_string.format('Total', '', total_messages))
+        print_summary_table(message_stats)
     elif total_messages == 0:
         _logger.warning('No valid FusionEngine messages found.')
 
