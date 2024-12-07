@@ -36,7 +36,10 @@ def add_print_format_argument(parser, *arg_names):
              "- oneline-binary-payload - Like `oneline-binary`, but exclude the message header from the binary")
 
 
-def print_message(header, contents, offset_bytes=None, format='pretty', bytes=None):
+def print_message(header, contents, offset_bytes=None, format='pretty', bytes=None, logger=None):
+    if logger is None:
+        logger = _logger
+
     if format == 'binary':
         if bytes is None:
             raise ValueError('No data provided for binary format.')
@@ -89,7 +92,7 @@ def print_message(header, contents, offset_bytes=None, format='pretty', bytes=No
         byte_string = '  ' + bytes_to_hex(bytes, bytes_per_row=16, bytes_per_col=2).replace('\n', '\n  ')
         parts.insert(1, byte_string)
 
-    _logger.info('\n'.join(parts))
+    logger.info('\n'.join(parts))
 
 
 def main():
