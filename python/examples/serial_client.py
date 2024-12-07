@@ -33,7 +33,7 @@ contents and/or log the messages to disk.
     options = parser.parse_args()
 
     # Connect to the device.
-    transport = serial.Serial(port=options.port, baudrate=options.baud, timeout=1.0)
+    transport = serial.Serial(port=options.port, baudrate=options.baud)
 
     # Now run the client to listen for incoming data and decode/print the received message contents.
     run_client(options, transport)

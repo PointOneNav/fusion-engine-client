@@ -87,9 +87,13 @@ def run_client(options, transport):
     if generating_csv:
         output_file.write(b'host_time,type,p1_time,sys_time\n')
 
-    # Configure the socket for non-blocking reads.
+    # If this is a TCP/UDP socket, configure it for non-blocking reads. We'll apply a read timeout with select() below.
+    read_timeout_sec = 1.0
     if isinstance(transport, socket.socket):
         transport.setblocking(0)
+    # If this is a serial port, configure its read timeout.
+    else:
+        transport.timeout = read_timeout_sec
 
     # Listen for incoming data.
     decoder = FusionEngineDecoder(warn_on_unrecognized=not options.quiet and not options.summary, return_bytes=True)
@@ -113,12 +117,15 @@ def run_client(options, transport):
         while True:
             # Read some data.
             try:
+                # If this is a TCP/UDP socket, use select() to implement a read timeout so we can wakeup periodically
+                # and print status if there's no incoming data.
                 if isinstance(transport, socket.socket):
-                    ready = select.select([transport], [], [], 1.0)
+                    ready = select.select([transport], [], [], read_timeout_sec)
                     if ready[0]:
                         received_data = transport.recv(1024)
                     else:
                         received_data = []
+                # If this is a serial port, we set the read timeout above.
                 else:
                     received_data = transport.read(1024)
 
