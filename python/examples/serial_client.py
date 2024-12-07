@@ -79,7 +79,7 @@ contents and/or log the messages to disk.
     generating_p1log = (output_file is not None and options.format == 'p1log')
 
     # Connect to the device.
-    port = serial.Serial(port=options.port, baudrate=options.baud)
+    port = serial.Serial(port=options.port, baudrate=options.baud, timeout=1.0)
 
     # Listen for incoming data.
     decoder = FusionEngineDecoder(warn_on_unrecognized=not options.quiet, return_bytes=True)
