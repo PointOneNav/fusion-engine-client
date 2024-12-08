@@ -22,6 +22,9 @@ FusionEngine message specification.
 
 ### Applications
 
+- [p1_capture](fusion_engine_client/applications/p1_capture.py) - Connect to a FusionEngine device in real time over
+  serial, TCP, UDP, or UNIX domain socket, and display incoming FusionEngine contents and/or log the incoming data to
+  disk
 - [p1_display](fusion_engine_client/applications/p1_display.py) - Generate plots of vehicle trajectory, GNSS signal
   status, wheel speed measurements, etc. from a file of logged FusionEngine messages
 - [p1_extract](fusion_engine_client/applications/p1_extract.py) - Extract FusionEngine messages from a binary file
@@ -59,13 +62,12 @@ FusionEngine message specification.
         optionally mixed with other binary data, and decode the contents using the `FusionEngineDecoder` helper class
       - [send_command.py](examples/send_command.py) - Send a command to a device over serial or TCP, and wait for a
         response
-      - [serial_client.py](examples/serial_client.py) - Connect to a device over a local serial port and decode messages
-        in real time to be displayed and/or logged to disk using the `FusionEngineDecoder` helper class
-      - [tcp_client.py](examples/tcp_client.py) - Connect to a device over TCP and decode messages in real time to be
-        displayed and/or logged to disk using the `FusionEngineDecoder` helper class
+      - [serial_client.py](examples/serial_client.py) - Connect to a device over a local serial port and decode/print
+        incoming FusionEngine messages
+      - [tcp_client.py](examples/tcp_client.py) - Connect to a device over TCP and decode messages in real time and
+        decode/print incoming FusionEngine messages
       - [udp_client.py](examples/udp_client.py) - Connect to a device over UDP and decode/display messages in real time
-        - Unlike [tcp_client.py](examples/tcp_client.py), currently assumes all incoming UDP packets contain
-          FusionEngine messages and does not use the `FusionEngineDecoder` helper class
+        and decode/print incoming FusionEngine messages
     - `fusion_engine_client` - Top-level Python package directory
       - `analysis`
         - [analyzer.py](fusion_engine_client/analysis/analyzer.py) - `Analyzer` class, used by

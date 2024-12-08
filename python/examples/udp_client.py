@@ -10,22 +10,20 @@ root_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, root_dir)
 
 from fusion_engine_client.utils.argument_parser import ArgumentParser
-
-from examples.client_implementation import define_arguments, run_client
+from fusion_engine_client.messages import MessagePayload
+from fusion_engine_client.parsers import FusionEngineDecoder
 
 
 if __name__ == "__main__":
+    # Parse command-line arguments.
     parser = ArgumentParser(description="""\
 Connect to a Point One device over UDP and print out the incoming message
-contents and/or log the messages to disk.
+contents.
 
 When using UDP, you must configure the device to send data to your machine.
 """)
-    define_arguments(parser)
     parser.add_argument('-p', '--port', type=int, default=30400,
                         help="The FusionEngine UDP port on the data source.")
-    parser.add_argument('hostname',
-                        help="The IP address or hostname of the data source.")
     options = parser.parse_args()
 
     # Connect to the device.
@@ -33,5 +31,19 @@ When using UDP, you must configure the device to send data to your machine.
     transport.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     transport.bind(('', options.port))
 
-    # Now run the client to listen for incoming data and decode/print the received message contents.
-    run_client(options, transport)
+    # Listen for incoming data and parse FusionEngine messages.
+    try:
+        decoder = FusionEngineDecoder()
+        while True:
+            received_data = transport.recv(1024)
+            messages = decoder.on_data(received_data)
+            for header, message in messages:
+                if isinstance(message, MessagePayload):
+                    print(str(message))
+                else:
+                    print(f'{header.message_type} message (not supported)')
+    except KeyboardInterrupt:
+        pass
+
+    # Close the transport when finished.
+    transport.close()

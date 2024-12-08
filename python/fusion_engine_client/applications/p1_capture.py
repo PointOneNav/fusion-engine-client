@@ -1,7 +1,10 @@
+#!/usr/bin/env python3
+
 from collections import defaultdict
 from datetime import datetime
 import math
 import os
+import re
 import select
 import socket
 import sys
@@ -12,62 +15,128 @@ import colorama
 try:
     # pySerial is optional.
     import serial
+    serial_supported = True
 except ImportError:
+    serial_supported = False
     # Dummy stand-in if pySerial is not installed.
     class serial:
         class SerialException: pass
 
-# Add the Python root directory (fusion-engine-client/python/) to the import search path to enable FusionEngine imports
-# if this application is being run directly out of the repository and is not installed as a pip package.
-root_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
-sys.path.insert(0, root_dir)
+if __package__ is None or __package__ == "":
+    from import_utils import enable_relative_imports
+    __package__ = enable_relative_imports(__name__, __file__)
 
-from fusion_engine_client.applications.p1_print import \
+from .p1_print import \
     DeviceSummary, add_print_format_argument, print_message, print_summary_table
-from fusion_engine_client.parsers import FusionEngineDecoder
-from fusion_engine_client.utils import trace as logging
-from fusion_engine_client.utils.argument_parser import ArgumentParser
+from ..parsers import FusionEngineDecoder
+from ..utils import trace as logging
+from ..utils.argument_parser import ArgumentParser, ExtendedBooleanAction
+
+_logger = logging.getLogger('point_one.fusion_engine.applications.p1_capture')
 
 
-def define_arguments(parser):
+def create_transport(descriptor: str):
+    m = re.match(r'^tcp://([a-zA-Z0-9-_.]+)?:([0-9]+)$', descriptor)
+    if m:
+        transport = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        transport.connect((socket.gethostbyname(m.group(1)), int(m.group(2))))
+        return transport
+
+    m = re.match(r'^udp://:([0-9]+)$', descriptor)
+    if m:
+        transport = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        transport.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        transport.bind(('', int(m.group(1))))
+        return transport
+
+    m = re.match(r'^unix://([a-zA-Z0-9-_./]+)$', descriptor)
+    if m:
+        transport = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        transport.connect(m.group(1))
+        return transport
+
+    m = re.match(r'^(?:(?:serial|tty)://)?([^:]+):([0-9]+)$', descriptor)
+    if m:
+        if serial_supported:
+            transport = serial.Serial(port=m.group(1), baudrate=int(m.group(2)))
+            return transport
+        else:
+            raise RuntimeError(
+                "This application requires pyserial. Please install (pip install pyserial) and run again.")
+
+    raise ValueError('Unsupported transport descriptor.')
+
+
+def main():
+    # Parse command-line arguments.
+    parser = ArgumentParser(description="""\
+Connect to a Point One device and print out the incoming FusionEngine message
+contents and/or log the messages to disk.
+""")
     add_print_format_argument(parser, '--display-format')
-    parser.add_argument('-f', '--format', default='p1log', choices=('p1log', 'raw', 'csv'),
-                        help="""\
+    parser.add_argument(
+        '--display', action=ExtendedBooleanAction, default=True,
+        help="Print the incoming message contents to the console.")
+    parser.add_argument(
+        '-q', '--quiet', dest='quiet', action=ExtendedBooleanAction, default=False,
+        help="Do not print anything to the console.")
+    parser.add_argument(
+        '-s', '--summary', action=ExtendedBooleanAction, default=False,
+        help="Print a summary of the incoming messages instead of the message content.")
+    parser.add_argument(
+        '-v', '--verbose', action='count', default=0,
+        help="Print verbose/trace debugging messages.")
+
+    file_group = parser.add_argument_group('File Capture')
+    file_group.add_argument(
+        '-f', '--output-format', default='p1log', choices=('p1log', 'raw', 'csv'),
+        help="""\
 The format of the file to be generated when --output is enabled:
 - p1log - Create a *.p1log file containing only FusionEngine messages (default)
 - raw - Create a generic binary file containing all incoming data
 - csv - Create a CSV file with the received message types and timestamps""")
-    parser.add_argument('-n', '--no-display', dest='display', action='store_false',
-                        help="Do not display the incoming message contents.")
-    parser.add_argument('-o', '--output', type=str,
-                        help="The path to a file where incoming data will be stored.")
-    parser.add_argument('-q', '--quiet', dest='quiet', action='store_true',
-                        help="Do not print anything to the console.")
-    parser.add_argument('-s', '--summary', action='store_true',
-                        help="Print a summary of the incoming messages instead of the message content.")
-    parser.add_argument('-v', '--verbose', action='count', default=0,
-                        help="Print verbose/trace debugging messages.")
+    file_group.add_argument(
+        '-o', '--output', type=str,
+        help="The path to a file where incoming data will be stored.")
 
+    parser.add_argument(
+        'transport',
+        help="""\
+The method used to communicate with the target device:
+- tcp://HOSTNAME:PORT - Connect to the specified hostname (or IP address) and
+  port over TCP (e.g., tty://192.168.0.3:30201)
+- udp://:PORT - Listen for incoming data on the specified UDP port (e.g.,
+  udp://:12345)
+  Note: When using UDP, you must configure the device to send data to your
+  machine.
+- unix://FILENAME - Connect to the specified UNIX domain socket file
+- [tty://]DEVICE:BAUD - Connect to a serial device with the specified baud rate
+  (e.g., tty:///dev/ttyUSB0:460800 or /dev/ttyUSB0:460800) 
+""")
 
-def configure_logging(options):
+    options = parser.parse_args()
+
+    if options.quiet:
+        options.display = False
+
+    # Configure logging.
     if options.verbose >= 1:
         logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(name)s:%(lineno)d - %(message)s',
                             stream=sys.stdout)
         if options.verbose == 1:
-            logging.getLogger('point_one.fusion_engine').setLevel(logging.DEBUG)
+            logging.getLogger('point_one.fusion_engine.parsers').setLevel(logging.DEBUG)
         else:
-            logging.getLogger('point_one.fusion_engine').setLevel(
+            logging.getLogger('point_one.fusion_engine.parsers').setLevel(
                 logging.getTraceLevel(depth=options.verbose - 1))
     else:
         logging.basicConfig(level=logging.INFO, format='%(message)s', stream=sys.stdout)
 
-
-def run_client(options, transport):
-    configure_logging(options)
-    logger = logging.getLogger('point_one.fusion_engine')
-
-    if options.quiet:
-        options.display = False
+    # Connect to the device using the specified transport.
+    try:
+        transport = create_transport(options.transport)
+    except Exception as e:
+        _logger.error(str(e))
+        sys.exit(1)
 
     # Open the output file if logging was requested.
     if options.output is not None:
@@ -110,10 +179,10 @@ def run_client(options, transport):
         if options.summary:
             # Clear the terminal.
             print(colorama.ansi.CSI + 'H' + colorama.ansi.CSI + 'J', end='')
-        logger.info('Status: [bytes_received=%d, messages_received=%d, elapsed_time=%d sec]' %
-                    (bytes_received, messages_received, (now - start_time).total_seconds()))
+        _logger.info('Status: [bytes_received=%d, messages_received=%d, elapsed_time=%d sec]' %
+                     (bytes_received, messages_received, (now - start_time).total_seconds()))
         if options.summary:
-            print_summary_table(device_summary, logger=logger)
+            print_summary_table(device_summary, logger=_logger)
 
     try:
         while True:
@@ -139,7 +208,7 @@ def run_client(options, transport):
                         _print_status(now)
                         last_print_time = now
             except serial.SerialException as e:
-                logger.error('Unexpected error reading from device:\r%s' % str(e))
+                _logger.error('Unexpected error reading from device:\r%s' % str(e))
                 break
 
             # If logging in raw format, write the data to disk as is.
@@ -176,7 +245,7 @@ def run_client(options, transport):
                             if (now - last_print_time).total_seconds() > 0.1:
                                 _print_status(now)
                         else:
-                            print_message(header, message, format=options.display_format, logger=logger)
+                            print_message(header, message, format=options.display_format, logger=_logger)
     except KeyboardInterrupt:
         pass
 
@@ -189,5 +258,8 @@ def run_client(options, transport):
 
     if not options.quiet and not options.summary:
         now = datetime.now()
-        elapsed_sec = (now - last_print_time).total_seconds() if last_print_time else 0.0
         _print_status(now)
+
+
+if __name__ == "__main__":
+    main()

@@ -10,16 +10,16 @@ root_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, root_dir)
 
 from fusion_engine_client.utils.argument_parser import ArgumentParser
-
-from examples.client_implementation import define_arguments, run_client
+from fusion_engine_client.messages import MessagePayload
+from fusion_engine_client.parsers import FusionEngineDecoder
 
 
 if __name__ == "__main__":
+    # Parse command-line arguments.
     parser = ArgumentParser(description="""\
 Connect to a Point One device over TCP and print out the incoming message
-contents and/or log the messages to disk.
+contents.
 """)
-    define_arguments(parser)
     parser.add_argument('-p', '--port', type=int, default=30201,
                         help="The FusionEngine TCP port on the data source.")
     parser.add_argument('hostname',
@@ -30,5 +30,19 @@ contents and/or log the messages to disk.
     transport = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     transport.connect((socket.gethostbyname(options.hostname), options.port))
 
-    # Now run the client to listen for incoming data and decode/print the received message contents.
-    run_client(options, transport)
+    # Listen for incoming data and parse FusionEngine messages.
+    try:
+        decoder = FusionEngineDecoder()
+        while True:
+            received_data = transport.recv(1024)
+            messages = decoder.on_data(received_data)
+            for header, message in messages:
+                if isinstance(message, MessagePayload):
+                    print(str(message))
+                else:
+                    print(f'{header.message_type} message (not supported)')
+    except KeyboardInterrupt:
+        pass
+
+    # Close the transport when finished.
+    transport.close()
