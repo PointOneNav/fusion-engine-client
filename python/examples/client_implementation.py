@@ -23,7 +23,7 @@ root_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, root_dir)
 
 from fusion_engine_client.applications.p1_print import \
-    MessageStatsEntry, add_print_format_argument, print_message, print_summary_table
+    DeviceSummary, add_print_format_argument, print_message, print_summary_table
 from fusion_engine_client.parsers import FusionEngineDecoder
 from fusion_engine_client.utils import trace as logging
 from fusion_engine_client.utils.argument_parser import ArgumentParser
@@ -97,9 +97,11 @@ def run_client(options, transport):
 
     # Listen for incoming data.
     decoder = FusionEngineDecoder(warn_on_unrecognized=not options.quiet and not options.summary, return_bytes=True)
+
     bytes_received = 0
     messages_received = 0
-    message_stats = defaultdict(MessageStatsEntry)
+    device_summary = DeviceSummary()
+
     start_time = datetime.now()
     last_print_time = start_time
     print_timeout_sec = 1.0 if options.summary else 5.0
@@ -111,7 +113,7 @@ def run_client(options, transport):
         logger.info('Status: [bytes_received=%d, messages_received=%d, elapsed_time=%d sec]' %
                     (bytes_received, messages_received, (now - start_time).total_seconds()))
         if options.summary:
-            print_summary_table(message_stats, logger=logger)
+            print_summary_table(device_summary, logger=logger)
 
     try:
         while True:
@@ -156,8 +158,7 @@ def run_client(options, transport):
 
             if options.display or generating_p1log:
                 for (header, message, raw_data) in messages:
-                    entry = message_stats[header.message_type]
-                    entry.update(header, message)
+                    device_summary.update(header, message)
 
                     if generating_p1log:
                         output_file.write(raw_data)

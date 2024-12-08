@@ -107,15 +107,44 @@ class MessageStatsEntry:
         self.total_bytes = header.get_message_size()
 
 
-def print_summary_table(message_stats: Dict[MessageType, MessageStatsEntry], logger=None):
+class DeviceSummary:
+    def __init__(self):
+        self.device_id = None
+        self.version_info = None
+        self.stats = defaultdict(MessageStatsEntry)
+
+    def update(self, header: MessageHeader, message: MessagePayload):
+        self.stats[header.message_type].update(header, message)
+
+        if header.message_type == MessageType.DEVICE_ID:
+            self.device_id = message
+        elif header.message_type == MessageType.VERSION_INFO:
+            self.version_info = message
+
+
+def print_summary_table(device_summary: DeviceSummary, logger=None):
     if logger is None:
         logger = _logger
+
+    device_type = DeviceType.UNKNOWN
+    device_id = '<Unknown>'
+    if device_summary.device_id is not None:
+        device_type = device_summary.device_id.device_type
+        if len(device_summary.device_id.user_id_data) != 0:
+            device_id = DeviceIDMessage._get_str(device_summary.device_id.user_id_data)
+    logger.info(f'Device ID: {device_id}  |  '
+                f'Device type: {"<Unknown>" if device_type == DeviceType.UNKNOWN else str(device_type)}')
+
+    if device_summary.version_info is not None and device_summary.version_info.engine_version_str != "":
+        logger.info(f'Software version: {device_summary.version_info.engine_version_str}')
+    else:
+        logger.info(f'Software version: <Unknown>')
 
     format_string = '| {:<50} | {:>5} | {:>8} |'
     logger.info(format_string.format('Message Name', 'Type', 'Count'))
     logger.info(format_string.format('-' * 50, '-' * 5, '-' * 8))
     total_messages = 0
-    for type, entry in sorted(message_stats.items(), key=lambda x: int(x[0])):
+    for type, entry in sorted(device_summary.stats.items(), key=lambda x: int(x[0])):
         if type in message_type_to_class:
             name = message_type_to_class[type].__name__
         elif type.is_unrecognized():
@@ -272,8 +301,8 @@ other types of data.
     total_decoded_messages = 0
     total_messages = 0
     bytes_decoded = 0
+    device_summary = DeviceSummary()
 
-    message_stats = defaultdict(MessageStatsEntry)
     try:
         for header, message, data, offset_bytes in reader:
             total_decoded_messages += 1
@@ -286,8 +315,7 @@ other types of data.
             total_messages += 1
             bytes_decoded += len(data)
             if options.summary:
-                entry = message_stats[header.message_type]
-                entry.update(header, message)
+                device_summary.update(header, message)
 
                 if message is not None:
                     p1_time = message.get_p1_time()
@@ -353,7 +381,7 @@ other types of data.
         _logger.info('Total data read: %d B' % reader.get_bytes_read())
         _logger.info('Selected data size: %d B' % bytes_decoded)
         _logger.info('')
-        print_summary_table(message_stats)
+        print_summary_table(device_summary)
     elif total_messages == 0:
         _logger.warning('No valid FusionEngine messages found.')
 
