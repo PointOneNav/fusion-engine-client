@@ -19,7 +19,7 @@ from examples.message_decode import print_message
 if __name__ == "__main__":
     parser = ArgumentParser(description="""\
 Decode and print the contents of one or more FusionEngine messages contained
-in a binary string. For example:
+in a binary string or file. For example:
 
 > python3 binary_message_decode.py \\
   2e31 0000 0acf ee8f 0200 ca32 0000 0000 0400 0000 0000 0000 ff0f 0001
@@ -31,12 +31,16 @@ Header: RESET_REQUEST (13002) Message (version 0):
   Source: 0
   CRC: 0x8feecf0a
 Payload: Reset Request [mask=0x01000fff]
+
+or
+
+> python3 binary_message_decode.py my_file.p1log
 """)
     parser.add_argument('-v', '--verbose', action='count', default=0,
                         help="Print verbose/trace debugging messages.")
     parser.add_argument('contents', nargs='+',
-                        help="Binary FusionEngine message contents, specified as a hex string. All spaces will be "
-                             "ignored.")
+                        help="Binary FusionEngine message contents, specified as a hex string, or the path to a binary "
+                             "file to be read. All spaces in the hex string will be ignored.")
     options = parser.parse_args()
 
     # Configure logging.
@@ -54,13 +58,17 @@ Payload: Reset Request [mask=0x01000fff]
     logger = logging.getLogger('point_one.fusion_engine')
 
     # Concatenate all hex characters and convert to bytes.
-    byte_str_array = [b if len(b) % 2 == 0 else f'0{b}' for b in options.contents]
-    contents_str = ''.join(byte_str_array).replace(' ', '')
-    if len(contents_str) % 2 != 0:
-        logger.error("Error: Contents must contain an even number of hex characters.")
-        sys.exit(1)
+    if len(options.contents) == 1 and os.path.exists(options.contents[0]):
+        with open(options.contents[0], 'rb') as f:
+            contents = f.read()
+    else:
+        byte_str_array = [b if len(b) % 2 == 0 else f'0{b}' for b in options.contents]
+        contents_str = ''.join(byte_str_array).replace(' ', '')
+        if len(contents_str) % 2 != 0:
+            logger.error("Error: Contents must contain an even number of hex characters.")
+            sys.exit(1)
 
-    contents = bytes.fromhex(contents_str)
+        contents = bytes.fromhex(contents_str)
 
     # Decode the incoming data and print the contents of any complete messages.
     decoder = FusionEngineDecoder(warn_on_error=FusionEngineDecoder.WarnOnError.ALL, warn_on_unrecognized=True)
