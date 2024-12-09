@@ -87,6 +87,7 @@ for the latest FusionEngine message specification.
     packages=find_packages(where='.'),
     entry_points={
         'console_scripts': [
+            'p1_capture = fusion_engine_client.applications.p1_capture:main',
             'p1_display = fusion_engine_client.applications.p1_display:main',
             'p1_dump_p1bin = fusion_engine_client.applications.p1_dump_p1bin:main',
             'p1_dump_pcap = fusion_engine_client.applications.p1_dump_pcap:main',

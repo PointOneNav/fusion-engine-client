@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-from collections import defaultdict
 import sys
 
 if __package__ is None or __package__ == "":
@@ -11,85 +10,12 @@ from ..messages import *
 from ..parsers import MixedLogReader
 from ..utils import trace as logging
 from ..utils.argument_parser import ArgumentParser, ExtendedBooleanAction, CSVAction
-from ..utils.bin_utils import bytes_to_hex
 from ..utils.log import locate_log, DEFAULT_LOG_BASE_DIR
+from ..utils.print_utils import DeviceSummary, add_print_format_argument, print_message, print_summary_table
 from ..utils.time_range import TimeRange
 from ..utils.trace import HighlightFormatter, BrokenPipeStreamHandler
 
 _logger = logging.getLogger('point_one.fusion_engine.applications.print_contents')
-
-
-def add_print_format_argument(parser, *arg_names):
-    parser.add_argument(
-        *arg_names,
-        choices=['binary', 'pretty', 'pretty-binary', 'pretty-binary-payload',
-                 'oneline', 'oneline-detailed', 'oneline-binary', 'oneline-binary-payload'],
-        default='pretty',
-        help="Specify the format used to print the message contents:\n"
-             "- Print the binary representation of each message on a single line, but no other details\n"
-             "- pretty - Print the message contents in a human-readable format (default)\n"
-             "- pretty-binary - Use `pretty` format, but include the binary representation of each message\n"
-             "- pretty-binary-payload - Like `pretty-binary`, but exclude the message header from the binary\n"
-             "- oneline - Print a summary of each message on a single line\n"
-             "- oneline-detailed - Print a one-line summary, including message offset details\n"
-             "- oneline-binary - Use `oneline-detailed` format, but include the binary representation of each message\n"
-             "- oneline-binary-payload - Like `oneline-binary`, but exclude the message header from the binary")
-
-
-def print_message(header, contents, offset_bytes=None, format='pretty', bytes=None):
-    if format == 'binary':
-        if bytes is None:
-            raise ValueError('No data provided for binary format.')
-        parts = []
-    elif isinstance(contents, MessagePayload):
-        if format.startswith('oneline'):
-            # The repr string should always start with the message type, then other contents:
-            #   [POSE (10000), p1_time=12.029 sec, gps_time=2249:528920.500 (1360724120.500 sec), ...]
-            # We want to reformat and insert the additional details as follows for consistency:
-            #   POSE (10000) [sequence=10, ... p1_time=12.029 sec, gps_time=2249:528920.500 (1360724120.500 sec), ...]
-            message_str = repr(contents).split('\n')[0]
-            message_str = message_str.replace('[', '', 1)
-            break_idx = message_str.find(',')
-            if break_idx >= 0:
-                message_str = f'{message_str[:break_idx]} [{message_str[(break_idx + 2):]}'
-            else:
-                message_str = message_str.rstrip(']')
-            parts = [message_str]
-        else:
-            parts = str(contents).split('\n')
-    else:
-        parts = [f'{header.get_type_string()} (unsupported)']
-
-    if format != 'oneline':
-        details = 'source_id=%d, sequence=%d, size=%d B' % (header.source_identifier,
-                                                            header.sequence_number,
-                                                            header.get_message_size())
-        if offset_bytes is not None:
-            details += ', offset=%d B (0x%x)' % (offset_bytes, offset_bytes)
-
-        idx = parts[0].find('[')
-        if idx < 0:
-            parts[0] += f' [{details}]'
-        else:
-            parts[0] = f'{parts[0][:(idx + 1)]}{details}, {parts[0][(idx + 1):]}'
-
-    if bytes is None:
-        pass
-    elif format == 'binary':
-        byte_string = bytes_to_hex(bytes, bytes_per_row=-1, bytes_per_col=2).replace('\n', '\n  ')
-        parts.insert(1, byte_string)
-    elif format == 'pretty-binary' or format == 'pretty-binary-payload':
-        if format.endswith('-payload'):
-            bytes = bytes[MessageHeader.calcsize():]
-        byte_string = '    ' + bytes_to_hex(bytes, bytes_per_row=16, bytes_per_col=2).replace('\n', '\n    ')
-        parts.insert(1, "  Binary:\n%s" % byte_string)
-    elif format == 'oneline-binary' or format == 'oneline-binary-payload':
-        if format.endswith('-payload'):
-            bytes = bytes[MessageHeader.calcsize():]
-        byte_string = '  ' + bytes_to_hex(bytes, bytes_per_row=16, bytes_per_col=2).replace('\n', '\n  ')
-        parts.insert(1, byte_string)
-
-    _logger.info('\n'.join(parts))
 
 
 def main():
@@ -240,9 +166,8 @@ other types of data.
     total_decoded_messages = 0
     total_messages = 0
     bytes_decoded = 0
+    device_summary = DeviceSummary()
 
-    def create_stats_entry(): return {'count': 0}
-    message_stats = defaultdict(create_stats_entry)
     try:
         for header, message, data, offset_bytes in reader:
             total_decoded_messages += 1
@@ -255,8 +180,7 @@ other types of data.
             total_messages += 1
             bytes_decoded += len(data)
             if options.summary:
-                entry = message_stats[header.message_type]
-                entry['count'] += 1
+                device_summary.update(header, message)
 
                 if message is not None:
                     p1_time = message.get_p1_time()
@@ -322,20 +246,7 @@ other types of data.
         _logger.info('Total data read: %d B' % reader.get_bytes_read())
         _logger.info('Selected data size: %d B' % bytes_decoded)
         _logger.info('')
-
-        format_string = '| {:<50} | {:>5} | {:>8} |'
-        _logger.info(format_string.format('Message Name', 'Type', 'Count'))
-        _logger.info(format_string.format('-' * 50, '-' * 5, '-' * 8))
-        for type, info in sorted(message_stats.items(), key=lambda x: int(x[0])):
-            if type in message_type_to_class:
-                name = message_type_to_class[type].__name__
-            elif type.is_unrecognized():
-                name = str(type)
-            else:
-                name = f'Unsupported ({str(type)})'
-            _logger.info(format_string.format(name, int(type), info['count']))
-        _logger.info(format_string.format('-' * 50, '-' * 5, '-' * 8))
-        _logger.info(format_string.format('Total', '', total_messages))
+        print_summary_table(device_summary)
     elif total_messages == 0:
         _logger.warning('No valid FusionEngine messages found.')
 
