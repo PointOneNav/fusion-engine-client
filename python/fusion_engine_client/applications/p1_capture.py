@@ -21,6 +21,7 @@ except ImportError:
     serial_supported = False
     # Dummy stand-in if pySerial is not installed.
     class serial:
+        class Serial: pass
         class SerialException: pass
 
 if __package__ is None or __package__ == "":
