@@ -29,6 +29,8 @@ FusionEngine message specification.
   status, wheel speed measurements, etc. from a file of logged FusionEngine messages
 - [p1_extract](fusion_engine_client/applications/p1_extract.py) - Extract FusionEngine messages from a binary file
   containing multiple data streams (e.g., interleaved RTCM and FusionEngine messages)
+- [p1_filter](fusion_engine_client/applications/p1_filter.py) - Filter an incoming FusionEngine data stream, outputting
+  a new FusionEngine stream containing only the requested messages
 - [p1_lband_extract](fusion_engine_client/applications/p1_lband_extract.py) - Extract L-band data bits contained from a
   log of FusionEngine `LBandFrameMessage` messages
 - [p1_print](fusion_engine_client/applications/p1_print.py) - Print the contents of FusionEngine messages found in a
