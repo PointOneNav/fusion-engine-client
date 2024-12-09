@@ -2,7 +2,6 @@
 
 from typing import Union
 
-from collections import defaultdict
 from datetime import datetime
 import math
 import os
@@ -28,11 +27,11 @@ if __package__ is None or __package__ == "":
     from import_utils import enable_relative_imports
     __package__ = enable_relative_imports(__name__, __file__)
 
-from .p1_print import \
-    DeviceSummary, add_print_format_argument, print_message, print_summary_table
 from ..parsers import FusionEngineDecoder
 from ..utils import trace as logging
 from ..utils.argument_parser import ArgumentParser, ExtendedBooleanAction
+from ..utils.print_utils import \
+    DeviceSummary, add_print_format_argument, print_message, print_summary_table
 
 _logger = logging.getLogger('point_one.fusion_engine.applications.p1_capture')
 
@@ -184,7 +183,7 @@ The method used to communicate with the target device:
         _logger.info('Status: [bytes_received=%d, messages_received=%d, elapsed_time=%d sec]' %
                      (bytes_received, messages_received, (now - start_time).total_seconds()))
         if options.summary:
-            print_summary_table(device_summary, logger=_logger)
+            print_summary_table(device_summary)
 
     try:
         while True:
@@ -247,7 +246,7 @@ The method used to communicate with the target device:
                             if (now - last_print_time).total_seconds() > 0.1:
                                 _print_status(now)
                         else:
-                            print_message(header, message, format=options.display_format, logger=_logger)
+                            print_message(header, message, format=options.display_format)
     except KeyboardInterrupt:
         pass
 
