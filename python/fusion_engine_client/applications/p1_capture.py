@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+from typing import Union
+
 from collections import defaultdict
 from datetime import datetime
 import math
@@ -35,7 +37,7 @@ from ..utils.argument_parser import ArgumentParser, ExtendedBooleanAction
 _logger = logging.getLogger('point_one.fusion_engine.applications.p1_capture')
 
 
-def create_transport(descriptor: str):
+def create_transport(descriptor: str) -> Union[socket.socket, serial.Serial]:
     m = re.match(r'^tcp://([a-zA-Z0-9-_.]+)?:([0-9]+)$', descriptor)
     if m:
         transport = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
