@@ -42,7 +42,7 @@ def download_to_memory(s3_key) -> bytes:
 
 def find_logs(prefix, log_guids) -> Dict[str, str]:
     PREFIX_DATE_FORMAT = '%Y-%m-%d'
-    resp = {}
+    resp: Dict[str, str] = {}
 
     prefix_date = datetime.strptime(prefix, PREFIX_DATE_FORMAT)
     day_before = prefix_date - timedelta(days=1)
@@ -110,13 +110,14 @@ This tool downloads the relevant files from S3 and prompts stdin before moving o
         _logger.warning(
             f'Key had unexpected prefix. Expecting S3 key like "2024-04-04/p1-lexus-rack-2/a0a0ff472ea342809d05380d8fe54399". Only using "{options.key_for_log_in_drive}".')
 
+    input_guid = options.key_for_log_in_drive.split('/')[-1]
     prefix = options.key_for_log_in_drive.split('/')[0]
 
     os.makedirs(LOG_DIR, exist_ok=True)
 
     try:
         meta_key = options.key_for_log_in_drive + '/' + META_FILE
-        drive_meta_data = download_to_memory(options.key_for_log_in_drive + '/' + META_FILE)
+        drive_meta_data = download_to_memory(meta_key)
     except:
         _logger.error(
             f'Could not find "S3://{S3_DEFAULT_INGEST_BUCKET}/{meta_key}". Make sure this log was taken as part of a drive test collection.')
@@ -124,18 +125,28 @@ This tool downloads the relevant files from S3 and prompts stdin before moving o
 
     drive_meta = json.loads(drive_meta_data.decode('utf-8'))
 
-    reference_guid = drive_meta.get('drive_reference_log', None)
-    if reference_guid is None and options.reference is None:
-        _logger.error('No reference found in configuration file and no reference path provided.')
-        exit(1)
-
-    if options.reference is None:
-        _logger.info(f'Using reference log: {reference_guid}')
-    else:
+    reference_guid = None
+    novatel_csv_path = None
+    if options.reference is not None:
         _logger.info('Attempting to use external data as reference.')
         reference_path = options.reference
         if not os.path.exists(reference_path):
             _logger.error(f"Could't find reference data: {reference_path}.")
+            exit(1)
+    else:
+        reference_guid = drive_meta.get('drive_reference_log', None)
+        has_novatel = drive_meta.get('has_novatel_reference', False)
+        if has_novatel:
+            _logger.info(f'Using Novatel reference log.')
+            novatel_key = options.key_for_log_in_drive + '/data/novatel.csv'
+            novatel_csv_path = LOG_DIR / f'{input_guid}_novatel.csv'
+            if not novatel_csv_path.exists():
+                _logger.info(f'Downloading: {novatel_key}')
+                s3_client.download_file(S3_DEFAULT_INGEST_BUCKET, novatel_key, novatel_csv_path)
+        elif reference_guid is not None:
+            _logger.info(f'Using reference log: {reference_guid}')
+        else:
+            _logger.error('No reference found in configuration file and no reference path provided.')
             exit(1)
 
     test_guids = drive_meta['drive_logs']
@@ -144,7 +155,7 @@ This tool downloads the relevant files from S3 and prompts stdin before moving o
     log_paths = {}
     for guid in [reference_guid] + test_guids:
         # If a reference path was provided, do not attempt to use cached reference log.
-        if guid == reference_guid and options.reference is not None:
+        if guid is None:
             continue
 
         matches = glob.glob(str(LOG_DIR / f'*{guid}.p1log'))
@@ -177,12 +188,15 @@ This tool downloads the relevant files from S3 and prompts stdin before moving o
 
             s3_client.download_file(S3_DEFAULT_INGEST_BUCKET, reference_p1log_key, log_paths[guid])
 
-    if options.reference is None:
-        reference = log_paths[reference_guid]
-        reference_device = get_device_name_from_path(reference)
-    else:
+    if options.reference is not None:
         reference = reference_path
         reference_device = os.path.basename(reference_path)
+    elif novatel_csv_path is not None:
+        reference = novatel_csv_path
+        reference_device = os.path.basename(novatel_csv_path)
+    else:
+        reference = log_paths[reference_guid]
+        reference_device = get_device_name_from_path(reference)
 
     for guid in test_guids:
         _logger.info(f'Comparing log: {log_paths[guid]}')
