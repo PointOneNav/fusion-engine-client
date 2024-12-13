@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from enum import Enum
 from typing import Tuple, Union, List, Any
 
 from collections import namedtuple, defaultdict
@@ -111,8 +112,7 @@ _page_template = '''\
 
 
 class NovatelData:
-    def __init__(self,
-                 gps_time, position_type, lla_deg, pos_std_enu_m):
+    def __init__(self, gps_time, position_type, lla_deg, lla_std_dev_m):
         """!
         @brief Create a data object that contains data from a Novatel CSV file and replicates the functionality of a
                @ref DataLoader object.
@@ -120,14 +120,15 @@ class NovatelData:
         @param gps_time An array containing GPS times.
         @param position_type An array containing Novatel position types.
         @param lla_deg An array containing latitude, longitude, and altitude.
-        @param pos_std_enu_m An array containing standard deviation of position in the ENU frame.
+        @param lla_std_dev_m An array containing standard deviation of position.
         """
 
-        idx = ~np.isnan(position_type)
-        self.gps_time = gps_time[idx]
-        self.solution_type = position_type[idx]
-        self.lla_deg = lla_deg[:, idx]
-        self.position_std_enu_m = pos_std_enu_m[:, idx]
+        self.gps_time = gps_time
+        self.solution_type = np.full((len(position_type)), SolutionType.Invalid)
+        self.lla_deg = lla_deg
+        # TODO HACK: Figure out how to extract pos std enu from given LLA data. For now, just report lat/lon std instead.
+        # Since we only care about the "magnitude" of the std dev, this should be OK since it's still in meters.
+        self.position_std_enu_m = lla_std_dev_m
 
         # Translate solution type values.
         # From BESTPOS documentation:
@@ -135,14 +136,14 @@ class NovatelData:
         # 49: WIDE_INT, Multi-frequency RTK solution with carrier phase ambiguities resolved to wide-lane integers
         # 50: NARROW_INT, Multi-frequency RTK solution with carrier phase ambiguities resolved to narrow-lane integers
         # 56: INS_RTKFIXED, INS position, where the last applied position update used a fixed integer ambiguity RTK (L1_INT, WIDE_INT or NARROW_INT) solution
-        self.solution_type[(self.solution_type == 48) | (self.solution_type == 49) | (self.solution_type == 50) |
-                           (self.solution_type == 56)] = SolutionType.RTKFixed
+        self.solution_type[(position_type == 48) | (position_type == 49) | (position_type == 50) |
+                           (position_type == 56)] = SolutionType.RTKFixed
 
         # From BESTPOS documentation:
         # 32: L1_FLOAT, Single-frequency RTK solution with unresolved, float carrier phase ambiguities
         # 34: NARROW_FLOAT, Multi-frequency RTK solution with unresolved, float carrier phase ambiguities
         # 55: INS_RTKFLOAT, INS position, where the last applied position update used a floating ambiguity RTK (L1_FLOAT or NARROW_FLOAT) solution
-        self.solution_type[(self.solution_type == 32) | (self.solution_type == 34) | (self.solution_type == 55)] = SolutionType.RTKFloat
+        self.solution_type[(position_type == 32) | (position_type == 34) | (position_type == 55)] = SolutionType.RTKFloat
 
         # From BESTPOS documentation:
         # 1: FIXEDPOS, Position has been fixed by the FIX position command or by position averaging
@@ -150,27 +151,27 @@ class NovatelData:
         # 8: DOPPLER_VELOCITY, Velocity computed using instantaneous Doppler
         # 19: PROPAGATED, Propagated by a Kalman filter without new observations
         # 51: RTK_DIRECT_INS, RTK status where the RTK filter is directly initialized from the INS filter
-        self.solution_type[(self.solution_type == 1) | (self.solution_type == 2) | (self.solution_type == 8) |
-                           (self.solution_type == 19) | (self.solution_type == 51)] = SolutionType.Integrate
+        self.solution_type[(position_type == 1) | (position_type == 2) | (position_type == 8) |
+                           (position_type == 19) | (position_type == 51)] = SolutionType.Integrate
 
         # From BESTPOS documentation:
         # 16: SINGLE, Solution calculated using only data supplied by GNSS satellites.
         # 18: WAAS, Solution calculated using corrections from an SBAS satellite
         # 52: INS_SBAS, INS position, where the last applied position update used a GNSS solution computed using corrections from an SBAS (WAAS) solution
         # 53: INS_PSRSP, INS position, where the last applied position update used a single point GNSS (SINGLE) solution
-        self.solution_type[(self.solution_type == 16) | (self.solution_type == 18) | (self.solution_type == 52) |
-                           (self.solution_type == 53)] = SolutionType.AutonomousGPS
+        self.solution_type[(position_type == 16) | (position_type == 18) | (position_type == 52) |
+                           (position_type == 53)] = SolutionType.AutonomousGPS
 
         # From BESTPOS documentation:
         # 17: PSRDIFF, Solution calculated using pseudorange differential (DGPS, DGNSS) corrections
         # 54: INS_PSRDIFF, INS position, where the last applied position update used a pseudorange differential GNSS (PSRDIFF) solution
-        self.solution_type[(self.solution_type == 17) | (self.solution_type == 54)] = SolutionType.DGPS
+        self.solution_type[(position_type == 17) | (position_type == 54)] = SolutionType.DGPS
 
         # Calculate synthetic P1 times assuming constant stream of messages.
         rate = np.round(np.median(np.diff(self.gps_time)), 4)
         _logger.info(f'Novatel rate: {rate}')
         self.p1_time = np.arange(0, len(gps_time)) * rate
-        self.p1_time = self.p1_time[idx]
+        self.p1_time = self.p1_time
 
 
 class PoseCompare(object):
@@ -220,9 +221,7 @@ class PoseCompare(object):
             # Check if this is a CSV file and parse if needed.
             if re.match(r'.*novatel.*\.csv', os.path.basename(file_reference)):
                 # Perform correct action
-                data = np.genfromtxt(file_reference, delimiter=',')
-                if len(data.shape) == 1:
-                    data = data.reshape((data.shape[0], 1))
+                data = np.genfromtxt(file_reference, delimiter=',', skip_header=1)
                 # Extract necessary data.
                 # Convert GPS time to P1 time.
                 gps_time = data[:, 0]
@@ -231,17 +230,12 @@ class PoseCompare(object):
                 pos_type = data[:, 5]
                 solution_status = data[:, 6]
                 time_status = data[:, 7]
-                lat_std_dev_m = data[:, 8]
-                lon_std_dev_m = data[:, 9]
-                height_std_enu_m = data[:, 10]
-                # TODO: Figure out how to extract pos std enu from given LLA data. For now, just report NaNs.
-                pos_std_enu_m = data[:, 8:12].T
-                pos_std_enu_m = np.full(pos_std_enu_m.shape, np.nan)
+                lla_std_dev_m = data[:, [8,9,10]].T
 
                 self.reference_pose = NovatelData(gps_time,
                                                   pos_type,
                                                   lla_deg,
-                                                  pos_std_enu_m)
+                                                  lla_std_dev_m)
             else:
                 self.reference_pose = DataLoader(file_reference, ignore_index=ignore_index).read(
                     message_types=[PoseMessage], **self.params)[PoseMessage.MESSAGE_TYPE]
@@ -332,6 +326,31 @@ class PoseCompare(object):
                              text=text, name=name, mode='markers'), 1, 1)
 
         self._add_figure(name="solution_type", figure=figure, title="Solution Type")
+
+
+    def plot_position_std_dev(self):
+        """!
+        @brief Plot the solution type over time.
+        """
+        if self.output_dir is None:
+            return
+
+        # Setup the figure.
+        figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=True, subplot_titles=['Solution Type'])
+
+        figure['layout']['xaxis'].update(title=self.gps_time_label)
+        figure['layout']['yaxis1'].update(title="Position Standard Deviation (m)")
+
+        for name, pose_data in zip(self.data_names, (self.test_pose, self.reference_pose)):
+            valid_idx = ~np.any(np.isnan(pose_data.position_std_enu_m), axis=0)
+            time = pose_data.gps_time[valid_idx] - float(self.t0)
+
+            text = ["Time: %.3f sec (%.3f sec)" % (t, t + float(self.t0)) for t in time]
+            combined_std_dev_m = np.sqrt(np.sum(np.square(pose_data.position_std_enu_m[:, valid_idx]), axis=0))
+            figure.add_trace(go.Scattergl(x=time, y=combined_std_dev_m,
+                             text=text, name=name, mode='markers'), 1, 1)
+
+        self._add_figure(name="position_std_dev", figure=figure, title="Position Standard Deviation")
 
     def plot_map(self, mapbox_token):
         """!
@@ -465,24 +484,43 @@ class PoseCompare(object):
 
         self._add_figure(name=f"pose_error", figure=time_figure, title=f"Pose Error: vs. Time")
 
-    def generate_pose_error(self, skip_plot: bool):
+    def generate_pose_error(self, skip_plot: bool, reference_filtering="type"):
         """!
         @brief Generate a plot of pose error over time.
         """
         if self.output_dir is None:
             return
 
+        # Assume tha solution types indicate comparable performance between data sets.
+        if reference_filtering=='type':
+            reference_solution_types = self.reference_pose.solution_type[self.pose_index_maps[1]]
+
+            reference_fixed_or_better = reference_solution_types == SolutionType.RTKFixed
+            reference_float_or_better = np.logical_or(
+                reference_fixed_or_better, reference_solution_types == SolutionType.RTKFloat)
+            reference_standalone_or_better = np.logical_or(
+                reference_float_or_better, reference_solution_types == SolutionType.AutonomousGPS)
+            reference_dr_or_better = np.logical_or(reference_standalone_or_better,
+                                                reference_solution_types == SolutionType.Integrate)
+        # Use the reference's reported std dev to choose data for comparison
+        elif reference_filtering=='std_dev':
+            ref_position_std_enu_m = self.reference_pose.position_std_enu_m[:, self.pose_index_maps[1]]
+            ref_valid_idx = ~np.any(np.isnan(ref_position_std_enu_m), axis=0)
+            ref_combined_std_dev_m = np.full((ref_valid_idx.size), np.nan)
+            ref_combined_std_dev_m[ref_valid_idx] = np.sqrt(np.sum(np.square(ref_position_std_enu_m[:, ref_valid_idx]), axis=0))
+            # These are set somewhat empirically to filter Novatel results so they're comparable to P1 solution types.
+            reference_fixed_or_better = ref_combined_std_dev_m < 0.1
+            reference_float_or_better = ref_combined_std_dev_m < 0.2
+            reference_standalone_or_better = ref_combined_std_dev_m < 3.0
+            reference_dr_or_better = ref_valid_idx
+        else:
+            reference_solution_types = self.reference_pose.solution_type[self.pose_index_maps[1]]
+            reference_fixed_or_better = reference_solution_types != SolutionType.Invalid
+            reference_float_or_better = reference_fixed_or_better
+            reference_standalone_or_better = reference_fixed_or_better
+            reference_dr_or_better = reference_fixed_or_better
+
         test_solution_types = self.test_pose.solution_type[self.pose_index_maps[0]]
-        reference_solution_types = self.reference_pose.solution_type[self.pose_index_maps[1]]
-
-        reference_fixed_or_better = reference_solution_types == SolutionType.RTKFixed
-        reference_float_or_better = np.logical_or(
-            reference_fixed_or_better, reference_solution_types == SolutionType.RTKFloat)
-        reference_standalone_or_better = np.logical_or(
-            reference_float_or_better, reference_solution_types == SolutionType.AutonomousGPS)
-        reference_dr_or_better = np.logical_or(reference_standalone_or_better,
-                                               reference_solution_types == SolutionType.Integrate)
-
         valid_fixed = np.logical_and(test_solution_types == SolutionType.RTKFixed, reference_fixed_or_better)
         valid_float = np.logical_and(test_solution_types == SolutionType.RTKFloat, reference_float_or_better)
         valid_standalone = np.logical_and(
@@ -861,6 +899,15 @@ Load and display information stored in a FusionEngine binary file.
         '-v', '--verbose', action='count', default=0,
         help="Print verbose/trace debugging messages.")
 
+    analysis_group = parser.add_argument_group('Analysis Control')
+    analysis_group.add_argument(
+        '--reference-filter', choices=['type', 'std_dev', 'none'], default='type',
+        help="Specify how the reference data should be filtered for error computations:"
+             "\n- type - Use reference values where the solution type equals or exceeds the corrasponding test data"
+             "\n- std_dev - Use reference values where the reported std dev exceeds certain thresholds"
+             "\n- none - All valid reference data should be used")
+
+
     options = parser.parse_args()
 
     # Configure logging.
@@ -910,8 +957,9 @@ Load and display information stored in a FusionEngine binary file.
 
     if not options.skip_plots:
         analyzer.plot_solution_type()
+        analyzer.plot_position_std_dev()
         analyzer.plot_map(mapbox_token=options.mapbox_token)
-    analyzer.generate_pose_error(options.skip_plots)
+    analyzer.generate_pose_error(options.skip_plots, reference_filtering=options.reference_filter)
 
     analyzer.generate_index(auto_open=not options.no_index)
 

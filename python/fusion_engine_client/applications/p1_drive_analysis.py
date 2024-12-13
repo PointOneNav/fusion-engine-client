@@ -191,18 +191,22 @@ This tool downloads the relevant files from S3 and prompts stdin before moving o
     if options.reference is not None:
         reference = reference_path
         reference_device = os.path.basename(reference_path)
+        reference_filter = 'std_dev'
     elif novatel_csv_path is not None:
         reference = novatel_csv_path
-        reference_device = os.path.basename(novatel_csv_path)
+        reference_device = 'novatel.csv'
+        reference_filter = 'std_dev'
     else:
         reference = log_paths[reference_guid]
         reference_device = get_device_name_from_path(reference)
+        reference_filter = 'type'
 
     for guid in test_guids:
         _logger.info(f'Comparing log: {log_paths[guid]}')
         test_device = get_device_name_from_path(log_paths[guid])
-        sys.argv = ['pose_compare_main', str(log_paths[guid]),  str(
-            reference), '--time-axis=rel', f'--test-device-name={test_device}', f'--reference-device-name={reference_device}']
+        sys.argv = ['pose_compare_main', str(log_paths[guid]),  str(reference),
+                    '--time-axis=rel', f'--reference-filter={reference_filter}', f'--test-device-name={test_device}',
+                    f'--reference-device-name={reference_device}']
         try:
             pose_compare_main()
         except Exception as e:
