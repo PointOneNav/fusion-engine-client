@@ -1258,8 +1258,8 @@ class GNSSAttitudeOutput(MessagePayload):
 
     def __repr__(self):
         result = super().__repr__()[:-1]
-        ypr_str = '(%.1f, %.1f, %.1f)' % tuple(self.ypr_deg)
-        result += f', solution_type={self.solution_type}, ypr={ypr_str} deg, ' \
+        ypr_str = '(%.1f, %.1f, %.1f) deg' % tuple(self.ypr_deg)
+        result += f', solution_type={self.solution_type}, ypr={ypr_str}, ' \
                   f'baseline={self.baseline_distance_m} m]'
         return result
 
@@ -1335,8 +1335,13 @@ class RawGNSSAttitudeOutput(MessagePayload):
         # The standard deviation of the baseline distance estimate (in meters).
         self.baseline_distance_std_m = np.nan
 
-    def get_heading_deg(self):
-        return math.degrees(math.atan2(self.relative_position_enu_m[1], self.relative_position_enu_m[0]))
+    def get_ypr_deg(self):
+        ypr_rad = np.array((
+            math.atan2(self.relative_position_enu_m[1], self.relative_position_enu_m[0]),
+            -math.atan2(self.relative_position_enu_m[2], np.linalg.norm(self.relative_position_enu_m[:2])),
+            np.nan
+        ))
+        return np.rad2deg(ypr_rad)
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
@@ -1389,8 +1394,8 @@ class RawGNSSAttitudeOutput(MessagePayload):
     def __repr__(self):
         result = super().__repr__()[:-1]
         enu_str = '(%.2f, %.2f, %.3f)' % tuple(self.relative_position_enu_m)
-        heading_deg = self.get_heading_deg()
-        result += f', solution_type={self.solution_type}, enu={enu_str} m, heading={heading_deg:.1f} deg]'
+        ypr_str = '(%.1f, %.1f, %.1f) deg' % tuple(self.get_ypr_deg())
+        result += f', solution_type={self.solution_type}, enu={enu_str} m, ypr={ypr_str}]'
         return result
 
     def __str__(self):
@@ -1401,6 +1406,7 @@ class RawGNSSAttitudeOutput(MessagePayload):
         else:
             gps_str = 'None'
             utc_str = 'None'
+        ypr_deg = self.get_ypr_deg()
         return f"""\
 Raw GNSS Attitude Output @ {str(self.details.p1_time)}
   GPS time: {gps_str}
@@ -1408,7 +1414,7 @@ Raw GNSS Attitude Output @ {str(self.details.p1_time)}
   Solution Type: {self.solution_type}
   Relative position (ENU) (m): {self.relative_position_enu_m[0]:.2f}, {self.relative_position_enu_m[1]:.2f}, {self.relative_position_enu_m[2]:.2f}
   Position std (ENU) (m): {self.position_std_enu_m[0]:.2f}, {self.position_std_enu_m[1]:.2f}, {self.position_std_enu_m[2]:.2f}
-  Heading (deg): {self.get_heading_deg():.2f}"""
+  YPR (deg): {ypr_deg[0]:.2f}, {ypr_deg[1]:.2f}, {ypr_deg[2]:.2f}"""
 
     @classmethod
     def calcsize(cls) -> int:
