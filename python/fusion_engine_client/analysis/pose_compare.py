@@ -376,12 +376,12 @@ class PoseCompare(object):
             log_name = self.data_names[i]
 
             # Remove invalid solutions.
-            valid_idx = np.logical_and(~np.isnan(pose_data.p1_time), pose_data.solution_type != SolutionType.Invalid)
+            valid_idx = np.logical_and(~np.isnan(pose_data.gps_time), pose_data.solution_type != SolutionType.Invalid)
             if not np.any(valid_idx):
                 self.logger.info(f'No valid position solutions detected in {log_name}.')
                 return
 
-            time = pose_data.p1_time[valid_idx] - float(self.t0)
+            time = pose_data.gps_time[valid_idx] - float(self.t0)
             solution_type = pose_data.solution_type[valid_idx]
             lla_deg = pose_data.lla_deg[:, valid_idx]
             std_enu_m = pose_data.position_std_enu_m[:, valid_idx]
