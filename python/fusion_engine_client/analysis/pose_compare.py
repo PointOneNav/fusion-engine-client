@@ -110,7 +110,6 @@ _page_template = '''\
 </html>
 '''
 
-
 class NovatelData:
     def __init__(self, gps_time, position_type, lla_deg, lla_std_dev_m):
         """!
@@ -130,6 +129,12 @@ class NovatelData:
         # Since we only care about the "magnitude" of the std dev, this should be OK since it's still in meters.
         self.position_std_enu_m = lla_std_dev_m
 
+        # Novatel will sometime report Float or Fixed solutions with high std dev. To avoid using it as truth when it
+        # has high uncertainty, downgrade these solutions.
+        ref_valid_idx = ~np.any(np.isnan(lla_std_dev_m), axis=0)
+        ref_combined_std_dev_m = np.full((ref_valid_idx.size), np.nan)
+        ref_combined_std_dev_m[ref_valid_idx] = np.sqrt(np.sum(np.square(lla_std_dev_m[:, ref_valid_idx]), axis=0))
+
         # Translate solution type values.
         # From BESTPOS documentation:
         # 48: L1_INT, Single-frequency RTK solution with carrier phase ambiguities resolved to integers
@@ -139,11 +144,18 @@ class NovatelData:
         self.solution_type[(position_type == 48) | (position_type == 49) | (position_type == 50) |
                            (position_type == 56)] = SolutionType.RTKFixed
 
+        # Downgrade fixed solutions with high std dev.
+        self.solution_type[(self.solution_type == SolutionType.RTKFixed) & (ref_combined_std_dev_m > 0.1)] = SolutionType.RTKFloat
+
+
         # From BESTPOS documentation:
         # 32: L1_FLOAT, Single-frequency RTK solution with unresolved, float carrier phase ambiguities
         # 34: NARROW_FLOAT, Multi-frequency RTK solution with unresolved, float carrier phase ambiguities
         # 55: INS_RTKFLOAT, INS position, where the last applied position update used a floating ambiguity RTK (L1_FLOAT or NARROW_FLOAT) solution
         self.solution_type[(position_type == 32) | (position_type == 34) | (position_type == 55)] = SolutionType.RTKFloat
+
+        # Downgrade float solutions with high std dev.
+        self.solution_type[(self.solution_type == SolutionType.RTKFloat) & (ref_combined_std_dev_m > 0.3)] = SolutionType.AutonomousGPS
 
         # From BESTPOS documentation:
         # 1: FIXEDPOS, Position has been fixed by the FIX position command or by position averaging
@@ -161,6 +173,9 @@ class NovatelData:
         # 53: INS_PSRSP, INS position, where the last applied position update used a single point GNSS (SINGLE) solution
         self.solution_type[(position_type == 16) | (position_type == 18) | (position_type == 52) |
                            (position_type == 53)] = SolutionType.AutonomousGPS
+
+        # Downgrade SPP solutions with high std dev.
+        self.solution_type[(self.solution_type == SolutionType.AutonomousGPS) & (ref_combined_std_dev_m > 1.5)] = SolutionType.Integrate
 
         # From BESTPOS documentation:
         # 17: PSRDIFF, Solution calculated using pseudorange differential (DGPS, DGNSS) corrections
@@ -484,7 +499,7 @@ class PoseCompare(object):
 
         self._add_figure(name=f"pose_error", figure=time_figure, title=f"Pose Error: vs. Time")
 
-    def generate_pose_error(self, skip_plot: bool, reference_filtering="type"):
+    def generate_pose_error(self, skip_plot: bool, no_reference_filter=False):
         """!
         @brief Generate a plot of pose error over time.
         """
@@ -492,9 +507,8 @@ class PoseCompare(object):
             return
 
         # Assume tha solution types indicate comparable performance between data sets.
-        if reference_filtering=='type':
-            reference_solution_types = self.reference_pose.solution_type[self.pose_index_maps[1]]
-
+        reference_solution_types = self.reference_pose.solution_type[self.pose_index_maps[1]]
+        if not no_reference_filter:
             reference_fixed_or_better = reference_solution_types == SolutionType.RTKFixed
             reference_float_or_better = np.logical_or(
                 reference_fixed_or_better, reference_solution_types == SolutionType.RTKFloat)
@@ -502,19 +516,7 @@ class PoseCompare(object):
                 reference_float_or_better, reference_solution_types == SolutionType.AutonomousGPS)
             reference_dr_or_better = np.logical_or(reference_standalone_or_better,
                                                 reference_solution_types == SolutionType.Integrate)
-        # Use the reference's reported std dev to choose data for comparison
-        elif reference_filtering=='std_dev':
-            ref_position_std_enu_m = self.reference_pose.position_std_enu_m[:, self.pose_index_maps[1]]
-            ref_valid_idx = ~np.any(np.isnan(ref_position_std_enu_m), axis=0)
-            ref_combined_std_dev_m = np.full((ref_valid_idx.size), np.nan)
-            ref_combined_std_dev_m[ref_valid_idx] = np.sqrt(np.sum(np.square(ref_position_std_enu_m[:, ref_valid_idx]), axis=0))
-            # These are set somewhat empirically to filter Novatel results so they're comparable to P1 solution types.
-            reference_fixed_or_better = ref_combined_std_dev_m < 0.1
-            reference_float_or_better = ref_combined_std_dev_m < 0.2
-            reference_standalone_or_better = ref_combined_std_dev_m < 3.0
-            reference_dr_or_better = ref_valid_idx
         else:
-            reference_solution_types = self.reference_pose.solution_type[self.pose_index_maps[1]]
             reference_fixed_or_better = reference_solution_types != SolutionType.Invalid
             reference_float_or_better = reference_fixed_or_better
             reference_standalone_or_better = reference_fixed_or_better
@@ -555,6 +557,7 @@ class PoseCompare(object):
         c_enu_ecef = get_enu_rotation_matrix(*valid_test_lla_deg[0:2, 0], deg=True)
         error_enu_m = c_enu_ecef.dot(error_ecef_m)
 
+        self.error_gps_times = test_gps_times[valid_idx]
         self.error_3d_m = np.linalg.norm(error_enu_m, axis=0)
         self.error_2d_m = np.linalg.norm(error_enu_m[:2], axis=0)
         self.error_solution_types = solution_type
@@ -643,6 +646,8 @@ class PoseCompare(object):
         solution_type_table = _data_to_table(['Position Type', 'Test Count', 'Test Percent', 'Reference Count', 'Reference Percent'], [
                                              types, counts[0], percents[0], counts[1], percents[1]], round_decimal_places=2)
 
+        self.percent_solution_type_reference_or_better = {t: devices_solution_cdf[0][t] / devices_solution_cdf[1][t] * 100.0 for t in types}
+
         # Debug time mapping between logs
         matched_p1_time_a = self.test_pose.p1_time[self.pose_index_maps[0]]
         matched_p1_time_b = self.reference_pose.p1_time[self.pose_index_maps[1]]
@@ -653,6 +658,13 @@ class PoseCompare(object):
         log_b_t0 = log_b_p1_time[0]
         log_a_end = self.test_pose.p1_time[-1]
         log_b_end = log_b_p1_time[-1]
+
+        test_pose_rate = np.round(np.median(np.diff(self.test_pose.gps_time[~np.isnan(self.test_pose.gps_time)])), 4)
+        test_start_gps = self.test_pose.gps_time[self.pose_index_maps[0][0]]
+        test_end_gps = self.test_pose.gps_time[self.pose_index_maps[0][-1]]
+        expected_test_gps_epochs = np.round((test_end_gps - test_start_gps) / test_pose_rate)
+        actual_test_gps_epochs = self.pose_index_maps[0][-1] - self.pose_index_maps[0][0]
+        self.missing_test_gps_epochs = int(expected_test_gps_epochs - actual_test_gps_epochs)
 
         data = [[], []]
         data[0].append(self.test_data_name + ' Log Start')
@@ -665,6 +677,8 @@ class PoseCompare(object):
         data[1].append(log_b_end - log_b_t0)
         data[0].append('Matched GPS Epochs')
         data[1].append(len(matched_p1_time_a))
+        data[0].append('Missing Test GPS Epochs')
+        data[1].append(self.missing_test_gps_epochs)
         data[0].append('Min P1 Time Offset')
         data[1].append(np.min(p1_offsets))
         data[0].append('Max P1 Time Offset')
@@ -901,12 +915,9 @@ Load and display information stored in a FusionEngine binary file.
 
     analysis_group = parser.add_argument_group('Analysis Control')
     analysis_group.add_argument(
-        '--reference-filter', choices=['type', 'std_dev', 'none'], default='type',
-        help="Specify how the reference data should be filtered for error computations:"
-             "\n- type - Use reference values where the solution type equals or exceeds the corrasponding test data"
-             "\n- std_dev - Use reference values where the reported std dev exceeds certain thresholds"
-             "\n- none - All valid reference data should be used")
-
+        '--no-reference-filter', action=ExtendedBooleanAction,
+        help="If set, don't filter limit the reference used for error calculation to portions where the reference "
+             "solution type matches or exceeds the test device.")
 
     options = parser.parse_args()
 
@@ -959,12 +970,12 @@ Load and display information stored in a FusionEngine binary file.
         analyzer.plot_solution_type()
         analyzer.plot_position_std_dev()
         analyzer.plot_map(mapbox_token=options.mapbox_token)
-    analyzer.generate_pose_error(options.skip_plots, reference_filtering=options.reference_filter)
+    analyzer.generate_pose_error(options.skip_plots, no_reference_filter=options.no_reference_filter)
 
     analyzer.generate_index(auto_open=not options.no_index)
 
     _logger.info("Output stored in '%s'." % os.path.abspath(output_dir))
-
+    return analyzer
 
 if __name__ == "__main__":
     main()

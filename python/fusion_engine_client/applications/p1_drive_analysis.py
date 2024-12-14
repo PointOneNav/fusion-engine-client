@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+from dataclasses import dataclass, field
+from enum import Enum, auto
 import glob
 import io
 import sys
@@ -7,15 +9,18 @@ import os
 import json
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict
+from typing import Dict, List, Tuple
 
 import boto3
+import numpy as np
 
 if __package__ is None or __package__ == "":
     from import_utils import enable_relative_imports
     __package__ = enable_relative_imports(__name__, __file__)
 
 from ..analysis.pose_compare import main as pose_compare_main
+from ..analysis.pose_compare import PoseCompare
+from ..messages import SolutionType
 from ..utils import trace as logging
 from ..utils.argument_parser import ArgumentParser
 
@@ -69,6 +74,106 @@ def get_device_name_from_path(log_path: Path) -> str:
     return '_'.join(log_path.name.split('_')[1:-1])
 
 
+class StatType(Enum):
+    MEAN = auto()
+    MAX = auto()
+
+
+@dataclass(frozen=True)
+class Metric:
+    type: StatType
+    limit: float
+
+
+@dataclass(frozen=True)
+class PassFailSettings:
+    error_3d_metrics: Dict[SolutionType, List[Metric]]
+    percent_fixed_when_reference_fixed: float
+    percent_float_or_better_when_reference_float: float
+    skip_gps_times: List[Tuple[float, float]] = field(default_factory=list)
+
+
+def load_pass_fail_settings(setting_path: Path) -> PassFailSettings:
+    json_data = json.load(open(setting_path))
+    if 'skip_gps_times' in json_data:
+        skip_gps_times = [tuple(t) for t in json_data['skip_gps_times']]
+    else:
+        skip_gps_times = []
+    error_3d_metrics = {}
+    for type, metrics in json_data['error_3d_metrics'].items():
+        error_3d_metrics[SolutionType[type]] = [
+            Metric(type=StatType[v['type']], limit=v['limit']) for v in metrics
+        ]
+
+    return PassFailSettings(
+        error_3d_metrics,
+        percent_fixed_when_reference_fixed=json_data['percent_fixed_when_reference_fixed'],
+        percent_float_or_better_when_reference_float=json_data['percent_float_or_better_when_reference_float'],
+        skip_gps_times=skip_gps_times
+    )
+
+
+def pass_fail_check(analysis: PoseCompare, settings: PassFailSettings) -> bool:
+    def find_fail_times(gps_times):
+        MAX_GAP = 5.0
+        if len(gps_times) == 0:
+            return []
+
+        start = float(gps_times[0])
+        stop = float(gps_times[0])
+
+        failures = []
+        for gps_time in gps_times[1:]:
+            if gps_time - stop < MAX_GAP:
+                stop = float(gps_time)
+            else:
+                failures.append((start, stop))
+                start = float(gps_time)
+                stop = float(gps_time)
+
+        failures.append((start, stop))
+        return failures
+
+    if analysis.missing_test_gps_epochs > 0:
+        _logger.warning(f'{analysis.missing_test_gps_epochs} missing epochs in test data.')
+        return False
+
+    gps_times = analysis.error_gps_times
+    filtered_time_idx = np.full((len(analysis.error_gps_times)), True)
+    for start, stop in settings.skip_gps_times:
+        filtered_time_idx[(gps_times >= start) & (gps_times <= stop)] = False
+
+    SOLUTION_RATE_MAP = {
+        'percent_fixed_when_reference_fixed': 'RTK Fixed',
+        'percent_float_or_better_when_reference_float': 'RTK Float'
+    }
+
+    for k1, k2 in SOLUTION_RATE_MAP.items():
+        if getattr(settings, k1) > analysis.percent_solution_type_reference_or_better[k2]:
+            _logger.warning(f'{k1} check failed {getattr(settings, k1)} > {
+                            analysis.percent_solution_type_reference_or_better[k2]}')
+            return False
+
+    tests_failed = False
+    for solution_type, metrics in settings.error_3d_metrics.items():
+        valid_idx = np.logical_and(analysis.error_solution_types == solution_type, filtered_time_idx)
+        for metric in metrics:
+            if metric.type == StatType.MAX:
+                fail_max_idx = analysis.error_3d_m[valid_idx] > metric.limit
+                failures = find_fail_times((gps_times[valid_idx])[fail_max_idx])
+                for failure in failures:
+                    _logger.warning(f'failure {failure[0]} - {failure[1]} ({failure[1] -
+                                    failure[0]:.1f}s) for {metric} 3D {solution_type.name} error (m).')
+                    tests_failed = True
+            elif metric.type == StatType.MEAN:
+                mean_error = np.mean(analysis.error_3d_m[valid_idx])
+                if mean_error > metric.limit:
+                    _logger.warning(f'3D {solution_type.name} error(m) failure {metric}. {mean_error} > {metric.limit}')
+                    tests_failed = True
+
+    return not tests_failed
+
+
 def main():
     parser = ArgumentParser(description="""\
 Run p1_pose_compare for each device included in a drive test.
@@ -84,6 +189,12 @@ This tool downloads the relevant files from S3 and prompts stdin before moving o
     parser.add_argument(
         '--reference', help="Specify reference path.")
 
+    parser.add_argument(
+        '--pass-fail-json', type=Path, help="JSON file with pass/fail test metrics.")
+
+    parser.add_argument(
+        '--skip-plots', action='store_true', help="Don't generate plots for each device.")
+
     options = parser.parse_args()
 
     # Configure logging.
@@ -98,6 +209,8 @@ This tool downloads the relevant files from S3 and prompts stdin before moving o
                 logging.getTraceLevel(depth=options.verbose - 1))
     else:
         logging.basicConfig(level=logging.INFO, format='%(message)s', stream=sys.stdout)
+
+    pass_fail_settings = None if options.pass_fail_json is None else load_pass_fail_settings(options.pass_fail_json)
 
     key_split = options.key_for_log_in_drive.split('/')
 
@@ -205,13 +318,23 @@ This tool downloads the relevant files from S3 and prompts stdin before moving o
         _logger.info(f'Comparing log: {log_paths[guid]}')
         test_device = get_device_name_from_path(log_paths[guid])
         sys.argv = ['pose_compare_main', str(log_paths[guid]),  str(reference),
-                    '--time-axis=rel', f'--reference-filter={reference_filter}', f'--test-device-name={test_device}',
+                    '--time-axis=rel', f'--test-device-name={test_device}',
                     f'--reference-device-name={reference_device}']
+        if options.skip_plots:
+            sys.argv.append('--skip-plots')
+
         try:
-            pose_compare_main()
+            analysis = pose_compare_main()
+            if pass_fail_settings is not None:
+                if not pass_fail_check(analysis, settings=pass_fail_settings):
+                    sys.exit(1)
+                else:
+                    _logger.info('Tests passed for ' + guid)
         except Exception as e:
             _logger.error(f'Failure: {e}')
-        input("Press Enter To Process Next Log")
+            sys.exit(1)
+        if not options.skip_plots:
+            input("Press Enter To Process Next Log")
 
 
 if __name__ == '__main__':
