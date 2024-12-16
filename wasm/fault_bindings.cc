@@ -6,6 +6,7 @@
 #include <emscripten/emscripten.h>
 
 #include <point_one/fusion_engine/messages/core.h>
+#include <point_one/fusion_engine/messages/fault_control.h>
 
 #include "binding_utils.h"
 
