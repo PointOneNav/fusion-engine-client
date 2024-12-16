@@ -227,6 +227,27 @@ jobs:
         ./generate_data${EXT} new_data.p1log
         ./message_decode${EXT} new_data.p1log
 
+  #Build the wasm js files.
+  build_wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Emscripten
+        run: |
+          git clone https://github.com/emscripten-core/emsdk.git
+          cd emsdk
+          ./emsdk install 3.1.18
+          ./emsdk activate 3.1.18
+          source ./emsdk_env.sh
+        shell: bash
+
+      - name: Run build script
+        run: |
+          chmod +x ./build.sh
+          ./build.sh
+        shell: bash
+
   # Build the documentation.
   build_doxygen:
     name: Documentation Build
