@@ -26,7 +26,6 @@ add_executable(fusion_engine_client_wasm
                fault_bindings.cc
                gnss_corrections_bindings.cc
                measurements_binding.cc
-               ros_bindings.cc
                solution_binding.cc
                signal_defs_bindings.cc)
 target_include_directories(fusion_engine_client_wasm PUBLIC
