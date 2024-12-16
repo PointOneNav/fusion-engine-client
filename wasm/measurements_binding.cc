@@ -309,36 +309,38 @@ EMSCRIPTEN_BINDINGS(measurements) {
       .ARRAY_PROPERTY(DeprecatedVehicleSpeedMeasurement, reserved)
       .STRUCT_FUNCTIONS(DeprecatedVehicleSpeedMeasurement);
 
-  static auto RawHeadingOutput_MESSAGE_TYPE = RawHeadingOutput::MESSAGE_TYPE;
-  static auto RawHeadingOutput_MESSAGE_VERSION =
-      RawHeadingOutput::MESSAGE_VERSION;
-  class_<RawHeadingOutput>("RawHeadingOutput")
+  static auto GNSSAttitudeOutput_MESSAGE_TYPE =
+      GNSSAttitudeOutput::MESSAGE_TYPE;
+  static auto GNSSAttitudeOutput_MESSAGE_VERSION =
+      GNSSAttitudeOutput::MESSAGE_VERSION;
+  class_<GNSSAttitudeOutput>("GNSSAttitudeOutput")
       .constructor<>()
-      .class_property("MESSAGE_TYPE", &RawHeadingOutput_MESSAGE_TYPE)
-      .class_property("MESSAGE_VERSION", &RawHeadingOutput_MESSAGE_VERSION)
-      .property("details", &RawHeadingOutput::details)
-      .property("solution_type", &RawHeadingOutput::solution_type)
-      .ARRAY_PROPERTY(RawHeadingOutput, reserved)
-      .property("flags", &RawHeadingOutput::flags)
-      .ARRAY_PROPERTY(RawHeadingOutput, relative_position_enu_m)
-      .ARRAY_PROPERTY(RawHeadingOutput, position_std_enu_m)
-      .property("heading_true_north_deg",
-                &RawHeadingOutput::heading_true_north_deg)
-      .property("baseline_distance_m", &RawHeadingOutput::baseline_distance_m)
-      .STRUCT_FUNCTIONS(RawHeadingOutput);
+      .class_property("MESSAGE_TYPE", &GNSSAttitudeOutput_MESSAGE_TYPE)
+      .class_property("MESSAGE_VERSION", &GNSSAttitudeOutput_MESSAGE_VERSION)
+      .property("details", &GNSSAttitudeOutput::details)
+      .property("solution_type", &GNSSAttitudeOutput::solution_type)
+      .ARRAY_PROPERTY(GNSSAttitudeOutput, reserved)
+      .property("flags", &GNSSAttitudeOutput::flags)
+      .ARRAY_PROPERTY(GNSSAttitudeOutput, ypr_deg)
+      .ARRAY_PROPERTY(GNSSAttitudeOutput, ypr_std_deg)
+      .property("baseline_distance_m", &GNSSAttitudeOutput::baseline_distance_m)
+      .property("baseline_distance_std_m",
+                &GNSSAttitudeOutput::baseline_distance_std_m)
+      .STRUCT_FUNCTIONS(GNSSAttitudeOutput);
 
-  static auto HeadingOutput_MESSAGE_TYPE = HeadingOutput::MESSAGE_TYPE;
-  static auto HeadingOutput_MESSAGE_VERSION = HeadingOutput::MESSAGE_VERSION;
-  class_<HeadingOutput>("HeadingOutput")
+  static auto RawGNSSAttitudeOutput_MESSAGE_TYPE =
+      RawGNSSAttitudeOutput::MESSAGE_TYPE;
+  static auto RawGNSSAttitudeOutput_MESSAGE_VERSION =
+      RawGNSSAttitudeOutput::MESSAGE_VERSION;
+  class_<RawGNSSAttitudeOutput>("RawGNSSAttitudeOutput")
       .constructor<>()
-      .class_property("MESSAGE_TYPE", &HeadingOutput_MESSAGE_TYPE)
-      .class_property("MESSAGE_VERSION", &HeadingOutput_MESSAGE_VERSION)
-      .property("details", &HeadingOutput::details)
-      .property("solution_type", &HeadingOutput::solution_type)
-      .ARRAY_PROPERTY(HeadingOutput, reserved)
-      .property("flags", &HeadingOutput::flags)
-      .ARRAY_PROPERTY(HeadingOutput, ypr_deg)
-      .property("heading_true_north_deg",
-                &HeadingOutput::heading_true_north_deg)
-      .STRUCT_FUNCTIONS(HeadingOutput);
+      .class_property("MESSAGE_TYPE", &RawGNSSAttitudeOutput_MESSAGE_TYPE)
+      .class_property("MESSAGE_VERSION", &RawGNSSAttitudeOutput_MESSAGE_VERSION)
+      .property("details", &RawGNSSAttitudeOutput::details)
+      .property("solution_type", &RawGNSSAttitudeOutput::solution_type)
+      .ARRAY_PROPERTY(RawGNSSAttitudeOutput, reserved)
+      .property("flags", &RawGNSSAttitudeOutput::flags)
+      .ARRAY_PROPERTY(RawGNSSAttitudeOutput, relative_position_enu_m)
+      .ARRAY_PROPERTY(RawGNSSAttitudeOutput, position_std_enu_m)
+      .STRUCT_FUNCTIONS(RawGNSSAttitudeOutput);
 }
