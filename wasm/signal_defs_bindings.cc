@@ -69,6 +69,8 @@ EMSCRIPTEN_BINDINGS(signal_defs) {
 
   emscripten::function("ToBitMaskFrequency", &ToBitMaskWrapperFrequency);
   emscripten::function("ToBitMaskSatellite", &ToBitMaskWrapperSatelliteType);
-  emscripten::function("to_string_sat", &to_string_wrapper_satellite_type, emscripten::allow_raw_pointers());
-  emscripten::function("to_string", &to_string_wrapper_frequency_band, emscripten::allow_raw_pointers());
+  emscripten::function("to_string_sat", &to_string_wrapper_satellite_type,
+                       emscripten::allow_raw_pointers());
+  emscripten::function("to_string", &to_string_wrapper_frequency_band,
+                       emscripten::allow_raw_pointers());
 }

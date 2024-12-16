@@ -58,7 +58,7 @@ EMSCRIPTEN_BINDINGS(configuration) {
   static auto SetConfigMessage_FLAG_APPLY_AND_SAVE =
       SetConfigMessage::FLAG_APPLY_AND_SAVE;
   static auto SetConfigMessage_FLAG_REVERT_TO_DEFAULT =
-        SetConfigMessage::FLAG_REVERT_TO_DEFAULT;
+      SetConfigMessage::FLAG_REVERT_TO_DEFAULT;
   class_<SetConfigMessage>("SetConfigMessage")
       .constructor<>()
       .class_property("MESSAGE_TYPE", &SetConfigMessage_MESSAGE_TYPE)
@@ -106,7 +106,8 @@ EMSCRIPTEN_BINDINGS(configuration) {
       .constructor<>()
       .class_property("MESSAGE_TYPE", &ConfigResponseMessage_MESSAGE_TYPE)
       .class_property("MESSAGE_VERSION", &ConfigResponseMessage_MESSAGE_VERSION)
-      .class_property("FLAG_ACTIVE_DIFFERS_FROM_SAVED", &ConfigResponseMessage_FLAG_ACTIVE_DIFFERS_FROM_SAVED)
+      .class_property("FLAG_ACTIVE_DIFFERS_FROM_SAVED",
+                      &ConfigResponseMessage_FLAG_ACTIVE_DIFFERS_FROM_SAVED)
       .property("config_source", &ConfigResponseMessage::config_source)
       .property("flags", &ConfigResponseMessage::flags)
       .property("config_type", &ConfigResponseMessage::config_type)
@@ -244,15 +245,15 @@ EMSCRIPTEN_BINDINGS(configuration) {
       .STRUCT_FUNCTIONS(IonosphereConfig);
 
   enum_<TropoDelayModel>("TropoDelayModel")
-       .value("AUTO", TropoDelayModel::AUTO)
-       .value("OFF", TropoDelayModel::OFF)
-       .value("SAASTAMOINEN", TropoDelayModel::SAASTAMOINEN);
+      .value("AUTO", TropoDelayModel::AUTO)
+      .value("OFF", TropoDelayModel::OFF)
+      .value("SAASTAMOINEN", TropoDelayModel::SAASTAMOINEN);
 
   class_<TroposphereConfig>("TroposphereConfig")
-       .constructor<>()
-       .property("tropo_delay_model", &TroposphereConfig::tropo_delay_model)
-       .ARRAY_PROPERTY(TroposphereConfig, reserved)
-       .STRUCT_FUNCTIONS(TroposphereConfig);
+      .constructor<>()
+      .property("tropo_delay_model", &TroposphereConfig::tropo_delay_model)
+      .ARRAY_PROPERTY(TroposphereConfig, reserved)
+      .STRUCT_FUNCTIONS(TroposphereConfig);
 
   enum_<DataType>("DataType")
       .value("CALIBRATION_STATE", DataType::CALIBRATION_STATE)
@@ -292,22 +293,33 @@ EMSCRIPTEN_BINDINGS(configuration) {
       PlatformStorageDataMessage::MESSAGE_TYPE;
   static auto PlatformStorageDataMessage_MESSAGE_VERSION =
       PlatformStorageDataMessage::MESSAGE_VERSION;
-  static auto PlatformStorageDataMessage_FLAG_USER_CONFIG_PLATFORM_NOT_SPECIFIED =
-        PlatformStorageDataMessage::FLAG_USER_CONFIG_PLATFORM_NOT_SPECIFIED;
+  static auto
+      PlatformStorageDataMessage_FLAG_USER_CONFIG_PLATFORM_NOT_SPECIFIED =
+          PlatformStorageDataMessage::FLAG_USER_CONFIG_PLATFORM_NOT_SPECIFIED;
   static auto PlatformStorageDataMessage_FLAG_USER_CONFIG_PLATFORM_POSIX =
-        PlatformStorageDataMessage::FLAG_USER_CONFIG_PLATFORM_POSIX;
+      PlatformStorageDataMessage::FLAG_USER_CONFIG_PLATFORM_POSIX;
   static auto PlatformStorageDataMessage_FLAG_USER_CONFIG_PLATFORM_EMBEDDED =
-        PlatformStorageDataMessage::FLAG_USER_CONFIG_PLATFORM_EMBEDDED;
-  static auto PlatformStorageDataMessage_FLAG_USER_CONFIG_PLATFORM_EMBEDDED_SSR =
-        PlatformStorageDataMessage::FLAG_USER_CONFIG_PLATFORM_EMBEDDED_SSR;
+      PlatformStorageDataMessage::FLAG_USER_CONFIG_PLATFORM_EMBEDDED;
+  static auto
+      PlatformStorageDataMessage_FLAG_USER_CONFIG_PLATFORM_EMBEDDED_SSR =
+          PlatformStorageDataMessage::FLAG_USER_CONFIG_PLATFORM_EMBEDDED_SSR;
   class_<PlatformStorageDataMessage>("PlatformStorageDataMessage")
       .constructor<>()
       .class_property("MESSAGE_TYPE", &PlatformStorageDataMessage_MESSAGE_TYPE)
-      .class_property("MESSAGE_VERSION", &PlatformStorageDataMessage_MESSAGE_VERSION)
-      .class_property("FLAG_USER_CONFIG_PLATFORM_NOT_SPECIFIED", &PlatformStorageDataMessage_FLAG_USER_CONFIG_PLATFORM_NOT_SPECIFIED)
-      .class_property("FLAG_USER_CONFIG_PLATFORM_POSIX", &PlatformStorageDataMessage_FLAG_USER_CONFIG_PLATFORM_POSIX)
-      .class_property("FLAG_USER_CONFIG_PLATFORM_EMBEDDED", &PlatformStorageDataMessage_FLAG_USER_CONFIG_PLATFORM_EMBEDDED)
-      .class_property("FLAG_USER_CONFIG_PLATFORM_EMBEDDED_SSR", &PlatformStorageDataMessage_FLAG_USER_CONFIG_PLATFORM_EMBEDDED_SSR)
+      .class_property("MESSAGE_VERSION",
+                      &PlatformStorageDataMessage_MESSAGE_VERSION)
+      .class_property(
+          "FLAG_USER_CONFIG_PLATFORM_NOT_SPECIFIED",
+          &PlatformStorageDataMessage_FLAG_USER_CONFIG_PLATFORM_NOT_SPECIFIED)
+      .class_property(
+          "FLAG_USER_CONFIG_PLATFORM_POSIX",
+          &PlatformStorageDataMessage_FLAG_USER_CONFIG_PLATFORM_POSIX)
+      .class_property(
+          "FLAG_USER_CONFIG_PLATFORM_EMBEDDED",
+          &PlatformStorageDataMessage_FLAG_USER_CONFIG_PLATFORM_EMBEDDED)
+      .class_property(
+          "FLAG_USER_CONFIG_PLATFORM_EMBEDDED_SSR",
+          &PlatformStorageDataMessage_FLAG_USER_CONFIG_PLATFORM_EMBEDDED_SSR)
       .property("data_type", &PlatformStorageDataMessage::data_type)
       .property("response", &PlatformStorageDataMessage::response)
       .property("source", &PlatformStorageDataMessage::source)
@@ -319,7 +331,8 @@ EMSCRIPTEN_BINDINGS(configuration) {
 
   enum_<InterfaceConfigType>("InterfaceConfigType")
       .value("INVALID", InterfaceConfigType::INVALID)
-      .value("OUTPUT_DIAGNOSTICS_MESSAGES", InterfaceConfigType::OUTPUT_DIAGNOSTICS_MESSAGES)
+      .value("OUTPUT_DIAGNOSTICS_MESSAGES",
+             InterfaceConfigType::OUTPUT_DIAGNOSTICS_MESSAGES)
       .value("BAUD_RATE", InterfaceConfigType::BAUD_RATE)
       .value("REMOTE_ADDRESS", InterfaceConfigType::REMOTE_ADDRESS)
       .value("PORT", InterfaceConfigType::PORT)
@@ -415,8 +428,10 @@ EMSCRIPTEN_BINDINGS(configuration) {
       .constructor<>()
       .class_property("MESSAGE_TYPE", &SetMessageRate_MESSAGE_TYPE)
       .class_property("MESSAGE_VERSION", &SetMessageRate_MESSAGE_VERSION)
-      .class_property("FLAG_APPLY_AND_SAVE", &SetMessageRate_FLAG_APPLY_AND_SAVE)
-      .class_property("FLAG_INCLUDE_DISABLED_MESSAGES", &SetMessageRate_FLAG_INCLUDE_DISABLED_MESSAGES)
+      .class_property("FLAG_APPLY_AND_SAVE",
+                      &SetMessageRate_FLAG_APPLY_AND_SAVE)
+      .class_property("FLAG_INCLUDE_DISABLED_MESSAGES",
+                      &SetMessageRate_FLAG_INCLUDE_DISABLED_MESSAGES)
       .property("output_interface", &SetMessageRate::output_interface)
       .property("protocol", &SetMessageRate::protocol)
       .property("flags", &SetMessageRate::flags)
@@ -437,12 +452,16 @@ EMSCRIPTEN_BINDINGS(configuration) {
       .property("message_id", &GetMessageRate::message_id)
       .STRUCT_FUNCTIONS(GetMessageRate);
 
-  static auto SupportedIOInterfacesMessage_MESSAGE_TYPE = SupportedIOInterfacesMessage::MESSAGE_TYPE;
-  static auto SupportedIOInterfacesMessage_MESSAGE_VERSION = SupportedIOInterfacesMessage::MESSAGE_VERSION;
+  static auto SupportedIOInterfacesMessage_MESSAGE_TYPE =
+      SupportedIOInterfacesMessage::MESSAGE_TYPE;
+  static auto SupportedIOInterfacesMessage_MESSAGE_VERSION =
+      SupportedIOInterfacesMessage::MESSAGE_VERSION;
   class_<SupportedIOInterfacesMessage>("SupportedIOInterfacesMessage")
       .constructor<>()
-      .class_property("MESSAGE_TYPE", &SupportedIOInterfacesMessage_MESSAGE_TYPE)
-      .class_property("MESSAGE_VERSION", &SupportedIOInterfacesMessage_MESSAGE_VERSION)
+      .class_property("MESSAGE_TYPE",
+                      &SupportedIOInterfacesMessage_MESSAGE_TYPE)
+      .class_property("MESSAGE_VERSION",
+                      &SupportedIOInterfacesMessage_MESSAGE_VERSION)
       .property("num_interfaces", &SupportedIOInterfacesMessage::num_interfaces)
       .ARRAY_PROPERTY(SupportedIOInterfacesMessage, reserved1)
       .STRUCT_FUNCTIONS(SupportedIOInterfacesMessage);
@@ -476,14 +495,15 @@ EMSCRIPTEN_BINDINGS(configuration) {
       .STRUCT_FUNCTIONS(MessageRateResponse);
 
   class_<LBandConfig>("LBandConfig")
-       .constructor<>()
-       .property("center_frequency_hz", &LBandConfig::center_frequency_hz)
-       .property("search_window_hz", &LBandConfig::search_window_hz)
-       .property("filter_data_by_service_id", &LBandConfig::filter_data_by_service_id)
-       .property("use_descrambler", &LBandConfig::use_descrambler)
-       .property("pmp_service_id", &LBandConfig::pmp_service_id)
-       .property("pmp_unique_word", &LBandConfig::pmp_unique_word)
-       .property("pmp_data_rate_bps", &LBandConfig::pmp_data_rate_bps)
-       .property("descrambler_init", &LBandConfig::descrambler_init)
-       .STRUCT_FUNCTIONS(LBandConfig);
+      .constructor<>()
+      .property("center_frequency_hz", &LBandConfig::center_frequency_hz)
+      .property("search_window_hz", &LBandConfig::search_window_hz)
+      .property("filter_data_by_service_id",
+                &LBandConfig::filter_data_by_service_id)
+      .property("use_descrambler", &LBandConfig::use_descrambler)
+      .property("pmp_service_id", &LBandConfig::pmp_service_id)
+      .property("pmp_unique_word", &LBandConfig::pmp_unique_word)
+      .property("pmp_data_rate_bps", &LBandConfig::pmp_data_rate_bps)
+      .property("descrambler_init", &LBandConfig::descrambler_init)
+      .STRUCT_FUNCTIONS(LBandConfig);
 }

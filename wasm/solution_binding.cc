@@ -63,10 +63,13 @@ EMSCRIPTEN_BINDINGS(solution) {
   static auto GNSSInfoMessage_MESSAGE_TYPE = GNSSInfoMessage::MESSAGE_TYPE;
   static auto GNSSInfoMessage_MESSAGE_VERSION =
       GNSSInfoMessage::MESSAGE_VERSION;
-  static auto GNSSInfoMessage_INVALID_LEAP_SECOND = GNSSInfoMessage::INVALID_LEAP_SECOND;
+  static auto GNSSInfoMessage_INVALID_LEAP_SECOND =
+      GNSSInfoMessage::INVALID_LEAP_SECOND;
   static auto GNSSInfoMessage_INVALID_AGE = GNSSInfoMessage::INVALID_AGE;
-  static auto GNSSInfoMessage_INVALID_DISTANCE = GNSSInfoMessage::INVALID_DISTANCE;
-  static auto GNSSInfoMessage_INVALID_REFERENCE_STATION = GNSSInfoMessage::INVALID_REFERENCE_STATION;
+  static auto GNSSInfoMessage_INVALID_DISTANCE =
+      GNSSInfoMessage::INVALID_DISTANCE;
+  static auto GNSSInfoMessage_INVALID_REFERENCE_STATION =
+      GNSSInfoMessage::INVALID_REFERENCE_STATION;
 
   class_<GNSSInfoMessage>("GNSSInfoMessage")
       .constructor<>()

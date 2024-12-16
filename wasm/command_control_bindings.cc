@@ -28,43 +28,44 @@ EMSCRIPTEN_BINDINGS(control) {
       .ARRAY_PROPERTY(CommandResponseMessage, reserved)
       .STRUCT_FUNCTIONS(CommandResponseMessage);
 
- static auto MessageRequest_MESSAGE_TYPE = MessageRequest::MESSAGE_TYPE;
- static auto MessageRequest_MESSAGE_VERSION = MessageRequest::MESSAGE_VERSION;
- class_<MessageRequest>("MessageRequest")
-     .constructor<>()
-     .class_property("MESSAGE_TYPE", &MessageRequest_MESSAGE_TYPE)
-     .class_property("MESSAGE_VERSION", &MessageRequest_MESSAGE_VERSION)
-     .property("message_type", &MessageRequest::message_type)
-     .ARRAY_PROPERTY(MessageRequest, reserved)
-     .STRUCT_FUNCTIONS(MessageRequest);
+  static auto MessageRequest_MESSAGE_TYPE = MessageRequest::MESSAGE_TYPE;
+  static auto MessageRequest_MESSAGE_VERSION = MessageRequest::MESSAGE_VERSION;
+  class_<MessageRequest>("MessageRequest")
+      .constructor<>()
+      .class_property("MESSAGE_TYPE", &MessageRequest_MESSAGE_TYPE)
+      .class_property("MESSAGE_VERSION", &MessageRequest_MESSAGE_VERSION)
+      .property("message_type", &MessageRequest::message_type)
+      .ARRAY_PROPERTY(MessageRequest, reserved)
+      .STRUCT_FUNCTIONS(MessageRequest);
 
- static auto ResetRequest_MESSAGE_TYPE = ResetRequest::MESSAGE_TYPE;
- static auto ResetRequest_MESSAGE_VERSION = ResetRequest::MESSAGE_VERSION;
- static auto ResetRequest_RESTART_NAVIGATION_ENGINE =
-     ResetRequest::RESTART_NAVIGATION_ENGINE;
- static auto ResetRequest_RESET_GNSS_CORRECTIONS =
-     ResetRequest::RESET_GNSS_CORRECTIONS;
- static auto ResetRequest_RESET_POSITION_DATA =
-     ResetRequest::RESET_POSITION_DATA;
- static auto ResetRequest_RESET_EPHEMERIS = ResetRequest::RESET_EPHEMERIS;
- static auto ResetRequest_RESET_FAST_IMU_CORRECTIONS =
-     ResetRequest::RESET_FAST_IMU_CORRECTIONS;
- static auto ResetRequest_RESET_NAVIGATION_ENGINE_DATA =
-     ResetRequest::RESET_NAVIGATION_ENGINE_DATA;
- static auto ResetRequest_RESET_CALIBRATION_DATA =
-     ResetRequest::RESET_CALIBRATION_DATA;
- static auto ResetRequest_RESET_CONFIG = ResetRequest::RESET_CONFIG;
- static auto ResetRequest_REBOOT_GNSS_MEASUREMENT_ENGINE =
-     ResetRequest::REBOOT_GNSS_MEASUREMENT_ENGINE;
- static auto ResetRequest_REBOOT_NAVIGATION_PROCESSOR =
-     ResetRequest::REBOOT_NAVIGATION_PROCESSOR;
- static auto ResetRequest_DIAGNOSTIC_LOG_RESET = ResetRequest::DIAGNOSTIC_LOG_RESET;
- static auto ResetRequest_HOT_START = ResetRequest::HOT_START;
- static auto ResetRequest_WARM_START = ResetRequest::WARM_START;
- static auto ResetRequest_POSE_RESET = ResetRequest::POSE_RESET;
- static auto ResetRequest_COLD_START = ResetRequest::COLD_START;
- static auto ResetRequest_FACTORY_RESET = ResetRequest::FACTORY_RESET;
- class_<ResetRequest>("ResetRequest")
+  static auto ResetRequest_MESSAGE_TYPE = ResetRequest::MESSAGE_TYPE;
+  static auto ResetRequest_MESSAGE_VERSION = ResetRequest::MESSAGE_VERSION;
+  static auto ResetRequest_RESTART_NAVIGATION_ENGINE =
+      ResetRequest::RESTART_NAVIGATION_ENGINE;
+  static auto ResetRequest_RESET_GNSS_CORRECTIONS =
+      ResetRequest::RESET_GNSS_CORRECTIONS;
+  static auto ResetRequest_RESET_POSITION_DATA =
+      ResetRequest::RESET_POSITION_DATA;
+  static auto ResetRequest_RESET_EPHEMERIS = ResetRequest::RESET_EPHEMERIS;
+  static auto ResetRequest_RESET_FAST_IMU_CORRECTIONS =
+      ResetRequest::RESET_FAST_IMU_CORRECTIONS;
+  static auto ResetRequest_RESET_NAVIGATION_ENGINE_DATA =
+      ResetRequest::RESET_NAVIGATION_ENGINE_DATA;
+  static auto ResetRequest_RESET_CALIBRATION_DATA =
+      ResetRequest::RESET_CALIBRATION_DATA;
+  static auto ResetRequest_RESET_CONFIG = ResetRequest::RESET_CONFIG;
+  static auto ResetRequest_REBOOT_GNSS_MEASUREMENT_ENGINE =
+      ResetRequest::REBOOT_GNSS_MEASUREMENT_ENGINE;
+  static auto ResetRequest_REBOOT_NAVIGATION_PROCESSOR =
+      ResetRequest::REBOOT_NAVIGATION_PROCESSOR;
+  static auto ResetRequest_DIAGNOSTIC_LOG_RESET =
+      ResetRequest::DIAGNOSTIC_LOG_RESET;
+  static auto ResetRequest_HOT_START = ResetRequest::HOT_START;
+  static auto ResetRequest_WARM_START = ResetRequest::WARM_START;
+  static auto ResetRequest_POSE_RESET = ResetRequest::POSE_RESET;
+  static auto ResetRequest_COLD_START = ResetRequest::COLD_START;
+  static auto ResetRequest_FACTORY_RESET = ResetRequest::FACTORY_RESET;
+  class_<ResetRequest>("ResetRequest")
       .constructor<>()
       .class_property("MESSAGE_TYPE", &ResetRequest_MESSAGE_TYPE)
       .class_property("MESSAGE_VERSION", &ResetRequest_MESSAGE_VERSION)
@@ -85,7 +86,8 @@ EMSCRIPTEN_BINDINGS(control) {
                       &ResetRequest_REBOOT_GNSS_MEASUREMENT_ENGINE)
       .class_property("REBOOT_NAVIGATION_PROCESSOR",
                       &ResetRequest_REBOOT_NAVIGATION_PROCESSOR)
-      .class_property("DIAGNOSTIC_LOG_RESET", &ResetRequest_DIAGNOSTIC_LOG_RESET)
+      .class_property("DIAGNOSTIC_LOG_RESET",
+                      &ResetRequest_DIAGNOSTIC_LOG_RESET)
       .class_property("HOT_START", &ResetRequest_HOT_START)
       .class_property("WARM_START", &ResetRequest_WARM_START)
       .class_property("COLD_START", &ResetRequest_COLD_START)
@@ -118,8 +120,7 @@ EMSCRIPTEN_BINDINGS(control) {
       .value("LG69T_AP", DeviceType::LG69T_AP)
       .value("LG69T_AH", DeviceType::LG69T_AH);
 
-  static auto DeviceIDMessage_MESSAGE_TYPE =
-      DeviceIDMessage::MESSAGE_TYPE;
+  static auto DeviceIDMessage_MESSAGE_TYPE = DeviceIDMessage::MESSAGE_TYPE;
   static auto DeviceIDMessage_MESSAGE_VERSION =
       DeviceIDMessage::MESSAGE_VERSION;
   class_<DeviceIDMessage>("DeviceIDMessage")
@@ -161,12 +162,10 @@ EMSCRIPTEN_BINDINGS(control) {
       .value("COMMAND_RESPONSE",
              EventNotificationMessage::EventType::COMMAND_RESPONSE);
 
-  static auto ShutdownRequest_MESSAGE_TYPE =
-      ShutdownRequest::MESSAGE_TYPE;
+  static auto ShutdownRequest_MESSAGE_TYPE = ShutdownRequest::MESSAGE_TYPE;
   static auto ShutdownRequest_MESSAGE_VERSION =
       ShutdownRequest::MESSAGE_VERSION;
-  static auto ShutdownRequest_STOP_ENGINE =
-      ShutdownRequest::STOP_ENGINE;
+  static auto ShutdownRequest_STOP_ENGINE = ShutdownRequest::STOP_ENGINE;
   static auto ShutdownRequest_STOP_CURRENT_LOG =
       ShutdownRequest::STOP_CURRENT_LOG;
   class_<ShutdownRequest>("ShutdownRequest")
@@ -179,14 +178,10 @@ EMSCRIPTEN_BINDINGS(control) {
       .ARRAY_PROPERTY(ShutdownRequest, reserved1)
       .STRUCT_FUNCTIONS(ShutdownRequest);
 
-  static auto StartupRequest_MESSAGE_TYPE =
-      StartupRequest::MESSAGE_TYPE;
-  static auto StartupRequest_MESSAGE_VERSION =
-      StartupRequest::MESSAGE_VERSION;
-  static auto StartupRequest_START_ENGINE =
-        StartupRequest::START_ENGINE;
-  static auto StartupRequest_START_NEW_LOG =
-        StartupRequest::START_NEW_LOG;
+  static auto StartupRequest_MESSAGE_TYPE = StartupRequest::MESSAGE_TYPE;
+  static auto StartupRequest_MESSAGE_VERSION = StartupRequest::MESSAGE_VERSION;
+  static auto StartupRequest_START_ENGINE = StartupRequest::START_ENGINE;
+  static auto StartupRequest_START_NEW_LOG = StartupRequest::START_NEW_LOG;
   class_<StartupRequest>("StartupRequest")
       .constructor<>()
       .class_property("MESSAGE_TYPE", &StartupRequest_MESSAGE_TYPE)

@@ -38,9 +38,9 @@ EMSCRIPTEN_BINDINGS(defs) {
       .value("CALIBRATION_STATUS", MessageType::CALIBRATION_STATUS)
       .value("RELATIVE_ENU_POSITION", MessageType::RELATIVE_ENU_POSITION)
 
-       // Device status messages
-       .value("SYSTEM_STATUS", MessageType::SYSTEM_STATUS)
-       .value("SSR_STATUS", MessageType::SSR_STATUS)
+      // Device status messages
+      .value("SYSTEM_STATUS", MessageType::SYSTEM_STATUS)
+      .value("SSR_STATUS", MessageType::SSR_STATUS)
 
       // Sensor measurement messages.
       .value("IMU_OUTPUT", MessageType::IMU_OUTPUT)
@@ -49,10 +49,11 @@ EMSCRIPTEN_BINDINGS(defs) {
       .value("HEADING_OUTPUT", MessageType::HEADING_OUTPUT)
       .value("IMU_INPUT", MessageType::IMU_INPUT)
 
-
       // Vehicle measurement messages.
-      .value("DEPRECATED_WHEEL_SPEED_MEASUREMENT", MessageType::DEPRECATED_WHEEL_SPEED_MEASUREMENT)
-      .value("DEPRECATED_VEHICLE_SPEED_MEASUREMENT", MessageType::DEPRECATED_VEHICLE_SPEED_MEASUREMENT)
+      .value("DEPRECATED_WHEEL_SPEED_MEASUREMENT",
+             MessageType::DEPRECATED_WHEEL_SPEED_MEASUREMENT)
+      .value("DEPRECATED_VEHICLE_SPEED_MEASUREMENT",
+             MessageType::DEPRECATED_VEHICLE_SPEED_MEASUREMENT)
 
       .value("WHEEL_TICK_INPUT", MessageType::WHEEL_TICK_INPUT)
       .value("VEHICLE_TICK_INPUT", MessageType::VEHICLE_TICK_INPUT)

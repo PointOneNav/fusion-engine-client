@@ -40,7 +40,7 @@ EMSCRIPTEN_BINDINGS(fault) {
       .class_property("MESSAGE_VERSION", &FaultControlMessage_MESSAGE_VERSION)
       .property("fault_type", &FaultControlMessage::fault_type)
       .ARRAY_PROPERTY(FaultControlMessage, reserved)
-      .property("payload_length_bytes", &FaultControlMessage::payload_length_bytes)
+      .property("payload_length_bytes",
+                &FaultControlMessage::payload_length_bytes)
       .STRUCT_FUNCTIONS(FaultControlMessage);
-
 }
