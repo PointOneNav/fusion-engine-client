@@ -227,7 +227,7 @@ jobs:
         ./generate_data${EXT} new_data.p1log
         ./message_decode${EXT} new_data.p1log
 
-  #Build the wasm js files.
+  # Build the WASM JS files.
   build_wasm:
     name: WASM Build
     runs-on: ubuntu-latest
@@ -245,7 +245,6 @@ jobs:
 
       - name: Run build script
         run: |
-          chmod +x ./wasm/build.sh
           ./wasm/build.sh
         shell: bash
 
