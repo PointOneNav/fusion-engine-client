@@ -229,6 +229,7 @@ jobs:
 
   #Build the wasm js files.
   build_wasm:
+    name: WASM Build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
