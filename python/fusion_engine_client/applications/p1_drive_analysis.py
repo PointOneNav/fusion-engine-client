@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from collections import defaultdict
 from dataclasses import dataclass, field
 from enum import Enum, auto
 import glob
@@ -86,17 +87,25 @@ class Metric:
 
 
 @dataclass(frozen=True)
+class LogSection:
+    description: str
+    start: float
+    stop: float
+
+
+@dataclass(frozen=True)
 class PassFailSettings:
-    error_3d_metrics: Dict[SolutionType, List[Metric]]
+    max_test_duration_variation_percent: float
     percent_fixed_when_reference_fixed: float
     percent_float_or_better_when_reference_float: float
-    skip_gps_times: List[Tuple[float, float]] = field(default_factory=list)
+    error_3d_metrics: Dict[SolutionType, List[Metric]]
+    skip_gps_times: List[LogSection] = field(default_factory=list)
 
 
 def load_pass_fail_settings(setting_path: Path) -> PassFailSettings:
     json_data = json.load(open(setting_path))
     if 'skip_gps_times' in json_data:
-        skip_gps_times = [tuple(t) for t in json_data['skip_gps_times']]
+        skip_gps_times = [LogSection(**t) for t in json_data['skip_gps_times']]
     else:
         skip_gps_times = []
     error_3d_metrics = {}
@@ -106,15 +115,30 @@ def load_pass_fail_settings(setting_path: Path) -> PassFailSettings:
         ]
 
     return PassFailSettings(
-        error_3d_metrics,
+        max_test_duration_variation_percent=json_data['max_test_duration_variation_percent'],
         percent_fixed_when_reference_fixed=json_data['percent_fixed_when_reference_fixed'],
         percent_float_or_better_when_reference_float=json_data['percent_float_or_better_when_reference_float'],
+        error_3d_metrics=error_3d_metrics,
         skip_gps_times=skip_gps_times
     )
 
 
-def pass_fail_check(analysis: PoseCompare, settings: PassFailSettings) -> bool:
-    def find_fail_times(gps_times):
+class PassFailChecker:
+
+    _FIX_RATE_HZ = 10.0
+
+    def __init__(self, settings: PassFailSettings):
+        self.max_valid_positions_analyzed = 0
+        self.min_valid_positions_analyzed = 0
+        self.total_times: Dict[str, float] = defaultdict(float)
+        self.settings = settings
+        self.num_logs = 0
+        self.worst_percent_fixed_when_reference_fixed = np.inf
+        self.worst_percent_float_or_better_when_reference_float = np.inf
+        self.worst_error_3d_metrics: dict[str, float] = defaultdict(float)
+
+    @staticmethod
+    def _find_fail_times(gps_times):
         MAX_GAP = 5.0
         if len(gps_times) == 0:
             return []
@@ -134,44 +158,122 @@ def pass_fail_check(analysis: PoseCompare, settings: PassFailSettings) -> bool:
         failures.append((start, stop))
         return failures
 
-    if analysis.missing_test_gps_epochs > 0:
-        _logger.warning(f'{analysis.missing_test_gps_epochs} missing epochs in test data.')
-        return False
-
-    gps_times = analysis.error_gps_times
-    filtered_time_idx = np.full((len(analysis.error_gps_times)), True)
-    for start, stop in settings.skip_gps_times:
-        filtered_time_idx[(gps_times >= start) & (gps_times <= stop)] = False
-
-    SOLUTION_RATE_MAP = {
-        'percent_fixed_when_reference_fixed': 'RTK Fixed',
-        'percent_float_or_better_when_reference_float': 'RTK Float'
-    }
-
-    for k1, k2 in SOLUTION_RATE_MAP.items():
-        if getattr(settings, k1) > analysis.percent_solution_type_reference_or_better[k2]:
-            _logger.warning(f'{k1} check failed {getattr(settings, k1)} > {
-                            analysis.percent_solution_type_reference_or_better[k2]}')
+    def pass_fail_check(self, analysis: PoseCompare) -> bool:
+        if analysis.missing_test_gps_epochs > 0:
+            _logger.warning(f'{analysis.missing_test_gps_epochs} missing epochs in test data.')
             return False
 
-    tests_failed = False
-    for solution_type, metrics in settings.error_3d_metrics.items():
-        valid_idx = np.logical_and(analysis.error_solution_types == solution_type, filtered_time_idx)
-        for metric in metrics:
-            if metric.type == StatType.MAX:
-                fail_max_idx = analysis.error_3d_m[valid_idx] > metric.limit
-                failures = find_fail_times((gps_times[valid_idx])[fail_max_idx])
-                for failure in failures:
-                    _logger.warning(f'failure {failure[0]} - {failure[1]} ({failure[1] -
-                                    failure[0]:.1f}s) for {metric} 3D {solution_type.name} error (m).')
-                    tests_failed = True
-            elif metric.type == StatType.MEAN:
-                mean_error = np.mean(analysis.error_3d_m[valid_idx])
-                if mean_error > metric.limit:
-                    _logger.warning(f'3D {solution_type.name} error(m) failure {metric}. {mean_error} > {metric.limit}')
-                    tests_failed = True
+        gps_times = analysis.error_gps_times
+        filtered_time_idx = np.full((len(analysis.error_gps_times)), True)
+        for section in self.settings.skip_gps_times:
+            filtered_time_idx[(gps_times >= section.start) & (gps_times <= section.stop)] = False
 
-    return not tests_failed
+        if analysis.actual_test_gps_epochs == 0:
+            _logger.warning(f'Reference and test device had no overlapping timestamps suitable for comparison.')
+            return False
+        elif self.max_valid_positions_analyzed > 0:
+            duration = round(analysis.actual_test_gps_epochs / self._FIX_RATE_HZ)
+            if analysis.actual_test_gps_epochs > self.max_valid_positions_analyzed * (1.0 + (self.settings.max_test_duration_variation_percent / 100.0)):
+                previous_duration = round(self.max_valid_positions_analyzed / self._FIX_RATE_HZ)
+                _logger.warning(f'Duration of log ({duration:}s) exceeded previous duration ({previous_duration}s) by more than {self.settings.max_test_duration_variation_percent}%.')
+                return False
+            elif analysis.actual_test_gps_epochs < self.min_valid_positions_analyzed * (1.0 - (self.settings.max_test_duration_variation_percent / 100.0)):
+                previous_duration = round(self.min_valid_positions_analyzed / self._FIX_RATE_HZ)
+                _logger.warning(f'Duration of log ({duration:}s) is shorter than previous duration ({previous_duration}s) by more than {self.settings.max_test_duration_variation_percent}%.')
+                return False
+
+            self.max_valid_positions_analyzed = max(analysis.actual_test_gps_epochs, self.max_valid_positions_analyzed)
+            self.min_valid_positions_analyzed = min(analysis.actual_test_gps_epochs, self.min_valid_positions_analyzed)
+        else:
+            self.max_valid_positions_analyzed = analysis.actual_test_gps_epochs
+            self.min_valid_positions_analyzed = analysis.actual_test_gps_epochs
+
+        SOLUTION_RATE_MAP = {
+            'percent_fixed_when_reference_fixed': 'RTK Fixed',
+            'percent_float_or_better_when_reference_float': 'RTK Float'
+        }
+
+        for k1, k2 in SOLUTION_RATE_MAP.items():
+            percent_reference_or_better = analysis.percent_solution_type_reference_or_better[k2]
+            print(percent_reference_or_better)
+            if getattr(self.settings, k1) > percent_reference_or_better:
+                _logger.warning(f'{k1} check failed {getattr(self.settings, k1)} > {percent_reference_or_better}')
+                return False
+            if getattr(self, 'worst_' + k1) > percent_reference_or_better:
+                setattr(self, 'worst_' + k1, percent_reference_or_better)
+
+        tests_failed = False
+        for solution_type, metrics in self.settings.error_3d_metrics.items():
+            valid_idx = np.logical_and(analysis.error_solution_types == solution_type, filtered_time_idx)
+            for metric in metrics:
+                metric_name = f'{metric.type.name.title()} 3D {solution_type.name} error (m)'
+                if metric.type == StatType.MAX:
+                    metric_value = np.max(analysis.error_3d_m[valid_idx])
+                    fail_max_idx = analysis.error_3d_m[valid_idx] > metric.limit
+                    failures = self._find_fail_times((gps_times[valid_idx])[fail_max_idx])
+                    for failure in failures:
+                        _logger.warning(f'{metric_name} failure: {failure[0]} - {failure[1]} ({failure[1] - failure[0]:.1f}s)')
+                        tests_failed = True
+                elif metric.type == StatType.MEAN:
+                    metric_value = np.mean(analysis.error_3d_m[valid_idx])
+                    if metric_value > metric.limit:
+                        _logger.warning(f'{metric_name} failure: {metric_value} > {metric.limit}')
+                        tests_failed = True
+                if metric_value > self.worst_error_3d_metrics[metric_name]:
+                    self.worst_error_3d_metrics[metric_name] = metric_value
+
+        solution_types_analyzed = analysis.error_solution_types[filtered_time_idx]
+        for solution_type in np.unique(solution_types_analyzed):
+            name = SolutionType[solution_type]
+            self.total_times[name] += np.sum(solution_types_analyzed == solution_type) / self._FIX_RATE_HZ
+
+        self.num_logs += 1
+
+        return not tests_failed
+
+    def generate_report(self):
+        total_times = sum(self.total_times.values())
+
+        solution_rate_table = '\n'.join(
+            [f'  {k.name}: {v / total_times * 100:.1f}%' for k, v in self.total_times.items()])
+
+        skipped_sections = '\n'.join(
+            [f'  {s.description} - {s.stop - s.start:.1f}s ' for s in self.settings.skip_gps_times])
+
+        error_table = '\n'.join([f'  {k}: {v:.3f}m' for k, v in self.worst_error_3d_metrics.items()])
+
+        print(f'''\
+===============================================================
+Drive Test Report
+
+# Analysis Coverage
+{self.num_logs} logs analyzed.
+
+Duration of each log: ~{self.max_valid_positions_analyzed / self._FIX_RATE_HZ / 60.0:.1f} minutes
+
+{total_times/60.0:.1f} minutes analyzed:
+{solution_rate_table}
+
+No data dropped within any log.
+
+Skipped Sections:
+{skipped_sections}
+
+# Analysis
+
+The following are the worst results across the set of {self.num_logs} logs.
+These results are computed from the portions of the log where the reference receiver indicated it had equivalent or
+better confidence in its solution as the test device.
+
+Percent of epochs where test device matched or exceeded solution type compared to reference:
+ RTK Fixed - {self.worst_percent_fixed_when_reference_fixed:.1f}%
+ RTK Float - {self.worst_percent_float_or_better_when_reference_float:.1f}%
+
+Error Estimates:
+{error_table}
+
+===============================================================
+''')
 
 
 def main():
@@ -190,7 +292,41 @@ This tool downloads the relevant files from S3 and prompts stdin before moving o
         '--reference', help="Specify reference path.")
 
     parser.add_argument(
-        '--pass-fail-json', type=Path, help="JSON file with pass/fail test metrics.")
+        '--pass-fail-json', type=Path, help="JSON file with pass/fail test metrics. Example:\n" + '''\
+{
+    "skip_gps_times": [
+        {
+            "description": "Novatel bad startup position",
+            "start": 1414970330.1,
+            "stop": 1414970359.8
+        }
+    ],
+    "error_3d_metrics": {
+        "RTKFixed": [
+            {
+                "type": "MAX",
+                "limit": 0.5
+            },
+            {
+                "type": "MEAN",
+                "limit": 0.05
+            }
+        ],
+        "RTKFloat": [
+            {
+                "type": "MAX",
+                "limit": 1.0
+            },
+            {
+                "type": "MEAN",
+                "limit": 0.5
+            }
+        ]
+    },
+    "percent_fixed_when_reference_fixed": 95.0,
+    "percent_float_or_better_when_reference_float": 95.0,
+    "max_test_duration_variation_percent": 1.0
+}''')
 
     parser.add_argument(
         '--skip-plots', action='store_true', help="Don't generate plots for each device.")
@@ -210,7 +346,8 @@ This tool downloads the relevant files from S3 and prompts stdin before moving o
     else:
         logging.basicConfig(level=logging.INFO, format='%(message)s', stream=sys.stdout)
 
-    pass_fail_settings = None if options.pass_fail_json is None else load_pass_fail_settings(options.pass_fail_json)
+    pass_fail_checker = None if options.pass_fail_json is None else PassFailChecker(
+        load_pass_fail_settings(options.pass_fail_json))
 
     key_split = options.key_for_log_in_drive.split('/')
 
@@ -304,15 +441,12 @@ This tool downloads the relevant files from S3 and prompts stdin before moving o
     if options.reference is not None:
         reference = reference_path
         reference_device = os.path.basename(reference_path)
-        reference_filter = 'std_dev'
     elif novatel_csv_path is not None:
         reference = novatel_csv_path
         reference_device = 'novatel.csv'
-        reference_filter = 'std_dev'
     else:
         reference = log_paths[reference_guid]
         reference_device = get_device_name_from_path(reference)
-        reference_filter = 'type'
 
     for guid in test_guids:
         _logger.info(f'Comparing log: {log_paths[guid]}')
@@ -323,18 +457,18 @@ This tool downloads the relevant files from S3 and prompts stdin before moving o
         if options.skip_plots:
             sys.argv.append('--skip-plots')
 
-        try:
-            analysis = pose_compare_main()
-            if pass_fail_settings is not None:
-                if not pass_fail_check(analysis, settings=pass_fail_settings):
-                    sys.exit(1)
-                else:
-                    _logger.info('Tests passed for ' + guid)
-        except Exception as e:
-            _logger.error(f'Failure: {e}')
-            sys.exit(1)
+        analysis = pose_compare_main()
+        if pass_fail_checker is not None:
+            if not pass_fail_checker.pass_fail_check(analysis):
+                sys.exit(1)
+            else:
+                _logger.info('Tests passed for ' + guid)
+
         if not options.skip_plots:
             input("Press Enter To Process Next Log")
+
+    if pass_fail_checker is not None:
+        pass_fail_checker.generate_report()
 
 
 if __name__ == '__main__':

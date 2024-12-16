@@ -663,8 +663,8 @@ class PoseCompare(object):
         test_start_gps = self.test_pose.gps_time[self.pose_index_maps[0][0]]
         test_end_gps = self.test_pose.gps_time[self.pose_index_maps[0][-1]]
         expected_test_gps_epochs = np.round((test_end_gps - test_start_gps) / test_pose_rate)
-        actual_test_gps_epochs = self.pose_index_maps[0][-1] - self.pose_index_maps[0][0]
-        self.missing_test_gps_epochs = int(expected_test_gps_epochs - actual_test_gps_epochs)
+        self.actual_test_gps_epochs = self.pose_index_maps[0][-1] - self.pose_index_maps[0][0]
+        self.missing_test_gps_epochs = int(expected_test_gps_epochs - self.actual_test_gps_epochs)
 
         data = [[], []]
         data[0].append(self.test_data_name + ' Log Start')
