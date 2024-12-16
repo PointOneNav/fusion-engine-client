@@ -17,20 +17,32 @@ EMSCRIPTEN_BINDINGS(solution) {
   static auto PoseMessage_MESSAGE_TYPE = PoseMessage::MESSAGE_TYPE;
   static auto PoseMessage_MESSAGE_VERSION = PoseMessage::MESSAGE_VERSION;
   static auto PoseMessage_INVALID_UNDULATION = PoseMessage::INVALID_UNDULATION;
+  static auto PoseMessage_FLAG_STATIONARY = PoseMessage::FLAG_STATIONARY;
   class_<PoseMessage>("PoseMessage")
       .constructor<>()
       .class_property("MESSAGE_TYPE", &PoseMessage_MESSAGE_TYPE)
       .class_property("MESSAGE_VERSION", &PoseMessage_MESSAGE_VERSION)
       .class_property("INVALID_UNDULATION", &PoseMessage_INVALID_UNDULATION)
+      .class_property("FLAG_STATIONARY", &PoseMessage_FLAG_STATIONARY)
       .property("p1_time", &PoseMessage::p1_time)
       .REF_TO(PoseMessage, p1_time)
       .property("gps_time", &PoseMessage::gps_time)
       .REF_TO(PoseMessage, gps_time)
       .property("solution_type", &PoseMessage::solution_type)
-      .property("reserved", &PoseMessage::reserved)
+      .property("flags", &PoseMessage::flags)
       .property("undulation_cm", &PoseMessage::undulation_cm)
       .ARRAY_PROPERTY(PoseMessage, lla_deg)
       .ARRAY_PROPERTY(PoseMessage, position_std_enu_m)
+      .ARRAY_PROPERTY(PoseMessage, ypr_deg)
+      .ARRAY_PROPERTY(PoseMessage, ypr_std_deg)
+      .ARRAY_PROPERTY(PoseMessage, velocity_body_mps)
+      .ARRAY_PROPERTY(PoseMessage, velocity_std_body_mps)
+      .property("aggregate_protection_level_m",
+                &PoseMessage::aggregate_protection_level_m)
+      .property("horizontal_protection_level_m",
+                &PoseMessage::horizontal_protection_level_m)
+      .property("vertical_protection_level_m",
+                &PoseMessage::vertical_protection_level_m)
       .STRUCT_FUNCTIONS(PoseMessage);
 
   static auto PoseAuxMessage_MESSAGE_TYPE = PoseAuxMessage::MESSAGE_TYPE;
@@ -51,6 +63,14 @@ EMSCRIPTEN_BINDINGS(solution) {
   static auto GNSSInfoMessage_MESSAGE_TYPE = GNSSInfoMessage::MESSAGE_TYPE;
   static auto GNSSInfoMessage_MESSAGE_VERSION =
       GNSSInfoMessage::MESSAGE_VERSION;
+  static auto GNSSInfoMessage_INVALID_LEAP_SECOND =
+      GNSSInfoMessage::INVALID_LEAP_SECOND;
+  static auto GNSSInfoMessage_INVALID_AGE = GNSSInfoMessage::INVALID_AGE;
+  static auto GNSSInfoMessage_INVALID_DISTANCE =
+      GNSSInfoMessage::INVALID_DISTANCE;
+  static auto GNSSInfoMessage_INVALID_REFERENCE_STATION =
+      GNSSInfoMessage::INVALID_REFERENCE_STATION;
+
   class_<GNSSInfoMessage>("GNSSInfoMessage")
       .constructor<>()
       .class_property("MESSAGE_TYPE", &GNSSInfoMessage_MESSAGE_TYPE)
@@ -59,9 +79,11 @@ EMSCRIPTEN_BINDINGS(solution) {
       .REF_TO(GNSSInfoMessage, p1_time)
       .property("gps_time", &GNSSInfoMessage::gps_time)
       .REF_TO(GNSSInfoMessage, gps_time)
-      .property("last_differential_time",
-                &GNSSInfoMessage::last_differential_time)
-      .REF_TO(GNSSInfoMessage, last_differential_time)
+      .property("leap_second", &GNSSInfoMessage::leap_second)
+      .property("num_svs", &GNSSInfoMessage::num_svs)
+      .ARRAY_PROPERTY(GNSSInfoMessage, reserved)
+      .property("corrections_age", &GNSSInfoMessage::corrections_age)
+      .property("baseline_distance", &GNSSInfoMessage::baseline_distance)
       .property("reference_station_id", &GNSSInfoMessage::reference_station_id)
       .property("gdop", &GNSSInfoMessage::gdop)
       .property("pdop", &GNSSInfoMessage::pdop)
@@ -69,20 +91,6 @@ EMSCRIPTEN_BINDINGS(solution) {
       .property("vdop", &GNSSInfoMessage::vdop)
       .property("gps_time_std_sec", &GNSSInfoMessage::gps_time_std_sec)
       .STRUCT_FUNCTIONS(GNSSInfoMessage);
-
-  static auto SatelliteInfo_SATELLITE_USED = SatelliteInfo::SATELLITE_USED;
-  static auto SatelliteInfo_INVALID_CN0 = SatelliteInfo::INVALID_CN0;
-  class_<SatelliteInfo>("SatelliteInfo")
-      .constructor<>()
-      .class_property("SATELLITE_USED", &SatelliteInfo_SATELLITE_USED)
-      .class_property("INVALID_CN0", &SatelliteInfo_INVALID_CN0)
-      .property("system", &SatelliteInfo::system)
-      .property("prn", &SatelliteInfo::prn)
-      .property("usage", &SatelliteInfo::usage)
-      .property("cn0", &SatelliteInfo::cn0)
-      .property("azimuth_deg", &SatelliteInfo::azimuth_deg)
-      .property("elevation_deg", &SatelliteInfo::elevation_deg)
-      .STRUCT_FUNCTIONS(SatelliteInfo);
 
   static auto GNSSSatelliteMessage_MESSAGE_TYPE =
       GNSSSatelliteMessage::MESSAGE_TYPE;
@@ -102,6 +110,20 @@ EMSCRIPTEN_BINDINGS(solution) {
                       SatelliteInfo)
       .STRUCT_FUNCTIONS(GNSSSatelliteMessage);
 
+  static auto SatelliteInfo_SATELLITE_USED = SatelliteInfo::SATELLITE_USED;
+  static auto SatelliteInfo_INVALID_CN0 = SatelliteInfo::INVALID_CN0;
+  class_<SatelliteInfo>("SatelliteInfo")
+      .constructor<>()
+      .class_property("SATELLITE_USED", &SatelliteInfo_SATELLITE_USED)
+      .class_property("INVALID_CN0", &SatelliteInfo_INVALID_CN0)
+      .property("system", &SatelliteInfo::system)
+      .property("prn", &SatelliteInfo::prn)
+      .property("usage", &SatelliteInfo::usage)
+      .property("cn0", &SatelliteInfo::cn0)
+      .property("azimuth_deg", &SatelliteInfo::azimuth_deg)
+      .property("elevation_deg", &SatelliteInfo::elevation_deg)
+      .STRUCT_FUNCTIONS(SatelliteInfo);
+
   enum_<CalibrationStage>("CalibrationStage")
       .value("UNKNOWN", CalibrationStage::UNKNOWN)
       .value("MOUNTING_ANGLE", CalibrationStage::MOUNTING_ANGLE)
@@ -118,6 +140,8 @@ EMSCRIPTEN_BINDINGS(solution) {
                       &CalibrationStatusMessage_MESSAGE_VERSION)
       .property("p1_time", &CalibrationStatusMessage::p1_time)
       .REF_TO(CalibrationStatusMessage, p1_time)
+      .property("calibration_stage",
+                &CalibrationStatusMessage::calibration_stage)
       .ARRAY_PROPERTY(CalibrationStatusMessage, reserved1)
       .ARRAY_PROPERTY(CalibrationStatusMessage, ypr_deg)
       .ARRAY_PROPERTY(CalibrationStatusMessage, ypr_std_dev_deg)

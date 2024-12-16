@@ -10,5 +10,6 @@
 #include "point_one/fusion_engine/messages/control.h"
 #include "point_one/fusion_engine/messages/defs.h"
 #include "point_one/fusion_engine/messages/device.h"
+#include "point_one/fusion_engine/messages/gnss_corrections.h"
 #include "point_one/fusion_engine/messages/measurements.h"
 #include "point_one/fusion_engine/messages/solution.h"
