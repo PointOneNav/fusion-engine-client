@@ -44,9 +44,11 @@ EMSCRIPTEN_BINDINGS(defs) {
 
       // Sensor measurement messages.
       .value("IMU_OUTPUT", MessageType::IMU_OUTPUT)
-      .value("DEPRECATED_RAW_HEADING_OUTPUT", MessageType::DEPRECATED_RAW_HEADING_OUTPUT)
+      .value("DEPRECATED_RAW_HEADING_OUTPUT",
+             MessageType::DEPRECATED_RAW_HEADING_OUTPUT)
       .value("RAW_IMU_OUTPUT", MessageType::RAW_IMU_OUTPUT)
-      .value("DEPRECATED_HEADING_OUTPUT", MessageType::DEPRECATED_HEADING_OUTPUT)
+      .value("DEPRECATED_HEADING_OUTPUT",
+             MessageType::DEPRECATED_HEADING_OUTPUT)
       .value("IMU_INPUT", MessageType::IMU_INPUT)
       .value("GNSS_ATTITUDE_OUTPUT", MessageType::GNSS_ATTITUDE_OUTPUT)
       .value("RAW_GNSS_ATTITUDE_OUTPUT", MessageType::RAW_GNSS_ATTITUDE_OUTPUT)
