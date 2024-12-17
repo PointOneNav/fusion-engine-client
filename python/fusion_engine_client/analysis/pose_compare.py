@@ -506,7 +506,7 @@ class PoseCompare(object):
         if self.output_dir is None:
             return
 
-        # Assume tha solution types indicate comparable performance between data sets.
+        # Assume that solution types indicate comparable performance between data sets.
         reference_solution_types = self.reference_pose.solution_type[self.pose_index_maps[1]]
         if not no_reference_filter:
             reference_fixed_or_better = reference_solution_types == SolutionType.RTKFixed
@@ -916,8 +916,11 @@ Load and display information stored in a FusionEngine binary file.
     analysis_group = parser.add_argument_group('Analysis Control')
     analysis_group.add_argument(
         '--no-reference-filter', action=ExtendedBooleanAction,
-        help="If set, don't filter limit the reference used for error calculation to portions where the reference "
-             "solution type matches or exceeds the test device.")
+        help="If set, don't limit the reference data used for error calculation to portions where the reference "
+             "solution type matches or exceeds the test device. For example, if the reference solution type is "
+             "'Standalone`, it normally won't be used to calculate the error of the test device if its time matched "
+             "output indicated that it was 'RTK Fixed'. This flag would force it to calculate the error anyway. This "
+             "may result in the reported error being dominated by the error of the reference device.")
 
     options = parser.parse_args()
 

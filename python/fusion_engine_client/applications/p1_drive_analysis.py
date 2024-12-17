@@ -159,15 +159,26 @@ class PassFailChecker:
         return failures
 
     def pass_fail_check(self, analysis: PoseCompare) -> bool:
+        '''!
+        @brief Check the analysis results.
+
+        This will report if any of the failure criteria in the settings are violated, and aggregate the worst case
+        performance across the devices in the drive. These results can be included in a final report.
+        '''
+        # Check if test device data had gaps.
         if analysis.missing_test_gps_epochs > 0:
             _logger.warning(f'{analysis.missing_test_gps_epochs} missing epochs in test data.')
             return False
 
+        # Filter out sections that were marked as invalid in the `skip_gps_times` setting.
         gps_times = analysis.error_gps_times
         filtered_time_idx = np.full((len(analysis.error_gps_times)), True)
         for section in self.settings.skip_gps_times:
             filtered_time_idx[(gps_times >= section.start) & (gps_times <= section.stop)] = False
 
+        # Check the duration of the log matched with the reference device. Confirm that it is of similar duration to
+        # the other logs from the drive. This is mostly to detect if a device crashed or didn't collect a complete log
+        # for any other reason.
         if analysis.actual_test_gps_epochs == 0:
             _logger.warning(f'Reference and test device had no overlapping timestamps suitable for comparison.')
             return False
@@ -188,20 +199,24 @@ class PassFailChecker:
             self.max_valid_positions_analyzed = analysis.actual_test_gps_epochs
             self.min_valid_positions_analyzed = analysis.actual_test_gps_epochs
 
+        # Check that the test device produced RTK output a similar amount of the time to the reference device.
+        # For instance check that (test device number of fixed epochs) / (reference device number of fixed epochs) * 100
+        # is above `percent_fixed_when_reference_fixed`.
+        # In addition store the results from the log with the worst relative fix rates.
         SOLUTION_RATE_MAP = {
             'percent_fixed_when_reference_fixed': 'RTK Fixed',
             'percent_float_or_better_when_reference_float': 'RTK Float'
         }
-
         for k1, k2 in SOLUTION_RATE_MAP.items():
             percent_reference_or_better = analysis.percent_solution_type_reference_or_better[k2]
-            print(percent_reference_or_better)
             if getattr(self.settings, k1) > percent_reference_or_better:
                 _logger.warning(f'{k1} check failed {getattr(self.settings, k1)} > {percent_reference_or_better}')
                 return False
             if getattr(self, 'worst_' + k1) > percent_reference_or_better:
                 setattr(self, 'worst_' + k1, percent_reference_or_better)
 
+        # Check the error_3d_metrics from the settings are met.
+        # Also store the worst results for each metric for report generation.
         tests_failed = False
         for solution_type, metrics in self.settings.error_3d_metrics.items():
             valid_idx = np.logical_and(analysis.error_solution_types == solution_type, filtered_time_idx)
@@ -222,6 +237,7 @@ class PassFailChecker:
                 if metric_value > self.worst_error_3d_metrics[metric_name]:
                     self.worst_error_3d_metrics[metric_name] = metric_value
 
+        # Aggregate the amount of time the test device output each solution type for the final report.
         solution_types_analyzed = analysis.error_solution_types[filtered_time_idx]
         for solution_type in np.unique(solution_types_analyzed):
             name = SolutionType[solution_type]
