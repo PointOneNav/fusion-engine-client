@@ -23,7 +23,8 @@ EMSCRIPTEN_BINDINGS(configuration) {
       .value("VEHICLE_DETAILS", ConfigType::VEHICLE_DETAILS)
       .value("WHEEL_CONFIG", ConfigType::WHEEL_CONFIG)
       .value("HARDWARE_TICK_CONFIG", ConfigType::HARDWARE_TICK_CONFIG)
-      .value("HEADING_BIAS", ConfigType::HEADING_BIAS)
+      .value("DEPRECATED_HEADING_BIAS", ConfigType::DEPRECATED_HEADING_BIAS)
+      .value("GNSS_AUX_LEVER_ARM", ConfigType::GNSS_AUX_LEVER_ARM)
       .value("ENABLED_GNSS_SYSTEMS", ConfigType::ENABLED_GNSS_SYSTEMS)
       .value("ENABLED_GNSS_FREQUENCY_BANDS",
              ConfigType::ENABLED_GNSS_FREQUENCY_BANDS)
@@ -225,12 +226,6 @@ EMSCRIPTEN_BINDINGS(configuration) {
       .ARRAY_PROPERTY(HardwareTickConfig, reserved1)
       .property("wheel_ticks_to_m", &HardwareTickConfig::wheel_ticks_to_m)
       .STRUCT_FUNCTIONS(HardwareTickConfig);
-
-  class_<HeadingBias>("HeadingBias")
-      .constructor<>()
-      .property("horizontal_bias_deg", &HeadingBias::horizontal_bias_deg)
-      .property("vertical_bias_deg", &HeadingBias::vertical_bias_deg)
-      .STRUCT_FUNCTIONS(HeadingBias);
 
   enum_<IonoDelayModel>("IonoDelayModel")
       .value("AUTO", IonoDelayModel::AUTO)
