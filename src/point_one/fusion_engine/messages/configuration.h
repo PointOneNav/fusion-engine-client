@@ -1993,6 +1993,7 @@ enum class NmeaMessageType : uint16_t {
   GSV = 4,
   RMC = 5,
   VTG = 6,
+  ZDA = 7,
   /** @} */
 
   /**
@@ -2041,6 +2042,8 @@ P1_CONSTEXPR_FUNC const char* to_string(NmeaMessageType value) {
       return "RMC";
     case NmeaMessageType::VTG:
       return "VTG";
+    case NmeaMessageType::ZDA:
+      return "ZDA";
     case NmeaMessageType::P1CALSTATUS:
       return "P1CALSTATUS";
     case NmeaMessageType::P1MSG:

@@ -227,6 +227,7 @@ class NmeaMessageType(IntEnum):
     GSV = 4
     RMC = 5
     VTG = 6
+    ZDA = 7
 
     P1CALSTATUS = 1000
     P1MSG = 1001
