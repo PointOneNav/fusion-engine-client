@@ -91,7 +91,7 @@ contents and/or log the messages to disk.
 
     file_group = parser.add_argument_group('File Capture')
     file_group.add_argument(
-        '-f', '--output-format', default='p1log', choices=('p1log', 'raw', 'csv'),
+        '-f', '--output-format', default='raw', choices=('p1log', 'raw', 'csv'),
         help="""\
 The format of the file to be generated when --output is enabled:
 - p1log - Create a *.p1log file containing only FusionEngine messages (default)
@@ -142,7 +142,7 @@ The method used to communicate with the target device:
 
     # Open the output file if logging was requested.
     if options.output is not None:
-        if options.format == 'p1log':
+        if options.output_format == 'p1log':
             p1i_path = os.path.splitext(options.output)[0] + '.p1i'
             if os.path.exists(p1i_path):
                 os.remove(p1i_path)
@@ -151,9 +151,9 @@ The method used to communicate with the target device:
     else:
         output_file = None
 
-    generating_raw_log = (output_file is not None and options.format == 'raw')
-    generating_p1log = (output_file is not None and options.format == 'p1log')
-    generating_csv = (output_file is not None and options.format == 'csv')
+    generating_raw_log = (output_file is not None and options.output_format == 'raw')
+    generating_p1log = (output_file is not None and options.output_format == 'p1log')
+    generating_csv = (output_file is not None and options.output_format == 'csv')
 
     if generating_csv:
         output_file.write(b'host_time,type,p1_time,sys_time\n')
