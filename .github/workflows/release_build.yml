@@ -51,7 +51,7 @@ jobs:
             version: 10
           - os: ubuntu-latest
             compiler: clang
-            version: 11
+            version: 14
     steps:
     - uses: actions/checkout@v2
 
@@ -123,7 +123,7 @@ jobs:
             version: 10
           - os: ubuntu-latest
             compiler: clang
-            version: 11
+            version: 14
           - os: windows-latest
             compiler: msvc
     defaults:
