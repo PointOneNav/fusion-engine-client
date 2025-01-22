@@ -1482,8 +1482,8 @@ struct P1_ALIGNAS(4) PlatformStorageDataMessage {
    */
   Response response = Response::OK;
   /**
-   * The source this data was copied from. If the @ref data_type doesn't separate
-   * active and saved data, this will be set to @ref
+   * The source this data was copied from. If the @ref data_type doesn't
+   * separate active and saved data, this will be set to @ref
    * ConfigurationSource::ACTIVE.
    */
   ConfigurationSource source = ConfigurationSource::ACTIVE;
