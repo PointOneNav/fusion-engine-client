@@ -108,9 +108,10 @@ enum class MessageType : uint16_t {
 
   STA5635_COMMAND = 14100, ///< @ref STA5635Command
   STA5635_COMMAND_RESPONSE = 14101, ///< @ref STA5635CommandResponse
+  STA5635_IQ_DATA = 14102, ///< @ref STA5635IQData
 
   /// The maximum defined @ref MessageType enum value.
-  MAX_VALUE = STA5635_COMMAND_RESPONSE,
+  MAX_VALUE = STA5635_IQ_DATA,
 };
 
 /**
@@ -289,6 +290,9 @@ P1_CONSTEXPR_FUNC const char* to_string(MessageType type) {
 
     case MessageType::STA5635_COMMAND_RESPONSE:
       return "STA5635 Command Response";
+
+    case MessageType::STA5635_IQ_DATA:
+      return "STA5635 IQ Data";
   }
   return "Unrecognized Message";
 }
@@ -370,6 +374,7 @@ P1_CONSTEXPR_FUNC bool IsCommand(MessageType message_type) {
     case MessageType::SUPPORTED_IO_INTERFACES:
     case MessageType::LBAND_FRAME:
     case MessageType::STA5635_COMMAND_RESPONSE:
+    case MessageType::STA5635_IQ_DATA:
       return false;
   }
   return false;
