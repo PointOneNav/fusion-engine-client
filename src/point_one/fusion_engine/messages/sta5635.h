@@ -83,8 +83,6 @@ struct P1_ALIGNAS(4) STA5635CommandResponse : public MessagePayload {
   uint8_t data[4] = {0};
 };
 
-
-
 /**
  * @brief IQ data from an STA5635 sent in response to an @ref STA5635IQData.
  *        (@ref MessageType::STA5635_IQ_DATA, version 1.0).
@@ -93,9 +91,8 @@ struct P1_ALIGNAS(4) STA5635CommandResponse : public MessagePayload {
  *
  */
 struct P1_ALIGNAS(4) STA5635IQData : public MessagePayload {
-    static constexpr MessageType MESSAGE_TYPE =
-            MessageType::STA5635_IQ_DATA;
-    static constexpr uint8_t MESSAGE_VERSION = 0;
+  static constexpr MessageType MESSAGE_TYPE = MessageType::STA5635_IQ_DATA;
+  static constexpr uint8_t MESSAGE_VERSION = 0;
 };
 
 #pragma pack(pop)
