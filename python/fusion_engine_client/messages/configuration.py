@@ -1771,6 +1771,7 @@ class PlatformStorageDataMessage(MessagePayload):
     FLAG_USER_CONFIG_PLATFORM_POSIX = 1
     FLAG_USER_CONFIG_PLATFORM_EMBEDDED = 2
     FLAG_USER_CONFIG_PLATFORM_EMBEDDED_SSR = 3
+    FLAG_USER_CONFIG_SSR_CLIENT = 254
 
     PlatformStorageDataMessageConstruct = Struct(
         "data_type" / AutoEnum(Int8ul, DataType),

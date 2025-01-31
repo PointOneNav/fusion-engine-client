@@ -340,7 +340,8 @@ class FileIndex(object):
         # If there's no P1 timestamps in the index file whatsoever, t0 will be None. In that case, we cannot apply time
         # bounds to the data, since they are based on P1 time. This should be extremely rare.
         elif self.t0 is None:
-            raise IndexError('No P1 timestamps present in index. Cannot apply time bounds.')
+            raise IndexError(f'No P1 timestamps present in index. Cannot apply time bounds. '
+                             f'[start={start}, stop={stop}]')
         else:
             # Note: The index stores only the integer part of the timestamp.
 
