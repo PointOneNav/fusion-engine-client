@@ -256,6 +256,13 @@ enum class ConfigType : uint16_t {
   USER_DEVICE_ID = 301,
 
   /**
+   * A bitmask indicating which profiling features are enabled.
+   *
+   * Payload format: `uint8_t` (see @ref sat_type_masks)
+   */
+  PROFILING_ENABLED = 310,
+
+  /**
    * Configuration of L-band Demodulator Parameters.
    *
    * @note
@@ -341,6 +348,9 @@ P1_CONSTEXPR_FUNC const char* to_string(ConfigType type) {
 
     case ConfigType::USER_DEVICE_ID:
       return "User Device ID";
+
+    case ConfigType::PROFILING_ENABLED:
+      return "Profiling Enabled";
 
     case ConfigType::INTERFACE_CONFIG:
       return "Interface Submessage";
