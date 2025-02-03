@@ -45,6 +45,7 @@ class ConfigType(IntEnum):
     UART2_OUTPUT_DIAGNOSTICS_MESSAGES = 259
     ENABLE_WATCHDOG_TIMER = 300
     USER_DEVICE_ID = 301
+    PROFILING_MASK = 310
     LBAND_PARAMETERS = 1024
 
 
@@ -882,6 +883,14 @@ class WatchdogTimerEnabled(_conf_gen.BoolVal):
 class UserDeviceID(_conf_gen.StringVal):
     """!
     @brief A string for identifying a device.
+    """
+    pass
+
+
+@_conf_gen.create_config_class(ConfigType.PROFILING_MASK, _conf_gen.UInt8Construct)
+class ProfilingMask(_conf_gen.IntegerVal):
+    """!
+    @brief A bitmask indicating which profiling features are enabled.
     """
     pass
 
