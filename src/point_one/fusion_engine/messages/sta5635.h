@@ -92,6 +92,8 @@ struct P1_ALIGNAS(4) STA5635IQData : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::STA5635_IQ_DATA;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
+  uint8_t reserved[4] = {0};
+
   /**
    * Note: This message version contains no data fields
    * 
