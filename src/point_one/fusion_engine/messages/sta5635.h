@@ -95,8 +95,9 @@ struct P1_ALIGNAS(4) STA5635IQData : public MessagePayload {
   uint8_t reserved[4] = {0};
 
   /**
-   * Note: This message version contains no data fields
-   * 
+   * @note
+   * This message ~version~ struct contains no data fields.
+   * <br>
    * The rest of this message contains the wrapped payload data. The size of
    * the data is found by subtracting the size of the other fields in this
    * message from the header `payload_size_bytes` (i.e. `size_t content_size =
