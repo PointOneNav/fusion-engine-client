@@ -83,6 +83,23 @@ struct P1_ALIGNAS(4) STA5635CommandResponse : public MessagePayload {
   uint8_t data[4] = {0};
 };
 
+/**
+ * @brief IQ sample data from an STA5635
+ *        (@ref MessageType::STA5635_IQ_DATA, version 1.0).
+ * @ingroup sta5635
+ * @note
+ * The rest of this message contains the wrapped payload data. The size of
+ * the data is found by subtracting the size of the other fields in this
+ * message from the header `payload_size_bytes` (i.e. `size_t content_size =
+ * header->payload_size_bytes - sizeof(STA5635IQData)`).
+ */
+struct P1_ALIGNAS(4) STA5635IQData : public MessagePayload {
+  static constexpr MessageType MESSAGE_TYPE = MessageType::STA5635_IQ_DATA;
+  static constexpr uint8_t MESSAGE_VERSION = 0;
+
+  uint8_t reserved[4] = {0};
+};
+
 #pragma pack(pop)
 
 } // namespace messages
