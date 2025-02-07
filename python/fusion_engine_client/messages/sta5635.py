@@ -1,4 +1,4 @@
-from construct import (Struct, Int8ul, Int32ul, Int64sl, Bytes)
+from construct import (GreedyBytes, Padding, Struct, Int8ul, Int32ul, Int64sl, Bytes)
 
 from ..utils.construct_utils import construct_message_to_string
 from .defs import *
