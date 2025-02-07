@@ -84,3 +84,41 @@ class STA5635CommandResponse(MessagePayload):
         result = super().__repr__()[:-1]
         result += f', seq={self.command_sequence_number}, data={self.data}]'
         return result
+
+
+class STA5635IQData(MessagePayload):
+    """!
+    @brief IQ sample data from a STA5635.
+    """
+    MESSAGE_TYPE = MessageType.STA5635_IQ_DATA
+    MESSAGE_VERSION = 0
+
+    Construct = Struct(
+        "data" / Bytes(2),
+    )
+
+    def __init__(self):
+        self.data = bytes()
+
+    def pack(self, buffer: Optional[bytes] = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        values = vars(self)
+        packed_data = self.Construct.build(values)
+        return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
+
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
+        parsed = self.Construct.parse(buffer[offset:])
+        self.__dict__.update(parsed)
+        del self.__dict__['_io']
+        return parsed._io.tell()
+
+    def calcsize(self) -> int:
+        return self.Construct.sizeof()
+
+    def __repr__(self):
+        result = super().__repr__()[:-1]
+        result += f', data={self.data}]'
+        return result
+
+    def __str__(self):
+        return construct_message_to_string(message=self, value_to_string={
+        })
