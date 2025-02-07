@@ -88,37 +88,40 @@ class STA5635CommandResponse(MessagePayload):
 
 class STA5635IQData(MessagePayload):
     """!
-    @brief IQ sample data from a STA5635.
+    @brief Wrapper for IQ Samples from a STA5635.
     """
     MESSAGE_TYPE = MessageType.STA5635_IQ_DATA
     MESSAGE_VERSION = 0
 
     Construct = Struct(
-        "data" / Bytes(2),
+        Padding(4),
+        # NOTE: Since this message does no capture the expected data size, the Construct relies on the size of the
+        # Python buffer passed to `unpack`` to infer the size of the data. This is the behavior of @ref GreedyBytes.
+        "data" / GreedyBytes
     )
 
     def __init__(self):
         self.data = bytes()
 
-    def pack(self, buffer: Optional[bytes] = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
-        values = vars(self)
-        packed_data = self.Construct.build(values)
-        return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        ret = MessagePayload.pack(self, buffer, offset, return_buffer)
+        return ret
 
     def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
-        parsed = self.Construct.parse(buffer[offset:])
-        self.__dict__.update(parsed)
-        del self.__dict__['_io']
-        return parsed._io.tell()
-
-    def calcsize(self) -> int:
-        return self.Construct.sizeof()
+        ret = MessagePayload.unpack(self, buffer, offset, message_version)
+        return ret
 
     def __repr__(self):
         result = super().__repr__()[:-1]
-        result += f', data={self.data}]'
+        result += f', data_len={len(self.data)}]'
         return result
 
     def __str__(self):
-        return construct_message_to_string(message=self, value_to_string={
-        })
+        return construct_message_to_string(message=self, construct=self.Construct,
+                                           value_to_string={
+                                               'data': lambda x: f'{len(x)} B payload',
+                                           },
+                                           title=f'IQ Samples')
+
+    def calcsize(self) -> int:
+        return len(self.pack())
