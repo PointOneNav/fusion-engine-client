@@ -84,10 +84,9 @@ struct P1_ALIGNAS(4) STA5635CommandResponse : public MessagePayload {
 };
 
 /**
- * @brief IQ data from an STA5635 sent in response to an @ref STA5635IQData.
+ * @brief IQ sample data from an STA5635.
  *        (@ref MessageType::STA5635_IQ_DATA, version 1.0).
  * @ingroup sta5635
- *
  */
 struct P1_ALIGNAS(4) STA5635IQData : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::STA5635_IQ_DATA;
@@ -95,7 +94,6 @@ struct P1_ALIGNAS(4) STA5635IQData : public MessagePayload {
 
   /**
    * Note: This message version contains no data fields
-   * 
    * 
    * The rest of this message contains the wrapped payload data. The size of
    * the data is found by subtracting the size of the other fields in this
