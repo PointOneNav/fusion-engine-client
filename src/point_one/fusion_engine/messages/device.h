@@ -303,7 +303,13 @@ struct P1_ALIGNAS(4) SystemStatusMessage : public MessagePayload {
    */
   int16_t gnss_temperature = INVALID_TEMPERATURE;
 
-  uint8_t reserved[118] = {0};
+  /**
+   * The temperature of the CPU running the positioning engine (in deg Celcius *
+   * 2^-7). Set to 0x7FFF if invalid.
+   */
+  int16_t pe_cpu_temperature = INVALID_TEMPERATURE;
+
+  uint8_t reserved[116] = {0};
 };
 
 #pragma pack(pop)
