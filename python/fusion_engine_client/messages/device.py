@@ -274,7 +274,7 @@ class SystemStatusMessage(MessagePayload):
     @brief System status message.
     """
     MESSAGE_TYPE = MessageType.SYSTEM_STATUS
-    MESSAGE_VERSION = 0
+    MESSAGE_VERSION = 1
 
     Construct = Struct(
         "p1_time" / TimestampConstruct,
@@ -297,6 +297,8 @@ class SystemStatusMessage(MessagePayload):
         parsed = self.Construct.parse(buffer[offset:])
         self.__dict__.update(parsed)
         del self.__dict__['_io']
+        if message_version < 1:
+            self.pe_cpu_temperature_degc = math.nan
         return parsed._io.tell()
 
     @classmethod
