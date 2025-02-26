@@ -298,13 +298,13 @@ struct P1_ALIGNAS(4) SystemStatusMessage : public MessagePayload {
   Timestamp p1_time;
 
   /**
-   * The temperature of the GNSS receiver (in deg Celcius * 2^-7). Set to
+   * The temperature of the GNSS receiver (in deg Celsius * 2^-7). Set to
    * 0x7FFF if invalid.
    */
   int16_t gnss_temperature = INVALID_TEMPERATURE;
 
   /**
-   * The temperature of the CPU running the positioning engine (in deg Celcius *
+   * The temperature of the CPU running the positioning engine (in deg Celsius *
    * 2^-7). Set to 0x7FFF if invalid.
    */
   int16_t pe_cpu_temperature = INVALID_TEMPERATURE;
