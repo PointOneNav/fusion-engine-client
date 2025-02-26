@@ -284,13 +284,13 @@ struct P1_ALIGNAS(4) EventNotificationMessage : public MessagePayload {
 
 /**
  * @brief System status information (@ref
- *        MessageType::SYSTEM_STATUS, version 1.0).
+ *        MessageType::SYSTEM_STATUS, version 1.1).
  * @ingroup device_status
  */
 
 struct P1_ALIGNAS(4) SystemStatusMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::SYSTEM_STATUS;
-  static constexpr uint8_t MESSAGE_VERSION = 0;
+  static constexpr uint8_t MESSAGE_VERSION = 1;
 
   static constexpr int16_t INVALID_TEMPERATURE = INT16_MAX;
 
@@ -305,7 +305,8 @@ struct P1_ALIGNAS(4) SystemStatusMessage : public MessagePayload {
 
   /**
    * The temperature of the CPU running the positioning engine (in deg Celsius *
-   * 2^-7). Set to 0x7FFF if invalid.
+   * 2^-7). Set to 0x7FFF if invalid. Added in version 1.1 (set to 0 in version
+   * 1.0).
    */
   int16_t pe_cpu_temperature = INVALID_TEMPERATURE;
 
