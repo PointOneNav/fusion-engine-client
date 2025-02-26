@@ -2237,11 +2237,11 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             return
 
         # Setup the figure.
-        figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=True,
-                               subplot_titles=['GNSS Temperature'])
+        figure = make_subplots(rows=2, cols=1, print_grid=False, shared_xaxes=True,
+                               subplot_titles=['GNSS Temperature', 'PE CPU Temperature'])
 
         figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
-        for i in range(1):
+        for i in range(2):
             figure['layout']['xaxis%d' % (i + 1)].update(title=self.p1_time_label, showticklabels=True)
         figure['layout']['yaxis1'].update(title="Temp (deg C)")
 
@@ -2252,6 +2252,11 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
                                       hovertemplate='Time: %{x:.3f} sec (%{customdata:.3f} sec)',
                                       mode='markers', line={'color': 'red'}),
                          1, 1)
+        figure.add_trace(go.Scattergl(x=time, y=data.pe_cpu_temperature_degc, customdata=data.p1_time,
+                                      name='PE CPU Temperature',
+                                      hovertemplate='Time: %{x:.3f} sec (%{customdata:.3f} sec)',
+                                      mode='markers', line={'color': 'orange'}),
+                         2, 1)
 
         self._add_figure(name="profile_system_status", figure=figure, title="Profiling: System Status")
 

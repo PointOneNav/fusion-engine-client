@@ -279,12 +279,14 @@ class SystemStatusMessage(MessagePayload):
     Construct = Struct(
         "p1_time" / TimestampConstruct,
         "gnss_temperature_degc" / FixedPointAdapter(2 ** -7, Int16sl, invalid=0x7FFF),
-        Padding(118),
+        "pe_cpu_temperature_degc" / FixedPointAdapter(2 ** -7, Int16sl, invalid=0x7FFF),
+        Padding(116),
     )
 
     def __init__(self):
         self.p1_time = Timestamp()
         self.gnss_temperature_degc = math.nan
+        self.pe_cpu_temperature_degc = math.nan
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         values = vars(self)
@@ -303,18 +305,21 @@ class SystemStatusMessage(MessagePayload):
 
     def __repr__(self):
         result = super().__repr__()[:-1]
-        result += f', gnss_temperature={self.gnss_temperature_degc:.1f} deg C]'
+        result += f', gnss_temperature={self.gnss_temperature_degc:.1f} deg C'
+        result += f', pe_cpu_temperature={self.pe_cpu_temperature_degc:.1f} deg C]'
         return result
 
     def __str__(self):
         return f"""\
 System Status Message @ {self.p1_time}
-  GNSS Temperature: {self.gnss_temperature_degc:.1f} deg C"""
+  GNSS Temperature: {self.gnss_temperature_degc:.1f} deg C
+  PE CPU Temperature: {self.pe_cpu_temperature_degc:.1f} deg C"""
 
     @classmethod
     def to_numpy(cls, messages):
         result = {
             'p1_time': np.array([float(m.p1_time) for m in messages]),
             'gnss_temperature_degc': np.array([m.gnss_temperature_degc for m in messages]),
+            'pe_cpu_temperature_degc': np.array([m.pe_cpu_temperature_degc for m in messages]),
         }
         return result
