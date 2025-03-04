@@ -99,7 +99,7 @@ The format of the file to be generated when --output is enabled:
 - csv - Create a CSV file with the received message types and timestamps""")
     file_group.add_argument(
         '-o', '--output', type=str,
-        help="The path to a file where incoming data will be stored.")
+        help="If specified, save the incoming data in the specified file.")
 
     parser.add_argument(
         'transport',
