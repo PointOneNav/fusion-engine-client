@@ -241,7 +241,7 @@ jobs:
         fetch-depth: 0
 
     - name: Setup Doxygen Cache
-      uses: actions/cache@v2
+      uses: actions/cache@v4
       id: cache-doxygen
       with:
         path: |

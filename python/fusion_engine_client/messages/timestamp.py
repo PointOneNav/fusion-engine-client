@@ -151,7 +151,10 @@ class Timestamp:
         if self.is_gps():
             return 'GPS: %s' % self.to_gps_str()
         else:
-            return 'P1: %.3f sec' % self.seconds
+            return 'P1: %s' % self.to_p1_str()
+
+    def to_p1_str(self):
+        return '%.3f sec' % self.seconds
 
     def to_gps_str(self):
         return '%d:%.3f (%.3f sec)' % (*self.get_week_tow(), self.seconds)

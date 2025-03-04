@@ -94,12 +94,12 @@ contents and/or log the messages to disk.
         '-f', '--output-format', default='raw', choices=('p1log', 'raw', 'csv'),
         help="""\
 The format of the file to be generated when --output is enabled:
-- p1log - Create a *.p1log file containing only FusionEngine messages (default)
+- p1log - Create a *.p1log file containing only FusionEngine messages
 - raw - Create a generic binary file containing all incoming data
 - csv - Create a CSV file with the received message types and timestamps""")
     file_group.add_argument(
         '-o', '--output', type=str,
-        help="The path to a file where incoming data will be stored.")
+        help="If specified, save the incoming data in the specified file.")
 
     parser.add_argument(
         'transport',

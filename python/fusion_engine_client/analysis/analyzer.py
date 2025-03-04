@@ -2606,7 +2606,8 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
         # in case, we'll approximate the GPS time _at_ t0 if needed.
         idx = find_first(~np.isnan(pose_data.gps_time))
         if idx >= 0:
-            dt_p1_sec = pose_data.p1_time[idx] - float(self.t0)
+            first_p1_time = self.t0 if self.time_axis == 'relative' else pose_data.p1_time[0]
+            dt_p1_sec = pose_data.p1_time[idx] - float(first_p1_time)
             t0_gps = Timestamp(pose_data.gps_time[idx]) - dt_p1_sec
             # If the first pose is pretty close to t0, we'll assume the approximation is reasonably accurate and not
             # bother reporting it.
@@ -2623,8 +2624,12 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
         result = self.reader.read(message_types=None, require_p1_time=True, **params)
         if len(result.messages) > 0:
             processed_t0 = result.messages[0].get_p1_time()
+            processed_t0_gps = t0_gps + (processed_t0 - self.reader.t0)
+            processed_t0_is_approx = t0_is_approx
         else:
             processed_t0 = Timestamp()
+            processed_t0_gps = None
+            processed_t0_is_approx = None
 
         result = self.reader.read(message_types=None, require_system_time=True, **params)
         if len(result.messages) > 0:
@@ -2633,6 +2638,19 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
             processed_system_t0 = None
 
         # Create a table with log times and durations.
+        def _time_strings(t0, system_t0, t0_gps, t0_is_approx):
+            strings = []
+            if t0 is None:
+                strings.append('P1: None')
+            else:
+                strings.append(f'P1: {t0.to_p1_str()}')
+            if system_t0 is None:
+                strings.append('System: None')
+            else:
+                strings.append(f"System: {system_time_to_str(system_t0, is_seconds=True).replace(' time', ':')}")
+            strings.append(self._gps_sec_to_string(t0_gps, is_approx=t0_is_approx))
+            return strings
+
         descriptions = [
             'Log Start Time',
             '',
@@ -2646,15 +2664,13 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
         ]
         times = [
             # Log summary.
-            str(self.reader.t0),
-            system_time_to_str(self.reader.get_system_t0(), is_seconds=True).replace(' time', ':'),
-            self._gps_sec_to_string(t0_gps, is_approx=t0_is_approx),
+            *_time_strings(t0=self.reader.t0, system_t0=self.reader.get_system_t0(),
+                           t0_gps=t0_gps, t0_is_approx=t0_is_approx),
             log_duration_sec,
             '',
             # Processed data summary.
-            str(processed_t0),
-            system_time_to_str(processed_system_t0, is_seconds=True).replace(' time', ':'),
-            self._gps_sec_to_string(t0_gps, is_approx=t0_is_approx),
+            *_time_strings(t0=processed_t0, system_t0=processed_system_t0,
+                           t0_gps=processed_t0_gps, t0_is_approx=processed_t0_is_approx),
             '%.1f seconds' % processing_duration_sec,
         ]
         time_table = _data_to_table(['Description', 'Time'], [descriptions, times])
@@ -2806,7 +2822,7 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
         if isinstance(gps_time_sec, Timestamp):
             gps_time_sec = float(gps_time_sec)
 
-        if np.isnan(gps_time_sec):
+        if gps_time_sec is None or np.isnan(gps_time_sec):
             return "GPS: N/A<br>UTC: N/A"
         else:
             SECS_PER_WEEK = 7 * 24 * 3600.0

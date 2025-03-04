@@ -31,8 +31,17 @@ class MessageData(object):
         self.messages = []
         self.messages_bytes = []
         self.message_index = []
+        self.num_messages = 0
 
-    def to_numpy(self, remove_nan_times: bool = True):
+    def add_message(self, payload: MessagePayload, message_bytes: int = None, message_index: int = None):
+        self.messages.append(payload)
+        self.num_messages += 1
+        if message_bytes is not None:
+            self.messages_bytes.append(message_bytes)
+        if message_index is not None:
+            self.message_index.append(message_index)
+
+    def to_numpy(self, remove_nan_times: bool = True, keep_messages: bool = True):
         """!
         @brief Convert the raw FusionEngine message data into numpy arrays that can be used for data analysis.
 
@@ -50,6 +59,8 @@ class MessageData(object):
 
         @param remove_nan_times If `True`, remove entries whose P1 timestamps are `NaN` (if P1 time is available for
                this message type).
+        @param keep_messages If `True`, keep the original @ref MessagePayload class instances in @ref self.messages in
+               addition to the populated numpy arrays. Otherwise, clear @ref self.messages.
         """
         if hasattr(self.message_class, 'to_numpy'):
             have_cached_numpy_data = 'p1_time' in self.__dict__
@@ -108,12 +119,17 @@ class MessageData(object):
                                 else:
                                     # Unrecognized data shape.
                                     pass
+
+            if not keep_messages:
+                self.messages = []
+                self.messages_bytes = []
+                self.message_index = []
         else:
             raise ValueError('Message type %s does not support numpy conversion.' %
                              MessageType.get_type_string(self.message_type))
 
     def __repr__(self):
-        return f'{MessageType.get_type_string(self.message_type)} data ({len(self.messages)} messages)'
+        return f'{MessageType.get_type_string(self.message_type)} data ({self.num_messages} messages)'
 
 
 class TimeAlignmentMode(IntEnum):
@@ -550,17 +566,15 @@ class DataLoader(object):
                 newest_messages.append((header, payload, message_bytes, message_index))
             elif max_messages is None or message_count <= abs(max_messages):
                 if return_in_order:
-                    result.messages.append(payload)
-                    if return_bytes:
-                        result.messages_bytes.append(message_bytes)
-                    if return_message_index:
-                        result.message_index.append(message_index)
+                    result.add_message(
+                        payload=payload,
+                        message_bytes=message_bytes if return_bytes else None,
+                        message_index=message_index if return_message_index else None)
                 else:
-                    data_cache[header.message_type].messages.append(payload)
-                    if return_bytes:
-                        data_cache[header.message_type].messages_bytes.append(message_bytes)
-                    if return_message_index:
-                        data_cache[header.message_type].message_index.append(message_index)
+                    data_cache[header.message_type].add_message(
+                        payload=payload,
+                        message_bytes=message_bytes if return_bytes else None,
+                        message_index=message_index if return_message_index else None)
 
             if max_messages is not None:
                 # If we hit the max message count, we're done reading.
@@ -584,17 +598,15 @@ class DataLoader(object):
         if newest_messages is not None:
             for header, payload, message_bytes, message_index in newest_messages:
                 if return_in_order:
-                    result.messages.append(payload)
-                    if return_bytes:
-                        result.messages_bytes.append(message_bytes)
-                    if return_message_index:
-                        result.message_index.append(message_index)
+                    result.add_message(
+                        payload=payload,
+                        message_bytes=message_bytes if return_bytes else None,
+                        message_index=message_index if return_message_index else None)
                 else:
-                    data_cache[header.message_type].messages.append(payload)
-                    if return_bytes:
-                        data_cache[header.message_type].messages_bytes.append(message_bytes)
-                    if return_message_index:
-                        data_cache[header.message_type].message_index.append(message_index)
+                    data_cache[header.message_type].add_message(
+                        payload=payload,
+                        message_bytes=message_bytes if return_bytes else None,
+                        message_index=message_index if return_message_index else None)
 
         # Time-align the data if requested.
         if time_align != TimeAlignmentMode.NONE:
@@ -914,8 +926,6 @@ class DataLoader(object):
         """
         for entry in data.values():
             try:
-                entry.to_numpy(remove_nan_times=remove_nan_times)
-                if not keep_messages:
-                    entry.messages = []
+                entry.to_numpy(remove_nan_times=remove_nan_times, keep_messages=keep_messages)
             except ValueError:
                 pass
