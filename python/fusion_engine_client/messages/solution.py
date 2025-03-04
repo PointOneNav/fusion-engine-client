@@ -138,7 +138,7 @@ class PoseMessage(MessagePayload):
             utc_str = 'None'
         string += '  GPS time: %s\n' % gps_str
         string += '  UTC time: %s\n' % utc_str
-        string += '  Position (LLA): %.6f, %.6f, %.3f (deg, deg, m)\n' % tuple(self.lla_deg)
+        string += '  Position (LLA): %.8f, %.8f, %.3f (deg, deg, m)\n' % tuple(self.lla_deg)
         string += '  Attitude (YPR): %.2f, %.2f, %.2f (deg, deg, deg)\n' % tuple(self.ypr_deg)
         string += '  Velocity (Body): %.2f, %.2f, %.2f (m/s, m/s, m/s)\n' % tuple(self.velocity_body_mps)
         string += '  Position std (ENU): %.2f, %.2f, %.2f (m, m, m)\n' % tuple(self.position_std_enu_m)
