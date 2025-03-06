@@ -1676,7 +1676,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             common_time_source = corrected_time_source
         elif measurement_type is None:
             corrected_time_source = None
-            raw_time_source = _get_time_source(raw_measurement_type, data)
+            raw_time_source = _get_time_source(raw_measurement_type, raw_data)
             common_time_source = raw_time_source
         else:
             corrected_time_source = _get_time_source(measurement_type, data)
