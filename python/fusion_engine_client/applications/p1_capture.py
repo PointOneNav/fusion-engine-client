@@ -1,28 +1,13 @@
 #!/usr/bin/env python3
 
-from typing import Union
-
 from datetime import datetime
 import math
 import os
-import re
 import select
-import socket
 import sys
 import time
 
 import colorama
-
-try:
-    # pySerial is optional.
-    import serial
-    serial_supported = True
-except ImportError:
-    serial_supported = False
-    # Dummy stand-in if pySerial is not installed.
-    class serial:
-        class Serial: pass
-        class SerialException: pass
 
 if __package__ is None or __package__ == "":
     from import_utils import enable_relative_imports
@@ -33,40 +18,9 @@ from ..utils import trace as logging
 from ..utils.argument_parser import ArgumentParser, ExtendedBooleanAction
 from ..utils.print_utils import \
     DeviceSummary, add_print_format_argument, print_message, print_summary_table
+from ..utils.transport_utils import *
 
 _logger = logging.getLogger('point_one.fusion_engine.applications.p1_capture')
-
-
-def create_transport(descriptor: str) -> Union[socket.socket, serial.Serial]:
-    m = re.match(r'^tcp://([a-zA-Z0-9-_.]+)?:([0-9]+)$', descriptor)
-    if m:
-        transport = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        transport.connect((socket.gethostbyname(m.group(1)), int(m.group(2))))
-        return transport
-
-    m = re.match(r'^udp://:([0-9]+)$', descriptor)
-    if m:
-        transport = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        transport.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        transport.bind(('', int(m.group(1))))
-        return transport
-
-    m = re.match(r'^unix://([a-zA-Z0-9-_./]+)$', descriptor)
-    if m:
-        transport = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        transport.connect(m.group(1))
-        return transport
-
-    m = re.match(r'^(?:(?:serial|tty)://)?([^:]+):([0-9]+)$', descriptor)
-    if m:
-        if serial_supported:
-            transport = serial.Serial(port=m.group(1), baudrate=int(m.group(2)))
-            return transport
-        else:
-            raise RuntimeError(
-                "This application requires pyserial. Please install (pip install pyserial) and run again.")
-
-    raise ValueError('Unsupported transport descriptor.')
 
 
 def main():
@@ -102,19 +56,8 @@ The format of the file to be generated when --output is enabled:
         help="If specified, save the incoming data in the specified file.")
 
     parser.add_argument(
-        'transport',
-        help="""\
-The method used to communicate with the target device:
-- tcp://HOSTNAME:PORT - Connect to the specified hostname (or IP address) and
-  port over TCP (e.g., tty://192.168.0.3:30201)
-- udp://:PORT - Listen for incoming data on the specified UDP port (e.g.,
-  udp://:12345)
-  Note: When using UDP, you must configure the device to send data to your
-  machine.
-- unix://FILENAME - Connect to the specified UNIX domain socket file
-- [tty://]DEVICE:BAUD - Connect to a serial device with the specified baud rate
-  (e.g., tty:///dev/ttyUSB0:460800 or /dev/ttyUSB0:460800) 
-""")
+        'transport', type=str,
+        help=TRANSPORT_HELP_STRING)
 
     options = parser.parse_args()
 

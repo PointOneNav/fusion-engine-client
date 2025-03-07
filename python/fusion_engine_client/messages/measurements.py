@@ -188,9 +188,6 @@ class RawIMUOutput(MessagePayload):
         self.__dict__.update(parsed)
         del self.__dict__['_io']
 
-        # Disregard any user-specified P1 timestamps in input data.
-        self.details.p1_time = Timestamp()
-
         return parsed._io.tell()
 
     @classmethod
@@ -454,9 +451,6 @@ class RawWheelSpeedOutput(MessagePayload):
         self.__dict__.update(parsed)
         del self.__dict__['_io']
 
-        # Disregard any user-specified P1 timestamps in input data.
-        self.details.p1_time = Timestamp()
-
         return parsed._io.tell()
 
     @classmethod
@@ -528,7 +522,7 @@ class VehicleSpeedInput(MessagePayload):
         self.details = MeasurementDetails()
         self.gear = GearType.UNKNOWN
         self.flags = 0x0
-        self.vehicle_speed = np.nan
+        self.vehicle_speed_mps = np.nan
 
     def is_signed(self) -> bool:
         return (self.flags & self.FLAG_SIGNED) != 0
@@ -689,7 +683,7 @@ class RawVehicleSpeedOutput(MessagePayload):
         self.details = MeasurementDetails()
         self.gear = GearType.UNKNOWN
         self.flags = 0x0
-        self.vehicle_speed = np.nan
+        self.vehicle_speed_mps = np.nan
 
     def is_signed(self) -> bool:
         return (self.flags & self.FLAG_SIGNED) != 0

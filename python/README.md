@@ -64,6 +64,8 @@ FusionEngine message specification.
         optionally mixed with other binary data, and decode the contents using the `FusionEngineDecoder` helper class
       - [send_command.py](examples/send_command.py) - Send a command to a device over serial or TCP, and wait for a
         response
+      - [send_vehicle_speed.py](examples/send_vehicle_speed.py) - Send example vehicle/wheel speed input to a device
+        over serial or TCP
       - [serial_client.py](examples/serial_client.py) - Connect to a device over a local serial port and decode/print
         incoming FusionEngine messages
       - [tcp_client.py](examples/tcp_client.py) - Connect to a device over TCP and decode messages in real time and
