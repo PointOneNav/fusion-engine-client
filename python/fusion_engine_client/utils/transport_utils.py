@@ -35,8 +35,8 @@ The method used to communicate with the target device:
   Note: When using UDP, you must configure the device to send data to your
   machine.
 - unix://FILENAME - Connect to the specified UNIX domain socket file
-- [tty://]DEVICE:BAUD - Connect to a serial device with the specified baud rate
-  (e.g., tty:///dev/ttyUSB0:460800 or /dev/ttyUSB0:460800) 
+- [(serial|tty)://]DEVICE:BAUD - Connect to a serial device with the specified
+  baud rate (e.g., tty:///dev/ttyUSB0:460800 or /dev/ttyUSB0:460800)
 """
 
 
