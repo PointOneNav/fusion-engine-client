@@ -6,6 +6,19 @@ try:
     # pySerial is optional.
     import serial
     serial_supported = True
+
+    # The Serial class has read() and write() functions. For convenience, we add recv() and send() aliases, consistent
+    # with the Python socket class.
+    def __recv(self, size, flags=None):
+        data = self.read(size)
+        if len(data) == 0 and size > 0:
+            raise socket.timeout('Serial read timed out.')
+        else:
+            return data
+    def __send(self, data, flags=None):
+        self.write(data)
+    serial.Serial.recv = __recv
+    serial.Serial.send = __send
 except ImportError:
     serial_supported = False
     # Dummy stand-in if pySerial is not installed.
