@@ -41,26 +41,32 @@ def create_transport(descriptor: str) -> Union[socket.socket, serial.Serial]:
     m = re.match(r'^tcp://([a-zA-Z0-9-_.]+)?:([0-9]+)$', descriptor)
     if m:
         transport = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        transport.connect((socket.gethostbyname(m.group(1)), int(m.group(2))))
+        hostname = m.group(1)
+        port = int(m.group(2))
+        transport.connect((socket.gethostbyname(hostname), port))
         return transport
 
     m = re.match(r'^udp://:([0-9]+)$', descriptor)
     if m:
         transport = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         transport.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        transport.bind(('', int(m.group(1))))
+        port = int(m.group(1))
+        transport.bind(('', port))
         return transport
 
     m = re.match(r'^unix://([a-zA-Z0-9-_./]+)$', descriptor)
     if m:
         transport = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        transport.connect(m.group(1))
+        path = m.group(1)
+        transport.connect(path)
         return transport
 
     m = re.match(r'^(?:(?:serial|tty)://)?([^:]+):([0-9]+)$', descriptor)
     if m:
         if serial_supported:
-            transport = serial.Serial(port=m.group(1), baudrate=int(m.group(2)))
+            path = m.group(1)
+            baud_rate= int(m.group(2))
+            transport = serial.Serial(port=path, baudrate=baud_rate)
             return transport
         else:
             raise RuntimeError(
