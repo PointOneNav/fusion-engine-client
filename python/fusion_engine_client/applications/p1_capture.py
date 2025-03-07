@@ -38,11 +38,11 @@ _logger = logging.getLogger('point_one.fusion_engine.applications.p1_capture')
 
 
 def create_transport(descriptor: str) -> Union[socket.socket, serial.Serial]:
-    m = re.match(r'^tcp://([a-zA-Z0-9-_.]+)?:([0-9]+)$', descriptor)
+    m = re.match(r'^tcp://([a-zA-Z0-9-_.]+)?(?::([0-9]+))?$', descriptor)
     if m:
         transport = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         hostname = m.group(1)
-        port = int(m.group(2))
+        port = 30200 if m.group(2) is None else int(m.group(2))
         transport.connect((socket.gethostbyname(hostname), port))
         return transport
 
@@ -111,8 +111,8 @@ The format of the file to be generated when --output is enabled:
         'transport',
         help="""\
 The method used to communicate with the target device:
-- tcp://HOSTNAME:PORT - Connect to the specified hostname (or IP address) and
-  port over TCP (e.g., tty://192.168.0.3:30201)
+- tcp://HOSTNAME[:PORT] - Connect to the specified hostname (or IP address) and
+  port over TCP (e.g., tty://192.168.0.3:30202); defaults to port 30200
 - udp://:PORT - Listen for incoming data on the specified UDP port (e.g.,
   udp://:12345)
   Note: When using UDP, you must configure the device to send data to your
