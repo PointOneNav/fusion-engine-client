@@ -40,13 +40,15 @@ The method used to communicate with the target device:
 """
 
 
-def create_transport(descriptor: str) -> Union[socket.socket, serial.Serial]:
+def create_transport(descriptor: str, timeout_sec: float = None) -> Union[socket.socket, serial.Serial]:
     m = re.match(r'^tcp://([a-zA-Z0-9-_.]+)?(?::([0-9]+))?$', descriptor)
     if m:
         transport = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         hostname = m.group(1)
         port = 30200 if m.group(2) is None else int(m.group(2))
         transport.connect((socket.gethostbyname(hostname), port))
+        if timeout_sec is not None:
+            transport.settimeout(timeout_sec)
         return transport
 
     m = re.match(r'^udp://:([0-9]+)$', descriptor)
@@ -55,6 +57,8 @@ def create_transport(descriptor: str) -> Union[socket.socket, serial.Serial]:
         transport.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         port = int(m.group(1))
         transport.bind(('', port))
+        if timeout_sec is not None:
+            transport.settimeout(timeout_sec)
         return transport
 
     m = re.match(r'^unix://([a-zA-Z0-9-_./]+)$', descriptor)
@@ -62,6 +66,8 @@ def create_transport(descriptor: str) -> Union[socket.socket, serial.Serial]:
         transport = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         path = m.group(1)
         transport.connect(path)
+        if timeout_sec is not None:
+            transport.settimeout(timeout_sec)
         return transport
 
     m = re.match(r'^(?:(?:serial|tty)://)?([^:]+):([0-9]+)$', descriptor)
@@ -69,7 +75,7 @@ def create_transport(descriptor: str) -> Union[socket.socket, serial.Serial]:
         if serial_supported:
             path = m.group(1)
             baud_rate= int(m.group(2))
-            transport = serial.Serial(port=path, baudrate=baud_rate)
+            transport = serial.Serial(port=path, baudrate=baud_rate, timeout=timeout_sec)
             return transport
         else:
             raise RuntimeError(
