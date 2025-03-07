@@ -19,9 +19,22 @@ from fusion_engine_client.utils.transport_utils import *
 
 if __name__ == "__main__":
     parser = ArgumentParser(description="""\
-Send a vehicle speed measurements to a Point One device at 1Hz.
+Send example vehicle/wheel speed measurements to a Point One device at a fixed
+rate.
 """)
 
+    parser.add_argument(
+        '-i', '--interval', type=float, default=1.0,
+        help="The message interval (in seconds).")
+    parser.add_argument(
+        '-t', '--type', choices=('vehicle', 'wheel', 'one_wheel'), default='vehicle',
+        help="""\
+Specify the type of speed message to be sent to the device:
+- on_wheel - Send a WheelSpeedInput message with a single speed for the
+  front-right wheel
+- vehicle - Send a VehicleSpeedInput message with a single speed value
+- wheel - Send a WheelSpeedInput message with a speed values for each wheel
+""")
     parser.add_argument(
         '-v', '--verbose', action='count', default=0,
         help="Print verbose/trace debugging messages.")
@@ -55,10 +68,22 @@ Send a vehicle speed measurements to a Point One device at 1Hz.
         logger.error(str(e))
         sys.exit(1)
 
-    # message = VehicleSpeedInput()
-    # message.vehicle_speed_mps = 1
-    message = WheelSpeedInput()
-    message.front_right_speed_mps = 1
+    # Specify the message to be sent.
+    if options.type == 'vehicle':
+        message = VehicleSpeedInput()
+        message.vehicle_speed_mps = 1
+    elif options.type == 'wheel':
+        message = WheelSpeedInput()
+        message.front_right_speed_mps = 1
+        message.front_left_speed_mps = 1
+        message.rear_right_speed_mps = 1
+        message.rear_left_speed_mps = 1
+    elif options.type == 'one_wheel':
+        message = WheelSpeedInput()
+        message.front_right_speed_mps = 1
+    else:
+        logger.error(f"Unrecognized message type '{options.type}'.")
+        sys.exit(2)
 
     encoder = FusionEngineEncoder()
 
@@ -70,7 +95,7 @@ Send a vehicle speed measurements to a Point One device at 1Hz.
             logger.debug(bytes_to_hex(encoded_data, bytes_per_row=16, bytes_per_col=2))
 
             transport.send(encoded_data)
-            time.sleep(1.0)
+            time.sleep(options.interval)
     except KeyboardInterrupt:
         pass
     finally:
