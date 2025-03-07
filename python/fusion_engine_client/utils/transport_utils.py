@@ -70,11 +70,14 @@ def create_transport(descriptor: str, timeout_sec: float = None) -> Union[socket
             transport.settimeout(timeout_sec)
         return transport
 
-    m = re.match(r'^(?:(?:serial|tty)://)?([^:]+):([0-9]+)$', descriptor)
+    m = re.match(r'^(?:(?:serial|tty)://)?([^:]+)(:([0-9]+))?$', descriptor)
     if m:
         if serial_supported:
             path = m.group(1)
-            baud_rate= int(m.group(2))
+            if m.group(2) is None:
+                raise ValueError('Serial baud rate not specified.')
+            else:
+                baud_rate = int(m.group(2))
             transport = serial.Serial(port=path, baudrate=baud_rate, timeout=timeout_sec)
             return transport
         else:
