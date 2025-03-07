@@ -1,6 +1,6 @@
 import re
 import socket
-from typing import Union
+from typing import Callable, Union
 
 try:
     # pySerial is optional.
@@ -40,34 +40,48 @@ The method used to communicate with the target device:
 """
 
 
-def create_transport(descriptor: str, timeout_sec: float = None) -> Union[socket.socket, serial.Serial]:
+def create_transport(descriptor: str, timeout_sec: float = None, print_func: Callable = None) -> \
+        Union[socket.socket, serial.Serial]:
     m = re.match(r'^tcp://([a-zA-Z0-9-_.]+)?(?::([0-9]+))?$', descriptor)
     if m:
-        transport = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         hostname = m.group(1)
+        ip_address = socket.gethostbyname(hostname)
         port = 30200 if m.group(2) is None else int(m.group(2))
-        transport.connect((socket.gethostbyname(hostname), port))
+        if print_func is not None:
+            print_func(f'Connecting to tcp://{ip_address}:{port}.')
+
+        transport = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         if timeout_sec is not None:
             transport.settimeout(timeout_sec)
+        try:
+            transport.connect((ip_address, port))
+        except socket.timeout:
+            raise socket.timeout(f'Timed out connecting to tcp://{ip_address}:{port}.')
         return transport
 
     m = re.match(r'^udp://:([0-9]+)$', descriptor)
     if m:
+        port = int(m.group(1))
+        if print_func is not None:
+            print_func(f'Connecting to udp://:{port}.')
+
         transport = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         transport.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        port = int(m.group(1))
-        transport.bind(('', port))
         if timeout_sec is not None:
             transport.settimeout(timeout_sec)
+        transport.bind(('', port))
         return transport
 
     m = re.match(r'^unix://([a-zA-Z0-9-_./]+)$', descriptor)
     if m:
-        transport = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         path = m.group(1)
-        transport.connect(path)
+        if print_func is not None:
+            print_func(f'Connecting to unix://{path}.')
+
+        transport = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         if timeout_sec is not None:
             transport.settimeout(timeout_sec)
+        transport.connect(path)
         return transport
 
     m = re.match(r'^(?:(?:serial|tty)://)?([^:]+)(:([0-9]+))?$', descriptor)
@@ -78,6 +92,9 @@ def create_transport(descriptor: str, timeout_sec: float = None) -> Union[socket
                 raise ValueError('Serial baud rate not specified.')
             else:
                 baud_rate = int(m.group(2))
+            if print_func is not None:
+                print_func(f'Connecting to tty://{path}:{baud_rate}.')
+
             transport = serial.Serial(port=path, baudrate=baud_rate, timeout=timeout_sec)
             return transport
         else:
