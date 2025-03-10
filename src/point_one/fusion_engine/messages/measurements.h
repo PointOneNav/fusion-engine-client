@@ -254,7 +254,7 @@ struct P1_ALIGNAS(4) IMUInput : public MessagePayload {
   uint8_t reserved[6] = {0};
 
   /**
-   * The IMU temperature (in deg Celcius * 2^-7). Set to 0x7FFF if invalid.
+   * The IMU temperature (in deg Celsius * 2^-7). Set to 0x7FFF if invalid.
    */
   int16_t temperature = INT16_MAX;
 
@@ -339,7 +339,7 @@ struct P1_ALIGNAS(4) RawIMUOutput : public MessagePayload {
   uint8_t reserved[6] = {0};
 
   /**
-   * The IMU temperature (in deg Celcius * 2^-7). Set to 0x7FFF if invalid.
+   * The IMU temperature (in deg Celsius * 2^-7). Set to 0x7FFF if invalid.
    */
   int16_t temperature = INT16_MAX;
 
