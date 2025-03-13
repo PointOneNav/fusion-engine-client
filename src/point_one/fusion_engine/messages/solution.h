@@ -62,12 +62,16 @@ struct P1_ALIGNAS(4) PoseMessage : public MessagePayload {
   uint8_t flags = 0x0;
 
   /**
-   * The geoid undulation at at the current location (i.e., the difference
-   * between the WGS-84 ellipsoid and the geoid).
+   * The geoid undulation at the current location (in cm).
    *
-   * Height above the ellipsoid can be converted to a corresponding height above
-   * the geoid (orthometric height or height above mean sea level (MSL)) as
-   * follows:
+   * Geoid undulation is also frequently referred to as "geoid height". It is
+   * the height of the MSL geoid above the WGS-84 ellipsoid. Note that it is
+   * independent of the location of the receiver.
+   *
+   * Receiver ellipsoid altitude reported in @ref lla_deg (also frequently
+   * called "height above the ellipsoid") can be converted to a corresponding
+   * mean sea level (MSL) altitude ("height above the geoid" or "orthometric
+   * height") as follows:
    *
    * @f[
    * h_{orthometric} = h_{ellipsoid} - undulation
