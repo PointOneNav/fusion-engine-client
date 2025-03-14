@@ -2238,7 +2238,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
 
         # Setup the figure.
         figure = make_subplots(rows=2, cols=1, print_grid=False, shared_xaxes=True,
-                               subplot_titles=['GNSS Temperature', 'PE CPU Temperature'])
+                               subplot_titles=['GNSS Temperature', 'Positioning Engine CPU Temperature'])
 
         figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
         for i in range(2):
