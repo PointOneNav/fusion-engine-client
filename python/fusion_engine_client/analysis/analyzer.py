@@ -2282,7 +2282,7 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         rows = []
         system_t0_ns = self.reader.get_system_t0_ns()
         max_bytes = 128
-        for message, message_bytes in zip(data.messages, data.messages_bytes):
+        for message, message_bytes in zip(data.messages, data.message_bytes):
             system_time_ns = message.get_system_time_ns()
             if isinstance(message, EventNotificationMessage):
                 event_type = message.event_type

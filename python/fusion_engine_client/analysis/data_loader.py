@@ -29,7 +29,7 @@ class MessageData(object):
         self.message_class = message_type_to_class.get(self.message_type, None)
         self.params = params
         self.messages = []
-        self.messages_bytes = []
+        self.message_bytes = []
         self.message_index = []
         self.num_messages = 0
 
@@ -37,7 +37,7 @@ class MessageData(object):
         self.messages.append(payload)
         self.num_messages += 1
         if message_bytes is not None:
-            self.messages_bytes.append(message_bytes)
+            self.message_bytes.append(message_bytes)
         if message_index is not None:
             self.message_index.append(message_index)
 
@@ -64,7 +64,7 @@ class MessageData(object):
                successful conversion if numpy conversion is supported. Otherwise, clear @ref self.messages to free
                memory.
         @param keep_message_bytes Similar to `keep_messages`, if `False`, free the contents of the @ref
-               self.messages_bytes.
+               self.message_bytes.
         @param keep_message_index Similar to `keep_messages`, if `False`, free the contents of the @ref
                self.message_index.
         @param keep_messages If `True`, keep the original @ref MessagePayload class instances in @ref self.messages in
@@ -86,7 +86,7 @@ class MessageData(object):
 
             if do_conversion:
                 self.__dict__.update(self.message_class.to_numpy(self.messages))
-                self.messages_bytes = np.array(self.messages_bytes, dtype=np.uint64)
+                self.message_bytes = np.array(self.message_bytes, dtype=np.uint64)
                 self.message_index = np.array(self.message_index, dtype=int)
 
                 if remove_nan_times and 'p1_time' in self.__dict__:
@@ -131,7 +131,7 @@ class MessageData(object):
             if not keep_messages:
                 self.messages = []
             if not keep_message_bytes:
-                self.messages_bytes = []
+                self.message_bytes = []
             if not keep_message_index:
                 self.message_index = []
         else:
@@ -935,7 +935,7 @@ class DataLoader(object):
         @param keep_messages If `True`, return the @ref MessagePayload elements in the `messages` field for each message
                type object for which numpy conversion is supported. Otherwise, delete the elements to free memory after
                successful numpy conversion.
-        @param keep_message_bytes Similar to `keep_messages`, if `False`, free the contents of the `messages_bytes`
+        @param keep_message_bytes Similar to `keep_messages`, if `False`, free the contents of the `message_bytes`
                field after successful conversion of message types that support numpy conversion.
         @param keep_message_index Similar to `keep_messages`, if `False`, free the contents of the `message_index`
                field after successful conversion of message types that support numpy conversion.
