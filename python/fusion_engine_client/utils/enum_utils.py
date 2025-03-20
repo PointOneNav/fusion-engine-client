@@ -54,14 +54,22 @@ class DynamicEnumMeta(EnumMeta):
                     extend_enum(cls, f'{cls.UNRECOGNIZED_PREFIX}_{value}', value)
                     return super().__call__(value, *args, **kwargs)
 
-    def __getitem__(cls, value):
-        if isinstance(value, str):
+    def from_string(self, name, case_insensitive=False):
+        if case_insensitive:
+            # Convert the memebr lookup to lowercase to perform a case-insensitive search: (Foo['bar'] -> Foo.bar)
+            member_map = {k.lower(): v for k, v in self._member_map_.items()}
+            return member_map[name.lower()]
+        else:
             # Try to lookup by whatever value the user supplied: (Foo['BAR'] -> Foo.BAR)
             try:
-                return super().__getitem__(value)
+                return super().__getitem__(name)
             # For convenience, also try converting to uppercase: (Foo['bar'] -> Foo.BAR)
             except KeyError:
-                return super().__getitem__(value.upper())
+                return super().__getitem__(name.upper())
+
+    def __getitem__(cls, value):
+        if isinstance(value, str):
+            return cls.from_string(value, case_insensitive=False)
         else:
             # See if `value` is actually an integer integer: (Foo['bar'] -> Foo.BAR)
             #
