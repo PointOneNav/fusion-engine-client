@@ -1,5 +1,6 @@
 import fnmatch
 import glob
+import json
 import os
 
 from . import trace as logging
@@ -303,11 +304,26 @@ def find_log_file(input_path, candidate_files=None, return_output_dir=False, ret
                     _logger.info("File '%s' not found. Searching for a matching log." % input_path)
 
             try:
+                candidate_files = list(candidate_files) + [MANIFEST_FILE_NAME]
                 matches = find_log_by_pattern(input_path, log_base_dir=log_base_dir,
                                               log_test_filenames=candidate_files, return_test_file=True)
                 log_dir = matches[0][0]
                 log_id = matches[0][1]
                 input_path = matches[0][2]
+
+                # If we didn't find one of the recognized log filenames, but instead found a manifest file, load the
+                # manifest and use that to infer the input filename.
+                if os.path.basename(input_path) == MANIFEST_FILE_NAME:
+                    manifest_path = input_path
+                    input_path = None
+                    with open(manifest_path, 'rt') as f:
+                        manifest = json.load(f)
+                        channels = manifest.get('channels', [])
+                        if len(channels) > 0:
+                            input_path = os.path.join(log_dir, channels[0])
+                        if input_path is None or not os.path.exists(input_path):
+                            raise FileNotFoundError(
+                                "Found manifest file in '%s' but could not find corresponding log file." % log_dir)
             except RuntimeError as e:
                 # Multiple matching directories found.
                 raise e
