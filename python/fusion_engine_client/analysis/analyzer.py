@@ -1055,7 +1055,7 @@ class Analyzer(object):
         figure = go.Figure(data=map_data, layout=layout)
         figure['layout'].update(showlegend=True)
 
-        self._add_figure(name="map", figure=figure, title="Vehicle Trajectory (Map)")
+        self._add_figure(name="map", figure=figure, title="Vehicle Trajectory (Map)", config={'scrollZoom': True})
 
     def plot_gnss_skyplot(self, decimate=True):
         # Read the satellite data.
@@ -2751,7 +2751,16 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
 
         self.plots[name] = {'title': title, 'path': path}
 
-    def _add_figure(self, name, figure=None, title=None):
+    def _add_figure(self, name, figure=None, title=None, config=None):
+        """!
+        @brief Generate an HTML file for the specified figure.
+
+        @param name The machine-friendly name of the figure (will be used to generate the HTML filename).
+        @param figure A figure object for a supported display library.
+        @param title An optional human-friendly display title to be added to the generated @c index.html file.
+        @param config An optional dictionary containing Plotly.js figure config options to be included in the generated
+               JavaScript.
+        """
         if title is None:
             title = name
 
@@ -2771,7 +2780,8 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
                 filename=path,
                 include_plotlyjs=True,
                 auto_open=False,
-                show_link=False)
+                show_link=False,
+                config=config)
 
         self.plots[name] = {'title': title, 'path': path if figure is not None else None}
 
