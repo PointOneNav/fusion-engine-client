@@ -2933,7 +2933,7 @@ Load and display information stored in a FusionEngine binary file.
 
     plot_group.add_argument(
         '--source-identifier', '--source-id', action=CSVAction, nargs='*',
-        help="Plot the Fusion Engine Pose messages with the listed source identifier(s). Must be integers. May be "
+        help="Plot the FusionEngine Pose messages with the listed source identifier(s). Must be integers. May be "
              "specified multiple times (--source-id 0 --source-id 1), as a space-separated list (--source-id 0 1), or "
              "as a comma-separated list (--source-id 0,1). If not specified, all available source identifiers present "
              "in the log will be used.")
