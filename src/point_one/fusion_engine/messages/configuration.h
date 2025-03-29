@@ -719,6 +719,8 @@ enum class VehicleModel : uint16_t {
   VW_4 = 220,
 
   RIVIAN = 240,
+
+  FLEXRAY_DEVICE_AUDI_ETRON = 260,
 };
 
 /**
@@ -771,6 +773,8 @@ P1_CONSTEXPR_FUNC const char* to_string(VehicleModel vehicle_model) {
       return "VW_4";
     case VehicleModel::RIVIAN:
       return "RIVIAN";
+    case VehicleModel::FLEXRAY_DEVICE_AUDI_ETRON:
+      return "FLEXRAY_DEVICE_AUDI_ETRON";
     default:
       return "UNRECOGNIZED";
   }
