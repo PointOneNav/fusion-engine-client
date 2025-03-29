@@ -119,6 +119,8 @@ class VehicleModel(IntEnum):
 
     RIVIAN = 240
 
+    FLEXRAY_DEVICE_AUDI_ETRON = 260
+
 
 class WheelSensorType(IntEnum):
     NONE = 0
