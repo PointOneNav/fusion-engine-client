@@ -194,9 +194,12 @@ def fast_generate_index(
     _logger.debug(f'Reads/thread: {blocks_per_thread}')
 
     # Create a threadpool.
-    with Pool(num_threads) as p:
-        # Kick off the threads to process with their args. Then concatenate their returned data.
-        index_raw = np.concatenate([o for o in p.starmap(_search_blocks_for_fe, args)])
+    if num_threads > 1:
+        with Pool(num_threads) as p:
+            # Kick off the threads to process with their args. Then concatenate their returned data.
+            index_raw = np.concatenate([o for o in p.starmap(_search_blocks_for_fe, args)])
+    else:
+        index_raw = _search_blocks_for_fe(*args[0])
 
     # Some messages may encapsulate other complete FE messages. Normally, these
     # are ignored. However, if a message straddles one of the processing blocks,
