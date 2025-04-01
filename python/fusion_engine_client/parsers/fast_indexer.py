@@ -149,6 +149,9 @@ def fast_generate_index(
 
     @return The loaded or generated @ref FileIndex.
     """
+    if num_threads is None:
+        num_threads = cpu_count()
+
     file_size = os.stat(input_path).st_size
     _logger.debug(f'File size: {int(file_size/1024/1024)}MB')
 

@@ -22,7 +22,8 @@ class MixedLogReader(object):
     logger = logging.getLogger('point_one.fusion_engine.parsers.mixed_log_reader')
 
     def __init__(self, input_file, warn_on_gaps: bool = False, show_progress: bool = False,
-                 save_index: bool = True, ignore_index: bool = False, max_bytes: int = None,
+                 save_index: bool = True, ignore_index: bool = False, num_threads: int = None,
+                 max_bytes: int = None,
                  time_range: TimeRange = None, message_types: Union[Iterable[MessageType], MessageType] = None,
                  source_ids: Optional[Iterable[int]] = None, return_header: bool = True,
                  return_payload: bool = True, return_bytes: bool = False, return_offset: bool = False,
@@ -41,6 +42,8 @@ class MixedLogReader(object):
                See @ref FileIndex for details. Ignored if `max_bytes` is specified.
         @param ignore_index If `True`, ignore the existing index file and read from the binary file directly. If
                `save_index == True`, this will delete the existing file and create a new one.
+        @param num_threads The number of parallel threads to spawn during indexing. If `None`, defaults to the number
+               of available CPUs.
         @param max_bytes If specified, read up to the maximum number of bytes.
         @param time_range An optional @ref TimeRange object specifying desired start and end time bounds of the data to
                be read. See @ref TimeRange for more details.
@@ -118,7 +121,8 @@ class MixedLogReader(object):
 
         # Open the companion index file if one exists, otherwise index the file.
         self._original_index = fast_indexer.fast_generate_index(input_path, force_reindex=ignore_index,
-                                                                save_index=save_index, max_bytes=max_bytes)
+                                                                save_index=save_index, max_bytes=max_bytes,
+                                                                num_threads=num_threads)
         self.next_index_elem = 0
         self.index = self._original_index
         self.filtered_message_types = False
