@@ -2,6 +2,7 @@ from typing import Iterable, List, Set, Union, Optional
 
 import copy
 from datetime import datetime
+import io
 import os
 import sys
 
@@ -106,10 +107,10 @@ class MixedLogReader(object):
         self.start_time = datetime.now()
 
         # Open the file to be read.
-        if isinstance(input_file, str):
-            self.input_file = open(input_file, 'rb')
-        else:
+        if isinstance(input_file, io.IOBase):
             self.input_file = input_file
+        else:
+            self.input_file = open(input_file, 'rb')
 
         input_path = self.input_file.name
         self.file_size_bytes = os.stat(input_path).st_size
