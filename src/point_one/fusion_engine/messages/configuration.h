@@ -1562,12 +1562,14 @@ enum class InterfaceConfigType : uint8_t {
   BAUD_RATE = 2,
 
   /**
-   * Configure the network address for a client to connect to.
+   * Configure the network address for a client to connect to, or the path to a
+   * local file.
    *
-   * For UNIX domain sockets, this string represents the path to the local
-   * socket file.
+   * For UNIX domain sockets and serial ports, this string represents the path
+   * to the local socket or device file.
    *
    * Valid for:
+   * - @ref TransportType::SERIAL
    * - @ref TransportType::TCP
    * - @ref TransportType::UDP
    * - @ref TransportType::UNIX
@@ -1575,6 +1577,8 @@ enum class InterfaceConfigType : uint8_t {
    * Payload format: `char[64]` containing a NULL terminated string.
    */
   REMOTE_ADDRESS = 3,
+  /** Alias for `REMOTE_ADDRESS`. */
+  PATH = 3,
 
   /**
    * Configure the network port.
@@ -1615,9 +1619,22 @@ enum class InterfaceConfigType : uint8_t {
    * Valid for:
    * - @ref TransportType::UNIX
    *
-   * Payload format: @ref SocketType
+   * Payload format: @ref UNIXSocketType
    */
-  SOCKET_TYPE = 7,
+  UNIX_SOCKET_TYPE = 7,
+
+  /**
+   * Configure all settings for the specified interface/transport type in a
+   * single operation.
+   *
+   * Payload format depends on the @ref TransportType%:
+   * - @ref TransportType::SERIAL - @ref SerialConfig
+   * - @ref TransportType::TCP - @ref TCPConfig
+   * - @ref TransportType::UDP - @ref UDPConfig
+   * - @ref TransportType::WEBSOCKET - @ref WebsocketConfig
+   * - @ref TransportType::UNIX - @ref UNIXSocketConfig
+   */
+  ALL_PARAMETERS = 8,
 };
 
 /**
@@ -1651,8 +1668,11 @@ P1_CONSTEXPR_FUNC const char* to_string(InterfaceConfigType type) {
     case InterfaceConfigType::DIRECTION:
       return "Transport Direction";
 
-    case InterfaceConfigType::SOCKET_TYPE:
-      return "Socket Type";
+    case InterfaceConfigType::UNIX_SOCKET_TYPE:
+      return "UNIX Socket Type";
+
+    case InterfaceConfigType::ALL_PARAMETERS:
+      return "All Parameters";
 
     default:
       return "Unrecognized Configuration";
@@ -1781,7 +1801,7 @@ enum class TransportType : uint8_t {
    *
    * For a UNIX domain socket, you must specify:
    * - The @ref TransportDirection (client or server)
-   * - The @ref SocketType (streaming, datagram, or sequenced)
+   * - The @ref UNIXSocketType (streaming, datagram, or sequenced)
    * - The path to a socket file to connect to (client) or create (server)
    */
   UNIX = 8,
@@ -1883,7 +1903,7 @@ inline p1_ostream& operator<<(p1_ostream& stream, TransportDirection val) {
  *        sockets.
  * @ingroup io_interfaces
  */
-enum class SocketType : uint8_t {
+enum class UNIXSocketType : uint8_t {
   INVALID = 0,
   /**
    * Operate in connection-oriented streaming mode and do not preserve message
@@ -1903,32 +1923,33 @@ enum class SocketType : uint8_t {
 };
 
 /**
- * @brief Get a human-friendly string name for the specified @ref SocketType.
+ * @brief Get a human-friendly string name for the specified @ref
+ *        UNIXSocketType.
  * @ingroup io_interfaces
  *
  * @param val The enum to get the string name for.
  *
  * @return The corresponding string name.
  */
-P1_CONSTEXPR_FUNC const char* to_string(SocketType val) {
+P1_CONSTEXPR_FUNC const char* to_string(UNIXSocketType val) {
   switch (val) {
-    case SocketType::INVALID:
+    case UNIXSocketType::INVALID:
       return "INVALID";
-    case SocketType::STREAM:
+    case UNIXSocketType::STREAM:
       return "STREAM";
-    case SocketType::DATAGRAM:
+    case UNIXSocketType::DATAGRAM:
       return "DATAGRAM";
-    case SocketType::SEQPACKET:
+    case UNIXSocketType::SEQPACKET:
       return "SEQPACKET";
   }
   return "Unrecognized";
 }
 
 /**
- * @brief @ref SocketType stream operator.
+ * @brief @ref UNIXSocketType stream operator.
  * @ingroup io_interfaces
  */
-inline p1_ostream& operator<<(p1_ostream& stream, SocketType val) {
+inline p1_ostream& operator<<(p1_ostream& stream, UNIXSocketType val) {
   stream << to_string(val) << " (" << (int)val << ")";
   return stream;
 }
@@ -2233,6 +2254,62 @@ inline p1_ostream& operator<<(p1_ostream& stream, MessageRate val) {
   stream << to_string(val) << " (" << (int)val << ")";
   return stream;
 }
+
+/**
+ * @brief TCP client/server interface configuration parameters.
+ * @ingroup io_interfaces
+ */
+struct P1_ALIGNAS(4) TCPConfig {
+  uint8_t enabled = 1;
+  TransportDirection direction = TransportDirection::SERVER;
+  uint16_t port = 0;
+  char remote_address[64] = {0};
+};
+
+/**
+ * @brief UDP interface configuration parameters.
+ * @ingroup io_interfaces
+ */
+struct P1_ALIGNAS(4) UDPConfig {
+  uint8_t enabled = 1;
+  uint8_t reserved[1] = {0};
+  uint16_t port = 0;
+  char remote_address[64] = {0};
+};
+
+/**
+ * @brief WebSocket client/server interface configuration parameters.
+ * @ingroup io_interfaces
+ */
+struct P1_ALIGNAS(4) WebsocketConfig {
+  uint8_t enabled = 1;
+  TransportDirection direction = TransportDirection::SERVER;
+  uint16_t port = 0;
+  char remote_address[64] = {0};
+};
+
+/**
+ * @brief UNIX domain socket client/server interface configuration parameters.
+ * @ingroup io_interfaces
+ */
+struct P1_ALIGNAS(4) UNIXSocketConfig {
+  uint8_t enabled = 1;
+  TransportDirection direction = TransportDirection::SERVER;
+  UNIXSocketType socket_type = UNIXSocketType::STREAM;
+  uint8_t reserved[1] = {0};
+  char path[64] = {0};
+};
+
+/**
+ * @brief Serial port (UART) interface configuration parameters.
+ * @ingroup io_interfaces
+ */
+struct P1_ALIGNAS(4) SerialConfig {
+  uint8_t enabled = 1;
+  uint8_t reserved[3] = {0};
+  uint32_t baud_rate = 0;
+  char path[64] = {0};
+};
 
 /**
  * @brief I/O interface parameter configuration submessage (used when sending
