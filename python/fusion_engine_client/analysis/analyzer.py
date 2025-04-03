@@ -1982,14 +1982,17 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
         fig = make_subplots(
             rows=3, cols=1,
             subplot_titles=(
-                'Heading, 2-sigma band',
-                'ENU/Baseline Distance',
+                'Vehicle Heading',
+                'Primary->Secondary Antenna ENU Vector + Baseline Distance',
                 'Solution Type'
             ),
             shared_xaxes=True,
         )
 
-        fig.update_xaxes(title_text='Time (sec)', showticklabels=True)
+        fig.update_layout(title='GNSS Attitude Measurements (Multi-Antenna Heading Sensor)',
+                          showlegend=True, modebar_add=['v1hovermode'])
+
+        fig.update_xaxes(title_text=self.p1_time_label, showticklabels=True)
         fig.update_yaxes(title_text='Heading (deg)', rangemode='tozero', row=1, col=1)
         fig.update_yaxes(title_text='Distance (m)', row=2, col=1)
         fig.update_yaxes(
@@ -1999,227 +2002,203 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             row=3, col=1
         )
 
-        fig.update_layout(title='Heading Plots', legend_traceorder='normal', modebar_add=['v1hovermode'])
+        ########################################
+        # Heading
+        ########################################
 
         # Display the navigation engine's heading estimate, if available, for comparison with the heading sensor
         # measurement.
-        if primary_pose_data is not None:
-            invalid_idx = primary_pose_data.solution_type[primary_pose_data.solution_type != SolutionType.Invalid]
-            yaw_deg = primary_pose_data.ypr_deg[0][invalid_idx]
-            if len(yaw_deg) > 0:
-                pose_heading_deg = 90.0 - yaw_deg
-                pose_heading_deg[pose_heading_deg < 0.0] += 360.0
-                fig.add_trace(
-                    go.Scatter(
-                        x=primary_pose_data.p1_time - float(self.t0),
-                        y=pose_heading_deg,
-                        customdata=primary_pose_data.p1_time,
-                        mode='lines',
-                        line={'color': 'yellow'},
-                        name='Navigation Engine Heading Estimate',
-                        hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
-                                      '<br><b>Heading</b>: %{y:.2f} deg'
-                    ),
-                    row=1, col=1
-                )
+        if primary_pose_data is not None and np.any(primary_pose_data.solution_type != SolutionType.Invalid):
+            p1_time = primary_pose_data.p1_time
+            time = p1_time - float(self.t0)
+            heading_deg = yaw_to_heading(primary_pose_data.ypr_deg[0, :])
+            yaw_std_deg = primary_pose_data.ypr_std_deg[0, :]
+
+            # Plotly has a bug where the std dev field will display as "%{customdata[1]}" if it is NAN. To get around
+            # this, we set the std dev to -1 when not available.
+            yaw_std_deg[np.isnan(yaw_std_deg)] = -1.0
+
+            fig.add_trace(
+                go.Scatter(
+                    x=time, y=heading_deg,
+                    customdata=np.stack((p1_time, yaw_std_deg), axis=-1),
+                    name='Heading: Navigation Engine', legendgroup='nav',
+                    hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata[0]:.3f} sec)'
+                                  '<br><b>Heading</b>: %{y:.2f} deg (<b>Std</b>: %{customdata[1]:.2f} deg)',
+                    mode='lines', line={'color': 'yellow'}
+                ),
+                row=1, col=1
+            )
+
+        # Raw (uncorrected) heading, derived from reported ENU vector.
+        if len(raw_heading_data.p1_time) > 0:
+            p1_time = raw_heading_data.p1_time
+            time = p1_time - float(self.t0)
+            yaw_deg = np.degrees(np.arctan2(raw_heading_data.relative_position_enu_m[1, :],
+                                            raw_heading_data.relative_position_enu_m[0, :]))
+            heading_deg = yaw_to_heading(yaw_deg)
+            fig.add_trace(
+                go.Scatter(
+                    x=time, y=heading_deg, customdata=p1_time,
+                    name='Heading: Raw Measurement', legendgroup='raw',
+                    hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
+                                  '<br><b>Heading</b>: %{y:.2f} deg',
+                    mode='markers', marker={"color": "purple"}
+                ),
+                row=1, col=1
+            )
+
 
         # Corrected heading plot
         if len(heading_data.p1_time) > 0:
-            heading_time = heading_data.p1_time - float(self.t0)
-            heading_deg = 90.0 - heading_data.ypr_deg[0, :]
+            p1_time = heading_data.p1_time
+            time = p1_time - float(self.t0)
+            heading_deg = yaw_to_heading(heading_data.ypr_deg[0, :])
+            yaw_std_deg = heading_data.ypr_std_deg[0, :]
+
+            # See explanation above about the Plotly bug when the value is NAN.
+            yaw_std_deg[np.isnan(yaw_std_deg)] = -1.0
+
             fig.add_trace(
                 go.Scatter(
-                    x=heading_time,
-                    y=heading_deg,
-                    customdata=heading_data.p1_time,
-                    mode='markers',
-                    marker={'size': 2, "color": "green"},
-                    name='Corrected Heading Data',
-                    hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
-                                  '<br><b>Heading</b>: %{y:.2f} deg',
-                    legendgroup='heading'
+                    x=time, y=heading_deg,
+                    customdata=np.stack((p1_time, yaw_std_deg), axis=-1),
+                    name='Heading: Corrected Measurement', legendgroup='corr',
+                    hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata[0]:.3f} sec)'
+                                  '<br><b>Heading</b>: %{y:.2f} deg (<b>Std</b>: %{customdata[1]:.2f} deg)',
+                    mode='markers', marker={"color": "orange"}
                 ),
                 row=1, col=1
             )
 
+        ########################################
+        # ENU Vector/Baseline Distance
+        ########################################
+
+        # Baseline vector from raw attitude measurement.
+        if len(raw_heading_data.p1_time) > 0:
+            p1_time = raw_heading_data.p1_time
+            time = p1_time - float(self.t0)
+            baseline_distance_m = np.linalg.norm(raw_heading_data.relative_position_enu_m, axis=0)
             fig.add_trace(
                 go.Scatter(
-                    x=heading_time,
-                    y=heading_data.baseline_distance_m,
-                    customdata=heading_data.p1_time,
-                    marker={'size': 2, "color": "green"},
+                    x=time, y=baseline_distance_m, customdata=p1_time,
+                    name='Baseline Distance: Raw Measurement', legendgroup='raw',
                     hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
-                                  '<br><b>Baseline</b>: %{y:.2f} m',
-                    name='Baseline'
+                                  '<br><b>Distance</b>: %{y:.2f} m',
+                    mode='markers', marker={"color": "purple"}
                 ),
                 row=2, col=1
             )
 
-        # Uncorrected heading plot
+        # Baseline distance from corrected measurement.
+        if len(heading_data.p1_time) > 0:
+            p1_time = heading_data.p1_time
+            time = p1_time - float(self.t0)
+            baseline_distance_m = heading_data.baseline_distance_m
+            baseline_std_m = heading_data.baseline_distance_std_m
+
+            # See explanation above about the Plotly bug when the value is NAN.
+            baseline_std_m[np.isnan(yaw_std_deg)] = -1.0
+
+            fig.add_trace(
+                go.Scatter(
+                    x=time, y=baseline_distance_m,
+                    customdata=np.stack((p1_time, baseline_std_m), axis=-1),
+                    name='Baseline Distance: Corrected Measurement', legendgroup='corr',
+                    hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata[0]:.3f} sec)'
+                                  '<br><b>Distance</b>: %{y:.2f} m (<b>Std</b>: %{customdata[1]:.2f} m)',
+                    mode='markers', marker={"color": "orange"}
+                ),
+                row=2, col=1
+            )
+
+        # ENU vector from raw attitude measurement.
         if len(raw_heading_data.p1_time) > 0:
-            raw_heading_time = raw_heading_data.p1_time - float(self.t0)
-            raw_heading_deg = np.degrees(np.arctan2(raw_heading_data.relative_position_enu_m[1, :],
-                                                    raw_heading_data.relative_position_enu_m[0, :]))
-            raw_baseline_distance_m = np.linalg.norm(raw_heading_data.relative_position_enu_m, axis=0)
-
-            # Compute heading uncertainty envelop.
-            denom = raw_heading_data.relative_position_enu_m[0]**2 + raw_heading_data.relative_position_enu_m[1]**2
-            dh_e = raw_heading_data.relative_position_enu_m[0] / denom
-            dh_n = raw_heading_data.relative_position_enu_m[2] / denom
-
-            heading_std = np.sqrt(
-                (dh_e * raw_heading_data.position_std_enu_m[0]) ** 2 +
-                (dh_n * raw_heading_data.position_std_enu_m[1]) ** 2
-            )
-
-            envelope = np.arctan(
-                (2 * heading_std / raw_baseline_distance_m)
-            )
-            envelope *= 180. / np.pi
             fig.add_trace(
                 go.Scatter(
-                    x=raw_heading_time,
-                    y=raw_heading_deg,
-                    customdata=raw_heading_data.p1_time,
-                    mode='markers',
-                    marker={'size': 2, "color": "red"},
-                    name='Uncorrected Heading Data',
-                    hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
-                                  '<br><b>Heading</b>: %{y:.2f} deg',
-                    legendgroup='heading'
-                ),
-                row=1, col=1
-            )
-            idx = ~np.isnan(raw_heading_deg)
-
-            fig.add_trace(
-                go.Scatter(
-                    x=raw_heading_time[idx],
-                    y=raw_heading_deg[idx] + envelope[idx],
-                    mode='lines',
-                    marker={'size': 2, "color": "red"},
-                    line=dict(width=0),
-                    legendgroup='heading',
-                    showlegend=False,
-                    hoverinfo='skip'
-                ),
-                row=1, col=1
-            )
-
-            fig.add_trace(
-                go.Scatter(
-                    x=raw_heading_time[idx],
-                    y=raw_heading_deg[idx] - envelope[idx],
-                    mode='lines',
-                    marker={'size': 2, "color": "red"},
-                    line=dict(width=0),
-                    fillcolor='rgba(68, 68, 68, 0.3)',
-                    fill='tonexty',
-                    legendgroup='heading',
-                    showlegend=False,
-                    hoverinfo='skip'
-                ),
-                row=1, col=1
-            )
-
-            # Second plot - baseline, ENU components
-            fig.add_trace(
-                go.Scatter(
-                    x=raw_heading_time,
-                    y=raw_heading_data.relative_position_enu_m[0],
-                    customdata=raw_heading_data.p1_time,
+                    x=time, y=raw_heading_data.relative_position_enu_m[0], customdata=p1_time,
+                    name='Primary->Secondary (East)',
                     hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
                                   '<br><b>East</b>: %{y:.2f} m',
-                    name='East'
+                    mode='markers', marker={"color": "red"}
                 ),
                 row=2, col=1
             )
 
             fig.add_trace(
                 go.Scatter(
-                    x=raw_heading_time,
-                    y=raw_heading_data.relative_position_enu_m[1],
-                    customdata=raw_heading_data.p1_time,
+                    x=time, y=raw_heading_data.relative_position_enu_m[1], customdata=p1_time,
+                    name='Primary->Secondary (North)',
                     hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
                                   '<br><b>North</b>: %{y:.2f} m',
-                    name='North'
+                    mode='markers', marker={"color": "green"}
                 ),
                 row=2, col=1
             )
 
             fig.add_trace(
                 go.Scatter(
-                    x=raw_heading_time,
-                    y=raw_heading_data.relative_position_enu_m[2],
-                    customdata=raw_heading_data.p1_time,
+                    x=time, y=raw_heading_data.relative_position_enu_m[2], customdata=p1_time,
+                    name='Primary->Secondary (Up)',
                     hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
                                   '<br><b>Up</b>: %{y:.2f} m',
-                    name='Up'
+                    mode='markers', marker={"color": "blue"}
                 ),
                 row=2, col=1
             )
 
-            fig.add_trace(
-                go.Scatter(
-                    x=raw_heading_time,
-                    y=raw_baseline_distance_m,
-                    customdata=raw_heading_data.p1_time,
-                    marker={'size': 2, "color": "red"},
-                    hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
-                                  '<br><b>Baseline</b>: %{y:.2f} m',
-                    name='Baseline'
-                ),
-                row=2, col=1
-            )
+        ########################################
+        # Solution Type
+        ########################################
 
-        # 3rd plot - solution type
+        # Display the navigation engine's solution type.
         if primary_pose_data is not None:
+            p1_time = primary_pose_data.p1_time
+            time = p1_time - float(self.t0)
             fig.add_trace(
                 go.Scatter(
-                    x=primary_pose_data.p1_time - float(self.t0),
-                    y=primary_pose_data.solution_type,
-                    customdata=primary_pose_data.p1_time,
-                    mode='markers',
-                    marker={'color': 'yellow'},
+                    x=time, y=primary_pose_data.solution_type, customdata=p1_time,
+                    name='Solution Type: Navigation Engine', legendgroup='nav',
                     hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
-                                  '<br><b>Solution</b>: %{text}',
-                    text=[str(SolutionType(s)) for s in primary_pose_data.solution_type],
-                    name='Primary Solution Type'
+                                  '<br><b>Type</b>: %{y}',
+                    mode='markers', marker={'color': 'yellow'},
                 ),
                 row=3, col=1
             )
 
+        # Display the raw measurement's solution type.
         if len(raw_heading_data.p1_time) > 0:
+            p1_time = raw_heading_data.p1_time
+            time = p1_time - float(self.t0)
             fig.add_trace(
                 go.Scatter(
-                    x=raw_heading_time,
-                    y=raw_heading_data.solution_type,
-                    customdata=raw_heading_data.p1_time,
-                    marker={'color': 'red'},
+                    x=time, y=raw_heading_data.solution_type, customdata=p1_time,
+                    name='Solution Type: Raw Measurement', legendgroup='raw',
                     hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
-                                  '<br><b>Solution</b>: %{text}',
-                    text=[str(SolutionType(s)) for s in raw_heading_data.solution_type],
-                    name='Uncorrected Heading Solution Type'
+                                  '<br><b>Type</b>: %{y}',
+                    mode='markers', marker={'color': 'purple'},
                 ),
                 row=3, col=1
             )
 
+        # Display the corrected measurement's solution type.
         if len(heading_data.p1_time) > 0:
+            p1_time = heading_data.p1_time
+            time = p1_time - float(self.t0)
             fig.add_trace(
                 go.Scatter(
-                    x=heading_time,
-                    y=heading_data.solution_type,
-                    customdata=heading_data.p1_time,
-                    marker={'color': 'green'},
+                    x=time, y=heading_data.solution_type, customdata=p1_time,
+                    name='Solution Type: Corrected Measurement', legendgroup='corr',
                     hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
-                                  '<br><b>Solution</b>: %{text}',
-                    text=[str(SolutionType(s)) for s in heading_data.solution_type],
-                    name='Corrected Heading Solution Type'
+                                  '<br><b>Type</b>: %{y}',
+                    mode='markers', marker={'color': 'orange'},
                 ),
                 row=3, col=1
             )
 
-        self._add_figure(name='gnss_attitude_measurement', figure=fig, title='Measurements: GNSS Attitude')
+        self._add_figure(name='gnss_attitude_measurement', figure=fig,
+                         title='Measurements: GNSS Attitude (Multi-Antenna Heading Sensor)')
 
     def plot_system_status_profiling(self):
         """!
