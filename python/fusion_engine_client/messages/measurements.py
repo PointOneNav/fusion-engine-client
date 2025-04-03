@@ -1160,7 +1160,7 @@ Vehicle Speed Measurement @ {str(self.details.p1_time)}
         return result
 
 ################################################################################
-# GNSS Heading Sensor Definitions
+# GNSS Attitude (Heading) Sensor Definitions
 ################################################################################
 
 
@@ -1177,7 +1177,7 @@ class GNSSAttitudeOutput(MessagePayload):
         ## Measurement timestamps, if available. See @ref measurement_messages.
         self.details = MeasurementDetails()
 
-        ## Set to @ref SolutionType::RTKFixed when heading is available, or @ref SolutionType::Invalid otherwise.
+        ## Set to @ref SolutionType::RTKFixed when attitude is available, or @ref SolutionType::Invalid otherwise.
         self.solution_type = SolutionType.Invalid
 
         ## A bitmask of flags associated with the solution
@@ -1321,14 +1321,6 @@ class RawGNSSAttitudeOutput(MessagePayload):
         # local ENU tangent plane: east, north, up.
         self.position_std_enu_m = np.full((3,), np.nan)
 
-        ##
-        # The estimated distance between primary and secondary antennas (in meters).
-        self.baseline_distance_m = np.nan
-
-        ##
-        # The standard deviation of the baseline distance estimate (in meters).
-        self.baseline_distance_std_m = np.nan
-
     def get_ypr_deg(self):
         ypr_rad = np.array((
             math.atan2(self.relative_position_enu_m[1], self.relative_position_enu_m[0]),
@@ -1356,9 +1348,7 @@ class RawGNSSAttitudeOutput(MessagePayload):
             self.relative_position_enu_m[2],
             self.position_std_enu_m[0],
             self.position_std_enu_m[1],
-            self.position_std_enu_m[2],
-            self.baseline_distance_m,
-            self.baseline_distance_std_m)
+            self.position_std_enu_m[2])
         offset += self._STRUCT.size
 
         if return_buffer:
