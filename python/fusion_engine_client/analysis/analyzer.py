@@ -28,7 +28,7 @@ from .attitude import get_enu_rotation_matrix
 from .data_loader import DataLoader, TimeRange
 from ..utils import trace as logging
 from ..utils.argument_parser import ArgumentParser, ExtendedBooleanAction, TriStateBooleanAction, CSVAction
-from ..utils.log import locate_log, DEFAULT_LOG_BASE_DIR
+from ..utils.log import define_cli_arguments as define_log_search_arguments, locate_log
 from ..utils.numpy_utils import find_first
 from ..utils.trace import HighlightFormatter
 
@@ -2929,21 +2929,7 @@ Load and display information stored in a FusionEngine binary file.
              "unless an 'abs' type is specified or --absolute-time is set.")
 
     log_group = parser.add_argument_group('Input File/Log Control')
-    log_group.add_argument(
-        '--ignore-index', action=ExtendedBooleanAction,
-        help="If set, do not load the .p1i index file corresponding with the .p1log data file. If specified and a "
-             ".p1i file does not exist, do not generate one. Otherwise, a .p1i file will be created automatically to "
-             "improve data read speed in the future.")
-    log_group.add_argument(
-        '--log-base-dir', metavar='DIR', default=DEFAULT_LOG_BASE_DIR,
-        help="The base directory containing FusionEngine logs to be searched if a log pattern is specified.")
-    log_group.add_argument(
-        'log',
-        help="The log to be read. May be one of:\n"
-             "- The path to a .p1log file or a file containing FusionEngine messages and other content\n"
-             "- The path to a FusionEngine log directory\n"
-             "- A pattern matching a FusionEngine log directory under the specified base directory "
-             "(see find_fusion_engine_log() and --log-base-dir)")
+    define_log_search_arguments(log_group)
 
     output_group = parser.add_argument_group('Output Control')
     output_group.add_argument(
