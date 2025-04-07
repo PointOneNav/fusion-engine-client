@@ -54,10 +54,12 @@ class InterfaceConfigType(IntEnum):
   OUTPUT_DIAGNOSTICS_MESSAGES = 1
   BAUD_RATE = 2
   REMOTE_ADDRESS = 3
+  PATH = 3  # Alias for REMOTE_ADDRESS
   PORT = 4
   ENABLED = 5
   DIRECTION = 6
   SOCKET_TYPE = 7
+  ALL_PARAMETERS = 8
 
 
 class Direction(IntEnum):
@@ -173,6 +175,19 @@ class TransportType(IntEnum):
     ALL = 255
 
 
+class InterfaceID(NamedTuple):
+    type: TransportType = TransportType.INVALID
+    index: int = 0
+
+
+_InterfaceIDConstructRaw = Struct(
+    "type" / AutoEnum(Int8ul, TransportType),
+    "index" / Int8ul,
+    Padding(2)
+)
+_InterfaceIDConstruct = NamedTupleAdapter(InterfaceID, _InterfaceIDConstructRaw)
+
+
 class TransportDirection(IntEnum):
     INVALID = 0
     SERVER = 1
@@ -278,7 +293,7 @@ def get_message_type_string(protocol: ProtocolType, message_id: int):
 def _define_enum_config_classes(enum_type, construct_type=Int8ul):
     class EnumVal(NamedTuple):
         value: enum_type = list(enum_type)[0]
-    construct = AutoEnum(construct_type, enum_type)
+    construct = Struct("value" / AutoEnum(construct_type, enum_type))
     return EnumVal, construct
 
 
@@ -323,7 +338,7 @@ class _ConfigClassGenerator:
 
     class InterfaceConfigClass(ConfigClass):
         """!
-        @brief Abstract base class for accessing configuration types.
+        @brief Abstract base class for accessing I/O interface configuration types.
         """
         @classmethod
         def GetType(cls) -> ConfigType:
@@ -358,7 +373,7 @@ class _ConfigClassGenerator:
             return InnerClass
         return inner
 
-    def create_interface_config_class(self, config_subtype, construct_class):
+    def create_interface_config_class(self, config_subtype, construct_class, transport_type: TransportType = None):
         """!
         @brief Decorator for generating InterfaceConfigClass children.
 
@@ -373,10 +388,18 @@ class _ConfigClassGenerator:
             InnerClass.__name__ = config_class.__name__
 
             # Register the construct with the MessageType.
-            self.INTERFACE_CONFIG_MAP[config_subtype] = NamedTupleAdapter(InnerClass, construct_class)
+            self.INTERFACE_CONFIG_MAP[(transport_type, config_subtype)] = NamedTupleAdapter(InnerClass, construct_class)
 
             return InnerClass
         return inner
+
+    def find_interface_config_construct(self, interface: InterfaceID, config_subtype: InterfaceConfigType):
+        construct_obj = _conf_gen.INTERFACE_CONFIG_MAP.get((interface.type, config_subtype), None)
+        if construct_obj is None:
+            construct_obj = _conf_gen.INTERFACE_CONFIG_MAP.get((None, config_subtype), None)
+            if construct_obj is None:
+                raise KeyError(f'No interface config mapping found for {interface}, config type {config_subtype}.')
+        return construct_obj
 
     class Point3F(NamedTuple):
         """!
@@ -734,6 +757,35 @@ class _ConfigClassGenerator:
 _conf_gen = _ConfigClassGenerator()
 
 
+########################################################################################################################
+# Device configuration settings (lever arms, orientation, wheel speed settings, etc.).
+#
+# The classes below may be passed to a SetConfigMessage or returned by a ConfigResponseMessage using the `config_object`
+# field. For example:
+# ```
+# SetConfigMessage(GNSSLeverArmConfig(0.4, 0.0, 1.2))
+# SetConfigMessage(EnabledGNSSSystemsConfig(SatelliteType.GPS, SatelliteType.GALILEO))
+#
+# GetConfigMessage(GNSSLeverArmConfig)
+# config_response.config_object.x == 0.4
+# ```
+#
+# Note that many of these configuration classes share common parameters, and their fields are defined by their specified
+# base classes. For example, `GNSSLeverArmConfig` inherits from `Point3F` and contains `x`, `y`, and `z` fields as
+# follows:
+# ```
+# class Point3F(NamedTuple):
+#     """!
+#     @brief 3D coordinate specifier, stored as 32-bit float values.
+#     """
+#     x: float = math.nan
+#     y: float = math.nan
+#     z: float = math.nan
+# class GNSSLeverArmConfig(_conf_gen.Point3F): ...
+# ```
+########################################################################################################################
+
+
 @_conf_gen.create_config_class(ConfigType.DEVICE_LEVER_ARM, _conf_gen.Point3FConstruct)
 class DeviceLeverArmConfig(_conf_gen.Point3F):
     """!
@@ -939,6 +991,36 @@ class HardwareTickConfig(_conf_gen.HardwareTickConfig):
     pass
 
 
+@_conf_gen.create_config_class(ConfigType.INVALID, _conf_gen.EmptyConstruct)
+class InvalidConfig(_conf_gen.Empty):
+    """!
+    @brief Placeholder for empty invalid configuration messages.
+    """
+    pass
+
+
+########################################################################################################################
+# Input/output interface controls.
+#
+# When configuring I/O interfaces, you must specify the desired interface:
+#
+# Examples:
+# ```
+# SetConfigMessage(
+#     InterfaceDiagnosticMessagesEnabled(True),
+#     interface=InterfaceID(TransportType.TCP, 0))
+# SetConfigMessage(
+#     TCPConfig(direction=TransportDirection.CLIENT, remote_address='remote-hostname', port=1234),
+#     interface=InterfaceID(TransportType.TCP, 1))
+#
+# GetConfigMessage(
+#     InterfaceDiagnosticMessagesEnabled,
+#     interface=InterfaceID(TransportType.TCP, 0))
+# config_response.config_object.value == True
+# ```
+########################################################################################################################
+
+
 @_conf_gen.create_interface_config_class(InterfaceConfigType.BAUD_RATE, _conf_gen.UInt32Construct)
 class InterfaceBaudRateConfig(_conf_gen.IntegerVal):
     """!
@@ -995,25 +1077,103 @@ class InterfaceDiagnosticMessagesEnabled(_conf_gen.BoolVal):
     pass
 
 
-@_conf_gen.create_config_class(ConfigType.INVALID, _conf_gen.EmptyConstruct)
-class InvalidConfig(_conf_gen.Empty):
-    """!
-    @brief Placeholder for empty invalid configuration messages.
-    """
-    pass
-
-
-class InterfaceID(NamedTuple):
-    type: TransportType = TransportType.INVALID
-    index: int = 0
-
-
-_InterfaceIDConstructRaw = Struct(
-    "type" / AutoEnum(Int8ul, TransportType),
-    "index" / Int8ul,
-    Padding(2)
+_TCPConfigConstruct = Struct(
+    "enabled" / Flag,
+    "direction" / AutoEnum(Int8ul, TransportDirection),
+    "port"/ Int16ul,
+    "remote_address" / PaddedString(64, 'utf8'),
 )
-_InterfaceIDConstruct = NamedTupleAdapter(InterfaceID, _InterfaceIDConstructRaw)
+
+
+@_conf_gen.create_interface_config_class(InterfaceConfigType.ALL_PARAMETERS, _TCPConfigConstruct,
+                                         transport_type=TransportType.TCP)
+class TCPConfig(NamedTuple):
+    """!
+    @brief TCP client/server configuration settings.
+    """
+    enabled: bool = True
+    direction: TransportDirection = TransportDirection.SERVER
+    port: int = 0
+    remote_address: str = ''
+
+
+_UDPConfigConstruct = Struct(
+    "enabled" / Flag,
+    Padding(1),
+    "port"/ Int16ul,
+    "remote_address" / PaddedString(64, 'utf8'),
+)
+
+
+@_conf_gen.create_interface_config_class(InterfaceConfigType.ALL_PARAMETERS, _UDPConfigConstruct,
+                                         transport_type=TransportType.UDP)
+class UDPConfig(NamedTuple):
+    """!
+    @brief UDP interface configuration settings.
+    """
+    enabled: bool = True
+    port: int = 0
+    remote_address: str = ''
+
+
+_WebsocketConfigConstruct = Struct(
+    "enabled" / Flag,
+    "direction" / AutoEnum(Int8ul, TransportDirection),
+    "port"/ Int16ul,
+    "remote_address" / PaddedString(64, 'utf8'),
+)
+
+
+@_conf_gen.create_interface_config_class(InterfaceConfigType.ALL_PARAMETERS, _WebsocketConfigConstruct,
+                                         transport_type=TransportType.WEBSOCKET)
+class WebsocketConfig(NamedTuple):
+    """!
+    @brief WebSocket client/server configuration settings.
+    """
+    enabled: bool = True
+    direction: TransportDirection = TransportDirection.SERVER
+    port: int = 0
+    remote_address: str = ''
+
+
+_UNIXSocketConfigConstruct = Struct(
+    "enabled" / Flag,
+    "direction" / AutoEnum(Int8ul, TransportDirection),
+    "socket_type" / AutoEnum(Int8ul, SocketType),
+    Padding(1),
+    "path" / PaddedString(64, 'utf8'),
+)
+
+
+@_conf_gen.create_interface_config_class(InterfaceConfigType.ALL_PARAMETERS, _UNIXSocketConfigConstruct,
+                                         transport_type=TransportType.UNIX)
+class UNIXSocketConfig(NamedTuple):
+    """!
+    @brief UNIX domain socket client/server configuration settings.
+    """
+    enabled: bool = True
+    direction: TransportDirection = TransportDirection.SERVER
+    socket_type: SocketType = SocketType.STREAM
+    path: str = ''
+
+
+_SerialConfigConstruct = Struct(
+    "enabled" / Flag,
+    Padding(3),
+    "baud_rate" / Int32ul,
+    "path" / PaddedString(64, 'utf8'),
+)
+
+
+@_conf_gen.create_interface_config_class(InterfaceConfigType.ALL_PARAMETERS, _SerialConfigConstruct,
+                                         transport_type=TransportType.SERIAL)
+class SerialConfig(NamedTuple):
+    """!
+    @brief Serial port (UART) configuration settings.
+    """
+    enabled: bool = True
+    baud_rate: int = 0
+    path: str = ''
 
 
 class InterfaceConfigSubmessage(NamedTuple):
@@ -1104,7 +1264,7 @@ class SetConfigMessage(MessagePayload):
 
         if submessage:
             data = _InterfaceConfigSubmessageConstruct.build(submessage)
-            construct_obj = _conf_gen.INTERFACE_CONFIG_MAP[submessage.subtype]
+            construct_obj = _conf_gen.find_interface_config_construct(self.interface, submessage.subtype)
         else:
             data = bytes()
             construct_obj = _conf_gen.CONFIG_MAP[config_type]
@@ -1131,7 +1291,7 @@ class SetConfigMessage(MessagePayload):
             interface_header = _InterfaceConfigSubmessageConstruct.parse(header_data)
             subtype = interface_header.subtype
             self.interface = interface_header.interface
-            construct_obj = _conf_gen.INTERFACE_CONFIG_MAP[subtype]
+            construct_obj = _conf_gen.find_interface_config_construct(self.interface, subtype)
         else:
             construct_obj = _conf_gen.CONFIG_MAP[parsed.config_type]
 
@@ -1189,7 +1349,9 @@ class GetConfigMessage(MessagePayload):
 
     def __init__(self,
                  config_type: Union[ConfigType, _ConfigClassGenerator.ConfigClass] = ConfigType.INVALID,
-                 request_source: ConfigurationSource = ConfigurationSource.ACTIVE, interface_header: Optional[InterfaceConfigSubmessage]=None):
+                 request_source: ConfigurationSource = ConfigurationSource.ACTIVE,
+                 interface: Optional[InterfaceID] = None,
+                 interface_header: Optional[InterfaceConfigSubmessage] = None):
         self.request_source = request_source
 
         if isinstance(config_type, ConfigType):
@@ -1197,6 +1359,11 @@ class GetConfigMessage(MessagePayload):
         else:
             self.config_type = config_type.GetType()
 
+        if interface_header is None and interface is not None:
+            if issubclass(config_type, _ConfigClassGenerator.InterfaceConfigClass):
+                interface_header = InterfaceConfigSubmessage(interface=interface, subtype=config_type.GetSubtype())
+            else:
+                raise ValueError('Interface configuration subtype not specified. Cannot construct header.')
         self.interface_header = interface_header
 
         self.__validate_interface_header()
@@ -1362,7 +1529,7 @@ class ConfigResponseMessage(MessagePayload):
 
         if submessage:
             data = _InterfaceConfigSubmessageConstruct.build(submessage)
-            construct_obj = _conf_gen.INTERFACE_CONFIG_MAP[submessage.subtype]
+            construct_obj = _conf_gen.find_interface_config_construct(self.interface, submessage.subtype)
         else:
             data = bytes()
             construct_obj = _conf_gen.CONFIG_MAP[config_type]
@@ -1392,7 +1559,7 @@ class ConfigResponseMessage(MessagePayload):
             interface_header = _InterfaceConfigSubmessageConstruct.parse(header_data)
             subtype = interface_header.subtype
             self.interface = interface_header.interface
-            construct_obj = _conf_gen.INTERFACE_CONFIG_MAP[subtype]
+            construct_obj = _conf_gen.find_interface_config_construct(self.interface, subtype)
         else:
             self.interface = None
             construct_obj = _conf_gen.CONFIG_MAP[parsed.config_type]
