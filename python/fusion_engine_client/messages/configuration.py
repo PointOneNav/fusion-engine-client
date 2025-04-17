@@ -1408,7 +1408,10 @@ class ConfigResponseMessage(MessagePayload):
         if construct_obj is None:
             self.config_object = None
         elif len(config_data) < construct_obj.sizeof():
-            if self.interface is None:
+            if self.response != Response.OK and len(config_data) == 0:
+                # For a non-OK response, they device may omit the parameter altogether. This is normal.
+                pass
+            elif self.interface is None:
                 _logger.error(f'Config response payload too small for expected contents. [type={parsed.config_type}, '
                               f'size={len(config_data)} B (expected={construct_obj.sizeof()} B)]')
             else:
