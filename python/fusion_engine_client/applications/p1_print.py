@@ -10,7 +10,7 @@ from ..messages import *
 from ..parsers import MixedLogReader
 from ..utils import trace as logging
 from ..utils.argument_parser import ArgumentParser, ExtendedBooleanAction, CSVAction
-from ..utils.log import locate_log, DEFAULT_LOG_BASE_DIR
+from ..utils.log import define_cli_arguments as define_log_search_arguments, locate_log
 from ..utils.print_utils import DeviceSummary, add_print_format_argument, print_message, print_summary_table
 from ..utils.time_range import TimeRange
 from ..utils.trace import HighlightFormatter, BrokenPipeStreamHandler
@@ -65,25 +65,11 @@ other types of data.
     parser.add_argument('-v', '--verbose', action='count', default=0,
                         help="Print verbose/trace debugging messages.")
 
-    log_parser = parser.add_argument_group('Log Control')
-    log_parser.add_argument(
-        '--ignore-index', action='store_true',
-        help="If set, do not load the .p1i index file corresponding with the .p1log data file. If specified and a .p1i "
-             "file does not exist, do not generate one. Otherwise, a .p1i file will be created automatically to "
-             "improve data read speed in the future.")
-    log_parser.add_argument(
-        '--log-base-dir', metavar='DIR', default=DEFAULT_LOG_BASE_DIR,
-        help="The base directory containing FusionEngine logs to be searched if a log pattern is specified.")
+    log_parser = parser.add_argument_group('Input File/Log Control')
+    define_log_search_arguments(log_parser)
     log_parser.add_argument(
         '--progress', action='store_true',
         help="Print file read progress to the console periodically.")
-    log_parser.add_argument(
-        'log',
-        help="The log to be read. May be one of:\n"
-             "- The path to a .p1log file or a file containing FusionEngine messages and other content\n"
-             "- The path to a FusionEngine log directory\n"
-             "- A pattern matching a FusionEngine log directory under the specified base directory "
-             "(see find_fusion_engine_log() and --log-base-dir)")
 
     options = parser.parse_args()
 
