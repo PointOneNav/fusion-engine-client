@@ -1992,7 +1992,7 @@ struct P1_ALIGNAS(4) InterfaceID {
  * @brief @ref InterfaceID stream operator.
  * @ingroup io_interfaces
  */
-inline p1_ostream& operator<<(p1_ostream& stream, InterfaceID val) {
+inline p1_ostream& operator<<(p1_ostream& stream, const InterfaceID& val) {
   stream << "[type=" << val.type << ", index=" << (int)val.index << "]";
   return stream;
 }
