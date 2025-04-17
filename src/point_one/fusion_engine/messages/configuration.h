@@ -587,6 +587,10 @@ struct P1_ALIGNAS(4) SaveConfigMessage : public MessagePayload {
  * {MessageHeader, ConfigResponseMessage, uint32_t}
  * ```
  *
+ * The @ref response field will indicate the status of the requested value. If
+ * the response is not @ref Response::OK, the parameter value may be omitted and
+ * @ref config_length_bytes will be set to 0.
+ *
  * In response to a @ref GetConfigMessage with an invalid or unsupported @ref
  * ConfigType, @ref config_type in the resulting @ref ConfigResponseMessage will
  * be set to @ref ConfigType::INVALID, and @ref response will indicate the
@@ -1988,7 +1992,7 @@ struct P1_ALIGNAS(4) InterfaceID {
  * @brief @ref InterfaceID stream operator.
  * @ingroup io_interfaces
  */
-inline p1_ostream& operator<<(p1_ostream& stream, InterfaceID val) {
+inline p1_ostream& operator<<(p1_ostream& stream, const InterfaceID& val) {
   stream << "[type=" << val.type << ", index=" << (int)val.index << "]";
   return stream;
 }

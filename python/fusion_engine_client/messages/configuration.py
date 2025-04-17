@@ -5,10 +5,12 @@ import construct
 from construct import (Struct, Padding, this, Flag, Bytes, Array,
                        Float32l, Float64l, Int64ul, Int32ul, Int16ul, Int8ul, Int64sl, Int32sl, Int16sl, Int8sl, PaddedString)
 
+from ..utils import trace as logging
 from ..utils.construct_utils import NamedTupleAdapter, AutoEnum, construct_message_to_string
 from ..utils.enum_utils import IntEnum
 from .defs import *
 
+_logger = logging.getLogger('point_one.fusion_engine.messages.configuration')
 
 ################################################################################
 # Device Configuration Support
@@ -1390,17 +1392,35 @@ class ConfigResponseMessage(MessagePayload):
             header_data = config_data[:_InterfaceConfigSubmessageConstruct.sizeof()]
             config_data = config_data[_InterfaceConfigSubmessageConstruct.sizeof():]
             interface_header = _InterfaceConfigSubmessageConstruct.parse(header_data)
-            subtype = interface_header.subtype
+            interface_config_subtype = interface_header.subtype
             self.interface = interface_header.interface
-            construct_obj = _conf_gen.INTERFACE_CONFIG_MAP[subtype]
+            construct_obj = _conf_gen.INTERFACE_CONFIG_MAP.get(interface_config_subtype, None)
+            if construct_obj is None:
+                _logger.warning(f'Unsupported interface config subtype. [interface={repr(self.interface)}, '
+                                f'subtype={interface_config_subtype}]')
         else:
             self.interface = None
-            construct_obj = _conf_gen.CONFIG_MAP[parsed.config_type]
+            interface_config_subtype = None
+            construct_obj = _conf_gen.CONFIG_MAP.get(parsed.config_type, None)
+            if construct_obj is None:
+                _logger.warning(f'Unsupported interface config type. [type={parsed.config_type}]')
 
-        if parsed.config_length_bytes > 0:
-            self.config_object = construct_obj.parse(config_data)
-        else:
+        if construct_obj is None:
             self.config_object = None
+        elif len(config_data) < construct_obj.sizeof():
+            if self.response != Response.OK and len(config_data) == 0:
+                # For a non-OK response, they device may omit the parameter altogether. This is normal.
+                pass
+            elif self.interface is None:
+                _logger.error(f'Config response payload too small for expected contents. [type={parsed.config_type}, '
+                              f'size={len(config_data)} B (expected={construct_obj.sizeof()} B)]')
+            else:
+                _logger.error(f'Config response payload too small for expected contents. '
+                              f'[interface={repr(self.interface)}, subtype={interface_config_subtype}, '
+                              f'size={len(config_data)} B (expected={construct_obj.sizeof()} B)]')
+            self.config_object = None
+        else:
+            self.config_object = construct_obj.parse(config_data)
 
         return parsed._io.tell()
 
