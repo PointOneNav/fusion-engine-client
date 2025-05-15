@@ -911,8 +911,17 @@ class Analyzer(object):
                 reference_ecef_m = position_ecef_m[:, 0]
                 title_suffix = ' From First Position'
             elif reference == 'median':
-                reference_ecef_m = position_ecef_m[:, 0]
+                reference_ecef_m = np.median(position_ecef_m, axis=1)
                 title_suffix = ' From Median Position'
+            elif reference == 'median_fixed':
+                idx = solution_type == SolutionType.RTKFixed
+                if np.any(idx):
+                    reference_ecef_m = np.median(position_ecef_m[:, idx], axis=1)
+                    title_suffix = ' From Median Fixed Position'
+                else:
+                    self.logger.warning('No fixed positions available. Using median as displacement plot reference.')
+                    reference_ecef_m = np.median(position_ecef_m, axis=1)
+                    title_suffix = ' From Median Position'
             else:
                 raise ValueError('Unrecognized reference specifier.')
         else:

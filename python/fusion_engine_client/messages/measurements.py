@@ -1398,6 +1398,8 @@ Raw GNSS Attitude Output @ {str(self.details.p1_time)}
   Solution Type: {self.solution_type}
   Relative position (ENU) (m): {self.relative_position_enu_m[0]:.2f}, {self.relative_position_enu_m[1]:.2f}, {self.relative_position_enu_m[2]:.2f}
   Position std (ENU) (m): {self.position_std_enu_m[0]:.2f}, {self.position_std_enu_m[1]:.2f}, {self.position_std_enu_m[2]:.2f}
+  Baseline distance (m): {np.linalg.norm(self.relative_position_enu_m):.2f}
+  Baseline std (m): {np.sqrt(np.sum(self.position_std_enu_m ** 2)):.2f}
   YPR (deg): {ypr_deg[0]:.2f}, {ypr_deg[1]:.2f}, {ypr_deg[2]:.2f}"""
 
     @classmethod
