@@ -19,6 +19,7 @@ from ..utils.argument_parser import ArgumentParser, ExtendedBooleanAction
 from ..utils.print_utils import \
     DeviceSummary, add_print_format_argument, print_message, print_summary_table
 from ..utils.transport_utils import *
+from ..utils.trace import HighlightFormatter, BrokenPipeStreamHandler
 
 _logger = logging.getLogger('point_one.fusion_engine.applications.p1_capture')
 
@@ -75,6 +76,9 @@ The format of the file to be generated when --output is enabled:
                 logging.getTraceLevel(depth=options.verbose - 1))
     else:
         logging.basicConfig(level=logging.INFO, format='%(message)s', stream=sys.stdout)
+
+    HighlightFormatter.install(color=True, standoff_level=logging.WARNING)
+    BrokenPipeStreamHandler.install()
 
     # Connect to the device using the specified transport.
     try:
@@ -191,7 +195,7 @@ The format of the file to be generated when --output is enabled:
                                 _print_status(now)
                         else:
                             print_message(header, message, format=options.display_format)
-    except KeyboardInterrupt:
+    except (BrokenPipeError, KeyboardInterrupt) as e:
         pass
 
     # Close the transport.
