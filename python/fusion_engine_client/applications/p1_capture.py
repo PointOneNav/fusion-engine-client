@@ -13,12 +13,14 @@ if __package__ is None or __package__ == "":
     from import_utils import enable_relative_imports
     __package__ = enable_relative_imports(__name__, __file__)
 
+from ..messages import MessagePayload, message_type_by_name
 from ..parsers import FusionEngineDecoder
 from ..utils import trace as logging
 from ..utils.argument_parser import ArgumentParser, ExtendedBooleanAction
 from ..utils.print_utils import \
     DeviceSummary, add_print_format_argument, print_message, print_summary_table
 from ..utils.transport_utils import *
+from ..utils.trace import HighlightFormatter, BrokenPipeStreamHandler
 
 _logger = logging.getLogger('point_one.fusion_engine.applications.p1_capture')
 
@@ -33,6 +35,19 @@ contents and/or log the messages to disk.
     parser.add_argument(
         '--display', action=ExtendedBooleanAction, default=True,
         help="Print the incoming message contents to the console.")
+    parser.add_argument(
+        '-m', '--message-type', type=str, action='append',
+        help="An optional list of class names corresponding with the message types to be displayed. May be specified "
+             "multiple times (-m Pose -m PoseAux), or as a comma-separated list (-m Pose,PoseAux). All matches are"
+             "case-insensitive.\n"
+             "\n"
+             "If a partial name is specified, the best match will be returned. Use the wildcard '*' to match multiple "
+             "message types.\n"
+             "\n"
+             "Note: This applies to the displayed messages only. All incoming data will still be stored on disk if "
+             "--output is specified.\n"
+             "\n"
+             "Supported types:\n%s" % '\n'.join(['- %s' % c for c in message_type_by_name.keys()]))
     parser.add_argument(
         '-q', '--quiet', dest='quiet', action=ExtendedBooleanAction, default=False,
         help="Do not print anything to the console.")
@@ -75,6 +90,28 @@ The format of the file to be generated when --output is enabled:
                 logging.getTraceLevel(depth=options.verbose - 1))
     else:
         logging.basicConfig(level=logging.INFO, format='%(message)s', stream=sys.stdout)
+
+    HighlightFormatter.install(color=True, standoff_level=logging.WARNING)
+    BrokenPipeStreamHandler.install()
+
+    # If the user specified a set of message names, lookup their type values. Below, we will limit the printout to only
+    # those message types.
+    message_types = None
+    if options.message_type is not None:
+        # Pattern match to any of:
+        #   -m Type1
+        #   -m Type1 -m Type2
+        #   -m Type1,Type2
+        #   -m Type1,Type2 -m Type3
+        #   -m Type*
+        try:
+            message_types = MessagePayload.find_matching_message_types(options.message_type)
+            if len(message_types) == 0:
+                # find_matching_message_types() will print an error.
+                sys.exit(1)
+        except ValueError as e:
+            _logger.error(str(e))
+            sys.exit(1)
 
     # Connect to the device using the specified transport.
     try:
@@ -189,9 +226,9 @@ The format of the file to be generated when --output is enabled:
                         if options.summary:
                             if (now - last_print_time).total_seconds() > 0.1:
                                 _print_status(now)
-                        else:
+                        elif message_types is None or header.message_type in message_types:
                             print_message(header, message, format=options.display_format)
-    except KeyboardInterrupt:
+    except (BrokenPipeError, KeyboardInterrupt) as e:
         pass
 
     # Close the transport.

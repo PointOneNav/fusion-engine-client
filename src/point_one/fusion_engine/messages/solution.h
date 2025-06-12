@@ -224,7 +224,7 @@ struct P1_ALIGNAS(4) GNSSInfoMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::GNSS_INFO;
   static constexpr uint8_t MESSAGE_VERSION = 1;
 
-  static constexpr uint16_t INVALID_LEAP_SECOND = 0xFF;
+  static constexpr uint8_t INVALID_LEAP_SECOND = 0xFF;
   static constexpr uint16_t INVALID_AGE = 0xFFFF;
   static constexpr uint16_t INVALID_DISTANCE = 0xFFFF;
   static constexpr uint32_t INVALID_REFERENCE_STATION = 0xFFFFFFFF;

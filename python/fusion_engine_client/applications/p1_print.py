@@ -104,7 +104,7 @@ other types of data.
 
     # If the user specified a set of message names, lookup their type values. Below, we will limit the printout to only
     # those message types.
-    message_types = set()
+    message_types = None
     if options.message_type is not None:
         # Pattern match to any of:
         #   -m Type1
