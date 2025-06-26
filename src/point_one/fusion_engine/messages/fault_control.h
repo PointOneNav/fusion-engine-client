@@ -144,10 +144,8 @@ P1_CONSTEXPR_FUNC const char* to_string(FaultType type) {
 
     case FaultType::INTEGRITY_STATUS:
       return "Integrity Status";
-
-    default:
-      return "Unrecognized";
   }
+  return "Unrecognized";
 }
 
 /**
@@ -192,9 +190,8 @@ P1_CONSTEXPR_FUNC const char* to_string(CoComType type) {
       return "Speed";
     case CoComType::ALTITUDE:
       return "Altitude";
-    default:
-      return "Unrecognized";
   }
+  return "Unrecognized";
 }
 
 /**

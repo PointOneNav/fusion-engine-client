@@ -561,10 +561,8 @@ P1_CONSTEXPR_FUNC const char* to_string(SolutionType type) {
 
     case SolutionType::PPP:
       return "PPP GNSS";
-
-    default:
-      return "Unrecognized Solution Type";
   }
+  return "Unrecognized Solution Type";
 }
 
 /**
