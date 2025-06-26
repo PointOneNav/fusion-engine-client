@@ -93,6 +93,7 @@ class VehicleModel(IntEnum):
     J1939 = 2
 
     LEXUS_CT200H = 20
+    LEXUS_RX450H = 21
 
     KIA_SORENTO = 40
     KIA_SPORTAGE = 41
@@ -122,6 +123,8 @@ class VehicleModel(IntEnum):
     RIVIAN = 240
 
     FLEXRAY_DEVICE_AUDI_ETRON = 260
+
+    ISUZU_F_SERIES = 280
 
 
 class WheelSensorType(IntEnum):

@@ -696,6 +696,7 @@ enum class VehicleModel : uint16_t {
   J1939 = 2,
 
   LEXUS_CT200H = 20,
+  LEXUS_RX450H = 21,
 
   KIA_SORENTO = 40,
   KIA_SPORTAGE = 41,
@@ -725,6 +726,8 @@ enum class VehicleModel : uint16_t {
   RIVIAN = 240,
 
   FLEXRAY_DEVICE_AUDI_ETRON = 260,
+
+  ISUZU_F_SERIES = 280,
 };
 
 /**
@@ -745,6 +748,8 @@ P1_CONSTEXPR_FUNC const char* to_string(VehicleModel vehicle_model) {
       return "J1939";
     case VehicleModel::LEXUS_CT200H:
       return "LEXUS_CT200H";
+      case VehicleModel::LEXUS_RX450H:
+        return "LEXUS_RX450H";
     case VehicleModel::KIA_SORENTO:
       return "KIA_SORENTO";
     case VehicleModel::KIA_SPORTAGE:
@@ -779,6 +784,8 @@ P1_CONSTEXPR_FUNC const char* to_string(VehicleModel vehicle_model) {
       return "RIVIAN";
     case VehicleModel::FLEXRAY_DEVICE_AUDI_ETRON:
       return "FLEXRAY_DEVICE_AUDI_ETRON";
+    case VehicleModel::ISUZU_F_SERIES:
+      return "ISUZU_F_SERIES";
     default:
       return "UNRECOGNIZED";
   }
