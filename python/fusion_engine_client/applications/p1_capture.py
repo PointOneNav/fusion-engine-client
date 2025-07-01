@@ -5,7 +5,7 @@ import math
 import os
 import select
 import sys
-import time
+from typing import Optional
 
 import colorama
 
@@ -19,6 +19,10 @@ from ..utils import trace as logging
 from ..utils.argument_parser import ArgumentParser, ExtendedBooleanAction
 from ..utils.print_utils import \
     DeviceSummary, add_print_format_argument, print_message, print_summary_table
+from ..utils.socket_timestamping import (enable_socket_timestamping,
+                                         HW_TIMESTAMPING_HELP,
+                                         log_timestamped_data_offset,
+                                         parse_timestamps_from_ancdata)
 from ..utils.transport_utils import *
 from ..utils.trace import HighlightFormatter, BrokenPipeStreamHandler
 
@@ -66,6 +70,16 @@ The format of the file to be generated when --output is enabled:
 - p1log - Create a *.p1log file containing only FusionEngine messages
 - raw - Create a generic binary file containing all incoming data
 - csv - Create a CSV file with the received message types and timestamps""")
+    parser.add_argument(
+        '--log-timestamp-source', default=None, choices=('user-sw', 'kernel-sw', 'hw'),
+        help="""\
+Create a mapping the timestamps to the output file data.
+For CSV files, this will change the source of the host_time column.
+For p1log or raw logs, the timestamps will be written as a binary file name <OUT_FILE>.data_times.bin.
+The data is pairs of uint64. First, the timestamp in nanoseconds followed by the byte offset in the data file.
+- user-sw - Log timestamps from python code. This is the only option available for serial data.
+- kernel-sw - Log kernel SW timestamps. This is only available for socket connections.
+- hw - Log HW timestamps from device driver. This needs HW driver support. Run `./fusion_engine_client/utils/socket_timestamping.py` to test.""")
     file_group.add_argument(
         '-o', '--output', type=str,
         help="If specified, save the incoming data in the specified file.")
@@ -121,6 +135,7 @@ The format of the file to be generated when --output is enabled:
         sys.exit(1)
 
     # Open the output file if logging was requested.
+    timestamp_file = None
     if options.output is not None:
         if options.output_format == 'p1log':
             p1i_path = os.path.splitext(options.output)[0] + '.p1i'
@@ -128,6 +143,9 @@ The format of the file to be generated when --output is enabled:
                 os.remove(p1i_path)
 
         output_file = open(options.output, 'wb')
+
+        if options.log_timestamp_source and options.output_format != 'csv':
+            timestamp_file = open(options.output + '.data_times.bin', 'wb')
     else:
         output_file = None
 
@@ -142,14 +160,23 @@ The format of the file to be generated when --output is enabled:
     read_timeout_sec = 1.0
     if isinstance(transport, socket.socket):
         transport.setblocking(0)
+        enable_socket_timestamping(
+            transport,
+            enable_sw_timestamp=options.log_timestamp_source == 'kernel-sw',
+            enable_hw_timestamp=options.log_timestamp_source == 'hw'
+        )
     # If this is a serial port, configure its read timeout.
     else:
+        if options.log_timestamp_source and options.log_timestamp_source != 'user-sw':
+            _logger.error(f'--log-timestamp-source={options.log_timestamp_source} is not supported. Only "user-sw" timestamps are supported on serial port captures.')
+            sys.exit(1)
         transport.timeout = read_timeout_sec
 
     # Listen for incoming data.
     decoder = FusionEngineDecoder(warn_on_unrecognized=not options.quiet and not options.summary, return_bytes=True)
 
     bytes_received = 0
+    fe_bytes_received = 0
     messages_received = 0
     device_summary = DeviceSummary()
 
@@ -168,6 +195,8 @@ The format of the file to be generated when --output is enabled:
 
     try:
         while True:
+            kernel_ts: Optional[float] = None
+            hw_ts: Optional[float] = None
             # Read some data.
             try:
                 # If this is a TCP/UDP socket, use select() to implement a read timeout so we can wakeup periodically
@@ -175,7 +204,8 @@ The format of the file to be generated when --output is enabled:
                 if isinstance(transport, socket.socket):
                     ready = select.select([transport], [], [], read_timeout_sec)
                     if ready[0]:
-                        received_data = transport.recv(1024)
+                        received_data, ancdata, _, _ = transport.recvmsg(1024, 1024)
+                        kernel_ts, _, hw_ts = parse_timestamps_from_ancdata(ancdata)
                     else:
                         received_data = []
                 # If this is a serial port, we set the read timeout above.
@@ -193,9 +223,26 @@ The format of the file to be generated when --output is enabled:
                 _logger.error('Unexpected error reading from device:\r%s' % str(e))
                 break
 
+            if options.log_timestamp_source == 'kernel-sw':
+                if kernel_ts is None:
+                    _logger.error(f'Unable to capture kernel SW timestamps on {options.transport}.')
+                    sys.exit(1)
+                timestamp = kernel_ts
+            elif options.log_timestamp_source == 'hw':
+                if hw_ts is None:
+                    _logger.error(f'Unable to capture HW timestamps on {options.transport}.\n{HW_TIMESTAMPING_HELP}')
+                    sys.exit(1)
+                timestamp = hw_ts
+            else:
+                timestamp = now.timestamp()
+            timestamp_ns = int(round(timestamp * 1e9))
+
             # If logging in raw format, write the data to disk as is.
             if generating_raw_log:
                 output_file.write(received_data)
+                if timestamp_file:
+                    log_timestamped_data_offset(timestamp_file, timestamp_ns, bytes_received)
+
 
             # Decode the incoming data and print the contents of any complete messages.
             #
@@ -209,10 +256,13 @@ The format of the file to be generated when --output is enabled:
 
             if options.display or generating_p1log:
                 for (header, message, raw_data) in messages:
+                    fe_bytes_received += len(raw_data)
                     device_summary.update(header, message)
 
                     if generating_p1log:
                         output_file.write(raw_data)
+                        if timestamp_file:
+                            log_timestamped_data_offset(timestamp_file, timestamp_ns, fe_bytes_received)
 
                     if generating_csv:
                         p1_time = message.get_p1_time()
@@ -220,7 +270,7 @@ The format of the file to be generated when --output is enabled:
                         p1_str = str(p1_time.seconds) if p1_time is not None and not math.isnan(p1_time) else ''
                         sys_str = str(sys_time) if sys_time is not None and not math.isnan(sys_time) else ''
                         output_file.write(
-                            f'{time.monotonic()},{header.message_type},{p1_str},{sys_str}\n'.encode('utf-8'))
+                            f'{timestamp},{header.message_type},{p1_str},{sys_str}\n'.encode('utf-8'))
 
                     if options.display:
                         if options.summary:
