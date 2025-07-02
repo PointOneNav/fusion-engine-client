@@ -375,7 +375,7 @@ class Analyzer(object):
             return
 
         # Read the pose data to get P1 and GPS timestamps.
-        # The message_index will be used to map back to the host times the message data was recieved.
+        # The message_index will be used to map back to the host times the message data was received.
         # This will then be compared to the GPS time, assuming the host time was synchronized to GPS time.
         result = self.reader.read(message_types=[PoseMessage], return_message_index=True,
                                   source_ids=self.default_source_id, **self.params)
@@ -393,38 +393,37 @@ class Analyzer(object):
         last_gps_time = gps_time[-1]
 
         # Setup the figure.
-        p1_time_axis_str = 'Relative Time' if self.time_axis == 'relative' else 'P1 Time'
         figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=True,
                                subplot_titles=[f'Pose Message Latency'])
 
         figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
-        figure['layout']['xaxis1'].update(title=f"{p1_time_axis_str} (sec)", showticklabels=True)
-        figure['layout']['yaxis1'].update(title="Latency (s)")
+        figure['layout']['xaxis1'].update(title=self.p1_time_label, showticklabels=True)
+        figure['layout']['yaxis1'].update(title="Latency (sec)")
 
         time = p1_time - float(self.t0)
 
         # Use the last GPS Time to get the offset between UNIX and GPS time. This includes the epoch difference and the
         # current leap second.
         gps_posix_offset = gps2unix(last_gps_time) - last_gps_time
-        gps_posix_times = ((gps_time + gps_posix_offset)*1e9).astype('datetime64[ns]')
+        gps_posix_times = ((gps_time + gps_posix_offset) * 1e9).astype('datetime64[ns]')
 
         host_posix_times = self.host_time_mapper.get_host_timestamps(message_index)
 
         # NOTE: The difference between host_posix_times and gps_posix_times is a combination of:
         # 1. The time the positioning engine took to generate the message
         # 2. The time the message took to be sent over the transport (e.x. TCP)
-        # 3. The time the delay before the host was able to generate the timestamp (may be high if generated in user
-        #    space code)
-        # 4. The accuracy of the hosts timestamping clock.
+        # 3. The time the delay before the host was able to generate the timestamp (may be large/noisy if the data was
+        #    timestamped in user space instead of in hardware or the kernel)
+        # 4. The accuracy of the host's timestamping clock.
         #
         # This absolute latency value is only reliable if the host clock was synced to GPS time.
-        latency = (host_posix_times - gps_posix_times).astype(float) / 1e9
+        latency_sec = (host_posix_times - gps_posix_times).astype(float) / 1e9
 
-        text = ['P1: %.3f sec<br>%s' % (p, g) for p, g in zip(p1_time, latency)]
-        figure.add_trace(go.Scattergl(x=time, y=latency, name='Pose Message Latency', text=text,
+        text = ['P1: %.3f sec<br>%s' % (p, g) for p, g in zip(p1_time, latency_sec)]
+        figure.add_trace(go.Scattergl(x=time, y=latency_sec, name='Pose Message Latency', text=text,
                                         hoverlabel={'namelength': -1},
                                         mode='markers', marker={'color': 'blue'}),
-                            1, 1)
+                         1, 1)
 
         figure.update_layout(title_text='NOTE: Latency assumes the host system clock is synced to GPS time. '
                                         'Any error will impact the latency computation.')
