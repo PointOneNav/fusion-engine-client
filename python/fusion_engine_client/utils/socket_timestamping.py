@@ -16,6 +16,7 @@ from typing import BinaryIO, Optional, TypeAlias
 
 _CMSG: TypeAlias = tuple[int, int, bytes]
 
+TIMESTAMP_FILE_ENDING = '.data_times.bin'
 
 HW_TIMESTAMPING_HELP = """\
 To check if your network interface supports hardware timestamping:
@@ -29,6 +30,7 @@ tools like hwstamp_ctl or tcpdump.
   Example: timeout 1 sudo tcpdump -j adapter_unsynced -i eth0 > /dev/null
 """
 
+_TIMESTAMP_STRUCT = struct.Struct('QQ')
 
 #################### Linux socket constants ###################
 # These values were taken from a Debian kernel version 6.12.25 system and may be different on different platforms.
@@ -86,7 +88,7 @@ def parse_timestamps_from_ancdata(ancdata: list[_CMSG]) -> tuple[Optional[float]
             # Each timestamp is 16 bytes (2 * 8 bytes for sec + nsec)
             for i in range(0, min(len(cmsg_data), 48), 16):  # Max 3 timestamps
                 if i + 16 <= len(cmsg_data):
-                    sec, nsec = struct.unpack("QQ", cmsg_data[i : i + 16])
+                    sec, nsec = _TIMESTAMP_STRUCT.unpack_from(cmsg_data, i)
                     if sec > 0:  # Valid timestamp
                         timestamp = sec + (nsec / 1e9)
                         timestamps.append(timestamp)
@@ -113,13 +115,19 @@ def enable_socket_timestamping(sock: socket.socket, enable_sw_timestamp: bool, e
 
 
 def log_timestamped_data_offset(fd: BinaryIO, timestamp_ns: int, byte_offset: int):
-    fd.write(struct.pack('QQ', timestamp_ns, byte_offset))
+    '''
+    Log the host timestamp associated with the reception of the byte at byte_offset.
 
+    For example, after startup if the first packet is 10 bytes at time 1.0, timestamp_ns would be 1e9 and byte_offset
+    would be 10.
 
-def numpy_load_timestamps(file: str | Path | BinaryIO):
-    import numpy as np
-    _DTYPE = np.dtype([('posix_time', 'datetime64[ns]'), ('offset', '<u8')])
-    return np.fromfile(file, dtype=_DTYPE)
+    This implies that for each update the bytes between each entry are associated with later entry.
+
+    For example if the second entry was 20 bytes at time 3.0:
+      - bytes 0-9 would have timestamp 1.0
+      - bytes 10-29 would have timestamp 3.0
+    '''
+    fd.write(_TIMESTAMP_STRUCT.pack(timestamp_ns, byte_offset))
 
 
 def main():

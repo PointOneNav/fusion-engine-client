@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Optional, Sequence, Union
 
 from collections import namedtuple
 import copy
@@ -6,10 +6,12 @@ import io
 import os
 
 import numpy as np
+from numpy.typing import NDArray
 
 from ..messages import MessageHeader, MessagePayload, MessageType, Timestamp
 from ..utils.enum_utils import IntEnum
 from ..utils.numpy_utils import find_first
+from ..utils.socket_timestamping import TIMESTAMP_FILE_ENDING
 from ..utils.time_range import TimeRange
 
 
@@ -554,3 +556,39 @@ class FileIndexBuilder(object):
 
     def __len__(self):
         return len(self.raw_data)
+
+class HostTimeIndexMap:
+    _DTYPE = np.dtype([('posix_time', 'datetime64[ns]'), ('offset', '<u8')])
+
+    def __init__(self, fe_index: FileIndex, time_mapping_path: str) -> None:
+        '''
+        Map a FE file index with its associated host time map.
+
+        See socket_timestamping.log_timestamped_data_offset for an explanation of the contents of the host time map
+        file.
+        '''
+        # If we wanted to support this use case we should incorporate host time directly into FileIndex instead of
+        # having this helper class.
+        if not np.all(fe_index.message_index == np.arange(len(fe_index))):
+            raise ValueError('The host time index map must be built from an unfiltered FileIndex.'
+                             'It cannot be built from a slice of times or message types.')
+
+        self.time_map_data = np.fromfile(time_mapping_path, dtype=self._DTYPE)
+        # There's a few different assumptions that you can make to be more or less conservative about the timing, and
+        # make the processing more or less complicated. To avoid needing to read the size of each message, we'll assume
+        # that the timestamp of the first byte of each message is is accurate for the whole message. Generally, this
+        # will be true, but might underestimate the latency if messages are often broken up into multiple reads.
+        #
+        # Find the index into time_data where each FE message start is less than the bytes received. See:
+        # https://numpy.org/doc/2.2/reference/generated/numpy.searchsorted.html
+        self.message_mappings = np.searchsorted(self.time_map_data['offset'], fe_index.offset, side='right')
+
+    @classmethod
+    def from_data_path(cls, fe_index: FileIndex, data_path: str) -> Optional['HostTimeIndexMap']:
+        return cls(fe_index, data_path + TIMESTAMP_FILE_ENDING)
+
+    def get_host_timestamps(self, fe_index_msg_indexes: Sequence[int]) -> NDArray[np.datetime64]:
+        return self.time_map_data['posix_time'][self.message_mappings[fe_index_msg_indexes]]
+
+    def get_host_timestamp(self, fe_index_msg_index: int) -> np.datetime64:
+        return self.time_map_data['posix_time'][self.message_mappings[fe_index_msg_index]] # type: ignore

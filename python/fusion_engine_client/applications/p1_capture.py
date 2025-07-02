@@ -22,7 +22,8 @@ from ..utils.print_utils import \
 from ..utils.socket_timestamping import (enable_socket_timestamping,
                                          HW_TIMESTAMPING_HELP,
                                          log_timestamped_data_offset,
-                                         parse_timestamps_from_ancdata)
+                                         parse_timestamps_from_ancdata,
+                                         TIMESTAMP_FILE_ENDING,)
 from ..utils.transport_utils import *
 from ..utils.trace import HighlightFormatter, BrokenPipeStreamHandler
 
@@ -72,10 +73,10 @@ The format of the file to be generated when --output is enabled:
 - csv - Create a CSV file with the received message types and timestamps""")
     parser.add_argument(
         '--log-timestamp-source', default=None, choices=('user-sw', 'kernel-sw', 'hw'),
-        help="""\
-Create a mapping the timestamps to the output file data.
+        help=f"""\
+Create a mapping between the host timestamps and the output file data.
 For CSV files, this will change the source of the host_time column.
-For p1log or raw logs, the timestamps will be written as a binary file name <OUT_FILE>.data_times.bin.
+For p1log or raw logs, the timestamps will be written as a binary file name <OUT_FILE>{TIMESTAMP_FILE_ENDING}.
 The data is pairs of uint64. First, the timestamp in nanoseconds followed by the byte offset in the data file.
 - user-sw - Log timestamps from python code. This is the only option available for serial data.
 - kernel-sw - Log kernel SW timestamps. This is only available for socket connections.
@@ -145,7 +146,7 @@ The data is pairs of uint64. First, the timestamp in nanoseconds followed by the
         output_file = open(options.output, 'wb')
 
         if options.log_timestamp_source and options.output_format != 'csv':
-            timestamp_file = open(options.output + '.data_times.bin', 'wb')
+            timestamp_file = open(options.output + TIMESTAMP_FILE_ENDING, 'wb')
     else:
         output_file = None
 
@@ -160,6 +161,7 @@ The data is pairs of uint64. First, the timestamp in nanoseconds followed by the
     read_timeout_sec = 1.0
     if isinstance(transport, socket.socket):
         transport.setblocking(0)
+        # This function won't do anything if neither timestamp is enabled.
         enable_socket_timestamping(
             transport,
             enable_sw_timestamp=options.log_timestamp_source == 'kernel-sw',
@@ -227,15 +229,15 @@ The data is pairs of uint64. First, the timestamp in nanoseconds followed by the
                 if kernel_ts is None:
                     _logger.error(f'Unable to capture kernel SW timestamps on {options.transport}.')
                     sys.exit(1)
-                timestamp = kernel_ts
+                timestamp_sec = kernel_ts
             elif options.log_timestamp_source == 'hw':
                 if hw_ts is None:
                     _logger.error(f'Unable to capture HW timestamps on {options.transport}.\n{HW_TIMESTAMPING_HELP}')
                     sys.exit(1)
-                timestamp = hw_ts
+                timestamp_sec = hw_ts
             else:
-                timestamp = now.timestamp()
-            timestamp_ns = int(round(timestamp * 1e9))
+                timestamp_sec = now.timestamp()
+            timestamp_ns = int(round(timestamp_sec * 1e9))
 
             # If logging in raw format, write the data to disk as is.
             if generating_raw_log:
@@ -270,7 +272,7 @@ The data is pairs of uint64. First, the timestamp in nanoseconds followed by the
                         p1_str = str(p1_time.seconds) if p1_time is not None and not math.isnan(p1_time) else ''
                         sys_str = str(sys_time) if sys_time is not None and not math.isnan(sys_time) else ''
                         output_file.write(
-                            f'{timestamp},{header.message_type},{p1_str},{sys_str}\n'.encode('utf-8'))
+                            f'{timestamp_sec},{header.message_type},{p1_str},{sys_str}\n'.encode('utf-8'))
 
                     if options.display:
                         if options.summary:
