@@ -24,7 +24,7 @@ except ImportError:
     # Dummy stand-in if pySerial is not installed.
     class serial:
         class Serial: pass
-        class SerialException: pass
+        class SerialException(Exception): pass
 
 TRANSPORT_HELP_STRING = """\
 The method used to communicate with the target device:

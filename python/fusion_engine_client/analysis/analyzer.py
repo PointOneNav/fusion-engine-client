@@ -9,7 +9,7 @@ import os
 import sys
 import webbrowser
 
-from gpstime import gpstime
+from gpstime import gpstime, gps2unix
 from palettable.tableau import Tableau_20
 import plotly
 import plotly.graph_objs as go
@@ -26,6 +26,7 @@ if __name__ == "__main__" and (__package__ is None or __package__ == ''):
 from ..messages import *
 from .attitude import get_enu_rotation_matrix
 from .data_loader import DataLoader, TimeRange
+from ..parsers.file_index import HostTimeIndexMap
 from ..utils import trace as logging
 from ..utils.argument_parser import ArgumentParser, ExtendedBooleanAction, TriStateBooleanAction, CSVAction
 from ..utils.log import define_cli_arguments as define_log_search_arguments, locate_log
@@ -129,8 +130,13 @@ class Analyzer(object):
         """
         if isinstance(file, str):
             self.reader = DataLoader(file, ignore_index=ignore_index)
+            self.host_time_mapper = HostTimeIndexMap.from_data_path(self.reader.get_index(), file)
+            if self.host_time_mapper is not None:
+                _logger.info('Loaded host time map.')
         else:
             self.reader = file
+            self.host_time_mapper = None
+
 
         self.output_dir = output_dir
         self.prefix = prefix
@@ -360,6 +366,68 @@ class Analyzer(object):
                              1, 1)
 
         self._add_figure(name="time_scale", figure=figure, title="Time Scale")
+
+    def plot_latency(self):
+        if self.output_dir is None:
+            return
+
+        if self.host_time_mapper is None:
+            return
+
+        # Read the pose data to get P1 and GPS timestamps.
+        # The message_index will be used to map back to the host times the message data was received.
+        # This will then be compared to the GPS time, assuming the host time was synchronized to GPS time.
+        result = self.reader.read(message_types=[PoseMessage], return_message_index=True,
+                                  source_ids=self.default_source_id, **self.params)
+        pose_data = result[PoseMessage.MESSAGE_TYPE]
+
+        valid_idx = ~np.isnan(pose_data.gps_time)
+
+        if np.sum(valid_idx) == 0:
+            return
+
+        p1_time = pose_data.p1_time[valid_idx]
+        gps_time = pose_data.gps_time[valid_idx]
+        message_index = pose_data.message_index[valid_idx]
+
+        last_gps_time = gps_time[-1]
+
+        # Setup the figure.
+        figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=True,
+                               subplot_titles=[f'Pose Message Latency'])
+
+        figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
+        figure['layout']['xaxis1'].update(title=self.p1_time_label, showticklabels=True)
+        figure['layout']['yaxis1'].update(title="Latency (sec)")
+
+        time = p1_time - float(self.t0)
+
+        # Use the last GPS Time to get the offset between UNIX and GPS time. This includes the epoch difference and the
+        # current leap second.
+        gps_posix_offset = gps2unix(last_gps_time) - last_gps_time
+        gps_posix_times = ((gps_time + gps_posix_offset) * 1e9).astype('datetime64[ns]')
+
+        host_posix_times = self.host_time_mapper.get_host_timestamps(message_index)
+
+        # NOTE: The difference between host_posix_times and gps_posix_times is a combination of:
+        # 1. The time the positioning engine took to generate the message
+        # 2. The time the message took to be sent over the transport (e.x. TCP)
+        # 3. The time the delay before the host was able to generate the timestamp (may be large/noisy if the data was
+        #    timestamped in user space instead of in hardware or the kernel)
+        # 4. The accuracy of the host's timestamping clock.
+        #
+        # This absolute latency value is only reliable if the host clock was synced to GPS time.
+        latency_sec = (host_posix_times - gps_posix_times).astype(float) / 1e9
+
+        text = ['P1: %.3f sec<br>%s' % (p, g) for p, g in zip(p1_time, latency_sec)]
+        figure.add_trace(go.Scattergl(x=time, y=latency_sec, name='Pose Message Latency', text=text,
+                                        hoverlabel={'namelength': -1},
+                                        mode='markers', marker={'color': 'blue'}),
+                         1, 1)
+
+        figure.update_layout(title_text='NOTE: Latency assumes the host system clock is synced to GPS time. '
+                                        'Any error will impact the latency computation.')
+        self._add_figure(name="host_latency", figure=figure, title="Host Recieved Latency")
 
     def plot_reset_timing(self):
         if self.output_dir is None:
@@ -3021,6 +3089,7 @@ Load and display information stored in a FusionEngine binary file.
     if options.plot is None:
         analyzer.plot_events()
         analyzer.plot_time_scale()
+        analyzer.plot_latency()
 
         analyzer.plot_solution_type()
         analyzer.plot_stationary_status()
