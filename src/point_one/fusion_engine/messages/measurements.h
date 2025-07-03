@@ -74,9 +74,8 @@ P1_CONSTEXPR_FUNC const char* to_string(SensorDataSource val) {
       return "Serial";
     case SensorDataSource::NETWORK:
       return "Network";
-    default:
-      return "Unrecognized";
   }
+  return "Unrecognized";
 }
 
 /**
@@ -135,9 +134,8 @@ P1_CONSTEXPR_FUNC const char* to_string(SystemTimeSource val) {
       return "Sender System Time";
     case SystemTimeSource::GPS_TIME:
       return "GPS Time";
-    default:
-      return "Unrecognized";
   }
+  return "Unrecognized";
 }
 
 /**
@@ -396,9 +394,8 @@ P1_CONSTEXPR_FUNC const char* to_string(GearType val) {
       return "Park";
     case GearType::NEUTRAL:
       return "Neutral";
-    default:
-      return "Unrecognized";
   }
+  return "Unrecognized";
 }
 
 /**

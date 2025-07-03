@@ -256,10 +256,8 @@ struct P1_ALIGNAS(4) EventNotificationMessage : public MessagePayload {
 
       case EventType::COMMAND_RESPONSE:
         return "Command Response";
-
-      default:
-        return "Unknown";
     }
+    return "Unknown";
   }
 
   static constexpr MessageType MESSAGE_TYPE = MessageType::EVENT_NOTIFICATION;
