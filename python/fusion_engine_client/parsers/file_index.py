@@ -585,7 +585,11 @@ class HostTimeIndexMap:
 
     @classmethod
     def from_data_path(cls, fe_index: FileIndex, data_path: str) -> Optional['HostTimeIndexMap']:
-        return cls(fe_index, data_path + TIMESTAMP_FILE_ENDING)
+        time_mapping_path = data_path + TIMESTAMP_FILE_ENDING
+        if os.path.exists(time_mapping_path):
+            return cls(fe_index, time_mapping_path)
+        else:
+            return None
 
     def get_host_timestamps(self, fe_index_msg_indexes: Sequence[int]) -> NDArray[np.datetime64]:
         return self.time_map_data['posix_time'][self.message_mappings[fe_index_msg_indexes]]
