@@ -395,9 +395,8 @@ P1_CONSTEXPR_FUNC const char* to_string(CalibrationStage val) {
       return "IMU Mounting Angles";
     case CalibrationStage::DONE:
       return "Done";
-    default:
-      return "Unrecognized";
   }
+  return "Unrecognized";
 }
 
 /**

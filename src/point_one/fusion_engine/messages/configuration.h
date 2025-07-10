@@ -359,7 +359,6 @@ P1_CONSTEXPR_FUNC const char* to_string(ConfigType type) {
     case ConfigType::LBAND_PARAMETERS:
       return "LBand Parameters";
   }
-
   return "Unrecognized Configuration";
 }
 
@@ -405,10 +404,9 @@ P1_CONSTEXPR_FUNC const char* to_string(ConfigurationSource source) {
 
     case ConfigurationSource::DEFAULT:
       return "Default";
-
-    default:
-      return "Unrecognized Source";
   }
+
+  return "Unrecognized Source";
 }
 
 /**
@@ -451,10 +449,9 @@ P1_CONSTEXPR_FUNC const char* to_string(SaveAction action) {
 
     case SaveAction::REVERT_TO_DEFAULT:
       return "Revert To Default";
-
-    default:
-      return "Unknown";
   }
+
+  return "Unrecognized";
 }
 
 /**
@@ -786,9 +783,9 @@ P1_CONSTEXPR_FUNC const char* to_string(VehicleModel vehicle_model) {
       return "FLEXRAY_DEVICE_AUDI_ETRON";
     case VehicleModel::ISUZU_F_SERIES:
       return "ISUZU_F_SERIES";
-    default:
-      return "UNRECOGNIZED";
   }
+
+  return "UNRECOGNIZED";
 }
 
 /**
@@ -859,25 +856,19 @@ enum class WheelSensorType : uint8_t {
  */
 P1_CONSTEXPR_FUNC const char* to_string(WheelSensorType wheel_sensor_type) {
   switch (wheel_sensor_type) {
-    case WheelSensorType::NONE: {
+    case WheelSensorType::NONE:
       return "None";
-    }
-    case WheelSensorType::TICKS: {
+    case WheelSensorType::TICKS:
       return "Ticks";
-    }
-    case WheelSensorType::WHEEL_SPEED: {
+    case WheelSensorType::WHEEL_SPEED:
       return "Wheel Speed";
-    }
-    case WheelSensorType::VEHICLE_SPEED: {
+    case WheelSensorType::VEHICLE_SPEED:
       return "Vehicle Speed";
-    }
-    case WheelSensorType::VEHICLE_TICKS: {
+    case WheelSensorType::VEHICLE_TICKS:
       return "Vehicle Ticks";
-    }
-    default: {
-      return "None";
-    }
   }
+
+  return "None";
 }
 
 /**
@@ -919,25 +910,19 @@ enum class AppliedSpeedType : uint8_t {
  */
 P1_CONSTEXPR_FUNC const char* to_string(AppliedSpeedType applied_speed_type) {
   switch (applied_speed_type) {
-    case AppliedSpeedType::NONE: {
+    case AppliedSpeedType::NONE:
       return "None";
-    }
-    case AppliedSpeedType::REAR_WHEELS: {
+    case AppliedSpeedType::REAR_WHEELS:
       return "Rear Wheels";
-    }
-    case AppliedSpeedType::FRONT_WHEELS: {
+    case AppliedSpeedType::FRONT_WHEELS:
       return "Front Wheels";
-    }
-    case AppliedSpeedType::FRONT_AND_REAR_WHEELS: {
+    case AppliedSpeedType::FRONT_AND_REAR_WHEELS:
       return "Front and Rear Wheels";
-    }
-    case AppliedSpeedType::VEHICLE_BODY: {
+    case AppliedSpeedType::VEHICLE_BODY:
       return "Vehicle Body";
-    }
-    default: {
-      return "Unrecognized";
-    }
   }
+
+  return "Unrecognized";
 }
 
 /**
@@ -974,19 +959,15 @@ enum class SteeringType : uint8_t {
  */
 P1_CONSTEXPR_FUNC const char* to_string(SteeringType steering_type) {
   switch (steering_type) {
-    case SteeringType::UNKNOWN: {
+    case SteeringType::UNKNOWN:
       return "Unknown Steering";
-    }
-    case SteeringType::FRONT: {
+    case SteeringType::FRONT:
       return "Front Steering";
-    }
-    case SteeringType::FRONT_AND_REAR: {
+    case SteeringType::FRONT_AND_REAR:
       return "Front and Rear Steering";
-    }
-    default: {
-      return "Unrecognized";
-    }
   }
+
+  return "Unrecognized";
 }
 
 /**
@@ -1145,9 +1126,9 @@ P1_CONSTEXPR_FUNC const char* to_string(TickMode tick_mode) {
       return "RISING_EDGE";
     case TickMode::FALLING_EDGE:
       return "FALLING_EDGE";
-    default:
-      return "UNRECOGNIZED";
   }
+
+  return "UNRECOGNIZED";
 }
 
 /**
@@ -1187,9 +1168,9 @@ P1_CONSTEXPR_FUNC const char* to_string(TickDirection tick_direction) {
       return "FORWARD_ACTIVE_HIGH";
     case TickDirection::FORWARD_ACTIVE_LOW:
       return "FORWARD_ACTIVE_LOW";
-    default:
-      return "UNRECOGNIZED";
   }
+
+  return "UNRECOGNIZED";
 }
 
 /**
@@ -1280,9 +1261,9 @@ P1_CONSTEXPR_FUNC const char* to_string(IonoDelayModel iono_delay_model) {
       return "KLOBUCHAR";
     case IonoDelayModel::SBAS:
       return "SBAS";
-    default:
-      return "UNRECOGNIZED";
   }
+
+  return "UNRECOGNIZED";
 }
 
 /**
@@ -1327,9 +1308,9 @@ P1_CONSTEXPR_FUNC const char* to_string(TropoDelayModel tropo_delay_model) {
       return "OFF";
     case TropoDelayModel::SAASTAMOINEN:
       return "SAASTAMOINEN";
-    default:
-      return "UNRECOGNIZED";
   }
+
+  return "UNRECOGNIZED";
 }
 
 /**
@@ -1392,9 +1373,11 @@ P1_CONSTEXPR_FUNC const char* to_string(DataType type) {
       return "FilterState";
     case DataType::USER_CONFIG:
       return "UserConfig";
-    default:
+    case DataType::INVALID:
       return "Invalid";
   }
+
+  return "Unrecognized";
 }
 
 /**
@@ -1664,10 +1647,9 @@ P1_CONSTEXPR_FUNC const char* to_string(InterfaceConfigType type) {
 
     case InterfaceConfigType::SOCKET_TYPE:
       return "Socket Type";
-
-    default:
-      return "Unrecognized Configuration";
   }
+
+  return "Unrecognized Configuration";
 }
 
 /**
@@ -1716,9 +1698,9 @@ P1_CONSTEXPR_FUNC const char* to_string(ProtocolType val) {
       return "RTCM";
     case ProtocolType::ALL:
       return "ALL";
-    default:
-      return "Unrecognized";
   }
+
+  return "Unrecognized";
 }
 
 /**
@@ -1835,6 +1817,7 @@ P1_CONSTEXPR_FUNC const char* to_string(TransportType val) {
     case TransportType::ALL:
       return "All";
   }
+
   return "Unrecognized";
 }
 
@@ -1877,6 +1860,7 @@ P1_CONSTEXPR_FUNC const char* to_string(TransportDirection val) {
     case TransportDirection::CLIENT:
       return "CLIENT";
   }
+
   return "Unrecognized";
 }
 
@@ -1932,6 +1916,7 @@ P1_CONSTEXPR_FUNC const char* to_string(SocketType val) {
     case SocketType::SEQPACKET:
       return "SEQPACKET";
   }
+
   return "Unrecognized";
 }
 
@@ -2088,9 +2073,9 @@ P1_CONSTEXPR_FUNC const char* to_string(NmeaMessageType value) {
       return "PQTMVER_SUB";
     case NmeaMessageType::PQTMTXT:
       return "PQTMTXT";
-    default:
-      return "Unrecognized";
   }
+
+  return "Unrecognized";
 }
 
 /**
@@ -2231,9 +2216,9 @@ P1_CONSTEXPR_FUNC const char* to_string(MessageRate value) {
       return "INTERVAL_60_S";
     case MessageRate::DEFAULT:
       return "DEFAULT";
-    default:
-      return "Unrecognized";
   }
+
+  return "Unrecognized";
 }
 
 /**
