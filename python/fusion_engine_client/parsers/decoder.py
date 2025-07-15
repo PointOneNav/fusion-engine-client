@@ -261,16 +261,12 @@ class FusionEngineDecoder:
                 contents = cls()
                 try:
                     contents.unpack(buffer=self._buffer, offset=MessageHeader.calcsize())
+                    _logger.debug('Decoded FusionEngine message %s.', repr(contents))
                 except Exception as e:
                     # unpack() may fail if the payload length in the header differs from the length expected by the
                     # class, the payload contains an illegal value, etc.
                     _logger.error('Error deserializing message %s payload: %s', self._header.get_type_string(), e)
-                    self._header = None
-                    self._msg_len = 0
-                    self._buffer.pop(0)
-                    self._bytes_processed += 1
-                    continue
-                _logger.debug('Decoded FusionEngine message %s.', repr(contents))
+                    contents = bytes(self._buffer[MessageHeader.calcsize():self._msg_len])
             # If cls is None, we don't have a class for the message type. Return a copy of the payload bytes.
             else:
                 contents = bytes(self._buffer[MessageHeader.calcsize():self._msg_len])
