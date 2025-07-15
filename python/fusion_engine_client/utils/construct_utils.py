@@ -3,7 +3,7 @@ import math
 import re
 from typing import Optional
 
-from construct import Adapter, Array, Enum, Float64l, Float32l, FormatField, Struct
+from construct import Adapter, Array, Container, Enum, Float64l, Float32l, FormatField, Struct
 import numpy as np
 
 from .enum_utils import IntEnum
@@ -117,8 +117,12 @@ class NamedTupleAdapter(Adapter):
         return self.tuple_cls()
 
     def _decode(self, obj, context, path):
-        # skip _io member
-        return self.tuple_cls(*list(obj.values())[1:])
+        if isinstance(obj, Container):
+            # skip _io member
+            values = list(obj.values())[1:]
+        else:
+            values = [obj]
+        return self.tuple_cls(*values)
 
     def _encode(self, obj, context, path):
         return obj._asdict()
