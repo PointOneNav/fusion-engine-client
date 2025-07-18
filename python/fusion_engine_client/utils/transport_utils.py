@@ -3,6 +3,11 @@ import socket
 from typing import Callable, Union
 
 try:
+    import websockets.sync.client as ws
+except ImportError:
+    ws = None
+
+try:
     # pySerial is optional.
     import serial
     serial_supported = True
@@ -34,6 +39,8 @@ The method used to communicate with the target device:
   udp://:12345)
   Note: When using UDP, you must configure the device to send data to your
   machine.
+- ws://HOSTNAME:PORT - Connect to the specified hostname (or IP address) and
+  port over WebSocket (e.g., ws://192.168.0.3:30300)
 - unix://FILENAME - Connect to the specified UNIX domain socket file
 - [(serial|tty)://]DEVICE:BAUD - Connect to a serial device with the specified
   baud rate (e.g., tty:///dev/ttyUSB0:460800 or /dev/ttyUSB0:460800)
@@ -70,6 +77,27 @@ def create_transport(descriptor: str, timeout_sec: float = None, print_func: Cal
         if timeout_sec is not None:
             transport.settimeout(timeout_sec)
         transport.bind(('', port))
+        return transport
+
+    m = re.match(r'^ws://([a-zA-Z0-9-_.]+):([0-9]+)$', descriptor)
+    if m:
+        hostname = m.group(1)
+        ip_address = socket.gethostbyname(hostname)
+        port = int(m.group(2))
+
+        url = f'ws://{ip_address}:{port}'
+
+        if ws is None:
+            raise RuntimeError(f'Websocket support not installed. Cannot connect to {url}. '
+                               f'Run `pip install websockets`.')
+
+        if print_func is not None:
+            print_func(f'Connecting to {url}.')
+
+        try:
+            transport = ws.connect(url, open_timeout=timeout_sec)
+        except TimeoutError:
+            raise TimeoutError(f'Timed out connecting to {url}.')
         return transport
 
     m = re.match(r'^unix://([a-zA-Z0-9-_./]+)$', descriptor)
