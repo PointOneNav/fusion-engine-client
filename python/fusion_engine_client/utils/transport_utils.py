@@ -3,12 +3,19 @@ import socket
 from typing import Callable, Union
 
 try:
+    # WebSocket support is optional. To use, install with:
+    #   pip install websockets
     import websockets.sync.client as ws
+    ws_supported = True
 except ImportError:
-    ws = None
+    ws_supported = False
+    # Dummy stand-ins for type hinting if websockets is not installed.
+    class ws:
+        class ClientConnection: pass
 
 try:
-    # pySerial is optional.
+    # Serial port support is optional. To use, install with:
+    #   pip install pyserial
     import serial
     serial_supported = True
 
@@ -26,7 +33,7 @@ try:
     serial.Serial.send = __send
 except ImportError:
     serial_supported = False
-    # Dummy stand-in if pySerial is not installed.
+    # Dummy stand-in for type hinting if pySerial is not installed.
     class serial:
         class Serial: pass
         class SerialException(Exception): pass
@@ -48,7 +55,7 @@ The method used to communicate with the target device:
 
 
 def create_transport(descriptor: str, timeout_sec: float = None, print_func: Callable = None) -> \
-        Union[socket.socket, serial.Serial]:
+        Union[socket.socket, serial.Serial, ws.ClientConnection]:
     m = re.match(r'^tcp://([a-zA-Z0-9-_.]+)?(?::([0-9]+))?$', descriptor)
     if m:
         hostname = m.group(1)
@@ -87,9 +94,9 @@ def create_transport(descriptor: str, timeout_sec: float = None, print_func: Cal
 
         url = f'ws://{ip_address}:{port}'
 
-        if ws is None:
-            raise RuntimeError(f'Websocket support not installed. Cannot connect to {url}. '
-                               f'Run `pip install websockets`.')
+        if not ws_supported:
+            raise RuntimeError(f'Websocket support not found. Cannot connect to {url}. '
+                               f'Please install (pip install websockets) and run again.')
 
         if print_func is not None:
             print_func(f'Connecting to {url}.')
@@ -114,19 +121,19 @@ def create_transport(descriptor: str, timeout_sec: float = None, print_func: Cal
 
     m = re.match(r'^(?:(?:serial|tty)://)?([^:]+)(:([0-9]+))?$', descriptor)
     if m:
-        if serial_supported:
-            path = m.group(1)
-            if m.group(2) is None:
-                raise ValueError('Serial baud rate not specified.')
-            else:
-                baud_rate = int(m.group(2))
-            if print_func is not None:
-                print_func(f'Connecting to tty://{path}:{baud_rate}.')
-
-            transport = serial.Serial(port=path, baudrate=baud_rate, timeout=timeout_sec)
-            return transport
+        path = m.group(1)
+        if m.group(2) is None:
+            raise ValueError('Serial baud rate not specified.')
         else:
-            raise RuntimeError(
-                "This application requires pyserial. Please install (pip install pyserial) and run again.")
+            baud_rate = int(m.group(2))
+
+        if not serial_supported:
+            raise RuntimeError(f'Serial port support not found. Cannot connect to tty://{path}:{baud_rate}. '
+                               f'Please install (pip install pyserial) and run again.')
+        if print_func is not None:
+            print_func(f'Connecting to tty://{path}:{baud_rate}.')
+
+        transport = serial.Serial(port=path, baudrate=baud_rate, timeout=timeout_sec)
+        return transport
 
     raise ValueError('Unsupported transport descriptor.')
