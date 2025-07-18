@@ -119,7 +119,7 @@ def create_transport(descriptor: str, timeout_sec: float = None, print_func: Cal
         transport.connect(path)
         return transport
 
-    m = re.match(r'^(?:(?:serial|tty)://)?([^:]+)(:([0-9]+))?$', descriptor)
+    m = re.match(r'^(?:(?:serial|tty)://)?([^:]+)(?::([0-9]+))?$', descriptor)
     if m:
         path = m.group(1)
         if m.group(2) is None:
