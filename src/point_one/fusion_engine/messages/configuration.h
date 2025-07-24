@@ -1556,15 +1556,12 @@ enum class InterfaceConfigType : uint8_t {
   BAUD_RATE = 2,
 
   /**
-   * Configure the network address for a client to connect to.
-   *
-   * For UNIX domain sockets, this is an alias for @ref FILE_PATH and represents
-   * the path to the local UNIX domain socket file.
+   * Configure the remote network IP address or hostname for a client to connect
+   * to.
    *
    * Valid for:
    * - @ref TransportType::TCP
    * - @ref TransportType::UDP
-   * - @ref TransportType::UNIX
    *
    * Payload format: `char[64]` containing a NULL terminated string.
    */
