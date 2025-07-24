@@ -1556,15 +1556,12 @@ enum class InterfaceConfigType : uint8_t {
   BAUD_RATE = 2,
 
   /**
-   * Configure the network address for a client to connect to.
-   *
-   * For UNIX domain sockets, this string represents the path to the local
-   * socket file.
+   * Configure the remote network IP address or hostname for a client to connect
+   * to.
    *
    * Valid for:
    * - @ref TransportType::TCP
    * - @ref TransportType::UDP
-   * - @ref TransportType::UNIX
    *
    * Payload format: `char[64]` containing a NULL terminated string.
    */
@@ -1612,6 +1609,17 @@ enum class InterfaceConfigType : uint8_t {
    * Payload format: @ref SocketType
    */
   SOCKET_TYPE = 7,
+
+  /**
+   * Configure the path to a local file or UNIX domain socket.
+   *
+   * Valid for:
+   * - @ref TransportType::FILE
+   * - @ref TransportType::UNIX
+   *
+   * Payload format: `char[64]` containing a NULL terminated string.
+   */
+  FILE_PATH = 8,
 };
 
 /**
@@ -1647,6 +1655,9 @@ P1_CONSTEXPR_FUNC const char* to_string(InterfaceConfigType type) {
 
     case InterfaceConfigType::SOCKET_TYPE:
       return "Socket Type";
+
+    case InterfaceConfigType::FILE_PATH:
+      return "File Path";
   }
 
   return "Unrecognized Configuration";

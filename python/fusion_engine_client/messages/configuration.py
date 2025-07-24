@@ -60,6 +60,7 @@ class InterfaceConfigType(IntEnum):
   ENABLED = 5
   DIRECTION = 6
   SOCKET_TYPE = 7
+  FILE_PATH = 8
 
 
 class Direction(IntEnum):
@@ -988,6 +989,14 @@ class InterfaceDirectionConfig(_conf_gen.TransportDirectionVal):
 class InterfaceSocketTypeConfig(_conf_gen.SocketTypeVal):
     """!
     @brief UNIX domain socket type configuration (stream, datagram, sequence).
+    """
+    pass
+
+
+@_conf_gen.create_interface_config_class(InterfaceConfigType.FILE_PATH, _conf_gen.StringConstruct(64))
+class InterfaceFilePathConfig(_conf_gen.StringVal):
+    """!
+    @brief The path to a local file to be written or UNIX domain socket to be used.
     """
     pass
 
