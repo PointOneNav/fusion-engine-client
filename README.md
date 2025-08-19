@@ -46,7 +46,8 @@ One FusionEngine or a Point One device (Atlas, Quectel LG69T, etc.), please cont
 
 #### C++ Support
 - C++11 or later
-- CMake 3.x or Bazel 4.x-6.x (tested with Bazel versions 4.2.2-6.5.0, Bazel 8+ not currently supported)
+- CMake 3.x or Bazel 4.x-6.x
+  - Tested with Bazel versions 4.2.2-6.5.0, Bazel 8+ not currently supported
 - GCC, Clang, or Microsoft Visual Studio
 
 #### Python Support
