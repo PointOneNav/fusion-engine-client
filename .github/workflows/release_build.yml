@@ -45,25 +45,36 @@ jobs:
         include:
           - os: ubuntu-latest
             compiler: gcc
+            version: 10
+            bazel: 4.2.2
+          # Add entries for different Bazel versions
+          - os: ubuntu-latest
+            compiler: gcc
             version: 9
+            bazel: 6.5.0
           - os: ubuntu-latest
             compiler: gcc
             version: 10
+            bazel: 6.5.0
           - os: ubuntu-latest
             compiler: clang
             version: 14
+            bazel: 6.5.0
     steps:
     - uses: actions/checkout@v2
 
     # Compile.
-    - name: Install Bazel 6.5.0
+    - name: Install Bazel ${{ matrix.bazel }}
       uses: abhinavsingh/setup-bazel@v3
       with:
-        version: 6.5.0
+        version: ${{ matrix.bazel }}
 
     - name: Setup Environment (Linux)
       if: matrix.os == 'ubuntu-latest'
       run: |
+        # Set Bazel version override
+        echo "USE_BAZEL_VERSION=${{ matrix.bazel }}" >> $GITHUB_ENV
+        
         if [[ "${{ matrix.compiler }}" == "gcc" ]]; then
           sudo apt install gcc-${{ matrix.version }} g++-${{ matrix.version }}
           sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-${{ matrix.version }} 100 \
