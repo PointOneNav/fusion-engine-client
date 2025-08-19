@@ -46,7 +46,7 @@ jobs:
           # Do a singular build for Bazel 4.2.2 to test Bazel 4.2.2.
           - os: ubuntu-latest
             compiler: gcc
-            version: 10
+            version: 11
             bazel: 4.2.2
           # Run Bazel 6.5.0 on all compilers versions.
           - os: ubuntu-latest
@@ -56,6 +56,10 @@ jobs:
           - os: ubuntu-latest
             compiler: gcc
             version: 10
+            bazel: 6.5.0
+          - os: ubuntu-latest
+            compiler: gcc
+            version: 11
             bazel: 6.5.0
           - os: ubuntu-latest
             compiler: clang
