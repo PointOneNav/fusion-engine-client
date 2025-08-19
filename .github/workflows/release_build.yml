@@ -43,11 +43,12 @@ jobs:
     strategy:
       matrix:
         include:
+          # Do a singular build for Bazel 4.2.2 to test Bazel 4.2.2.
           - os: ubuntu-latest
             compiler: gcc
             version: 10
             bazel: 4.2.2
-          # Add entries for different Bazel versions
+          # Run Bazel 6.5.0 on all compilers versions.
           - os: ubuntu-latest
             compiler: gcc
             version: 9
@@ -72,9 +73,11 @@ jobs:
     - name: Setup Environment (Linux)
       if: matrix.os == 'ubuntu-latest'
       run: |
-        # Set Bazel version override
+        # Just for Github action builds set USE_BAZEL_VERSION to override the
+        # .bazelversion file so we can test different Bazel versions even though
+        # the recommended Bazel version will be in the .bazelversion file.
         echo "USE_BAZEL_VERSION=${{ matrix.bazel }}" >> $GITHUB_ENV
-        
+
         if [[ "${{ matrix.compiler }}" == "gcc" ]]; then
           sudo apt install gcc-${{ matrix.version }} g++-${{ matrix.version }}
           sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-${{ matrix.version }} 100 \
