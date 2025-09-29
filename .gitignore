@@ -26,6 +26,7 @@ venv*/
 
 # Doxygen output.
 docs/html/
+docs/xml/
 
 Doxyfile.version
 docs/include_header.js
