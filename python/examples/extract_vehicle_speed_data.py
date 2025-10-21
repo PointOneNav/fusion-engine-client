@@ -71,13 +71,15 @@ Extract wheel speed data.
         gps_time = reader.convert_to_gps_time(wheel_speed_data.p1_time)
         with open(path, 'w') as f:
             f.write('P1 Time (sec), GPS Time (sec), Front Left Speed (m/s), Front Right Speed (m/s), Back Left Speed (m/s), Back Right Speed (m/s), Gear\n')
-            np.savetxt(f, np.stack([wheel_speed_data.p1_time,
-                                    gps_time,
-                                    wheel_speed_data.front_left_speed_mps,
-                                    wheel_speed_data.front_right_speed_mps,
-                                    wheel_speed_data.rear_left_speed_mps,
-                                    wheel_speed_data.rear_right_speed_mps,
-                                    wheel_speed_data.gear], axis=1), fmt=['%.6f'] * 6 + ['%d'])
+            np.savetxt(f,
+                       np.stack([wheel_speed_data.p1_time,
+                                 gps_time,
+                                 wheel_speed_data.front_left_speed_mps,
+                                 wheel_speed_data.front_right_speed_mps,
+                                 wheel_speed_data.rear_left_speed_mps,
+                                 wheel_speed_data.rear_right_speed_mps,
+                                 wheel_speed_data.gear], axis=1),
+                       fmt=['%.6f'] * 6 + ['%d'], delimiter=',')
     else:
         logger.info("No corrected wheel speed data.")
 
@@ -89,13 +91,15 @@ Extract wheel speed data.
         gps_time = reader.convert_to_gps_time(raw_wheel_speed_data.p1_time)
         with open(path, 'w') as f:
             f.write('P1 Time (sec), GPS Time (sec), Front Left Speed (m/s), Front Right Speed (m/s), Back Left Speed (m/s), Back Right Speed (m/s), Gear\n')
-            np.savetxt(f, np.stack([raw_wheel_speed_data.p1_time,
-                                    gps_time,
-                                    raw_wheel_speed_data.front_left_speed_mps,
-                                    raw_wheel_speed_data.front_right_speed_mps,
-                                    raw_wheel_speed_data.rear_left_speed_mps,
-                                    raw_wheel_speed_data.rear_right_speed_mps,
-                                    raw_wheel_speed_data.gear], axis=1), fmt=['%.6f'] * 6 + ['%d'])
+            np.savetxt(f,
+                       np.stack([raw_wheel_speed_data.p1_time,
+                                 gps_time,
+                                 raw_wheel_speed_data.front_left_speed_mps,
+                                 raw_wheel_speed_data.front_right_speed_mps,
+                                 raw_wheel_speed_data.rear_left_speed_mps,
+                                 raw_wheel_speed_data.rear_right_speed_mps,
+                                 raw_wheel_speed_data.gear], axis=1),
+                       fmt=['%.6f'] * 6 + ['%d'], delimiter=',')
     else:
         logger.info("No raw wheel speed data.")
 
@@ -107,10 +111,12 @@ Extract wheel speed data.
         gps_time = reader.convert_to_gps_time(vehicle_speed_data.p1_time)
         with open(path, 'w') as f:
             f.write('P1 Time (sec), GPS Time (sec), Vehicle Speed (m/s), Gear\n')
-            np.savetxt(path, np.stack([vehicle_speed_data.p1_time,
-                                       gps_time,
-                                       vehicle_speed_data.vehicle_speed_mps,
-                                       vehicle_speed_data.gear], axis=1), fmt=['%.6f'] * 3 + ['%d'])
+            np.savetxt(path,
+                       np.stack([vehicle_speed_data.p1_time,
+                                 gps_time,
+                                 vehicle_speed_data.vehicle_speed_mps,
+                                 vehicle_speed_data.gear], axis=1),
+                       fmt=['%.6f'] * 3 + ['%d'], delimiter=',')
     else:
         logger.info("No corrected vehicle speed data.")
 
@@ -122,10 +128,12 @@ Extract wheel speed data.
         gps_time = reader.convert_to_gps_time(raw_vehicle_speed_data.p1_time)
         with open(path, 'w') as f:
             f.write('P1 Time (sec), GPS Time (sec), Vehicle Speed (m/s), Gear\n')
-            np.savetxt(path, np.stack([raw_vehicle_speed_data.p1_time,
-                                       gps_time,
-                                       raw_vehicle_speed_data.vehicle_speed_mps,
-                                       raw_vehicle_speed_data.gear], axis=1), fmt=['%.6f'] * 3 + ['%d'])
+            np.savetxt(path,
+                       np.stack([raw_vehicle_speed_data.p1_time,
+                                 gps_time,
+                                 raw_vehicle_speed_data.vehicle_speed_mps,
+                                 raw_vehicle_speed_data.gear], axis=1),
+                       fmt=['%.6f'] * 3 + ['%d'], delimiter=',')
     else:
         logger.info("No raw vehicle speed data.")
 
