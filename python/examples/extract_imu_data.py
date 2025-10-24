@@ -65,10 +65,12 @@ Extract IMU accelerometer and gyroscope measurements.
         gps_time = reader.convert_to_gps_time(imu_data.p1_time)
         with open(path, 'w') as f:
             f.write('P1 Time (sec), GPS Time (sec), Accel X (m/s^2), Y, Z, Gyro X (rad/s), Y, Z\n')
-            np.savetxt(f, np.concatenate([imu_data.p1_time[:, None],
-                                          gps_time[:, None],
-                                          imu_data.accel_mps2.T,
-                                          imu_data.gyro_rps.T], axis=1), fmt='%.6f')
+            np.savetxt(f,
+                       np.concatenate([imu_data.p1_time[:, None],
+                                       gps_time[:, None],
+                                       imu_data.accel_mps2.T,
+                                       imu_data.gyro_rps.T], axis=1),
+                       fmt='%.6f', delimiter=',')
     else:
         logger.info("No corrected IMU data.")
 
@@ -79,11 +81,13 @@ Extract IMU accelerometer and gyroscope measurements.
         gps_time = reader.convert_to_gps_time(raw_imu_data.p1_time)
         with open(path, 'w') as f:
             f.write('P1 Time (sec), GPS Time (sec), Accel X (m/s^2), Y, Z, Gyro X (rad/s), Y, Z, Temp(C)\n')
-            np.savetxt(f, np.concatenate([raw_imu_data.p1_time[:, None],
-                                          gps_time[:, None],
-                                          raw_imu_data.accel_mps2.T,
-                                          raw_imu_data.gyro_rps.T,
-                                          raw_imu_data.temperature_degc[:, None]], axis=1), fmt='%.6f')
+            np.savetxt(f,
+                       np.concatenate([raw_imu_data.p1_time[:, None],
+                                       gps_time[:, None],
+                                       raw_imu_data.accel_mps2.T,
+                                       raw_imu_data.gyro_rps.T,
+                                       raw_imu_data.temperature_degc[:, None]], axis=1),
+                       fmt='%.6f', delimiter=',')
     else:
         logger.info("No raw IMU data.")
 
