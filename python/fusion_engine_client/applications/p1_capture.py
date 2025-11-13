@@ -22,7 +22,7 @@ from ..utils.print_utils import \
 from ..utils.socket_timestamping import (enable_socket_timestamping,
                                          HW_TIMESTAMPING_HELP,
                                          log_timestamped_data_offset,
-                                         parse_timestamps_from_ancdata,
+                                         recv,
                                          TIMESTAMP_FILE_ENDING,)
 from ..utils.transport_utils import *
 from ..utils.trace import HighlightFormatter, BrokenPipeStreamHandler
@@ -206,8 +206,7 @@ The data is pairs of uint64. First, the timestamp in nanoseconds followed by the
                 if isinstance(transport, socket.socket):
                     ready = select.select([transport], [], [], read_timeout_sec)
                     if ready[0]:
-                        received_data, ancdata, _, _ = transport.recvmsg(1024, 1024)
-                        kernel_ts, _, hw_ts = parse_timestamps_from_ancdata(ancdata)
+                        received_data, kernel_ts, hw_ts = recv(transport, 1024)
                     else:
                         received_data = []
                 # If this is a serial port, we set the read timeout above.
