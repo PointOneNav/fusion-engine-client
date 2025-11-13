@@ -11,7 +11,7 @@ from pathlib import Path
 import socket
 import struct
 import sys
-from typing import BinaryIO, Optional, TypeAlias
+from typing import BinaryIO, Optional, Tuple, TypeAlias
 
 
 _CMSG: TypeAlias = tuple[int, int, bytes]
@@ -125,6 +125,28 @@ def enable_socket_timestamping(sock: socket.socket, enable_sw_timestamp: bool, e
         return True
     else:
         return False
+
+
+def recv(sock: socket.socket, buffer_size: int) -> Tuple[bytes, Optional[float], Optional[float]]:
+    '''!
+    Receive data from the specified socket and capture timestamps, if enabled.
+
+    @param sock The socket to be used.
+    @param buffer_size The maximum number of bytes to read.
+
+    @return A tuple containing:
+            - The bytes read from the socket
+            - The kernel timestamp, if enabled
+            - The hardware timestamp, if enabled
+    '''
+    if sys.platform == "linux":
+        received_data, ancdata, _, _ = sock.recvmsg(buffer_size, 1024)
+        kernel_ts, _, hw_ts = parse_timestamps_from_ancdata(ancdata)
+    else:
+        received_data = sock.recv(buffer_size)
+        kernel_ts = None
+        hw_ts = None
+    return received_data, kernel_ts, hw_ts
 
 
 def log_timestamped_data_offset(fd: BinaryIO, timestamp_ns: int, byte_offset: int):
