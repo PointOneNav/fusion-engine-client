@@ -102,16 +102,29 @@ def parse_timestamps_from_ancdata(ancdata: list[_CMSG]) -> tuple[Optional[float]
     return tuple(timestamps)
 
 
-def enable_socket_timestamping(sock: socket.socket, enable_sw_timestamp: bool, enable_hw_timestamp: bool):
-    if enable_sw_timestamp or enable_hw_timestamp:
-        flags = 0
-        if enable_sw_timestamp:
-            flags |= SOF_TIMESTAMPING_RX_SOFTWARE | SOF_TIMESTAMPING_SOFTWARE
+def enable_socket_timestamping(sock: socket.socket, enable_sw_timestamp: bool, enable_hw_timestamp: bool) -> bool:
+    '''!
+    Enable kernel-level hardware or software timestamping of incoming socket data.
 
-        if enable_hw_timestamp:
-            flags |= SOF_TIMESTAMPING_RX_HARDWARE | SOF_TIMESTAMPING_RAW_HARDWARE
+    @param sock The socket to be used.
+    @param enable_sw_timestamp Set to `True` to enable software timestamping in the kernel.
+    @param enable_hw_timestamp Set to `True` to enable hardware timestamping by the network interface.
 
-        sock.setsockopt(socket.SOL_SOCKET, SO_TIMESTAMPING, flags)
+    @return `True` if timestamping is supported on the host OS.
+    '''
+    if sys.platform == "linux":
+        if enable_sw_timestamp or enable_hw_timestamp:
+            flags = 0
+            if enable_sw_timestamp:
+                flags |= SOF_TIMESTAMPING_RX_SOFTWARE | SOF_TIMESTAMPING_SOFTWARE
+
+            if enable_hw_timestamp:
+                flags |= SOF_TIMESTAMPING_RX_HARDWARE | SOF_TIMESTAMPING_RAW_HARDWARE
+
+            sock.setsockopt(socket.SOL_SOCKET, SO_TIMESTAMPING, flags)
+        return True
+    else:
+        return False
 
 
 def log_timestamped_data_offset(fd: BinaryIO, timestamp_ns: int, byte_offset: int):
