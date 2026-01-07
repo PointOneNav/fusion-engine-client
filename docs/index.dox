@@ -22,11 +22,11 @@ integration is required. See @ref ros_messages.
 <div>
   <div style="text-align: center; width: 48%; float: left;">
     <img src="vehicle_frame_side.svg" />
-    <div class="caption">Vehicle frame: side view"</div>
+    <div class="caption">Vehicle frame: side view</div>
   </div>
   <div style="text-align: center; width: 35%; overflow: hidden;">
     <img src="vehicle_frame_back.svg" />
-    <div class="caption">Vehicle frame: back view"</div>
+    <div class="caption">Vehicle frame: back view</div>
   </div>
 </div>
 
