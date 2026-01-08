@@ -1,3 +1,4 @@
+import functools
 import re
 from typing import NamedTuple, Optional, TypeAlias, TypeVar, Union
 

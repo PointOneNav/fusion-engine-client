@@ -1,5 +1,6 @@
+from dataclasses import dataclass
 import struct
-from typing import List, Sequence
+from typing import Dict, List, Sequence
 
 from construct import (Struct, Float64l, Float32l, Int32ul, Int8ul, Padding, Array)
 import numpy as np
