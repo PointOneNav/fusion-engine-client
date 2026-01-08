@@ -1213,6 +1213,7 @@ constexpr uint32_t ToBitMask(SatelliteType type) {
 template <typename... Args>
 P1_CONSTEXPR_FUNC uint32_t ToBitMask(SatelliteType first, Args... others) {
   return ToBitMask(first) | ToBitMask(others...);
+}
 
 /** @} */
 
