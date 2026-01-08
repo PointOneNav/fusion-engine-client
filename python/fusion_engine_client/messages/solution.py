@@ -429,6 +429,9 @@ class SatelliteInfo:
         ## The C/N0 of the L1 signal present on this satellite (in dB-Hz).
         self.cn0_dbhz = np.nan
 
+    def get_satellite_id(self) -> SatelliteID:
+        return SatelliteID(system=self.system, prn=self.prn)
+
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
             buffer = bytearray(self.calcsize())
