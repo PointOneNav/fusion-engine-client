@@ -127,22 +127,74 @@ enum class SatelliteType : uint8_t {
   MIXED = 7,
   SBAS = 8,
   IRNSS = 9,
-  MAX_VALUE = IRNSS,
 };
 
 /**
- * @brief Get a human-friendly string name for the specified @ref SatelliteType
- *        (GNSS constellation).
- * @ingroup enum_definitions
+ * @brief Get a string representation of the @ref SatelliteType enum value.
  *
- * @param type The desired satellite type.
+ * @param type The enum to get the string name for.
  *
  * @return The corresponding string name.
  */
 P1_CONSTEXPR_FUNC const char* to_string(SatelliteType type) {
   switch (type) {
     case SatelliteType::UNKNOWN:
-      return "Unknown";
+      return "UNKNOWN";
+
+    case SatelliteType::GPS:
+      return "GPS";
+
+    case SatelliteType::GLONASS:
+      return "GLONASS";
+
+    case SatelliteType::LEO:
+      return "LEO";
+
+    case SatelliteType::GALILEO:
+      return "GALILEO";
+
+    case SatelliteType::BEIDOU:
+      return "BEIDOU";
+
+    case SatelliteType::QZSS:
+      return "QZSS";
+
+    case SatelliteType::MIXED:
+      return "MIXED";
+
+    case SatelliteType::SBAS:
+      return "SBAS";
+
+    case SatelliteType::IRNSS:
+      return "IRNSS";
+  }
+  return "INVALID";
+}
+
+/**
+ * @copydoc to_string()
+ */
+inline const char* ToString(SatelliteType type) { return to_string(type); }
+
+/**
+ * @brief @ref SatelliteType stream operator.
+ */
+inline p1_ostream& operator<<(p1_ostream& stream, SatelliteType type) {
+  stream << to_string(type) << " (" << (int)type << ")";
+  return stream;
+}
+
+/**
+ * @brief Get a human-friendly string for the specified @ref SatelliteType.
+ *
+ * @param type The enum to get the string for.
+ *
+ * @return The corresponding string.
+ */
+P1_CONSTEXPR_FUNC const char* ToPrettyString(SatelliteType type) {
+  switch (type) {
+    case SatelliteType::UNKNOWN:
+      return "UNKNOWN";
 
     case SatelliteType::GPS:
       return "GPS";
@@ -163,39 +215,33 @@ P1_CONSTEXPR_FUNC const char* to_string(SatelliteType type) {
       return "QZSS";
 
     case SatelliteType::MIXED:
-      return "Mixed";
+      return "MIXED";
 
     case SatelliteType::SBAS:
       return "SBAS";
 
     case SatelliteType::IRNSS:
       return "IRNSS";
-
-    default:
-      return "Invalid System";
   }
+  return "Invalid";
 }
 
-/**
- * @brief @ref SatelliteType stream operator.
- * @ingroup enum_definitions
- */
-inline p1_ostream& operator<<(p1_ostream& stream, SatelliteType type) {
-  stream << to_string(type) << " (" << (int)type << ")";
-  return stream;
+P1_CONSTEXPR_FUNC SatelliteType GetSatelliteType(GNSSSignalType signal) {
+  return static_cast<SatelliteType>(static_cast<uint8_t>(
+      (static_cast<uint16_t>(signal) >> SATELLITE_TYPE_SHIFT) &
+      ((1 << SATELLITE_TYPE_BITS) - 1)));
 }
-
-////////////////////////////////////////////////////////////////////////////////
-// FrequencyBand
-////////////////////////////////////////////////////////////////////////////////
-
-/**
- * @name GNSS Constellation (System) Definitions
- * @{
- */
 
 /**
  * @brief GNSS frequency band definitions.
+ *
+ * A frequency band generally includes multiple GNSS carrier frequencies and
+ * signal types, which can usually be captured by a single antenna element.
+ * For example, an L1 antenna typically has sufficient bandwidth to capture
+ * signals on the BeiDou B1I (1561.098 MHz), GPS L1 (1575.42 MHz), and GLONASS G1
+ * (1602.0 MHz) frequencies.
+ *
+ * This needs to be packed into 4 bits so no values about 15 are allowed.
  */
 enum class FrequencyBand : uint8_t {
   // ~L1 = 1561.098 MHz (B1) -> 1602.0 (G1)
@@ -217,14 +263,12 @@ enum class FrequencyBand : uint8_t {
   // S band 2.0 -> 4.0 GHz
   // IRNSS S band is 2492.028 MHz
   S = 6,
-  MAX_VALUE = S,
 };
 
 /**
- * @brief Get a human-friendly string name for the specified @ref FrequencyBand.
- * @ingroup enum_definitions
+ * @brief Get a string representation of the @ref FrequencyBand enum value.
  *
- * @param type The desired frequency band.
+ * @param type The enum to get the string name for.
  *
  * @return The corresponding string name.
  */
@@ -248,18 +292,56 @@ P1_CONSTEXPR_FUNC const char* to_string(FrequencyBand type) {
     case FrequencyBand::L1_L5_WIDE_LANE:
       return "L1_L5_WIDE_LANE";
 
-    default:
-      return "Invalid Frequency Band";
+    case FrequencyBand::S:
+      return "S";
   }
+  return "INVALID";
 }
 
 /**
+ * @copydoc to_string()
+ */
+inline const char* ToString(FrequencyBand type) { return to_string(type); }
+
+/**
  * @brief @ref FrequencyBand stream operator.
- * @ingroup enum_definitions
  */
 inline p1_ostream& operator<<(p1_ostream& stream, FrequencyBand type) {
   stream << to_string(type) << " (" << (int)type << ")";
   return stream;
+}
+
+/**
+ * @brief Get a human-friendly string for the specified @ref FrequencyBand.
+ *
+ * @param type The enum to get the string for.
+ *
+ * @return The corresponding string.
+ */
+P1_CONSTEXPR_FUNC const char* ToPrettyString(FrequencyBand type) {
+  switch (type) {
+    case FrequencyBand::L1:
+      return "L1";
+
+    case FrequencyBand::L2:
+      return "L2";
+
+    case FrequencyBand::L5:
+      return "L5";
+
+    case FrequencyBand::L6:
+      return "L6";
+
+    case FrequencyBand::L1_L2_WIDE_LANE:
+      return "L1-L2 Wide-Lane";
+
+    case FrequencyBand::L1_L5_WIDE_LANE:
+      return "L1-L5 Wide-Lane";
+
+    case FrequencyBand::S:
+      return "S";
+  }
+  return "Invalid";
 }
 
 P1_CONSTEXPR_FUNC FrequencyBand GetFrequencyBand(GNSSSignalType signal) {
@@ -281,13 +363,47 @@ enum class ComponentType : uint8_t {
 };
 
 /**
- * @brief Get a human-friendly string for the @ref ComponentType.
+ * @brief Get a string representation of the @ref ComponentType enum value.
  *
  * @param type The enum to get the string name for.
  *
  * @return The corresponding string name.
  */
 P1_CONSTEXPR_FUNC const char* to_string(ComponentType type) {
+  switch (type) {
+    case ComponentType::COMBINED:
+      return "COMBINED";
+
+    case ComponentType::DATA:
+      return "DATA";
+
+    case ComponentType::PILOT:
+      return "PILOT";
+  }
+  return "INVALID";
+}
+
+/**
+ * @copydoc to_string()
+ */
+inline const char* ToString(ComponentType type) { return to_string(type); }
+
+/**
+ * @brief @ref ComponentType stream operator.
+ */
+inline p1_ostream& operator<<(p1_ostream& stream, ComponentType type) {
+  stream << to_string(type) << " (" << (int)type << ")";
+  return stream;
+}
+
+/**
+ * @brief Get a human-friendly string for the specified @ref ComponentType.
+ *
+ * @param type The enum to get the string for.
+ *
+ * @return The corresponding string.
+ */
+P1_CONSTEXPR_FUNC const char* ToPrettyString(ComponentType type) {
   switch (type) {
     case ComponentType::COMBINED:
       return "Combined";
@@ -298,15 +414,7 @@ P1_CONSTEXPR_FUNC const char* to_string(ComponentType type) {
     case ComponentType::PILOT:
       return "Pilot";
   }
-  return "Invalid Component Type";
-}
-
-/**
- * @brief @ref ComponentType stream operator.
- */
-inline p1_ostream& operator<<(p1_ostream& stream, ComponentType type) {
-  stream << to_string(type) << " (" << (int)type << ")";
-  return stream;
+  return "Invalid";
 }
 
 P1_CONSTEXPR_FUNC ComponentType GetComponentType(GNSSSignalType signal) {
@@ -330,7 +438,7 @@ enum class GPSSignalName : uint8_t {
 };
 
 /**
- * @brief Get a human-friendly string for the specified @ref GPSSignalName.
+ * @brief Get a string representation of the @ref GPSSignalName enum value.
  *
  * @param type The enum to get the string name for.
  *
@@ -356,8 +464,13 @@ P1_CONSTEXPR_FUNC const char* to_string(GPSSignalName type) {
     case GPSSignalName::L5:
       return "L5";
   }
-  return "Invalid GPS Signal Name";
+  return "INVALID";
 }
+
+/**
+ * @copydoc to_string()
+ */
+inline const char* ToString(GPSSignalName type) { return to_string(type); }
 
 /**
  * @brief @ref GPSSignalName stream operator.
@@ -365,6 +478,36 @@ P1_CONSTEXPR_FUNC const char* to_string(GPSSignalName type) {
 inline p1_ostream& operator<<(p1_ostream& stream, GPSSignalName type) {
   stream << to_string(type) << " (" << (int)type << ")";
   return stream;
+}
+
+/**
+ * @brief Get a human-friendly string for the specified @ref GPSSignalName.
+ *
+ * @param type The enum to get the string for.
+ *
+ * @return The corresponding string.
+ */
+P1_CONSTEXPR_FUNC const char* ToPrettyString(GPSSignalName type) {
+  switch (type) {
+    case GPSSignalName::L1CA:
+      return "C/A";
+
+    case GPSSignalName::L1P:
+      return "L1 P(Y)";
+
+    case GPSSignalName::L1C:
+      return "L1C";
+
+    case GPSSignalName::L2C:
+      return "L2C";
+
+    case GPSSignalName::L2P:
+      return "L2 P(Y)";
+
+    case GPSSignalName::L5:
+      return "L5";
+  }
+  return "Invalid";
 }
 
 P1_CONSTEXPR_FUNC GPSSignalName GetGPSSignalName(GNSSSignalType signal) {
@@ -386,7 +529,7 @@ enum class GLONASSSignalName : uint8_t {
 };
 
 /**
- * @brief Get a human-friendly string for the specified @ref GLONASSSignalName.
+ * @brief Get a string representation of the @ref GLONASSSignalName enum value.
  *
  * @param type The enum to get the string name for.
  *
@@ -406,8 +549,13 @@ P1_CONSTEXPR_FUNC const char* to_string(GLONASSSignalName type) {
     case GLONASSSignalName::L2P:
       return "L2P";
   }
-  return "Invalid GLONASS Signal Name";
+  return "INVALID";
 }
+
+/**
+ * @copydoc to_string()
+ */
+inline const char* ToString(GLONASSSignalName type) { return to_string(type); }
 
 /**
  * @brief @ref GLONASSSignalName stream operator.
@@ -415,6 +563,30 @@ P1_CONSTEXPR_FUNC const char* to_string(GLONASSSignalName type) {
 inline p1_ostream& operator<<(p1_ostream& stream, GLONASSSignalName type) {
   stream << to_string(type) << " (" << (int)type << ")";
   return stream;
+}
+
+/**
+ * @brief Get a human-friendly string for the specified @ref GLONASSSignalName.
+ *
+ * @param type The enum to get the string for.
+ *
+ * @return The corresponding string.
+ */
+P1_CONSTEXPR_FUNC const char* ToPrettyString(GLONASSSignalName type) {
+  switch (type) {
+    case GLONASSSignalName::L1CA:
+      return "L1 C/A";
+
+    case GLONASSSignalName::L1P:
+      return "L1P";
+
+    case GLONASSSignalName::L2CA:
+      return "L2 C/A";
+
+    case GLONASSSignalName::L2P:
+      return "L2P";
+  }
+  return "Invalid";
 }
 
 P1_CONSTEXPR_FUNC GLONASSSignalName
@@ -439,7 +611,7 @@ enum class GalileoSignalName : uint8_t {
 };
 
 /**
- * @brief Get a human-friendly string for the specified @ref GalileoSignalName.
+ * @brief Get a string representation of the @ref GalileoSignalName enum value.
  *
  * @param type The enum to get the string name for.
  *
@@ -465,8 +637,13 @@ P1_CONSTEXPR_FUNC const char* to_string(GalileoSignalName type) {
     case GalileoSignalName::E6BC:
       return "E6BC";
   }
-  return "Invalid Galileo Signal Name";
+  return "INVALID";
 }
+
+/**
+ * @copydoc to_string()
+ */
+inline const char* ToString(GalileoSignalName type) { return to_string(type); }
 
 /**
  * @brief @ref GalileoSignalName stream operator.
@@ -474,6 +651,36 @@ P1_CONSTEXPR_FUNC const char* to_string(GalileoSignalName type) {
 inline p1_ostream& operator<<(p1_ostream& stream, GalileoSignalName type) {
   stream << to_string(type) << " (" << (int)type << ")";
   return stream;
+}
+
+/**
+ * @brief Get a human-friendly string for the specified @ref GalileoSignalName.
+ *
+ * @param type The enum to get the string for.
+ *
+ * @return The corresponding string.
+ */
+P1_CONSTEXPR_FUNC const char* ToPrettyString(GalileoSignalName type) {
+  switch (type) {
+    case GalileoSignalName::E1A:
+      return "E1-A";
+
+    case GalileoSignalName::E1BC:
+      return "E1-B/C";
+
+    case GalileoSignalName::E5A:
+      return "E5a";
+
+    case GalileoSignalName::E5B:
+      return "E5b";
+
+    case GalileoSignalName::E6A:
+      return "E6-A";
+
+    case GalileoSignalName::E6BC:
+      return "E6-B/C";
+  }
+  return "Invalid";
 }
 
 P1_CONSTEXPR_FUNC GalileoSignalName
@@ -498,7 +705,7 @@ enum class BeiDouSignalName : uint8_t {
 };
 
 /**
- * @brief Get a human-friendly string for the specified @ref BeiDouSignalName.
+ * @brief Get a string representation of the @ref BeiDouSignalName enum value.
  *
  * @param type The enum to get the string name for.
  *
@@ -524,8 +731,13 @@ P1_CONSTEXPR_FUNC const char* to_string(BeiDouSignalName type) {
     case BeiDouSignalName::B3I:
       return "B3I";
   }
-  return "Invalid BeiDou Signal Name";
+  return "INVALID";
 }
+
+/**
+ * @copydoc to_string()
+ */
+inline const char* ToString(BeiDouSignalName type) { return to_string(type); }
 
 /**
  * @brief @ref BeiDouSignalName stream operator.
@@ -533,6 +745,36 @@ P1_CONSTEXPR_FUNC const char* to_string(BeiDouSignalName type) {
 inline p1_ostream& operator<<(p1_ostream& stream, BeiDouSignalName type) {
   stream << to_string(type) << " (" << (int)type << ")";
   return stream;
+}
+
+/**
+ * @brief Get a human-friendly string for the specified @ref BeiDouSignalName.
+ *
+ * @param type The enum to get the string for.
+ *
+ * @return The corresponding string.
+ */
+P1_CONSTEXPR_FUNC const char* ToPrettyString(BeiDouSignalName type) {
+  switch (type) {
+    case BeiDouSignalName::B1I:
+      return "B1I";
+
+    case BeiDouSignalName::B1C:
+      return "B1C";
+
+    case BeiDouSignalName::B2I:
+      return "B2I";
+
+    case BeiDouSignalName::B2B:
+      return "B2b";
+
+    case BeiDouSignalName::B2A:
+      return "B2a";
+
+    case BeiDouSignalName::B3I:
+      return "B3I";
+  }
+  return "Invalid";
 }
 
 P1_CONSTEXPR_FUNC BeiDouSignalName GetBeiDouSignalName(GNSSSignalType signal) {
@@ -552,7 +794,7 @@ enum class SBASSignalName : uint8_t {
 };
 
 /**
- * @brief Get a human-friendly string for the specified @ref SBASSignalName.
+ * @brief Get a string representation of the @ref SBASSignalName enum value.
  *
  * @param type The enum to get the string name for.
  *
@@ -566,8 +808,13 @@ P1_CONSTEXPR_FUNC const char* to_string(SBASSignalName type) {
     case SBASSignalName::L5:
       return "L5";
   }
-  return "Invalid SBAS Signal Name";
+  return "INVALID";
 }
+
+/**
+ * @copydoc to_string()
+ */
+inline const char* ToString(SBASSignalName type) { return to_string(type); }
 
 /**
  * @brief @ref SBASSignalName stream operator.
@@ -575,6 +822,24 @@ P1_CONSTEXPR_FUNC const char* to_string(SBASSignalName type) {
 inline p1_ostream& operator<<(p1_ostream& stream, SBASSignalName type) {
   stream << to_string(type) << " (" << (int)type << ")";
   return stream;
+}
+
+/**
+ * @brief Get a human-friendly string for the specified @ref SBASSignalName.
+ *
+ * @param type The enum to get the string for.
+ *
+ * @return The corresponding string.
+ */
+P1_CONSTEXPR_FUNC const char* ToPrettyString(SBASSignalName type) {
+  switch (type) {
+    case SBASSignalName::L1CA:
+      return "C/A";
+
+    case SBASSignalName::L5:
+      return "L5";
+  }
+  return "Invalid";
 }
 
 P1_CONSTEXPR_FUNC SBASSignalName GetSBASSignalName(GNSSSignalType signal) {
@@ -620,8 +885,13 @@ P1_CONSTEXPR_FUNC const char* to_string(QZSSSignalName type) {
     case QZSSSignalName::L6:
       return "L6";
   }
-  return "Invalid QZSS Signal Name";
+  return "INVALID";
 }
+
+/**
+ * @copydoc to_string()
+ */
+inline const char* ToString(QZSSSignalName type) { return to_string(type); }
 
 /**
  * @brief @ref QZSSSignalName stream operator.
@@ -629,6 +899,33 @@ P1_CONSTEXPR_FUNC const char* to_string(QZSSSignalName type) {
 inline p1_ostream& operator<<(p1_ostream& stream, QZSSSignalName type) {
   stream << to_string(type) << " (" << (int)type << ")";
   return stream;
+}
+
+/**
+ * @brief Get a human-friendly string for the specified @ref QZSSSignalName.
+ *
+ * @param type The enum to get the string for.
+ *
+ * @return The corresponding string.
+ */
+P1_CONSTEXPR_FUNC const char* ToPrettyString(QZSSSignalName type) {
+  switch (type) {
+    case QZSSSignalName::L1CA:
+      return "C/A";
+
+    case QZSSSignalName::L1C:
+      return "L1C";
+
+    case QZSSSignalName::L2C:
+      return "L2C";
+
+    case QZSSSignalName::L5:
+      return "L5";
+
+    case QZSSSignalName::L6:
+      return "L6";
+  }
+  return "Invalid";
 }
 
 P1_CONSTEXPR_FUNC QZSSSignalName GetQZSSSignalName(GNSSSignalType signal) {
@@ -910,13 +1207,212 @@ enum class GNSSSignalType : uint16_t {
 };
 
 /**
- * @brief Get a human-friendly string for the specified @ref GNSSSignalType.
+ * @brief Get a string representation of the @ref GNSSSignalType enum value.
  *
  * @param type The enum to get the string name for.
  *
  * @return The corresponding string name.
  */
 P1_CONSTEXPR_FUNC const char* to_string(GNSSSignalType type) {
+  switch (type) {
+    case GNSSSignalType::GPS_L1CA:
+      return "GPS_L1CA";
+
+    case GNSSSignalType::GPS_L1P:
+      return "GPS_L1P";
+
+    case GNSSSignalType::GPS_L1C:
+      return "GPS_L1C";
+
+    case GNSSSignalType::GPS_L1C_D:
+      return "GPS_L1C_D";
+
+    case GNSSSignalType::GPS_L1C_P:
+      return "GPS_L1C_P";
+
+    case GNSSSignalType::GPS_L2C:
+      return "GPS_L2C";
+
+    case GNSSSignalType::GPS_L2C_M:
+      return "GPS_L2C_M";
+
+    case GNSSSignalType::GPS_L2C_L:
+      return "GPS_L2C_L";
+
+    case GNSSSignalType::GPS_L2P:
+      return "GPS_L2P";
+
+    case GNSSSignalType::GPS_L5:
+      return "GPS_L5";
+
+    case GNSSSignalType::GPS_L5_I:
+      return "GPS_L5_I";
+
+    case GNSSSignalType::GPS_L5_Q:
+      return "GPS_L5_Q";
+
+    case GNSSSignalType::GLONASS_L1CA:
+      return "GLONASS_L1CA";
+
+    case GNSSSignalType::GLONASS_L1P:
+      return "GLONASS_L1P";
+
+    case GNSSSignalType::GLONASS_L2CA:
+      return "GLONASS_L2CA";
+
+    case GNSSSignalType::GLONASS_L2P:
+      return "GLONASS_L2P";
+
+    case GNSSSignalType::GALILEO_E1A:
+      return "GALILEO_E1A";
+
+    case GNSSSignalType::GALILEO_E1BC:
+      return "GALILEO_E1BC";
+
+    case GNSSSignalType::GALILEO_E1B:
+      return "GALILEO_E1B";
+
+    case GNSSSignalType::GALILEO_E1C:
+      return "GALILEO_E1C";
+
+    case GNSSSignalType::GALILEO_E5B:
+      return "GALILEO_E5B";
+
+    case GNSSSignalType::GALILEO_E5B_I:
+      return "GALILEO_E5B_I";
+
+    case GNSSSignalType::GALILEO_E5B_Q:
+      return "GALILEO_E5B_Q";
+
+    case GNSSSignalType::GALILEO_E5A:
+      return "GALILEO_E5A";
+
+    case GNSSSignalType::GALILEO_E5A_I:
+      return "GALILEO_E5A_I";
+
+    case GNSSSignalType::GALILEO_E5A_Q:
+      return "GALILEO_E5A_Q";
+
+    case GNSSSignalType::GALILEO_E6A:
+      return "GALILEO_E6A";
+
+    case GNSSSignalType::GALILEO_E6BC:
+      return "GALILEO_E6BC";
+
+    case GNSSSignalType::GALILEO_E6B:
+      return "GALILEO_E6B";
+
+    case GNSSSignalType::GALILEO_E6C:
+      return "GALILEO_E6C";
+
+    case GNSSSignalType::BEIDOU_B1I:
+      return "BEIDOU_B1I";
+
+    case GNSSSignalType::BEIDOU_B1C:
+      return "BEIDOU_B1C";
+
+    case GNSSSignalType::BEIDOU_B1C_D:
+      return "BEIDOU_B1C_D";
+
+    case GNSSSignalType::BEIDOU_B1C_P:
+      return "BEIDOU_B1C_P";
+
+    case GNSSSignalType::BEIDOU_B2I:
+      return "BEIDOU_B2I";
+
+    case GNSSSignalType::BEIDOU_B2B:
+      return "BEIDOU_B2B";
+
+    case GNSSSignalType::BEIDOU_B2A:
+      return "BEIDOU_B2A";
+
+    case GNSSSignalType::BEIDOU_B2A_D:
+      return "BEIDOU_B2A_D";
+
+    case GNSSSignalType::BEIDOU_B2A_P:
+      return "BEIDOU_B2A_P";
+
+    case GNSSSignalType::BEIDOU_B3I:
+      return "BEIDOU_B3I";
+
+    case GNSSSignalType::SBAS_L1CA:
+      return "SBAS_L1CA";
+
+    case GNSSSignalType::SBAS_L5:
+      return "SBAS_L5";
+
+    case GNSSSignalType::SBAS_L5_I:
+      return "SBAS_L5_I";
+
+    case GNSSSignalType::SBAS_L5_Q:
+      return "SBAS_L5_Q";
+
+    case GNSSSignalType::QZSS_L1CA:
+      return "QZSS_L1CA";
+
+    case GNSSSignalType::QZSS_L1C:
+      return "QZSS_L1C";
+
+    case GNSSSignalType::QZSS_L1C_D:
+      return "QZSS_L1C_D";
+
+    case GNSSSignalType::QZSS_L1C_P:
+      return "QZSS_L1C_P";
+
+    case GNSSSignalType::QZSS_L2C:
+      return "QZSS_L2C";
+
+    case GNSSSignalType::QZSS_L2C_M:
+      return "QZSS_L2C_M";
+
+    case GNSSSignalType::QZSS_L2C_L:
+      return "QZSS_L2C_L";
+
+    case GNSSSignalType::QZSS_L5:
+      return "QZSS_L5";
+
+    case GNSSSignalType::QZSS_L5_I:
+      return "QZSS_L5_I";
+
+    case GNSSSignalType::QZSS_L5_Q:
+      return "QZSS_L5_Q";
+
+    case GNSSSignalType::QZSS_L6:
+      return "QZSS_L6";
+
+    case GNSSSignalType::QZSS_L6_M:
+      return "QZSS_L6_M";
+
+    case GNSSSignalType::QZSS_L6_L:
+      return "QZSS_L6_L";
+
+    case GNSSSignalType::UNKNOWN:
+      return "UNKNOWN";
+  }
+  return "INVALID";
+}
+
+/**
+ * @copydoc to_string()
+ */
+inline const char* ToString(GNSSSignalType type) { return to_string(type); }
+
+/**
+ * @brief @ref GNSSSignalType stream operator.
+ */
+inline p1_ostream& operator<<(p1_ostream& stream, GNSSSignalType type) {
+  stream << to_string(type) << " (" << (int)type << ")";
+  return stream;
+}
+
+/**
+ * @brief Get a human-friendly string for the specified @ref GNSSSignalType.
+ *
+ * @param type The enum to get the string for.
+ *
+ * @return The corresponding string.
+ */
+P1_CONSTEXPR_FUNC const char* ToPrettyString(GNSSSignalType type) {
   switch (type) {
     case GNSSSignalType::GPS_L1CA:
       return "GPS C/A";
@@ -1090,22 +1586,12 @@ P1_CONSTEXPR_FUNC const char* to_string(GNSSSignalType type) {
       return "QZSS L6-L (Pilot)";
 
     case GNSSSignalType::UNKNOWN:
-      return "Unknown GNSS Signal Type";
+      return "Unknown";
   }
-  return "Invalid GNSS Signal Type";
-}
-
-/**
- * @brief @ref GNSSSignalType stream operator.
- */
-inline p1_ostream& operator<<(p1_ostream& stream, GNSSSignalType type) {
-  stream << to_string(type) << " (" << (int)type << ")";
-  return stream;
+  return "Invalid";
 }
 
 // < Stop Autogenerated Types (See python/fusion_engine_client/messages/signal_def_gen.py)
-
-/** @} */
 
 /**
  * @defgroup sat_type_masks @ref SatelliteType Bitmask Support
@@ -1172,7 +1658,7 @@ static constexpr uint32_t SATELLITE_TYPE_MASK_ALL = 0xFFFFFFFF;
  *
  * @return The corresponding bitmask.
  */
-constexpr uint32_t ToBitMask(SatelliteType type) {
+P1_CONSTEXPR_FUNC uint32_t ToBitMask(SatelliteType type) {
   return (1U << (static_cast<uint8_t>(type)));
 }
 
@@ -1204,6 +1690,8 @@ template <typename... Args>
 P1_CONSTEXPR_FUNC uint32_t ToBitMask(SatelliteType first, Args... others) {
   return ToBitMask(first) | ToBitMask(others...);
 }
+
+/** @} */
 
 /**
  * @defgroup freq_band_masks @ref FrequencyBand Bitmask Support
@@ -1258,7 +1746,7 @@ static constexpr uint32_t FREQUENCY_BAND_MASK_ALL = 0xFFFFFFFF;
  *
  * @return The corresponding bitmask.
  */
-constexpr uint32_t ToBitMask(FrequencyBand type) {
+P1_CONSTEXPR_FUNC uint32_t ToBitMask(FrequencyBand type) {
   return (1U << (static_cast<uint8_t>(type)));
 }
 
