@@ -89,20 +89,24 @@ class MessageData(object):
                 self.message_bytes = np.array(self.message_bytes, dtype=np.uint64)
                 self.message_index = np.array(self.message_index, dtype=int)
 
-                if remove_nan_times and 'p1_time' in self.__dict__:
-                    is_nan = np.isnan(self.p1_time)
+                # Helper function for removing entries with NAN timestamps.
+                def _remove_nan_from_dict(data_dict):
+                    if 'p1_time' not in data_dict:
+                        return
+
+                    is_nan = np.isnan(data_dict['p1_time'])
                     if np.any(is_nan):
                         keep_idx = ~is_nan
-                        for key, value in self.__dict__.items():
+                        for key, value in data_dict.items():
                             if (key not in ('message_type', 'message_class', 'params', 'messages') and
                                     isinstance(value, np.ndarray)):
-                                if key in self.__dict__.get('__metadata__', {}).get('not_time_dependent', []):
+                                if key in data_dict.get('__metadata__', {}).get('not_time_dependent', []):
                                     # Data is not time-dependent, even if it happens to have the same number of elements
                                     # as the time vector.
                                     pass
                                 elif len(value.shape) == 1:
                                     if len(value) == len(keep_idx):
-                                        self.__dict__[key] = value[keep_idx]
+                                        data_dict[key] = value[keep_idx]
                                     else:
                                         # Field has a different length than the time vector. It is likely a
                                         # non-time-varying element (e.g., a position std dev threshold).
@@ -113,20 +117,31 @@ class MessageData(object):
                                     # along the columns.
                                     if value.shape[1] == len(is_nan):
                                         # Assuming second dimension (columns) is time.
-                                        self.__dict__[key] = value[:, keep_idx]
+                                        data_dict[key] = value[:, keep_idx]
                                     # Otherwise, check to see if the data is transposed as NxA.
                                     elif value.shape[0] == len(is_nan):
                                         # Assuming first dimension is time.
-                                        self.__dict__[key] = value[keep_idx, :]
+                                        data_dict[key] = value[keep_idx, :]
                                     elif value.shape[1] == len(is_nan):
                                         # Assuming second dimension is time.
-                                        self.__dict__[key] = value[:, keep_idx]
+                                        data_dict[key] = value[:, keep_idx]
                                     else:
                                         # Unrecognized data shape.
                                         pass
                                 else:
                                     # Unrecognized data shape.
                                     pass
+
+                # If requested, remove any entries with NAN P1 timestamps.
+                if remove_nan_times:
+                    # Remove NANs from top-level numpy data.
+                    _remove_nan_from_dict(self.__dict__)
+
+                    # Special cast: also remove NANs from nested satellite/signal data elements.
+                    if self.message_type == MessageType.GNSS_SIGNALS:
+                        _remove_nan_from_dict(self.sv_data)
+                        _remove_nan_from_dict(self.signal_data)
+
 
             if not keep_messages:
                 self.messages = []

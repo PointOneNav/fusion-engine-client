@@ -290,6 +290,10 @@ struct P1_ALIGNAS(4) GNSSInfoMessage : public MessagePayload {
  *        (@ref MessageType::GNSS_SATELLITE, version 1.0).
  * @ingroup solution_messages
  *
+ * @deprecated This message is deprecated in favor of the @ref
+ *             GNSSSignalsMessage that gives more information on both the
+ *             tracked satellites and signals.
+ *
  * This message is followed by `N` @ref SatelliteInfo objects, where `N` is
  * equal to @ref num_satellites. For example, a message with two satellites
  * would be serialized as:
@@ -368,6 +372,162 @@ struct P1_ALIGNAS(4) SatelliteInfo {
   /** The elevation of the satellite (in degrees). */
   float elevation_deg = NAN;
 };
+
+/**
+ * @brief Information about the individual GNSS satellites and signals used in
+ *        the @ref PoseMessage and @ref GNSSInfoMessage with the corresponding
+ *        timestamp (@ref MessageType::GNSS_SIGNALS, version 1.1).
+ * @ingroup solution_messages
+ *
+ * This message is followed by `N` @ref GNSSSatelliteInfo objects, where `N` is
+ * equal to @ref num_satellites.
+ *
+ * After the satellite data objects, there will be a section of `S` @ref
+ * GNSSSignalInfo objects, where `S` is equal to `num_signals`.
+ *
+ * For example:
+ *  - A message with two satellites where the the first had one signal and the
+ *    second had two.
+ *
+ * ```
+ * num_satellites=2
+ * num_signals=3
+ *
+ * The data structure of the serialized message:
+ * {MessageHeader, GNSSSignalsMessage, GNSSSatelliteInfo, GNSSSatelliteInfo,
+ *  GNSSSignalInfo, GNSSSignalInfo, GNSSSignalInfo}
+ * ```
+ */
+struct P1_ALIGNAS(4) GNSSSignalsMessage : public MessagePayload {
+  static constexpr MessageType MESSAGE_TYPE = MessageType::GNSS_SIGNALS;
+  static constexpr uint8_t MESSAGE_VERSION = 1;
+
+  static constexpr uint16_t INVALID_GPS_WEEK = 0xFFFF;
+  static constexpr uint32_t INVALID_GPS_TOW = 0xFFFFFFFF;
+
+  /** The time of the message, in P1 time (beginning at power-on). */
+  Timestamp p1_time;
+
+  /**
+   * The precise GPS time of the message, if available, referenced to 1980/1/6.
+   */
+  Timestamp gps_time;
+
+  /** The approximate GPS time of week in milliseconds. */
+  uint32_t gps_tow_ms = INVALID_GPS_TOW;
+
+  /** The GPS week number. */
+  uint16_t gps_week = INVALID_GPS_WEEK;
+
+  /** The number of GNSS signals reported in this message. */
+  uint16_t num_signals = 0;
+
+  /** The number satellites reported in this message. */
+  uint8_t num_satellites = 0;
+
+  uint8_t reserved[7] = {0};
+};
+
+/**
+ * @brief Information about an individual satellite (see @ref
+ *        GNSSSignalsMessage).
+ */
+struct P1_ALIGNAS(4) GNSSSatelliteInfo {
+  /**
+   * @defgroup gnss_sv_status_flags Bit definitions for the satellite status
+   *           bitmask (@ref GNSSSatelliteInfo::status_flags).
+   * @{
+   */
+  static constexpr uint8_t STATUS_FLAG_IS_USED = 0x01;
+  static constexpr uint8_t STATUS_FLAG_IS_UNHEALTHY = 0x02;
+  static constexpr uint8_t STATUS_FLAG_IS_NON_LINE_OF_SIGHT = 0x04;
+  static constexpr uint8_t STATUS_FLAG_HAS_EPHEM = 0x10;
+  static constexpr uint8_t STATUS_FLAG_HAS_SBAS = 0x20;
+  /** @} */
+
+  static constexpr uint16_t INVALID_AZIMUTH = 0xFFFF;
+  static constexpr int16_t INVALID_ELEVATION = 0x7FFF;
+
+  /** The GNSS system to which this satellite belongs. */
+  SatelliteType system = SatelliteType::UNKNOWN;
+
+  /** The satellite's PRN (or slot number for GLONASS). */
+  uint8_t prn = 0;
+
+  /**
+   * A bitmask specifying how this satellite was used and what information was
+   * available for it.
+   */
+  uint8_t status_flags = 0;
+
+  uint8_t reserved[1] = {0};
+
+  /** The elevation of the satellite [-90, 90] (in 0.01 degrees). */
+  int16_t elevation_cdeg = INVALID_ELEVATION;
+
+  /**
+   * The azimuth of the satellite [0,359] (in 0.01 degrees). 0 is north, and
+   * azimuth increases in a clockwise direction.
+   */
+  uint16_t azimuth_cdeg = INVALID_AZIMUTH;
+};
+static_assert(sizeof(GNSSSatelliteInfo) == 8,
+              "GNSSSatelliteInfo does not match expected packed size.");
+
+/**
+ * @brief Information about an individual GNSS signal (see @ref
+ *        GNSSSignalsMessage).
+ */
+struct P1_ALIGNAS(4) GNSSSignalInfo {
+  /**
+   * @defgroup gnss_signal_status_flags Bit definitions for the signal status
+   *           bitmask (@ref GNSSSignalInfo::status_flags).
+   * @{
+   */
+  static constexpr uint16_t STATUS_FLAG_USED_PR = 0x01;
+  static constexpr uint16_t STATUS_FLAG_USED_DOPPLER = 0x02;
+  static constexpr uint16_t STATUS_FLAG_USED_CARRIER = 0x04;
+  static constexpr uint16_t STATUS_FLAG_CARRIER_AMBIGUITY_RESOLVED = 0x08;
+
+  static constexpr uint16_t STATUS_FLAG_VALID_PR = 0x10;
+  static constexpr uint16_t STATUS_FLAG_VALID_DOPPLER = 0x20;
+  static constexpr uint16_t STATUS_FLAG_CARRIER_LOCKED = 0x40;
+
+  static constexpr uint16_t STATUS_FLAG_HAS_RTK = 0x100;
+  static constexpr uint16_t STATUS_FLAG_HAS_SBAS = 0x200;
+  static constexpr uint16_t STATUS_FLAG_HAS_EPHEM = 0x400;
+  /** @} */
+
+  static constexpr uint8_t INVALID_CN0 = 0;
+
+  /** The type of signal being reported. */
+  GNSSSignalType signal_type = GNSSSignalType::UNKNOWN;
+
+  /**
+   * The PRN (or slot number for GLONASS) of the satellite that generated this
+   * signal.
+   */
+  uint8_t prn = 0;
+
+  /**
+   * The carrier-to-noise density ratio (C/N0) this signal.
+   *
+   * Stored in units of 0.25 dB-Hz: `cn0_dbhz = cn0 * 0.25`. Set to 0 if
+   * invalid. The range of this field is 0.25-63.75 dB-Hz. Values outside of
+   * this range will be clipped to the min/max values.
+   */
+  uint8_t cn0 = INVALID_CN0;
+
+  /**
+   * A bitmask specifying how this signal was used and what information was
+   * available for it.
+   */
+  uint16_t status_flags = 0;
+
+  uint8_t reserved[2] = {0};
+};
+static_assert(sizeof(GNSSSignalInfo) == 8,
+              "GNSSSignalInfo does not match expected packed size.");
 
 /**
  * @brief The stages of the device calibration process.

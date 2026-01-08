@@ -1,5 +1,6 @@
+from dataclasses import dataclass
 import struct
-from typing import List, Sequence
+from typing import Dict, List, Sequence
 
 from construct import (Struct, Float64l, Float32l, Int32ul, Int8ul, Padding, Array)
 import numpy as np
@@ -547,6 +548,71 @@ class GNSSSatelliteMessage(MessagePayload):
     def calcsize(self) -> int:
         return 2 * Timestamp.calcsize() + GNSSSatelliteMessage._SIZE + len(self.svs) * SatelliteInfo.calcsize()
 
+    def to_gnss_signals_message(self) -> 'GNSSSignalsMessage':
+        """!
+        @brief Convert this message to the newer @ref GNSSSignalsMessage format.
+
+        @note
+        The deprecated @ref GNSSSatelliteMessage does not store information about individual GNSS signals. This function
+        assumes that each satellite present in the message is being tracked on the L1 civilian signal on that
+        constellation.
+
+        @return A @ref GNSSSignalsMessage.
+        """
+        l1_signal_types_per_system = {
+            SatelliteType.GPS: GNSSSignalType.GPS_L1CA,
+            SatelliteType.GLONASS: GNSSSignalType.GLONASS_L1CA,
+            SatelliteType.GALILEO: GNSSSignalType.GALILEO_E1BC,
+            SatelliteType.BEIDOU: GNSSSignalType.BEIDOU_B1I,
+            SatelliteType.QZSS: GNSSSignalType.QZSS_L1CA,
+            SatelliteType.SBAS: GNSSSignalType.SBAS_L1CA,
+        }
+
+        result = GNSSSignalsMessage()
+        result.p1_time = self.p1_time
+        result.gps_time = self.gps_time
+        if self.gps_time:
+            gps_time_sec = float(self.gps_time)
+            result.gps_week = int(gps_time_sec / SECONDS_PER_WEEK)
+            result.gps_tow_ms = int(round((gps_time_sec - result.gps_week * SECONDS_PER_WEEK) * 1e3))
+
+        for sv_entry in self.svs:
+            sv = sv_entry.get_satellite_id()
+            signal_type = l1_signal_types_per_system.get(sv.get_satellite_type(), None)
+            if signal_type is None:
+                continue
+            signal = SignalID(signal_type=signal_type, prn=sv.get_prn())
+
+            is_used = (sv_entry.usage & SatelliteInfo.SATELLITE_USED) != 0
+            flags = 0
+            if is_used:
+                flags |= (GNSSSatelliteInfo.STATUS_FLAG_HAS_EPHEM | GNSSSatelliteInfo.STATUS_FLAG_IS_USED)
+            sv_info = GNSSSatelliteInfo(
+                system=sv.get_satellite_type(), prn=sv.get_prn(),
+                azimuth_deg=sv_entry.azimuth_deg, elevation_deg=sv_entry.elevation_deg,
+                status_flags=flags)
+            result.sat_info[sv] = sv_info
+
+            # This message doesn't indicate which measurements were used for a given satellite. We'll assume all of
+            # them, which may not be accurate.
+            #
+            # To avoid confusion, since we actually don't have tracking status, we'll assume that a signal has valid
+            # measurements if it is _present at all_. Otherwise, its tracking status could appear to change rapidly when
+            # plotted if the navigation engine simply decides not to use it for any reason. Since we do not know if we
+            # are fixed, we cannot accurately indicate "carrier ambiguity resolved", so we'll leave that out.
+            flags = (GNSSSignalInfo.STATUS_FLAG_VALID_PR | GNSSSignalInfo.STATUS_FLAG_VALID_DOPPLER |
+                     GNSSSignalInfo.STATUS_FLAG_CARRIER_LOCKED)
+            if is_used:
+                flags |= (GNSSSignalInfo.STATUS_FLAG_USED_PR | GNSSSignalInfo.STATUS_FLAG_USED_DOPPLER |
+                          GNSSSignalInfo.STATUS_FLAG_USED_CARRIER)
+            signal_info = GNSSSignalInfo(
+                signal_type=signal_type, prn=sv.get_prn(),
+                cn0_dbhz=sv_entry.cn0_dbhz,
+                status_flags=flags)
+            result.signal_info[signal] = signal_info
+
+        return result
+
     @classmethod
     def to_numpy(cls, messages):
         return {
@@ -563,7 +629,8 @@ class GNSSSatelliteMessage(MessagePayload):
 
         all_p1_time = flattened_data['p1_time']
         all_gps_time = flattened_data['gps_time']
-        all_sv_ids = np.array([encode_signal_id(entry) for entry in flattened_data['data']], dtype=int)
+        all_sv_ids = np.array([encode_signal_hash(entry.system, entry.prn)
+                              for entry in flattened_data['data']], dtype=int)
         all_azim_deg = np.array([entry.azimuth_deg for entry in flattened_data['data']])
         all_elev_deg = np.array([entry.elevation_deg for entry in flattened_data['data']])
         all_cn0_dbhz = np.array([entry.cn0_dbhz for entry in flattened_data['data']])
@@ -589,7 +656,8 @@ class GNSSSatelliteMessage(MessagePayload):
 
         all_p1_time = flattened_data['p1_time']
         all_gps_time = flattened_data['gps_time']
-        all_sv_ids = np.array([encode_signal_id(entry) for entry in flattened_data['data']], dtype=int)
+        all_sv_ids = np.array([encode_signal_hash(entry.system, entry.prn)
+                              for entry in flattened_data['data']], dtype=int)
         all_azim_deg = np.array([entry.azimuth_deg for entry in flattened_data['data']])
         all_elev_deg = np.array([entry.elevation_deg for entry in flattened_data['data']])
         all_cn0_dbhz = np.array([entry.cn0_dbhz for entry in flattened_data['data']])
@@ -622,6 +690,325 @@ class GNSSSatelliteMessage(MessagePayload):
                 'gps_time': np.array([float(m.gps_time) for m in input for _ in m.svs]),
                 'data': [entry for m in input for entry in m.svs]
             }
+
+
+# Breaking the declaration up allows specifying the class properties without affecting constructor or property
+# iteration.
+@dataclass
+class _GNSSSatelliteInfo:
+    system: SatelliteType = SatelliteType.UNKNOWN
+    elevation_deg: float = np.nan
+    azimuth_deg: float = np.nan
+    prn: int = 0
+    status_flags: int = 0
+
+
+class GNSSSatelliteInfo(_GNSSSatelliteInfo):
+    STATUS_FLAG_IS_USED = 0x01
+    STATUS_FLAG_IS_UNHEALTHY = 0x02
+    STATUS_FLAG_IS_NON_LINE_OF_SIGHT = 0x04
+    STATUS_FLAG_HAS_EPHEM = 0x10
+    STATUS_FLAG_HAS_SBAS = 0x20
+
+    _INVALID_AZIMUTH = 0xFFFF
+    _INVALID_ELEVATION = 0x7FFF
+
+    _STRUCT = struct.Struct('<BBBxhH')
+
+    def get_satellite_id(self) -> SatelliteID:
+        return SatelliteID(system=self.system, prn=self.prn)
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        if buffer is None:
+            buffer = bytearray(self.calcsize())
+            offset = 0
+
+        initial_offset = offset
+
+        self._STRUCT.pack_into(
+            buffer, offset,
+            int(self.system),
+            self.prn,
+            self.status_flags,
+            self._INVALID_ELEVATION if np.isnan(self.elevation_deg) else int(np.round(self.elevation_deg * 100.0)),
+            self._INVALID_AZIMUTH if np.isnan(self.azimuth_deg) else int(np.round(self.azimuth_deg * 100.0)))
+        offset += self._STRUCT.size
+
+        if return_buffer:
+            return buffer
+        else:
+            return offset - initial_offset
+
+    def unpack(self, buffer: bytes, offset: int = 0, version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
+        initial_offset = offset
+
+        (system,
+         self.prn,
+         self.status_flags,
+         elev_int,
+         azim_int) = \
+            self._STRUCT.unpack_from(buffer=buffer, offset=offset)
+        offset += self._STRUCT.size
+
+        self.system = SatelliteType(system, raise_on_unrecognized=False)
+        self.elevation_deg = np.nan if elev_int == self._INVALID_ELEVATION else (elev_int * 0.01)
+        self.azimuth_deg = np.nan if azim_int == self._INVALID_AZIMUTH else (azim_int * 0.01)
+
+        return offset - initial_offset
+
+    @classmethod
+    def calcsize(cls) -> int:
+        return cls._STRUCT.size
+
+
+# Breaking the declaration up allows specifying the class properties without affecting constructor or property
+# iteration.
+@dataclass
+class _GNSSSignalInfo:
+    signal_type: GNSSSignalType = GNSSSignalType.UNKNOWN
+    prn: int = 0
+    cn0_dbhz: float = np.nan
+    status_flags: int = 0
+
+
+class GNSSSignalInfo(_GNSSSignalInfo):
+    STATUS_FLAG_USED_PR = 0x01
+    STATUS_FLAG_USED_DOPPLER = 0x02
+    STATUS_FLAG_USED_CARRIER = 0x04
+    STATUS_FLAG_CARRIER_AMBIGUITY_RESOLVED = 0x08
+
+    STATUS_FLAG_VALID_PR = 0x10
+    STATUS_FLAG_VALID_DOPPLER = 0x20
+    STATUS_FLAG_CARRIER_LOCKED = 0x40
+
+    STATUS_FLAG_HAS_RTK = 0x100
+    STATUS_FLAG_HAS_SBAS = 0x200
+    STATUS_FLAG_HAS_EPHEM = 0x400
+
+    _INVALID_CN0 = 0
+
+    _STRUCT = struct.Struct('<HBBH2x')
+
+    def get_signal_id(self) -> SignalID:
+        return SignalID(signal_type=self.signal_type, prn=self.prn)
+
+    def get_satellite_id(self) -> SatelliteID:
+        return SatelliteID(system=self.signal_type.get_satellite_type(), prn=self.prn)
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        if buffer is None:
+            buffer = bytearray(self.calcsize())
+            offset = 0
+
+        initial_offset = offset
+
+        self._STRUCT.pack_into(
+            buffer, offset,
+            int(self.signal_type),
+            self.prn,
+            self._INVALID_CN0 if np.isnan(self.cn0_dbhz) else int(np.round(self.cn0_dbhz / 0.25)),
+            self.status_flags)
+        offset += self._STRUCT.size
+
+        if return_buffer:
+            return buffer
+        else:
+            return offset - initial_offset
+
+    def unpack(self, buffer: bytes, offset: int = 0, version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
+        initial_offset = offset
+
+        (signal_type,
+         self.prn,
+         cn0_int,
+         self.status_flags) = \
+            self._STRUCT.unpack_from(buffer=buffer, offset=offset)
+        offset += self._STRUCT.size
+
+        self.signal_type = GNSSSignalType(signal_type, raise_on_unrecognized=False)
+        self.cn0_dbhz = np.nan if cn0_int == self._INVALID_CN0 else cn0_int * 0.25
+
+        return offset - initial_offset
+
+    @classmethod
+    def calcsize(cls) -> int:
+        return cls._STRUCT.size
+
+
+class GNSSSignalsMessage(MessagePayload):
+    """!
+    @brief Information about the individual GNSS satellites and signals used in the pose solution.
+    """
+    MESSAGE_TYPE = MessageType.GNSS_SIGNALS
+    MESSAGE_VERSION = 1
+
+    _INVALID_GPS_WEEK = 0xFFFF
+    _INVALID_GPS_TOW = 0xFFFFFFFF
+
+    _STRUCT = struct.Struct('<IH HB 7x')
+
+    def __init__(self):
+        self.p1_time = Timestamp()
+        self.gps_time = Timestamp()
+        self.gps_tow_ms: Optional[int] = None
+        self.gps_week: Optional[int] = None
+        self.sat_info: Dict[SatelliteID, GNSSSatelliteInfo] = {}
+        self.signal_info: Dict[SignalID, GNSSSignalInfo] = {}
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        if buffer is None:
+            buffer = bytearray(self.calcsize())
+            offset = 0
+
+        initial_offset = offset
+
+        offset += self.p1_time.pack(buffer, offset, return_buffer=False)
+        offset += self.gps_time.pack(buffer, offset, return_buffer=False)
+
+        self._STRUCT.pack_into(
+            buffer, offset,
+            self._INVALID_GPS_TOW if self.gps_tow_ms is None else self.gps_tow_ms,
+            self._INVALID_GPS_WEEK if self.gps_week is None else self.gps_week,
+            len(self.signal_info),
+            len(self.sat_info))
+        offset += self._STRUCT.size
+
+        for info in self.sat_info.values():
+            offset += info.pack(buffer, offset, return_buffer=False)
+
+        for info in self.signal_info.values():
+            offset += info.pack(buffer, offset, return_buffer=False)
+
+        if return_buffer:
+            return buffer
+        else:
+            return offset - initial_offset
+
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
+        # Legacy version 0 not supported.
+        if message_version == 0:
+            raise NotImplementedError('GNSSSignalsMessage version 0 not supported.')
+
+        initial_offset = offset
+
+        offset += self.p1_time.unpack(buffer, offset)
+        offset += self.gps_time.unpack(buffer, offset)
+
+        (gps_tow_ms_int,
+         gps_week_int,
+         num_signals,
+         num_satellites) = \
+            self._STRUCT.unpack_from(buffer=buffer, offset=offset)
+        offset += self._STRUCT.size
+
+        self.gps_tow_ms = None if gps_tow_ms_int == self._INVALID_GPS_TOW else gps_tow_ms_int
+        self.gps_week = None if gps_week_int == self._INVALID_GPS_WEEK else gps_week_int
+
+        sat_info_list = [GNSSSatelliteInfo() for _ in range(num_satellites)]
+        for info in sat_info_list:
+            offset += info.unpack(buffer, offset, version=message_version)
+
+        signal_info_list = [GNSSSignalInfo() for _ in range(num_signals)]
+        for info in signal_info_list:
+            offset += info.unpack(buffer, offset, version=message_version)
+
+        self.sat_info = {e.get_satellite_id(): e for e in sat_info_list}
+        self.signal_info = {e.get_signal_id(): e for e in signal_info_list}
+
+        return offset - initial_offset
+
+    def calcsize(self) -> int:
+        return ((2 * Timestamp.calcsize()) + GNSSSignalsMessage._STRUCT.size +
+                (len(self.sat_info) * GNSSSatelliteInfo.calcsize()) +
+                (len(self.signal_info) * GNSSSignalInfo.calcsize()))
+
+    def __repr__(self):
+        result = super().__repr__()[:-1]
+        result += f', num_svs={len(self.sat_info)}, num_signals={len(self.signal_info)}]'
+        return result
+
+    def __str__(self):
+        string = 'GNSS Signals Message @ %s\n' % str(self.p1_time)
+        string += '  %d SVs:' % len(self.sat_info)
+
+        def _signal_usage_str(status_flags: int) -> str:
+            if status_flags & GNSSSignalInfo.STATUS_FLAG_CARRIER_AMBIGUITY_RESOLVED:
+                return 'Fixed'
+            elif status_flags & GNSSSignalInfo.STATUS_FLAG_USED_CARRIER:
+                return 'Float'
+            elif status_flags & GNSSSignalInfo.STATUS_FLAG_USED_PR:
+                return 'PR'
+            else:
+                return "No"
+
+        def _signal_tracking_str(status_flags: int) -> str:
+            if status_flags & GNSSSignalInfo.STATUS_FLAG_CARRIER_LOCKED:
+                return 'PR,CP'
+            elif status_flags & GNSSSignalInfo.STATUS_FLAG_VALID_PR:
+                return 'PR'
+            else:
+                return 'No'
+
+        for sv, info in self.sat_info.items():
+            string += '\n'
+            string += '    %s:\n' % str(sv)
+            string += '      Used in solution: %s\n' % \
+                      ('yes' if (info.status_flags | info.STATUS_FLAG_IS_USED) else 'no')
+            string += '      Az/el: %.1f, %.1f deg' % (info.azimuth_deg, info.elevation_deg)
+        string += '\n  %d signals:' % len(self.signal_info)
+        for signal, info in self.signal_info.items():
+            string += '\n'
+            string += '    %s:\n' % str(signal)
+            string += '      C/N0: %.1f dB-Hz\n' % (info.cn0_dbhz,)
+            string += '      Available: %s\n' % (_signal_tracking_str(info.status_flags),)
+            string += '      Used: %s' % (_signal_usage_str(info.status_flags),)
+        return string
+
+    @classmethod
+    def to_numpy(cls, messages: List['GNSSSignalsMessage']):
+        flat_sv_info = [(m, sv, info) for m in messages for sv, info in m.sat_info.items()]
+        sv_ids = np.array([e[1] for e in flat_sv_info], dtype=SatelliteID)
+        sv_data = {
+            'p1_time': np.array([float(e[0].p1_time) for e in flat_sv_info]),
+            'gps_time': np.array([float(e[0].gps_time) for e in flat_sv_info]),
+            'gps_week': np.array([(e[0].gps_week if e[0].gps_week is not None else -1) for e in flat_sv_info],
+                                 dtype=int),
+            'gps_tow_sec': np.array([(e[0].gps_tow_ms * 1e-3 if e[0].gps_tow_ms is not None else np.nan)
+                                     for e in flat_sv_info]),
+            'sv': sv_ids,
+            'sv_hash': sv_ids.astype(int),
+            'azimuth_deg': np.array([e[2].azimuth_deg for e in flat_sv_info]),
+            'elevation_deg': np.array([e[2].elevation_deg for e in flat_sv_info]),
+            'status_flags': np.array([e[2].status_flags for e in flat_sv_info], dtype=int),
+        }
+
+        flat_sig_info = [(m, signal, info) for m in messages for signal, info in m.signal_info.items()]
+        signal_ids = np.array([e[1] for e in flat_sig_info], dtype=SignalID)
+        signal_data = {
+            'p1_time': np.array([float(e[0].p1_time) for e in flat_sig_info]),
+            'gps_time': np.array([float(e[0].gps_time) for e in flat_sig_info]),
+            'gps_week': np.array([(e[0].gps_week if e[0].gps_week is not None else -1) for e in flat_sig_info],
+                                 dtype=int),
+            'gps_tow_sec': np.array([(e[0].gps_tow_ms * 1e-3 if e[0].gps_tow_ms is not None else np.nan)
+                                     for e in flat_sig_info]),
+            'signal': signal_ids,
+            'signal_hash': signal_ids.astype(int),
+            'cn0_dbhz': np.array([e[2].cn0_dbhz for e in flat_sig_info]),
+            'status_flags': np.array([e[2].status_flags for e in flat_sig_info], dtype=int),
+        }
+
+        return {
+            'p1_time': np.array([float(m.p1_time) for m in messages]),
+            'gps_time': np.array([float(m.gps_time) for m in messages]),
+            'gps_week': np.array([(m.gps_week if m.gps_week is not None else -1) for m in messages],
+                                 dtype=int),
+            'gps_tow_sec': np.array([(m.gps_tow_ms * 1e-3 if m.gps_tow_ms is not None else np.nan)
+                                     for m in messages]),
+            'num_svs': np.array([len(m.sat_info) for m in messages], dtype=int),
+            'num_signals': np.array([len(m.signal_info) for m in messages], dtype=int),
+            'sv_data': sv_data,
+            'signal_data': signal_data,
+        }
 
 
 class CalibrationStage(IntEnum):

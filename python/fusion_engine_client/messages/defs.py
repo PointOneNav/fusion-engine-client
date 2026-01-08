@@ -93,6 +93,7 @@ class MessageType(IntEnum):
     POSE_AUX = 10003
     CALIBRATION_STATUS = 10004
     RELATIVE_ENU_POSITION = 10005
+    GNSS_SIGNALS = 10006
 
     # Device status messages.
     SYSTEM_STATUS = 10500
