@@ -125,7 +125,7 @@ or
                             payload.unpack(buffer=contents, offset=header.calcsize(),
                                            message_version=header.message_version)
                             logger.info("Decoded payload contents: %s" % str(payload))
-                        except ValueError as e:
+                        except Exception as e:
                             logger.warning(str(e))
                             logger.warning("Unable to decode payload contents.")
                     else:
