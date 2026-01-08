@@ -41,6 +41,7 @@ enum class MessageType : uint16_t {
   POSE_AUX = 10003, ///< @ref PoseAuxMessage
   CALIBRATION_STATUS = 10004, ///< @ref CalibrationStatusMessage
   RELATIVE_ENU_POSITION = 10005, ///< @ref RelativeENUPositionMessage
+  GNSS_SIGNALS = 10006, ///< @ref GNSSSignalsMessage
 
   // Device status messages.
   SYSTEM_STATUS = 10500, ///< @ref SystemStatusMessage
@@ -145,6 +146,9 @@ P1_CONSTEXPR_FUNC const char* to_string(MessageType type) {
 
     case MessageType::RELATIVE_ENU_POSITION:
       return "Relative ENU Position";
+
+    case MessageType::GNSS_SIGNALS:
+      return "GNSS Signals";
 
     // Device status messages.
     case MessageType::SYSTEM_STATUS:
@@ -340,6 +344,7 @@ P1_CONSTEXPR_FUNC bool IsCommand(MessageType message_type) {
     case MessageType::POSE_AUX:
     case MessageType::CALIBRATION_STATUS:
     case MessageType::RELATIVE_ENU_POSITION:
+    case MessageType::GNSS_SIGNALS:
     case MessageType::SYSTEM_STATUS:
     case MessageType::IMU_OUTPUT:
     case MessageType::DEPRECATED_RAW_HEADING_OUTPUT:
