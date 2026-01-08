@@ -329,6 +329,9 @@ class MixedLogReader(object):
                         try:
                             payload = cls()
                             payload.unpack(buffer=payload_bytes, offset=0, message_version=header.message_version)
+                        except NotImplementedError as e:
+                            self.logger.debug("Error %s message: %s" % (header.get_type_string(), str(e)))
+                            payload = None
                         except Exception as e:
                             self.logger.error("Error parsing %s message: %s" % (header.get_type_string(), str(e)))
                             payload = None
