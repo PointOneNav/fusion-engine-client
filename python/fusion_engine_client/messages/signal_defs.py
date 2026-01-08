@@ -7,6 +7,14 @@ import numpy as np
 from ..utils.enum_utils import IntEnum, enum_bitmask
 
 
+############################################################################
+## Signal Type Component Enums
+############################################################################
+
+##
+# @brief System/constellation type definitions.
+#
+# This needs to be packed into 4 bits so no values above 15 are allowed.
 class SatelliteType(IntEnum):
     UNKNOWN = 0
     GPS = 1
