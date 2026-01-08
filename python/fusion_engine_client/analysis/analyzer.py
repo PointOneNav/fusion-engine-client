@@ -195,6 +195,8 @@ class Analyzer(object):
 
         self._mapbox_token_missing = False
 
+        self._gnss_signals_data = None
+
         if self.output_dir is not None:
             if not os.path.exists(self.output_dir):
                 os.makedirs(self.output_dir)
@@ -3076,7 +3078,7 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
 
         self.plots[name] = {'title': title, 'path': path}
 
-    def _add_figure(self, name, figure=None, title=None, config=None):
+    def _add_figure(self, name, figure=None, title=None, config=None, inject_js: str = None):
         """!
         @brief Generate an HTML file for the specified figure.
 
@@ -3099,6 +3101,10 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
             self.logger.info('Creating %s...' % path)
 
             os.makedirs(os.path.dirname(path), exist_ok=True)
+
+            if inject_js is not None:
+                plotly.io.write_html = functools.partial(self.__write_html_and_inject_js, inject_js)
+
             plotly.offline.plot(
                 figure,
                 output_type='file',
@@ -3108,7 +3114,35 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
                 show_link=False,
                 config=config)
 
+            if inject_js is not None:
+                plotly.io.write_html = Analyzer.__original_write_html
+
         self.plots[name] = {'title': title, 'path': path if figure is not None else None}
+
+    # Support for injecting custom javascript into the generated plotly HTML file.
+    def __write_html_and_inject_js(self, inject_js, *args, **kwargs):
+        post_script = kwargs.get("post_script", None)
+        if post_script is None:
+            post_script = ""
+
+        # Create a global variable with the log's t0 timestamp.
+        post_script += f"""\
+var p1_t0_sec = {float(self.reader.t0)};
+var p1_time_axis_rel = {'true' if self.time_axis == 'relative' else 'false'}
+"""
+
+        # Inject common plotly data support functions (GetTimeText(), etc.).
+        script_dir = os.path.join(os.path.dirname(__file__))
+        with open(os.path.join(script_dir, 'plotly_data_support.js'), 'rt') as f:
+            post_script += f.read()
+
+        # Now inject the custom javascript.
+        post_script += inject_js
+
+        kwargs["post_script"] = post_script
+        return Analyzer.__original_write_html(*args, **kwargs)
+
+    __original_write_html = plotly.io.write_html
 
     def _open_browser(self, filename):
         try:
