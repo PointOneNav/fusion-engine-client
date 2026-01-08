@@ -185,8 +185,6 @@ inline p1_ostream& operator<<(p1_ostream& stream, SatelliteType type) {
   return stream;
 }
 
-/** @} */
-
 ////////////////////////////////////////////////////////////////////////////////
 // FrequencyBand
 ////////////////////////////////////////////////////////////////////////////////
@@ -263,8 +261,6 @@ inline p1_ostream& operator<<(p1_ostream& stream, FrequencyBand type) {
   stream << to_string(type) << " (" << (int)type << ")";
   return stream;
 }
-
-/** @} */
 
 P1_CONSTEXPR_FUNC FrequencyBand GetFrequencyBand(GNSSSignalType signal) {
   return static_cast<FrequencyBand>(static_cast<uint8_t>(
@@ -1100,11 +1096,6 @@ P1_CONSTEXPR_FUNC const char* to_string(GNSSSignalType type) {
 }
 
 /**
- * @copydoc to_string()
- */
-inline const char* ToString(GNSSSignalType type) { return to_string(type); }
-
-/**
  * @brief @ref GNSSSignalType stream operator.
  */
 inline p1_ostream& operator<<(p1_ostream& stream, GNSSSignalType type) {
@@ -1214,8 +1205,6 @@ P1_CONSTEXPR_FUNC uint32_t ToBitMask(SatelliteType first, Args... others) {
   return ToBitMask(first) | ToBitMask(others...);
 }
 
-/** @} */
-
 /**
  * @defgroup freq_band_masks @ref FrequencyBand Bitmask Support
  * @ingroup config_types
@@ -1299,6 +1288,10 @@ template <typename... Args>
 P1_CONSTEXPR_FUNC uint32_t ToBitMask(FrequencyBand first, Args... others) {
   return ToBitMask(first) | ToBitMask(others...);
 }
+
+/** @} */
+
+/** @} */
 
 } // namespace messages
 } // namespace fusion_engine
