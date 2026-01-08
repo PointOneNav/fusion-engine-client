@@ -1093,7 +1093,6 @@ P1_CONSTEXPR_FUNC const char* to_string(GNSSSignalType type) {
     case GNSSSignalType::QZSS_L6_L:
       return "QZSS L6-L (Pilot)";
 
-
     case GNSSSignalType::UNKNOWN:
       return "Unknown GNSS Signal Type";
   }
