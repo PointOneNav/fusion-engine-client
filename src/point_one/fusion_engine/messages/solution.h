@@ -290,6 +290,10 @@ struct P1_ALIGNAS(4) GNSSInfoMessage : public MessagePayload {
  *        (@ref MessageType::GNSS_SATELLITE, version 1.0).
  * @ingroup solution_messages
  *
+ *  * @deprecated This message is deprecated in favor of the @ref
+ *             GNSSSignalsMessage that gives more information on both the
+ *             tracked satellites and signals.
+ *
  * This message is followed by `N` @ref SatelliteInfo objects, where `N` is
  * equal to @ref num_satellites. For example, a message with two satellites
  * would be serialized as:
