@@ -195,6 +195,8 @@ class Analyzer(object):
 
         self._mapbox_token_missing = False
 
+        self._gnss_signals_data = None
+
         if self.output_dir is not None:
             if not os.path.exists(self.output_dir):
                 os.makedirs(self.output_dir)
@@ -1135,13 +1137,12 @@ class Analyzer(object):
         self._add_figure(name="map", figure=figure, title="Vehicle Trajectory (Map)", config={'scrollZoom': True})
 
     def plot_gnss_skyplot(self, decimate=True):
-        # Read the satellite data.
-        result = self.reader.read(message_types=[GNSSSatelliteMessage], **self.params)
-        data = result[GNSSSatelliteMessage.MESSAGE_TYPE]
-
-        if len(data.p1_time) == 0:
-            self.logger.info('No satellite data available. Skipping sky plot.')
+        # Read the GNSS signal data.
+        data = self._get_gnss_signals_data()
+        if len(data.messages) == 0:
+            self.logger.info('No GNSS signal data available. Skipping sky plot.')
             return
+        have_gnss_signals_message = not data.using_legacy_satellite_message
 
         # Setup the figure.
         figure = go.Figure()
@@ -1149,24 +1150,52 @@ class Analyzer(object):
         figure['layout']['polar']['radialaxis'].update(range=[90, 0])
         figure['layout']['polar']['angularaxis'].update(visible=False)
 
-        # Assign colors to each satellite.
-        data_by_sv = GNSSSatelliteMessage.group_by_sv(data)
-        svs = sorted(list(data_by_sv.keys()))
-        color_by_sv = self._assign_colors(svs)
+        # Assign colors by PRN.
+        sv_hashes = np.unique(data.sv_data['sv_hash'])
+        prns = np.unique([get_prn(h) for h in sv_hashes])
+        color_by_prn = self._assign_colors(prns)
+
+        # List the available signal types for each SV.
+        signal_hashes = np.unique(data.signal_data['signal_hash'])
+        signal_types_by_sv = defaultdict(list)
+        for signal_hash in signal_hashes:
+            signal_type = get_signal_type(signal_hash)
+            signal_types_by_sv[get_satellite_hash(signal_hash)].append(signal_type)
+
+        # Convert the full list of signals for all time epochs to corresponding satellites.
+        all_signal_sv_hashes = np.array([get_satellite_hash(s) for s in data.signal_data['signal_hash']])
 
         # Plot each satellite.
         indices_by_system = defaultdict(list)
         color_by_sv_format = []
         color_by_cn0_format = []
-        for sv in svs:
-            name = satellite_to_string(sv, short=False)
-            system = get_system(sv)
-            sv_data = data_by_sv[sv]
+        for sv_hash in sv_hashes:
+            sv_id = SatelliteID(sv_hash=sv_hash)
+            name = sv_id.to_string(short=False)
+            system = sv_id.get_satellite_type()
 
-            p1_time = sv_data['p1_time']
-            az_deg = sv_data['azimuth_deg']
-            el_deg = sv_data['elevation_deg']
-            cn0_dbhz = sv_data['cn0_dbhz']
+            idx = data.sv_data['sv_hash'] == sv_hash
+            p1_time = data.sv_data['p1_time'][idx]
+            az_deg = data.sv_data['azimuth_deg'][idx]
+            el_deg = data.sv_data['elevation_deg'][idx]
+
+            # Get the C/N0 data for all signals from this satellite, then find the max at each epoch. We'll use that to
+            # set the color-by-C/N0 scale.
+            #
+            # Reference: https://stackoverflow.com/a/43094244
+            idx = all_signal_sv_hashes == sv_hash
+            cn0_per_epoch = np.split(data.signal_data['cn0_dbhz'][idx],
+                                     np.unique(data.signal_data['p1_time'][idx], return_index=True)[1][1:])
+            max_cn0_dbhz = np.array([max(cn0) for cn0 in cn0_per_epoch])
+
+            if have_gnss_signals_message:
+                sv_signal_types = signal_types_by_sv[sv_hash]
+                signal_type_str = ", ".join([pretty_print_gnss_enum(t, omit_satellite_type=True,
+                                                                    omit_component_hint=True)
+                                             for t in sv_signal_types])
+                name_str = f'{name} ({signal_type_str})'
+            else:
+                name_str = name
 
             # Decimate the data to 30 second intervals.
             if decimate and len(p1_time) > 1:
@@ -1178,24 +1207,25 @@ class Analyzer(object):
                     p1_time = p1_time[idx]
                     az_deg = az_deg[idx]
                     el_deg = el_deg[idx]
-                    cn0_dbhz = cn0_dbhz[idx]
+                    max_cn0_dbhz = max_cn0_dbhz[idx]
 
             # Plot the data. We set styles for both coloring by SV and by C/N0. We'll add buttons below to switch
             # between styles.
-            color_by_sv_format.append({'color': color_by_sv[sv]})
+            color_by_sv_format.append({'color': color_by_prn[sv_id.get_prn()]})
             color_by_cn0_format.append({'cmin': 20, 'cmax': 55, 'colorscale': 'RdBu', 'showscale': True,
-                                        'colorbar': {'x': 0}, 'color': cn0_dbhz})
+                                        'colorbar': {'x': 0}, 'color': max_cn0_dbhz})
 
             text = ['P1: %.1f sec<br>(Az, El): (%.2f, %.2f) deg<br>C/N0: %.1f dB-Hz' %
-                    (t, a, e, c) for t, a, e, c in zip(p1_time, az_deg, el_deg, cn0_dbhz)]
+                    (t, a, e, c) for t, a, e, c in zip(p1_time, az_deg, el_deg, max_cn0_dbhz)]
             figure.add_trace(go.Scatterpolargl(r=el_deg, theta=(90 - az_deg), text=text,
-                                               name=name, hoverinfo='name+text', hoverlabel={'namelength': -1},
+                                               name=name_str, hoverinfo='name+text', hoverlabel={'namelength': -1},
                                                mode='markers', marker=color_by_sv_format[-1]))
             indices_by_system[system].append(len(figure.data) - 1)
 
         # Add selection buttons for each system and for choosing between coloring by SV and C/N0.
         num_traces = len(figure.data)
-        buttons = [dict(label='All', method='restyle', args=['visible', [True] * num_traces])]
+        num_svs = len(sv_hashes)
+        buttons = [dict(label=f'All ({num_svs})', method='restyle', args=['visible', [True] * num_traces])]
         for system, indices in sorted(indices_by_system.items()):
             if len(indices) == 0:
                 continue
@@ -1230,53 +1260,58 @@ class Analyzer(object):
         self._add_figure(name='gnss_skyplot', figure=figure, title='GNSS Sky Plot')
 
     def plot_gnss_cn0(self):
-        # The legacy GNSSSatelliteMessage contains data per satellite, not per signal. The plotted C/N0 values will
-        # reflect the L1 signal, unless L1 is not being tracked.
-        result = self.reader.read(message_types=[GNSSSatelliteMessage], **self.params)
-        data = result[GNSSSatelliteMessage.MESSAGE_TYPE]
-
-        if len(data.p1_time) == 0:
-            self.logger.info('No satellite data available. Skipping C/N0 plot.')
+        # Read the GNSS signal data.
+        data = self._get_gnss_signals_data()
+        if len(data.messages) == 0:
+            self.logger.info('No GNSS signal data available. Skipping C/N0 plot.')
             return
+        have_gnss_signals_message = not data.using_legacy_satellite_message
 
         # Setup the figure.
+        title = 'C/N0'
+        if not have_gnss_signals_message:
+            title += ' (L1 Only)'
         figure = make_subplots(
             rows=1, cols=1,  print_grid=False, shared_xaxes=True,
-            subplot_titles=['C/N0 (L1 Only)'])
+            subplot_titles=[title])
 
         figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
         figure['layout']['xaxis1'].update(title=self.p1_time_label, showticklabels=True)
         figure['layout']['yaxis1'].update(title="C/N0 (dB-Hz)")
 
-        # Assign colors to each satellite.
-        data_by_sv = GNSSSatelliteMessage.group_by_sv(data)
-        svs = sorted(list(data_by_sv.keys()))
-        color_by_sv = self._assign_colors(svs)
+        # Assign colors by PRN.
+        signal_hashes = np.unique(data.signal_data['signal_hash'])
+        prns = np.unique([get_prn(h) for h in signal_hashes])
+        color_by_prn = self._assign_colors(prns)
 
-        # Plot each satellite.
-        indices_by_system = defaultdict(list)
-        for sv in svs:
-            name = satellite_to_string(sv, short=False)
-            system = get_system(sv)
-            sv_data = data_by_sv[sv]
+        # Plot each signal.
+        indices_by_signal_type = defaultdict(list)
+        for signal_hash in signal_hashes:
+            signal = SignalID(signal_hash=signal_hash)
+            name = signal.to_string(short=False)
 
-            text = ['P1: %.1f sec' % t for t in sv_data['p1_time']]
-            time = sv_data['p1_time'] - float(self.t0)
-            figure.add_trace(go.Scattergl(x=time, y=sv_data['cn0_dbhz'], text=text,
+            idx = data.signal_data['signal_hash'] == signal_hash
+            p1_time = data.signal_data['p1_time'][idx]
+            cn0_dbhz = data.signal_data['cn0_dbhz'][idx]
+
+            text = ['P1: %.1f sec' % t for t in p1_time]
+            time = p1_time - float(self.t0)
+            figure.add_trace(go.Scattergl(x=time, y=cn0_dbhz, text=text,
                                           name=name, hoverlabel={'namelength': -1},
-                                          mode='markers', marker={'color': color_by_sv[sv]}),
+                                          mode='markers', marker={'color': color_by_prn[signal.get_prn()]}),
                              1, 1)
-            indices_by_system[system].append(len(figure.data) - 1)
+            indices_by_signal_type[signal.signal_type].append(len(figure.data) - 1)
 
         # Add signal type selection buttons.
         num_traces = len(figure.data)
-        buttons = [dict(label='All', method='restyle', args=['visible', [True] * num_traces])]
-        for system, indices in sorted(indices_by_system.items()):
+        buttons = [dict(label=f'All ({len(signal_hashes)})', method='restyle', args=['visible', [True] * num_traces])]
+        for signal_type, indices in sorted(indices_by_signal_type.items()):
             if len(indices) == 0:
                 continue
             visible = np.full((num_traces,), False)
             visible[indices] = True
-            buttons.append(dict(label=f'{str(system)} ({len(indices)})', method='restyle', args=['visible', visible]))
+            buttons.append(dict(label=f'{pretty_print_gnss_enum(signal_type)} ({len(indices)})', method='restyle',
+                                args=['visible', visible]))
         figure['layout']['updatemenus'] = [{
             'type': 'buttons',
             'direction': 'left',
@@ -1293,11 +1328,10 @@ class Analyzer(object):
         """!
         @brief Plot GNSS azimuth/elevation angles.
         """
-        result = self.reader.read(message_types=GNSSSatelliteMessage, **self.params)
-        data = result[GNSSSatelliteMessage.MESSAGE_TYPE]
-
-        if len(data.p1_time) == 0:
-            self.logger.info('No satellite data available. Skipping azimuth/elevation plot.')
+        # Read the GNSS signal data.
+        data = self._get_gnss_signals_data()
+        if len(data.messages) == 0:
+            self.logger.info('No GNSS signal data available. Skipping azimuth/elevation time series plot.')
             return
 
         # Set up the figure.
@@ -1311,46 +1345,50 @@ class Analyzer(object):
         figure['layout']['yaxis1'].update(title="Degrees")
         figure['layout']['yaxis2'].update(title="Degrees")
 
-        # Assign colors to each satellite.
-        data_by_sv = GNSSSatelliteMessage.group_by_sv(data)
+        # Assign colors by PRN.
+        sv_hashes = np.unique(data.sv_data['sv_hash'])
+        prns = np.unique([get_prn(h) for h in sv_hashes])
+        color_by_prn = self._assign_colors(prns)
+
+        # Plot each satellite.
         svs_by_system = defaultdict(set)
         indices_by_system = defaultdict(list)
-        svs = sorted(list(data_by_sv.keys()))
-        color_by_sv = self._assign_colors(svs)
+        for sv_hash in sv_hashes:
+            sv_id = SatelliteID(sv_hash=sv_hash)
+            name = sv_id.to_string(short=False)
+            system = sv_id.get_satellite_type()
+            svs_by_system[system].add(sv_hash)
 
-        for sv in svs:
-            name = satellite_to_string(sv, short=False)
-            system = get_system(sv)
-            sv_data = data_by_sv[sv]
-            svs_by_system[system].add(sv)
+            idx = data.sv_data['sv_hash'] == sv_hash
+            p1_time = data.sv_data['p1_time'][idx]
+            az_deg = data.sv_data['azimuth_deg'][idx]
+            el_deg = data.sv_data['elevation_deg'][idx]
 
-            az_deg = sv_data['azimuth_deg']
-            el_deg = sv_data['elevation_deg']
+            time = p1_time - float(self.t0)
 
-            time = sv_data['p1_time'] - float(self.t0)
-
-            # Plot the data. We set styles for coloring by SV.
+            # Plot the data.
+            color = color_by_prn[sv_id.get_prn()]
             text = ["P1: %.3f sec" % (t + float(self.t0)) for t in time]
             figure.add_trace(go.Scattergl(x=time, y=az_deg, text=text,
-                                            name=name, hoverlabel={'namelength': -1},
-                                            mode='markers',
-                                            marker={'color': color_by_sv[sv], 'symbol': 'circle', 'size': 8},
-                                            showlegend=True,
-                                            legendgroup=name),
+                                          name=name, hoverlabel={'namelength': -1},
+                                          mode='markers',
+                                          marker={'color': color, 'symbol': 'circle', 'size': 8},
+                                          showlegend=True,
+                                          legendgroup=name),
                                 1, 1)
             indices_by_system[system].append(len(figure.data) - 1)
             figure.add_trace(go.Scattergl(x=time, y=el_deg, text=text,
-                                            name=name, hoverlabel={'namelength': -1},
-                                            mode='markers',
-                                            marker={'color': color_by_sv[sv], 'symbol': 'circle', 'size': 8},
-                                            showlegend=False,
-                                            legendgroup=name),
+                                          name=name, hoverlabel={'namelength': -1},
+                                          mode='markers',
+                                          marker={'color': color, 'symbol': 'circle', 'size': 8},
+                                          showlegend=False,
+                                          legendgroup=name),
                                 2, 1)
             indices_by_system[system].append(len(figure.data) - 1)
 
         # Add signal type selection buttons.
         num_traces = len(figure.data)
-        buttons = [dict(label='All', method='restyle', args=['visible', [True] * num_traces])]
+        buttons = [dict(label=f'All ({len(sv_hashes)})', method='restyle', args=['visible', [True] * num_traces])]
         for system, indices in sorted(indices_by_system.items()):
             if len(indices) == 0:
                 continue
@@ -1374,122 +1412,241 @@ class Analyzer(object):
         filename = 'gnss_signal_status'
         figure_title = "GNSS Signal Status"
 
-        # Read the satellite data.
-        result = self.reader.read(message_types=[GNSSSatelliteMessage], **self.params)
-        data = result[GNSSSatelliteMessage.MESSAGE_TYPE]
-        is_legacy_message = True
-
-        if len(data.p1_time) == 0:
-            self.logger.info('No satellite data available. Skipping signal usage plot.')
+        # Read the GNSS signal data.
+        data = self._get_gnss_signals_data()
+        if len(data.messages) == 0:
+            self.logger.info('No GNSS signal data available. Skipping signal status plot.')
             return
+        have_gnss_signals_message = not data.using_legacy_satellite_message
+
+        # Count the number of satellites/signals used in each epoch.
+        all_p1_time = data.p1_time
+
+        def _count_selected(selected_p1_times, return_nonzero_time=False):
+            selected_p1_time, p1_time_idx, count_per_time = np.unique(selected_p1_times, return_index=True,
+                                                                      return_counts=True)
+            count = np.full_like(all_p1_time, 0, dtype=int)
+            count[np.isin(all_p1_time, selected_p1_time)] = count_per_time
+            if return_nonzero_time:
+                return count, selected_p1_time, p1_time_idx
+            else:
+                return count
+
+        num_svs = _count_selected(data.sv_data["p1_time"])
+        num_signals = _count_selected(data.signal_data["p1_time"])
+
+        is_used_mask = (GNSSSignalInfo.STATUS_FLAG_USED_PR | GNSSSignalInfo.STATUS_FLAG_USED_DOPPLER |
+                        GNSSSignalInfo.STATUS_FLAG_USED_CARRIER)
+        idx = (np.bitwise_and(data.signal_data['status_flags'], is_used_mask) != 0)
+        num_used_signals, used_p1_time, used_p1_time_idx = _count_selected(data.signal_data['p1_time'][idx],
+                                                                           return_nonzero_time=True)
+
+        used_signal_hashes = data.signal_data['signal_hash'][idx]
+        used_sv_hashes = np.array([get_satellite_hash(h) for h in used_signal_hashes])
+        used_sv_hashes_per_epoch = np.split(used_sv_hashes, used_p1_time_idx[1:])
+        num_used_svs_only = np.array([len(np.unique(svs)) for svs in used_sv_hashes_per_epoch])
+        num_used_svs = np.full_like(all_p1_time, 0, dtype=int)
+        num_used_svs[np.isin(data.p1_time, used_p1_time)] = num_used_svs_only
+
+        idx = (np.bitwise_and(data.signal_data['status_flags'],
+                              GNSSSignalInfo.STATUS_FLAG_CARRIER_AMBIGUITY_RESOLVED) != 0)
+        num_fixed_signals = _count_selected(data.signal_data["p1_time"][idx])
 
         # Setup the figure.
-        colors = {'unused': 'black', 'pr': 'red', 'is_pivot': 'purple',
-                  'float': 'darkgoldenrod', 'not_fixed': 'green', 'fixed_skipped': 'blue', 'fixed': 'orange'}
+        colors = {'unused': 'black', 'is_pivot': 'purple',
+                  'pr': 'red', 'pr_diff': 'deepskyblue',
+                  'float': 'green', 'fixed': 'orange'}
 
-        # The legacy GNSSSatelliteMessage contains data per satellite, not per signal, and only includes in-use status.
-        # It does not elaborate on how the signal was used.
-        if is_legacy_message:
+        if have_gnss_signals_message:
+            title = '''\
+Signal Status<br>
+Black=Unused, Red=Pseudorange, Light Blue=Differential Pseudorange<br>
+Green=Float, Orange=Integer (Fixed)'''
+        else:
+            # The legacy GNSSSatelliteMessage contains data per satellite, not per signal, and only includes in-use
+            # status. It does not elaborate on _how_ the signal was used for navigation.
             title = '''\
 Satellite Status<br>
 Black=Unused, Red=Used'''
-            entry_type = 'Satellite'
-        else:
-            # In practice, the signal status plot can be _VERY_ slow to generate for really long logs (multiple hours)
-            # because plotly doesn't handle figures with lots of traces very efficiently. The legacy satellite status
-            # plot doesn't seem to suffer nearly as much since A) it has fewer elements (# SVs vs # signals), and B) it
-            # only supports at most 2 traces per element since it doesn't convey usage type.
-            if self.truncate_data:
-                _logger.warning('Skipping signal status plot for very long log. Rerun with --truncate=false to '
-                                'generate this plot.')
-                self._add_figure(name=filename, title=f'{figure_title} (Skipped - Long Log Detected)')
-                return
-
-            title = '''\
-Signal Status<br>
-Black=Unused, Red=Pseudorange, Pink=Pseudorange (Differential), Purple=Pivot (Differential)<br>
-Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type), Orange=Integer (Fixed)'''
-            entry_type = 'Signal'
 
         figure = make_subplots(
             rows=5, cols=1,  print_grid=False, shared_xaxes=True,
             subplot_titles=[title,
                             None, None, None,
-                            'Satellite Count'],
+                            'Satellite/Signal Count'],
             specs=[[{'rowspan': 4}],
                    [None],
                    [None],
                    [None],
                    [{}]])
-        figure['layout'].update(showlegend=False, modebar_add=['v1hovermode'])
+        figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
         figure['layout']['xaxis1'].update(title=self.p1_time_label)
-        figure['layout']['yaxis1'].update(title=entry_type)
-        figure['layout']['yaxis2'].update(title=f"# {entry_type}s", rangemode='tozero')
+        figure['layout']['yaxis1'].update(title='Signal' if have_gnss_signals_message else 'Satellite')
+        figure['layout']['yaxis2'].update(title=f"# SVs/Signals", rangemode='tozero')
 
         # Plot the signal counts.
         time = data.p1_time - float(self.t0)
         text = ["P1: %.3f sec" % (t + float(self.t0)) for t in time]
-        figure.add_trace(go.Scattergl(x=time, y=data.num_svs, text=text,
-                                      name=f'# {entry_type}s', hoverlabel={'namelength': -1},
+        figure.add_trace(go.Scattergl(x=time, y=num_svs, text=text,
+                                      name=f'# SVs', hoverlabel={'namelength': -1},
                                       mode='lines', line={'color': 'black', 'dash': 'dash'}),
                          5, 1)
-        figure.add_trace(go.Scattergl(x=time, y=data.num_used_svs, text=text,
-                                      name=f'# Used {entry_type}s', hoverlabel={'namelength': -1},
+        if have_gnss_signals_message:
+            figure.add_trace(go.Scattergl(x=time, y=num_signals, text=text,
+                                          name=f'# Signals', hoverlabel={'namelength': -1},
+                                          mode='lines', line={'color': 'gray', 'dash': 'dash'}),
+                             5, 1)
+
+        figure.add_trace(go.Scattergl(x=time, y=num_used_svs, text=text,
+                                      name=f'# Used SVs', hoverlabel={'namelength': -1},
                                       mode='lines', line={'color': 'green'}),
                          5, 1)
+        if have_gnss_signals_message:
+            figure.add_trace(go.Scattergl(x=time, y=num_used_signals, text=text,
+                                          name=f'# Used Signals', hoverlabel={'namelength': -1},
+                                          mode='lines', line={'color': 'red'}),
+                             5, 1)
+            figure.add_trace(go.Scattergl(x=time, y=num_fixed_signals, text=text,
+                                          name=f'# Fixed Signals', hoverlabel={'namelength': -1},
+                                          mode='lines', line={'color': 'orange'}),
+                             5, 1)
 
         num_count_traces = len(figure.data)
 
-        # Plot each satellite. Plot in reverse order so G01 is at the top of the Y axis.
-        data_by_sv = GNSSSatelliteMessage.group_by_sv(data)
-        svs = list(data_by_sv.keys())
-        svs_by_system = defaultdict(set)
-        indices_by_system = defaultdict(list)
-        for i, sv in enumerate(svs[::-1]):
-            sv = int(sv)
-            system = get_system(sv)
-            name = satellite_to_string(sv, short=True)
-            svs_by_system[system].add(sv)
+        # In practice, the signal status plot can be _VERY_ slow to generate for really long logs (multiple hours)
+        # because plotly doesn't handle figures with lots of traces very efficiently. If we think the log is very
+        # long, we'll skip this plot.
+        #
+        # The legacy GNSSSatelliteMessage status plot doesn't seem to suffer nearly as much since A) it has fewer
+        # elements (# SVs vs # signals), and B) it only supports at most 2 traces per element since it doesn't
+        # convey usage type.
+        if self.truncate_data:
+            _logger.warning('Skipping signal status plot for very long log. Rerun with --truncate=false to '
+                            'generate this plot.')
+            self._add_figure(name=filename, title=f'{figure_title} (Skipped - Long Log Detected)')
+            return
 
-            sv_data = data_by_sv[sv]
-            time = sv_data['p1_time'] - float(self.t0)
-            is_used = np.bitwise_and(sv_data['flags'], SatelliteInfo.SATELLITE_USED).astype(bool)
+        if have_gnss_signals_message:
+            conditions = [
+                # Signal used for standalone pseudorange
+                {
+                    'cond': lambda status_flags, have_corrections: np.logical_and(
+                        np.bitwise_and(status_flags, GNSSSignalInfo.STATUS_FLAG_USED_PR) != 0,
+                        ~have_corrections),
+                    'marker': {'color': colors['pr'], 'symbol': 'circle', 'size': 8}
+                },
+                # Signal used for differential pseudorange (but not carrier phase)
+                {
+                    'cond': lambda status_flags, have_corrections: np.logical_and(
+                        np.bitwise_and(status_flags, range_used_mask) == GNSSSignalInfo.STATUS_FLAG_USED_PR,
+                        have_corrections),
+                    'marker': {'color': colors['pr_diff'], 'symbol': 'circle', 'size': 8}
+                },
+                # Signal used for float carrier phase
+                {
+                    'cond': lambda status_flags, have_corrections: np.logical_and(
+                        np.bitwise_and(status_flags, cp_used_mask) == GNSSSignalInfo.STATUS_FLAG_USED_CARRIER,
+                        have_corrections),
+                    'marker': {'color': colors['float'], 'symbol': 'circle', 'size': 8}
+                },
+                # Signal used for fixed carrier phase
+                {
+                    'cond': lambda status_flags, have_corrections: np.logical_and(
+                        np.bitwise_and(status_flags, cp_used_mask) == cp_used_mask,
+                        have_corrections),
+                    'marker': {'color': colors['fixed'], 'symbol': 'circle', 'size': 8}
+                },
+                # Signal not used
+                {
+                    'cond': lambda status_flags, _: np.bitwise_and(status_flags, is_used_mask) == 0,
+                    'marker': {'color': colors['unused'], 'symbol': 'x', 'size': 8}
+                },
+            ]
 
-            idx = is_used
-            if np.any(idx):
-                text = ["P1: %.3f sec" % (t + float(self.t0)) for t in time[idx]]
-                figure.add_trace(go.Scattergl(x=time[idx], y=[i] * np.sum(idx), text=text,
-                                              name=name, hoverlabel={'namelength': -1},
-                                              mode='markers',
-                                              marker={'color': colors['pr'], 'symbol': 'circle', 'size': 8}),
-                                 1, 1)
-                indices_by_system[system].append(len(figure.data) - 1)
+            # At the moment, the signals message does not have a flag to indicate if RTK corrections are available. For
+            # now, we will say that they are available if _any_ signal in the epoch used carrier phase. If we use PR
+            # corrections but do not use carrier phase on any signals, it will display as uncorrected.
+            used_cp = np.bitwise_and(data.signal_data['status_flags'], GNSSSignalInfo.STATUS_FLAG_USED_CARRIER) != 0
+            _, idx, rev_idx = np.unique(data.signal_data['p1_time'], return_index=True, return_inverse=True)
+            used_cp_per_epoch = np.split(used_cp, idx[1:])
+            have_corrections_per_epoch = np.array([any(used) for used in used_cp_per_epoch], dtype=bool)
+            have_corrections = have_corrections_per_epoch[rev_idx]
 
-            idx = ~is_used
-            if np.any(idx):
-                text = ["P1: %.3f sec" % (t + float(self.t0)) for t in time[idx]]
-                figure.add_trace(go.Scattergl(x=time[idx], y=[i] * np.sum(idx), text=text,
-                                              name=name + ' (Unused)', hoverlabel={'namelength': -1},
-                                              mode='markers',
-                                              marker={'color': colors['unused'], 'symbol': 'x', 'size': 8}),
-                                 1, 1)
-                indices_by_system[system].append(len(figure.data) - 1)
+            range_used_mask = (GNSSSignalInfo.STATUS_FLAG_USED_PR | GNSSSignalInfo.STATUS_FLAG_USED_CARRIER)
+            cp_used_mask = (GNSSSignalInfo.STATUS_FLAG_USED_CARRIER |
+                            GNSSSignalInfo.STATUS_FLAG_CARRIER_AMBIGUITY_RESOLVED)
+        else:
+            conditions = [
+                # Signal used
+                {
+                    'cond': lambda status_flags, _: np.bitwise_and(status_flags, is_used_mask) != 0,
+                    'marker': {'color': colors['pr'], 'symbol': 'circle', 'size': 8}
+                },
+                # Signal not used
+                {
+                    'cond': lambda status_flags, _: np.bitwise_and(status_flags, is_used_mask) == 0,
+                    'marker': {'color': colors['unused'], 'symbol': 'x', 'size': 8}
+                },
+            ]
+            have_corrections = None
 
-        tick_text = [satellite_to_string(s, short=True) for s in svs[::-1]]
-        figure['layout']['yaxis1'].update(tickmode='array', tickvals=np.arange(0, len(svs)),
+        # Plot each signal. Plot in reverse order so G01 is at the top of the Y axis.
+        signal_hashes = np.unique(data.signal_data['signal_hash'])
+        indices_by_signal_type = defaultdict(list)
+        signals_by_type = defaultdict(list)
+        tick_text = []
+        for signal_hash in signal_hashes[::-1]:
+            signal = SignalID(signal_hash=signal_hash)
+            name = signal.to_string(short=False)
+            signals_by_type[signal.signal_type].append(signal)
+
+            # Extract data for this signal.
+            idx = data.signal_data['signal_hash'] == signal_hash
+            p1_time = data.signal_data['p1_time'][idx]
+            cn0_dbhz = data.signal_data['cn0_dbhz'][idx]
+            status_flags = data.signal_data['status_flags'][idx]
+            signal_has_corrections = None if have_corrections is None else have_corrections[idx]
+            time = p1_time - float(self.t0)
+
+            # Find the satellite elevation for the times this signal was present.
+            sv_idx = data.sv_data['sv_hash'] == int(signal.get_satellite_id())
+            time_idx = np.isin(data.sv_data['p1_time'][sv_idx], p1_time)
+            elev_deg = data.sv_data['elevation_deg'][sv_idx][time_idx]
+
+            shown = False
+            y_offset = len(tick_text)
+            for cond in conditions:
+                idx = cond['cond'](status_flags, signal_has_corrections)
+                if np.any(idx):
+                    figure.add_trace(go.Scattergl(x=time[idx], y=[y_offset] * np.sum(idx),
+                                                  customdata=np.vstack((status_flags[idx],
+                                                                        cn0_dbhz[idx],
+                                                                        elev_deg[idx])),
+                                                  name=name, hoverlabel={'namelength': -1},
+                                                  showlegend=False, legendgroup=int(signal_hash),
+                                                  mode='markers', marker=cond['marker']),
+                                     1, 1)
+                    indices_by_signal_type[signal.signal_type].append(len(figure.data) - 1)
+                    shown = True
+
+            if shown:
+                tick_text.append(signal.to_string(short=True))
+
+        figure['layout']['yaxis1'].update(tickmode='array', tickvals=np.arange(0, len(tick_text)),
                                           ticktext=tick_text, automargin=True)
 
         # Add signal type selection buttons.
         num_traces = len(figure.data)
-        buttons = [dict(label='All', method='restyle', args=['visible', [True] * num_traces])]
-        for system, indices in sorted(indices_by_system.items()):
+        num_signals = np.max(num_signals) if len(num_signals) > 0 else 0
+        buttons = [dict(label=f'All ({num_signals})', method='restyle', args=['visible', [True] * num_traces])]
+        for signal_type, indices in sorted(indices_by_signal_type.items()):
             if len(indices) == 0:
                 continue
             visible = np.full((num_traces,), False)
             visible[:num_count_traces] = True
             visible[indices] = True
-            buttons.append(dict(label=f'{str(system)} ({len(svs_by_system[system])})', method='restyle',
-                                args=['visible', visible]))
+            buttons.append(dict(label=f'{pretty_print_gnss_enum(signal_type)} ({len(signals_by_type[signal_type])})',
+                                method='restyle', args=['visible', visible]))
         figure['layout']['updatemenus'] = [{
             'type': 'buttons',
             'direction': 'left',
@@ -1500,7 +1657,121 @@ Gold=Float, Green=Integer (Not Fixed), Blue=Integer (Fixed, Float Solution Type)
             'yanchor': 'top'
         }]
 
-        self._add_figure(name=filename, figure=figure, title=figure_title)
+        hover_js = f"""\
+function SetSignalStatusHover(point) {{
+  let status_flags = GetCustomData(point, 0);
+  let cn0_dbhz = GetCustomData(point, 1);
+  let elev_deg = GetCustomData(point, 2);
+
+  let tracking = [];
+  if (status_flags & {GNSSSignalInfo.STATUS_FLAG_VALID_PR}) {{
+    tracking.push("PR");
+  }}
+  if (status_flags & {GNSSSignalInfo.STATUS_FLAG_CARRIER_LOCKED}) {{
+    tracking.push("CP");
+  }}
+  if (status_flags & {GNSSSignalInfo.STATUS_FLAG_VALID_DOPPLER}) {{
+    tracking.push("Doppler");
+  }}
+
+  let used = [];
+  if (status_flags & {GNSSSignalInfo.STATUS_FLAG_USED_PR}) {{
+    used.push("PR");
+  }}
+  if (status_flags & {GNSSSignalInfo.STATUS_FLAG_USED_CARRIER}) {{
+    used.push("CP");
+  }}
+  if (status_flags & {GNSSSignalInfo.STATUS_FLAG_USED_DOPPLER}) {{
+    used.push("Doppler");
+  }}
+
+  let features = [];
+  if (status_flags & {GNSSSignalInfo.STATUS_FLAG_HAS_EPHEM}) {{
+    features.push("Ephemeris");
+  }}
+  if (status_flags & {GNSSSignalInfo.STATUS_FLAG_HAS_SBAS}) {{
+    features.push("SBAS");
+  }}
+  if (status_flags & {GNSSSignalInfo.STATUS_FLAG_HAS_RTK}) {{
+    features.push("RTK");
+  }}
+
+  let new_text = GetTimeText(point.x);
+  new_text += "<br>C/N0: " + cn0_dbhz.toFixed(2) + " dB-Hz";
+  new_text += "<br>Elevation: " + elev_deg.toFixed(1) + " deg";
+  new_text += "<br>Status mask: 0x" + status_flags.toString(16);
+  new_text += "<br>Available: " + tracking.join(", ");
+  new_text += "<br>Used: " + used.join(", ");
+  new_text += "<br>Features: " + features.join(", ");
+  new_text += "<br>Carrier: " + (status_flags & {GNSSSignalInfo.STATUS_FLAG_CARRIER_AMBIGUITY_RESOLVED} ?
+                                 "fixed" : "not fixed");
+  ChangeHoverText(point, new_text);
+}}
+
+figure.on('plotly_hover', function(data) {{
+  for (let i = 0; i < data.points.length; ++i) {{
+    let point = data.points[i];
+    if (point.curveNumber > {num_count_traces}) {{
+      SetSignalStatusHover(point);
+    }}
+    else {{
+      ChangeHoverText(point, GetTimeText(point.x));
+    }}
+  }}
+}});
+"""
+
+        self._add_figure(name=filename, figure=figure, title=figure_title, inject_js=hover_js)
+
+    def _get_gnss_signals_data(self):
+        # If we already have data cached, return it.
+        if self._gnss_signals_data is not None:
+            return self._gnss_signals_data
+
+        # See if we have GNSSSignalsMessages. If so, prefer those.
+        params = copy.deepcopy(self.params)
+        params['return_numpy'] = False
+
+        result = self.reader.read(message_types=[GNSSSignalsMessage], **params)
+        data = result[GNSSSignalsMessage.MESSAGE_TYPE]
+
+        # We store the result now, even if there were no GNSSSignalsMessage messages. That way if we also don't have any
+        # GNSSSatelliteMessage messages below, we'll have _something_ to return and we won't try to reload from disk on
+        # each call to this function.
+        self._gnss_signals_data = data
+        self._gnss_signals_data.using_legacy_satellite_message = False
+
+        # If we don't have any GNSSSignalsMessages, see if we have the legacy GNSSSatelliteMessage and fall back to
+        # that.
+        if len(data.messages) == 0:
+            # The legacy GNSSSatelliteMessage contains data per satellite, not per signal. The plotted C/N0 values will
+            # reflect the L1 signal, unless L1 is not being tracked.
+            result = self.reader.read(message_types=[GNSSSatelliteMessage], **params)
+            data = result[GNSSSatelliteMessage.MESSAGE_TYPE]
+
+            # Convert to GNSSSignalsMessages. Some of the fields, like signal type and tracking/usage status, will be
+            # approximated and may not be plotted.
+            #
+            # Note that we leave data.message_type as GNSSSatelliteMessage so the plotting functions can determine what
+            # information to display. However, we need to change data.message_class so MessageData calls the correct
+            # to_numpy() function.
+            if len(data.messages) > 0:
+                self.logger.warning('Using legacy GNSSSatelliteMessage to approximate per-signal information.')
+                data.messages = [m.to_gnss_signals_message() for m in data.messages]
+                data.message_type = GNSSSignalsMessage.MESSAGE_TYPE
+                data.message_class = GNSSSignalsMessage
+                self._gnss_signals_data = data
+                self._gnss_signals_data.using_legacy_satellite_message = True
+
+        self._gnss_signals_data.to_numpy()
+
+        return self._gnss_signals_data
+
+    def clear_gnss_signal_data_cache(self):
+        """!
+        @brief Clear cached GNSSSignalsMessage data to free memory when finished plotting.
+        """
+        self._gnss_signals_data = None
 
     def plot_dop(self):
         """!
@@ -2807,7 +3078,7 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
 
         self.plots[name] = {'title': title, 'path': path}
 
-    def _add_figure(self, name, figure=None, title=None, config=None):
+    def _add_figure(self, name, figure=None, title=None, config=None, inject_js: str = None):
         """!
         @brief Generate an HTML file for the specified figure.
 
@@ -2830,6 +3101,10 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
             self.logger.info('Creating %s...' % path)
 
             os.makedirs(os.path.dirname(path), exist_ok=True)
+
+            if inject_js is not None:
+                plotly.io.write_html = functools.partial(self.__write_html_and_inject_js, inject_js)
+
             plotly.offline.plot(
                 figure,
                 output_type='file',
@@ -2839,7 +3114,35 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
                 show_link=False,
                 config=config)
 
+            if inject_js is not None:
+                plotly.io.write_html = Analyzer.__original_write_html
+
         self.plots[name] = {'title': title, 'path': path if figure is not None else None}
+
+    # Support for injecting custom javascript into the generated plotly HTML file.
+    def __write_html_and_inject_js(self, inject_js, *args, **kwargs):
+        post_script = kwargs.get("post_script", None)
+        if post_script is None:
+            post_script = ""
+
+        # Create a global variable with the log's t0 timestamp.
+        post_script += f"""\
+var p1_t0_sec = {float(self.reader.t0)};
+var p1_time_axis_rel = {'true' if self.time_axis == 'relative' else 'false'}
+"""
+
+        # Inject common plotly data support functions (GetTimeText(), etc.).
+        script_dir = os.path.join(os.path.dirname(__file__))
+        with open(os.path.join(script_dir, 'plotly_data_support.js'), 'rt') as f:
+            post_script += f.read()
+
+        # Now inject the custom javascript.
+        post_script += inject_js
+
+        kwargs["post_script"] = post_script
+        return Analyzer.__original_write_html(*args, **kwargs)
+
+    __original_write_html = plotly.io.write_html
 
     def _open_browser(self, filename):
         try:
@@ -3103,6 +3406,8 @@ Load and display information stored in a FusionEngine binary file.
         analyzer.plot_gnss_signal_status()
         analyzer.plot_gnss_skyplot()
         analyzer.plot_gnss_azimuth_elevation()
+        analyzer.clear_gnss_signal_data_cache()
+
         analyzer.plot_gnss_corrections_status()
         analyzer.plot_dop()
 

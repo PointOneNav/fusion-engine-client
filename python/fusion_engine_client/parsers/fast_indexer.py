@@ -113,7 +113,7 @@ def _search_blocks_for_fe(input_path: str, thread_idx: int, block_starts: List[i
                                 payload.unpack(buffer=data, offset=i +
                                                MessageHeader.calcsize(), message_version=header.message_version)
                                 p1_time = payload.get_p1_time()
-                        except BaseException:
+                        except Exception:
                             pass
                     # Convert the Timestamp to an integer.
                     p1_time_raw = Timestamp._INVALID if math.isnan(p1_time.seconds) else int(p1_time.seconds)
@@ -123,7 +123,7 @@ def _search_blocks_for_fe(input_path: str, thread_idx: int, block_starts: List[i
                                       f'file_offset={absolute_offset} B, p1_time={p1_time}',
                                       depth=3)
                     raw_list.append((p1_time_raw, int(header.message_type), absolute_offset, header.get_message_size()))
-                except BaseException:
+                except Exception:
                     pass
     _logger.trace(f'Thread {thread_idx}: {num_syncs} sync with {len(raw_list)} valid FE.')
     # Return the index data for this section of the file.
