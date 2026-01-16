@@ -300,7 +300,9 @@ jobs:
         pip install packaging
         python3 docs/update_versions.py ${GIT_TAG}
         doxygen Doxyfile.version
-        tar czf fusion-engine-client-docs.tar.gz docs/html --transform 's|^docs/html|fusion-engine-client/docs/html|'
+        tar cf fusion-engine-client-docs.tar docs/html --transform 's|^docs/html|fusion-engine-client/docs/html|'
+        tar rf fusion-engine-client-docs.tar docs/xml --transform 's|^docs/xml|fusion-engine-client/docs/xml|'
+        gzip fusion-engine-client-docs.tar
         tar czf version-docs.tar.gz docs/include_header.js docs/versions.html
 
     - name: Upload Artifact
