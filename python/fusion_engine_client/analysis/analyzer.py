@@ -1679,7 +1679,12 @@ function SetSignalStatusHover(point) {{
     used.push("PR");
   }}
   if (status_flags & {GNSSSignalInfo.STATUS_FLAG_USED_CARRIER}) {{
-    used.push("CP");
+    if (status_flags & {GNSSSignalInfo.STATUS_FLAG_CARRIER_AMBIGUITY_RESOLVED}) {{
+      used.push("CP (fixed)");
+    }}
+    else {{
+      used.push("CP");
+    }}
   }}
   if (status_flags & {GNSSSignalInfo.STATUS_FLAG_USED_DOPPLER}) {{
     used.push("Doppler");
@@ -1703,8 +1708,6 @@ function SetSignalStatusHover(point) {{
   new_text += "<br>Available: " + tracking.join(", ");
   new_text += "<br>Used: " + used.join(", ");
   new_text += "<br>Features: " + features.join(", ");
-  new_text += "<br>Carrier: " + (status_flags & {GNSSSignalInfo.STATUS_FLAG_CARRIER_AMBIGUITY_RESOLVED} ?
-                                 "fixed" : "not fixed");
   ChangeHoverText(point, new_text);
 }}
 
