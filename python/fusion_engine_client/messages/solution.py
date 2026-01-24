@@ -935,36 +935,52 @@ class GNSSSignalsMessage(MessagePayload):
         string += '  %d SVs:' % len(self.sat_info)
 
         def _signal_usage_str(status_flags: int) -> str:
-            if status_flags & GNSSSignalInfo.STATUS_FLAG_CARRIER_AMBIGUITY_RESOLVED:
-                return 'Fixed'
-            elif status_flags & GNSSSignalInfo.STATUS_FLAG_USED_CARRIER:
-                return 'Float'
-            elif status_flags & GNSSSignalInfo.STATUS_FLAG_USED_PR:
-                return 'PR'
-            else:
-                return "No"
+            used = []
+            if status_flags & GNSSSignalInfo.STATUS_FLAG_USED_PR:
+                used.append('PR')
+            if status_flags & GNSSSignalInfo.STATUS_FLAG_USED_DOPPLER:
+                used.append('DP')
+            if status_flags & GNSSSignalInfo.STATUS_FLAG_USED_CARRIER:
+                if status_flags & GNSSSignalInfo.STATUS_FLAG_CARRIER_AMBIGUITY_RESOLVED:
+                    used.append('CP (fixed)')
+                else:
+                    used.append('CP (float)')
+            return ', '.join(used)
 
         def _signal_tracking_str(status_flags: int) -> str:
+            tracking = []
+            if status_flags & GNSSSignalInfo.STATUS_FLAG_VALID_PR:
+                tracking.append('PR')
+            if status_flags & GNSSSignalInfo.STATUS_FLAG_VALID_DOPPLER:
+                tracking.append('DP')
             if status_flags & GNSSSignalInfo.STATUS_FLAG_CARRIER_LOCKED:
-                return 'PR,CP'
-            elif status_flags & GNSSSignalInfo.STATUS_FLAG_VALID_PR:
-                return 'PR'
-            else:
-                return 'No'
+                tracking.append('CP')
+            return ', '.join(tracking)
+
+        def _signal_features_str(status_flags: int) -> str:
+            features = []
+            if status_flags & GNSSSignalInfo.STATUS_FLAG_HAS_EPHEM:
+                features.append('Ephemeris')
+            if status_flags & GNSSSignalInfo.STATUS_FLAG_HAS_SBAS:
+                features.append('SBAS')
+            if status_flags & GNSSSignalInfo.STATUS_FLAG_HAS_RTK:
+                features.append('RTK')
+            return ', '.join(features)
 
         for sv, info in self.sat_info.items():
             string += '\n'
-            string += '    %s:\n' % str(sv)
+            string += '    %s (flags: 0x%02X):\n' % (str(sv), info.status_flags)
             string += '      Used in solution: %s\n' % \
                       ('yes' if (info.status_flags | info.STATUS_FLAG_IS_USED) else 'no')
             string += '      Az/el: %.1f, %.1f deg' % (info.azimuth_deg, info.elevation_deg)
         string += '\n  %d signals:' % len(self.signal_info)
         for signal, info in self.signal_info.items():
             string += '\n'
-            string += '    %s:\n' % str(signal)
-            string += '      C/N0: %.1f dB-Hz\n' % (info.cn0_dbhz,)
-            string += '      Available: %s\n' % (_signal_tracking_str(info.status_flags),)
-            string += '      Used: %s' % (_signal_usage_str(info.status_flags),)
+            string += '    %s (flags: 0x%04X):\n' % (str(signal), info.status_flags)
+            string += '      C/N0: %.1f dB-Hz\n' % info.cn0_dbhz
+            string += '      Available: %s\n' % _signal_tracking_str(info.status_flags)
+            string += '      Used: %s\n' % _signal_usage_str(info.status_flags)
+            string += '      Features: %s' % _signal_features_str(info.status_flags)
         return string
 
     @classmethod
