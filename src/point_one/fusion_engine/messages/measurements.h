@@ -1281,7 +1281,7 @@ struct P1_ALIGNAS(4) RawGNSSAttitudeOutput : public MessagePayload {
  * {MessageHeader, InputDataWrapperMessage, [wrapped data]}
  * ```
  */
-struct P1_ALIGNAS(4) InputDataWrapperMessage {
+struct P1_ALIGNAS(4) InputDataWrapperMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::INPUT_DATA_WRAPPER;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
