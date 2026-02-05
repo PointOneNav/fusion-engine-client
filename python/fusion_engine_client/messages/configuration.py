@@ -127,6 +127,8 @@ class VehicleModel(IntEnum):
 
     ISUZU_F_SERIES = 280
 
+    ISUZU_N_SERIES = 300
+
 
 class WheelSensorType(IntEnum):
     NONE = 0
