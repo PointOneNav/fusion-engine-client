@@ -126,8 +126,7 @@ class VehicleModel(IntEnum):
     FLEXRAY_DEVICE_AUDI_ETRON = 260
 
     ISUZU_F_SERIES = 280
-
-    ISUZU_N_SERIES = 300
+    ISUZU_N_SERIES = 281
 
 
 class WheelSensorType(IntEnum):
