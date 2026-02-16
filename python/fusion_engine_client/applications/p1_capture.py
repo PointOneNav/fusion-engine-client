@@ -156,6 +156,9 @@ Supported formats include:
 
         output_file = create_transport(options.output, mode='output')
 
+        if isinstance(output_file, VirtualSerial):
+            _logger.info(f'Writing output to: {output_file}')
+
         if options.log_timestamp_source and options.output_format != 'csv':
             timestamp_file = open(options.output + TIMESTAMP_FILE_ENDING, 'wb')
     else:
