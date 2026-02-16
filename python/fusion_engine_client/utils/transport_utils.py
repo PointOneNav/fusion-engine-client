@@ -38,8 +38,7 @@ except ImportError:
         class Serial: pass
         class SerialException(Exception): pass
 
-TRANSPORT_HELP_STRING = """\
-The method used to communicate with the target device:
+TRANSPORT_HELP_OPTIONS = """\
 - tcp://HOSTNAME[:PORT] - Connect to the specified hostname (or IP address) and
   port over TCP (e.g., tty://192.168.0.3:30202); defaults to port 30200
 - udp://:PORT - Listen for incoming data on the specified UDP port (e.g.,
@@ -53,6 +52,10 @@ The method used to communicate with the target device:
   baud rate (e.g., tty:///dev/ttyUSB0:460800 or /dev/ttyUSB0:460800)
 """
 
+TRANSPORT_HELP_STRING = f"""\
+The method used to communicate with the target device:
+{TRANSPORT_HELP_OPTIONS}
+"""
 
 def create_transport(descriptor: str, timeout_sec: float = None, print_func: Callable = None) -> \
         Union[socket.socket, serial.Serial, ws.ClientConnection]:
