@@ -50,8 +50,17 @@ Examples:
 """)
 
     parser.add_argument(
+        '-V', '--invert', action=ExtendedBooleanAction, default=False,
+        help="""\
+If specified, discard all message types specified with --message-type and output everything else.
+
+By default, all specified message types are output and all others are discarded.""")
+    parser.add_argument(
+        '--display', action=ExtendedBooleanAction, default=False,
+        help="Periodically print status on stderr.")
+    parser.add_argument(
         '-m', '--message-type', type=str, action='append',
-        help="An list of class names corresponding with the message types to forward or discard (see --blacklist).\n"
+        help="An list of class names corresponding with the message types to forward or discard (see --invert).\n"
              "\n"
              "May be specified multiple times (-m Pose -m PoseAux), or as a comma-separated list (-m Pose,PoseAux). "
              "All matches are case-insensitive.\n"
@@ -60,15 +69,6 @@ Examples:
              "message types.\n"
              "\n"
              "Supported types:\n%s" % '\n'.join(['- %s' % c for c in message_type_by_name.keys()]))
-    parser.add_argument(
-        '--blacklist', action=ExtendedBooleanAction,
-        help="""\
-If specified, discard all message types specified with --message-type and output everything else.
-
-By default, all specified message types are output and all others are discarded.""")
-    parser.add_argument(
-        '--display', action=ExtendedBooleanAction,
-        help="Periodically print status on stderr.")
     parser.add_argument(
         '-o', '--output', metavar='PATH', type=str,
         help=f"""\
@@ -136,8 +136,8 @@ Supported formats include:
                 messages = decoder.on_data(received_data)
                 for (header, message, raw_data) in messages:
                     messages_received += 1
-                    pass_through_message = (options.blacklist and header.message_type not in message_types) or (
-                        not options.blacklist and header.message_type in message_types)
+                    pass_through_message = (options.invert and header.message_type not in message_types) or (
+                        not options.invert and header.message_type in message_types)
                     if pass_through_message:
                         messages_forwarded += 1
                         bytes_forwarded += len(raw_data)
