@@ -15,7 +15,7 @@ sys.stdout = sys.stderr
 root_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, root_dir)
 
-from fusion_engine_client.messages import MessagePayload, message_type_by_name
+from fusion_engine_client.messages import InputDataType, MessagePayload, MessageType, message_type_by_name
 from fusion_engine_client.parsers import FusionEngineDecoder
 from fusion_engine_client.utils.argument_parser import ArgumentParser, ExtendedBooleanAction
 from fusion_engine_client.utils.transport_utils import *
@@ -47,6 +47,13 @@ Examples:
       -cstopb -parenb -icrnl -ixon -ixoff -opost -isig -icanon -echo && \
       cat /dev/ttyUSB0 | \
       ./p1_filter.py -m Pose > /tmp/pose_out.p1log
+
+  # Extract GNSS receiver data in its native format (RTCM, SBF, etc.) from a
+  # remote Point One device, and pass the data to another application to be
+  # parsed and displayed.
+  ./p1_filter.py tcp://192.168.1.138:30202 \
+      --unwrap --data-type EXTERNAL_UNFRAMED_GNSS | \
+      rtcm_print
 """)
 
     parser.add_argument(
@@ -77,6 +84,21 @@ stdout by default.
 
 Supported formats include:
 {TRANSPORT_HELP_OPTIONS}""")
+
+    wrapper_group = parser.add_argument_group('InputDataWrapper Support')
+    wrapper_group.add_argument(
+        '-d', '--data-type', type=str, action='append',
+        help="If specified, discard InputDataWrapper messages for data types other than the listed values.")
+    wrapper_group.add_argument(
+        '-u', '--unwrap', action=ExtendedBooleanAction, default=False,
+        help="""\
+Unwrap incoming InputDataWrapper messages and output their contents without FusionEngine framing. Discard all other
+FusionEngine messages.
+
+Note that we strongly recommend using this option with a single --data-type specified. When --data-type is not
+specified, or when multiple data types are specified, the unwrapped stream will contain multiple interleaved binary
+data streams with no frame alignment enforced.""")
+
     parser.add_argument(
         'input', metavar='PATH', type=str, nargs='?', default='-',
         help=TRANSPORT_HELP_STRING)
@@ -85,7 +107,13 @@ Supported formats include:
     # If the user specified a set of message names, lookup their type values. Below, we will limit the printout to only
     # those message types.
     message_types = set()
-    if options.message_type is not None:
+    if options.unwrap:
+        if options.message_type is not None:
+            print('Error: You cannot specify both --unwrap and --message-type.')
+            sys.exit(1)
+
+        message_types = {MessageType.INPUT_DATA_WRAPPER}
+    elif options.message_type is not None:
         # Pattern match to any of:
         #   -m Type1
         #   -m Type1 -m Type2
@@ -96,6 +124,18 @@ Supported formats include:
             message_types = MessagePayload.find_matching_message_types(options.message_type)
             if len(message_types) == 0:
                 # find_matching_message_types() will print an error.
+                sys.exit(1)
+        except ValueError as e:
+            print(str(e))
+            sys.exit(1)
+
+    # For InputDataWrapper messages, if the user specified desired data types, limit the output to only those.
+    input_data_types = set()
+    if options.data_type is not None:
+        try:
+            input_data_types = InputDataType.find_matching_values(options.data_type, prefix='M_TYPE_', print_func=print)
+            if len(input_data_types) == 0:
+                # find_matching_values() will print an error.
                 sys.exit(1)
         except ValueError as e:
             print(str(e))
@@ -135,13 +175,39 @@ Supported formats include:
                 bytes_received += len(received_data)
                 messages = decoder.on_data(received_data)
                 for (header, message, raw_data) in messages:
+                    if options.unwrap and header.message_type != MessageType.INPUT_DATA_WRAPPER:
+                        continue
+
                     messages_received += 1
-                    pass_through_message = (options.invert and header.message_type not in message_types) or (
-                        not options.invert and header.message_type in message_types)
+
+                    if options.unwrap:
+                        pass_through_message = (
+                            len(input_data_types) == 0 or
+                            (options.invert and message.data_type not in input_data_types) or
+                            (not options.invert and message.data_type in input_data_types)
+                        )
+                    else:
+                        pass_through_message = (
+                            len(message_types) == 0 or
+                            (options.invert and header.message_type not in message_types) or
+                            (not options.invert and header.message_type in message_types)
+                        )
+
+                        if pass_through_message and header.message_type == MessageType.INPUT_DATA_WRAPPER:
+                            pass_through_message = (
+                                len(input_data_types) == 0 or
+                                (options.invert and message.data_type not in input_data_types) or
+                                (not options.invert and message.data_type in input_data_types)
+                            )
+
                     if pass_through_message:
                         messages_forwarded += 1
-                        bytes_forwarded += len(raw_data)
-                        original_stdout.buffer.write(raw_data)
+                        if options.unwrap:
+                            bytes_forwarded += len(message.data)
+                            output_transport.write(message.data)
+                        else:
+                            bytes_forwarded += len(raw_data)
+                            output_transport.write(raw_data)
 
             if options.display:
                 now = datetime.now()
