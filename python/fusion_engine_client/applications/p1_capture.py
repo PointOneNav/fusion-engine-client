@@ -82,8 +82,12 @@ The data is pairs of uint64. First, the timestamp in nanoseconds followed by the
 - kernel-sw - Log kernel SW timestamps. This is only available for socket connections.
 - hw - Log HW timestamps from device driver. This needs HW driver support. Run `./fusion_engine_client/utils/socket_timestamping.py` to test.""")
     file_group.add_argument(
-        '-o', '--output', type=str,
-        help="If specified, save the incoming data in the specified file.")
+        '-o', '--output', metavar='PATH', type=str,
+        help=f"""\
+If specified, save the incoming data in the specified file or transport.
+
+Supported formats include:
+{TRANSPORT_HELP_OPTIONS}""")
 
     parser.add_argument(
         'transport', type=str,
@@ -94,17 +98,24 @@ The data is pairs of uint64. First, the timestamp in nanoseconds followed by the
     if options.quiet:
         options.display = False
 
+    # If the user is sending output to stdout, route all other messages to stderr so the logging prints and the data
+    # don't get mixed up. Otherwise, print to stdout.
+    if options.output in ('', '-', 'file://-'):
+        logging_stream = sys.stderr
+    else:
+        logging_stream = sys.stdout
+
     # Configure logging.
     if options.verbose >= 1:
         logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(name)s:%(lineno)d - %(message)s',
-                            stream=sys.stdout)
+                            stream=logging_stream)
         if options.verbose == 1:
             logging.getLogger('point_one.fusion_engine.parsers').setLevel(logging.DEBUG)
         else:
             logging.getLogger('point_one.fusion_engine.parsers').setLevel(
                 logging.getTraceLevel(depth=options.verbose - 1))
     else:
-        logging.basicConfig(level=logging.INFO, format='%(message)s', stream=sys.stdout)
+        logging.basicConfig(level=logging.INFO, format='%(message)s', stream=logging_stream)
 
     HighlightFormatter.install(color=True, standoff_level=logging.WARNING)
     BrokenPipeStreamHandler.install()
@@ -130,7 +141,7 @@ The data is pairs of uint64. First, the timestamp in nanoseconds followed by the
 
     # Connect to the device using the specified transport.
     try:
-        transport = create_transport(options.transport)
+        transport = create_transport(options.transport, mode='input')
     except Exception as e:
         _logger.error(str(e))
         sys.exit(1)
@@ -143,7 +154,7 @@ The data is pairs of uint64. First, the timestamp in nanoseconds followed by the
             if os.path.exists(p1i_path):
                 os.remove(p1i_path)
 
-        output_file = open(options.output, 'wb')
+        output_file = create_transport(options.output, mode='output')
 
         if options.log_timestamp_source and options.output_format != 'csv':
             timestamp_file = open(options.output + TIMESTAMP_FILE_ENDING, 'wb')
@@ -170,9 +181,11 @@ The data is pairs of uint64. First, the timestamp in nanoseconds followed by the
     # If this is a serial port, configure its read timeout.
     else:
         if options.log_timestamp_source and options.log_timestamp_source != 'user-sw':
-            _logger.error(f'--log-timestamp-source={options.log_timestamp_source} is not supported. Only "user-sw" timestamps are supported on serial port captures.')
+            _logger.error(f'--log-timestamp-source={options.log_timestamp_source} is not supported. Only "user-sw" timestamps are supported on non-socket captures.')
             sys.exit(1)
-        transport.timeout = read_timeout_sec
+
+        if isinstance(transport, serial.Serial):
+            transport.timeout = read_timeout_sec
 
     # Listen for incoming data.
     decoder = FusionEngineDecoder(warn_on_unrecognized=not options.quiet and not options.summary, return_bytes=True)
@@ -189,7 +202,7 @@ The data is pairs of uint64. First, the timestamp in nanoseconds followed by the
     def _print_status(now):
         if options.summary:
             # Clear the terminal.
-            print(colorama.ansi.CSI + 'H' + colorama.ansi.CSI + 'J', end='')
+            print(colorama.ansi.CSI + 'H' + colorama.ansi.CSI + 'J', end='', file=logging_stream)
         _logger.info('Status: [bytes_received=%d, messages_received=%d, elapsed_time=%d sec]' %
                      (bytes_received, messages_received, (now - start_time).total_seconds()))
         if options.summary:
@@ -209,7 +222,7 @@ The data is pairs of uint64. First, the timestamp in nanoseconds followed by the
                         received_data, kernel_ts, hw_ts = recv(transport, 1024)
                     else:
                         received_data = []
-                # If this is a serial port, we set the read timeout above.
+                # If this is a serial port or file, we set the read timeout above.
                 else:
                     received_data = transport.read(1024)
 
