@@ -40,16 +40,16 @@ except ImportError:
 
 TRANSPORT_HELP_OPTIONS = """\
 - tcp://HOSTNAME[:PORT] - Connect to the specified hostname (or IP address) and
-  port over TCP (e.g., tty://192.168.0.3:30202); defaults to port 30200
+  port over TCP (e.g., tty://192.168.0.3:30202); defaults to port 30200.
 - udp://:PORT - Listen for incoming data on the specified UDP port (e.g.,
-  udp://:12345)
+  udp://:12345).
   Note: When using UDP, you must configure the device to send data to your
   machine.
+- unix://FILENAME - Connect to the specified UNIX domain socket file.
 - ws://HOSTNAME:PORT - Connect to the specified hostname (or IP address) and
-  port over WebSocket (e.g., ws://192.168.0.3:30300)
-- unix://FILENAME - Connect to the specified UNIX domain socket file
+  port over WebSocket (e.g., ws://192.168.0.3:30300).
 - [(serial|tty)://]DEVICE:BAUD - Connect to a serial device with the specified
-  baud rate (e.g., tty:///dev/ttyUSB0:460800 or /dev/ttyUSB0:460800)
+  baud rate (e.g., tty:///dev/ttyUSB0:460800 or /dev/ttyUSB0:460800).
 """
 
 TRANSPORT_HELP_STRING = f"""\
