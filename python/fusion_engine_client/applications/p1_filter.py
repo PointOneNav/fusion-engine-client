@@ -18,18 +18,35 @@ sys.path.insert(0, root_dir)
 from fusion_engine_client.messages import MessagePayload, message_type_by_name
 from fusion_engine_client.parsers import FusionEngineDecoder
 from fusion_engine_client.utils.argument_parser import ArgumentParser, ExtendedBooleanAction
+from fusion_engine_client.utils.transport_utils import *
 
 
 def main():
     parser = ArgumentParser(description="""\
-Filter FusionEngine data coming through stdin. Examples:
-  netcat 192.168.1.138 30210 | \
-     ./p1_filter.py --blacklist -m GNSSSatellite --display > /tmp/out.p1log
+Filter FusionEngine data coming from a device, or via stdin, and send the
+filtered result to stdout.
+
+Examples:
+  # Remove GNSSSatellite from the data stream of a device connected over TCP.
+  ./p1_filter.py tcp://192.168.1.138:30202 \
+      --invert -m GNSSSatellite --display > /tmp/out.p1log
+
+  # Same as above, but capture data using netcat.
+  netcat 192.168.1.138 30202 | \
+      ./p1_filter.py --invert -m GNSSSatellite --display > /tmp/out.p1log
+
+  # Only keep Pose messages from a recorded data file.
   cat /tmp/out.p1log | ./p1_filter.py -m Pose > /tmp/pose_out.p1log
+
+  # Only keep Pose messages from an incoming serial data stream.
+  ./p1_filter.py tty:///dev/ttyUSB0:460800 \
+      -m Pose > /tmp/pose_out.p1log
+
+  # Similar to above, but open the serial port manually using stty and cat.
   stty -F /dev/ttyUSB0 speed 460800 cs8 \
-     -cstopb -parenb -icrnl -ixon -ixoff -opost -isig -icanon -echo && \
-     cat /dev/ttyUSB0 | \
-     ./p1_filter.py -m Pose > /tmp/pose_out.p1log
+      -cstopb -parenb -icrnl -ixon -ixoff -opost -isig -icanon -echo && \
+      cat /dev/ttyUSB0 | \
+      ./p1_filter.py -m Pose > /tmp/pose_out.p1log
 """)
 
     parser.add_argument(
@@ -52,6 +69,17 @@ By default, all specified message types are output and all others are discarded.
     parser.add_argument(
         '--display', action=ExtendedBooleanAction,
         help="Periodically print status on stderr.")
+    parser.add_argument(
+        '-o', '--output', metavar='PATH', type=str,
+        help=f"""\
+If specified, write output to the specified file. Otherwise, output is sent to
+stdout by default.
+
+Supported formats include:
+{TRANSPORT_HELP_OPTIONS}""")
+    parser.add_argument(
+        'input', metavar='PATH', type=str, nargs='?', default='-',
+        help=TRANSPORT_HELP_STRING)
     options = parser.parse_args()
 
     # If the user specified a set of message names, lookup their type values. Below, we will limit the printout to only
@@ -73,6 +101,17 @@ By default, all specified message types are output and all others are discarded.
             print(str(e))
             sys.exit(1)
 
+    # Open the output stream/data file.
+    if options.output is None:
+        options.output = 'file://-'
+    output_transport = create_transport(options.output, mode='output', stdout=original_stdout)
+    if isinstance(output_transport, VirtualSerial):
+        print(f'Writing output to: {output_transport}')
+
+    # Open the input stream/data file.
+    input_transport = create_transport(options.input, mode='input')
+
+    # Listen for incoming data.
     start_time = datetime.now()
     last_print_time = datetime.now()
     bytes_received = 0
@@ -80,13 +119,16 @@ By default, all specified message types are output and all others are discarded.
     messages_received = 0
     messages_forwarded = 0
 
-    # Listen for incoming data.
     decoder = FusionEngineDecoder(return_bytes=True)
     try:
         while True:
             # Need to specify read size or read waits for end of file character.
             # This returns immediately even if 0 bytes are available.
-            received_data = sys.stdin.buffer.read(64)
+            if isinstance(input_transport, socket.socket):
+                received_data = input_transport.recv(64)
+            else:
+                received_data = input_transport.read(64)
+
             if len(received_data) == 0:
                 time.sleep(0.1)
             else:
