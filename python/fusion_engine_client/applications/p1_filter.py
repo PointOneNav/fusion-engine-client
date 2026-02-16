@@ -20,7 +20,7 @@ from fusion_engine_client.parsers import FusionEngineDecoder
 from fusion_engine_client.utils.argument_parser import ArgumentParser, ExtendedBooleanAction
 
 
-if __name__ == "__main__":
+def main():
     parser = ArgumentParser(description="""\
 Filter FusionEngine data coming through stdin. Examples:
   netcat 192.168.1.138 30210 | \
@@ -111,3 +111,7 @@ By default, all specified message types are output and all others are discarded.
 
     except KeyboardInterrupt:
         pass
+
+
+if __name__ == "__main__":
+    main()
