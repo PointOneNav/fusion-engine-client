@@ -75,6 +75,41 @@ def test_unrecognized(Enum):
     assert int(value) == -2
 
 
+def test_find():
+    class TestEnum(IntEnum):
+        THING_ABC = 1
+        THING_DEF = 2
+
+    # Search by integer.
+    assert TestEnum.find_matching_values(1) == {TestEnum.THING_ABC}
+    assert TestEnum.find_matching_values(2) == {TestEnum.THING_DEF}
+    assert TestEnum.find_matching_values([1, 2]) == {TestEnum.THING_ABC, TestEnum.THING_DEF}
+    assert TestEnum.find_matching_values(0x2) == {TestEnum.THING_DEF}
+
+    assert TestEnum.find_matching_values('THING_ABC') == {TestEnum.THING_ABC}
+    assert TestEnum.find_matching_values('THING_DEF') == {TestEnum.THING_DEF}
+    assert TestEnum.find_matching_values(['THING_ABC', 'THING_DEF']) == {TestEnum.THING_ABC, TestEnum.THING_DEF}
+
+    assert TestEnum.find_matching_values(['THING_A']) == {TestEnum.THING_ABC}
+    assert TestEnum.find_matching_values(['THING*']) == {TestEnum.THING_ABC, TestEnum.THING_DEF}
+    with pytest.raises(ValueError):
+        assert TestEnum.find_matching_values(['THING'])
+
+    assert TestEnum.find_matching_values(['ABC', 'DEF'], prefix='THING_') == {TestEnum.THING_ABC, TestEnum.THING_DEF}
+    assert TestEnum.find_matching_values(['*'], prefix='THING_') == {TestEnum.THING_ABC, TestEnum.THING_DEF}
+    assert TestEnum.find_matching_values(['G_*'], prefix='THIN') == {TestEnum.THING_ABC, TestEnum.THING_DEF}
+
+    # Unrecognized value.
+    r = TestEnum.find_matching_values(3)
+    assert len(r) == 1 and list(r)[0].name == '_U_3'
+    r = TestEnum.find_matching_values(0x4)
+    assert len(r) == 1 and list(r)[0].name == '_U_4'
+    r = TestEnum.find_matching_values('5')
+    assert len(r) == 1 and list(r)[0].name == '_U_5'
+    r = TestEnum.find_matching_values('0x6')
+    assert len(r) == 1 and list(r)[0].name == '_U_6'
+
+
 def test_bitmask_decorator(Enum):
     @enum_bitmask(Enum)
     class EnumMask: pass
