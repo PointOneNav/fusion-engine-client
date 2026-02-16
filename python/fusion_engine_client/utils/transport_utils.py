@@ -225,4 +225,4 @@ def create_transport(descriptor: str, timeout_sec: float = None, print_func: Cal
         transport = serial.Serial(port=path, baudrate=baud_rate, timeout=timeout_sec)
         return transport
 
-    raise ValueError('Unsupported transport descriptor.')
+    raise ValueError(f"Unsupported transport descriptor '{descriptor}'.")
