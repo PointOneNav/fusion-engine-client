@@ -39,6 +39,42 @@ except ImportError:
         class Serial: pass
         class SerialException(Exception): pass
 
+# Virtual serial port support is optional. To use, install with:
+#   pip install pyvirtualserialports pyserial
+try:
+    if not serial_supported:
+        raise ImportError()
+
+    from virtualserialports import VirtualSerialPorts
+    virtual_serial_supported = True
+
+    class VirtualSerial(serial.Serial):
+        def __init__(self):
+            # Virtual ports work as a pair:
+            # - ports[0] is used internally by the application to send to/receive from ports[1]
+            # - ports[1] is what the user actually connects to
+            #
+            # Note that baud rate doesn't matter for virtual serial ports. The user can connect to ports[1] with any
+            # baud rate and it'll work.
+            self.virtual_serial = VirtualSerialPorts(2)
+            self.virtual_serial.open()
+            self.virtual_serial.start()
+            self.internal_port = self.virtual_serial.ports[0]
+            self.external_port = self.virtual_serial.ports[1]
+            super().__init__(port=self.internal_port)
+
+        def close(self):
+            super().close()
+            self.virtual_serial.stop()
+            self.virtual_serial.close()
+
+        def __str__(self):
+            return f'tty://{self.external_port}'
+except ImportError:
+    virtual_serial_supported = False
+    class VirtualSerial: pass
+
+
 class FileTransport:
     def __init__(self, input: Union[str, TextIO] = None, output: Union[str, TextIO] = None):
         if isinstance(input, str):
@@ -97,6 +133,8 @@ TRANSPORT_HELP_OPTIONS = """\
   port over WebSocket (e.g., ws://192.168.0.3:30300).
 - [(serial|tty)://]DEVICE:BAUD - Connect to a serial device with the specified
   baud rate (e.g., tty:///dev/ttyUSB0:460800 or /dev/ttyUSB0:460800).
+- (serial|tty)://virtual - Create a virtual serial port (PTS) that another
+  application can connect to.
 """
 
 TRANSPORT_HELP_STRING = f"""\
@@ -205,6 +243,18 @@ def create_transport(descriptor: str, timeout_sec: float = None, print_func: Cal
         if timeout_sec is not None:
             transport.settimeout(timeout_sec)
         transport.connect(path)
+        return transport
+
+    # Virtual serial port
+    m = re.match(r'^(?:serial|tty)://virtual$', descriptor)
+    if m:
+        if not virtual_serial_supported:
+            raise RuntimeError(f'Virtual serial port support not found.'
+                               f'Please install (pip install pyvirtualserialports pyserial) and run again.')
+
+        transport = VirtualSerial()
+        if print_func is not None:
+            print_func(f'Connecting to {str(transport)}.')
         return transport
 
     # Serial port
