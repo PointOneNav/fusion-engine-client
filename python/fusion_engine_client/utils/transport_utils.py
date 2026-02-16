@@ -2,9 +2,9 @@ import re
 import socket
 from typing import Callable, Union
 
+# WebSocket support is optional. To use, install with:
+#   pip install websockets
 try:
-    # WebSocket support is optional. To use, install with:
-    #   pip install websockets
     import websockets.sync.client as ws
     ws_supported = True
 except ImportError:
@@ -13,9 +13,9 @@ except ImportError:
     class ws:
         class ClientConnection: pass
 
+# Serial port support is optional. To use, install with:
+#   pip install pyserial
 try:
-    # Serial port support is optional. To use, install with:
-    #   pip install pyserial
     import serial
     serial_supported = True
 
