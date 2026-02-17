@@ -85,6 +85,7 @@ for the latest FusionEngine message specification.
             'p1_capture = fusion_engine_client.applications.p1_capture:main',
             'p1_display = fusion_engine_client.applications.p1_display:main',
             'p1_extract = fusion_engine_client.applications.p1_extract:main',
+            'p1_filter = fusion_engine_client.applications.p1_filter:main',
             'p1_lband_extract = fusion_engine_client.applications.p1_lband_extract:main',
             'p1_print = fusion_engine_client.applications.p1_print:main',
         ]

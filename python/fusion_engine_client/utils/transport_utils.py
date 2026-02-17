@@ -1,10 +1,11 @@
 import re
 import socket
-from typing import Callable, Union
+import sys
+from typing import BinaryIO, Callable, TextIO, Union
 
+# WebSocket support is optional. To use, install with:
+#   pip install websockets
 try:
-    # WebSocket support is optional. To use, install with:
-    #   pip install websockets
     import websockets.sync.client as ws
     ws_supported = True
 except ImportError:
@@ -13,9 +14,9 @@ except ImportError:
     class ws:
         class ClientConnection: pass
 
+# Serial port support is optional. To use, install with:
+#   pip install pyserial
 try:
-    # Serial port support is optional. To use, install with:
-    #   pip install pyserial
     import serial
     serial_supported = True
 
@@ -38,24 +39,170 @@ except ImportError:
         class Serial: pass
         class SerialException(Exception): pass
 
-TRANSPORT_HELP_STRING = """\
-The method used to communicate with the target device:
+# Virtual serial port support is optional. To use, install with:
+#   pip install pyvirtualserialports pyserial
+try:
+    if not serial_supported:
+        raise ImportError()
+
+    from virtualserialports import VirtualSerialPorts
+    virtual_serial_supported = True
+
+    class VirtualSerial(serial.Serial):
+        def __init__(self):
+            # Virtual ports work as a pair:
+            # - ports[0] is used internally by the application to send to/receive from ports[1]
+            # - ports[1] is what the user actually connects to
+            #
+            # Note that baud rate doesn't matter for virtual serial ports. The user can connect to ports[1] with any
+            # baud rate and it'll work.
+            self.virtual_serial = VirtualSerialPorts(2)
+            self.virtual_serial.open()
+            self.virtual_serial.start()
+            self.internal_port = self.virtual_serial.ports[0]
+            self.external_port = self.virtual_serial.ports[1]
+            super().__init__(port=self.internal_port)
+
+        def close(self):
+            super().close()
+            self.virtual_serial.stop()
+            self.virtual_serial.close()
+
+        def __str__(self):
+            return f'tty://{self.external_port}'
+except ImportError:
+    virtual_serial_supported = False
+    class VirtualSerial: pass
+
+
+class FileTransport:
+    def __init__(self, input: Union[str, BinaryIO, TextIO] = None, output: Union[str, BinaryIO, TextIO] = None):
+        # If input is a path, open the specified file. If '-', read from stdin.
+        self.close_input = False
+        if isinstance(input, str):
+            if input in ('', '-'):
+                self.input = sys.stdin.buffer
+                self.input_path = 'stdin'
+            else:
+                self.input = open(input, 'rb')
+                self.input_path = input
+                self.close_input = True
+        # Otherwise, assume input is a file-like object and use it as is.
+        elif isinstance(input, TextIO):
+            self.input = input.buffer
+            self.input_path = input.name if input else None
+        elif isinstance(input, BinaryIO):
+            self.input = input
+            self.input_path = input.name if input else None
+        elif input is None:
+            self.input = None
+            self.input_path = None
+        else:
+            raise ValueError('Unsupported input type.')
+
+        # If output is a path, open the specified file. If '-', write to stdout.
+        self.close_output = False
+        if isinstance(output, str):
+            if output in ('', '-'):
+                self.output = sys.stdout.buffer
+                self.output_path = 'stdout'
+            else:
+                self.output = open(output, 'wb')
+                self.output_path = output
+                self.close_output = True
+        # Otherwise, assume output is a file-like object and use it as is.
+        elif isinstance(output, TextIO):
+            self.output = output.buffer
+            self.output_path = output.name if output else None
+        elif isinstance(output, BinaryIO):
+            self.output = output
+            self.output_path = output.name if output else None
+        elif output is None:
+            self.output = None
+            self.output_path = None
+        else:
+            raise ValueError('Unsupported input type.')
+
+    def close(self):
+        if self.close_input:
+            self.input.close()
+        if self.close_output:
+            self.output.close()
+
+    def read(self, size: int = -1) -> bytes:
+        if self.input:
+            return self.input.read(size)
+        else:
+            raise RuntimeError('Input file not opened.')
+
+    def write(self, data: Union[bytes, bytearray]) -> int:
+        if self.output:
+            return self.output.write(data)
+        else:
+            raise RuntimeError('Output file not opened.')
+
+
+TRANSPORT_HELP_OPTIONS = """\
+- <empty string> - Read from stdin and/or write to stdout
+- [file://](PATH|-) - Read from/write to the specified file, or to stdin/stdout
+  if PATH is '-'.
 - tcp://HOSTNAME[:PORT] - Connect to the specified hostname (or IP address) and
-  port over TCP (e.g., tty://192.168.0.3:30202); defaults to port 30200
+  port over TCP (e.g., tty://192.168.0.3:30202); defaults to port 30200.
 - udp://:PORT - Listen for incoming data on the specified UDP port (e.g.,
-  udp://:12345)
+  udp://:12345).
   Note: When using UDP, you must configure the device to send data to your
   machine.
+- unix://FILENAME - Connect to the specified UNIX domain socket file.
 - ws://HOSTNAME:PORT - Connect to the specified hostname (or IP address) and
-  port over WebSocket (e.g., ws://192.168.0.3:30300)
-- unix://FILENAME - Connect to the specified UNIX domain socket file
+  port over WebSocket (e.g., ws://192.168.0.3:30300).
 - [(serial|tty)://]DEVICE:BAUD - Connect to a serial device with the specified
-  baud rate (e.g., tty:///dev/ttyUSB0:460800 or /dev/ttyUSB0:460800)
+  baud rate (e.g., tty:///dev/ttyUSB0:460800 or /dev/ttyUSB0:460800).
+- (serial|tty)://virtual - Create a virtual serial port (PTS) that another
+  application can connect to.
+"""
+
+TRANSPORT_HELP_STRING = f"""\
+The method used to communicate with the target device:
+{TRANSPORT_HELP_OPTIONS}
 """
 
 
-def create_transport(descriptor: str, timeout_sec: float = None, print_func: Callable = None) -> \
-        Union[socket.socket, serial.Serial, ws.ClientConnection]:
+def create_transport(descriptor: str, timeout_sec: float = None, print_func: Callable = None, mode: str = 'both',
+                     stdout=sys.stdout) -> \
+        Union[socket.socket, serial.Serial, ws.ClientConnection, FileTransport]:
+    # File: path, '-' (stdin/stdout), empty string (stdin/stdout)
+    if descriptor in ('', '-'):
+        descriptor = 'file://-'
+
+    m = re.match(r'^(?:file://)?([a-zA-Z0-9-_./]+)$', descriptor)
+    if m:
+        path = m.group(1)
+        if mode == 'both':
+            if path != '-':
+                raise ValueError("Cannot open a file for both read and write access.")
+
+            if print_func is not None:
+                print_func(f'Connecting to stdin/stdout.')
+            transport = FileTransport(input='-', output='-')
+        elif mode == 'input':
+            if print_func is not None:
+                if path == '-':
+                    print_func(f'Reading from stdin.')
+                else:
+                    print_func(f'Reading from {path}.')
+            transport = FileTransport(input=path, output=None)
+        elif mode == 'output':
+            if print_func is not None:
+                if path == '-':
+                    print_func(f'Writing to stdout.')
+                else:
+                    print_func(f'Writing to {path}.')
+            transport = FileTransport(input=None, output=stdout.buffer)
+        else:
+            raise ValueError(f"Unsupported file mode '{mode}'.")
+        return transport
+
+    # TCP client
     m = re.match(r'^tcp://([a-zA-Z0-9-_.]+)?(?::([0-9]+))?$', descriptor)
     if m:
         hostname = m.group(1)
@@ -73,6 +220,7 @@ def create_transport(descriptor: str, timeout_sec: float = None, print_func: Cal
             raise socket.timeout(f'Timed out connecting to tcp://{ip_address}:{port}.')
         return transport
 
+    # UDP client
     m = re.match(r'^udp://:([0-9]+)$', descriptor)
     if m:
         port = int(m.group(1))
@@ -86,6 +234,7 @@ def create_transport(descriptor: str, timeout_sec: float = None, print_func: Cal
         transport.bind(('', port))
         return transport
 
+    # Websocket client
     m = re.match(r'^ws://([a-zA-Z0-9-_.]+):([0-9]+)$', descriptor)
     if m:
         hostname = m.group(1)
@@ -107,6 +256,7 @@ def create_transport(descriptor: str, timeout_sec: float = None, print_func: Cal
             raise TimeoutError(f'Timed out connecting to {url}.')
         return transport
 
+    # UNIX domain socket
     m = re.match(r'^unix://([a-zA-Z0-9-_./]+)$', descriptor)
     if m:
         path = m.group(1)
@@ -119,7 +269,20 @@ def create_transport(descriptor: str, timeout_sec: float = None, print_func: Cal
         transport.connect(path)
         return transport
 
-    m = re.match(r'^(?:(?:serial|tty)://)?([^:]+)(?::([0-9]+))?$', descriptor)
+    # Virtual serial port
+    m = re.match(r'^(?:serial|tty)://virtual$', descriptor)
+    if m:
+        if not virtual_serial_supported:
+            raise RuntimeError(f'Virtual serial port support not found.'
+                               f'Please install (pip install pyvirtualserialports pyserial) and run again.')
+
+        transport = VirtualSerial()
+        if print_func is not None:
+            print_func(f'Connecting to {str(transport)}.')
+        return transport
+
+    # Serial port
+    m = re.match(r'^(?:(?:serial|tty)://)?([^:]+)(?::([0-9]+))$', descriptor)
     if m:
         path = m.group(1)
         if m.group(2) is None:
@@ -136,4 +299,4 @@ def create_transport(descriptor: str, timeout_sec: float = None, print_func: Cal
         transport = serial.Serial(port=path, baudrate=baud_rate, timeout=timeout_sec)
         return transport
 
-    raise ValueError('Unsupported transport descriptor.')
+    raise ValueError(f"Unsupported transport descriptor '{descriptor}'.")

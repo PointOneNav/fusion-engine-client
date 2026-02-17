@@ -1,7 +1,8 @@
 from enum import EnumMeta, IntEnum as IntEnumBase
 import functools
 import inspect
-from typing import List, Union
+import re
+from typing import List, Set, Union
 
 from aenum import extend_enum
 
@@ -108,6 +109,99 @@ class IntEnum(IntEnumBase, metaclass=DynamicEnumMeta):
             return '%s (%d)' % (str(self), int(self))
         else:
             return str(self)
+
+    @classmethod
+    def find_matching_values(cls, pattern: Union[int, str, List[int], List[str]], raise_on_unrecognized: bool = False,
+                             prefix: str = None, print_func=None) -> Set['IntEnum']:
+        """!
+        @brief Find one or more enum values that match the specified pattern(s).
+
+        Examples:
+        ```py
+        class MyType(IntEnum):
+            THING_A = 1
+            THING_B = 2
+
+        MyType.find_matching_values('thing_abc')  # {MyType.THING_ABC}
+        MyType.find_matching_values('THING_ABC')  # {MyType.THING_ABC}
+        MyType.find_matching_values('THING_A')  # {MyType.THING_ABC}
+        MyType.find_matching_values('thing')  # ValueError - multiple possible matches
+        MyType.find_matching_values('thing*')  # {MyType.THING_DEF, MyType.THING_DEF}
+        MyType.find_matching_values('thing_abc,thing_def')  # {MyType.THING_ABC, MyType.THING_DEF}
+        MyType.find_matching_values(['thing_abc', 'thing_def'])  # {MyType.THING_ABC, MyType.THING_DEF}
+        MyType.find_matching_values(1)  # {MyType.THING_ABC}
+        MyType.find_matching_values([1, 2])  # {MyType.THING_ABC, MyType.THING_DEF}
+        MyType.find_matching_values(3)  # {MyType._U_3}
+        ```
+
+        @param pattern A `list` or a comma-separated string containing one or more search patterns. Patterns may match
+               part or all of an enum name. Patterns may include wildcards (`*`) to match multiple enums. If no
+               wildcards are specified and multiple enums match, a single result will be returned if there is an exact
+               match (e.g., `thing_a` will match to `MyType.THING_ABC`, not `MyType.THING_DEF`). All matches are
+               case-insensitive.
+        @param raise_on_unrecognized If `True`, raise an exception for any unrecognized integer values. Unrecognized
+               values will automatically create new enum entries by default.
+        @param prefix If specified, prepend the prefix to all string values if they do not already start with it.
+
+        @return A set containing the matching enum values.
+        """
+        # Convert to a list of strings for consistency.
+        if isinstance(pattern, int):
+            patterns = [f'{pattern}']
+        elif isinstance(pattern, str):
+            patterns = [pattern]
+        else:
+            if len(pattern) > 0 and isinstance(pattern[0], int):
+                patterns = [f'{p}' for p in pattern]
+            else:
+                patterns = pattern
+
+        # Split and flatten comma-separated lists of names/patterns:
+        #   ['VersionInfoMessage', 'PoseMessage,GNSS*'] ->
+        #   ['VersionInfoMessage', 'PoseMessage', 'GNSS*']
+        requested_types = [p.strip() for entry in patterns for p in entry.split(',')]
+
+        # Now find matches to each pattern.
+        result = set()
+        for pattern in requested_types:
+            # Check if pattern is the message integer value.
+            try:
+                if pattern.lower().startswith('0x'):
+                    int_val = int(pattern, base=16)
+                else:
+                    int_val = int(pattern)
+                enum_val = cls(int_val, raise_on_unrecognized=raise_on_unrecognized)
+                result.add(enum_val)
+                if str(enum_val) == '(Unrecognized)' and print_func:
+                    print_func(f"{pattern} is an unknown {cls.__name__} value.")
+            except:
+                if prefix is not None and not pattern.startswith(prefix):
+                    pattern = f'{prefix}{pattern}'
+
+                allow_multiple = '*' in pattern
+                re_pattern = pattern.replace('*', '.*')
+                # if pattern[0] != '^':
+                #     re_pattern = r'.*' + re_pattern
+                # if pattern[-1] != '$':
+                #     re_pattern += '.*'
+
+                # Check for matches.
+                matched_types = [v for k, v in cls._member_map_.items()
+                                if re.match(re_pattern, k, flags=re.IGNORECASE)]
+                if len(matched_types) == 0 and print_func:
+                    print_func("No message types matching pattern '%s'." % pattern)
+                    continue
+
+                # If there are too many matches, fail.
+                if len(matched_types) > 1 and not allow_multiple:
+                    raise ValueError("Pattern '%s' matches multiple message types:%s\n\nAdd a wildcard (%s*) to display "
+                                     "all matching types." %
+                                     (pattern, ''.join(['\n  %s' % c for c in cls._member_map_.keys()]), pattern))
+                # Otherwise, update the set of message types.
+                else:
+                    result.update(matched_types)
+
+        return result
 
 
 def enum_bitmask(enum_type, offset=0, define_bits=True, predicate=None):
