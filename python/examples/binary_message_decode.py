@@ -82,20 +82,40 @@ or
             logger.info("Header: " + str(header))
             if isinstance(message, MessagePayload):
                 logger.info("Payload: " + str(message))
+    # Message decode failed -- see if we can decode manually.
     else:
         # If we didn't detect any complete messages, see if maybe they didn't provide enough bytes?
         if len(contents) < MessageHeader.calcsize():
-            logger.warning("Warning: Specified byte string too small to contain a valid FusionEngine message. "
+            logger.warning("Warning: Specified byte array too small to contain a valid FusionEngine message. "
                            "[size=%d B, minimum=%d B]" % (len(contents), MessageHeader.calcsize()))
+        # If we have enough bytes, at least to contain a valid message header, the decoder most likely failed because of
+        # a CRC failure. Try to decode the message anyway.
         else:
             try:
+                logger.warning('Warning: Error detected by FusionEngine decoder. Attempting to parse message manually.')
+
                 # Try to decode a message header anyway.
                 header = MessageHeader()
                 header.unpack(contents, validate_crc=False)
-                if len(contents) < header.get_message_size():
-                    logger.warning('Warning: Specified byte string too small. [expected=%d B, got=%d B]' %
-                                   (header.get_message_size(), len(contents)))
+
                 logger.info("Header: " + str(header))
+
+                if len(contents) < header.get_message_size():
+                    logger.warning('Warning: Specified byte array too small. [expected=%d B, got=%d B]' %
+                                   (header.get_message_size(), len(contents)))
+
+                # Do a CRC check manually, _after_ calling unpack(), and warn on failure but try to continue. If there
+                # is a CRC mismatch, the FE decoder will already have printed a warning about it, assuming that is the
+                # reason the decoder rejected the message. We'll warn again here for good measure, or in case that was
+                # not the reason for the decode failure.
+                #
+                # Normally, unpack() does the CRC check internally. If it fails, it will raise an exception and not
+                # populate the rest of the MessageHeader object. In this application, we want to attempt to decode
+                # broken messages if possible for debugging purposes.
+                try:
+                    header.validate_crc(contents)
+                except ValueError as e:
+                    logger.warning(f'Warning: {str(e)}')
 
                 # If that succeeds, try to determine the payload type and print out the expected size. If we have enough
                 # bytes, try to decode the payload.
