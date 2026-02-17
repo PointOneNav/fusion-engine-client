@@ -78,6 +78,7 @@ except ImportError:
 class FileTransport:
     def __init__(self, input: Union[str, BinaryIO, TextIO] = None, output: Union[str, BinaryIO, TextIO] = None):
         # If input is a path, open the specified file. If '-', read from stdin.
+        self.close_input = False
         if isinstance(input, str):
             if input in ('', '-'):
                 self.input = sys.stdin.buffer
@@ -85,6 +86,7 @@ class FileTransport:
             else:
                 self.input = open(input, 'rb')
                 self.input_path = input
+                self.close_input = True
         # Otherwise, assume input is a file-like object and use it as is.
         elif isinstance(input, TextIO):
             self.input = input.buffer
@@ -99,6 +101,7 @@ class FileTransport:
             raise ValueError('Unsupported input type.')
 
         # If output is a path, open the specified file. If '-', write to stdout.
+        self.close_output = False
         if isinstance(output, str):
             if output in ('', '-'):
                 self.output = sys.stdout.buffer
@@ -106,6 +109,7 @@ class FileTransport:
             else:
                 self.output = open(output, 'wb')
                 self.output_path = output
+                self.close_output = True
         # Otherwise, assume output is a file-like object and use it as is.
         elif isinstance(output, TextIO):
             self.output = output.buffer
@@ -120,9 +124,9 @@ class FileTransport:
             raise ValueError('Unsupported input type.')
 
     def close(self):
-        if self.input is not None and self.input is not sys.stdin.buffer:
+        if self.close_input:
             self.input.close()
-        if self.output is not None and self.output is not sys.stdout.buffer:
+        if self.close_output:
             self.output.close()
 
     def read(self, size: int = -1) -> bytes:
