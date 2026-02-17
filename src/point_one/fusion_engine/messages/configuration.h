@@ -1408,7 +1408,7 @@ inline p1_ostream& operator<<(p1_ostream& stream, DataType val) {
  * The device will respond with a @ref CommandResponseMessage indicating whether
  * or not the request succeeded.
  */
-struct P1_ALIGNAS(4) ImportDataMessage {
+struct P1_ALIGNAS(4) ImportDataMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::IMPORT_DATA;
   static constexpr uint8_t MESSAGE_VERSION = 0;
   /**
@@ -1436,7 +1436,7 @@ struct P1_ALIGNAS(4) ImportDataMessage {
  * # Expected Response
  * The device will respond with a @ref PlatformStorageDataMessage.
  */
-struct P1_ALIGNAS(4) ExportDataMessage {
+struct P1_ALIGNAS(4) ExportDataMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::EXPORT_DATA;
   static constexpr uint8_t MESSAGE_VERSION = 0;
   /**
@@ -1471,7 +1471,7 @@ struct P1_ALIGNAS(4) ExportDataMessage {
  *              @ref source field.
  * - Version 3: Added @ref flags field.
  */
-struct P1_ALIGNAS(4) PlatformStorageDataMessage {
+struct P1_ALIGNAS(4) PlatformStorageDataMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE =
       MessageType::PLATFORM_STORAGE_DATA;
   static constexpr uint8_t MESSAGE_VERSION = 3;

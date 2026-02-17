@@ -111,8 +111,8 @@ or
                         min_message_size_bytes = MessageHeader.calcsize() + min_payload_size_bytes
 
                         logger.info("Minimum size for this message:")
-                        logger.info("  Payload: %d B" % min_payload_size_bytes)
-                        logger.info("  Complete message: %d B" % min_message_size_bytes)
+                        logger.info("  Minimum payload: %d B" % min_payload_size_bytes)
+                        logger.info("  Header + minimum payload: %d B" % min_message_size_bytes)
                     except TypeError:
                         # SetConfig and ConfigResponse messages cannot be packed or compute size if a configuration
                         # payload has not been specified.
