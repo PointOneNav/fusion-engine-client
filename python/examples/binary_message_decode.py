@@ -82,20 +82,27 @@ or
             logger.info("Header: " + str(header))
             if isinstance(message, MessagePayload):
                 logger.info("Payload: " + str(message))
+    # Message decode failed -- see if we can decode manually.
     else:
         # If we didn't detect any complete messages, see if maybe they didn't provide enough bytes?
         if len(contents) < MessageHeader.calcsize():
-            logger.warning("Warning: Specified byte string too small to contain a valid FusionEngine message. "
+            logger.warning("Warning: Specified byte array too small to contain a valid FusionEngine message. "
                            "[size=%d B, minimum=%d B]" % (len(contents), MessageHeader.calcsize()))
+        # If we have enough bytes, at least to contain a valid message header, the decoder most likely failed because of
+        # a CRC failure. Try to decode the message anyway.
         else:
             try:
+                logger.warning('Warning: Error detected by FusionEngine decoder. Attempting to parse message manually.')
+
                 # Try to decode a message header anyway.
                 header = MessageHeader()
                 header.unpack(contents, validate_crc=False)
-                if len(contents) < header.get_message_size():
-                    logger.warning('Warning: Specified byte string too small. [expected=%d B, got=%d B]' %
-                                   (header.get_message_size(), len(contents)))
+
                 logger.info("Header: " + str(header))
+
+                if len(contents) < header.get_message_size():
+                    logger.warning('Warning: Specified byte array too small. [expected=%d B, got=%d B]' %
+                                   (header.get_message_size(), len(contents)))
 
                 # If that succeeds, try to determine the payload type and print out the expected size. If we have enough
                 # bytes, try to decode the payload.
