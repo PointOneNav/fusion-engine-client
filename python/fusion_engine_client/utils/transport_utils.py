@@ -1,7 +1,7 @@
 import re
 import socket
 import sys
-from typing import Callable, TextIO, Union
+from typing import BinaryIO, Callable, TextIO, Union
 
 # WebSocket support is optional. To use, install with:
 #   pip install websockets
@@ -76,7 +76,8 @@ except ImportError:
 
 
 class FileTransport:
-    def __init__(self, input: Union[str, TextIO] = None, output: Union[str, TextIO] = None):
+    def __init__(self, input: Union[str, BinaryIO, TextIO] = None, output: Union[str, BinaryIO, TextIO] = None):
+        # If input is a path, open the specified file. If '-', read from stdin.
         if isinstance(input, str):
             if input in ('', '-'):
                 self.input = sys.stdin.buffer
@@ -84,10 +85,20 @@ class FileTransport:
             else:
                 self.input = open(input, 'rb')
                 self.input_path = input
-        else:
+        # Otherwise, assume input is a file-like object and use it as is.
+        elif isinstance(input, TextIO):
+            self.input = input.buffer
+            self.input_path = input.name if input else None
+        elif isinstance(input, BinaryIO):
             self.input = input
             self.input_path = input.name if input else None
+        elif input is None:
+            self.input = None
+            self.input_path = None
+        else:
+            raise ValueError('Unsupported input type.')
 
+        # If output is a path, open the specified file. If '-', write to stdout.
         if isinstance(output, str):
             if output in ('', '-'):
                 self.output = sys.stdout.buffer
@@ -95,9 +106,18 @@ class FileTransport:
             else:
                 self.output = open(output, 'wb')
                 self.output_path = output
-        else:
+        # Otherwise, assume output is a file-like object and use it as is.
+        elif isinstance(output, TextIO):
+            self.output = output.buffer
+            self.output_path = output.name if output else None
+        elif isinstance(output, BinaryIO):
             self.output = output
             self.output_path = output.name if output else None
+        elif output is None:
+            self.output = None
+            self.output_path = None
+        else:
+            raise ValueError('Unsupported input type.')
 
     def close(self):
         if self.input is not None and self.input is not sys.stdin.buffer:
