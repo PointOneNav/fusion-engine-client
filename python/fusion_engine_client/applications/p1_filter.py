@@ -175,17 +175,17 @@ data streams with no frame alignment enforced.""")
                 bytes_received += len(received_data)
                 messages = decoder.on_data(received_data)
                 for (header, message, raw_data) in messages:
+                    # In unwrap mode, discard all but InputDataWrapper messages.
                     if options.unwrap and header.message_type != MessageType.INPUT_DATA_WRAPPER:
                         continue
 
                     messages_received += 1
 
+                    # In unwrap mode, the input message is always an InputDataWrapper.
                     if options.unwrap:
-                        pass_through_message = (
-                            len(input_data_types) == 0 or
-                            (options.invert and message.data_type not in input_data_types) or
-                            (not options.invert and message.data_type in input_data_types)
-                        )
+                        pass_through_message = True
+                    # Otherwise, see if this is in the list of user-specified message types to keep. If the list is
+                    # empty, keep all messages.
                     else:
                         pass_through_message = (
                             len(message_types) == 0 or
@@ -193,13 +193,16 @@ data streams with no frame alignment enforced.""")
                             (not options.invert and header.message_type in message_types)
                         )
 
-                        if pass_through_message and header.message_type == MessageType.INPUT_DATA_WRAPPER:
-                            pass_through_message = (
-                                len(input_data_types) == 0 or
-                                (options.invert and message.data_type not in input_data_types) or
-                                (not options.invert and message.data_type in input_data_types)
-                            )
+                    # If this is an InputDataWrapper and the user specified a list of data types to keep, keep only the
+                    # messages with that kind of data. If the list is empty, keep all messages.
+                    if pass_through_message and header.message_type == MessageType.INPUT_DATA_WRAPPER:
+                        pass_through_message = (
+                            len(input_data_types) == 0 or
+                            (options.invert and message.data_type not in input_data_types) or
+                            (not options.invert and message.data_type in input_data_types)
+                        )
 
+                    # If the message passed the filters above, output it now.
                     if pass_through_message:
                         messages_forwarded += 1
                         if options.unwrap:
