@@ -83,6 +83,22 @@ jobs:
         echo "USE_BAZEL_VERSION=${{ matrix.bazel }}" >> $GITHUB_ENV
 
         if [[ "${{ matrix.compiler }}" == "gcc" ]]; then
+          # Some time between 2/9/2026 and 2/16/2026, the apt packages for
+          # backported versions of GCC earlier than the version included in
+          # Ubuntu 24.04 (GCC 13) suddenly stopped working (at least within the
+          # Github Action). It's not clear why. There's no record of that apt
+          # package being removed or no longer supported, but doing an
+          # apt install gcc-11 now returns a 404 when trying to fetch the
+          # package from any of the normal apt repos (security.ubuntu.com,
+          # archive.ubuntu.com). It may be inadvertent, but either way it means
+          # the builds no longer work.
+          #
+          # We'll pull older versions from the ubuntu-toolchain-r PPA as a
+          # workaround.
+          if [[ "${{ matrix.version }}" -le 11 ]]; then
+            sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
+          fi
+
           sudo apt install gcc-${{ matrix.version }} g++-${{ matrix.version }}
           sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-${{ matrix.version }} 100 \
             --slave /usr/bin/g++ g++ /usr/bin/g++-${{ matrix.version }} \
@@ -169,6 +185,22 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
       run: |
         if [[ "${{ matrix.compiler }}" == "gcc" ]]; then
+          # Some time between 2/9/2026 and 2/16/2026, the apt packages for
+          # backported versions of GCC earlier than the version included in
+          # Ubuntu 24.04 (GCC 13) suddenly stopped working (at least within the
+          # Github Action). It's not clear why. There's no record of that apt
+          # package being removed or no longer supported, but doing an
+          # apt install gcc-11 now returns a 404 when trying to fetch the
+          # package from any of the normal apt repos (security.ubuntu.com,
+          # archive.ubuntu.com). It may be inadvertent, but either way it means
+          # the builds no longer work.
+          #
+          # We'll pull older versions from the ubuntu-toolchain-r PPA as a
+          # workaround.
+          if [[ "${{ matrix.version }}" -le 11 ]]; then
+            sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
+          fi
+
           sudo apt install gcc-${{ matrix.version }} g++-${{ matrix.version }}
           sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-${{ matrix.version }} 100 \
             --slave /usr/bin/g++ g++ /usr/bin/g++-${{ matrix.version }} \
