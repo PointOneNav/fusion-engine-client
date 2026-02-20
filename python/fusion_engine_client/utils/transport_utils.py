@@ -142,6 +142,61 @@ class FileTransport:
             raise RuntimeError('Output file not opened.')
 
 
+class WebsocketTransport:
+    """!
+    @brief Websocket wrapper class, mimicking the Python socket API.
+
+    This class defers all function calls and attribute to the underlying `ws.ClientConnection` websocket instance. Any
+    function defined for `ClientConnection` should work on this class (e.g., `close()`).
+    """
+
+    def __init__(self, *args, **kwargs):
+        # Note: Omitting "_sec" from argument name for consistent with connect() arguments.
+        self._read_timeout_sec = kwargs.pop('read_timeout', None)
+
+        self._websocket = kwargs.pop('websocket', None)
+        if self._websocket is None:
+            self._websocket = ws.connect(*args, **kwargs)
+
+    def set_timeout(self, timeout_sec: float):
+        if timeout_sec < 0.0:
+            self._read_timeout_sec = None
+        else:
+            self._read_timeout_sec = timeout_sec
+
+    def recv(self, unused_size_bytes: int = None) -> bytes:
+        """!
+        @brief Receive data from the websocket.
+
+        @note
+        This function wraps the `ws.ClientConnection.recv()` function. WebSockets are not streaming transports, they are
+        message-oriented. The Python websocket library does not support reading a specified number of bytes. The
+        `unused_size_bytes` parameter is listed here for consistency with `socket.recv()`.
+
+        @param unused_size_bytes Unused.
+
+        @return The received bytes, or NOne on timeout.
+        """
+        try:
+            return self._websocket.recv(self._read_timeout_sec)
+        except TimeoutError as e:
+            # recv() raises a TimeoutError. We'll raise a socket.timeout exception instead for consistency with socket.
+            raise socket.timeout(str(e))
+
+    def __getattr__(self, item):
+        # Defer all queries for attributes and functions that are not members of this class to self._websocket.
+        # __getattribute__() will handle requests for members of this class (recv(), _read_timeout_sec, etc.), and
+        # __getattr() will not be called.
+        return getattr(self._websocket, item)
+
+    def __setattr__(self, item, value):
+        # There is no __setattribute__() like there is for get. See details in __getattr__().
+        if item in ('_read_timeout_sec', '_websocket'):
+            object.__setattr__(self, item, value)
+        else:
+            setattr(self._websocket, item, value)
+
+
 TRANSPORT_HELP_OPTIONS = """\
 - <empty string> - Read from stdin and/or write to stdout
 - [file://](PATH|-) - Read from/write to the specified file, or to stdin/stdout
@@ -166,10 +221,11 @@ The method used to communicate with the target device:
 {TRANSPORT_HELP_OPTIONS}
 """
 
+TransportType = Union[socket.socket, serial.Serial, WebsocketTransport, FileTransport]
+
 
 def create_transport(descriptor: str, timeout_sec: float = None, print_func: Callable = None, mode: str = 'both',
-                     stdout=sys.stdout) -> \
-        Union[socket.socket, serial.Serial, ws.ClientConnection, FileTransport]:
+                     stdout=sys.stdout) -> TransportType:
     # File: path, '-' (stdin/stdout), empty string (stdin/stdout)
     if descriptor in ('', '-'):
         descriptor = 'file://-'
@@ -251,7 +307,7 @@ def create_transport(descriptor: str, timeout_sec: float = None, print_func: Cal
             print_func(f'Connecting to {url}.')
 
         try:
-            transport = ws.connect(url, open_timeout=timeout_sec)
+            transport = WebsocketTransport(url, open_timeout=timeout_sec)
         except TimeoutError:
             raise TimeoutError(f'Timed out connecting to {url}.')
         return transport
