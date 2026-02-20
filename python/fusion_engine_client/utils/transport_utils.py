@@ -356,3 +356,39 @@ def create_transport(descriptor: str, timeout_sec: float = None, print_func: Cal
         return transport
 
     raise ValueError(f"Unsupported transport descriptor '{descriptor}'.")
+
+
+def recv_from_transport(transport: TransportType, size_bytes: int) -> bytes:
+    '''!
+    @brief Helper function for reading from any type of transport.
+
+    This function abstracts `recv()` vs `read()` calls regardless of transport type.
+
+    @param transport The transport to read from.
+    @param size_bytes The maximum number of bytes to read.
+
+    @return A `bytes` array.
+    '''
+    try:
+        if isinstance(transport, (socket.socket, WebsocketTransport)):
+            return transport.recv(size_bytes)
+        else:
+            return transport.read(size_bytes)
+    except (socket.timeout, TimeoutError):
+        return bytes()
+
+
+def set_read_timeout(transport: TransportType, timeout_sec: float):
+    if isinstance(transport, socket.socket):
+        if timeout_sec == 0:
+            transport.setblocking(False)
+        else:
+            transport.setblocking(True)
+            transport.settimeout(timeout_sec)
+    elif isinstance(transport, WebsocketTransport):
+        transport.set_timeout(timeout_sec)
+    elif isinstance(transport, serial.Serial):
+        transport.timeout = timeout_sec
+    else:
+        # Read timeout not applicable for files.
+        pass

@@ -164,10 +164,7 @@ data streams with no frame alignment enforced.""")
         while True:
             # Need to specify read size or read waits for end of file character.
             # This returns immediately even if 0 bytes are available.
-            if isinstance(input_transport, socket.socket):
-                received_data = input_transport.recv(64)
-            else:
-                received_data = input_transport.read(64)
+            received_data = recv_from_transport(input_transport, 64)
 
             if len(received_data) == 0:
                 time.sleep(0.1)

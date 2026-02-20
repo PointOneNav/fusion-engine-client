@@ -187,8 +187,7 @@ Supported formats include:
             _logger.error(f'--log-timestamp-source={options.log_timestamp_source} is not supported. Only "user-sw" timestamps are supported on non-socket captures.')
             sys.exit(1)
 
-        if isinstance(transport, serial.Serial):
-            transport.timeout = read_timeout_sec
+        set_read_timeout(transport, read_timeout_sec)
 
     # Listen for incoming data.
     decoder = FusionEngineDecoder(warn_on_unrecognized=not options.quiet and not options.summary, return_bytes=True)
@@ -227,7 +226,7 @@ Supported formats include:
                         received_data = []
                 # If this is a serial port or file, we set the read timeout above.
                 else:
-                    received_data = transport.read(1024)
+                    received_data = recv_from_transport(transport, 1024)
 
                 bytes_received += len(received_data)
 
