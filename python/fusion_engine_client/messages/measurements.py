@@ -1423,13 +1423,12 @@ Raw GNSS Attitude Output @ {str(self.details.p1_time)}
 
 
 class ExternalPoseInput(MessagePayload):
-    """!
-    @brief External pose measurement input.
+    """! @brief External pose measurement input.
 
-    Position and velocity are expressed in the ECEF frame. Orientation is the
-    yaw, pitch, roll (YPR) angles in the local ENU frame. Any elements that are
-    not available should be set to ``nan``. Standard deviation fields are
-    specified in the same units.
+    Position is expressed in the ECEF frame. Orientation is the yaw, pitch, roll
+    (YPR) angles in the local ENU frame. Velocity is expressed in the local ENU
+    frame. Any elements that are not available should be set to `nan`. Standard
+    deviation fields are specified in the same units.
     """
     MESSAGE_TYPE = MessageType.EXTERNAL_POSE_INPUT
     MESSAGE_VERSION = 0
@@ -1451,8 +1450,8 @@ class ExternalPoseInput(MessagePayload):
         self.ypr_deg = np.full((3,), np.nan)
         self.ypr_std_deg = np.full((3,), np.nan)
 
-        self.velocity_ecef_mps = np.full((3,), np.nan)
-        self.velocity_std_mps = np.full((3,), np.nan)
+        self.velocity_enu_mps = np.full((3,), np.nan)
+        self.velocity_std_enu_mps = np.full((3,), np.nan)
 
     def pack(self, buffer: bytes = None, offset: int = 0,
              return_buffer: bool = True) -> (bytes, int):
@@ -1472,8 +1471,8 @@ class ExternalPoseInput(MessagePayload):
             self.position_std_ecef_m[0], self.position_std_ecef_m[1], self.position_std_ecef_m[2],
             self.ypr_deg[0], self.ypr_deg[1], self.ypr_deg[2],
             self.ypr_std_deg[0], self.ypr_std_deg[1], self.ypr_std_deg[2],
-            self.velocity_ecef_mps[0], self.velocity_ecef_mps[1], self.velocity_ecef_mps[2],
-            self.velocity_std_mps[0], self.velocity_std_mps[1], self.velocity_std_mps[2])
+            self.velocity_enu_mps[0], self.velocity_enu_mps[1], self.velocity_enu_mps[2],
+            self.velocity_std_enu_mps[0], self.velocity_std_enu_mps[1], self.velocity_std_enu_mps[2])
         if return_buffer:
             return buffer
         else:
@@ -1491,8 +1490,8 @@ class ExternalPoseInput(MessagePayload):
          self.position_std_ecef_m[0], self.position_std_ecef_m[1], self.position_std_ecef_m[2],
          self.ypr_deg[0], self.ypr_deg[1], self.ypr_deg[2],
          self.ypr_std_deg[0], self.ypr_std_deg[1], self.ypr_std_deg[2],
-         self.velocity_ecef_mps[0], self.velocity_ecef_mps[1], self.velocity_ecef_mps[2],
-         self.velocity_std_mps[0], self.velocity_std_mps[1], self.velocity_std_mps[2]) = \
+         self.velocity_enu_mps[0], self.velocity_enu_mps[1], self.velocity_enu_mps[2],
+         self.velocity_std_enu_mps[0], self.velocity_std_enu_mps[1], self.velocity_std_enu_mps[2]) = \
             self._STRUCT.unpack_from(buffer, offset)
         offset += self._STRUCT.size
 
@@ -1508,13 +1507,13 @@ class ExternalPoseInput(MessagePayload):
     def to_numpy(cls, messages: Sequence['ExternalPoseInput']):
         result = {
             'solution_type': np.array([int(m.solution_type) for m in messages], dtype=int),
-            'flags': np.array([int(m.flags) for m in messages], dtype=np.uint32),
+            'flags': np.array([m.flags for m in messages], dtype=np.uint32),
             'position_ecef_m': np.array([m.position_ecef_m for m in messages]).T,
             'position_std_ecef_m': np.array([m.position_std_ecef_m for m in messages]).T,
             'ypr_deg': np.array([m.ypr_deg for m in messages]).T,
             'ypr_std_deg': np.array([m.ypr_std_deg for m in messages]).T,
-            'velocity_ecef_mps': np.array([m.velocity_ecef_mps for m in messages]).T,
-            'velocity_std_mps': np.array([m.velocity_std_mps for m in messages]).T,
+            'velocity_enu_mps': np.array([m.velocity_enu_mps for m in messages]).T,
+            'velocity_std_enu_mps': np.array([m.velocity_std_enu_mps for m in messages]).T,
         }
         result.update(MeasurementDetails.to_numpy([m.details for m in messages]))
         return result
@@ -1528,7 +1527,7 @@ class ExternalPoseInput(MessagePayload):
     def __repr__(self):
         result = super().__repr__()[:-1]
         result += f', solution_type={self.solution_type}, position_ecef={self.position_ecef_m}, ' \
-                  f'ypr_deg={self.ypr_deg}, velocity_ecef_mps={self.velocity_ecef_mps}]'
+                  f'ypr_deg={self.ypr_deg}, velocity_enu_mps={self.velocity_enu_mps}]'
         return result
 
     def __str__(self):
@@ -1538,8 +1537,8 @@ class ExternalPoseInput(MessagePayload):
         string += '  Position std (ECEF): %.2f, %.2f, %.2f (m, m, m)\n' % tuple(self.position_std_ecef_m)
         string += '  YPR: %.2f, %.2f, %.2f (deg, deg, deg)\n' % tuple(self.ypr_deg)
         string += '  YPR std: %.2f, %.2f, %.2f (deg, deg, deg)\n' % tuple(self.ypr_std_deg)
-        string += '  Velocity (ECEF): %.2f, %.2f, %.2f (m/s, m/s, m/s)\n' % tuple(self.velocity_ecef_mps)
-        string += '  Velocity std (ECEF): %.2f, %.2f, %.2f (m/s, m/s, m/s)' % tuple(self.velocity_std_mps)
+        string += '  Velocity (ENU): %.2f, %.2f, %.2f (m/s, m/s, m/s)\n' % tuple(self.velocity_enu_mps)
+        string += '  Velocity std (ENU): %.2f, %.2f, %.2f (m/s, m/s, m/s)' % tuple(self.velocity_std_enu_mps)
         return string
 
 ################################################################################

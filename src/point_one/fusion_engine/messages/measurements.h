@@ -1301,10 +1301,7 @@ struct P1_ALIGNAS(4) ExternalPoseInput : public MessagePayload {
   /** Measurement timestamp and additional information. */
   MeasurementDetails details;
 
-  /**
-   * Set to @ref SolutionType::RTKFixed when heading is available, or @ref
-   * SolutionType::Invalid otherwise.
-   */
+  /** The pose solution type provided by the external source. */
   SolutionType solution_type = SolutionType::Invalid;
 
   uint8_t reserved[3] = {0};
@@ -1312,20 +1309,40 @@ struct P1_ALIGNAS(4) ExternalPoseInput : public MessagePayload {
   /** A bitmask of flags associated with the measurement. */
   uint32_t flags = 0;
 
-  /** External position measurement (ECEF, meters). */
+  /**
+   * An estimate of the device's output position (in meters), resolved in the
+   * ECEF frame.
+   */
   double position_ecef_m[3] = {NAN, NAN, NAN};
-  /** External position standard deviation (ECEF, meters). */
+
+  /**
+   * An estimate of the device's output position standard deviation (in meters),
+   * resolved in the ECEF frame.
+   */
   float position_std_ecef_m[3] = {NAN, NAN, NAN};
 
-  /** External yaw/pitch/roll measurement (degrees). */
+  /** An estimate of the device's output orientation (in degrees), resolved in
+   * the local ENU tangent plane. See @ref PoseMessage::ypr_deg for a complete
+   * rotation definition.
+   */
   float ypr_deg[3] = {NAN, NAN, NAN};
-  /** External yaw/pitch/roll standard deviation (degrees). */
+
+  /** An estimate of the device's output orientation standard deviation (in
+   * degrees).
+   */
   float ypr_std_deg[3] = {NAN, NAN, NAN};
 
-  /** External velocity measurement (ECEF, meters/second). */
-  float velocity_ecef_mps[3] = {NAN, NAN, NAN};
-  /** External velocity standard deviation (ECEF, meters/second). */
-  float velocity_std_mps[3] = {NAN, NAN, NAN};
+  /**
+   * An estimate of the device's output velocity (in m/s), resolved in the local
+   * ENU tangent plane.
+   */
+  float velocity_enu_mps[3] = {NAN, NAN, NAN};
+
+  /**
+   * An estimate of the device's output velocity standard deviation (in m/s),
+   * resolved in the local ENU tangent plane.
+   */
+  float velocity_std_enu_mps[3] = {NAN, NAN, NAN};
 };
 
 ////////////////////////////////////////////////////////////////////////////////
