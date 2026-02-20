@@ -1,7 +1,7 @@
 import re
 import socket
 import sys
-from typing import BinaryIO, Callable, TextIO, Union
+from typing import Any, BinaryIO, Callable, TextIO, Union
 
 # WebSocket support is optional. To use, install with:
 #   pip install websockets
@@ -183,13 +183,13 @@ class WebsocketTransport:
             # recv() raises a TimeoutError. We'll raise a socket.timeout exception instead for consistency with socket.
             raise socket.timeout(str(e))
 
-    def __getattr__(self, item):
+    def __getattr__(self, item: str) -> Any:
         # Defer all queries for attributes and functions that are not members of this class to self._websocket.
         # __getattribute__() will handle requests for members of this class (recv(), _read_timeout_sec, etc.), and
         # __getattr() will not be called.
         return getattr(self._websocket, item)
 
-    def __setattr__(self, item, value):
+    def __setattr__(self, item: str, value: Any) -> None:
         # There is no __setattribute__() like there is for get. See details in __getattr__().
         if item in ('_read_timeout_sec', '_websocket'):
             object.__setattr__(self, item, value)
