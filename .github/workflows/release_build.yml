@@ -305,9 +305,11 @@ jobs:
         python3 docs/update_versions.py ${GIT_TAG}
 
     - name: Build Doxygen
-      uses: mattnotmitt/doxygen-action@v1.9.8
+      uses: jenseng/dynamic-uses@v1
       with:
-        doxyfile-path: 'Doxyfile'
+        uses: mattnotmitt/doxygen-action@v${{ matrix.doxygen }}
+        with: |
+          doxyfile-path: 'Doxyfile'
 
     - name: Package Artifact
       run: |
