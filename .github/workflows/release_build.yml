@@ -283,40 +283,12 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        doxygen: [1_8_18]
+        doxygen: [1.9.8]
     steps:
     - uses: actions/checkout@v2
       with:
         # Note: Checking out with full tag history for version query below.
         fetch-depth: 0
-
-    - name: Setup Doxygen Cache
-      uses: actions/cache@v4
-      id: cache-doxygen
-      with:
-        path: |
-          doxygen
-        key: doxygen-source-${{ matrix.doxygen }}
-
-    - name: Install CMake 3.16.x
-      uses: jwlawson/actions-setup-cmake@v1.14.1
-      with:
-        cmake-version: '3.16.x'
-
-    - name: Build Doxygen
-      if: steps.cache-doxygen.outputs.cache-hit != 'true'
-      run: |
-        sudo apt install -y flex bison
-        git clone --depth 1 --branch Release_${{ matrix.doxygen }} https://github.com/doxygen/doxygen.git
-        mkdir doxygen/build
-        cd doxygen/build
-        cmake ..
-        make -j4
-
-    - name: Install Doxygen
-      run: |
-        cd doxygen/build
-        sudo make install
 
     - name: Extract Tag Name
       if: startsWith(github.ref, 'refs/tags/') || endsWith(github.ref, '/master')
@@ -326,12 +298,21 @@ jobs:
       if: "!(startsWith(github.ref, 'refs/tags/') || endsWith(github.ref, '/master'))"
       run: echo "GIT_TAG=${GITHUB_SHA}" >> $GITHUB_ENV
 
-    - name: Build Documentation
+    - name: Insert Version
       run: |
         echo "Setting documentation version to: ${GIT_TAG}"
         pip install packaging
         python3 docs/update_versions.py ${GIT_TAG}
-        doxygen Doxyfile.version
+
+    - name: Build Doxygen
+      uses: jenseng/dynamic-uses@v1
+      with:
+        uses: mattnotmitt/doxygen-action@v${{ matrix.doxygen }}
+        with: |
+          doxyfile-path: 'Doxyfile'
+
+    - name: Package Artifact
+      run: |
         tar cf fusion-engine-client-docs.tar docs/html --transform 's|^docs/html|fusion-engine-client/docs/html|'
         tar rf fusion-engine-client-docs.tar docs/xml --transform 's|^docs/xml|fusion-engine-client/docs/xml|'
         gzip fusion-engine-client-docs.tar
