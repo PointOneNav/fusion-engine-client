@@ -357,13 +357,13 @@ P1_CONSTEXPR_FUNC bool IsCommand(MessageType message_type) {
     case MessageType::IMU_INPUT:
     case MessageType::GNSS_ATTITUDE_OUTPUT:
     case MessageType::RAW_GNSS_ATTITUDE_OUTPUT:
+    case MessageType::EXTERNAL_POSE_INPUT:
     case MessageType::DEPRECATED_WHEEL_SPEED_MEASUREMENT:
     case MessageType::DEPRECATED_VEHICLE_SPEED_MEASUREMENT:
     case MessageType::WHEEL_TICK_INPUT:
     case MessageType::VEHICLE_TICK_INPUT:
     case MessageType::WHEEL_SPEED_INPUT:
     case MessageType::VEHICLE_SPEED_INPUT:
-    case MessageType::EXTERNAL_POSE_INPUT:
     case MessageType::RAW_WHEEL_TICK_OUTPUT:
     case MessageType::RAW_VEHICLE_TICK_OUTPUT:
     case MessageType::RAW_WHEEL_SPEED_OUTPUT:
