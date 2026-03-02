@@ -1418,6 +1418,130 @@ Raw GNSS Attitude Output @ {str(self.details.p1_time)}
         return result
 
 ################################################################################
+# External Pose Measurements
+################################################################################
+
+
+class ExternalPoseInput(MessagePayload):
+    """! @brief External pose measurement input.
+
+    Position is expressed in the ECEF frame. Orientation is the yaw, pitch, roll
+    (YPR) angles in the local ENU frame. Velocity is expressed in the local ENU
+    frame. Any elements that are not available should be set to `nan`. Standard
+    deviation fields are specified in the same units.
+    """
+    MESSAGE_TYPE = MessageType.EXTERNAL_POSE_INPUT
+    MESSAGE_VERSION = 0
+
+    FLAG_RESET_POSITION_DATA = 0x1
+
+    _STRUCT = struct.Struct('<B3xI3d3f3f3f3f3f')
+
+    def __init__(self):
+        self.details = MeasurementDetails()
+
+        self.solution_type = SolutionType.Invalid
+
+        self.flags = 0
+
+        self.position_ecef_m = np.full((3,), np.nan)
+        self.position_std_ecef_m = np.full((3,), np.nan)
+
+        self.ypr_deg = np.full((3,), np.nan)
+        self.ypr_std_deg = np.full((3,), np.nan)
+
+        self.velocity_enu_mps = np.full((3,), np.nan)
+        self.velocity_std_enu_mps = np.full((3,), np.nan)
+
+    def pack(self, buffer: bytes = None, offset: int = 0,
+             return_buffer: bool = True) -> (bytes, int):
+        if buffer is None:
+            buffer = bytearray(self.calcsize())
+            offset = 0
+
+        initial_offset = offset
+
+        offset += self.details.pack(buffer, offset, return_buffer=False)
+
+        offset += self.pack_values(
+            self._STRUCT, buffer, offset,
+            int(self.solution_type),
+            self.flags,
+            self.position_ecef_m[0], self.position_ecef_m[1], self.position_ecef_m[2],
+            self.position_std_ecef_m[0], self.position_std_ecef_m[1], self.position_std_ecef_m[2],
+            self.ypr_deg[0], self.ypr_deg[1], self.ypr_deg[2],
+            self.ypr_std_deg[0], self.ypr_std_deg[1], self.ypr_std_deg[2],
+            self.velocity_enu_mps[0], self.velocity_enu_mps[1], self.velocity_enu_mps[2],
+            self.velocity_std_enu_mps[0], self.velocity_std_enu_mps[1], self.velocity_std_enu_mps[2])
+        if return_buffer:
+            return buffer
+        else:
+            return offset - initial_offset
+
+    def unpack(self, buffer: bytes, offset: int = 0,
+               message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
+        initial_offset = offset
+
+        offset += self.details.unpack(buffer, offset)
+
+        (solution_type_int,
+         self.flags,
+         self.position_ecef_m[0], self.position_ecef_m[1], self.position_ecef_m[2],
+         self.position_std_ecef_m[0], self.position_std_ecef_m[1], self.position_std_ecef_m[2],
+         self.ypr_deg[0], self.ypr_deg[1], self.ypr_deg[2],
+         self.ypr_std_deg[0], self.ypr_std_deg[1], self.ypr_std_deg[2],
+         self.velocity_enu_mps[0], self.velocity_enu_mps[1], self.velocity_enu_mps[2],
+         self.velocity_std_enu_mps[0], self.velocity_std_enu_mps[1], self.velocity_std_enu_mps[2]) = \
+            self._STRUCT.unpack_from(buffer, offset)
+        offset += self._STRUCT.size
+
+        self.solution_type = SolutionType(solution_type_int)
+
+        return offset - initial_offset
+
+    @classmethod
+    def calcsize(cls) -> int:
+        return MeasurementDetails.calcsize() + cls._STRUCT.size
+
+    @classmethod
+    def to_numpy(cls, messages: Sequence['ExternalPoseInput']):
+        result = {
+            'solution_type': np.array([int(m.solution_type) for m in messages], dtype=int),
+            'flags': np.array([m.flags for m in messages], dtype=np.uint32),
+            'position_ecef_m': np.array([m.position_ecef_m for m in messages]).T,
+            'position_std_ecef_m': np.array([m.position_std_ecef_m for m in messages]).T,
+            'ypr_deg': np.array([m.ypr_deg for m in messages]).T,
+            'ypr_std_deg': np.array([m.ypr_std_deg for m in messages]).T,
+            'velocity_enu_mps': np.array([m.velocity_enu_mps for m in messages]).T,
+            'velocity_std_enu_mps': np.array([m.velocity_std_enu_mps for m in messages]).T,
+        }
+        result.update(MeasurementDetails.to_numpy([m.details for m in messages]))
+        return result
+
+    def __getattr__(self, item):
+        if item == 'p1_time':
+            return self.details.p1_time
+        else:
+            return super().__getattr__(item)
+
+    def __repr__(self):
+        result = super().__repr__()[:-1]
+        result += f', solution_type={self.solution_type}, position_ecef={self.position_ecef_m}, ' \
+                  f'ypr_deg={self.ypr_deg}, velocity_enu_mps={self.velocity_enu_mps}]'
+        return result
+
+    def __str__(self):
+        string = 'External Pose Measurement @ %s\n' % str(self.details.p1_time)
+        string += '  Solution type: %s\n' % self.solution_type.name
+        string += '  Position (ECEF): %.2f, %.2f, %.2f (m, m, m)\n' % tuple(self.position_ecef_m)
+        string += '  Position std (ECEF): %.2f, %.2f, %.2f (m, m, m)\n' % tuple(self.position_std_ecef_m)
+        string += '  YPR: %.2f, %.2f, %.2f (deg, deg, deg)\n' % tuple(self.ypr_deg)
+        string += '  YPR std: %.2f, %.2f, %.2f (deg, deg, deg)\n' % tuple(self.ypr_std_deg)
+        string += '  Velocity (ENU): %.2f, %.2f, %.2f (m/s, m/s, m/s)\n' % tuple(self.velocity_enu_mps)
+        string += '  Velocity std (ENU): %.2f, %.2f, %.2f (m/s, m/s, m/s)' % tuple(self.velocity_std_enu_mps)
+        return string
+
+################################################################################
 # Binary Sensor Data Definitions
 ################################################################################
 

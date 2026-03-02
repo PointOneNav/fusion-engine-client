@@ -98,7 +98,7 @@ def test_find_message_types():
     # Use wildcards to match multiple types.
     assert MessagePayload.find_matching_message_types(['pose*']) == {MessageType.POSE, MessageType.POSE_AUX}
     assert MessagePayload.find_matching_message_types(['*pose*']) == {MessageType.POSE, MessageType.POSE_AUX,
-                                                                      MessageType.ROS_POSE}
+                                                                      MessageType.EXTERNAL_POSE_INPUT, MessageType.ROS_POSE}
     assert MessagePayload.find_matching_message_types(['pose*', 'gnssi*']) == {MessageType.POSE, MessageType.POSE_AUX,
                                                                                MessageType.GNSS_INFO}
     assert MessagePayload.find_matching_message_types(['pose*,gnssi*']) == {MessageType.POSE, MessageType.POSE_AUX,
