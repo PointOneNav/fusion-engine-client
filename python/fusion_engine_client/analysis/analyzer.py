@@ -2399,7 +2399,6 @@ figure.on('plotly_hover', function(data) {{
                 row=1, col=1
             )
 
-
         # Corrected heading plot
         if len(heading_data.p1_time) > 0:
             p1_time = heading_data.p1_time

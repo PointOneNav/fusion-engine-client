@@ -802,16 +802,18 @@ def PackedDataToBuffer(packed_data: bytes, buffer: Optional[bytes] = None, offse
 def yaw_to_heading(yaw: Union[float, np.ndarray], deg: bool = True):
     if deg:
         heading_deg = 90.0 - yaw
-        return np.fmod(heading_deg + 180.0, 360.0)
+        return heading_deg % 360.0
     else:
         heading_rad = math.pi / 2.0 - yaw
-        return np.fmod(heading_rad + math.pi, 2.0 * math.pi)
+        return heading_rad % (2.0 * math.pi)
 
 
 def heading_to_yaw(heading: Union[float, np.ndarray], deg: bool = True):
     if deg:
         yaw_deg = 90.0 - heading
-        return np.fmod(yaw_deg + 180.0, 360.0) - 180.0
+        yaw_deg = (yaw_deg + 180.0) % 360.0 - 180.0
+        return np.where(yaw_deg == 180.0, -180.0, yaw_deg)
     else:
         yaw_rad = math.pi / 2.0 - heading
-        return np.fmod(yaw_rad + math.pi, 2.0 * math.pi) - math.pi
+        yaw_rad = (yaw_rad + math.pi) % (2.0 * math.pi) - math.pi
+        return np.where(yaw_rad == math.pi, -math.pi, yaw_rad)
