@@ -10,7 +10,7 @@ time, as well as processing recorded output data. Both C++ and Python are suppor
 Click here to download the latest FusionEngine protocol specification PDF:
 [Point One FusionEngine Message Specification](https://pointonenav.com/resources/#fusion)
 
-See http://docs.pointonenav.com/fusion-engine/ for the latest C++ API documentation.
+See https://docs.pointonenav.com/docs/fusion-engine-client/ for the latest C++ API documentation.
 
 This library is released under the [MIT license agreement](LICENSE). We welcome code and documentation contributions
 from users. See [Contributing](CONTRIBUTING.md) for instructions on how to report issues and develop, test, and submit
