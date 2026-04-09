@@ -221,11 +221,11 @@ The method used to communicate with the target device:
 {TRANSPORT_HELP_OPTIONS}
 """
 
-TransportType = Union[socket.socket, serial.Serial, WebsocketTransport, FileTransport]
+TransportClass = Union[socket.socket, serial.Serial, WebsocketTransport, FileTransport]
 
 
 def create_transport(descriptor: str, timeout_sec: float = None, print_func: Callable = None, mode: str = 'both',
-                     stdout=sys.stdout) -> TransportType:
+                     stdout=sys.stdout) -> TransportClass:
     # File: path, '-' (stdin/stdout), empty string (stdin/stdout)
     if descriptor in ('', '-'):
         descriptor = 'file://-'
@@ -358,7 +358,7 @@ def create_transport(descriptor: str, timeout_sec: float = None, print_func: Cal
     raise ValueError(f"Unsupported transport descriptor '{descriptor}'.")
 
 
-def recv_from_transport(transport: TransportType, size_bytes: int) -> bytes:
+def recv_from_transport(transport: TransportClass, size_bytes: int) -> bytes:
     '''!
     @brief Helper function for reading from any type of transport.
 
@@ -378,7 +378,7 @@ def recv_from_transport(transport: TransportType, size_bytes: int) -> bytes:
         return bytes()
 
 
-def set_read_timeout(transport: TransportType, timeout_sec: float):
+def set_read_timeout(transport: TransportClass, timeout_sec: float):
     if isinstance(transport, socket.socket):
         if timeout_sec == 0:
             transport.setblocking(False)
