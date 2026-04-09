@@ -17,7 +17,7 @@ def add_print_format_argument(parser: argparse._ActionsContainer, *arg_names):
                  'oneline', 'oneline-detailed', 'oneline-binary', 'oneline-binary-payload'],
         default='pretty',
         help="Specify the format used to print the message contents:\n"
-             "- Print the binary representation of each message on a single line, but no other details\n"
+             "- binary - Print the binary representation of each message on a single line, but no other details\n"
              "- pretty - Print the message contents in a human-readable format (default)\n"
              "- pretty-binary - Use `pretty` format, but include the binary representation of each message\n"
              "- pretty-binary-payload - Like `pretty-binary`, but exclude the message header from the binary\n"
