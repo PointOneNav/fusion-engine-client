@@ -1546,6 +1546,18 @@ class ExternalPoseInput(MessagePayload):
 ################################################################################
 
 
+class InputDataType(IntEnum):
+    M_TYPE_UNKNOWN = 0x00
+    M_TYPE_RTCM3_POLARIS = 0x21
+    M_TYPE_EXTERNAL_UNFRAMED_GNSS = 0x42
+    M_TYPE_EXTERNAL_FRAMED_GNSS = 0x44
+    M_TYPE_RTCM3_POLARIS_EPHEM = 0x77
+    M_TYPE_RTCM3_UNKNOWN = 0x100
+
+    def to_string(self, include_value=True, print_hex=True):
+        return super().to_string(include_value=include_value, print_hex=print_hex)
+
+
 class InputDataWrapperMessage(MessagePayload):
     """!
     @brief Wrapper for arbitrary data packets.
