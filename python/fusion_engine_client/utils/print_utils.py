@@ -30,6 +30,24 @@ def add_print_format_argument(parser: argparse._ActionsContainer, *arg_names):
 def print_message(header: MessageHeader, contents: Union[MessagePayload, bytes],
                   offset_bytes: Optional[int] = None, format: str = 'pretty', bytes: Optional[int] = None,
                   logger: Optional[logging.Logger] = None):
+    """!
+    @brief Print the specified FusionEngine message to the console or provided `Logger` instance.
+
+    @param header The header of the message to be printed.
+    @param contents The payload of the message to be printed, or a `bytes` object if the message was not recognized.
+    @param offset_bytes The offset of this message (in bytes) within the input data stream.
+    @param format The format used to print the message contents:
+           - `binary` - Print the binary representation of each message on a single line, but no other details
+           - `pretty` - Print the message contents in a human-readable format (default)
+           - `pretty-binary` - Use `pretty` format, but include the binary representation of each message
+           - `pretty-binary-payload` - Like `pretty-binary`, but exclude the message header from the binary
+           - `oneline` - Print a summary of each message on a single line
+           - `oneline-detailed` - Print a one-line summary, including message offset details
+           - `oneline-binary` - Use `oneline-detailed` format, but include the binary representation of each message
+           - `oneline-binary-payload` - Like `oneline-binary`, but exclude the message header from the binary
+    @param bytes The binary representation of the message.
+    @param logger A `logging.Logger` instance with which the output will be printed.
+    """
     if logger is None:
         logger = _logger
 
