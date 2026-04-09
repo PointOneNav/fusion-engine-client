@@ -113,7 +113,7 @@ class MessageStatsEntry:
 
     def update(self, header: MessageHeader, message: MessagePayload):
         self.count += 1
-        self.total_bytes = header.get_message_size()
+        self.total_bytes += header.get_message_size()
 
 
 class DeviceSummary:
