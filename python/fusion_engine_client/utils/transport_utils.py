@@ -1,3 +1,4 @@
+import os
 import re
 import socket
 import sys
@@ -230,9 +231,9 @@ def create_transport(descriptor: str, timeout_sec: float = None, print_func: Cal
     if descriptor in ('', '-'):
         descriptor = 'file://-'
 
-    m = re.match(r'^(?:file://)?([a-zA-Z0-9-_./]+)$', descriptor)
+    m = re.match(r'^(?:file://)?((?:~/)?[a-zA-Z0-9-_./]+)$', descriptor)
     if m:
-        path = m.group(1)
+        path = os.path.expanduser(m.group(1))
         if mode == 'both':
             if path != '-':
                 raise ValueError("Cannot open a file for both read and write access.")
