@@ -165,9 +165,7 @@ Supported formats include:
 
         # Now open the transport/file.
         output_file = create_transport(options.output, mode='output', print_func=_print_info)
-
-        if isinstance(output_file, VirtualSerial):
-            _logger.info(f'Writing output to: {output_file}')
+        _print_info(f'Writing output to: {output_file}')
 
         # If requested when logging to disk, also capture host OS timestamps as messages arrive.
         if options.log_timestamp_source:
