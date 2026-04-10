@@ -98,6 +98,8 @@ Supported formats include:
     if options.quiet:
         options.display = False
 
+    # Configure logging.
+    #
     # If the user is sending output to stdout, route all other messages to stderr so the logging prints and the data
     # don't get mixed up. Otherwise, print to stdout.
     if options.output in ('', '-', 'file://-'):
@@ -105,7 +107,6 @@ Supported formats include:
     else:
         logging_stream = sys.stdout
 
-    # Configure logging.
     if options.verbose >= 1:
         logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(name)s:%(lineno)d - %(message)s',
                             stream=logging_stream)
@@ -119,6 +120,12 @@ Supported formats include:
 
     HighlightFormatter.install(color=True, standoff_level=logging.WARNING)
     BrokenPipeStreamHandler.install()
+
+    def _print_info(msg, *args, **kwargs):
+        if options.quiet:
+            pass
+        else:
+            _logger.info(*args, **kwargs)
 
     # If the user specified a set of message names, lookup their type values. Below, we will limit the printout to only
     # those message types.
@@ -141,7 +148,7 @@ Supported formats include:
 
     # Connect to the device using the specified transport.
     try:
-        transport = create_transport(options.transport, mode='input')
+        transport = create_transport(options.transport, mode='input', print_func=_print_info)
     except Exception as e:
         _logger.error(str(e))
         sys.exit(1)
@@ -154,7 +161,7 @@ Supported formats include:
             if os.path.exists(p1i_path):
                 os.remove(p1i_path)
 
-        output_file = create_transport(options.output, mode='output')
+        output_file = create_transport(options.output, mode='output', print_func=_print_info)
 
         if isinstance(output_file, VirtualSerial):
             _logger.info(f'Writing output to: {output_file}')
@@ -205,8 +212,8 @@ Supported formats include:
         if options.summary:
             # Clear the terminal.
             print(colorama.ansi.CSI + 'H' + colorama.ansi.CSI + 'J', end='', file=logging_stream)
-        _logger.info('Status: [bytes_received=%d, messages_received=%d, elapsed_time=%d sec]' %
-                     (bytes_received, messages_received, (now - start_time).total_seconds()))
+        _print_info('Status: [bytes_received=%d, messages_received=%d, elapsed_time=%d sec]' %
+                    (bytes_received, messages_received, (now - start_time).total_seconds()))
         if options.summary:
             print_summary_table(device_summary)
 
