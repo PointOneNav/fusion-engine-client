@@ -3130,7 +3130,7 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
         # Create a global variable with the log's t0 timestamp.
         post_script += f"""\
 var p1_t0_sec = {float(self.reader.t0)};
-var p1_time_axis_rel = {'true' if self.time_axis == 'relative' else 'false'}
+var p1_time_axis_rel = {'true' if self.time_axis == 'relative' else 'false'};
 """
 
         # Inject common plotly data support functions (GetTimeText(), etc.).

@@ -17,7 +17,7 @@ def add_print_format_argument(parser: argparse._ActionsContainer, *arg_names):
                  'oneline', 'oneline-detailed', 'oneline-binary', 'oneline-binary-payload'],
         default='pretty',
         help="Specify the format used to print the message contents:\n"
-             "- Print the binary representation of each message on a single line, but no other details\n"
+             "- binary - Print the binary representation of each message on a single line, but no other details\n"
              "- pretty - Print the message contents in a human-readable format (default)\n"
              "- pretty-binary - Use `pretty` format, but include the binary representation of each message\n"
              "- pretty-binary-payload - Like `pretty-binary`, but exclude the message header from the binary\n"
@@ -30,6 +30,24 @@ def add_print_format_argument(parser: argparse._ActionsContainer, *arg_names):
 def print_message(header: MessageHeader, contents: Union[MessagePayload, bytes],
                   offset_bytes: Optional[int] = None, format: str = 'pretty', bytes: Optional[int] = None,
                   logger: Optional[logging.Logger] = None):
+    """!
+    @brief Print the specified FusionEngine message to the console or provided `Logger` instance.
+
+    @param header The header of the message to be printed.
+    @param contents The payload of the message to be printed, or a `bytes` object if the message was not recognized.
+    @param offset_bytes The offset of this message (in bytes) within the input data stream.
+    @param format The format used to print the message contents:
+           - `binary` - Print the binary representation of each message on a single line, but no other details
+           - `pretty` - Print the message contents in a human-readable format (default)
+           - `pretty-binary` - Use `pretty` format, but include the binary representation of each message
+           - `pretty-binary-payload` - Like `pretty-binary`, but exclude the message header from the binary
+           - `oneline` - Print a summary of each message on a single line
+           - `oneline-detailed` - Print a one-line summary, including message offset details
+           - `oneline-binary` - Use `oneline-detailed` format, but include the binary representation of each message
+           - `oneline-binary-payload` - Like `oneline-binary`, but exclude the message header from the binary
+    @param bytes The binary representation of the message.
+    @param logger A `logging.Logger` instance with which the output will be printed.
+    """
     if logger is None:
         logger = _logger
 
@@ -95,7 +113,7 @@ class MessageStatsEntry:
 
     def update(self, header: MessageHeader, message: MessagePayload):
         self.count += 1
-        self.total_bytes = header.get_message_size()
+        self.total_bytes += header.get_message_size()
 
 
 class DeviceSummary:
@@ -117,6 +135,7 @@ def print_summary_table(device_summary: DeviceSummary, logger: Optional[logging.
     if logger is None:
         logger = _logger
 
+    # Print high-level device/software info.
     device_type = DeviceType.UNKNOWN
     device_id = '<Unknown>'
     if device_summary.device_id is not None:
@@ -131,10 +150,28 @@ def print_summary_table(device_summary: DeviceSummary, logger: Optional[logging.
     else:
         logger.info(f'Software version: <Unknown>')
 
-    format_string = '| {:<50} | {:>5} | {:>8} |'
-    logger.info(format_string.format('Message Name', 'Type', 'Count'))
-    logger.info(format_string.format('-' * 50, '-' * 5, '-' * 8))
+    # Print a table with stats for all FusionEngine messages in the data.
+    def _print_table_header(cols: List[Dict]):
+        col_width = [max(len(c['name']), c.get('min_width', 0)) for c in cols]
+        formats = ['{:%s%d}' % (c.get('align', '>'), col_width[i]) for i, c in enumerate(cols)]
+        format_string = '| ' + ' | '.join(formats) + ' |'
+
+        logger.info('')
+        logger.info(format_string.format(*[c['name'] for c in cols]))
+        dividers = ['-' * col_width[i] for i, _ in enumerate(cols)]
+        logger.info(format_string.format(*dividers))
+
+        return format_string, dividers
+
+    cols = [
+        {'name': 'Message Name', 'align': '<', 'min_width': 50},
+        {'name': 'Type', 'min_width': 5},
+        {'name': 'Count', 'min_width': 8},
+        {'name': 'Total Size (B)'}
+    ]
+    format_string, dividers = _print_table_header(cols)
     total_messages = 0
+    total_bytes = 0
     for type, entry in sorted(device_summary.stats.items(), key=lambda x: int(x[0])):
         if type in message_type_to_class:
             name = message_type_to_class[type].__name__
@@ -142,7 +179,8 @@ def print_summary_table(device_summary: DeviceSummary, logger: Optional[logging.
             name = str(type)
         else:
             name = f'Unsupported ({str(type)})'
-        logger.info(format_string.format(name, int(type), entry.count))
+        logger.info(format_string.format(name, int(type), entry.count, entry.total_bytes))
         total_messages += entry.count
-    logger.info(format_string.format('-' * 50, '-' * 5, '-' * 8))
-    logger.info(format_string.format('Total', '', total_messages))
+        total_bytes += entry.total_bytes
+    logger.info(format_string.format(*dividers))
+    logger.info(format_string.format('Total', '', total_messages, total_bytes))
