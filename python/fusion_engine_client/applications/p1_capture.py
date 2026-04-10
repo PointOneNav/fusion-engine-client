@@ -153,23 +153,32 @@ Supported formats include:
         _logger.error(str(e))
         sys.exit(1)
 
-    # Open the output file if logging was requested.
+    # Open the output file (or transport) if logging was requested.
+    output_file = None
     timestamp_file = None
     if options.output is not None:
+        # If writing to a .p1log file, if there's an existing index file (.p1i) for that filename, delete it.
         if options.output_format == 'p1log':
             p1i_path = os.path.splitext(options.output)[0] + '.p1i'
             if os.path.exists(p1i_path):
                 os.remove(p1i_path)
 
+        # Now open the transport/file.
         output_file = create_transport(options.output, mode='output', print_func=_print_info)
 
         if isinstance(output_file, VirtualSerial):
             _logger.info(f'Writing output to: {output_file}')
 
-        if options.log_timestamp_source and options.output_format != 'csv':
-            timestamp_file = open(options.output + TIMESTAMP_FILE_ENDING, 'wb')
-    else:
-        output_file = None
+        # If requested when logging to disk, also capture host OS timestamps as messages arrive.
+        if options.log_timestamp_source:
+            if not isinstance(output_file, FileTransport) or output_file.output_path == 'stdout':
+                _logger.error('--log-timestamp-source can only be used when --output is a file.')
+                sys.exit(1)
+            elif options.output_format == 'csv':
+                _logger.error('--log-timestamp-source only supported for binary output files.')
+                sys.exit(1)
+            else:
+                timestamp_file = open(options.output + TIMESTAMP_FILE_ENDING, 'wb')
 
     generating_raw_log = (output_file is not None and options.output_format == 'raw')
     generating_p1log = (output_file is not None and options.output_format == 'p1log')
@@ -191,7 +200,8 @@ Supported formats include:
     # If this is a serial port, configure its read timeout.
     else:
         if options.log_timestamp_source and options.log_timestamp_source != 'user-sw':
-            _logger.error(f'--log-timestamp-source={options.log_timestamp_source} is not supported. Only "user-sw" timestamps are supported on non-socket captures.')
+            _logger.error(f'--log-timestamp-source={options.log_timestamp_source} is not supported. Only "user-sw" '
+                          f'timestamps are supported on non-socket captures.')
             sys.exit(1)
 
         set_read_timeout(transport, read_timeout_sec)
