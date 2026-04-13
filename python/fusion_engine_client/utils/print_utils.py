@@ -73,7 +73,7 @@ def print_message(header: MessageHeader, contents: Union[MessagePayload, bytes],
     if logger is None:
         logger = _logger
 
-    is_requested = message_types is None or header.message_type in message_types
+    is_requested = message_types is None or len(message_types) == 0 or header.message_type in message_types
     if header.message_type == MessageType.INPUT_DATA_WRAPPER:
         wrapped_fe_header = contents.get_fe_content_header()
         if is_requested:
