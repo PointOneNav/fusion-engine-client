@@ -26,11 +26,11 @@ def add_print_format_argument(parser: argparse._ActionsContainer, *arg_names):
              "- oneline-binary - Use `oneline-detailed` format, but include the binary representation of each message\n"
              "- oneline-binary-payload - Like `oneline-binary`, but exclude the message header from the binary")
 
-def add_wrapped_data_mode_argument(parser: argparse._ActionsContainer, *arg_names):
+def add_wrapped_data_mode_argument(parser: argparse._ActionsContainer, *arg_names, default='parent'):
     parser.add_argument(
         *arg_names,
         choices=['auto', 'all', 'parent', 'content'],
-        default='parent',
+        default=default,
         help="Specify the way in which InputDataWrapper messages should be handled:\n"
              "- auto - Use 'all' mode unless specific message types are specified, in which case use 'content' mode "
              "and only print the wrapped contents.\n"
