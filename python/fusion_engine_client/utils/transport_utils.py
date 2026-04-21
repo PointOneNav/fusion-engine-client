@@ -253,7 +253,7 @@ def create_transport(descriptor: str, timeout_sec: float = None, print_func: Cal
                     print_func(f'Writing to stdout.')
                 else:
                     print_func(f'Writing to {path}.')
-            transport = FileTransport(input=None, output=stdout.buffer)
+            transport = FileTransport(input=None, output=path)
         else:
             raise ValueError(f"Unsupported file mode '{mode}'.")
         return transport
