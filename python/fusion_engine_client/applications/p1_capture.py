@@ -387,19 +387,19 @@ class Application:
             # When not in unwrap mode, the user may or may not have requested InputDataWrapper. However, if they set
             # --wrapped-data-format=auto|all|content, we will pass wrappers through here and filter them out below.
             pass_through_message = (
-                    len(self.message_types) == 0 or
-                    (self.options.invert and header.message_type not in self.message_types) or
-                    (not self.options.invert and header.message_type in self.message_types) or
-                    header.message_type == MessageType.INPUT_DATA_WRAPPER and self.include_input_data_wrapper
+                len(self.message_types) == 0 or
+                (self.options.invert and header.message_type not in self.message_types) or
+                (not self.options.invert and header.message_type in self.message_types) or
+                header.message_type == MessageType.INPUT_DATA_WRAPPER and self.include_input_data_wrapper
             )
 
             # If this is an InputDataWrapper and the user specified a list of data types to keep, keep only the
             # messages with that kind of data. If the list is empty, keep all messages.
             if pass_through_message and header.message_type == MessageType.INPUT_DATA_WRAPPER:
                 pass_through_message = (
-                        len(self.input_data_types) == 0 or
-                        (self.options.invert and message.data_type not in self.input_data_types) or
-                        (not self.options.invert and message.data_type in self.input_data_types)
+                    len(self.input_data_types) == 0 or
+                    (self.options.invert and message.data_type not in self.input_data_types) or
+                    (not self.options.invert and message.data_type in self.input_data_types)
                 )
 
             if pass_through_message:
