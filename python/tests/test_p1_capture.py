@@ -516,3 +516,68 @@ class TestApplication:
         self._write_fe_messages(path, specs)
         app = self._run(path, message_type=['Pose'], max=2)
         assert app.messages_sent == 2
+
+    # -------------------------------------------------------------------------
+    # Bug: relative time range with a defined start (BUG — these tests fail)
+    #
+    # Root cause: Application passes the same TimeRange object to MixedLogReader
+    # (index pre-filter) and to _apply_filters (per-message filter). MixedLogReader
+    # consumes the stateful relative-time tracking while iterating the index, so
+    # _apply_filters sees a TimeRange whose internal state is already wrong.
+    #
+    # Fix: copy the TimeRange before handing it to MixedLogReader, or skip the
+    # _apply_filters time-range check entirely when log_reader is set (since
+    # MixedLogReader already filtered).
+
+    def test_time_range_relative_closed(self, tmp):
+        """Relative range [1, 3) must return messages at t=1 and t=2."""
+        path = tmp / 'input.p1log'
+        self._write_fe_messages(path, [(PoseMessage, float(i)) for i in range(6)])
+        app = self._run(path, time='1:3')
+        assert app.messages_sent == 2  # currently returns 1
+
+    def test_time_range_relative_open_end(self, tmp):
+        """Relative range [4, ∞) must return messages at t=4 and t=5."""
+        path = tmp / 'input.p1log'
+        self._write_fe_messages(path, [(PoseMessage, float(i)) for i in range(6)])
+        app = self._run(path, time='4:')
+        assert app.messages_sent == 2  # currently returns 0
+
+    # -------------------------------------------------------------------------
+    # Bug: --invert with --message-type on file input (BUG — these tests fail)
+    #
+    # Root cause: Application passes message_types to MixedLogReader regardless
+    # of whether --invert is set. MixedLogReader pre-filters the file to only
+    # those types; _apply_filters then inverts and discards them all, yielding 0.
+    #
+    # Fix: do not pass message_types to MixedLogReader when invert=True.
+
+    def test_message_type_invert_single(self, tmp):
+        """--invert --message-type=Pose must forward everything except Pose."""
+        path = tmp / 'input.p1log'
+        out = tmp / 'out.p1log'
+        self._write_fe_messages(path, [
+            (PoseMessage, 0.0),
+            (PoseMessage, 1.0),
+            (GNSSInfoMessage, 1.0),
+        ])
+        app = self._run(path, output=str(out), output_format='p1log',
+                        message_type=['Pose'], invert=True)
+        assert app.messages_sent == 1  # currently returns 0
+        types = [t for t, _ in self._read_output(out)]
+        assert types == [MessageType.GNSS_INFO]
+
+    def test_message_type_invert_multiple(self, tmp):
+        """--invert with multiple types excludes all of them."""
+        path = tmp / 'input.p1log'
+        out = tmp / 'out.p1log'
+        self._write_fe_messages(path, [
+            (PoseMessage, 0.0),
+            (GNSSInfoMessage, 0.0),
+            (EventNotificationMessage, None),
+        ])
+        app = self._run(path, output=str(out), output_format='p1log',
+                        message_type=['Pose', 'GNSSInfo'], invert=True)
+        assert app.messages_sent == 1  # currently returns 0
+        types = [t for t, _ in self._read_output(out)]
+        assert types == [MessageType.EVENT_NOTIFICATION]
