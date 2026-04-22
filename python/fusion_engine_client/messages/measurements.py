@@ -1567,45 +1567,63 @@ class InputDataWrapperMessage(MessagePayload):
 
     CENTI_NANO_SCALE_FACTOR = 10_000_000
 
-    Construct = Struct(
-        # 5 byte, unsigned, little endian integer
-        "system_time_cs" / BytesInteger(5, swapped=True),
-        Padding(1),
-        "data_type" / Int16ul,
-        # NOTE: Since this message does no capture the expected data size, the Construct relies on the size of the
-        # Python buffer passed to `unpack`` to infer the size of the data. This is the behavior of @ref GreedyBytes.
-        "data" / GreedyBytes
-    )
+    _STRUCT = struct.Struct('<IB x H')
 
     def __init__(self):
         self.system_time_ns = 0
-        self.data_type = 0
+        self.data_type = InputDataType.M_TYPE_UNKNOWN
         self.data = bytes()
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
-        self.system_time_cs = int(self.system_time_ns / self.CENTI_NANO_SCALE_FACTOR)
-        ret = MessagePayload.pack(self, buffer, offset, return_buffer)
-        del self.__dict__['system_time_cs']
-        return ret
+        if buffer is None:
+            buffer = bytearray(self.calcsize())
+            offset = 0
+
+        initial_offset = offset
+
+        system_time_cs = int(self.system_time_ns / self.CENTI_NANO_SCALE_FACTOR)
+        offset += self.pack_values(
+            self._STRUCT, buffer, offset,
+            system_time_cs & 0xFFFFFFFF,
+            system_time_cs >> 32,
+            int(self.data_type))
+
+        buffer += self.data
+        offset += len(self.data)
+
+        if return_buffer:
+            return buffer
+        else:
+            return offset - initial_offset
 
     def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
-        ret = MessagePayload.unpack(self, buffer, offset, message_version)
-        self.system_time_ns = self.system_time_cs * self.CENTI_NANO_SCALE_FACTOR
-        del self.__dict__['system_time_cs']
-        return ret
+        initial_offset = offset
 
+        (system_time_cs_low,
+         system_time_cs_high,
+         data_type_int) = \
+            self._STRUCT.unpack_from(buffer=buffer, offset=offset)
+        offset += self._STRUCT.size
+
+        system_time_cs = (system_time_cs_high << 32) | system_time_cs_low
+        self.system_time_ns = system_time_cs * self.CENTI_NANO_SCALE_FACTOR
+        self.data_type = InputDataType(data_type_int, raise_on_unrecognized=False)
+
+        self.data = buffer[offset:]
+        offset += len(self.data)
+
+        return offset - initial_offset
+
+    def calcsize(self) -> int:
+        return self._STRUCT.size + len(self.data)
     def __repr__(self):
         result = super().__repr__()[:-1]
-        result += f', data_type={self.data_type}, data_len={len(self.data)}]'
+        result += f', data_type={self.data_type.to_string()}, data_len={len(self.data)} B'
+        result += ']'
         return result
 
     def __str__(self):
-        return construct_message_to_string(message=self, construct=self.Construct,
-                                           value_to_string={
-                                               'data': lambda x: f'{len(x)} B payload',
-                                               'data_type': lambda x: f'{x} (0x{x:02x})',
-                                           },
-                                           title=f'Data Wrapper')
-
-    def calcsize(self) -> int:
-        return len(self.pack())
+        return f"""\
+Input Data Wrapper @ {system_time_to_str(self.system_time_ns)}
+  Data type: {self.data_type.to_string(include_value=True)}
+  Data: {len(self.data)} B payload"""
