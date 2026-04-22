@@ -517,18 +517,6 @@ class TestApplication:
         app = self._run(path, message_type=['Pose'], max=2)
         assert app.messages_sent == 2
 
-    # -------------------------------------------------------------------------
-    # Bug: relative time range with a defined start (BUG — these tests fail)
-    #
-    # Root cause: Application passes the same TimeRange object to MixedLogReader
-    # (index pre-filter) and to _apply_filters (per-message filter). MixedLogReader
-    # consumes the stateful relative-time tracking while iterating the index, so
-    # _apply_filters sees a TimeRange whose internal state is already wrong.
-    #
-    # Fix: copy the TimeRange before handing it to MixedLogReader, or skip the
-    # _apply_filters time-range check entirely when log_reader is set (since
-    # MixedLogReader already filtered).
-
     def test_time_range_relative_closed(self, tmp):
         """Relative range [1, 3) must return messages at t=1 and t=2."""
         path = tmp / 'input.p1log'

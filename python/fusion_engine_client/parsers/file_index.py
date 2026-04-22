@@ -352,25 +352,27 @@ class FileIndex(object):
                 start_idx = find_first(self._data['time'] >= np.floor(start)) if start is not None else 0
                 end_idx = find_first(self._data['time'] >= stop) if stop is not None else len(self._data)
 
-            if start_idx < 0:
-                start_idx = 0
+            # Corner case: if all messages with timestamps are >= stop (i.e., the log starts after the stop time), if
+            # there are some messages at the start of the log that do not have timestamps, find_first() will include
+            # them but we don't want that. For example, if stop is 4 and we have:
+            #   {nan, 6, 7, 8}
+            # we expect end_idx = -1 (i.e., nothing in range), not end_idx = 1 (i.e., include the nan message).
+            nan_idx = np.isnan(self._data['time'])
+            if end_idx >= 1 and np.all(nan_idx[:end_idx]):
+                end_idx = -1
 
-            if end_idx < 0:
-                end_idx = len(self._data['time'])
-
-            if hint == 'include_nans':
-                return FileIndex(data=self._data[start_idx:end_idx], t0=self.t0)
-            else:
-                idx = np.full_like(self._data['time'], False, dtype=bool)
+            # Note: start_idx or end_idx == -1 indicates there was no data in the time range.
+            idx = np.full_like(self._data['time'], False, dtype=bool)
+            if start_idx >= 0 and end_idx >= 0:
                 idx[start_idx:end_idx] = True
 
-                nan_idx = np.isnan(self._data['time'])
+            if hint in ('all_nans', 'remove_nans'):
                 if hint == 'all_nans':
                     idx[nan_idx] = True
                 elif hint == 'remove_nans':
                     idx[nan_idx] = False
-                else:
-                    raise ValueError('Unrecognized control hint.')
+            elif hint != 'include_nans':
+                raise ValueError('Unrecognized control hint.')
 
             return FileIndex(data=self._data[idx], t0=self.t0)
 
