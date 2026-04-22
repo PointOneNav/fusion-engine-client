@@ -234,7 +234,6 @@ class Application:
 
             # Now open the transport/file.
             self.output_transport = create_transport(self.options.output, mode='output', print_func=self._print)
-            self._print(f'Writing output to: {self.output_transport}')
 
             # If requested when logging to disk, also capture host OS timestamps as messages arrive.
             if self.options.log_timestamp_source:
