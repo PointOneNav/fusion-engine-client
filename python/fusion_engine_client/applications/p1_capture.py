@@ -89,6 +89,11 @@ class Application:
         self._configure_output()
         self._set_read_timeout()
 
+        # If we're reading from a file (and not stdin), just display the summary at the end and don't clear the
+        # terminal.
+        if isinstance(self.input_transport, FileTransport) and not self.input_transport.is_stdin:
+            self.show_summary_live = False
+
         # Create the FusionEngine decoder after configuring, in case we need to change show_summary_live, etc.
         self.decoder = FusionEngineDecoder(warn_on_unrecognized=not self.quiet and not self.show_summary_live,
                                            return_bytes=True)
