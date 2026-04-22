@@ -27,6 +27,7 @@ from ..utils.socket_timestamping import (enable_socket_timestamping,
                                          recv,
                                          TIMESTAMP_FILE_ENDING,)
 from ..utils.transport_utils import *
+from ..utils.time_range import TimeRange
 from ..utils.trace import HighlightFormatter, BrokenPipeStreamHandler
 
 _logger = logging.getLogger('point_one.fusion_engine.applications.p1_capture')
@@ -50,6 +51,7 @@ class Application:
         self.wrapped_data_format = self.options.wrapped_data_format
         self.include_input_data_wrapper = False
         self.source_ids = set()
+        self.time_range = None
 
         # Input.
         self.input_transport = None
@@ -88,6 +90,7 @@ class Application:
         self._init_message_type_filter()
         self._init_input_data_type_filter()
         self._init_source_id_filter()
+        self._init_time_range_filter()
         self._configure_input()
         self._configure_output()
         self._set_read_timeout()
@@ -159,6 +162,13 @@ class Application:
             except ValueError:
                 _logger.error('Source identifiers must be integers.')
                 sys.exit(1)
+
+    def _init_time_range_filter(self):
+        try:
+            self.time_range = TimeRange.parse(self.options.time)
+        except ValueError as e:
+            _logger.error(str(e))
+            sys.exit(1)
 
     def _configure_input(self):
         # Connect to the device using the specified transport, or read from a file or log.
@@ -417,9 +427,18 @@ class Application:
                 if self.options.max is not None and self.messages_sent == self.options.max:
                     return False
 
+            if self.time_range is not None and self.time_range.in_range_ended():
+                return False
+
         return True
 
     def _apply_filters(self, header, message):
+        # Check if this message is in the specified time range or if we're reached the end of the time range and should
+        # stop processing.
+        if self.time_range is not None:
+            if not self.time_range.is_in_range(message):
+                return False
+
         # See if this is in the list of user-specified message types to keep. If the list is empty, keep all messages.
         #
         # In unwrap mode, we explicitly set message_types to InputDataWrapper messages and ignore all other incoming
@@ -630,6 +649,11 @@ Supported types:
              "times (--source-id 0 --source-id 1), as a space-separated list (--source-id 0 1), or as a "
              "comma-separated list (--source-id 0,1). If not specified, all available source identifiers present in "
              "the data will be used.")
+    filter_group.add_argument(
+        '-t', '--time', type=str, metavar='[START][:END][:{rel,abs}]',
+        help="Only process messages in the specified time range. Both start and end may be omitted to read from the "
+             "beginning or to the end of the file. By default, timestamps are treated as relative to the first message "
+             "in the file, unless an 'abs' type is specified.")
 
     wrapper_group = parser.add_argument_group('InputDataWrapper Support')
     wrapper_group.add_argument(
