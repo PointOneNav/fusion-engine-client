@@ -447,21 +447,16 @@ class Application:
 
             if self.first_p1_time_sec is not None:
                 elapsed_sec = self.last_p1_time_sec - self.first_p1_time_sec
-                if elapsed_sec > 0.0:
-                    self._print(f'Duration (P1): {elapsed_sec:.1f} sec')
-                else:
-                    self._print(f'Duration (P1): -')
+                self._print(f'P1 time: {self.first_p1_time_sec} -> {self.last_p1_time_sec} ({elapsed_sec:.1f} sec)')
             else:
-                self._print(f'Duration (P1): -')
+                self._print(f'P1 time: -')
 
             if self.first_system_time_sec is not None:
                 elapsed_sec = self.last_system_time_sec - self.first_system_time_sec
-                if elapsed_sec > 0.0:
-                    self._print(f'Duration (system): {elapsed_sec:.1f} sec')
-                else:
-                    self._print(f'Duration (system): -')
+                self._print(f'System time: {self.first_system_time_sec} -> {self.last_system_time_sec} '
+                            f'({elapsed_sec:.1f} sec)')
             else:
-                self._print(f'Duration (system): -')
+                self._print(f'System time: -')
 
             self._print("")
 
