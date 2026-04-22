@@ -195,13 +195,30 @@ class Application:
             # efficient since it will index the file for faster reads.
             if isinstance(self.input_transport, FileTransport) and not self.input_transport.is_stdin:
                 message_types_plus_wrapper = set(self.message_types)
-                if self.include_input_data_wrapper:
-                    message_types_plus_wrapper.add(MessageType.INPUT_DATA_WRAPPER)
+                invert = self.options.invert
+                if self.include_input_data_wrapper and MessageType.INPUT_DATA_WRAPPER not in self.message_types:
+                    # If the user specifies message types that they want to _exclude_, but we also need to _include_
+                    # InputDataWrapper, MixedLogReader can't do both. We'll have it pass all messages and handle the
+                    # filtering later.
+                    if invert:
+                        message_types_plus_wrapper = None
+                        invert = False
+                    else:
+                        message_types_plus_wrapper.add(MessageType.INPUT_DATA_WRAPPER)
+
                 self.input_transport.input.close()
                 self.log_reader = MixedLogReader(
                     self.input_transport.input_path, ignore_index=self.options.ignore_index,
                     return_bytes=True, return_offset=True, show_progress=self.options.progress,
-                    message_types=message_types_plus_wrapper, time_range=self.time_range, source_ids=self.source_ids)
+                    message_types=message_types_plus_wrapper, invert_message_types=invert,
+                    time_range=self.time_range, source_ids=self.source_ids)
+
+                # MixedLogReader will apply the time range, message type, and source ID filters, so we will clear them
+                # here so they are not applied twice by _apply_filters().
+                self.time_range = None
+                if message_types_plus_wrapper is not None:
+                    self.message_types = set()
+                self.source_ids = set()
         except Exception as e:
             _logger.error(str(e))
             sys.exit(1)

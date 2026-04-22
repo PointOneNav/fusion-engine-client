@@ -531,15 +531,6 @@ class TestApplication:
         app = self._run(path, time='4:')
         assert app.messages_sent == 2  # currently returns 0
 
-    # -------------------------------------------------------------------------
-    # Bug: --invert with --message-type on file input (BUG — these tests fail)
-    #
-    # Root cause: Application passes message_types to MixedLogReader regardless
-    # of whether --invert is set. MixedLogReader pre-filters the file to only
-    # those types; _apply_filters then inverts and discards them all, yielding 0.
-    #
-    # Fix: do not pass message_types to MixedLogReader when invert=True.
-
     def test_message_type_invert_single(self, tmp):
         """--invert --message-type=Pose must forward everything except Pose."""
         path = tmp / 'input.p1log'
