@@ -285,7 +285,8 @@ class MixedLogReader(object):
                 header.validate_crc(data)
 
                 # Verify that source ID is correct.
-                if self.requested_source_ids is not None and header.source_identifier not in self.requested_source_ids:
+                if (self.requested_source_ids is not None and len(self.requested_source_ids) > 0 and
+                    header.source_identifier not in self.requested_source_ids):
                     continue
 
                 message_length_bytes = MessageHeader.calcsize() + header.payload_size_bytes
