@@ -575,7 +575,7 @@ class Application:
             _logger.info(msg, *args, **kwargs)
 
 
-def main():
+def main(default_display_mode: str = 'summary', default_output: str = None):
     # Parse command-line arguments.
     parser = ArgumentParser(description="""\
 Connect to a Point One device in real time over TCP, UDP, UNIX socket, etc.,
@@ -656,7 +656,7 @@ Examples:
 
     add_print_format_argument(parser, '--display-format')
     parser.add_argument(
-        '-d', '--display', type=str, default='summary',
+        '-d', '--display', type=str, default=default_display_mode,
         choices=('messages', 'messages+summary', 'none', 'status', 'summary'),
         help="""\
 Specify the level of detail to be displayed on the console. Output will be printed to stdout, unless configured to write
@@ -755,7 +755,7 @@ The data is pairs of uint64. First, the timestamp in nanoseconds followed by the
 - hw - Log HW timestamps from device driver. This needs HW driver support. Run
   `./fusion_engine_client/utils/socket_timestamping.py` to test.""")
     file_group.add_argument(
-        '-o', '--output', metavar='PATH', type=str,
+        '-o', '--output', metavar='PATH', type=str, default=default_output,
         help=f"""\
 If specified, save the incoming data in the specified file, or send it to the
 specified transport.

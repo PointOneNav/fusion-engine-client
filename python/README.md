@@ -23,18 +23,19 @@ FusionEngine message specification.
 ### Applications
 
 - [p1_capture](fusion_engine_client/applications/p1_capture.py) - Connect to a FusionEngine device in real time over
-  serial, TCP, UDP, or UNIX domain socket, and display incoming FusionEngine contents and/or log the incoming data to
-  disk
+  serial, TCP, UDP, WebSocket, or UNIX domain socket, or read from a file or log on disk. Display a summary of the
+  FusionEngine messages in the data stream or their contents, and optionally logs data to disk.
+  - Messages can be filtered by type or time.
+  - Supports stdin/stdout for inline data filtering via pipe.
+  - Supports extracting sensor or RTK corrections data from diagnostic FusionEngine `InputDataWrapper` messages.
 - [p1_display](fusion_engine_client/applications/p1_display.py) - Generate plots of vehicle trajectory, GNSS signal
-  status, wheel speed measurements, etc. from a file of logged FusionEngine messages
+  status, wheel speed measurements, etc. from a file of logged FusionEngine messages.
 - [p1_extract](fusion_engine_client/applications/p1_extract.py) - Extract FusionEngine messages from a binary file
-  containing multiple data streams (e.g., interleaved RTCM and FusionEngine messages)
-- [p1_filter](fusion_engine_client/applications/p1_filter.py) - Filter an incoming FusionEngine data stream, outputting
-  a new FusionEngine stream containing only the requested messages
+  containing multiple data streams (e.g., interleaved RTCM and FusionEngine messages).
+- [p1_filter](fusion_engine_client/applications/p1_filter.py) - Legacy alias for `p1_capture`
 - [p1_lband_extract](fusion_engine_client/applications/p1_lband_extract.py) - Extract L-band data bits contained from a
   log of FusionEngine `LBandFrameMessage` messages
-- [p1_print](fusion_engine_client/applications/p1_print.py) - Print the contents of FusionEngine messages found in a
-  binary file to the console
+- [p1_print](fusion_engine_client/applications/p1_print.py) - Legacy alias for `p1_capture`.
 
 ### Directory Structure
   - `python/` - Python source files
