@@ -6,7 +6,7 @@ import os
 import select
 import sys
 import time
-from typing import Optional
+from typing import Optional, Union
 
 import colorama
 
@@ -14,7 +14,7 @@ if __package__ is None or __package__ == "":
     from import_utils import enable_relative_imports
     __package__ = enable_relative_imports(__name__, __file__)
 
-from ..messages import InputDataType, MessagePayload, MessageType, message_type_by_name
+from ..messages import InputDataType, MessageHeader, MessagePayload, MessageType, message_type_by_name
 from ..parsers import FusionEngineDecoder, MixedLogReader
 from ..utils import trace as logging
 from ..utils.argument_parser import ArgumentParser, CSVAction, ExtendedBooleanAction
@@ -425,17 +425,21 @@ class Application:
             self.fe_bytes_received += len(raw_data)
 
             # Capture elapsed P1 and (device) system time.
-            p1_time = message.get_p1_time()
-            if p1_time is not None:
-                if self.first_p1_time_sec is None:
-                    self.first_p1_time_sec = float(p1_time)
-                self.last_p1_time_sec = float(p1_time)
+            if isinstance(message, MessagePayload):
+                p1_time = message.get_p1_time()
+                if p1_time is not None:
+                    if self.first_p1_time_sec is None:
+                        self.first_p1_time_sec = float(p1_time)
+                    self.last_p1_time_sec = float(p1_time)
 
-            system_time = message.get_system_time_sec()
-            if system_time is not None:
-                if self.first_system_time_sec is None:
-                    self.first_system_time_sec = float(system_time)
-                self.last_system_time_sec = float(system_time)
+                system_time = message.get_system_time_sec()
+                if system_time is not None:
+                    if self.first_system_time_sec is None:
+                        self.first_system_time_sec = float(system_time)
+                    self.last_system_time_sec = float(system_time)
+            else:
+                p1_time = None
+                system_time = None
 
             if self._apply_filters(header=header, message=message):
                 # If requested, skip the first N messages that pass the filter (e.g., skip the first 10 pose messages).
@@ -474,10 +478,10 @@ class Application:
 
         return True
 
-    def _apply_filters(self, header, message):
+    def _apply_filters(self, header: MessageHeader, message: Union[MessagePayload, bytes]):
         # Check if this message is in the specified time range or if we're reached the end of the time range and should
         # stop processing.
-        if self.time_range is not None:
+        if self.time_range is not None and isinstance(message, MessagePayload):
             if not self.time_range.is_in_range(message):
                 return False
 
