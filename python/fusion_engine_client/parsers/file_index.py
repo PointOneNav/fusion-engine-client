@@ -305,7 +305,7 @@ class FileIndex(object):
         """
         # Convert singletons to a list.
         if isinstance(message_types, int):
-            message_types = [MessageType(message_types)]
+            message_types = [MessageType(message_types, raise_on_unrecognized=False)]
         elif isinstance(message_types, IntEnum):
             message_types = [message_types]
         elif MessagePayload.is_subclass(message_types):
