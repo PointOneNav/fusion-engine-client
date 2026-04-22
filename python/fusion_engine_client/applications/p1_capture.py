@@ -618,6 +618,11 @@ Examples:
   # Filter a recorded log file and only keep the Pose messages.
   ./p1_capture.py my_log.p1log --message-type=Pose --output=pose_output.p1log
 
+  # Filter out non-FusionEngine content from a binary file containing a mix of
+  # FusionEngine messages and other protocols, leaving only the FusionEngine
+  # content.
+  ./p1_capture.py my_log.bin --output=fe_content.p1log --output-format=p1log
+
   # Print the contents of the first 10 Pose messages in a recorded data file.
   ./p1_capture.py my_log.p1log --message-type=Pose --max=10 \
       --display=messages
