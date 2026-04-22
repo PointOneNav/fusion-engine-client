@@ -6,6 +6,7 @@ import os
 import select
 import sys
 import time
+import traceback
 from typing import Optional, Union
 
 import colorama
@@ -128,6 +129,7 @@ class Application:
                     sys.exit(1)
             except ValueError as e:
                 _logger.error(str(e))
+                _logger.debug(traceback.print_exception(e))
                 sys.exit(1)
 
         # If the user requested specific FusionEngine messages, we'll also add InputDataWrapper to that list. That way
@@ -153,6 +155,7 @@ class Application:
                     sys.exit(1)
             except ValueError as e:
                 _logger.error(str(e))
+                _logger.debug(traceback.print_exception(e))
                 sys.exit(1)
 
     def _init_source_id_filter(self):
@@ -169,6 +172,7 @@ class Application:
             self.time_range = TimeRange.parse(self.options.time)
         except ValueError as e:
             _logger.error(str(e))
+            _logger.debug(traceback.print_exception(e))
             sys.exit(1)
 
     def _configure_input(self):
@@ -221,6 +225,7 @@ class Application:
                 self.source_ids = set()
         except Exception as e:
             _logger.error(str(e))
+            _logger.debug(traceback.print_exception(e))
             sys.exit(1)
 
     def _configure_output(self):
