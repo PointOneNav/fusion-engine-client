@@ -168,6 +168,13 @@ class TestClass:
         reader = MixedLogReader(str(data_path), message_types=(PoseMessage,))
         self._check_results(reader, expected_messages)
 
+    def test_exclude_pose(self, data_path):
+        messages = self._generate_mixed_data(data_path)
+        expected_messages = [m for m in messages if not isinstance(m, PoseMessage)]
+
+        reader = MixedLogReader(str(data_path), message_types=(PoseMessage,), invert_message_types=True)
+        self._check_results(reader, expected_messages)
+
     def test_read_pose_mixed_binary(self, data_path):
         messages = self._generate_mixed_data_with_binary(data_path)
         expected_messages = [m for m in messages if isinstance(m, PoseMessage)]

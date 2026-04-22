@@ -293,6 +293,46 @@ class FileIndex(object):
                 os.remove(index_path)
             raw_data.tofile(index_path)
 
+    def get_message_types(self, message_types: Union[int, IntEnum, MessagePayload, set, list, tuple],
+                          invert: bool = False) -> 'FileIndex':
+        """!
+        @brief Get a subset of the contents for a set of message types.
+
+        @param message_types The desired message types.
+        @param invert If `True`, exclude messages from `message_types` and return all others.
+
+        @return Returns a _copy_ of this class, limited to the requested message types.
+        """
+        # Convert singletons to a list.
+        if isinstance(message_types, int):
+            message_types = [MessageType(message_types)]
+        elif isinstance(message_types, IntEnum):
+            message_types = [message_types]
+        elif MessagePayload.is_subclass(message_types):
+            message_types = [message_types.get_type()]
+
+        # Convert type enums to integers.
+        if isinstance(message_types, (set, list, tuple)) and len(message_types) > 0:
+            if isinstance(next(iter(message_types)), IntEnum):
+                message_types = [int(k) for k in message_types]
+            elif MessagePayload.is_subclass(next(iter(message_types))):
+                message_types = [int(k.get_type()) for k in message_types]
+
+        # Find all matching message types.
+        idx = np.isin(self._data['type'], message_types)
+        if invert:
+            idx = ~idx
+
+        return FileIndex(data=self._data[idx], t0=self.t0)
+
+    @classmethod
+    def _is_message_type_key(cls, key: Union[IntEnum, MessagePayload, set, list, tuple]) -> bool:
+        return (isinstance(key, IntEnum) or
+                MessagePayload.is_subclass(key) or
+                (isinstance(key, (set, list, tuple)) and len(key) > 0 and isinstance(next(iter(key)), IntEnum)) or
+                (isinstance(key, (set, list, tuple)) and len(key) > 0 and MessagePayload.is_subclass(next(iter(key)))))
+
+
     def get_time_range(self, start: Union[Timestamp, float] = None, stop: Union[Timestamp, float] = None,
                        hint: str = None, time_range: TimeRange = None) -> 'FileIndex':
         """!
@@ -409,19 +449,8 @@ class FileIndex(object):
         elif len(self._data) == 0:
             return FileIndex()
         # Return entries for a specific message type.
-        elif isinstance(key, IntEnum):
-            idx = self._data['type'] == key
-            return FileIndex(data=self._data[idx], t0=self.t0)
-        elif MessagePayload.is_subclass(key):
-            idx = self._data['type'] == key.get_type()
-            return FileIndex(data=self._data[idx], t0=self.t0)
-        # Return entries for a list of message types.
-        elif isinstance(key, (set, list, tuple)) and len(key) > 0 and isinstance(next(iter(key)), IntEnum):
-            idx = np.isin(self._data['type'], [int(k) for k in key])
-            return FileIndex(data=self._data[idx], t0=self.t0)
-        elif isinstance(key, (set, list, tuple)) and len(key) > 0 and MessagePayload.is_subclass(next(iter(key))):
-            idx = np.isin(self._data['type'], [int(k.get_type()) for k in key])
-            return FileIndex(data=self._data[idx], t0=self.t0)
+        elif self._is_message_type_key(key):
+            return self.get_message_types(message_types=key, invert=hint == 'invert')
         # Return a single element by index.
         elif isinstance(key, int):
             return FileIndex(data=self._data[key:(key + 1)], t0=self.t0)

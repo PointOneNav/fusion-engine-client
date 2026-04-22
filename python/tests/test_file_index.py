@@ -65,6 +65,12 @@ def test_type_slice():
     assert (pose_index.offset == [e[2] for e in raw]).all()
     assert (pose_index.message_index == [e[3] for e in raw]).all()
 
+    pose_index = index[MessageType.POSE, 'invert']
+    raw = [e for e in RAW_DATA if e[1] != MessageType.POSE]
+    assert len(pose_index) == len(raw)
+    assert (pose_index.offset == [e[2] for e in raw]).all()
+    assert (pose_index.message_index == [e[3] for e in raw]).all()
+
 
 def test_index_slice():
     index = FileIndex(data=RAW_DATA)
