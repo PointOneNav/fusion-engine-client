@@ -46,7 +46,7 @@ if DEFAULT_LOG_BASE_DIR is None:
             DEFAULT_LOG_BASE_DIR = os.path.expanduser("~/point_one/logs")
 
 
-def define_cli_arguments(parser_group):
+def define_cli_arguments(parser_group, define_log=True):
     parser_group.add_argument(
         '--ignore-index', action=ExtendedBooleanAction,
         help="If set, do not load the .p1i index file corresponding with the .p1log data file. If specified and a "
@@ -55,13 +55,14 @@ def define_cli_arguments(parser_group):
     parser_group.add_argument(
         '--log-base-dir', metavar='DIR', default=DEFAULT_LOG_BASE_DIR,
         help="The base directory containing FusionEngine logs to be searched if a log pattern is specified.")
-    parser_group.add_argument(
-        'log',
-        help="The log to be read. May be one of:\n"
-             "- The path to a .p1log file or a file containing FusionEngine messages and other content\n"
-             "- The path to a FusionEngine log directory\n"
-             "- A pattern matching a FusionEngine log directory under the specified base directory "
-             "(see find_fusion_engine_log() and --log-base-dir)")
+    if define_log:
+        parser_group.add_argument(
+            'log',
+            help="The log to be read. May be one of:\n"
+                 "- The path to a .p1log file or a file containing FusionEngine messages and other content\n"
+                 "- The path to a FusionEngine log directory\n"
+                 "- A pattern matching a FusionEngine log directory under the specified base directory "
+                 "(see find_fusion_engine_log() and --log-base-dir)")
 
 
 def is_possible_log_pattern(pattern: str) -> bool:
