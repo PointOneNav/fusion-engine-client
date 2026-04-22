@@ -175,11 +175,13 @@ The format of the file to be generated when --output is enabled:
 
     options = parser.parse_args()
 
+    # Determine what to display.
     if options.summary:
         options.display = 'summary'
 
-    show_summary = options.display == 'summary'
-    show_status = options.display in ('status', 'summary')
+    show_summary_live = options.display == 'summary'
+    show_summary = options.display in ('summary', 'messages+summary')
+    show_status = options.display == 'status'
     show_message_contents = options.display in ('messages', 'messages+summary')
     quiet = options.display == 'none'
 
@@ -265,8 +267,9 @@ The format of the file to be generated when --output is enabled:
         if wrapped_data_format == 'auto':
             wrapped_data_format = 'content'
 
-    # Connect to the device using the specified transport, or read from a file.
+    # Connect to the device using the specified transport, or read from a file or log.
     try:
+        log_id = None
         input_transport = create_transport(options.input, mode='input', print_func=_print_info)
     except Exception as e:
         _logger.error(str(e))
@@ -355,7 +358,7 @@ The format of the file to be generated when --output is enabled:
         set_read_timeout(input_transport, read_timeout_sec)
 
     # Create a decoder to parse incoming FusionEngine data.
-    decoder = FusionEngineDecoder(warn_on_unrecognized=not quiet and not show_summary, return_bytes=True)
+    decoder = FusionEngineDecoder(warn_on_unrecognized=not quiet and not show_summary_live, return_bytes=True)
 
     # Setup status variables used below.
     bytes_received = 0
@@ -365,25 +368,81 @@ The format of the file to be generated when --output is enabled:
     messages_sent = 0
     device_summary = DeviceSummary()
 
+    first_p1_time_sec = None
+    last_p1_time_sec = None
+
+    first_system_time_sec = None
+    last_system_time_sec = None
+
     start_time = datetime.now()
     last_print_time = start_time
-    print_timeout_sec = 1.0 if show_summary else 5.0
+    print_timeout_sec = 1.0 if show_summary_live else 5.0
 
-    # Helper function to print out status periodically.
-    def _print_status(now, end=False):
+    # Helper function to print out one-line status periodically.
+    def _print_status(now):
         nonlocal last_print_time
-        if show_summary:
+        _print_info(
+            'Status: [elapsed_time=%d sec, received: %d B (%d messages = %d B) -> sent: %d B (%d messages)]' %
+            ((now - start_time).total_seconds(),
+             bytes_received, messages_received, fe_bytes_received,
+             bytes_sent, messages_sent))
+        last_print_time = now
+
+    # Helper function to print out a detailed data summary periodically.
+    def _print_summary(now):
+        nonlocal last_print_time
+
+        if show_summary_live:
             # Clear the terminal.
             print(colorama.ansi.CSI + 'H' + colorama.ansi.CSI + 'J', end='', file=logging_stream)
-        if show_status or (end and options.display == 'messages+summary'):
-            _print_info(
-                'Status: [elapsed_time=%d sec, received: %d B (%d messages = %d B) -> sent: %d B (%d messages)]' %
-                ((now - start_time).total_seconds(),
-                 bytes_received, messages_received, fe_bytes_received,
-                 bytes_sent, messages_sent))
-        if show_summary or (end and options.display == 'messages+summary'):
-            print_summary_table(device_summary)
+
+        # Log/data details.
+        if isinstance(input_transport, FileTransport):
+            if input_transport.is_stdin:
+                _print_info('Input file: <stdin>')
+            else:
+                _print_info(f'Input file: {input_transport.input_path}')
+
+            if log_id is not None:
+                _print_info(f'Log ID: {log_id}')
+
+            if first_p1_time_sec is not None:
+                elapsed_sec = last_p1_time_sec - first_p1_time_sec
+                if elapsed_sec > 0.0:
+                    _print_info(f'Duration (P1): {elapsed_sec:.1f} sec')
+                else:
+                    _print_info(f'Duration (P1): -')
+            else:
+                _print_info(f'Duration (P1): -')
+
+            if first_system_time_sec is not None:
+                elapsed_sec = last_system_time_sec - first_system_time_sec
+                if elapsed_sec > 0.0:
+                    _print_info(f'Duration (system): {elapsed_sec:.1f} sec')
+                else:
+                    _print_info(f'Duration (system): -')
+            else:
+                _print_info(f'Duration (system): -')
+
+            _print_info("")
+
+        # Real-time processing details.
+        _print_info(f'Elapsed time: {(now - start_time).total_seconds():.1f} sec')
+        _print_info(f'Received: {bytes_received} B ({messages_received} messages = {fe_bytes_received} B)')
+        _print_info(f'Sent: {bytes_sent} B ({messages_sent} messages)')
+
+        # Message summary table.
+        _print_info("")
+        print_summary_table(device_summary)
+
         last_print_time = now
+
+    if show_status:
+        _print_display_func = _print_status
+    elif show_summary:
+        _print_display_func = _print_summary
+    else:
+        _print_display_func = lambda now: None
 
     # Listen for incoming data.
     try:
@@ -412,9 +471,9 @@ The format of the file to be generated when --output is enabled:
 
                 bytes_received += len(received_data)
 
-                if show_summary or show_status:
+                if show_summary_live or show_status:
                     if (now - last_print_time).total_seconds() > print_timeout_sec:
-                        _print_status(now)
+                        _print_display_func(now)
             except serial.SerialException as e:
                 _logger.error('Unexpected error reading from device:\r%s' % str(e))
                 break
@@ -457,6 +516,19 @@ The format of the file to be generated when --output is enabled:
 
             for (header, message, raw_data) in messages:
                 fe_bytes_received += len(raw_data)
+
+                # Capture elapsed P1 and (device) system time.
+                p1_time = message.get_p1_time()
+                if p1_time is not None:
+                    if first_p1_time_sec is None:
+                        first_p1_time_sec = float(p1_time)
+                    last_p1_time_sec = float(p1_time)
+
+                system_time = message.get_system_time_sec()
+                if system_time is not None:
+                    if first_system_time_sec is None:
+                        first_system_time_sec = float(system_time)
+                    last_system_time_sec = float(system_time)
 
                 # See if this is in the list of user-specified message types to keep. If the list is empty, keep all
                 # messages.
@@ -509,9 +581,9 @@ The format of the file to be generated when --output is enabled:
                                   message_types=message_types, wrapped_data_mode=wrapped_data_format,
                                   logger=_logger)
 
-            if show_summary:
+            if show_summary_live:
                 if (now - last_print_time).total_seconds() > 0.5:
-                    _print_status(now)
+                    _print_display_func(now)
     except (BrokenPipeError, KeyboardInterrupt) as e:
         pass
 
@@ -522,9 +594,9 @@ The format of the file to be generated when --output is enabled:
     if output_transport is not None:
         output_transport.close()
 
-    if options.display in ('messages+summary', 'summary'):
+    if show_summary:
         now = datetime.now()
-        _print_status(now, end=True)
+        _print_display_func(now)
 
 
 if __name__ == "__main__":
