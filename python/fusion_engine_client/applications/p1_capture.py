@@ -228,7 +228,7 @@ The format of the file to be generated when --output is enabled:
     message_types = set()
     if options.unwrap:
         if options.message_type is not None:
-            print('Error: You cannot specify both --unwrap and --message-type.')
+            _logger.error('Error: You cannot specify both --unwrap and --message-type.')
             sys.exit(1)
 
         message_types = {MessageType.INPUT_DATA_WRAPPER}
@@ -262,7 +262,7 @@ The format of the file to be generated when --output is enabled:
                               'consider logging all data and then running p1_dump_input.')
                 sys.exit(1)
         except ValueError as e:
-            print(str(e))
+            _logger.error(str(e))
             sys.exit(1)
 
     # If the user requested specific FusionEngine messages, we'll also add InputDataWrapper to that list. That way we
