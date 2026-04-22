@@ -455,10 +455,8 @@ class Application:
                         log_timestamped_data_offset(self.timestamp_file, timestamp_ns, self.fe_bytes_received)
 
                 if self.generating_csv:
-                    p1_time = message.get_p1_time()
-                    sys_time = message.get_system_time_sec()
                     p1_str = str(p1_time.seconds) if p1_time is not None and not math.isnan(p1_time) else ''
-                    sys_str = str(sys_time) if sys_time is not None and not math.isnan(sys_time) else ''
+                    sys_str = str(system_time) if system_time is not None and not math.isnan(system_time) else ''
                     self.output_transport.write(
                         f'{timestamp_sec},{header.message_type},{p1_str},{sys_str}\n'.encode('utf-8'))
 
