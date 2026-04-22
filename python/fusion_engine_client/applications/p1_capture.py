@@ -15,7 +15,7 @@ if __package__ is None or __package__ == "":
     __package__ = enable_relative_imports(__name__, __file__)
 
 from ..messages import InputDataType, MessagePayload, MessageType, message_type_by_name
-from ..parsers import FusionEngineDecoder
+from ..parsers import FusionEngineDecoder, MixedLogReader
 from ..utils import trace as logging
 from ..utils.argument_parser import ArgumentParser, CSVAction, ExtendedBooleanAction
 from ..utils.log import define_cli_arguments as define_log_search_arguments, is_possible_log_pattern, locate_log
@@ -56,6 +56,7 @@ class Application:
         # Input.
         self.input_transport = None
         self.log_id = None
+        self.log_reader = None
 
         self.read_timeout_sec = None
         self.read_size_bytes = None
@@ -189,6 +190,18 @@ class Application:
             else:
                 self.input_transport = create_transport(self.options.input, mode='input', print_func=self._print)
                 self._print("")
+
+            # If we're reading from a normal file on disk, use MixedLogReader instead of reading directly. That is more
+            # efficient since it will index the file for faster reads.
+            if isinstance(self.input_transport, FileTransport) and not self.input_transport.is_stdin:
+                message_types_plus_wrapper = set(self.message_types)
+                if self.include_input_data_wrapper:
+                    message_types_plus_wrapper.add(MessageType.INPUT_DATA_WRAPPER)
+                self.input_transport.input.close()
+                self.log_reader = MixedLogReader(
+                    self.input_transport.input_path, ignore_index=self.options.ignore_index,
+                    return_bytes=True, show_progress=self.options.progress,
+                    message_types=message_types_plus_wrapper, time_range=self.time_range, source_ids=self.source_ids)
         except Exception as e:
             _logger.error(str(e))
             sys.exit(1)
@@ -289,50 +302,61 @@ class Application:
         # Listen for incoming data.
         try:
             while True:
-                # Read some data from the device/file.
-                kernel_ts: Optional[float] = None
-                hw_ts: Optional[float] = None
-                try:
-                    # If this is a TCP/UDP socket, use select() to implement a read timeout so we can wake up
-                    # periodically and print status if there's no incoming data.
-                    if isinstance(self.input_transport, socket.socket):
-                        ready = select.select([self.input_transport], [], [], self.read_timeout_sec)
-                        if ready[0]:
-                            received_data, kernel_ts, hw_ts = recv(self.input_transport, self.read_size_bytes)
-                        else:
-                            received_data = []
-                    # If this is a serial port or file, we set the read timeout above.
-                    else:
-                        received_data = recv_from_transport(self.input_transport, self.read_size_bytes)
-
-                        # Check if we reached EOF.
-                        if len(received_data) == 0 and isinstance(self.input_transport, FileTransport):
-                            break
-
-                    now = datetime.now()
-
-                    self.bytes_received += len(received_data)
-
-                    if self.show_summary_live or self.show_status:
-                        if (now - self.last_print_time).total_seconds() > self.print_timeout_sec:
-                            self._print_display(now)
-                except serial.SerialException as e:
-                    _logger.error('Unexpected error reading from device:\r%s' % str(e))
-                    break
-
-                if self.options.log_timestamp_source == 'kernel-sw':
-                    if kernel_ts is None:
-                        _logger.error(f'Unable to capture kernel SW timestamps on {self.options.transport}.')
-                        sys.exit(1)
-                    timestamp_sec = kernel_ts
-                elif self.options.log_timestamp_source == 'hw':
-                    if hw_ts is None:
-                        _logger.error(
-                            f'Unable to capture HW timestamps on {self.options.transport}.\n{HW_TIMESTAMPING_HELP}')
-                        sys.exit(1)
-                    timestamp_sec = hw_ts
+                # If using a MixedLogReader, read one message from the log.
+                if self.log_reader:
+                    try:
+                        next_message = next(self.log_reader)
+                        received_data = next_message[2]
+                        messages = [next_message]
+                        now = datetime.now()
+                        timestamp_sec = now.timestamp()
+                    except StopIteration:
+                        break
+                # Otherwise, read some data from the transport/file.
                 else:
-                    timestamp_sec = now.timestamp()
+                    kernel_ts: Optional[float] = None
+                    hw_ts: Optional[float] = None
+                    try:
+                        # If this is a TCP/UDP socket, use select() to implement a read timeout so we can wake up
+                        # periodically and print status if there's no incoming data.
+                        if isinstance(self.input_transport, socket.socket):
+                            ready = select.select([self.input_transport], [], [], self.read_timeout_sec)
+                            if ready[0]:
+                                received_data, kernel_ts, hw_ts = recv(self.input_transport, self.read_size_bytes)
+                            else:
+                                received_data = []
+                        # If this is a serial port or file, we set the read timeout above.
+                        else:
+                            received_data = recv_from_transport(self.input_transport, self.read_size_bytes)
+
+                            # Check if we reached EOF.
+                            if len(received_data) == 0 and isinstance(self.input_transport, FileTransport):
+                                break
+
+                        now = datetime.now()
+
+                        self.bytes_received += len(received_data)
+
+                        if self.show_summary_live or self.show_status:
+                            if (now - self.last_print_time).total_seconds() > self.print_timeout_sec:
+                                self._print_display(now)
+                    except serial.SerialException as e:
+                        _logger.error('Unexpected error reading from device:\r%s' % str(e))
+                        break
+
+                    if self.options.log_timestamp_source == 'kernel-sw':
+                        if kernel_ts is None:
+                            _logger.error(f'Unable to capture kernel SW timestamps on {self.options.transport}.')
+                            sys.exit(1)
+                        timestamp_sec = kernel_ts
+                    elif self.options.log_timestamp_source == 'hw':
+                        if hw_ts is None:
+                            _logger.error(
+                                f'Unable to capture HW timestamps on {self.options.transport}.\n{HW_TIMESTAMPING_HELP}')
+                            sys.exit(1)
+                        timestamp_sec = hw_ts
+                    else:
+                        timestamp_sec = now.timestamp()
 
                 # If logging in raw format, write the data to disk as is.
                 if self.generating_raw_log:
@@ -350,7 +374,10 @@ class Application:
                 # - So we print warnings if the CRC fails on any of the incoming data
                 # - If we are logging in *.p1log format, so the decoder can separate the FusionEngine data from any
                 #   non-FusionEngine data in the stream
-                messages = self.decoder.on_data(received_data)
+                if not self.log_reader:
+                    messages = self.decoder.on_data(received_data)
+
+                # Now process the message.
                 finished = not self._process_fe_messages(messages, timestamp_sec)
 
                 if self.show_summary_live:
@@ -606,6 +633,9 @@ incoming data to stdout (--output=-).
 
     input_parser = parser.add_argument_group('Input Control')
     define_log_search_arguments(input_parser, define_log=False)
+    input_parser.add_argument(
+        '--progress', action=ExtendedBooleanAction,
+        help="If input is a file, print file read progress to the console periodically.")
     input_parser.add_argument(
         'input', type=str,
         help=f"""\
