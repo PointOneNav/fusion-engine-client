@@ -427,8 +427,8 @@ class Application:
                                   message_types=self.message_types, wrapped_data_mode=self.wrapped_data_format,
                                   logger=_logger)
 
-            if self.options.max is not None and self.messages_received == self.options.max:
-                return False
+                if self.options.max is not None and self.messages_sent == self.options.max:
+                    return False
 
         return True
 
