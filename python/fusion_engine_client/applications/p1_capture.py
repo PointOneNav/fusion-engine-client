@@ -324,77 +324,7 @@ class Application:
                 # - If we are logging in *.p1log format, so the decoder can separate the FusionEngine data from any
                 #   non-FusionEngine data in the stream
                 messages = self.decoder.on_data(received_data)
-
-                # Count _all_ incoming FusionEngine messages. We apply the user-specified message_types filter below to
-                # the outgoing message count.
-                self.messages_received += len(messages)
-
-                for (header, message, raw_data) in messages:
-                    self.fe_bytes_received += len(raw_data)
-
-                    # Capture elapsed P1 and (device) system time.
-                    p1_time = message.get_p1_time()
-                    if p1_time is not None:
-                        if self.first_p1_time_sec is None:
-                            self.first_p1_time_sec = float(p1_time)
-                        self.last_p1_time_sec = float(p1_time)
-
-                    system_time = message.get_system_time_sec()
-                    if system_time is not None:
-                        if self.first_system_time_sec is None:
-                            self.first_system_time_sec = float(system_time)
-                        self.last_system_time_sec = float(system_time)
-
-                    # See if this is in the list of user-specified message types to keep. If the list is empty, keep all
-                    # messages.
-                    #
-                    # In unwrap mode, we explicitly set message_types to InputDataWrapper messages and ignore all other
-                    # incoming messages.
-                    #
-                    # When not in unwrap mode, the user may or may not have requested InputDataWrapper. However, if they
-                    # set --wrapped-data-format=auto|all|content, we will pass wrappers through here and filter them out
-                    # below.
-                    pass_through_message = (
-                            len(self.message_types) == 0 or
-                            (self.options.invert and header.message_type not in self.message_types) or
-                            (not self.options.invert and header.message_type in self.message_types) or
-                            header.message_type == MessageType.INPUT_DATA_WRAPPER and self.include_input_data_wrapper
-                    )
-
-                    # If this is an InputDataWrapper and the user specified a list of data types to keep, keep only the
-                    # messages with that kind of data. If the list is empty, keep all messages.
-                    if pass_through_message and header.message_type == MessageType.INPUT_DATA_WRAPPER:
-                        pass_through_message = (
-                                len(self.input_data_types) == 0 or
-                                (self.options.invert and message.data_type not in self.input_data_types) or
-                                (not self.options.invert and message.data_type in self.input_data_types)
-                        )
-
-                    if not pass_through_message:
-                        continue
-
-                    self.device_summary.update(header, message)
-                    self.messages_sent += 1
-                    if not self.generating_raw_log:
-                        self.bytes_sent += len(raw_data)
-
-                    if self.generating_p1log:
-                        self.output_transport.write(raw_data)
-                        if self.timestamp_file:
-                            log_timestamped_data_offset(self.timestamp_file, timestamp_ns, self.fe_bytes_received)
-
-                    if self.generating_csv:
-                        p1_time = message.get_p1_time()
-                        sys_time = message.get_system_time_sec()
-                        p1_str = str(p1_time.seconds) if p1_time is not None and not math.isnan(p1_time) else ''
-                        sys_str = str(sys_time) if sys_time is not None and not math.isnan(sys_time) else ''
-                        self.output_transport.write(
-                            f'{timestamp_sec},{header.message_type},{p1_str},{sys_str}\n'.encode('utf-8'))
-
-                    if self.show_message_contents:
-                        print_message(header, message, format=self.options.display_format, bytes=raw_data,
-                                      message_types=self.message_types, wrapped_data_mode=self.wrapped_data_format,
-                                      logger=_logger)
+                self._process_fe_messages(messages, timestamp_sec)
 
                 if self.show_summary_live:
                     if (now - self.last_print_time).total_seconds() > 0.5:
@@ -413,6 +343,78 @@ class Application:
         if self.show_summary:
             now = datetime.now()
             self._print_display(now)
+
+    def _process_fe_messages(self, messages, timestamp_sec):
+        # Count _all_ incoming FusionEngine messages. We apply the user-specified message_types filter below to the
+        # outgoing message count.
+        self.messages_received += len(messages)
+
+        for (header, message, raw_data) in messages:
+            self.fe_bytes_received += len(raw_data)
+
+            # Capture elapsed P1 and (device) system time.
+            p1_time = message.get_p1_time()
+            if p1_time is not None:
+                if self.first_p1_time_sec is None:
+                    self.first_p1_time_sec = float(p1_time)
+                self.last_p1_time_sec = float(p1_time)
+
+            system_time = message.get_system_time_sec()
+            if system_time is not None:
+                if self.first_system_time_sec is None:
+                    self.first_system_time_sec = float(system_time)
+                self.last_system_time_sec = float(system_time)
+
+            # See if this is in the list of user-specified message types to keep. If the list is empty, keep all
+            # messages.
+            #
+            # In unwrap mode, we explicitly set message_types to InputDataWrapper messages and ignore all other incoming
+            # messages.
+            #
+            # When not in unwrap mode, the user may or may not have requested InputDataWrapper. However, if they set
+            # --wrapped-data-format=auto|all|content, we will pass wrappers through here and filter them out below.
+            pass_through_message = (
+                    len(self.message_types) == 0 or
+                    (self.options.invert and header.message_type not in self.message_types) or
+                    (not self.options.invert and header.message_type in self.message_types) or
+                    header.message_type == MessageType.INPUT_DATA_WRAPPER and self.include_input_data_wrapper
+            )
+
+            # If this is an InputDataWrapper and the user specified a list of data types to keep, keep only the
+            # messages with that kind of data. If the list is empty, keep all messages.
+            if pass_through_message and header.message_type == MessageType.INPUT_DATA_WRAPPER:
+                pass_through_message = (
+                        len(self.input_data_types) == 0 or
+                        (self.options.invert and message.data_type not in self.input_data_types) or
+                        (not self.options.invert and message.data_type in self.input_data_types)
+                )
+
+            if not pass_through_message:
+                continue
+
+            self.device_summary.update(header, message)
+            self.messages_sent += 1
+            if not self.generating_raw_log:
+                self.bytes_sent += len(raw_data)
+
+            if self.generating_p1log:
+                self.output_transport.write(raw_data)
+                if self.timestamp_file:
+                    timestamp_ns = int(round(timestamp_sec * 1e9))
+                    log_timestamped_data_offset(self.timestamp_file, timestamp_ns, self.fe_bytes_received)
+
+            if self.generating_csv:
+                p1_time = message.get_p1_time()
+                sys_time = message.get_system_time_sec()
+                p1_str = str(p1_time.seconds) if p1_time is not None and not math.isnan(p1_time) else ''
+                sys_str = str(sys_time) if sys_time is not None and not math.isnan(sys_time) else ''
+                self.output_transport.write(
+                    f'{timestamp_sec},{header.message_type},{p1_str},{sys_str}\n'.encode('utf-8'))
+
+            if self.show_message_contents:
+                print_message(header, message, format=self.options.display_format, bytes=raw_data,
+                              message_types=self.message_types, wrapped_data_mode=self.wrapped_data_format,
+                              logger=_logger)
 
     def _print_display(self, now):
         if self.show_status:
