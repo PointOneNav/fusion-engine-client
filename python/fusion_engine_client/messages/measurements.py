@@ -1552,6 +1552,9 @@ class InputDataType(IntEnum):
     M_TYPE_EXTERNAL_UNFRAMED_GNSS = 0x42
     M_TYPE_EXTERNAL_FRAMED_GNSS = 0x44
     M_TYPE_RTCM3_POLARIS_EPHEM = 0x77
+    M_TYPE_FUSION_ENGINE_MESSAGE = 0xc6
+    M_TYPE_FUSION_ENGINE_WRAPPED_DATA = 0xc9,
+    M_TYPE_UNFRAMED_FUSION_ENGINE = 0xce,
     M_TYPE_RTCM3_UNKNOWN = 0x100
 
     def to_string(self, include_value=True, print_hex=True):
