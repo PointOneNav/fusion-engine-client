@@ -2,7 +2,7 @@ import math
 import struct
 from typing import Sequence
 
-from construct import Array, BytesInteger, GreedyBytes, Struct, Padding, Float32l, Int16ul, Int16sl, Int32sl
+from construct import Array, Struct, Padding, Float32l, Int16sl, Int32sl
 import numpy as np
 
 from .defs import *
