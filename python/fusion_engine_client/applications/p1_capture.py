@@ -17,7 +17,7 @@ if __package__ is None or __package__ == "":
 from ..messages import InputDataType, MessagePayload, MessageType, message_type_by_name
 from ..parsers import FusionEngineDecoder
 from ..utils import trace as logging
-from ..utils.argument_parser import ArgumentParser, ExtendedBooleanAction
+from ..utils.argument_parser import ArgumentParser, CSVAction, ExtendedBooleanAction
 from ..utils.log import define_cli_arguments as define_log_search_arguments, is_possible_log_pattern, locate_log
 from ..utils.print_utils import \
     DeviceSummary, add_print_format_argument, add_wrapped_data_mode_argument, print_message, print_summary_table
@@ -49,6 +49,7 @@ class Application:
         self.input_data_types = set()
         self.wrapped_data_format = self.options.wrapped_data_format
         self.include_input_data_wrapper = False
+        self.source_ids = set()
 
         # Input.
         self.input_transport = None
@@ -86,6 +87,7 @@ class Application:
         # Configure everything.
         self._init_message_type_filter()
         self._init_input_data_type_filter()
+        self._init_source_id_filter()
         self._configure_input()
         self._configure_output()
         self._set_read_timeout()
@@ -147,6 +149,15 @@ class Application:
                     sys.exit(1)
             except ValueError as e:
                 _logger.error(str(e))
+                sys.exit(1)
+
+    def _init_source_id_filter(self):
+        # If the user specified a set of source IDs, limit messages to only those sources.
+        if self.options.source_identifier is not None:
+            try:
+                self.source_ids = set([int(s) for s in self.options.source_identifier])
+            except ValueError:
+                _logger.error('Source identifiers must be integers.')
                 sys.exit(1)
 
     def _configure_input(self):
@@ -606,6 +617,12 @@ Supported types:
         '--skip', type=int, default=0,
         help="Skip the first N messages. If --message-type is specified, only count messages matching the specified "
              "type(s).")
+    filter_group.add_argument(
+        '--source-identifier', '--source-id', action=CSVAction, nargs='*',
+        help="Only include messages with the listed source identifier(s). Must be integers. May be specified multiple "
+             "times (--source-id 0 --source-id 1), as a space-separated list (--source-id 0 1), or as a "
+             "comma-separated list (--source-id 0,1). If not specified, all available source identifiers present in "
+             "the data will be used.")
 
     wrapper_group = parser.add_argument_group('InputDataWrapper Support')
     wrapper_group.add_argument(
