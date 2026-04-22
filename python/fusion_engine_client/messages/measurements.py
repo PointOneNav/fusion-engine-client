@@ -1574,6 +1574,9 @@ class InputDataWrapperMessage(MessagePayload):
         self.data_type = InputDataType.M_TYPE_UNKNOWN
         self.data = bytes()
 
+        self._fe_content_header = None
+        self._fe_content_payload = None
+
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
             buffer = bytearray(self.calcsize())
@@ -1616,14 +1619,63 @@ class InputDataWrapperMessage(MessagePayload):
 
     def calcsize(self) -> int:
         return self._STRUCT.size + len(self.data)
+
+    def get_fe_content_header(self) -> Optional[MessageHeader]:
+        if self._fe_content_header is None and self.data_type == InputDataType.M_TYPE_FUSION_ENGINE_MESSAGE:
+            try:
+                wrapped_fe_header = MessageHeader()
+                wrapped_fe_header.unpack(self.data, validate_sync=True, validate_crc=False)
+                self._fe_content_header = wrapped_fe_header
+            except Exception:
+                # Set to False instead of None so we don't try to unpack the header multiple times.
+                self._fe_content_header = False
+
+        if self._fe_content_header == False:
+            return None
+        else:
+            return self._fe_content_header
+
+    def get_fe_content_payload(self) -> Optional[MessagePayload]:
+        header = self.get_fe_content_header()
+        if header is None:
+            return None
+
+        if self._fe_content_payload is None:
+            cls = MessagePayload.message_type_to_class.get(header.message_type, None)
+            if cls is not None:
+                try:
+                    payload = cls()
+                    payload.unpack(buffer=self.data, offset=MessageHeader.calcsize(),
+                                   message_version=header.message_version)
+                    self._fe_content_payload = payload
+                except Exception:
+                    pass
+
+            if self._fe_content_payload is None:
+                # Set to False instead of None so we don't try to unpack the header multiple times.
+                self._fe_content_payload = False
+
+        if self._fe_content_payload == False:
+            return None
+        else:
+            return self._fe_content_payload
+
     def __repr__(self):
         result = super().__repr__()[:-1]
         result += f', data_type={self.data_type.to_string()}, data_len={len(self.data)} B'
+        fe_header = self.get_fe_content_header()
+        if fe_header is not None:
+            result += f', fe_content_type={fe_header.message_type.to_string()}'
         result += ']'
         return result
 
     def __str__(self):
+        fe_header = self.get_fe_content_header()
+        if fe_header is not None:
+            fe_content_str = f'\n  FusionEngine content type: {fe_header.message_type.to_string()}'
+        else:
+            fe_content_str = ""
         return f"""\
 Input Data Wrapper @ {system_time_to_str(self.system_time_ns)}
   Data type: {self.data_type.to_string(include_value=True)}
-  Data: {len(self.data)} B payload"""
+  Data: {len(self.data)} B payload{fe_content_str}"""
