@@ -52,7 +52,7 @@ struct P1_ALIGNAS(4) PoseMessage : public MessagePayload {
   Timestamp gps_time;
 
   /** The type of this position solution. */
-  SolutionType solution_type;
+  SolutionType solution_type = SolutionType::Invalid;
 
   /**
    * A bitmask of flags associated with the pose data.
@@ -246,7 +246,7 @@ struct P1_ALIGNAS(4) GNSSInfoMessage : public MessagePayload {
   /** The number of satellites used in the current position solution. */
   uint8_t num_svs = 0;
 
-  uint8_t reserved[2];
+  uint8_t reserved[2] = {0};
 
   /**
    * The age of the most recently received GNSS corrections data (in 0.1
