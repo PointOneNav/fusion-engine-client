@@ -103,7 +103,7 @@ class Application:
 
         # Create the FusionEngine decoder after configuring, in case we need to change show_summary_live, etc.
         self.decoder = FusionEngineDecoder(warn_on_unrecognized=not self.quiet and not self.show_summary_live,
-                                           return_bytes=True)
+                                           return_bytes=True, return_offset=True)
 
     def _init_message_type_filter(self):
         # If the user specified a set of message names, lookup their type values. Below, we will limit the printout to
@@ -200,7 +200,7 @@ class Application:
                 self.input_transport.input.close()
                 self.log_reader = MixedLogReader(
                     self.input_transport.input_path, ignore_index=self.options.ignore_index,
-                    return_bytes=True, show_progress=self.options.progress,
+                    return_bytes=True, return_offset=True, show_progress=self.options.progress,
                     message_types=message_types_plus_wrapper, time_range=self.time_range, source_ids=self.source_ids)
         except Exception as e:
             _logger.error(str(e))
@@ -402,7 +402,7 @@ class Application:
             self._print_display(now)
 
     def _process_fe_messages(self, messages, timestamp_sec):
-        for (header, message, raw_data) in messages:
+        for (header, message, raw_data, offset_bytes) in messages:
             # Count _all_ incoming FusionEngine messages. We apply the user-specified message_types filter below to the
             # outgoing message count.
             self.messages_received += 1
@@ -447,7 +447,8 @@ class Application:
                         f'{timestamp_sec},{header.message_type},{p1_str},{sys_str}\n'.encode('utf-8'))
 
                 if self.show_message_contents:
-                    print_message(header, message, format=self.options.display_format, bytes=raw_data,
+                    print_message(header=header, contents=message, offset_bytes=offset_bytes, bytes=raw_data,
+                                  format=self.options.display_format,
                                   message_types=self.message_types, wrapped_data_mode=self.wrapped_data_format,
                                   logger=_logger)
 
