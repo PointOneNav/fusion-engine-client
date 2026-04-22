@@ -32,6 +32,454 @@ from ..utils.trace import HighlightFormatter, BrokenPipeStreamHandler
 _logger = logging.getLogger('point_one.fusion_engine.applications.p1_capture')
 
 
+class Application:
+    def __init__(self, options, logging_stream=None):
+        self.options = options
+        self.logging_stream = logging_stream
+
+        # Determine what to display.
+        self.show_summary_live = self.options.display == 'summary'
+        self.show_summary = self.options.display in ('summary', 'messages+summary')
+        self.show_status = self.options.display == 'status'
+        self.show_message_contents = self.options.display in ('messages', 'messages+summary')
+        self.quiet = self.options.display == 'none'
+
+        # Message filtering.
+        self.message_types = set()
+        self.input_data_types = set()
+        self.wrapped_data_format = self.options.wrapped_data_format
+        self.include_input_data_wrapper = False
+
+        # Input.
+        self.input_transport = None
+        self.log_id = None
+
+        self.read_timeout_sec = None
+        self.read_size_bytes = None
+
+        # Output.
+        self.output_transport = None
+        self.timestamp_file = None
+        self.generating_raw_log = False
+        self.generating_p1log = False
+        self.generating_csv = False
+
+        # Status/incoming data summary.
+        self.bytes_received = 0
+        self.fe_bytes_received = 0
+        self.messages_received = 0
+        self.bytes_sent = 0
+        self.messages_sent = 0
+        self.device_summary = DeviceSummary()
+
+        self.first_p1_time_sec = None
+        self.last_p1_time_sec = None
+
+        self.first_system_time_sec = None
+        self.last_system_time_sec = None
+
+        self.start_time = None
+        self.last_print_time = None
+        self.print_timeout_sec = 1.0 if self.show_summary_live else 5.0
+
+        # Configure everything.
+        self._init_message_type_filter()
+        self._init_input_data_type_filter()
+        self._configure_input()
+        self._configure_output()
+        self._set_read_timeout()
+
+        # Create the FusionEngine decoder after configuring, in case we need to change show_summary_live, etc.
+        self.decoder = FusionEngineDecoder(warn_on_unrecognized=not self.quiet and not self.show_summary_live,
+                                           return_bytes=True)
+
+    def _init_message_type_filter(self):
+        # If the user specified a set of message names, lookup their type values. Below, we will limit the printout to
+        # only those message types.
+        if self.options.unwrap:
+            if self.options.message_type is not None:
+                _logger.error('Error: You cannot specify both --unwrap and --message-type.')
+                sys.exit(1)
+
+            self.message_types = {MessageType.INPUT_DATA_WRAPPER}
+        elif self.options.message_type is not None:
+            # Pattern match to any of:
+            #   -m Type1
+            #   -m Type1 -m Type2
+            #   -m Type1,Type2
+            #   -m Type1,Type2 -m Type3
+            #   -m Type*
+            try:
+                self.message_types = MessagePayload.find_matching_message_types(self.options.message_type)
+                if len(self.message_types) == 0:
+                    # find_matching_message_types() will print an error.
+                    sys.exit(1)
+            except ValueError as e:
+                _logger.error(str(e))
+                sys.exit(1)
+
+        # If the user requested specific FusionEngine messages, we'll also add InputDataWrapper to that list. That way
+        # we can search for wrapped content within those messages.
+        if (len(self.message_types) != 0 and MessageType.INPUT_DATA_WRAPPER not in self.message_types and
+            self.wrapped_data_format != 'parent'):
+            self.include_input_data_wrapper = True
+            if self.wrapped_data_format == 'auto':
+                self.wrapped_data_format = 'content'
+
+    def _init_input_data_type_filter(self):
+        # For InputDataWrapper messages, if the user specified desired data types, limit the output to only those.
+        if self.options.wrapped_data_type is not None:
+            try:
+                self.input_data_types = InputDataType.find_matching_values(self.options.wrapped_data_type, prefix='M_TYPE_',
+                                                                      print_func=_logger.error)
+                if len(self.input_data_types) == 0:
+                    # find_matching_values() will print an error.
+                    sys.exit(1)
+                elif self.options.unwrap and len(self.input_data_types) > 1:
+                    _logger.error('You can only unwrap one data type in real time. To extract multiple data streams, '
+                                  'consider logging all data and then running p1_dump_input.')
+                    sys.exit(1)
+            except ValueError as e:
+                _logger.error(str(e))
+                sys.exit(1)
+
+    def _configure_input(self):
+        # Connect to the device using the specified transport, or read from a file or log.
+        try:
+            # If the user specified a partial or complete log hash, or the path to a directory, try to locate a P1 log.
+            # Log patterns are mutually exclusive with transport descriptors, so it can only be one or the other. No
+            # need to check both.
+            if is_possible_log_pattern(self.options.input):
+                input_path, self.log_id = locate_log(
+                    input_path=self.options.input, log_base_dir=self.options.log_base_dir,
+                    return_log_id=True, extract_fusion_engine_data=False)
+                if input_path is None:
+                    # locate_log() will log an error.
+                    sys.exit(1)
+                else:
+                    self.input_transport = create_transport(input_path, mode='input', print_func=self._print)
+                    self._print("")
+            else:
+                self.input_transport = create_transport(self.options.input, mode='input', print_func=self._print)
+                self._print("")
+        except Exception as e:
+            _logger.error(str(e))
+            sys.exit(1)
+
+    def _configure_output(self):
+        # Open the output file or real-time output transport if enabled.
+        if self.options.output is not None:
+            # If writing to a .p1log file, if there's an existing index file (.p1i) for that filename, delete it.
+            if self.options.output_format == 'p1log':
+                p1i_path = os.path.splitext(self.options.output)[0] + '.p1i'
+                if os.path.exists(p1i_path):
+                    os.remove(p1i_path)
+
+            # Now open the transport/file.
+            self.output_transport = create_transport(self.options.output, mode='output', print_func=self._print)
+            self._print(f'Writing output to: {self.output_transport}')
+
+            # If requested when logging to disk, also capture host OS timestamps as messages arrive.
+            if self.options.log_timestamp_source:
+                if not isinstance(self.output_transport, FileTransport) or self.output_transport.is_stdout:
+                    _logger.error('--log-timestamp-source can only be used when --output is a file.')
+                    sys.exit(1)
+                elif self.options.output_format == 'csv':
+                    _logger.error('--log-timestamp-source only supported for binary output files.')
+                    sys.exit(1)
+                else:
+                    self.timestamp_file = open(self.options.output + TIMESTAMP_FILE_ENDING, 'wb')
+
+        # Note: We intentionally set --output-format=None by default instead of raw to avoid printing the warning below
+        # unnecessarily. If not specified, default to raw (i.e., capture all incoming data).
+        self.generating_raw_log = (self.output_transport is not None and
+                                   (self.options.output_format == 'raw' or self.options.output_format is None))
+        self.generating_p1log = (self.output_transport is not None and self.options.output_format == 'p1log')
+        self.generating_csv = (self.output_transport is not None and self.options.output_format == 'csv')
+
+        if self.generating_csv:
+            self.output_transport.write(b'host_time,type,p1_time,sys_time\n')
+
+        # If the user wants to unwrap InputDataWrapper messages and they set anything other than --output-format=raw,
+        # fail.
+        #
+        # If the user requested --output-format=raw but also set specific message types, warn them that we will only be
+        # outputting the requested FusionEngine messages and not any non-FusionEngine binary data in the input stream.
+        #
+        # There is no requirement to use the .p1log file extension for a stream containing only FusionEngine messages.
+        if self.options.unwrap:
+            if self.output_transport is None:
+                _logger.error("You must specify an output file or transport when using --unwrap.")
+                sys.exit(1)
+            elif not self.generating_raw_log:
+                _logger.error("Output format must 'raw' when unwrapping InputDataWrapper content.")
+                sys.exit(1)
+
+        if self.generating_raw_log and self.options.output_format is not None and len(self.message_types) != 0:
+            _logger.warning('Raw log format requested, but --message-type specified. Output will not contain any '
+                            'non-FusionEngine binary, if present in the input stream.')
+            self.generating_raw_log = False
+            self.generating_p1log = True
+
+    def _set_read_timeout(self):
+        # In the read loop, if we're filtering data and forwarding it in real time, we'll read a small amount of data at
+        # a time to reduce latency. Otherwise, if we're just displaying stuff or writing to disk, we'll read more data
+        # at a time to be more efficient.
+        is_real_time = (self.output_transport is not None and
+                        (not isinstance(self.output_transport, FileTransport) or self.output_transport.is_stdout))
+        if is_real_time:
+            self.read_timeout_sec = 1.0
+            self.read_size_bytes = 64
+        else:
+            self.read_timeout_sec = 1.0
+            self.read_size_bytes = 1024
+
+        # If this is a TCP/UDP/UNIX socket, configure it for non-blocking reads. We'll apply a read timeout with
+        # select() in the read loop.
+        if isinstance(self.input_transport, socket.socket):
+            self.input_transport.setblocking(0)
+            # This function won't do anything if neither timestamp is enabled.
+            enable_socket_timestamping(
+                self.input_transport,
+                enable_sw_timestamp=self.options.log_timestamp_source == 'kernel-sw',
+                enable_hw_timestamp=self.options.log_timestamp_source == 'hw'
+            )
+        # If this is a serial port or websocket, configure its read timeout. If this is a file, set_read_timeout() is a
+        # no-op.
+        else:
+            if self.options.log_timestamp_source and self.options.log_timestamp_source != 'user-sw':
+                _logger.error(
+                    f'--log-timestamp-source={self.options.log_timestamp_source} is not supported. Only "user-sw" '
+                    f'timestamps are supported on non-socket captures.')
+                sys.exit(1)
+
+            set_read_timeout(self.input_transport, self.read_timeout_sec)
+
+    def process_input(self):
+        self.start_time = datetime.now()
+        self.last_print_time = self.start_time
+
+        # Listen for incoming data.
+        try:
+            while True:
+                # Read some data from the device/file.
+                kernel_ts: Optional[float] = None
+                hw_ts: Optional[float] = None
+                try:
+                    # If this is a TCP/UDP socket, use select() to implement a read timeout so we can wake up
+                    # periodically and print status if there's no incoming data.
+                    if isinstance(self.input_transport, socket.socket):
+                        ready = select.select([self.input_transport], [], [], self.read_timeout_sec)
+                        if ready[0]:
+                            received_data, kernel_ts, hw_ts = recv(self.input_transport, self.read_size_bytes)
+                        else:
+                            received_data = []
+                    # If this is a serial port or file, we set the read timeout above.
+                    else:
+                        received_data = recv_from_transport(self.input_transport, self.read_size_bytes)
+
+                        # Check if we reached EOF.
+                        if len(received_data) == 0 and isinstance(self.input_transport, FileTransport):
+                            break
+
+                    now = datetime.now()
+
+                    self.bytes_received += len(received_data)
+
+                    if self.show_summary_live or self.show_status:
+                        if (now - self.last_print_time).total_seconds() > self.print_timeout_sec:
+                            self._print_display(now)
+                except serial.SerialException as e:
+                    _logger.error('Unexpected error reading from device:\r%s' % str(e))
+                    break
+
+                if self.options.log_timestamp_source == 'kernel-sw':
+                    if kernel_ts is None:
+                        _logger.error(f'Unable to capture kernel SW timestamps on {self.options.transport}.')
+                        sys.exit(1)
+                    timestamp_sec = kernel_ts
+                elif self.options.log_timestamp_source == 'hw':
+                    if hw_ts is None:
+                        _logger.error(
+                            f'Unable to capture HW timestamps on {self.options.transport}.\n{HW_TIMESTAMPING_HELP}')
+                        sys.exit(1)
+                    timestamp_sec = hw_ts
+                else:
+                    timestamp_sec = now.timestamp()
+                timestamp_ns = int(round(timestamp_sec * 1e9))
+
+                # If logging in raw format, write the data to disk as is.
+                if self.generating_raw_log:
+                    self.output_transport.write(received_data)
+                    self.bytes_sent += len(received_data)
+                    if self.timestamp_file:
+                        log_timestamped_data_offset(self.timestamp_file, timestamp_ns, self.bytes_received)
+
+                # Decode the incoming data and print the contents of any complete messages.
+                #
+                # Note that we pass the data to the decoder at all times, even if --display=false, --summary=false, and
+                # --quiet=true were set, so that:
+                # - So that we get a count of the number of incoming and outgoing messages
+                # - So we print warnings if the CRC fails on any of the incoming data
+                # - If we are logging in *.p1log format, so the decoder can separate the FusionEngine data from any
+                #   non-FusionEngine data in the stream
+                messages = self.decoder.on_data(received_data)
+
+                # Count _all_ incoming FusionEngine messages. We apply the user-specified message_types filter below to
+                # the outgoing message count.
+                self.messages_received += len(messages)
+
+                for (header, message, raw_data) in messages:
+                    self.fe_bytes_received += len(raw_data)
+
+                    # Capture elapsed P1 and (device) system time.
+                    p1_time = message.get_p1_time()
+                    if p1_time is not None:
+                        if self.first_p1_time_sec is None:
+                            self.first_p1_time_sec = float(p1_time)
+                        self.last_p1_time_sec = float(p1_time)
+
+                    system_time = message.get_system_time_sec()
+                    if system_time is not None:
+                        if self.first_system_time_sec is None:
+                            self.first_system_time_sec = float(system_time)
+                        self.last_system_time_sec = float(system_time)
+
+                    # See if this is in the list of user-specified message types to keep. If the list is empty, keep all
+                    # messages.
+                    #
+                    # In unwrap mode, we explicitly set message_types to InputDataWrapper messages and ignore all other
+                    # incoming messages.
+                    #
+                    # When not in unwrap mode, the user may or may not have requested InputDataWrapper. However, if they
+                    # set --wrapped-data-format=auto|all|content, we will pass wrappers through here and filter them out
+                    # below.
+                    pass_through_message = (
+                            len(self.message_types) == 0 or
+                            (self.options.invert and header.message_type not in self.message_types) or
+                            (not self.options.invert and header.message_type in self.message_types) or
+                            header.message_type == MessageType.INPUT_DATA_WRAPPER and self.include_input_data_wrapper
+                    )
+
+                    # If this is an InputDataWrapper and the user specified a list of data types to keep, keep only the
+                    # messages with that kind of data. If the list is empty, keep all messages.
+                    if pass_through_message and header.message_type == MessageType.INPUT_DATA_WRAPPER:
+                        pass_through_message = (
+                                len(self.input_data_types) == 0 or
+                                (self.options.invert and message.data_type not in self.input_data_types) or
+                                (not self.options.invert and message.data_type in self.input_data_types)
+                        )
+
+                    if not pass_through_message:
+                        continue
+
+                    self.device_summary.update(header, message)
+                    self.messages_sent += 1
+                    if not self.generating_raw_log:
+                        self.bytes_sent += len(raw_data)
+
+                    if self.generating_p1log:
+                        self.output_transport.write(raw_data)
+                        if self.timestamp_file:
+                            log_timestamped_data_offset(self.timestamp_file, timestamp_ns, self.fe_bytes_received)
+
+                    if self.generating_csv:
+                        p1_time = message.get_p1_time()
+                        sys_time = message.get_system_time_sec()
+                        p1_str = str(p1_time.seconds) if p1_time is not None and not math.isnan(p1_time) else ''
+                        sys_str = str(sys_time) if sys_time is not None and not math.isnan(sys_time) else ''
+                        self.output_transport.write(
+                            f'{timestamp_sec},{header.message_type},{p1_str},{sys_str}\n'.encode('utf-8'))
+
+                    if self.show_message_contents:
+                        print_message(header, message, format=self.options.display_format, bytes=raw_data,
+                                      message_types=self.message_types, wrapped_data_mode=self.wrapped_data_format,
+                                      logger=_logger)
+
+                if self.show_summary_live:
+                    if (now - self.last_print_time).total_seconds() > 0.5:
+                        self._print_display(now)
+        except (BrokenPipeError, KeyboardInterrupt) as e:
+            pass
+
+        # Close the transport.
+        self.input_transport.close()
+
+        # Close the output file.
+        if self.output_transport is not None:
+            self.output_transport.close()
+
+        # Update the summary one last time if enabled.
+        if self.show_summary:
+            now = datetime.now()
+            self._print_display(now)
+
+    def _print_display(self, now):
+        if self.show_status:
+            self._print_status(now)
+        elif self.show_summary:
+            self._print_summary(now)
+        self.last_print_time = now
+
+    def _print_status(self, now):
+        self._print(
+            'Status: [elapsed_time=%d sec, received: %d B (%d messages = %d B) -> sent: %d B (%d messages)]' %
+            ((now - self.start_time).total_seconds(),
+             self.bytes_received, self.messages_received, self.fe_bytes_received,
+             self.bytes_sent, self.messages_sent))
+
+    def _print_summary(self, now):
+        if self.show_summary_live:
+            # Clear the terminal.
+            print(colorama.ansi.CSI + 'H' + colorama.ansi.CSI + 'J', end='', file=self.logging_stream)
+
+        # Log/data details.
+        if isinstance(self.input_transport, FileTransport):
+            if self.input_transport.is_stdin:
+                self._print('Input file: <stdin>')
+            else:
+                self._print(f'Input file: {self.input_transport.input_path}')
+
+            if self.log_id is not None:
+                self._print(f'Log ID: {self.log_id}')
+
+            if self.first_p1_time_sec is not None:
+                elapsed_sec = self.last_p1_time_sec - self.first_p1_time_sec
+                if elapsed_sec > 0.0:
+                    self._print(f'Duration (P1): {elapsed_sec:.1f} sec')
+                else:
+                    self._print(f'Duration (P1): -')
+            else:
+                self._print(f'Duration (P1): -')
+
+            if self.first_system_time_sec is not None:
+                elapsed_sec = self.last_system_time_sec - self.first_system_time_sec
+                if elapsed_sec > 0.0:
+                    self._print(f'Duration (system): {elapsed_sec:.1f} sec')
+                else:
+                    self._print(f'Duration (system): -')
+            else:
+                self._print(f'Duration (system): -')
+
+            self._print("")
+
+        # Real-time processing details.
+        self._print(f'Elapsed time: {(now - self.start_time).total_seconds():.1f} sec')
+        self._print(f'Received: {self.bytes_received} B ({self.messages_received} messages = '
+                    f'{self.fe_bytes_received} B)')
+        self._print(f'Sent: {self.bytes_sent} B ({self.messages_sent} messages)')
+
+        # Message summary table.
+        self._print("")
+        print_summary_table(self.device_summary)
+
+    def _print(self, msg, *args, **kwargs):
+        if self.quiet:
+            pass
+        else:
+            _logger.info(msg, *args, **kwargs)
+
+
 def main():
     # Parse command-line arguments.
     parser = ArgumentParser(description="""\
@@ -183,14 +631,10 @@ The format of the file to be generated when --output is enabled:
 
     options = parser.parse_args()
 
-    # Determine what to display.
+    # --summary is an alias for --display=summary.
     if options.summary:
         options.display = 'summary'
 
-    show_summary_live = options.display == 'summary'
-    show_summary = options.display in ('summary', 'messages+summary')
-    show_status = options.display == 'status'
-    show_message_contents = options.display in ('messages', 'messages+summary')
     quiet = options.display == 'none'
 
     # Configure logging.
@@ -216,407 +660,9 @@ The format of the file to be generated when --output is enabled:
     HighlightFormatter.install(color=True, standoff_level=logging.WARNING)
     BrokenPipeStreamHandler.install()
 
-    if quiet:
-        def _print_info(msg, *args, **kwargs):
-            pass
-    else:
-        def _print_info(msg, *args, **kwargs):
-            _logger.info(msg, *args, **kwargs)
-
-    # If the user specified a set of message names, lookup their type values. Below, we will limit the printout to only
-    # those message types.
-    message_types = set()
-    if options.unwrap:
-        if options.message_type is not None:
-            _logger.error('Error: You cannot specify both --unwrap and --message-type.')
-            sys.exit(1)
-
-        message_types = {MessageType.INPUT_DATA_WRAPPER}
-    elif options.message_type is not None:
-        # Pattern match to any of:
-        #   -m Type1
-        #   -m Type1 -m Type2
-        #   -m Type1,Type2
-        #   -m Type1,Type2 -m Type3
-        #   -m Type*
-        try:
-            message_types = MessagePayload.find_matching_message_types(options.message_type)
-            if len(message_types) == 0:
-                # find_matching_message_types() will print an error.
-                sys.exit(1)
-        except ValueError as e:
-            _logger.error(str(e))
-            sys.exit(1)
-
-    # For InputDataWrapper messages, if the user specified desired data types, limit the output to only those.
-    input_data_types = set()
-    if options.wrapped_data_type is not None:
-        try:
-            input_data_types = InputDataType.find_matching_values(options.wrapped_data_type, prefix='M_TYPE_',
-                                                                  print_func=_logger.error)
-            if len(input_data_types) == 0:
-                # find_matching_values() will print an error.
-                sys.exit(1)
-            elif options.unwrap and len(input_data_types) > 1:
-                _logger.error('You can only unwrap one data type in real time. To extract multiple data streams, '
-                              'consider logging all data and then running p1_dump_input.')
-                sys.exit(1)
-        except ValueError as e:
-            _logger.error(str(e))
-            sys.exit(1)
-
-    # If the user requested specific FusionEngine messages, we'll also add InputDataWrapper to that list. That way we
-    # can search for wrapped content within those messages.
-    wrapped_data_format = options.wrapped_data_format
-    include_input_data_wrapper = False
-    if (len(message_types) != 0 and MessageType.INPUT_DATA_WRAPPER not in message_types and
-        wrapped_data_format != 'parent'):
-        include_input_data_wrapper = True
-        if wrapped_data_format == 'auto':
-            wrapped_data_format = 'content'
-
-    # Connect to the device using the specified transport, or read from a file or log.
-    try:
-        # If the user specified a partial or complete log hash, or the path to a directory, try to locate a P1 log.
-        # Log patterns are mutually exclusive with transport descriptors, so it can only be one or the other. No need to
-        # check both.
-        if is_possible_log_pattern(options.input):
-            input_path, log_id = locate_log(input_path=options.input, log_base_dir=options.log_base_dir,
-                                            return_log_id=True, extract_fusion_engine_data=False)
-            if input_path is None:
-                # locate_log() will log an error.
-                sys.exit(1)
-            else:
-                input_transport = create_transport(input_path, mode='input', print_func=_print_info)
-        else:
-            log_id = None
-            input_transport = create_transport(options.input, mode='input', print_func=_print_info)
-    except Exception as e:
-        _logger.error(str(e))
-        sys.exit(1)
-
-    # Open the output file or real-time output transport if enabled.
-    output_transport = None
-    timestamp_file = None
-    if options.output is not None:
-        # If writing to a .p1log file, if there's an existing index file (.p1i) for that filename, delete it.
-        if options.output_format == 'p1log':
-            p1i_path = os.path.splitext(options.output)[0] + '.p1i'
-            if os.path.exists(p1i_path):
-                os.remove(p1i_path)
-
-        # Now open the transport/file.
-        output_transport = create_transport(options.output, mode='output', print_func=_print_info)
-        _print_info(f'Writing output to: {output_transport}')
-
-        # If requested when logging to disk, also capture host OS timestamps as messages arrive.
-        if options.log_timestamp_source:
-            if not isinstance(output_transport, FileTransport) or output_transport.output_path == 'stdout':
-                _logger.error('--log-timestamp-source can only be used when --output is a file.')
-                sys.exit(1)
-            elif options.output_format == 'csv':
-                _logger.error('--log-timestamp-source only supported for binary output files.')
-                sys.exit(1)
-            else:
-                timestamp_file = open(options.output + TIMESTAMP_FILE_ENDING, 'wb')
-
-    # Note: We intentionally set --output-format=None by default instead of raw to avoid printing the warning below
-    # unnecessarily. If not specified, default to raw (i.e., capture all incoming data).
-    generating_raw_log = (output_transport is not None and
-                          (options.output_format == 'raw' or options.output_format is None))
-    generating_p1log = (output_transport is not None and options.output_format == 'p1log')
-    generating_csv = (output_transport is not None and options.output_format == 'csv')
-
-    if generating_csv:
-        output_transport.write(b'host_time,type,p1_time,sys_time\n')
-
-    # If the user wants to unwrap InputDataWrapper messages and they set anything other than --output-format=raw, fail.
-    #
-    # If the user requested --output-format=raw but also set specific message types, warn them that we will only be
-    # outputting the requested FusionEngine messages and not any non-FusionEngine binary data in the input stream.
-    #
-    # There is no requirement to use the .p1log file extension for a stream containing only FusionEngine messages.
-    if options.unwrap and output_transport is not None and not generating_raw_log:
-        _logger.error("Output format must 'raw' when unwrapping InputDataWrapper content.")
-        sys.exit(1)
-    if generating_raw_log and options.output_format is not None and len(message_types) != 0:
-        _logger.warning('Raw log format requested, but --message-type specified. Output will not contain any '
-                        'non-FusionEngine binary, if present in the input stream.')
-        generating_raw_log = False
-        generating_p1log = True
-
-    # In the read loop below, if we're filtering data and forwarding it in real time, we'll read a small amount of data
-    # at a time to reduce latency. Otherwise, if we're just displaying stuff or writing to disk, we'll read more data at
-    # a time to be more efficient.
-    is_real_time = (output_transport is not None and
-                    (not isinstance(output_transport, FileTransport) or output_transport.output_path == 'stdout'))
-    if is_real_time:
-        read_timeout_sec = 1.0
-        read_size_bytes = 64
-    else:
-        read_timeout_sec = 1.0
-        read_size_bytes = 1024
-
-    # If this is a TCP/UDP/UNIX socket, configure it for non-blocking reads. We'll apply a read timeout with select()
-    # below.
-    if isinstance(input_transport, socket.socket):
-        input_transport.setblocking(0)
-        # This function won't do anything if neither timestamp is enabled.
-        enable_socket_timestamping(
-            input_transport,
-            enable_sw_timestamp=options.log_timestamp_source == 'kernel-sw',
-            enable_hw_timestamp=options.log_timestamp_source == 'hw'
-        )
-    # If this is a serial port or websocket, configure its read timeout. If this is a file, set_read_timeout() is a
-    # no-op.
-    else:
-        if options.log_timestamp_source and options.log_timestamp_source != 'user-sw':
-            _logger.error(f'--log-timestamp-source={options.log_timestamp_source} is not supported. Only "user-sw" '
-                          f'timestamps are supported on non-socket captures.')
-            sys.exit(1)
-
-        set_read_timeout(input_transport, read_timeout_sec)
-
-    # Create a decoder to parse incoming FusionEngine data.
-    decoder = FusionEngineDecoder(warn_on_unrecognized=not quiet and not show_summary_live, return_bytes=True)
-
-    # Setup status variables used below.
-    bytes_received = 0
-    fe_bytes_received = 0
-    messages_received = 0
-    bytes_sent = 0
-    messages_sent = 0
-    device_summary = DeviceSummary()
-
-    first_p1_time_sec = None
-    last_p1_time_sec = None
-
-    first_system_time_sec = None
-    last_system_time_sec = None
-
-    start_time = datetime.now()
-    last_print_time = start_time
-    print_timeout_sec = 1.0 if show_summary_live else 5.0
-
-    # Helper function to print out one-line status periodically.
-    def _print_status(now):
-        nonlocal last_print_time
-        _print_info(
-            'Status: [elapsed_time=%d sec, received: %d B (%d messages = %d B) -> sent: %d B (%d messages)]' %
-            ((now - start_time).total_seconds(),
-             bytes_received, messages_received, fe_bytes_received,
-             bytes_sent, messages_sent))
-        last_print_time = now
-
-    # Helper function to print out a detailed data summary periodically.
-    def _print_summary(now):
-        nonlocal last_print_time
-
-        if show_summary_live:
-            # Clear the terminal.
-            print(colorama.ansi.CSI + 'H' + colorama.ansi.CSI + 'J', end='', file=logging_stream)
-
-        # Log/data details.
-        if isinstance(input_transport, FileTransport):
-            if input_transport.is_stdin:
-                _print_info('Input file: <stdin>')
-            else:
-                _print_info(f'Input file: {input_transport.input_path}')
-
-            if log_id is not None:
-                _print_info(f'Log ID: {log_id}')
-
-            if first_p1_time_sec is not None:
-                elapsed_sec = last_p1_time_sec - first_p1_time_sec
-                if elapsed_sec > 0.0:
-                    _print_info(f'Duration (P1): {elapsed_sec:.1f} sec')
-                else:
-                    _print_info(f'Duration (P1): -')
-            else:
-                _print_info(f'Duration (P1): -')
-
-            if first_system_time_sec is not None:
-                elapsed_sec = last_system_time_sec - first_system_time_sec
-                if elapsed_sec > 0.0:
-                    _print_info(f'Duration (system): {elapsed_sec:.1f} sec')
-                else:
-                    _print_info(f'Duration (system): -')
-            else:
-                _print_info(f'Duration (system): -')
-
-            _print_info("")
-
-        # Real-time processing details.
-        _print_info(f'Elapsed time: {(now - start_time).total_seconds():.1f} sec')
-        _print_info(f'Received: {bytes_received} B ({messages_received} messages = {fe_bytes_received} B)')
-        _print_info(f'Sent: {bytes_sent} B ({messages_sent} messages)')
-
-        # Message summary table.
-        _print_info("")
-        print_summary_table(device_summary)
-
-        last_print_time = now
-
-    if show_status:
-        _print_display_func = _print_status
-    elif show_summary:
-        _print_display_func = _print_summary
-    else:
-        _print_display_func = lambda now: None
-
-    # Listen for incoming data.
-    try:
-        while True:
-            # Read some data from the device/file.
-            kernel_ts: Optional[float] = None
-            hw_ts: Optional[float] = None
-            try:
-                # If this is a TCP/UDP socket, use select() to implement a read timeout so we can wakeup periodically
-                # and print status if there's no incoming data.
-                if isinstance(input_transport, socket.socket):
-                    ready = select.select([input_transport], [], [], read_timeout_sec)
-                    if ready[0]:
-                        received_data, kernel_ts, hw_ts = recv(input_transport, read_size_bytes)
-                    else:
-                        received_data = []
-                # If this is a serial port or file, we set the read timeout above.
-                else:
-                    received_data = recv_from_transport(input_transport, read_size_bytes)
-
-                    # Check if we reached EOF.
-                    if len(received_data) == 0 and isinstance(input_transport, FileTransport):
-                        break
-
-                now = datetime.now()
-
-                bytes_received += len(received_data)
-
-                if show_summary_live or show_status:
-                    if (now - last_print_time).total_seconds() > print_timeout_sec:
-                        _print_display_func(now)
-            except serial.SerialException as e:
-                _logger.error('Unexpected error reading from device:\r%s' % str(e))
-                break
-
-            if options.log_timestamp_source == 'kernel-sw':
-                if kernel_ts is None:
-                    _logger.error(f'Unable to capture kernel SW timestamps on {options.transport}.')
-                    sys.exit(1)
-                timestamp_sec = kernel_ts
-            elif options.log_timestamp_source == 'hw':
-                if hw_ts is None:
-                    _logger.error(f'Unable to capture HW timestamps on {options.transport}.\n{HW_TIMESTAMPING_HELP}')
-                    sys.exit(1)
-                timestamp_sec = hw_ts
-            else:
-                timestamp_sec = now.timestamp()
-            timestamp_ns = int(round(timestamp_sec * 1e9))
-
-            # If logging in raw format, write the data to disk as is.
-            if generating_raw_log:
-                output_transport.write(received_data)
-                bytes_sent += len(received_data)
-                if timestamp_file:
-                    log_timestamped_data_offset(timestamp_file, timestamp_ns, bytes_received)
-
-
-            # Decode the incoming data and print the contents of any complete messages.
-            #
-            # Note that we pass the data to the decoder at all times, even if --display=false, --summary=false, and
-            # --quiet=true were set, so that:
-            # - So that we get a count of the number of incoming and outgoing messages
-            # - So we print warnings if the CRC fails on any of the incoming data
-            # - If we are logging in *.p1log format, so the decoder can separate the FusionEngine data from any
-            #   non-FusionEngine data in the stream
-            messages = decoder.on_data(received_data)
-
-            # Count _all_ incoming FusionEngine messages. We apply the user-specified message_types filter below to the
-            # outgoing message count.
-            messages_received += len(messages)
-
-            for (header, message, raw_data) in messages:
-                fe_bytes_received += len(raw_data)
-
-                # Capture elapsed P1 and (device) system time.
-                p1_time = message.get_p1_time()
-                if p1_time is not None:
-                    if first_p1_time_sec is None:
-                        first_p1_time_sec = float(p1_time)
-                    last_p1_time_sec = float(p1_time)
-
-                system_time = message.get_system_time_sec()
-                if system_time is not None:
-                    if first_system_time_sec is None:
-                        first_system_time_sec = float(system_time)
-                    last_system_time_sec = float(system_time)
-
-                # See if this is in the list of user-specified message types to keep. If the list is empty, keep all
-                # messages.
-                #
-                # In unwrap mode, we explicitly set message_types to InputDataWrapper messages and ignore all other
-                # incoming messages.
-                #
-                # When not in unwrap mode, the user may or may not have requested InputDataWrapper. However, if the they
-                # set --wrapped-data-format=auto|all|content, we will pass wrappers through here and filter them out
-                # below.
-                pass_through_message = (
-                    len(message_types) == 0 or
-                    (options.invert and header.message_type not in message_types) or
-                    (not options.invert and header.message_type in message_types) or
-                    header.message_type == MessageType.INPUT_DATA_WRAPPER and include_input_data_wrapper
-                )
-
-                # If this is an InputDataWrapper and the user specified a list of data types to keep, keep only the
-                # messages with that kind of data. If the list is empty, keep all messages.
-                if pass_through_message and header.message_type == MessageType.INPUT_DATA_WRAPPER:
-                    pass_through_message = (
-                        len(input_data_types) == 0 or
-                        (options.invert and message.data_type not in input_data_types) or
-                        (not options.invert and message.data_type in input_data_types)
-                    )
-
-                if not pass_through_message:
-                    continue
-
-                device_summary.update(header, message)
-                messages_sent += 1
-                if not generating_raw_log:
-                    bytes_sent += len(raw_data)
-
-                if generating_p1log:
-                    output_transport.write(raw_data)
-                    if timestamp_file:
-                        log_timestamped_data_offset(timestamp_file, timestamp_ns, fe_bytes_received)
-
-                if generating_csv:
-                    p1_time = message.get_p1_time()
-                    sys_time = message.get_system_time_sec()
-                    p1_str = str(p1_time.seconds) if p1_time is not None and not math.isnan(p1_time) else ''
-                    sys_str = str(sys_time) if sys_time is not None and not math.isnan(sys_time) else ''
-                    output_transport.write(
-                        f'{timestamp_sec},{header.message_type},{p1_str},{sys_str}\n'.encode('utf-8'))
-
-                if show_message_contents:
-                    print_message(header, message, format=options.display_format, bytes=raw_data,
-                                  message_types=message_types, wrapped_data_mode=wrapped_data_format,
-                                  logger=_logger)
-
-            if show_summary_live:
-                if (now - last_print_time).total_seconds() > 0.5:
-                    _print_display_func(now)
-    except (BrokenPipeError, KeyboardInterrupt) as e:
-        pass
-
-    # Close the transport.
-    input_transport.close()
-
-    # Close the output file.
-    if output_transport is not None:
-        output_transport.close()
-
-    if show_summary:
-        now = datetime.now()
-        _print_display_func(now)
+    # Configure the application.
+    app = Application(options=options, logging_stream=logging_stream)
+    app.process_input()
 
 
 if __name__ == "__main__":
