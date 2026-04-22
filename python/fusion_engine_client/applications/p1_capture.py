@@ -678,7 +678,7 @@ incoming data to stdout (--output=-).
         '--progress', action=ExtendedBooleanAction,
         help="If input is a file, print file read progress to the console periodically.")
     input_parser.add_argument(
-        'input', type=str,
+        'input', type=str, nargs='?', default='-',
         help=f"""\
 {TRANSPORT_HELP_STRING}
 - The path to a FusionEngine log directory
