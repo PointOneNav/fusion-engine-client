@@ -427,27 +427,28 @@ class Application:
         #
         # When not in unwrap mode, the user may or may not have requested InputDataWrapper. However, if they set
         # --wrapped-data-format=auto|all|content, we will pass wrappers through here and filter them out below.
-        pass_through_message = (
-            len(self.message_types) == 0 or
-            (self.options.invert and header.message_type not in self.message_types) or
-            (not self.options.invert and header.message_type in self.message_types) or
-            header.message_type == MessageType.INPUT_DATA_WRAPPER and self.include_input_data_wrapper
-        )
+        if len(self.message_types) > 0:
+            if header.message_type == MessageType.INPUT_DATA_WRAPPER and self.include_input_data_wrapper:
+                pass
+            elif not self.options.invert and header.message_type not in self.message_types:
+                return False
+            elif self.options.invert and header.message_type in self.message_types:
+                return False
 
         # If this is an InputDataWrapper and the user specified a list of data types to keep, keep only the messages
         # with that kind of data. If the list is empty, keep all messages.
-        if pass_through_message and header.message_type == MessageType.INPUT_DATA_WRAPPER:
-            pass_through_message = (
-                len(self.input_data_types) == 0 or
-                (self.options.invert and message.data_type not in self.input_data_types) or
-                (not self.options.invert and message.data_type in self.input_data_types)
-            )
+        if header.message_type == MessageType.INPUT_DATA_WRAPPER and len(self.input_data_types) > 0:
+            if not self.options.invert and message.data_type not in self.input_data_types:
+                return False
+            elif self.options.invert and message.data_type in self.input_data_types:
+                return False
 
         # If the user listed specific sources IDs, restrict to that.
-        if pass_through_message:
-            pass_through_message = len(self.source_ids) == 0 or header.source_identifier in self.source_ids
+        if len(self.source_ids) > 0:
+            if header.source_identifier not in self.source_ids:
+                return False
 
-        return pass_through_message
+        return True
 
     def _print_display(self, now):
         if self.show_status:
