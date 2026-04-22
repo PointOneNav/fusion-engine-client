@@ -133,7 +133,6 @@ class MixedLogReader(object):
         self.filter_in_place(self.message_types)
         self.filter_in_place(self.time_range)
 
-        self.index = self._original_index[self.message_types][self.time_range]
         self.filtered_message_types = len(np.unique(self._original_index.type)) != \
                                         len(np.unique(self.index.type))
 
