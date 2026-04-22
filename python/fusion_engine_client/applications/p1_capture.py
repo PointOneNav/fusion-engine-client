@@ -800,6 +800,9 @@ The format of the file to be generated when --output is enabled:
                 logging.getTraceLevel(depth=options.verbose - 1))
     else:
         logging.basicConfig(level=logging.INFO, format='%(message)s', stream=logging_stream)
+        if quiet:
+            logging.getLogger('point_one.utils.log').setLevel(logging.ERROR)
+            logging.getLogger('point_one.fusion_engine.parsers').setLevel(logging.ERROR)
 
     HighlightFormatter.install(color=True, standoff_level=logging.WARNING)
     BrokenPipeStreamHandler.install()
