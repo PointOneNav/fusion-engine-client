@@ -68,6 +68,7 @@ class Application:
         self.bytes_received = 0
         self.fe_bytes_received = 0
         self.messages_received = 0
+        self.skipped_messages = 0
         self.bytes_sent = 0
         self.messages_sent = 0
         self.device_summary = DeviceSummary()
@@ -329,11 +330,14 @@ class Application:
                 # - If we are logging in *.p1log format, so the decoder can separate the FusionEngine data from any
                 #   non-FusionEngine data in the stream
                 messages = self.decoder.on_data(received_data)
-                self._process_fe_messages(messages, timestamp_sec)
+                finished = not self._process_fe_messages(messages, timestamp_sec)
 
                 if self.show_summary_live:
                     if (now - self.last_print_time).total_seconds() > 0.5:
                         self._print_display(now)
+
+                if finished:
+                    break
         except (BrokenPipeError, KeyboardInterrupt) as e:
             pass
 
@@ -350,11 +354,15 @@ class Application:
             self._print_display(now)
 
     def _process_fe_messages(self, messages, timestamp_sec):
-        # Count _all_ incoming FusionEngine messages. We apply the user-specified message_types filter below to the
-        # outgoing message count.
-        self.messages_received += len(messages)
-
         for (header, message, raw_data) in messages:
+            # Skip the first N messages if requested.
+            if self.skipped_messages < self.options.skip:
+                self.skipped_messages += 1
+                continue
+
+            # Count _all_ incoming FusionEngine messages. We apply the user-specified message_types filter below to the
+            # outgoing message count.
+            self.messages_received += 1
             self.fe_bytes_received += len(raw_data)
 
             # Capture elapsed P1 and (device) system time.
@@ -394,32 +402,35 @@ class Application:
                         (not self.options.invert and message.data_type in self.input_data_types)
                 )
 
-            if not pass_through_message:
-                continue
+            if pass_through_message:
+                self.device_summary.update(header, message)
+                self.messages_sent += 1
+                if not self.generating_raw_log:
+                    self.bytes_sent += len(raw_data)
 
-            self.device_summary.update(header, message)
-            self.messages_sent += 1
-            if not self.generating_raw_log:
-                self.bytes_sent += len(raw_data)
+                if self.generating_p1log:
+                    self.output_transport.write(raw_data)
+                    if self.timestamp_file:
+                        timestamp_ns = int(round(timestamp_sec * 1e9))
+                        log_timestamped_data_offset(self.timestamp_file, timestamp_ns, self.fe_bytes_received)
 
-            if self.generating_p1log:
-                self.output_transport.write(raw_data)
-                if self.timestamp_file:
-                    timestamp_ns = int(round(timestamp_sec * 1e9))
-                    log_timestamped_data_offset(self.timestamp_file, timestamp_ns, self.fe_bytes_received)
+                if self.generating_csv:
+                    p1_time = message.get_p1_time()
+                    sys_time = message.get_system_time_sec()
+                    p1_str = str(p1_time.seconds) if p1_time is not None and not math.isnan(p1_time) else ''
+                    sys_str = str(sys_time) if sys_time is not None and not math.isnan(sys_time) else ''
+                    self.output_transport.write(
+                        f'{timestamp_sec},{header.message_type},{p1_str},{sys_str}\n'.encode('utf-8'))
 
-            if self.generating_csv:
-                p1_time = message.get_p1_time()
-                sys_time = message.get_system_time_sec()
-                p1_str = str(p1_time.seconds) if p1_time is not None and not math.isnan(p1_time) else ''
-                sys_str = str(sys_time) if sys_time is not None and not math.isnan(sys_time) else ''
-                self.output_transport.write(
-                    f'{timestamp_sec},{header.message_type},{p1_str},{sys_str}\n'.encode('utf-8'))
+                if self.show_message_contents:
+                    print_message(header, message, format=self.options.display_format, bytes=raw_data,
+                                  message_types=self.message_types, wrapped_data_mode=self.wrapped_data_format,
+                                  logger=_logger)
 
-            if self.show_message_contents:
-                print_message(header, message, format=self.options.display_format, bytes=raw_data,
-                              message_types=self.message_types, wrapped_data_mode=self.wrapped_data_format,
-                              logger=_logger)
+            if self.options.max is not None and self.messages_received == self.options.max:
+                return False
+
+        return True
 
     def _print_display(self, now):
         if self.show_status:
@@ -575,6 +586,10 @@ If specified, discard all message types specified with --message-type and output
 
 By default, all specified message types are output and all others are discarded.""")
     filter_group.add_argument(
+        '-n', '--max', type=int, default=None,
+        help="Process up to a maximum of N messages. If --message-type is specified, only count messages matching the "
+             "specified type(s).")
+    filter_group.add_argument(
         '-m', '--message-type', type=str, action='append',
         help="""
 An optional list of class names corresponding with the message types to be displayed. May be specified multiple times
@@ -587,6 +602,10 @@ specified.
 
 Supported types:
 %s""" % '\n'.join(['- %s' % c for c in message_type_by_name.keys()]))
+    filter_group.add_argument(
+        '--skip', type=int, default=0,
+        help="Skip the first N messages. If --message-type is specified, only count messages matching the specified "
+             "type(s).")
 
     wrapper_group = parser.add_argument_group('InputDataWrapper Support')
     wrapper_group.add_argument(
