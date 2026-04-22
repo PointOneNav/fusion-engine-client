@@ -203,6 +203,13 @@ def test_time_range_slice():
     assert (sliced_index.offset == [e[2] for e in raw]).all()
     assert (sliced_index.message_index == [e[3] for e in raw]).all()
 
+    # Same using getitem hint syntax.
+    sliced_index = index[TimeRange(start=1000.0, absolute=True), 'all_nans']
+    raw = [m for m in RAW_DATA if m[0] is None]
+    assert _test_time(sliced_index.time, raw)
+    assert (sliced_index.offset == [e[2] for e in raw]).all()
+    assert (sliced_index.message_index == [e[3] for e in raw]).all()
+
 
 def test_time_slice_no_p1_time():
     def _lower_bound(time):

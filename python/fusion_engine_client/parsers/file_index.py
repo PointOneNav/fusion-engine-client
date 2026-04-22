@@ -392,6 +392,13 @@ class FileIndex(object):
             raise AttributeError
 
     def __getitem__(self, key):
+        # If the key is a 2-tuple and the second argument is a string, treat it as a hint string.
+        if isinstance(key, tuple) and len(key) == 2 and isinstance(key[1], str):
+            hint = key[1]
+            key = key[0]
+        else:
+            hint = None
+
         # No key specified (convenience case).
         if key is None:
             return copy.copy(self)
@@ -425,14 +432,16 @@ class FileIndex(object):
         #   my_index[10:12:'remove_nans']
         elif isinstance(key, slice) and (isinstance(key.start, (Timestamp, float)) or
                                          isinstance(key.stop, (Timestamp, float))):
-            hint = key.step
+            if key.step is not None:
+                hint = key.step
             if hint is not None and not isinstance(hint, str):
                 raise ValueError('Step size not supported for time range slicing.')
             return self.get_time_range(start=key.start, stop=key.stop, hint=hint)
         # Key is a TimeRange object. Return a subset of the data. All nan elements (messages without P1 time) will be
-        # included in the results.
+        # included in the results by default, unless hint is set to 'remove_nans':
+        #    my_index[TimeRange(...), 'remove_nans']
         elif isinstance(key, TimeRange):
-            return self.get_time_range(time_range=key, hint='include_nans')
+            return self.get_time_range(time_range=key, hint=hint)
         # Key is an index slice or a list of individual element indices. Return a subset of the data.
         elif isinstance(key, slice):
             return FileIndex(data=self._data[key], t0=self.t0)
