@@ -407,6 +407,7 @@ class Application:
                 if finished:
                     break
         except (BrokenPipeError, KeyboardInterrupt) as e:
+            # User hit Ctrl-C -- done processing.
             pass
 
         # Close the transport.

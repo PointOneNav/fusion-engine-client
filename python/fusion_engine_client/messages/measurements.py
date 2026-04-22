@@ -1652,11 +1652,8 @@ class InputDataWrapperMessage(MessagePayload):
                                    message_version=header.message_version)
                     self._fe_content_payload = payload
                 except Exception:
-                    pass
-
-            if self._fe_content_payload is None:
-                # Set to False instead of None so we don't try to unpack the header multiple times.
-                self._fe_content_payload = False
+                    # Set to False instead of None so we don't try to unpack the header multiple times.
+                    self._fe_content_payload = False
 
         if self._fe_content_payload == False:
             return None
