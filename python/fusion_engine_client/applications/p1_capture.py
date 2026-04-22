@@ -656,13 +656,14 @@ Examples:
     add_print_format_argument(parser, '--display-format')
     parser.add_argument(
         '-d', '--display', type=str, default=default_display_mode,
-        choices=('messages', 'messages+summary', 'none', 'status', 'summary'),
+        choices=('messages', 'messages+summary', 'none', 'quiet', 'status', 'summary'),
         help="""\
 Specify the level of detail to be displayed on the console. Output will be printed to stdout, unless configured to write
 incoming data to stdout (--output=-).
 - messages - Print the content of all incoming FusionEngine messages
 - messages+summary - Print the content of all incoming FusionEngine messages, plus a summary on exit
 - none - Only print warnings/errors, do not print any contents to the console
+- quiet - Alias for 'none'
 - status - Periodically print the amount of data received (byte count, number of messages) but not contents
 - summary - Print a table summarizing the incoming data""")
     parser.add_argument(
@@ -774,6 +775,9 @@ The format of the file to be generated when --output is enabled:
     # --summary is an alias for --display=summary.
     if options.summary:
         options.display = 'summary'
+
+    if options.display == 'quiet':
+        options.display = 'none'
 
     quiet = options.display == 'none'
 
