@@ -333,13 +333,13 @@ class Application:
                     timestamp_sec = hw_ts
                 else:
                     timestamp_sec = now.timestamp()
-                timestamp_ns = int(round(timestamp_sec * 1e9))
 
                 # If logging in raw format, write the data to disk as is.
                 if self.generating_raw_log:
                     self.output_transport.write(received_data)
                     self.bytes_sent += len(received_data)
                     if self.timestamp_file:
+                        timestamp_ns = int(round(timestamp_sec * 1e9))
                         log_timestamped_data_offset(self.timestamp_file, timestamp_ns, self.bytes_received)
 
                 # Decode the incoming data and print the contents of any complete messages.
