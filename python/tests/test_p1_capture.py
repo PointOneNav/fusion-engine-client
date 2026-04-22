@@ -475,11 +475,35 @@ class TestApplication:
         app = self._run(path, skip=4)
         assert app.messages_sent == 6
 
+    def test_skip_counts_only_filtered_messages(self, tmp):
+        """--skip counts only messages that pass the type filter."""
+        path = tmp / 'input.p1log'
+        specs = []
+        for i in range(5):
+            specs.append((PoseMessage, float(i)))
+            specs.append((GNSSInfoMessage, float(i)))
+        self._write_fe_messages(path, specs)
+        # 5 Pose messages total; skipping 4 filtered (Pose) ones leaves 1
+        app = self._run(path, message_type=['Pose'], skip=4)
+        assert app.messages_sent == 1
+
     def test_max_and_skip_combined(self, tmp):
         path = tmp / 'input.p1log'
         self._write_fe_messages(path, [(PoseMessage, float(i)) for i in range(10)])
         app = self._run(path, skip=2, max=3)
         assert app.messages_sent == 3
+
+    def test_max_and_skip_with_type_filter(self, tmp):
+        """--skip and --max both count only messages that pass the type filter."""
+        path = tmp / 'input.p1log'
+        specs = []
+        for i in range(10):
+            specs.append((PoseMessage, float(i)))
+            specs.append((GNSSInfoMessage, float(i)))
+        self._write_fe_messages(path, specs)
+        # 10 Pose messages; skip 3 filtered, then take max 4 → 4 sent
+        app = self._run(path, message_type=['Pose'], skip=3, max=4)
+        assert app.messages_sent == 4
 
     def test_max_counts_only_matching_type(self, tmp):
         """--max counts only messages that pass the type filter."""

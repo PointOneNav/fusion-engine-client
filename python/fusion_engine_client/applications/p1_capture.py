@@ -403,11 +403,6 @@ class Application:
 
     def _process_fe_messages(self, messages, timestamp_sec):
         for (header, message, raw_data) in messages:
-            # Skip the first N messages if requested.
-            if self.skipped_messages < self.options.skip:
-                self.skipped_messages += 1
-                continue
-
             # Count _all_ incoming FusionEngine messages. We apply the user-specified message_types filter below to the
             # outgoing message count.
             self.messages_received += 1
@@ -427,6 +422,11 @@ class Application:
                 self.last_system_time_sec = float(system_time)
 
             if self._apply_filters(header=header, message=message):
+                # If requested, skip the first N messages that pass the filter (e.g., skip the first 10 pose messages).
+                if self.skipped_messages < self.options.skip:
+                    self.skipped_messages += 1
+                    continue
+
                 self.device_summary.update(header, message)
                 self.messages_sent += 1
                 if not self.generating_raw_log:
@@ -596,6 +596,11 @@ Examples:
 
   # Print the contents of the first 10 Pose messages in a recorded data file.
   ./p1_capture.py my_log.p1log --message-type=Pose --max=10 \
+      --display=messages
+
+  # Print the contents of the 10 Pose messages in a recorded data file,
+  # starting with the 45th Pose message.
+  ./p1_capture.py my_log.p1log --message-type=Pose --skip=44 --max=10 \
       --display=messages
 
   # Filter the incoming data from a device connected over TCP and remove
