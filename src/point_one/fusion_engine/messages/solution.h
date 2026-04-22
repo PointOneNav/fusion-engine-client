@@ -335,7 +335,7 @@ struct P1_ALIGNAS(4) SatelliteInfo {
   static constexpr uint8_t SATELLITE_USED = 0x01;
   /** @} */
 
-  static constexpr int16_t INVALID_CN0 = 0;
+  static constexpr uint8_t INVALID_CN0 = 0;
 
   /** The GNSS system to which this satellite belongs. */
   SatelliteType system = SatelliteType::UNKNOWN;
