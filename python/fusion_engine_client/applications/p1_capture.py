@@ -18,6 +18,7 @@ from ..messages import InputDataType, MessagePayload, MessageType, message_type_
 from ..parsers import FusionEngineDecoder
 from ..utils import trace as logging
 from ..utils.argument_parser import ArgumentParser, ExtendedBooleanAction
+from ..utils.log import define_cli_arguments as define_log_search_arguments, is_possible_log_pattern, locate_log
 from ..utils.print_utils import \
     DeviceSummary, add_print_format_argument, add_wrapped_data_mode_argument, print_message, print_summary_table
 from ..utils.socket_timestamping import (enable_socket_timestamping,
@@ -105,9 +106,16 @@ incoming data to stdout (--output=-).
         '-v', '--verbose', action='count', default=0,
         help="Print verbose/trace debugging messages.")
 
-    parser.add_argument(
+    input_parser = parser.add_argument_group('Input Control')
+    define_log_search_arguments(input_parser, define_log=False)
+    input_parser.add_argument(
         'input', type=str,
-        help=TRANSPORT_HELP_STRING)
+        help=f"""\
+{TRANSPORT_HELP_STRING}
+- The path to a FusionEngine log directory
+- A pattern matching a FusionEngine log directory under the specified base directory (see find_fusion_engine_log() and
+  --log-base-dir)
+""")
 
     filter_group = parser.add_argument_group('Message Filtering')
     filter_group.add_argument(
@@ -269,8 +277,20 @@ The format of the file to be generated when --output is enabled:
 
     # Connect to the device using the specified transport, or read from a file or log.
     try:
-        log_id = None
-        input_transport = create_transport(options.input, mode='input', print_func=_print_info)
+        # If the user specified a partial or complete log hash, or the path to a directory, try to locate a P1 log.
+        # Log patterns are mutually exclusive with transport descriptors, so it can only be one or the other. No need to
+        # check both.
+        if is_possible_log_pattern(options.input):
+            input_path, log_id = locate_log(input_path=options.input, log_base_dir=options.log_base_dir,
+                                            return_log_id=True, extract_fusion_engine_data=False)
+            if input_path is None:
+                # locate_log() will log an error.
+                sys.exit(1)
+            else:
+                input_transport = create_transport(input_path, mode='input', print_func=_print_info)
+        else:
+            log_id = None
+            input_transport = create_transport(options.input, mode='input', print_func=_print_info)
     except Exception as e:
         _logger.error(str(e))
         sys.exit(1)
