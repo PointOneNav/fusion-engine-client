@@ -567,48 +567,67 @@ another application, either over stdout or a specified transport.
 
 Examples:
   # Connect to a device over TCP and display a summary of the incoming data.
+  #
+  # --display=summary is the default setting.
+  ./p1_capture.py tcp://192.168.1.138:30202
+    or
+  ./p1_capture.py tcp://192.168.1.138:30202 --display=summary
+    or
   ./p1_capture.py tcp://192.168.1.138:30202 --summary
 
-  # Display the contents of all messages received from a device in real time.
-  ./p1_capture.py tcp://192.168.1.138:30202 --display
+  # Connect to a device over a serial port.
+  ./p1_capture.py tty:///dev/ttyUSB0:460800
 
-  # Log device output to disk.
-  ./p1_capture.py tcp://192.168.1.138:30202 --output=/tmp/output.p1log
+  # Display the contents of all messages received from a device in real time,
+  # instead of summarizing.
+  ./p1_capture.py tcp://192.168.1.138:30202 --display=messages
 
-  # Remove GNSSSignals messages from the data stream of a device connected over
-  # TCP, and log the results to disk.
+  # Log output from a device to disk.
+  ./p1_capture.py tcp://192.168.1.138:30202 --output=my_log.p1log
+
+  # Display a data capture status instead of the larger summary table.
+  ./p1_capture.py tcp://192.168.1.138:30202 --output=my_log.p1log --display=status
+
+  # Display the contents of all Pose messages captured in a log file.
+  ./p1_capture.py my_log.p1log --message-type=Pose --display=messages
+
+  # Filter a recorded log file and only keep the Pose messages.
+  ./p1_capture.py my_log.p1log --message-type=Pose --output=pose_output.p1log
+
+  # Print the contents of the first 10 Pose messages in a recorded data file.
+  ./p1_capture.py my_log.p1log --message-type=Pose --max=10 \
+      --display=messages
+
+  # Filter the incoming data from a device connected over TCP and remove
+  # GNSSSignals messages. Log the remaining FusionEngine messages to disk.
   ./p1_capture.py tcp://192.168.1.138:30202 \
-      --invert --message-type=GNSSSignals --output=/tmp/output.p1log
+      --output=my_log_no_gnss_signals.p1log \
+      --invert --message-type=GNSSSignals
 
-  # Same as above, but capture data using netcat.
+  # Same as above, but capture data from stdin using netcat.
   netcat 192.168.1.138 30202 | \
-      ./p1_capture.py --invert --message-type=GNSSSignals \
-      --output=/tmp/output.p1log
+      ./p1_capture.py \
+      --output=my_log_no_gnss_signals.p1log \
+      --invert --message-type=GNSSSignals
 
-  # Filter a recorded data file and only keep Pose messages.
-  ./p1_capture.py /tmp/output.p1log --message-type=Pose \
-      --output=/tmp/pose_output.p1log
-
-  # Filter an incoming serial data stream in real time and only keep Pose
-  # messages.
-  ./p1_capture.py tty:///dev/ttyUSB0:460800 --message-type=Pose \
-      --output=/tmp/pose_output.p1log
-
-  # Similar to above, but open the serial port manually using stty and cat.
+  # Similar to above, but open a serial port manually using stty and cat.
   stty -F /dev/ttyUSB0 speed 460800 cs8 \
       -cstopb -parenb -icrnl -ixon -ixoff -opost -isig -icanon -echo && \
       cat /dev/ttyUSB0 | \
-      ./p1_capture.py --message-type=Pose --output=/tmp/pose_output.p1log
+      ./p1_capture.py \
+      --output=my_log_no_gnss_signals.p1log \
+      --invert --message-type=GNSSSignals
 
   # Extract GNSS receiver data in its native format (RTCM, SBF, etc.) from a
-  # remote Point One device, and pass the data to another application to be
-  # parsed and displayed.
+  # remote device, and pass the data to another application to be parsed and
+  # displayed.
   #
   # Note that --output=- sends the data to stdout. All status/display prints
-  # will be redirected to stderr.
+  # will be redirected to stderr, or in this case, disabled using
+  # --display=quiet.
   ./p1_capture.py tcp://192.168.1.138:30202 \
       --unwrap --wrapped-data-type=EXTERNAL_UNFRAMED_GNSS \
-      --output=- | \
+      --output=- --display=quiet | \
       example_rtcm_print_utility
 """)
 
