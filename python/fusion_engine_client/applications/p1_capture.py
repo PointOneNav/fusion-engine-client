@@ -575,9 +575,7 @@ class Application:
         print_summary_table(self.device_summary)
 
     def _print(self, msg, *args, **kwargs):
-        if self.quiet:
-            pass
-        else:
+        if not self.quiet:
             _logger.info(msg, *args, **kwargs)
 
 
