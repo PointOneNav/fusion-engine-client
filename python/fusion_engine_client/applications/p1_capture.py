@@ -140,11 +140,19 @@ class Application:
                 self.wrapped_data_format = 'content'
 
     def _init_input_data_type_filter(self) -> None:
+        if self.options.wrapped_data_type is not None and self.options.unwrap is not None:
+            _logger.error('Error: You cannot specify both --unwrap and --wrapped-data-type.')
+            sys.exit(1)
+
         # For InputDataWrapper messages, if the user specified desired data types, limit the output to only those.
-        if self.options.wrapped_data_type is not None:
+        if self.options.wrapped_data_type is not None or self.options.unwrap is not None:
             try:
-                self.input_data_types = InputDataType.find_matching_values(
-                    self.options.wrapped_data_type, prefix='M_TYPE_', print_func=_logger.error)
+                if self.options.wrapped_data_type is not None:
+                    type_str = self.options.wrapped_data_type
+                else:
+                    type_str = self.options.unwrap
+                self.input_data_types = InputDataType.find_matching_values(type_str, prefix='M_TYPE_',
+                                                                           print_func=_logger.error)
                 if len(self.input_data_types) == 0:
                     # find_matching_values() will print an error.
                     sys.exit(1)
@@ -155,11 +163,6 @@ class Application:
             except ValueError as e:
                 _logger.error(str(e))
                 _logger.debug('', exc_info=e)
-                sys.exit(1)
-
-        if self.options.unwrap:
-            if len(self.input_data_types) == 0:
-                _logger.error('Error: You must specify a data type to unwrap.')
                 sys.exit(1)
 
     def _init_source_id_filter(self) -> None:
@@ -674,7 +677,7 @@ Examples:
   # will be redirected to stderr, or in this case, disabled using
   # --display=quiet.
   ./p1_capture.py tcp://192.168.1.138:30202 \
-      --unwrap --wrapped-data-type=EXTERNAL_UNFRAMED_GNSS \
+      --unwrap=EXTERNAL_UNFRAMED_GNSS \
       --output=- --display=quiet | \
       example_rtcm_print_utility
 """)
@@ -752,14 +755,14 @@ Supported types:
 
     wrapper_group = parser.add_argument_group('InputDataWrapper Support')
     wrapper_group.add_argument(
-        '-u', '--unwrap', action=ExtendedBooleanAction, default=False,
+        '-u', '--unwrap', type=str,
         help="""\
-Unwrap incoming InputDataWrapper messages and output their contents without FusionEngine framing. Discard all other
-FusionEngine messages.
+Unwrap the content of InputDataWrapper messages containing the specified data type.
 
-Note that we strongly recommend using this option with a single --data-type specified. When --data-type is not
-specified, or when multiple data types are specified, the unwrapped stream will contain multiple interleaved binary
-data streams with no frame alignment enforced.""")
+If a partial name is specified, the best match will be returned. Use the wildcard '*' to match multiple types.
+
+Supported types:
+%s""" % '\n'.join(['- %s' % c for c in InputDataType]))
     add_wrapped_data_mode_argument(wrapper_group, '--wrapped-data-format', default='parent')
     wrapper_group.add_argument(
         '--wrapped-data-type', type=str, action='append',

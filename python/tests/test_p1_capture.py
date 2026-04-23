@@ -25,7 +25,7 @@ def make_options(**overrides):
         verbose=0,
         message_type=None,
         invert=False,
-        unwrap=False,
+        unwrap=None,
         wrapped_data_format='parent',
         wrapped_data_type=None,
         source_identifier=None,
@@ -359,7 +359,7 @@ class TestApplication:
         path = tmp / 'input.p1log'
         path.write_bytes(b'')
         with pytest.raises(SystemExit) as exc:
-            Application(options=make_options(input=str(path), unwrap=True,
+            Application(options=make_options(input=str(path), unwrap='RTCM3_UNKNOWN',
                                              output=None))
         assert exc.value.code == 1
 
@@ -367,19 +367,18 @@ class TestApplication:
         path = tmp / 'input.p1log'
         path.write_bytes(b'')
         with pytest.raises(SystemExit) as exc:
-            Application(options=make_options(input=str(path), unwrap=True,
+            Application(options=make_options(input=str(path), unwrap='RTCM3_UNKNOWN',
                                              message_type=['Pose'],
                                              output=str(tmp / 'out.bin')))
         assert exc.value.code == 1
 
-    def test_unwrap_rejects_multiple_data_types_exits(self, tmp):
+    def test_unwrap_rejects_data_type_exits(self, tmp):
         path = tmp / 'input.p1log'
         path.write_bytes(b'')
         with pytest.raises(SystemExit) as exc:
-            Application(options=make_options(
-                input=str(path), unwrap=True,
-                wrapped_data_type=['RTCM3_UNKNOWN', 'EXTERNAL_UNFRAMED_GNSS'],
-                output=str(tmp / 'out.bin')))
+            Application(options=make_options(input=str(path), unwrap='RTCM3_UNKNOWN',
+                                             wrapped_data_type=['EXTERNAL_UNFRAMED_GNSS'],
+                                             output=str(tmp / 'out.bin')))
         assert exc.value.code == 1
 
     # -------------------------------------------------------------------------
