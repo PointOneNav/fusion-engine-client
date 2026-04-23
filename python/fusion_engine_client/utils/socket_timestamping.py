@@ -102,7 +102,8 @@ def parse_timestamps_from_ancdata(ancdata: List[_CMSG]) -> Tuple[Optional[float]
     return tuple(timestamps)
 
 
-def enable_socket_timestamping(sock: socket.socket, enable_sw_timestamp: bool, enable_hw_timestamp: bool) -> bool:
+def enable_socket_timestamping(sock: Union[socket.socket, BinaryIO],
+                               enable_sw_timestamp: bool, enable_hw_timestamp: bool) -> bool:
     '''!
     Enable kernel-level hardware or software timestamping of incoming socket data.
 
@@ -112,7 +113,10 @@ def enable_socket_timestamping(sock: socket.socket, enable_sw_timestamp: bool, e
 
     @return `True` if timestamping is supported on the host OS.
     '''
-    if sys.platform == "linux":
+    # Handle non-sockets (websocket, BinaryIO (file), etc.) gracefully.
+    if not isinstance(sock, socket.socket):
+        return False
+    elif sys.platform == "linux":
         if enable_sw_timestamp or enable_hw_timestamp:
             flags = 0
             if enable_sw_timestamp:
