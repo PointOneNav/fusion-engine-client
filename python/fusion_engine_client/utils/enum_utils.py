@@ -114,7 +114,7 @@ class IntEnum(IntEnumBase, metaclass=DynamicEnumMeta):
             return str(self)
 
     @classmethod
-    def find_matching_values(cls, pattern: Union[int, str, List[int], List[str]], raise_on_unrecognized: bool = False,
+    def find_matching_values(cls, pattern: Union[int, str, List[int], List[str]], on_unrecognized: str = 'warn',
                              prefix: str = None, allow_multiple: bool = True, print_func=None) -> Set['IntEnum']:
         """!
         @brief Find one or more enum values that match the specified pattern(s).
@@ -142,8 +142,10 @@ class IntEnum(IntEnumBase, metaclass=DynamicEnumMeta):
                wildcards are specified and multiple enums match, a single result will be returned if there is an exact
                match (e.g., `thing_a` will match to `MyType.THING_ABC`, not `MyType.THING_DEF`). All matches are
                case-insensitive.
-        @param raise_on_unrecognized If `True`, raise an exception for any unrecognized integer values. Unrecognized
-               values will automatically create new enum entries by default.
+        @param on_unrecognized Specifies how to handle unrecognized integer values:
+               - 'raise' - Raise an exception
+               - 'warn' - Print a warning, but create new enum entries
+               - 'ignore' - Create new enum entries, do not warn
         @param prefix If specified, prepend the prefix to all string values if they do not already start with it.
         @param allow_multiple If `True`, allow multiple matches when the pattern contains a wildcard.
 
@@ -176,9 +178,9 @@ class IntEnum(IntEnumBase, metaclass=DynamicEnumMeta):
                     int_val = int(pattern, base=16)
                 else:
                     int_val = int(pattern)
-                enum_val = cls(int_val, raise_on_unrecognized=raise_on_unrecognized)
+                enum_val = cls(int_val, raise_on_unrecognized=on_unrecognized == 'raise')
                 result.add(enum_val)
-                if str(enum_val) == '(Unrecognized)' and print_func:
+                if str(enum_val) == '(Unrecognized)' and print_func and on_unrecognized == 'warn':
                     print_func(f"{pattern} is an unknown {cls.__name__} value.")
             except:
                 original_pattern = pattern
