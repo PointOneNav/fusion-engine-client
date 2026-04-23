@@ -101,8 +101,7 @@ class Application:
             self.show_summary_live = False
 
         # Create the FusionEngine decoder after configuring, in case we need to change show_summary_live, etc.
-        self.decoder = FusionEngineDecoder(warn_on_unrecognized=not self.quiet and not self.show_summary_live,
-                                           return_bytes=True, return_offset=True)
+        self.decoder = FusionEngineDecoder(warn_on_unrecognized=False, return_bytes=True, return_offset=True)
 
     def _init_message_type_filter(self) -> None:
         # If the user specified a set of message names, lookup their type values. Below, we will limit the printout to
