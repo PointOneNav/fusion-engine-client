@@ -198,10 +198,8 @@ class Application:
                     sys.exit(1)
                 else:
                     self.input_transport = create_transport(input_path, mode='input', print_func=self._print)
-                    self._print("")
             else:
                 self.input_transport = create_transport(self.options.input, mode='input', print_func=self._print)
-                self._print("")
 
             # If we're reading from a normal file on disk, use MixedLogReader instead of reading directly. That is more
             # efficient since it will index the file for faster reads.
