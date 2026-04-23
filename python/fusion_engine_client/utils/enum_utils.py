@@ -199,7 +199,7 @@ class IntEnum(IntEnumBase, metaclass=DynamicEnumMeta):
                 if len(matched_types) > 1 and not allow_multiple:
                     raise ValueError("Pattern '%s' matches multiple message types:%s\n\nAdd a wildcard (%s*) to display "
                                      "all matching types." %
-                                     (pattern, ''.join(['\n  %s' % c for c in cls._member_map_.keys()]), pattern))
+                                     (pattern, ''.join(['\n  %s' % c for c in matched_types]), pattern))
                 # Otherwise, update the set of message types.
                 else:
                     result.update(matched_types)
