@@ -152,6 +152,7 @@ class Application:
                 else:
                     type_str = self.options.unwrap
                 self.input_data_types = InputDataType.find_matching_values(type_str, prefix='M_TYPE_',
+                                                                           allow_multiple=not self.options.unwrap,
                                                                            print_func=_logger.error)
                 if len(self.input_data_types) == 0:
                     # find_matching_values() will print an error.
