@@ -179,7 +179,7 @@ class IntEnum(IntEnumBase, metaclass=DynamicEnumMeta):
                     print_func(f"{pattern} is an unknown {cls.__name__} value.")
             except:
                 if prefix is not None and not pattern.startswith(prefix):
-                    pattern = f'{prefix}{pattern}'
+                    pattern = f'{prefix}*{pattern}'
 
                 allow_multiple = '*' in pattern
                 re_pattern = pattern.replace('*', '.*')
