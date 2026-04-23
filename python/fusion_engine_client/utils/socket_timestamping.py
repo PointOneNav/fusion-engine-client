@@ -13,6 +13,8 @@ import struct
 import sys
 from typing import BinaryIO, List, Optional, Tuple, Union
 
+from .transport_utils import SocketTransport
+
 
 _CMSG = Tuple[int, int, bytes]
 
@@ -102,7 +104,7 @@ def parse_timestamps_from_ancdata(ancdata: List[_CMSG]) -> Tuple[Optional[float]
     return tuple(timestamps)
 
 
-def enable_socket_timestamping(sock: Union[socket.socket, BinaryIO],
+def enable_socket_timestamping(sock: Union[socket.socket, SocketTransport, BinaryIO],
                                enable_sw_timestamp: bool, enable_hw_timestamp: bool) -> bool:
     '''!
     Enable kernel-level hardware or software timestamping of incoming socket data.
@@ -113,6 +115,9 @@ def enable_socket_timestamping(sock: Union[socket.socket, BinaryIO],
 
     @return `True` if timestamping is supported on the host OS.
     '''
+    if isinstance(sock, SocketTransport):
+        sock = sock.socket
+
     # Handle non-sockets (websocket, BinaryIO (file), etc.) gracefully.
     if not isinstance(sock, socket.socket):
         return False
@@ -131,7 +136,8 @@ def enable_socket_timestamping(sock: Union[socket.socket, BinaryIO],
         return False
 
 
-def recv(sock: Union[socket.socket, BinaryIO], buffer_size: int) -> Tuple[bytes, Optional[float], Optional[float]]:
+def recv(sock: Union[socket.socket, SocketTransport, BinaryIO], buffer_size: int) -> \
+        Tuple[bytes, Optional[float], Optional[float]]:
     '''!
     Receive data from the specified socket and capture timestamps, if enabled.
 
@@ -143,6 +149,9 @@ def recv(sock: Union[socket.socket, BinaryIO], buffer_size: int) -> Tuple[bytes,
             - The kernel timestamp, if enabled
             - The hardware timestamp, if enabled
     '''
+    if isinstance(sock, SocketTransport):
+        sock = sock.socket
+
     # Handle non-sockets (websocket, BinaryIO (file), etc.) gracefully.
     if not isinstance(sock, socket.socket):
         received_data = sock.read(buffer_size)

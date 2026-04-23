@@ -303,7 +303,7 @@ class Application:
 
         # If this is a TCP/UDP/UNIX socket, configure it for non-blocking reads. We'll apply a read timeout with
         # select() in the read loop.
-        if isinstance(self.input_transport, socket.socket):
+        if isinstance(self.input_transport, SocketTransport):
             self.input_transport.setblocking(0)
             # This function won't do anything if neither timestamp is enabled.
             enable_socket_timestamping(
@@ -349,7 +349,7 @@ class Application:
                     try:
                         # If this is a TCP/UDP socket, use select() to implement a read timeout so we can wake up
                         # periodically and print status if there's no incoming data.
-                        if isinstance(self.input_transport, socket.socket):
+                        if isinstance(self.input_transport, SocketTransport):
                             ready = select.select([self.input_transport], [], [], self.read_timeout_sec)
                             if ready[0]:
                                 received_data, kernel_ts, hw_ts = recv(self.input_transport, self.read_size_bytes)

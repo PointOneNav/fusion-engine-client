@@ -147,6 +147,35 @@ class FileTransport:
             raise RuntimeError('Output file not opened.')
 
 
+class SocketTransport:
+    """!
+    @brief Socket wrapper class, protecting against multiple close() calls.
+
+    All other member or function accesses are deferred to the underlying `socket.socket` instance.
+    """
+    def __init__(self, *args, **kwargs):
+        self._socket = socket.socket(*args, **kwargs)
+        self._closed = False
+
+    @property
+    def socket(self):
+        return self._socket
+
+    def close(self):
+        if not self._closed:
+            self._closed = True
+            self._socket.close()
+
+    def __getattr__(self, name):
+        return getattr(self._socket, name)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+
+
 class WebsocketTransport:
     """!
     @brief Websocket wrapper class, mimicking the Python socket API.
@@ -226,7 +255,7 @@ The method used to communicate with the target device:
 {TRANSPORT_HELP_OPTIONS}
 """
 
-TransportClass = Union[socket.socket, serial.Serial, WebsocketTransport, FileTransport]
+TransportClass = Union[SocketTransport, serial.Serial, WebsocketTransport, FileTransport]
 
 
 def create_transport(descriptor: str, timeout_sec: float = None, print_func: Callable = None, mode: str = 'both',
@@ -272,7 +301,7 @@ def create_transport(descriptor: str, timeout_sec: float = None, print_func: Cal
         if print_func is not None:
             print_func(f'Connecting to tcp://{ip_address}:{port}.')
 
-        transport = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        transport = SocketTransport(socket.AF_INET, socket.SOCK_STREAM)
         if timeout_sec is not None:
             transport.settimeout(timeout_sec)
         try:
@@ -288,7 +317,7 @@ def create_transport(descriptor: str, timeout_sec: float = None, print_func: Cal
         if print_func is not None:
             print_func(f'Connecting to udp://:{port}.')
 
-        transport = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        transport = SocketTransport(socket.AF_INET, socket.SOCK_DGRAM)
         transport.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         if timeout_sec is not None:
             transport.settimeout(timeout_sec)
@@ -324,7 +353,7 @@ def create_transport(descriptor: str, timeout_sec: float = None, print_func: Cal
         if print_func is not None:
             print_func(f'Connecting to unix://{path}.')
 
-        transport = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        transport = SocketTransport(socket.AF_UNIX, socket.SOCK_STREAM)
         if timeout_sec is not None:
             transport.settimeout(timeout_sec)
         transport.connect(path)
@@ -375,7 +404,7 @@ def recv_from_transport(transport: TransportClass, size_bytes: int) -> bytes:
     @return A `bytes` array.
     '''
     try:
-        if isinstance(transport, (socket.socket, WebsocketTransport)):
+        if isinstance(transport, (SocketTransport, WebsocketTransport)):
             return transport.recv(size_bytes)
         else:
             return transport.read(size_bytes)
@@ -384,7 +413,7 @@ def recv_from_transport(transport: TransportClass, size_bytes: int) -> bytes:
 
 
 def set_read_timeout(transport: TransportClass, timeout_sec: float):
-    if isinstance(transport, socket.socket):
+    if isinstance(transport, SocketTransport):
         if timeout_sec == 0:
             transport.setblocking(False)
         else:
