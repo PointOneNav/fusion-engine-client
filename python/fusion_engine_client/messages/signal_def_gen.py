@@ -8,7 +8,7 @@ import re
 import subprocess
 import sys
 from textwrap import indent
-from typing import Callable, Dict, Iterable, NamedTuple, Optional, Type, TypeVar
+from typing import Callable, Dict, NamedTuple, Optional, Type, TypeVar
 
 if __package__ is None or __package__ == "":
     root_dir = os.path.normpath(os.path.join(os.path.abspath(os.path.dirname(__file__)), '../..'))
