@@ -18,7 +18,7 @@ FusionEngine message specification.
 
 ### Requirements
 
-- Python 3.6 or later
+- Python 3.8 or later
 
 ### Applications
 
@@ -101,7 +101,7 @@ FusionEngine message specification.
 
 #### Install From PyPI
 
-1. Install Python (3.6 or later) and pip.
+1. Install Python (3.8 or later) and pip.
 2. Install the `fusione-engine-client` module, including all analysis and data processing tools:
    ```bash
    python3 -m pip install fusion-engine-client
@@ -122,7 +122,7 @@ FusionEngine message specification.
 
 #### Install From Source (Use In Another Python Project)
 
-1. Install Python (3.6 or later) and pip.
+1. Install Python (3.8 or later) and pip.
 2. Clone a copy of this repository:
    ```bash
    git clone https://github.com/PointOneNav/fusion-engine-client.git
@@ -150,7 +150,7 @@ FusionEngine message specification.
 
 #### Install From Source (Development)
 
-1. Install Python (3.6 or later) and pip.
+1. Install Python (3.8 or later) and pip.
 2. Clone a copy of this repository:
    ```bash
    git clone https://github.com/PointOneNav/fusion-engine-client.git

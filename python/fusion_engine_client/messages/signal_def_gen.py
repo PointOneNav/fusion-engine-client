@@ -8,7 +8,7 @@ import re
 import subprocess
 import sys
 from textwrap import indent
-from typing import Callable, Iterable, NamedTuple, Optional, TypeVar
+from typing import Callable, Dict, Iterable, NamedTuple, Optional, Type, TypeVar
 
 if __package__ is None or __package__ == "":
     root_dir = os.path.normpath(os.path.join(os.path.abspath(os.path.dirname(__file__)), '../..'))
@@ -303,13 +303,13 @@ _PYTHON_ENUM_VALUE_RE = re.compile(r'\s*([A-Z0-9_a-z]+) = (.+)')
 E = TypeVar('E', bound=IntEnum)
 
 
-def get_enum_values(enum_type: type[E]) -> Optional[dict[E, EnumValue]]:
+def get_enum_values(enum_type: Type[E]) -> Optional[Dict[E, EnumValue]]:
     '''!
     Parse contents from Python enums to be used to generate C++ enums.
     '''
     source_lines = inspect.getsourcelines(enum_type)
     comment = []
-    values: dict[E, EnumValue] = {}
+    values: Dict[E, EnumValue] = {}
     enum_value_names = {e.name for e in enum_type}
     for line in source_lines[0]:
         comment_match = _PYTHON_COMMENT_RE.match(line)
@@ -361,7 +361,7 @@ def strip_python_comment(comment: Optional[str]) -> str:
     return re.sub(_PYTHON_COMMENT_PREFIX_RE, '', comment).strip()
 
 
-def generate_cpp_enum_from_python(enum_type: type[IntEnum], int_type='uint8_t') -> str:
+def generate_cpp_enum_from_python(enum_type: Type[IntEnum], int_type='uint8_t') -> str:
     '''!
     Generate a the full C++ enum source code from an existing Python enum.
     '''
@@ -377,7 +377,7 @@ def generate_cpp_enum_from_python(enum_type: type[IntEnum], int_type='uint8_t') 
     return generate_cpp_enum_declaration(enum_type.__name__, comment, int_type, values_code)
 
 
-def generate_cpp_to_string(enum_type: type[_GNSSSignalPartType], pretty_values: dict[str, str]) -> str:
+def generate_cpp_to_string(enum_type: Type[_GNSSSignalPartType], pretty_values: Dict[str, str]) -> str:
     '''!
     Generate the C++ source code for the enum `to_string`, `operator<<` and `ToPrettyString` functions.
     '''
@@ -433,7 +433,7 @@ P1_CONSTEXPR_FUNC const char* ToPrettyString({name} type) {{
 }}'''
 
 
-def get_gnss_enum_cpp_name(enum_type: type[_GNSSSignalPartType]) -> str:
+def get_gnss_enum_cpp_name(enum_type: Type[_GNSSSignalPartType]) -> str:
    '''!
    Convert a Python signal part type to a C++ constant prefix: `SatelliteType` -> "SATELLITE_TYPE".
    '''
@@ -446,7 +446,7 @@ def get_gnss_enum_cpp_name(enum_type: type[_GNSSSignalPartType]) -> str:
    return cpp_name
 
 
-def generate_cpp_get_part(enum_type: type[_GNSSSignalPartType]) -> str:
+def generate_cpp_get_part(enum_type: Type[_GNSSSignalPartType]) -> str:
     '''!
     Generate the C++ source code for getting the enum value of a component type of @ref GNSSSignalType. An example
     function would be `GetSatelliteTypePart`.
@@ -489,7 +489,7 @@ def generate_cpp_constants_defs() -> str:
     '''!
     Generate the top constants portion C++ source code (shift and size constants).
     '''
-    def _make_constants(enum_type: type[_GNSSSignalPartType]):
+    def _make_constants(enum_type: Type[_GNSSSignalPartType]):
         cpp_prefix = get_gnss_enum_cpp_name(enum_type)
         bit_packing = _get_gnss_enum_bit_packing(enum_type)  # type: ignore
         return f'''\
@@ -503,7 +503,7 @@ def generate_cpp_signal_defs() -> str:
     '''!
     Generate all the generated C++ source code. This includes enum definitions and helper functions.
     '''
-    def _make_functions(enum_type: type[_GNSSSignalPartType]):
+    def _make_functions(enum_type: Type[_GNSSSignalPartType]):
         if enum_type == GNSSSignalType:
             pretty_values = {
                 k: _get_pretty_gnss_signal_type(

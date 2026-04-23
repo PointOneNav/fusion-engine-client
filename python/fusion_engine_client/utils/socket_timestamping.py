@@ -11,10 +11,10 @@ from pathlib import Path
 import socket
 import struct
 import sys
-from typing import BinaryIO, Optional, Tuple, TypeAlias, Union
+from typing import BinaryIO, List, Optional, Tuple, Union
 
 
-_CMSG: TypeAlias = tuple[int, int, bytes]
+_CMSG = Tuple[int, int, bytes]
 
 TIMESTAMP_FILE_ENDING = '.data_times.bin'
 
@@ -71,7 +71,7 @@ SOF_TIMESTAMPING_SYS_HARDWARE = 1 << 5
 SOF_TIMESTAMPING_RAW_HARDWARE = 1 << 6
 
 
-def parse_timestamps_from_ancdata(ancdata: list[_CMSG]) -> tuple[Optional[float], Optional[float], Optional[float]]:
+def parse_timestamps_from_ancdata(ancdata: List[_CMSG]) -> Tuple[Optional[float], Optional[float], Optional[float]]:
     """
     Parse timestamps from ancillary data.
     See: https://docs.kernel.org/networking/timestamping.html#scm-timestamping-records
