@@ -335,6 +335,7 @@ jobs:
     - uses: actions/checkout@v2
 
     - name: Setup Python
+      if: ${{ !env.ACT }}
       uses: actions/setup-python@v2
       with:
         python-version: '3.x'
@@ -342,6 +343,12 @@ jobs:
         cache-dependency-path: |
           python/requirements.txt
           python/requirements-dev.txt
+
+    - name: Setup Python (local)
+      if: ${{ env.ACT }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
 
     - name: Install Python Requirements
       run: |
