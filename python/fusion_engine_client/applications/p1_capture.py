@@ -130,8 +130,9 @@ class Application:
                 _logger.debug('', exc_info=e)
                 sys.exit(1)
 
-        # If the user requested specific FusionEngine messages, we'll also add InputDataWrapper to that list. That way
-        # we can search for wrapped content within those messages.
+        # If the user is filtering to specific FusionEngine messages and did not include InputDataWrapper messages, if
+        # they want to display FusionEngine contents _within_ InputDataWrapper messages too (e.g.,
+        # --wrapped-data-format=content), we'll include the wrapper messages manually.
         if (len(self.message_types) != 0 and MessageType.INPUT_DATA_WRAPPER not in self.message_types and
             self.wrapped_data_format != 'parent'):
             self.include_input_data_wrapper = True
