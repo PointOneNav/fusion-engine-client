@@ -293,6 +293,46 @@ class FileIndex(object):
                 os.remove(index_path)
             raw_data.tofile(index_path)
 
+    def get_message_types(self, message_types: Union[int, IntEnum, MessagePayload, set, list, tuple],
+                          invert: bool = False) -> 'FileIndex':
+        """!
+        @brief Get a subset of the contents for a set of message types.
+
+        @param message_types The desired message types.
+        @param invert If `True`, exclude messages from `message_types` and return all others.
+
+        @return Returns a _copy_ of this class, limited to the requested message types.
+        """
+        # Convert singletons to a list.
+        if isinstance(message_types, int):
+            message_types = [MessageType(message_types, raise_on_unrecognized=False)]
+        elif isinstance(message_types, IntEnum):
+            message_types = [message_types]
+        elif MessagePayload.is_subclass(message_types):
+            message_types = [message_types.get_type()]
+
+        # Convert type enums to integers.
+        if isinstance(message_types, (set, list, tuple)) and len(message_types) > 0:
+            if isinstance(next(iter(message_types)), IntEnum):
+                message_types = [int(k) for k in message_types]
+            elif MessagePayload.is_subclass(next(iter(message_types))):
+                message_types = [int(k.get_type()) for k in message_types]
+
+        # Find all matching message types.
+        idx = np.isin(self._data['type'], message_types)
+        if invert:
+            idx = ~idx
+
+        return FileIndex(data=self._data[idx], t0=self.t0)
+
+    @classmethod
+    def _is_message_type_key(cls, key: Union[IntEnum, MessagePayload, set, list, tuple]) -> bool:
+        return (isinstance(key, IntEnum) or
+                MessagePayload.is_subclass(key) or
+                (isinstance(key, (set, list, tuple)) and len(key) > 0 and isinstance(next(iter(key)), IntEnum)) or
+                (isinstance(key, (set, list, tuple)) and len(key) > 0 and MessagePayload.is_subclass(next(iter(key)))))
+
+
     def get_time_range(self, start: Union[Timestamp, float] = None, stop: Union[Timestamp, float] = None,
                        hint: str = None, time_range: TimeRange = None) -> 'FileIndex':
         """!
@@ -352,25 +392,27 @@ class FileIndex(object):
                 start_idx = find_first(self._data['time'] >= np.floor(start)) if start is not None else 0
                 end_idx = find_first(self._data['time'] >= stop) if stop is not None else len(self._data)
 
-            if start_idx < 0:
-                start_idx = 0
+            # Corner case: if all messages with timestamps are >= stop (i.e., the log starts after the stop time), if
+            # there are some messages at the start of the log that do not have timestamps, find_first() will include
+            # them but we don't want that. For example, if stop is 4 and we have:
+            #   {nan, 6, 7, 8}
+            # we expect end_idx = -1 (i.e., nothing in range), not end_idx = 1 (i.e., include the nan message).
+            nan_idx = np.isnan(self._data['time'])
+            if end_idx >= 1 and np.all(nan_idx[:end_idx]):
+                end_idx = -1
 
-            if end_idx < 0:
-                end_idx = len(self._data['time'])
-
-            if hint == 'include_nans':
-                return FileIndex(data=self._data[start_idx:end_idx], t0=self.t0)
-            else:
-                idx = np.full_like(self._data['time'], False, dtype=bool)
+            # Note: start_idx or end_idx == -1 indicates there was no data in the time range.
+            idx = np.full_like(self._data['time'], False, dtype=bool)
+            if start_idx >= 0 and end_idx >= 0:
                 idx[start_idx:end_idx] = True
 
-                nan_idx = np.isnan(self._data['time'])
+            if hint in ('all_nans', 'remove_nans'):
                 if hint == 'all_nans':
                     idx[nan_idx] = True
                 elif hint == 'remove_nans':
                     idx[nan_idx] = False
-                else:
-                    raise ValueError('Unrecognized control hint.')
+            elif hint != 'include_nans':
+                raise ValueError('Unrecognized control hint.')
 
             return FileIndex(data=self._data[idx], t0=self.t0)
 
@@ -390,6 +432,13 @@ class FileIndex(object):
             raise AttributeError
 
     def __getitem__(self, key):
+        # If the key is a 2-tuple and the second argument is a string, treat it as a hint string.
+        if isinstance(key, tuple) and len(key) == 2 and isinstance(key[1], str):
+            hint = key[1]
+            key = key[0]
+        else:
+            hint = None
+
         # No key specified (convenience case).
         if key is None:
             return copy.copy(self)
@@ -400,19 +449,8 @@ class FileIndex(object):
         elif len(self._data) == 0:
             return FileIndex()
         # Return entries for a specific message type.
-        elif isinstance(key, IntEnum):
-            idx = self._data['type'] == key
-            return FileIndex(data=self._data[idx], t0=self.t0)
-        elif MessagePayload.is_subclass(key):
-            idx = self._data['type'] == key.get_type()
-            return FileIndex(data=self._data[idx], t0=self.t0)
-        # Return entries for a list of message types.
-        elif isinstance(key, (set, list, tuple)) and len(key) > 0 and isinstance(next(iter(key)), IntEnum):
-            idx = np.isin(self._data['type'], [int(k) for k in key])
-            return FileIndex(data=self._data[idx], t0=self.t0)
-        elif isinstance(key, (set, list, tuple)) and len(key) > 0 and MessagePayload.is_subclass(next(iter(key))):
-            idx = np.isin(self._data['type'], [int(k.get_type()) for k in key])
-            return FileIndex(data=self._data[idx], t0=self.t0)
+        elif self._is_message_type_key(key):
+            return self.get_message_types(message_types=key, invert=hint == 'invert')
         # Return a single element by index.
         elif isinstance(key, int):
             return FileIndex(data=self._data[key:(key + 1)], t0=self.t0)
@@ -423,14 +461,16 @@ class FileIndex(object):
         #   my_index[10:12:'remove_nans']
         elif isinstance(key, slice) and (isinstance(key.start, (Timestamp, float)) or
                                          isinstance(key.stop, (Timestamp, float))):
-            hint = key.step
+            if key.step is not None:
+                hint = key.step
             if hint is not None and not isinstance(hint, str):
                 raise ValueError('Step size not supported for time range slicing.')
             return self.get_time_range(start=key.start, stop=key.stop, hint=hint)
         # Key is a TimeRange object. Return a subset of the data. All nan elements (messages without P1 time) will be
-        # included in the results.
+        # included in the results by default, unless hint is set to 'remove_nans':
+        #    my_index[TimeRange(...), 'remove_nans']
         elif isinstance(key, TimeRange):
-            return self.get_time_range(time_range=key, hint='include_nans')
+            return self.get_time_range(time_range=key, hint=hint)
         # Key is an index slice or a list of individual element indices. Return a subset of the data.
         elif isinstance(key, slice):
             return FileIndex(data=self._data[key], t0=self.t0)

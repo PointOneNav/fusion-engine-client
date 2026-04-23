@@ -65,6 +65,12 @@ def test_type_slice():
     assert (pose_index.offset == [e[2] for e in raw]).all()
     assert (pose_index.message_index == [e[3] for e in raw]).all()
 
+    pose_index = index[MessageType.POSE, 'invert']
+    raw = [e for e in RAW_DATA if e[1] != MessageType.POSE]
+    assert len(pose_index) == len(raw)
+    assert (pose_index.offset == [e[2] for e in raw]).all()
+    assert (pose_index.message_index == [e[3] for e in raw]).all()
+
 
 def test_index_slice():
     index = FileIndex(data=RAW_DATA)
@@ -184,6 +190,28 @@ def test_time_range_slice():
     # Relative time range with an explicit t0 that differs from the actual index data: use the t0 in the range.
     sliced_index = index[TimeRange(start=1.0, end=2.0, absolute=False, p1_t0=Timestamp(0.0))]
     raw = RAW_DATA[_lower_bound(1.0):_lower_bound(2.0)]
+    assert _test_time(sliced_index.time, raw)
+    assert (sliced_index.offset == [e[2] for e in raw]).all()
+    assert (sliced_index.message_index == [e[3] for e in raw]).all()
+
+    # Start time beyond end of data.
+    sliced_index = index[TimeRange(start=1000.0, absolute=True)]
+    assert len(sliced_index) == 0
+
+    # End time before start of data.
+    sliced_index = index[TimeRange(end=-1.0, absolute=True)]
+    assert len(sliced_index) == 0
+
+    # Start time beyond end of data, but "all_nans" requested.
+    sliced_index = index.get_time_range(time_range=TimeRange(start=1000.0, absolute=True), hint='all_nans')
+    raw = [m for m in RAW_DATA if m[0] is None]
+    assert _test_time(sliced_index.time, raw)
+    assert (sliced_index.offset == [e[2] for e in raw]).all()
+    assert (sliced_index.message_index == [e[3] for e in raw]).all()
+
+    # Same using getitem hint syntax.
+    sliced_index = index[TimeRange(start=1000.0, absolute=True), 'all_nans']
+    raw = [m for m in RAW_DATA if m[0] is None]
     assert _test_time(sliced_index.time, raw)
     assert (sliced_index.offset == [e[2] for e in raw]).all()
     assert (sliced_index.message_index == [e[3] for e in raw]).all()

@@ -1,3 +1,4 @@
+import os
 import re
 import socket
 import sys
@@ -79,10 +80,12 @@ class FileTransport:
     def __init__(self, input: Union[str, BinaryIO, TextIO] = None, output: Union[str, BinaryIO, TextIO] = None):
         # If input is a path, open the specified file. If '-', read from stdin.
         self.close_input = False
+        self.is_stdin = False
         if isinstance(input, str):
             if input in ('', '-'):
                 self.input = sys.stdin.buffer
                 self.input_path = 'stdin'
+                self.is_stdin = True
             else:
                 self.input = open(input, 'rb')
                 self.input_path = input
@@ -102,10 +105,12 @@ class FileTransport:
 
         # If output is a path, open the specified file. If '-', write to stdout.
         self.close_output = False
+        self.is_stdout = False
         if isinstance(output, str):
             if output in ('', '-'):
                 self.output = sys.stdout.buffer
                 self.output_path = 'stdout'
+                self.is_stdout = True
             else:
                 self.output = open(output, 'wb')
                 self.output_path = output
@@ -230,9 +235,9 @@ def create_transport(descriptor: str, timeout_sec: float = None, print_func: Cal
     if descriptor in ('', '-'):
         descriptor = 'file://-'
 
-    m = re.match(r'^(?:file://)?([a-zA-Z0-9-_./]+)$', descriptor)
+    m = re.match(r'^(?:file://)?((?:~/)?[a-zA-Z0-9-_./]+)$', descriptor)
     if m:
-        path = m.group(1)
+        path = os.path.expanduser(m.group(1))
         if mode == 'both':
             if path != '-':
                 raise ValueError("Cannot open a file for both read and write access.")

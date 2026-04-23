@@ -19,6 +19,9 @@ venv*/
 .vscode
 *.code-workspace
 
+# AI settings.
+.claude/
+
 # P1 binary files.
 *.p1bin
 *.p1log

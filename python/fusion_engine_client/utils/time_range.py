@@ -191,6 +191,9 @@ class TimeRange(object):
     def in_range_started(self) -> bool:
         return self._in_range_started
 
+    def in_range_ended(self) -> bool:
+        return self._in_range_ended
+
     def is_in_range(self, message: Union[MessagePayload, bytes], return_timestamps: bool = False) ->\
             Union[bool, Tuple[bool, Timestamp, float]]:
         """!

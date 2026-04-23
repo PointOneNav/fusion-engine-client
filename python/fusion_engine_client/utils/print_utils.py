@@ -26,11 +26,11 @@ def add_print_format_argument(parser: argparse._ActionsContainer, *arg_names):
              "- oneline-binary - Use `oneline-detailed` format, but include the binary representation of each message\n"
              "- oneline-binary-payload - Like `oneline-binary`, but exclude the message header from the binary")
 
-def add_wrapped_data_mode_argument(parser: argparse._ActionsContainer, *arg_names):
+def add_wrapped_data_mode_argument(parser: argparse._ActionsContainer, *arg_names, default='parent'):
     parser.add_argument(
         *arg_names,
         choices=['auto', 'all', 'parent', 'content'],
-        default='parent',
+        default=default,
         help="Specify the way in which InputDataWrapper messages should be handled:\n"
              "- auto - Use 'all' mode unless specific message types are specified, in which case use 'content' mode "
              "and only print the wrapped contents.\n"
@@ -73,7 +73,7 @@ def print_message(header: MessageHeader, contents: Union[MessagePayload, bytes],
     if logger is None:
         logger = _logger
 
-    is_requested = message_types is None or header.message_type in message_types
+    is_requested = message_types is None or len(message_types) == 0 or header.message_type in message_types
     if header.message_type == MessageType.INPUT_DATA_WRAPPER:
         wrapped_fe_header = contents.get_fe_content_header()
         if is_requested:

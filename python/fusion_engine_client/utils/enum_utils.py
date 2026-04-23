@@ -114,8 +114,8 @@ class IntEnum(IntEnumBase, metaclass=DynamicEnumMeta):
             return str(self)
 
     @classmethod
-    def find_matching_values(cls, pattern: Union[int, str, List[int], List[str]], raise_on_unrecognized: bool = False,
-                             prefix: str = None, print_func=None) -> Set['IntEnum']:
+    def find_matching_values(cls, pattern: Union[int, str, List[int], List[str]], on_unrecognized: str = 'warn',
+                             prefix: str = None, allow_multiple: bool = True, print_func=None) -> Set['IntEnum']:
         """!
         @brief Find one or more enum values that match the specified pattern(s).
 
@@ -142,9 +142,12 @@ class IntEnum(IntEnumBase, metaclass=DynamicEnumMeta):
                wildcards are specified and multiple enums match, a single result will be returned if there is an exact
                match (e.g., `thing_a` will match to `MyType.THING_ABC`, not `MyType.THING_DEF`). All matches are
                case-insensitive.
-        @param raise_on_unrecognized If `True`, raise an exception for any unrecognized integer values. Unrecognized
-               values will automatically create new enum entries by default.
+        @param on_unrecognized Specifies how to handle unrecognized integer values:
+               - 'raise' - Raise an exception
+               - 'warn' - Print a warning, but create new enum entries
+               - 'ignore' - Create new enum entries, do not warn
         @param prefix If specified, prepend the prefix to all string values if they do not already start with it.
+        @param allow_multiple If `True`, allow multiple matches when the pattern contains a wildcard.
 
         @return A set containing the matching enum values.
         """
@@ -163,6 +166,8 @@ class IntEnum(IntEnumBase, metaclass=DynamicEnumMeta):
         #   ['VersionInfoMessage', 'PoseMessage,GNSS*'] ->
         #   ['VersionInfoMessage', 'PoseMessage', 'GNSS*']
         requested_types = [p.strip() for entry in patterns for p in entry.split(',')]
+        if len(requested_types) > 1 and not allow_multiple:
+            raise ValueError("Multiple type specifiers not permitted.")
 
         # Now find matches to each pattern.
         result = set()
@@ -173,15 +178,19 @@ class IntEnum(IntEnumBase, metaclass=DynamicEnumMeta):
                     int_val = int(pattern, base=16)
                 else:
                     int_val = int(pattern)
-                enum_val = cls(int_val, raise_on_unrecognized=raise_on_unrecognized)
+                enum_val = cls(int_val, raise_on_unrecognized=on_unrecognized == 'raise')
                 result.add(enum_val)
-                if str(enum_val) == '(Unrecognized)' and print_func:
+                if str(enum_val) == '(Unrecognized)' and print_func and on_unrecognized == 'warn':
                     print_func(f"{pattern} is an unknown {cls.__name__} value.")
             except:
+                original_pattern = pattern
                 if prefix is not None and not pattern.startswith(prefix):
-                    pattern = f'{prefix}{pattern}'
+                    pattern = f'{prefix}*{pattern}'
 
-                allow_multiple = '*' in pattern
+                if allow_multiple:
+                    has_wildcard = '*' in pattern
+                else:
+                    has_wildcard = False
                 re_pattern = pattern.replace('*', '.*')
                 # if pattern[0] != '^':
                 #     re_pattern = r'.*' + re_pattern
@@ -192,14 +201,18 @@ class IntEnum(IntEnumBase, metaclass=DynamicEnumMeta):
                 matched_types = [v for k, v in cls._member_map_.items()
                                 if re.match(re_pattern, k, flags=re.IGNORECASE)]
                 if len(matched_types) == 0 and print_func:
-                    print_func("No message types matching pattern '%s'." % pattern)
+                    print_func("No message types matching pattern '%s'." % original_pattern)
                     continue
 
                 # If there are too many matches, fail.
-                if len(matched_types) > 1 and not allow_multiple:
-                    raise ValueError("Pattern '%s' matches multiple message types:%s\n\nAdd a wildcard (%s*) to display "
-                                     "all matching types." %
-                                     (pattern, ''.join(['\n  %s' % c for c in cls._member_map_.keys()]), pattern))
+                if len(matched_types) > 1 and not has_wildcard:
+                    if allow_multiple:
+                        wildcard_str = f"\n\nAdd a wildcard ({original_pattern}*) to display all matching types."
+                    else:
+                        wildcard_str = ''
+                    raise ValueError("Pattern '%s' matches multiple message types:%s%s" %
+                                     (original_pattern, ''.join(['\n  %s' % c for c in matched_types]),
+                                      wildcard_str))
                 # Otherwise, update the set of message types.
                 else:
                     result.update(matched_types)

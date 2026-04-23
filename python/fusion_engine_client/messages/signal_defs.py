@@ -1,5 +1,5 @@
 import functools
-from typing import NamedTuple, Optional, TypeAlias, TypeVar, Union
+from typing import NamedTuple, Optional, Tuple, Type, TypeVar, Union
 
 from ..utils.enum_utils import IntEnum, enum_bitmask
 
@@ -255,10 +255,10 @@ _SIGNAL_NAME_ENUM_MAP = {
     SatelliteType.QZSS: QZSSSignalName,
 }
 
-_GNSSSignalPartType: TypeAlias = SatelliteType | FrequencyBand | SignalName | GNSSComponent
+_GNSSSignalPartType = Union[SatelliteType, FrequencyBand, SignalName, GNSSComponent]
 
 
-def _get_gnss_enum_bit_packing(cls: type[_GNSSSignalPartType]) -> _BitPacking:
+def _get_gnss_enum_bit_packing(cls: Type[_GNSSSignalPartType]) -> _BitPacking:
     '''!
     Get the bit packing for an enum component of @ref GNSSSignalType
     '''
@@ -269,7 +269,7 @@ def _get_gnss_enum_bit_packing(cls: type[_GNSSSignalPartType]) -> _BitPacking:
 _T = TypeVar('_T', SatelliteType, FrequencyBand, SignalName, GNSSComponent)
 
 
-def _get_signal_part(signal: 'GNSSSignalType', cls: type[_T], raise_on_unrecognized: bool = True) -> _T:
+def _get_signal_part(signal: 'GNSSSignalType', cls: Type[_T], raise_on_unrecognized: bool = True) -> _T:
     '''!
     Return the value for an enum component of @ref GNSSSignalType
 
@@ -711,7 +711,7 @@ def get_satellite_hash(signal_hash: int) -> int:
     sv_hash = signal_hash | 0x0FFF0000
     return sv_hash
 
-def decode_signal_hash(signal_hash: int) -> tuple[SatelliteType, int, Optional[GNSSSignalType]]:
+def decode_signal_hash(signal_hash: int) -> Tuple[SatelliteType, int, Optional[GNSSSignalType]]:
     """!
     @brief Decode an integer satellite/signal hash into its component parts: system, signal type, and PRN.
 
@@ -738,7 +738,7 @@ def decode_signal_hash(signal_hash: int) -> tuple[SatelliteType, int, Optional[G
     return satellite_type, prn, signal_type
 
 
-def encode_signal_hash(signal_info: GNSSSignalType | SatelliteType, prn) -> int:
+def encode_signal_hash(signal_info: Union[GNSSSignalType, SatelliteType], prn) -> int:
     """!
     @brief Encode satellite/signal ID component parts into an integer hash.
 

@@ -25,7 +25,9 @@ class MixedLogReader(object):
     def __init__(self, input_file, warn_on_gaps: bool = False, show_progress: bool = False,
                  save_index: bool = True, ignore_index: bool = False, num_threads: int = None,
                  max_bytes: int = None,
-                 time_range: TimeRange = None, message_types: Union[Iterable[MessageType], MessageType] = None,
+                 time_range: TimeRange = None,
+                 message_types: Union[Iterable[MessageType], MessageType] = None,
+                 invert_message_types: bool = False,
                  source_ids: Optional[Iterable[int]] = None, return_header: bool = True,
                  return_payload: bool = True, return_bytes: bool = False, return_offset: bool = False,
                  return_message_index: bool = False):
@@ -50,6 +52,8 @@ class MixedLogReader(object):
                be read. See @ref TimeRange for more details.
         @param message_types A list of one or more @ref fusion_engine_client.messages.defs.MessageType "MessageTypes" to
                be returned. If `None` or an empty list, read all available messages.
+        @param invert_message_types If `True`, invert the `message_types` list and return messages _not_ specified in
+               the list.
         @param source_ids An optional list message source identifiers to be returned. If `None`, read messages from
                available source identifiers.
         @param return_header If `True`, return the decoded @ref MessageHeader for each message.
@@ -82,6 +86,8 @@ class MixedLogReader(object):
             self.message_types = set([(t.get_type() if MessagePayload.is_subclass(t) else t) for t in message_types])
             if len(self.message_types) == 0:
                 self.message_types = None
+
+        self.invert_message_types = invert_message_types
 
         # The source IDs requested by the user. If none were requested, then use all of them.
         if source_ids is None:
@@ -130,10 +136,9 @@ class MixedLogReader(object):
         self._populate_available_source_ids()
 
         self.filter_in_place(None, source_ids=self.requested_source_ids)
-        self.filter_in_place(self.message_types)
+        self.filter_in_place(self.message_types, invert_message_types=self.invert_message_types)
         self.filter_in_place(self.time_range)
 
-        self.index = self._original_index[self.message_types][self.time_range]
         self.filtered_message_types = len(np.unique(self._original_index.type)) != \
                                         len(np.unique(self.index.type))
 
@@ -285,7 +290,8 @@ class MixedLogReader(object):
                 header.validate_crc(data)
 
                 # Verify that source ID is correct.
-                if self.requested_source_ids is not None and header.source_identifier not in self.requested_source_ids:
+                if (self.requested_source_ids is not None and len(self.requested_source_ids) > 0 and
+                    header.source_identifier not in self.requested_source_ids):
                     continue
 
                 message_length_bytes = MessageHeader.calcsize() + header.payload_size_bytes
@@ -355,7 +361,9 @@ class MixedLogReader(object):
                 # self.time_range are _only_ valid if we are _not_ using an index, so this may end up incorrectly
                 # filtering out some messages as unwanted.
                 if self.index is None:
-                    if self.message_types is not None and header.message_type not in self.message_types:
+                    if (self.message_types is not None and
+                        ((not self.invert_message_types and header.message_type not in self.message_types) or
+                         (self.invert_message_types and header.message_type in self.message_types))):
                         self.logger.trace("Message type not requested. Skipping.", depth=1)
                         continue
                     elif self.remove_invalid_p1_time and not p1_time:
@@ -465,7 +473,7 @@ class MixedLogReader(object):
     def clear_filters(self):
         self.filter_in_place(key=None, clear_existing=True)
 
-    def filter_in_place(self, key, clear_existing: Union[bool, str] = False,
+    def filter_in_place(self, key, clear_existing: Union[bool, str] = False, invert_message_types: bool = False,
                         source_ids: Optional[Iterable[int]] = None):
         """!
         @brief Limit the returned messages by type or time.
@@ -546,7 +554,10 @@ class MixedLogReader(object):
             pass
         # If we have an index file available, reduce the index to the requested criteria.
         elif self.index is not None:
-            self.index = self.index[key]
+            if self.index._is_message_type_key(key):
+                self.index = self.index.get_message_types(key, invert=invert_message_types)
+            else:
+                self.index = self.index[key]
             self.filtered_message_types = len(np.unique(self._original_index.type)) != \
                                           len(np.unique(self.index.type))
         # Otherwise, store the criteria and apply them while reading.
@@ -554,6 +565,7 @@ class MixedLogReader(object):
             # Return entries for a specific message type.
             if isinstance(key, MessageType):
                 self.message_types = set((key,))
+                self.invert_message_types = invert_message_types
                 self.filtered_message_types = True
             elif MessagePayload.is_subclass(key):
                 self.message_types = set((key.get_type(),))
@@ -565,6 +577,7 @@ class MixedLogReader(object):
                     self.message_types = new_message_types
                 else:
                     self.message_types = self.message_types & new_message_types
+                self.invert_message_types = invert_message_types
                 self.filtered_message_types = True
             elif isinstance(key, (set, list, tuple)) and len(key) > 0 and MessagePayload.is_subclass(next(iter(key))):
                 new_message_types = set([t.get_type() for t in key if t is not None])
@@ -572,6 +585,7 @@ class MixedLogReader(object):
                     self.message_types = new_message_types
                 else:
                     self.message_types = self.message_types & new_message_types
+                self.invert_message_types = invert_message_types
                 self.filtered_message_types = True
             # Key is a slice in time. Return a subset of the data.
             elif isinstance(key, slice) and (isinstance(key.start, (Timestamp, float)) or
