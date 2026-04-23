@@ -1594,7 +1594,7 @@ class InputDataWrapperMessage(MessagePayload):
             system_time_cs >> 32,
             int(self.data_type))
 
-        buffer += self.data
+        buffer[offset:offset + len(self.data)] = self.data
         offset += len(self.data)
 
         if return_buffer:
