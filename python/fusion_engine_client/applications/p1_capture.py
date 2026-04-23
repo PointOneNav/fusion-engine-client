@@ -105,7 +105,7 @@ class Application:
         self.decoder = FusionEngineDecoder(warn_on_unrecognized=not self.quiet and not self.show_summary_live,
                                            return_bytes=True, return_offset=True)
 
-    def _init_message_type_filter(self):
+    def _init_message_type_filter(self) -> None:
         # If the user specified a set of message names, lookup their type values. Below, we will limit the printout to
         # only those message types.
         if self.options.unwrap:
@@ -139,7 +139,7 @@ class Application:
             if self.wrapped_data_format == 'auto':
                 self.wrapped_data_format = 'content'
 
-    def _init_input_data_type_filter(self):
+    def _init_input_data_type_filter(self) -> None:
         # For InputDataWrapper messages, if the user specified desired data types, limit the output to only those.
         if self.options.wrapped_data_type is not None:
             try:
@@ -157,7 +157,7 @@ class Application:
                 _logger.debug(traceback.print_exception(e))
                 sys.exit(1)
 
-    def _init_source_id_filter(self):
+    def _init_source_id_filter(self) -> None:
         # If the user specified a set of source IDs, limit messages to only those sources.
         if self.options.source_identifier is not None:
             try:
@@ -166,7 +166,7 @@ class Application:
                 _logger.error('Source identifiers must be integers.')
                 sys.exit(1)
 
-    def _init_time_range_filter(self):
+    def _init_time_range_filter(self) -> None:
         try:
             self.time_range = TimeRange.parse(self.options.time)
         except ValueError as e:
@@ -174,7 +174,7 @@ class Application:
             _logger.debug(traceback.print_exception(e))
             sys.exit(1)
 
-    def _configure_input(self):
+    def _configure_input(self) -> None:
         # Connect to the device using the specified transport, or read from a file or log.
         try:
             # If the user specified a partial or complete log hash, or the path to a directory, try to locate a P1 log.
@@ -227,7 +227,7 @@ class Application:
             _logger.debug(traceback.print_exception(e))
             sys.exit(1)
 
-    def _configure_output(self):
+    def _configure_output(self) -> None:
         # Open the output file or real-time output transport if enabled.
         if self.options.output is not None:
             # If writing to a .p1log file, if there's an existing index file (.p1i) for that filename, delete it.
@@ -281,7 +281,7 @@ class Application:
             self.generating_raw_log = False
             self.generating_p1log = True
 
-    def _set_read_timeout(self):
+    def _set_read_timeout(self) -> None:
         # In the read loop, if we're filtering data and forwarding it in real time, we'll read a small amount of data at
         # a time to reduce latency. Otherwise, if we're just displaying stuff or writing to disk, we'll read more data
         # at a time to be more efficient.
@@ -315,7 +315,7 @@ class Application:
 
             set_read_timeout(self.input_transport, self.read_timeout_sec)
 
-    def process_input(self):
+    def process_input(self) -> None:
         self.start_time = datetime.now()
         self.last_print_time = self.start_time
 
@@ -483,7 +483,7 @@ class Application:
 
         return True
 
-    def _apply_filters(self, header: MessageHeader, message: Union[MessagePayload, bytes]):
+    def _apply_filters(self, header: MessageHeader, message: Union[MessagePayload, bytes]) -> bool:
         # Check if this message is in the specified time range or if we're reached the end of the time range and should
         # stop processing.
         if self.time_range is not None and isinstance(message, MessagePayload):
