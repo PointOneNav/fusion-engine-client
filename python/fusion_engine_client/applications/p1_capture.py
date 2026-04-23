@@ -315,6 +315,9 @@ class Application:
             set_read_timeout(self.input_transport, self.read_timeout_sec)
 
     def process_input(self) -> None:
+        """!
+        @brief Process all incoming data until stopped (Ctrl-C) or reaching the end of the file.
+        """
         self.start_time = datetime.now()
         self.last_print_time = self.start_time
 
@@ -483,6 +486,14 @@ class Application:
         return True
 
     def _apply_filters(self, header: MessageHeader, message: Union[MessagePayload, bytes]) -> bool:
+        """!
+        @brief Apply user-specified filters and determine if this message should be included or skipped.
+
+        @param header The message header.
+        @param message The message payload, or a `bytes` array if the message could not be parsed.
+
+        @return `True` if the message passed the filters and should be included.
+        """
         # Check if this message is in the specified time range or if we're reached the end of the time range and should
         # stop processing.
         if self.time_range is not None and isinstance(message, MessagePayload):
