@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import Optional, Set, Union
 
 import argparse
 from collections import defaultdict
@@ -26,10 +26,25 @@ def add_print_format_argument(parser: argparse._ActionsContainer, *arg_names):
              "- oneline-binary - Use `oneline-detailed` format, but include the binary representation of each message\n"
              "- oneline-binary-payload - Like `oneline-binary`, but exclude the message header from the binary")
 
+def add_wrapped_data_mode_argument(parser: argparse._ActionsContainer, *arg_names):
+    parser.add_argument(
+        *arg_names,
+        choices=['auto', 'all', 'parent', 'content'],
+        default='parent',
+        help="Specify the way in which InputDataWrapper messages should be handled:\n"
+             "- auto - Use 'all' mode unless specific message types are specified, in which case use 'content' mode "
+             "and only print the wrapped contents.\n"
+             "- all - Print both the @ref InputDataWrapperMessage and its contents if it contains a FusionEngine "
+             "message\n"
+             "- parent - Print the @ref InputDataWrapperMessage message but not its contents\n"
+             "- content - Print the wrapped contents, if the wrapper contains a FusionEngine message, but do not print "
+             "the InputDataWrapper message itself")
+
 
 def print_message(header: MessageHeader, contents: Union[MessagePayload, bytes],
-                  offset_bytes: Optional[int] = None, format: str = 'pretty', bytes: Optional[int] = None,
-                  logger: Optional[logging.Logger] = None):
+                  offset_bytes: Optional[int] = None, format: str = 'pretty', bytes: Optional[bytes] = None,
+                  logger: Optional[logging.Logger] = None,
+                  message_types: Optional[Set[MessageType]] = None, wrapped_data_mode: str = 'all'):
     """!
     @brief Print the specified FusionEngine message to the console or provided `Logger` instance.
 
@@ -47,11 +62,35 @@ def print_message(header: MessageHeader, contents: Union[MessagePayload, bytes],
            - `oneline-binary-payload` - Like `oneline-binary`, but exclude the message header from the binary
     @param bytes The binary representation of the message.
     @param logger A `logging.Logger` instance with which the output will be printed.
+    @param message_types An optional set of FusionEngine @ref MessageType%s to be displayed. All other message types
+           will be ignored.
+    @param wrapped_data_mode The way in which @ref InputDataWrapperMessage%s should be handled:
+           - all - Print both the @ref InputDataWrapperMessage and its contents if it contains a FusionEngine message
+           - parent - Print the @ref InputDataWrapperMessage message but not its contents
+           - content - Print the wrapped contents, if the wrapper contains a FusionEngine message, but do not print the
+                       @ref InputDataWrapperMessage itself
     """
     if logger is None:
         logger = _logger
 
-    if format == 'binary':
+    is_requested = message_types is None or header.message_type in message_types
+    if header.message_type == MessageType.INPUT_DATA_WRAPPER:
+        wrapped_fe_header = contents.get_fe_content_header()
+        if is_requested:
+            hide_message = False
+        elif wrapped_data_mode == 'content':
+            hide_message = True
+        # Note: is_requested==False above implies message_types is not None, no need to check again.
+        elif wrapped_fe_header is None:
+            hide_message = True
+        else:
+            hide_message = wrapped_fe_header.message_type not in message_types
+    else:
+        hide_message = not is_requested
+
+    if hide_message:
+        pass
+    elif format == 'binary':
         if bytes is None:
             raise ValueError('No data provided for binary format.')
         parts = []
@@ -74,7 +113,9 @@ def print_message(header: MessageHeader, contents: Union[MessagePayload, bytes],
     else:
         parts = [f'{header.get_type_string()} (unsupported)']
 
-    if format != 'oneline':
+    if hide_message:
+        pass
+    elif format != 'oneline':
         details = 'source_id=%d, sequence=%d, size=%d B' % (header.source_identifier,
                                                             header.sequence_number,
                                                             header.get_message_size())
@@ -87,7 +128,9 @@ def print_message(header: MessageHeader, contents: Union[MessagePayload, bytes],
         else:
             parts[0] = f'{parts[0][:(idx + 1)]}{details}, {parts[0][(idx + 1):]}'
 
-    if bytes is None:
+    if hide_message:
+        pass
+    elif bytes is None:
         pass
     elif format == 'binary':
         byte_string = bytes_to_hex(bytes, bytes_per_row=-1, bytes_per_col=2).replace('\n', '\n  ')
@@ -103,7 +146,18 @@ def print_message(header: MessageHeader, contents: Union[MessagePayload, bytes],
         byte_string = '  ' + bytes_to_hex(bytes, bytes_per_row=16, bytes_per_col=2).replace('\n', '\n  ')
         parts.insert(1, byte_string)
 
-    logger.info('\n'.join(parts))
+    if not hide_message:
+        if wrapped_data_mode == 'recursive':
+            parts[0] += ' [wrapped]'
+
+        logger.info('\n'.join(parts))
+
+    # If this is an InputDataWrapper message, recursively display its contents.
+    if header.message_type == MessageType.INPUT_DATA_WRAPPER and wrapped_data_mode != 'parent':
+        wrapped_fe_payload = contents.get_fe_content_payload()
+        if wrapped_fe_payload is not None:
+            print_message(wrapped_fe_header, wrapped_fe_payload, 0, format=format, bytes=contents.data,
+                          message_types=message_types, wrapped_data_mode='recursive')
 
 
 class MessageStatsEntry:
@@ -121,14 +175,44 @@ class DeviceSummary:
         self.device_id = None
         self.version_info = None
         self.stats = defaultdict(MessageStatsEntry)
+        self.wrapped_non_fe_input_data_stats = defaultdict(MessageStatsEntry)
+        self.wrapped_fe_input_data_stats = defaultdict(MessageStatsEntry)
 
-    def update(self, header: MessageHeader, message: MessagePayload):
-        self.stats[header.message_type].update(header, message)
+    def update(self, header: MessageHeader, message: MessagePayload, message_types: Optional[Set[MessageType]] = None):
+        # If the user specified specific message types, ignore non-FusionEngine messages or FusionEngine messages
+        # that are not in the list.
+        wrapped_fe_header = None
+        include_wrapped_content = False
+        if header.message_type == MessageType.INPUT_DATA_WRAPPER:
+            wrapped_fe_header = message.get_fe_content_header()
+            if message_types is None:
+                include_wrapped_content = True
+            elif wrapped_fe_header is None:
+                include_wrapped_content = False
+            else:
+                include_wrapped_content = wrapped_fe_header.message_type in message_types
 
+        # Record stats for this message type. Skip InputDataWrappers messages whose content is not listed in
+        # message_types.
+        if header.message_type != MessageType.INPUT_DATA_WRAPPER or include_wrapped_content:
+            self.stats[header.message_type].update(header, message)
+
+        # Extract additional data from the message.
         if header.message_type == MessageType.DEVICE_ID:
             self.device_id = message
         elif header.message_type == MessageType.VERSION_INFO:
             self.version_info = message
+        elif header.message_type == MessageType.INPUT_DATA_WRAPPER:
+            wrapped_fe_header = message.get_fe_content_header()
+            if include_wrapped_content:
+                # Count all wrapped content, not including FusionEngine messages.
+                if wrapped_fe_header is None:
+                    self.wrapped_non_fe_input_data_stats[message.data_type].count += 1
+                    self.wrapped_non_fe_input_data_stats[message.data_type].total_bytes += len(message.data)
+                # Count FusionEngine messages separately.
+                else:
+                    self.wrapped_fe_input_data_stats[wrapped_fe_header.message_type].count += 1
+                    self.wrapped_fe_input_data_stats[wrapped_fe_header.message_type].total_bytes += len(message.data)
 
 
 def print_summary_table(device_summary: DeviceSummary, logger: Optional[logging.Logger] = None):
@@ -184,3 +268,32 @@ def print_summary_table(device_summary: DeviceSummary, logger: Optional[logging.
         total_bytes += entry.total_bytes
     logger.info(format_string.format(*dividers))
     logger.info(format_string.format('Total', '', total_messages, total_bytes))
+
+    # Print a second table displaying types/stats for messages extracted from InputDataWrapper messages.
+    wrapped_input_data_types = (set(device_summary.wrapped_non_fe_input_data_stats.keys()) |
+                                set(device_summary.wrapped_fe_input_data_stats.keys()))
+    if len(wrapped_input_data_types) > 0:
+        cols = [
+            {'name': 'Input Data Type', 'align': '<', 'min_width': 50},
+            {'name': 'Count', 'min_width': 8},
+            {'name': 'Total Size (B)'}
+        ]
+        format_string, dividers = _print_table_header(cols)
+        total_messages = 0
+        total_bytes = 0
+        have_wrapped_fe = False
+        for data_type in sorted(wrapped_input_data_types):
+            if data_type in device_summary.wrapped_non_fe_input_data_stats:
+                entry = device_summary.wrapped_non_fe_input_data_stats[data_type]
+                logger.info(format_string.format(data_type.to_string(), entry.count, entry.total_bytes))
+                total_messages += entry.count
+                total_bytes += entry.total_bytes
+
+            if data_type in device_summary.wrapped_fe_input_data_stats:
+                entry = device_summary.wrapped_fe_input_data_stats[data_type]
+                logger.info(format_string.format(f'{data_type.to_string()} **', entry.count, entry.total_bytes))
+                have_wrapped_fe = True
+        logger.info(format_string.format(*dividers))
+        logger.info(format_string.format('Total', total_messages, total_bytes))
+        if have_wrapped_fe:
+            logger.info('** FusionEngine content extracted from InputDataWrapperMessages.')

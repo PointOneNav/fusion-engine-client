@@ -104,9 +104,12 @@ class IntEnum(IntEnumBase, metaclass=DynamicEnumMeta):
     def __repr__(self):
         return f'<{self.__class__.__name__}.{str(self)}: {int(self)}>'
 
-    def to_string(self, include_value=True):
+    def to_string(self, include_value=True, print_hex=False):
         if include_value:
-            return '%s (%d)' % (str(self), int(self))
+            if print_hex:
+                return '%s (0x%X)' % (str(self), int(self))
+            else:
+                return '%s (%d)' % (str(self), int(self))
         else:
             return str(self)
 

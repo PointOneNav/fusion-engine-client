@@ -1,8 +1,5 @@
 import functools
-import re
 from typing import NamedTuple, Optional, TypeAlias, TypeVar, Union
-
-import numpy as np
 
 from ..utils.enum_utils import IntEnum, enum_bitmask
 
@@ -52,10 +49,6 @@ class SatelliteTypeMask:
     ALL = 0xFFFF
 
 
-class SignalType(IntEnum):
-    UNKNOWN = 0
-
-
 ## @brief GNSS frequency band definitions.
 #
 # A frequency band generally includes multiple GNSS carrier frequencies and
@@ -95,9 +88,6 @@ class FrequencyBand(IntEnum):
 class FrequencyBandMask:
     ALL = 0xFFFF
 
-
-_SHORT_FORMAT = re.compile(r'([%s])(\d+)(?:\s+(\w+))?' % ''.join(SatelliteTypeCharReverse.keys()))
-_LONG_FORMAT = re.compile(r'(\w+)(?:\s+(\w+))(?:\s+PRN\s+(\d+))?')
 
 ##
 # @brief Groupings encapsulating the form of the signal broadcast by a
@@ -299,7 +289,7 @@ def _shift_enum_value(value: _GNSSSignalPartType) -> int:
     '''!
     Get the integer value for a component of @ref GNSSSignalType shifted into the bits it will occupy in the @ref
     GNSSSignalType value.
-s
+
     @param value The value of the enum component.
 
     @return The shifted value.
