@@ -318,6 +318,7 @@ jobs:
         gzip fusion-engine-client-docs.tar
 
     - name: Upload Artifact
+      if: ${{ !env.ACT }}
       uses: actions/upload-artifact@v4
       with:
         name: fusion-engine-client-docs.tar.gz
@@ -351,12 +352,14 @@ jobs:
         python -m pytest
 
     - name: Build A Python Distribution
+      if: ${{ !env.ACT }}
       run: |
         pip install build twine
         python -m build
         twine check dist/*
 
     - name: Upload Artifact
+      if: ${{ !env.ACT }}
       uses: actions/upload-artifact@v4
       with:
         name: python_dist
