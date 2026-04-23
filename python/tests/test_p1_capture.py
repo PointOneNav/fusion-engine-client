@@ -355,6 +355,31 @@ class TestApplication:
         app = self._run(path, wrapped_data_type=['RTCM3_UNKNOWN'], invert=True)
         assert app.messages_sent == 1
 
+    def test_unwrap_extracts_inner_bytes(self, tmp):
+        path = tmp / 'input.p1log'
+        out = tmp / 'out.bin'
+        payload1 = b'rtcm_packet_one'
+        payload2 = b'rtcm_packet_two'
+        self._write_wrapper_messages(path, [
+            (InputDataType.M_TYPE_RTCM3_UNKNOWN, payload1, 0),
+            (InputDataType.M_TYPE_RTCM3_UNKNOWN, payload2, 1_000_000_000),
+        ])
+        self._run(path, unwrap='RTCM3_UNKNOWN', output=str(out))
+        assert out.read_bytes() == payload1 + payload2
+
+    def test_unwrap_filters_to_matching_data_type(self, tmp):
+        path = tmp / 'input.p1log'
+        out = tmp / 'out.bin'
+        rtcm_payload = b'rtcm_bytes'
+        gnss_payload = b'gnss_bytes'
+        self._write_wrapper_messages(path, [
+            (InputDataType.M_TYPE_RTCM3_UNKNOWN, rtcm_payload, 0),
+            (InputDataType.M_TYPE_EXTERNAL_UNFRAMED_GNSS, gnss_payload, 1_000_000_000),
+            (InputDataType.M_TYPE_RTCM3_UNKNOWN, rtcm_payload, 2_000_000_000),
+        ])
+        self._run(path, unwrap='RTCM3_UNKNOWN', output=str(out))
+        assert out.read_bytes() == rtcm_payload + rtcm_payload
+
     def test_unwrap_requires_output_exits(self, tmp):
         path = tmp / 'input.p1log'
         path.write_bytes(b'')

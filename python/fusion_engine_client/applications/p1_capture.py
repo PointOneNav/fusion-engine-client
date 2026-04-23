@@ -390,7 +390,10 @@ class Application:
                         timestamp_sec = now.timestamp()
 
                 # If logging in raw format, write the data to disk as is.
-                if self.generating_raw_log:
+                #
+                # Exception: In --unwrap mode, we are creating a raw output file, but we do it later after filtering to
+                # InputDataWrapper messages and extracting their content.
+                if self.generating_raw_log and not self.options.unwrap:
                     self.output_transport.write(received_data)
                     self.bytes_sent += len(received_data)
                     if self.timestamp_file:
@@ -465,20 +468,25 @@ class Application:
 
                 self.device_summary.update(header, message)
                 self.messages_sent += 1
-                if not self.generating_raw_log:
-                    self.bytes_sent += len(raw_data)
 
                 if self.generating_p1log:
                     self.output_transport.write(raw_data)
+                    self.bytes_sent += len(raw_data)
                     if self.timestamp_file:
                         timestamp_ns = int(round(timestamp_sec * 1e9))
                         log_timestamped_data_offset(self.timestamp_file, timestamp_ns, self.fe_bytes_received)
-
-                if self.generating_csv:
+                elif self.generating_csv:
+                    self.bytes_sent += len(raw_data)
                     p1_str = str(p1_time.seconds) if p1_time is not None and not math.isnan(p1_time) else ''
                     sys_str = str(system_time) if system_time is not None and not math.isnan(system_time) else ''
                     self.output_transport.write(
                         f'{timestamp_sec},{header.message_type},{p1_str},{sys_str}\n'.encode('utf-8'))
+                # In --unwrap mode, we filter to just InputDataWrapper messages. Extract the content of those messages
+                # to send to the output transport. The output format will be 'raw' (generating_raw_log == True), but we
+                # disabled the 'raw' logging in process_input() in order to get here.
+                elif self.options.unwrap:
+                    self.output_transport.write(message.data)
+                    self.bytes_sent += len(message.data)
 
                 if self.show_message_contents:
                     print_message(header=header, contents=message, offset_bytes=offset_bytes, bytes=raw_data,
