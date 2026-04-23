@@ -143,8 +143,8 @@ class Application:
         # For InputDataWrapper messages, if the user specified desired data types, limit the output to only those.
         if self.options.wrapped_data_type is not None:
             try:
-                self.input_data_types = InputDataType.find_matching_values(self.options.wrapped_data_type, prefix='M_TYPE_',
-                                                                      print_func=_logger.error)
+                self.input_data_types = InputDataType.find_matching_values(
+                    self.options.wrapped_data_type, prefix='M_TYPE_', print_func=_logger.error)
                 if len(self.input_data_types) == 0:
                     # find_matching_values() will print an error.
                     sys.exit(1)
