@@ -156,6 +156,11 @@ class Application:
                 _logger.debug('', exc_info=e)
                 sys.exit(1)
 
+        if self.options.unwrap:
+            if len(self.input_data_types) == 0:
+                _logger.error('Error: You must specify a data type to unwrap.')
+                sys.exit(1)
+
     def _init_source_id_filter(self) -> None:
         # If the user specified a set of source IDs, limit messages to only those sources.
         if self.options.source_identifier is not None:
