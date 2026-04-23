@@ -337,11 +337,14 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: '3.x'
+        cache: 'pip'
+        cache-dependency-path: |
+          python/requirements.txt
+          python/requirements-dev.txt
 
     - name: Install Python Requirements
       run: |
-        pip install -r requirements.txt
-        pip install pytest
+        pip install -r requirements.txt -r requirements-dev.txt
 
     - name: Run Unit Tests
       run: |
