@@ -726,14 +726,11 @@ By default, all specified message types are output and all others are discarded.
              "specified type(s).")
     filter_group.add_argument(
         '-m', '--message-type', type=str, action='append',
-        help="""
+        help="""\
 An optional list of class names corresponding with the message types to be displayed. May be specified multiple times
 (-m Pose -m PoseAux), or as a comma-separated list (-m Pose,PoseAux). All matches are case-insensitive.
 
 If a partial name is specified, the best match will be returned. Use the wildcard '*' to match multiple message types.
-
-Note: This applies to the displayed messages only. All incoming data will still be stored on disk if --output is
-specified.
 
 Supported types:
 %s""" % '\n'.join(['- %s' % c for c in message_type_by_name.keys()]))
