@@ -763,7 +763,14 @@ data streams with no frame alignment enforced.""")
     add_wrapped_data_mode_argument(wrapper_group, '--wrapped-data-format', default='parent')
     wrapper_group.add_argument(
         '--wrapped-data-type', type=str, action='append',
-        help="If specified, discard InputDataWrapper messages for data types other than the listed values.")
+        help="""\
+If specified, discard InputDataWrapper messages for data types other than the requested values. May be specified
+multiple times, or as a comma-separated list.
+
+If a partial name is specified, the best match will be returned. Use the wildcard '*' to match multiple types.
+
+Supported types:
+%s""" % '\n'.join(['- %s' % c for c in InputDataType]))
 
     file_group = parser.add_argument_group('Output Capture')
     parser.add_argument(
