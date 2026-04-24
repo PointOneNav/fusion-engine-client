@@ -1,6 +1,8 @@
-![Build Status](https://github.com/PointOneNav/fusion-engine-client/actions/workflows/release_build.yml/badge.svg)
-<br/>
-![CodeQL](https://github.com/PointOneNav/fusion-engine-client/actions/workflows/codeql.yml/badge.svg)
+<table>
+<tr><td>Build Status</td><td><img src="https://img.shields.io/github/actions/workflow/status/PointOneNav/fusion-engine-client/release_build.yml?label=Build+Status"/></td></tr>
+<tr><td>Python Support</td><td><img src="https://img.shields.io/github/actions/workflow/status/PointOneNav/fusion-engine-client/release_build.yml?job=Python+Unit+Tests+(3.8)&label=3.8"/> <img src="https://img.shields.io/github/actions/workflow/status/PointOneNav/fusion-engine-client/release_build.yml?job=Python+Unit+Tests+(3.9)&label=3.9"/> <img src="https://img.shields.io/github/actions/workflow/status/PointOneNav/fusion-engine-client/release_build.yml?job=Python+Unit+Tests+(3.10)&label=3.10"/> <img src="https://img.shields.io/github/actions/workflow/status/PointOneNav/fusion-engine-client/release_build.yml?job=Python+Unit+Tests+(3.11)&label=3.11"/> <img src="https://img.shields.io/github/actions/workflow/status/PointOneNav/fusion-engine-client/release_build.yml?job=Python+Unit+Tests+(3.12)&label=3.12"/> <img src="https://img.shields.io/github/actions/workflow/status/PointOneNav/fusion-engine-client/release_build.yml?job=Python+Unit+Tests+(3.13)&label=3.13"/></td></tr>
+<tr><td>CodeQL</td><td><img src="https://img.shields.io/github/actions/workflow/status/PointOneNav/fusion-engine-client/codeql.yml?label=CodeQL"/></td></tr>
+</table>
 
 # Point One FusionEngine Client
 
