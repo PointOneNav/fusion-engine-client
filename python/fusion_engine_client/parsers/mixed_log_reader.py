@@ -1,4 +1,4 @@
-from typing import Iterable, List, Set, Union, Optional
+from typing import BinaryIO, Iterable, List, Set, Union, Optional
 
 import copy
 from datetime import datetime
@@ -23,7 +23,7 @@ class MixedLogReader(object):
     logger = logging.getLogger('point_one.fusion_engine.parsers.mixed_log_reader')
 
     def __init__(self,
-                 input_file,
+                 input_file: Union[str, BinaryIO],
                  warn_on_gaps: bool = False,
                  show_progress: bool = False,
                  save_index: bool = True,
