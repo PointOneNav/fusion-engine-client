@@ -1,4 +1,4 @@
-from typing import BinaryIO, Iterable, List, Set, Union, Optional
+from typing import BinaryIO, Iterable, Set, Union, Optional
 
 import copy
 from datetime import datetime
