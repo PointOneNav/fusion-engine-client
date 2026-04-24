@@ -1,4 +1,4 @@
-from typing import Iterable, List, Set, Union, Optional
+from typing import BinaryIO, Iterable, Set, Union, Optional
 
 import copy
 from datetime import datetime
@@ -22,14 +22,22 @@ class MixedLogReader(object):
     """
     logger = logging.getLogger('point_one.fusion_engine.parsers.mixed_log_reader')
 
-    def __init__(self, input_file, warn_on_gaps: bool = False, show_progress: bool = False,
-                 save_index: bool = True, ignore_index: bool = False, num_threads: int = None,
+    def __init__(self,
+                 input_file: Union[str, BinaryIO],
+                 warn_on_gaps: bool = False,
+                 show_progress: bool = False,
+                 save_index: bool = True,
+                 ignore_index: bool = False,
+                 num_threads: int = None,
                  max_bytes: int = None,
                  time_range: TimeRange = None,
                  message_types: Union[Iterable[MessageType], MessageType] = None,
                  invert_message_types: bool = False,
-                 source_ids: Optional[Iterable[int]] = None, return_header: bool = True,
-                 return_payload: bool = True, return_bytes: bool = False, return_offset: bool = False,
+                 source_ids: Optional[Iterable[int]] = None,
+                 return_header: bool = True,
+                 return_payload: bool = True,
+                 return_bytes: bool = False,
+                 return_offset: bool = False,
                  return_message_index: bool = False):
         """!
         @brief Construct a new generator instance.
