@@ -34,6 +34,17 @@ struct P1_ALIGNAS(4) Timestamp {
   /** The fractional part of the second, expressed in nanoseconds. */
   uint32_t fraction_ns = INVALID;
 
+  /** @brief Construct an invalid timestamp. */
+  Timestamp() = default;
+
+  /**
+   * @brief Construct a timestamp.
+   *
+   * @param sec The whole-seconds component.
+   * @param ns  The nanoseconds component.
+   */
+  Timestamp(uint32_t sec, uint32_t ns) : seconds(sec), fraction_ns(ns) {}
+
   /**
    * @brief Check if this is a valid timestamp.
    *
