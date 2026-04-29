@@ -43,7 +43,7 @@ int main(int argc, const char* argv[]) {
   // not gotten any pose messages yet, so we do not know the P1/GPS time
   // relationship.
   IMUOutput imu1;
-  imu1.p1_time = {0, 999'000'000};
+  imu1.p1_time = {0, 999000000};
   printf("IMU measurement 1:\n");
   PrintIMUMeasurement(time_provider, imu1);
 
@@ -63,7 +63,7 @@ int main(int argc, const char* argv[]) {
 
   // Step 3: Convert the next IMU measurement's P1 time to GPS time.
   IMUOutput imu2;
-  imu2.p1_time = {1, 100'000'500};
+  imu2.p1_time = {1, 100000500};
   printf("IMU measurement 2:\n");
   PrintIMUMeasurement(time_provider, imu2);
 
@@ -78,7 +78,7 @@ int main(int argc, const char* argv[]) {
   // GPS time has been available for a few seconds, the two rates will be very
   // close and interpolation will only have a very minor effect.
   PoseMessage pose2;
-  pose2.p1_time = {1, 100'001'000};
+  pose2.p1_time = {1, 100001000};
   pose2.gps_time = Timestamp::FromGPSTime(2416, 288018.1);
   printf("Second pose message:\n");
   PrintTimes(pose2.p1_time, pose2.gps_time);
@@ -89,7 +89,7 @@ int main(int argc, const char* argv[]) {
 
   // Step 5: Convert a 3rd IMU measurement with interpolation applied.
   IMUOutput imu3;
-  imu3.p1_time = {1, 100'001'500};
+  imu3.p1_time = {1, 100001500};
   printf("IMU measurement 3:\n");
   PrintIMUMeasurement(time_provider, imu3);
 

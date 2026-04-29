@@ -202,22 +202,22 @@ struct TimestampDelta {
   void Normalize() {
     // Convert |fraction_ns| to <1 second. This must be done before sign
     // alignment.
-    if (fraction_ns >= 1'000'000'000) {
-      seconds += fraction_ns / 1'000'000'000;
-      fraction_ns %= 1'000'000'000;
-    } else if (fraction_ns <= -1'000'000'000) {
-      seconds += fraction_ns / 1'000'000'000;
-      fraction_ns %= 1'000'000'000;
+    if (fraction_ns >= 1000000000) {
+      seconds += fraction_ns / 1000000000;
+      fraction_ns %= 1000000000;
+    } else if (fraction_ns <= -1000000000) {
+      seconds += fraction_ns / 1000000000;
+      fraction_ns %= 1000000000;
     }
 
     // Align signs for second and fraction_ns. We already guaranteed fraction_ns
     // is <1 sec, so no % operation needed.
     if (fraction_ns > 0 && seconds < 0) {
       seconds += 1;
-      fraction_ns -= 1'000'000'000;
+      fraction_ns -= 1000000000;
     } else if (fraction_ns < 0 && seconds > 0) {
       seconds -= 1;
-      fraction_ns += 1'000'000'000;
+      fraction_ns += 1000000000;
     }
   }
 
@@ -356,10 +356,10 @@ inline Timestamp operator+(Timestamp lhs, const TimestampDelta& rhs) {
   int64_t ns = static_cast<int64_t>(lhs.fraction_ns) + rhs.fraction_ns;
   if (ns < 0) {
     sec -= 1;
-    ns += 1'000'000'000;
-  } else if (ns >= 1'000'000'000) {
-    sec += ns / 1'000'000'000;
-    ns %= 1'000'000'000;
+    ns += 1000000000;
+  } else if (ns >= 1000000000) {
+    sec += ns / 1000000000;
+    ns %= 1000000000;
   }
 
   if (sec < 0 || sec > static_cast<int64_t>(Timestamp::INVALID - 1)) {
