@@ -1,6 +1,8 @@
-from typing import Optional
+from typing import Optional, Union
 
-from datetime import timedelta
+from datetime import datetime, timezone, timedelta
+
+from gpstime import gpstime
 
 from ..messages import MessageHeader, MessagePayload, PoseMessage, Timestamp
 from ..utils import trace as logging
@@ -49,21 +51,30 @@ Received time update ({message.get_type()} message) at:
   P1/GPS: {scale_sps_str}
 """)
 
-    def p1_to_gps(self, p1_time: Timestamp) -> Timestamp:
+    def p1_to_gps(self, p1_time: Timestamp, format: str = 'timestamp') -> Union[Timestamp, datetime]:
         """!
         @brief Convert a P1 timestamp to GPS time.
 
         @param p1_time The P1 time to convert.
+        @param format The desired output format:
+               - `timestamp` - A FusionEngine @ref Timestamp object
+               - `datetime` - A Python `datetime` object with the corresponding UTC time
 
         @return The resulting GPS time, or an invalid timestamp if the time could not be converted.
         """
         if not p1_time:
             _logger.trace('Cannot convert invalid P1 time to GPS time.')
-            return Timestamp()
+            if format == 'datetime':
+                return None
+            else:
+                return Timestamp()
         elif not self._current_p1_time or not self._current_gps_time:
             if _logger.isEnabledFor(logging.TRACE):
                 _logger.trace(f'P1/GPS relationship not known. Cannot convert P1 {p1_time.to_p1_str()} to GPS time.')
-            return Timestamp()
+            if format == 'datetime':
+                return None
+            else:
+                return Timestamp()
 
         # If we have both P1 and GPS time from the previous update, interpolate (or extrapolate) between the previous
         # update and the current one for the most accurate result.
@@ -82,20 +93,27 @@ Received time update ({message.get_type()} message) at:
 
         if _logger.isEnabledFor(logging.TRACE):
             _logger.trace('Converted P1 %s to GPS %s.', p1_time.to_p1_str(), gps_time.to_gps_str())
-        return gps_time
 
-    def gps_to_p1(self, gps_time: Timestamp) -> Timestamp:
+        if format == 'datetime':
+            return gpstime.fromgps(float(gps_time))
+        else:
+            return gps_time
+
+    def gps_to_p1(self, gps_time: Union[Timestamp, datetime, gpstime]) -> Timestamp:
         """!
         @brief Convert a GPS timestamp to P1 time.
 
-        @param gps_time The GPS time to convert.
+        @param gps_time The GPS time (or UTC `datetime`) to convert.
 
         @return The resulting P1 time, or an invalid timestamp if the time could not be converted.
         """
         if not gps_time:
             _logger.trace('Cannot convert invalid GPS time to P1 time.')
             return Timestamp()
-        elif not self._current_gps_time or not self._current_p1_time:
+        elif isinstance(gps_time, (datetime, gpstime)):
+            gps_time = Timestamp.from_datetime(gps_time)
+
+        if not self._current_gps_time or not self._current_p1_time:
             if _logger.isEnabledFor(logging.TRACE):
                 _logger.trace(f'GPS/P1 relationship not known. Cannot convert GPS {gps_time.to_gps_str()} to P1 time.')
             return Timestamp()
