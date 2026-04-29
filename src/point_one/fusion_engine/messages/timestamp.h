@@ -91,6 +91,286 @@ struct P1_ALIGNAS(4) Timestamp {
   operator double() const { return ToSeconds(); }
 };
 
+/**
+ * @brief Represents a signed duration or time difference between two @ref
+ *        Timestamp values.
+ *
+ * Unlike @ref Timestamp, which represents an absolute point in time using
+ * unsigned fields, `TimestampDelta` uses signed integers to express durations
+ * that may be negative (i.e., in the past relative to a reference time).
+ *
+ * Both @ref seconds and @ref fraction_ns always share the same sign: both
+ * fields will be negative to represent negative values. For example, -1.5
+ * seconds is represented as `{seconds=-1, fraction_ns=-500000000}`, never as
+ * `{seconds=0, fraction_ns=-1500000000}` or `{seconds=-2,
+ * fraction_ns=500000000}`.
+ *
+ * Both fields are set to @ref INVALID (`INT32_MIN`) to indicate an invalid or
+ * unknown delta.
+ */
+struct TimestampDelta {
+  static constexpr int32_t INVALID = INT32_MIN;
+
+  /**
+   * The number of full seconds in the delta. Negative for deltas in the past.
+   * Set to @ref INVALID if the delta is invalid or unknown.
+   */
+  int32_t seconds = INVALID;
+
+  /**
+   * The fractional part of the second, expressed in nanoseconds.
+   *
+   * Always has the same sign as @ref seconds (or is zero). Valid range is
+   * `[-999,999,999, 999,999,999]`. Set to @ref INVALID if the delta is
+   * invalid or unknown.
+   */
+  int32_t fraction_ns = INVALID;
+
+  /** @brief Construct an invalid delta. */
+  TimestampDelta() = default;
+
+  /**
+   * @brief Construct a delta from seconds and nanoseconds, normalizing as
+   *        needed.
+   *
+   * `fraction_ns` may exceed ±999,999,999; any excess is folded into
+   * @ref seconds. For example, `TimestampDelta(0, 1500000000)` produces
+   * `{seconds=1, fraction_ns=500000000}`.
+   *
+   * @param sec The whole-seconds component.
+   * @param ns  The nanoseconds component. May be larger than 1 sec.
+   */
+  TimestampDelta(int32_t sec, int32_t ns) : seconds(sec), fraction_ns(ns) {
+    if (seconds != INVALID && fraction_ns != INVALID) {
+      Normalize();
+    }
+  }
+
+  /**
+   * @brief Check if this delta is valid.
+   *
+   * @return `true` if the delta is valid.
+   */
+  bool IsValid() const { return seconds != INVALID && fraction_ns != INVALID; }
+
+  /**
+   * @brief Convert this delta to a floating-point number of seconds.
+   *
+   * @return The delta expressed as seconds, or `NAN` if the delta is
+   *         invalid.
+   */
+  double ToSeconds() const {
+    if (IsValid()) {
+      return seconds + (fraction_ns * 1e-9);
+    } else {
+      return NAN;
+    }
+  }
+
+  /**
+   * @brief Normalize the delta so that @ref seconds and @ref fraction_ns
+   *        share the same sign.
+   *
+   * After any arithmetic operation, this ensures the invariant that
+   * `fraction_ns` is always in the range `(-999,999,999, 999,999,999)` and
+   * has the same sign as `seconds` (or is zero). For example,
+   * `{seconds=1, fraction_ns=-200000000}` is normalized to
+   * `{seconds=0, fraction_ns=800000000}`.
+   *
+   * This is called automatically by the two-argument constructor and all
+   * arithmetic operators and does not need to be called manually under normal
+   * use.
+   */
+  void Normalize() {
+    // Convert |fraction_ns| to <1 second. This must be done before sign
+    // alignment.
+    if (fraction_ns >= 1'000'000'000) {
+      seconds += fraction_ns / 1'000'000'000;
+      fraction_ns %= 1'000'000'000;
+    } else if (fraction_ns <= -1'000'000'000) {
+      seconds += fraction_ns / 1'000'000'000;
+      fraction_ns %= 1'000'000'000;
+    }
+
+    // Align signs for second and fraction_ns. We already guaranteed fraction_ns
+    // is <1 sec, so no % operation needed.
+    if (fraction_ns > 0 && seconds < 0) {
+      seconds += 1;
+      fraction_ns -= 1'000'000'000;
+    } else if (fraction_ns < 0 && seconds > 0) {
+      seconds -= 1;
+      fraction_ns += 1'000'000'000;
+    }
+  }
+
+  /**
+   * @brief Check if this is a valid delta.
+   *
+   * @return `true` if the delta is valid.
+   */
+  operator bool() const { return IsValid(); }
+
+  /**
+   * @brief Convert this delta to a floating-point number of seconds.
+   *
+   * @return The delta expressed as seconds, or `NAN` if the delta is
+   *         invalid.
+   */
+  operator double() const { return ToSeconds(); }
+
+  /**
+   * @brief Add another @ref TimestampDelta to this one in place.
+   *
+   * If either operand is invalid, the result is set to @ref INVALID.
+   *
+   * @param rhs The delta to add.
+   *
+   * @return A reference to this delta after addition.
+   */
+  TimestampDelta& operator+=(const TimestampDelta& rhs) {
+    if (IsValid()) {
+      if (rhs.IsValid()) {
+        seconds += rhs.seconds;
+        fraction_ns += rhs.fraction_ns;
+        Normalize();
+      } else {
+        *this = {INVALID, INVALID};
+      }
+    }
+    return *this;
+  }
+
+  /**
+   * @brief Subtract another @ref TimestampDelta from this one in place.
+   *
+   * If either operand is invalid, the result is set to @ref INVALID.
+   *
+   * @param rhs The delta to subtract.
+   *
+   * @return A reference to this delta after subtraction.
+   */
+  TimestampDelta& operator-=(const TimestampDelta& rhs) {
+    if (IsValid()) {
+      if (rhs.IsValid()) {
+        seconds -= rhs.seconds;
+        fraction_ns -= rhs.fraction_ns;
+        Normalize();
+      } else {
+        *this = {INVALID, INVALID};
+      }
+    }
+    return *this;
+  }
+
+  /**
+   * @brief Add two @ref TimestampDelta values.
+   *
+   * If either operand is invalid, the result is @ref INVALID.
+   *
+   * @param lhs The left-hand operand.
+   * @param rhs The right-hand operand.
+   *
+   * @return The sum of the two deltas.
+   */
+  friend TimestampDelta operator+(TimestampDelta lhs,
+                                  const TimestampDelta& rhs) {
+    lhs += rhs;
+    return lhs;
+  }
+
+  /**
+   * @brief Subtract one @ref TimestampDelta from another.
+   *
+   * If either operand is invalid, the result is @ref INVALID.
+   *
+   * @param lhs The left-hand operand.
+   * @param rhs The delta to subtract.
+   *
+   * @return The difference of the two deltas.
+   */
+  friend TimestampDelta operator-(TimestampDelta lhs,
+                                  const TimestampDelta& rhs) {
+    lhs -= rhs;
+    return lhs;
+  }
+};
+
+/**
+ * @brief Compute the difference between two @ref Timestamp values as a
+ *        @ref TimestampDelta.
+ *
+ * @param lhs The timestamp to subtract from.
+ * @param rhs The timestamp to subtract.
+ *
+ * @return A @ref TimestampDelta representing `lhs - rhs`, or an invalid
+ *         delta if either operand is invalid.
+ */
+inline TimestampDelta operator-(const Timestamp& lhs, const Timestamp& rhs) {
+  if (!lhs.IsValid() || !rhs.IsValid()) {
+    return TimestampDelta();
+  }
+
+  TimestampDelta result;
+  result.seconds =
+      static_cast<int32_t>(lhs.seconds) - static_cast<int32_t>(rhs.seconds);
+  result.fraction_ns = static_cast<int32_t>(lhs.fraction_ns) -
+                       static_cast<int32_t>(rhs.fraction_ns);
+  result.Normalize();
+  return result;
+}
+
+/**
+ * @brief Offset a @ref Timestamp forward by a @ref TimestampDelta.
+ *
+ * @param lhs The base timestamp.
+ * @param rhs The delta to add.
+ *
+ * @return A new @ref Timestamp equal to `lhs + rhs`, or an invalid
+ *         timestamp if either operand is invalid or the result falls outside
+ *         the representable range of @ref Timestamp.
+ */
+inline Timestamp operator+(Timestamp lhs, const TimestampDelta& rhs) {
+  if (!lhs.IsValid() || !rhs.IsValid()) {
+    return Timestamp();
+  }
+
+  int64_t sec = static_cast<int64_t>(lhs.seconds) + rhs.seconds;
+  int64_t ns = static_cast<int64_t>(lhs.fraction_ns) + rhs.fraction_ns;
+  if (ns < 0) {
+    sec -= 1;
+    ns += 1'000'000'000;
+  } else if (ns >= 1'000'000'000) {
+    sec += ns / 1'000'000'000;
+    ns %= 1'000'000'000;
+  }
+
+  if (sec < 0 || sec > static_cast<int64_t>(Timestamp::INVALID - 1)) {
+    return Timestamp();
+  } else {
+    return Timestamp{static_cast<uint32_t>(sec), static_cast<uint32_t>(ns)};
+  }
+}
+
+/**
+ * @brief Offset a @ref Timestamp backwards by a @ref TimestampDelta.
+ *
+ * @param lhs The base timestamp.
+ * @param rhs The delta to subtract.
+ *
+ * @return A new @ref Timestamp equal to `lhs - rhs`, or an invalid
+ *         timestamp if either operand is invalid or the result falls outside
+ *         the representable range of @ref Timestamp.
+ */
+inline Timestamp operator-(const Timestamp& lhs, const TimestampDelta& rhs) {
+  if (!rhs.IsValid()) {
+    return Timestamp();
+  }
+
+  TimestampDelta negated{-rhs.seconds, -rhs.fraction_ns};
+  negated.Normalize();
+  return lhs + negated;
+}
+
 } // namespace messages
 } // namespace fusion_engine
 } // namespace point_one
