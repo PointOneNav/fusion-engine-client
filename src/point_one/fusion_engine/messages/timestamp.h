@@ -89,6 +89,24 @@ struct P1_ALIGNAS(4) Timestamp {
    * @return The timestamp value (in seconds), or `NAN` if invalid.
    */
   operator double() const { return ToSeconds(); }
+
+  /**
+   * @brief Construct a @ref Timestamp object from a GPS week number and time of
+   *        week.
+   *
+   * @param week_number The GPS week number.
+   * @param tow_sec The GPS time of week (in seconds).
+   *
+   * @return The resulting @ref Timestamp.
+   */
+  static Timestamp FromGPSTime(uint16_t week_number, double tow_sec) {
+    Timestamp result;
+    uint32_t tow_sec_int = static_cast<uint32_t>(tow_sec);
+    result.seconds = week_number * 604800 + tow_sec_int;
+    result.fraction_ns =
+        static_cast<uint32_t>(std::lround((tow_sec - tow_sec_int) * 1e9));
+    return result;
+  }
 };
 
 /**
