@@ -55,6 +55,9 @@ class Timestamp:
     def __init__(self, time_sec=math.nan):
         self.seconds = float(time_sec)
 
+    def is_valid(self) -> bool:
+        return not math.isnan(self.seconds)
+
     def is_gps(self) -> bool:
         return is_gps_time(self.seconds)
 
@@ -142,7 +145,7 @@ class Timestamp:
         return self.seconds >= float(other)
 
     def __bool__(self):
-        return not math.isnan(self.seconds)
+        return self.is_valid()
 
     def __float__(self):
         return self.seconds
