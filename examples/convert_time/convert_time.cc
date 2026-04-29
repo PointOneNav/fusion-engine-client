@@ -55,9 +55,9 @@ int main(int argc, const char* argv[]) {
   PoseMessage pose1;
   pose1.p1_time = {1, 0};
   pose1.gps_time = Timestamp::FromGPSTime(2416, 288018.0);
-  time_provider.HandleMessage(pose_header, &pose1);
   printf("First pose message:\n");
   PrintTimes(pose1.p1_time, pose1.gps_time);
+  time_provider.HandleMessage(pose_header, &pose1);
 
   printf("IMU measurement 1 again (GPS time available):\n");
   PrintIMUMeasurement(time_provider, imu1);
@@ -81,9 +81,9 @@ int main(int argc, const char* argv[]) {
   PoseMessage pose2;
   pose2.p1_time = {1, 100'001'000};
   pose2.gps_time = Timestamp::FromGPSTime(2416, 288018.1);
-  time_provider.HandleMessage(pose_header, &pose2);
   printf("Second pose message:\n");
   PrintTimes(pose2.p1_time, pose2.gps_time);
+  time_provider.HandleMessage(pose_header, &pose2);
 
   printf("IMU measurement 2 again (using interpolation):\n");
   PrintIMUMeasurement(time_provider, imu2);
