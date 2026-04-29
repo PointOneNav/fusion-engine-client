@@ -113,17 +113,37 @@ class Timestamp:
         return Timestamp._SIZE
 
     def __add__(self, other):
-        return Timestamp(self.seconds + float(other))
+        if isinstance(other, timedelta):
+            return Timestamp(self.seconds + other.total_seconds())
+        else:
+            return Timestamp(self.seconds + float(other))
+
+    def __radd__(self, other):
+        return self.__add__(other)
 
     def __sub__(self, other):
-        return Timestamp(self.seconds - float(other))
+        if isinstance(other, Timestamp):
+            if self.is_valid() and other.is_valid():
+                return timedelta(seconds=(self.seconds - other.seconds))
+            else:
+                return None
+        elif isinstance(other, timedelta):
+            return Timestamp(self.seconds - other.total_seconds())
+        else:
+            return Timestamp(self.seconds - float(other))
 
     def __iadd__(self, other):
-        self.seconds += float(other)
+        if isinstance(other, timedelta):
+            self.seconds += other.total_seconds()
+        else:
+            self.seconds += float(other)
         return self
 
-    def __isub(self, other):
-        self.seconds -= float(other)
+    def __isub__(self, other):
+        if isinstance(other, timedelta):
+            self.seconds -= other.total_seconds()
+        else:
+            self.seconds -= float(other)
         return self
 
     def __eq__(self, other):
