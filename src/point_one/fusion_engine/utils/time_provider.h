@@ -18,13 +18,38 @@ class TimeProvider {
  public:
   TimeProvider() = default;
 
+  /**
+   * @brief Reset all known time relationships.
+   */
   void Reset();
 
+  /**
+   * @brief Learn time relationships from incoming FusionEngine messages.
+   *
+   * @param header The message header.
+   * @param payload The message payload.
+   */
   void HandleMessage(const messages::MessageHeader& header,
                      const void* payload);
 
+  /**
+   * @brief Convert a P1 timestamp to GPS time.
+   *
+   * @param p1_time The P1 time to convert.
+   *
+   * @return The resulting GPS time, or an invalid timestamp if the time could
+   *         not be converted.
+   */
   messages::Timestamp P1ToGPS(const messages::Timestamp& p1_time) const;
 
+  /**
+   * @brief Convert a GPS timestamp to P1 time.
+   *
+   * @param gps_time The GPS time to convert.
+   *
+   * @return The resulting P1 time, or an invalid timestamp if the time could
+   *         not be converted.
+   */
   messages::Timestamp GPSToP1(const messages::Timestamp& gps_time) const;
 
  private:
