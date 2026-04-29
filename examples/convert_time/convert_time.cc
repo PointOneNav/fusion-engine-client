@@ -5,11 +5,10 @@
  ******************************************************************************/
 
 #include <point_one/fusion_engine/messages/core.h>
+#include <point_one/fusion_engine/utils/time_provider.h>
 
-#include "../common/time_provider.h"
-
-using namespace point_one::fusion_engine::examples;
 using namespace point_one::fusion_engine::messages;
+using namespace point_one::fusion_engine::utils;
 
 /******************************************************************************/
 void PrintGPSTime(const Timestamp& gps_time) {

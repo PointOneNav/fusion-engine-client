@@ -6,7 +6,6 @@ cc_binary(
         "convert_time.cc",
     ],
     deps = [
-        "//common:time_provider",
         "@fusion_engine_client",
     ],
 )

@@ -1,5 +1,5 @@
 /**************************************************************************/ /**
- * @brief Example utility for converting between P1 and GPS time.
+ * @brief Helper utility for converting between P1 and GPS time.
  * @file
  ******************************************************************************/
 
@@ -9,7 +9,7 @@
 
 namespace point_one {
 namespace fusion_engine {
-namespace examples {
+namespace utils {
 
 /**
  * @brief Utility for converting between P1 and GPS time.
@@ -35,6 +35,6 @@ class TimeProvider {
   messages::Timestamp prev_gps_time_;
 };
 
-} // namespace examples
+} // namespace utils
 } // namespace fusion_engine
 } // namespace point_one

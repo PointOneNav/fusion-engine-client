@@ -1,12 +1,12 @@
 /**************************************************************************/ /**
- * @brief Example utility for converting between P1 and GPS time.
+ * @brief Helper utility for converting between P1 and GPS time.
  * @file
  ******************************************************************************/
 
-#include "time_provider.h"
+#include "point_one/fusion_engine/utils/time_provider.h"
 
-using namespace point_one::fusion_engine::examples;
 using namespace point_one::fusion_engine::messages;
+using namespace point_one::fusion_engine::utils;
 
 /******************************************************************************/
 void TimeProvider::Reset() { *this = TimeProvider(); }

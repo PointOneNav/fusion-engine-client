@@ -8,6 +8,7 @@ cc_library(
         ":messages",
         ":parsers",
         ":rtcm",
+        ":utils",
     ],
 )
 
@@ -159,5 +160,19 @@ cc_library(
     ],
     deps = [
         ":common",
+    ],
+)
+
+# Helper utilities.
+cc_library(
+    name = "utils",
+    srcs = [
+        "src/point_one/fusion_engine/utils/time_provider.cc",
+    ],
+    hdrs = [
+        "src/point_one/fusion_engine/utils/time_provider.h",
+    ],
+    deps = [
+        ":core_headers",
     ],
 )
