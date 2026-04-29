@@ -63,8 +63,8 @@ void TimeProvider::Reset() {
 void TimeProvider::HandleMessage(const MessageHeader& header,
                                  const void* payload) {
   if (header.message_type == MessageType::POSE) {
-    // Store the current and previous P1/GPS times, and use them to to convert
-    // to/from P1 or GPS time by interpolating.
+    // Store the current and previous P1/GPS times, and use them to convert
+    // to/from P1 or GPS time by interpolating (or extrapolating as needed).
     //
     // Note: If we had GPS time and the incoming message no longer does, we will
     // no longer be able to convert P1<->GPS time.
@@ -75,7 +75,8 @@ void TimeProvider::HandleMessage(const MessageHeader& header,
     current_gps_time_ = message.gps_time;
 
     if (VLOG_IS_ON(1)) {
-      VLOG(1) << "Received time update at:";
+      VLOG(1) << "Received time update (" << header.message_type
+              << " message) at:";
       VLOG(1) << "  P1: " << P1TimeFormat(current_p1_time_);
       VLOG(1) << "  GPS: " << GPSTimeFormat(current_gps_time_);
       if (current_p1_time_ && current_gps_time_ && prev_p1_time_ &&
@@ -110,10 +111,10 @@ Timestamp TimeProvider::P1ToGPS(const Timestamp& p1_time) const {
     double elapsed_p1_sec = current_p1_time_ - prev_p1_time_;
     double elapsed_gps_sec = current_gps_time_ - prev_gps_time_;
     double delta_p1_sec = p1_time - prev_p1_time_;
-    double offset_sec = elapsed_gps_sec * delta_p1_sec / elapsed_p1_sec;
-    int32_t int_sec = static_cast<int32_t>(offset_sec);
+    double delta_gps_sec = elapsed_gps_sec * delta_p1_sec / elapsed_p1_sec;
+    int32_t int_sec = static_cast<int32_t>(delta_gps_sec);
     TimestampDelta delta_gps(
-        int_sec, static_cast<int32_t>((offset_sec - int_sec) * 1e9));
+        int_sec, static_cast<int32_t>((delta_gps_sec - int_sec) * 1e9));
     gps_time = prev_gps_time_ + delta_gps;
   }
   // Otherwise, use the current P1/GPS time offset with no interpolation. This
@@ -121,7 +122,8 @@ Timestamp TimeProvider::P1ToGPS(const Timestamp& p1_time) const {
   // time, but for most purposes it will be fine as long as current_*_time_ is
   // recent.
   else {
-    gps_time = p1_time + (current_gps_time_ - current_p1_time_);
+    double offset_sec = (current_gps_time_ - current_p1_time_);
+    gps_time = p1_time + offset_sec;
   }
 
   VLOG(2) << "Converted P1 " << P1TimeFormat(p1_time) << " to GPS "
@@ -145,13 +147,13 @@ Timestamp TimeProvider::GPSToP1(const Timestamp& gps_time) const {
   // most accurate result.
   Timestamp p1_time;
   if (prev_gps_time_.IsValid() && prev_p1_time_.IsValid()) {
-    double elapsed_gps_sec = current_gps_time_ - prev_gps_time_;
     double elapsed_p1_sec = current_p1_time_ - prev_p1_time_;
+    double elapsed_gps_sec = current_gps_time_ - prev_gps_time_;
     double delta_gps_sec = gps_time - prev_gps_time_;
-    double offset_sec = elapsed_p1_sec * delta_gps_sec / elapsed_gps_sec;
-    int32_t int_sec = static_cast<int32_t>(offset_sec);
-    TimestampDelta delta_p1(int_sec,
-                            static_cast<int32_t>((offset_sec - int_sec) * 1e9));
+    double delta_p1_sec = elapsed_p1_sec * delta_gps_sec / elapsed_gps_sec;
+    int32_t int_sec = static_cast<int32_t>(delta_p1_sec);
+    TimestampDelta delta_p1(
+        int_sec, static_cast<int32_t>((delta_p1_sec - int_sec) * 1e9));
     p1_time = prev_p1_time_ + delta_p1;
   }
   // Otherwise, use the current P1/GPS time offset with no interpolation. This
@@ -159,7 +161,8 @@ Timestamp TimeProvider::GPSToP1(const Timestamp& gps_time) const {
   // time, but for most purposes it will be fine as long as current_*_time_ is
   // recent.
   else {
-    p1_time = gps_time + (current_p1_time_ - current_gps_time_);
+    double offset_sec = (current_p1_time_ - current_gps_time_);
+    p1_time = gps_time + offset_sec;
   }
 
   VLOG(2) << "Converted GPS " << GPSTimeFormat(gps_time) << " to P1 "
