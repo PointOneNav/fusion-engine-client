@@ -105,21 +105,6 @@ cc_library(
     includes = ["src"],
 )
 
-# Message encode/decode support.
-cc_library(
-    name = "parsers",
-    srcs = [
-        "src/point_one/fusion_engine/parsers/fusion_engine_framer.cc",
-    ],
-    hdrs = [
-        "src/point_one/fusion_engine/parsers/fusion_engine_framer.h",
-    ],
-    deps = [
-        ":core_headers",
-        ":crc",
-    ],
-)
-
 # CRC support.
 cc_library(
     name = "crc",
@@ -150,6 +135,21 @@ cc_library(
 )
 
 # Message encode/decode support.
+cc_library(
+    name = "parsers",
+    srcs = [
+        "src/point_one/fusion_engine/parsers/fusion_engine_framer.cc",
+    ],
+    hdrs = [
+        "src/point_one/fusion_engine/parsers/fusion_engine_framer.h",
+    ],
+    deps = [
+        ":core_headers",
+        ":crc",
+    ],
+)
+
+# RTCM message framing support.
 cc_library(
     name = "rtcm",
     srcs = [
