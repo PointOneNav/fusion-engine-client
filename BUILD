@@ -173,6 +173,7 @@ cc_library(
         "src/point_one/fusion_engine/utils/time_provider.h",
     ],
     deps = [
+        ":common",
         ":core_headers",
     ],
 )
