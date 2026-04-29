@@ -95,13 +95,6 @@ struct P1_ALIGNAS(4) Timestamp {
   operator bool() const { return IsValid(); }
 
   /**
-   * @brief Get the timestamp value in seconds.
-   *
-   * @return The timestamp value (in seconds), or `NAN` if invalid.
-   */
-  operator double() const { return ToSeconds(); }
-
-  /**
    * @brief Construct a @ref Timestamp object from a GPS week number and time of
    *        week.
    *
@@ -248,14 +241,6 @@ struct TimestampDelta {
    * @return `true` if the delta is valid.
    */
   operator bool() const { return IsValid(); }
-
-  /**
-   * @brief Convert this delta to a floating-point number of seconds.
-   *
-   * @return The delta expressed as seconds, or `NAN` if the delta is
-   *         invalid.
-   */
-  operator double() const { return ToSeconds(); }
 
   /**
    * @brief Add another @ref TimestampDelta to this one in place.

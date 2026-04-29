@@ -108,9 +108,9 @@ Timestamp TimeProvider::P1ToGPS(const Timestamp& p1_time) const {
   // most accurate result.
   Timestamp gps_time;
   if (prev_p1_time_.IsValid() && prev_gps_time_.IsValid()) {
-    double elapsed_p1_sec = current_p1_time_ - prev_p1_time_;
-    double elapsed_gps_sec = current_gps_time_ - prev_gps_time_;
-    double delta_p1_sec = p1_time - prev_p1_time_;
+    double elapsed_p1_sec = (current_p1_time_ - prev_p1_time_).ToSeconds();
+    double elapsed_gps_sec = (current_gps_time_ - prev_gps_time_).ToSeconds();
+    double delta_p1_sec = (p1_time - prev_p1_time_).ToSeconds();
     double delta_gps_sec = elapsed_gps_sec * delta_p1_sec / elapsed_p1_sec;
     int32_t int_sec = static_cast<int32_t>(delta_gps_sec);
     TimestampDelta delta_gps(
@@ -122,8 +122,8 @@ Timestamp TimeProvider::P1ToGPS(const Timestamp& p1_time) const {
   // time, but for most purposes it will be fine as long as current_*_time_ is
   // recent.
   else {
-    double offset_sec = (current_gps_time_ - current_p1_time_);
-    gps_time = p1_time + offset_sec;
+    double offset_sec = (current_gps_time_ - current_p1_time_).ToSeconds();
+    gps_time = p1_time + TimestampDelta(offset_sec);
   }
 
   VLOG(2) << "Converted P1 " << P1TimeFormat(p1_time) << " to GPS "
@@ -147,9 +147,9 @@ Timestamp TimeProvider::GPSToP1(const Timestamp& gps_time) const {
   // most accurate result.
   Timestamp p1_time;
   if (prev_gps_time_.IsValid() && prev_p1_time_.IsValid()) {
-    double elapsed_p1_sec = current_p1_time_ - prev_p1_time_;
-    double elapsed_gps_sec = current_gps_time_ - prev_gps_time_;
-    double delta_gps_sec = gps_time - prev_gps_time_;
+    double elapsed_p1_sec = (current_p1_time_ - prev_p1_time_).ToSeconds();
+    double elapsed_gps_sec = (current_gps_time_ - prev_gps_time_).ToSeconds();
+    double delta_gps_sec = (gps_time - prev_gps_time_).ToSeconds();
     double delta_p1_sec = elapsed_p1_sec * delta_gps_sec / elapsed_gps_sec;
     int32_t int_sec = static_cast<int32_t>(delta_p1_sec);
     TimestampDelta delta_p1(
@@ -161,8 +161,8 @@ Timestamp TimeProvider::GPSToP1(const Timestamp& gps_time) const {
   // time, but for most purposes it will be fine as long as current_*_time_ is
   // recent.
   else {
-    double offset_sec = (current_p1_time_ - current_gps_time_);
-    p1_time = gps_time + offset_sec;
+    double offset_sec = (current_p1_time_ - current_gps_time_).ToSeconds();
+    p1_time = gps_time + TimestampDelta(offset_sec);
   }
 
   VLOG(2) << "Converted GPS " << GPSTimeFormat(gps_time) << " to P1 "
