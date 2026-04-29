@@ -16,8 +16,7 @@ void PrintGPSTime(const Timestamp& gps_time) {
   double tow_sec = NAN;
   if (gps_time.ToGPSWeekTOW(&week_number, &tow_sec)) {
     printf("Week %u, TOW %.9f sec\n", week_number, tow_sec);
-  }
-  else {
+  } else {
     printf("<invalid>\n");
   }
 }

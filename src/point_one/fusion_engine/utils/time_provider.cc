@@ -3,7 +3,7 @@
  * @file
  ******************************************************************************/
 
- #define P1_VMODULE_NAME time_provider
+#define P1_VMODULE_NAME time_provider
 
 #include "point_one/fusion_engine/utils/time_provider.h"
 
@@ -93,7 +93,7 @@ void TimeProvider::HandleMessage(const MessageHeader& header,
 
 /******************************************************************************/
 Timestamp TimeProvider::P1ToGPS(const Timestamp& p1_time) const {
-  if (!p1_time.IsValid()){
+  if (!p1_time.IsValid()) {
     VLOG(2) << "Cannot convert invalid P1 time to GPS time.";
     return Timestamp();
   } else if (!current_p1_time_.IsValid() || !current_gps_time_.IsValid()) {
@@ -131,7 +131,7 @@ Timestamp TimeProvider::P1ToGPS(const Timestamp& p1_time) const {
 
 /******************************************************************************/
 Timestamp TimeProvider::GPSToP1(const Timestamp& gps_time) const {
-  if (!gps_time.IsValid()){
+  if (!gps_time.IsValid()) {
     VLOG(2) << "Cannot convert invalid GPS time to P1 time.";
     return Timestamp();
   } else if (!current_p1_time_.IsValid() || !current_gps_time_.IsValid()) {
