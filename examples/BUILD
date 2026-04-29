@@ -5,9 +5,11 @@ filegroup(
     name = "examples",
     srcs = [
         "//generate_data",
+        "//lband_decode",
         "//message_decode",
+        "//raw_message_decode",
         "//request_version",
         "//tcp_client",
         "//udp_client",
-    ]
+    ],
 )
