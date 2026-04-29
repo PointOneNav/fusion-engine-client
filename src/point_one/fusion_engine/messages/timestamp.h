@@ -176,6 +176,16 @@ struct TimestampDelta {
   }
 
   /**
+   * @brief Construct a delta from a floating point second value.
+   *
+   * @param sec The second value.
+   */
+  TimestampDelta(double sec) {
+    seconds = static_cast<int32_t>(sec);
+    fraction_ns = static_cast<int32_t>(std::lround((sec - seconds) * 1e9));
+  }
+
+  /**
    * @brief Check if this delta is valid.
    *
    * @return `true` if the delta is valid.
