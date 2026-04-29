@@ -75,11 +75,18 @@ class Timestamp:
 
     def get_week_tow(self) -> (int, float):
         if self.is_gps():
-            week = int(self.seconds / SECONDS_PER_WEEK)
-            tow_sec = self.seconds - week * SECONDS_PER_WEEK
-            return week, tow_sec
+            week_number = int(self.seconds / SECONDS_PER_WEEK)
+            tow_sec = self.seconds - week_number * SECONDS_PER_WEEK
+            return week_number, tow_sec
         else:
             return -1, np.nan
+
+    @classmethod
+    def from_datetime(cls, time: Union[datetime, gpstime]) -> 'Timestamp':
+        if isinstance(time, gpstime):
+            return Timestamp(time.gps())
+        else:
+            return Timestamp(gpstime.fromdatetime(time).gps())
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = False) -> (bytes, int):
         if math.isnan(self.seconds):
