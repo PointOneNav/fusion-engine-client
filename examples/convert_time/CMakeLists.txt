@@ -1,0 +1,3 @@
+add_executable(convert_time convert_time.cc)
+target_link_libraries(convert_time PUBLIC fusion_engine_client)
+target_link_libraries(convert_time PUBLIC time_provider)
