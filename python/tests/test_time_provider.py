@@ -41,6 +41,79 @@ class TestHandleMessage:
         assert float(tp._current_p1_time) == pytest.approx(11.0)
         assert float(tp._current_gps_time) == pytest.approx(GPS_DATE_SEC + 1.0)
 
+    # --- Backwards timestamp tests ---
+
+    def test_backwards_timestamp_resets_and_stores_new(self):
+        # A large backwards jump resets state and stores the new (earlier) time.
+        tp = TimeProvider()
+        tp.handle_message(_make_pose(10.0, GPS_DATE_SEC))
+        tp.handle_message(_make_pose(5.0, GPS_DATE_SEC - 5.0))
+        assert float(tp._current_p1_time) == pytest.approx(5.0)
+        assert float(tp._current_gps_time) == pytest.approx(GPS_DATE_SEC - 5.0)
+        assert not tp._prev_p1_time
+        assert not tp._prev_gps_time
+
+    def test_backwards_timestamp_after_two_updates_resets_prev(self):
+        # After two good updates, a backwards jump clears prev so conversion falls back
+        # to single-reference mode with only the new (reset) time.
+        tp = TimeProvider()
+        tp.handle_message(_make_pose(10.0, GPS_DATE_SEC))
+        tp.handle_message(_make_pose(20.0, GPS_DATE_SEC + 10.0))
+        tp.handle_message(_make_pose(5.0, GPS_DATE_SEC - 5.0))
+        assert float(tp._current_p1_time) == pytest.approx(5.0)
+        assert not tp._prev_p1_time
+
+    def test_backwards_conversion_uses_new_reference(self):
+        # After a backwards reset the new single reference is used for conversion.
+        tp = TimeProvider()
+        tp.handle_message(_make_pose(10.0, GPS_DATE_SEC))
+        tp.handle_message(_make_pose(5.0, GPS_DATE_SEC - 5.0))
+        result = tp.p1_to_gps(Timestamp(7.0))
+        assert float(result) == pytest.approx(GPS_DATE_SEC - 3.0)
+
+    def test_tiny_backwards_jump_within_threshold_treated_as_duplicate(self):
+        # A backwards jump of exactly 0.5 ms (< 1 ms) is treated as a duplicate and ignored.
+        tp = TimeProvider()
+        tp.handle_message(_make_pose(10.0, GPS_DATE_SEC))
+        tp.handle_message(_make_pose(10.0 - 0.0005, GPS_DATE_SEC - 0.0005))
+        assert float(tp._current_p1_time) == pytest.approx(10.0)
+        assert not tp._prev_p1_time
+
+    # --- Duplicate timestamp tests ---
+
+    def test_exact_duplicate_is_ignored(self):
+        # Sending the same p1_time twice: second message should be dropped.
+        tp = TimeProvider()
+        tp.handle_message(_make_pose(10.0, GPS_DATE_SEC))
+        tp.handle_message(_make_pose(10.0, GPS_DATE_SEC))
+        assert float(tp._current_p1_time) == pytest.approx(10.0)
+        assert not tp._prev_p1_time
+
+    def test_near_duplicate_below_threshold_is_ignored(self):
+        # A 0.5 ms forward jump (below the 1 ms threshold) is treated as a duplicate.
+        tp = TimeProvider()
+        tp.handle_message(_make_pose(10.0, GPS_DATE_SEC))
+        tp.handle_message(_make_pose(10.0005, GPS_DATE_SEC + 0.0005))
+        assert float(tp._current_p1_time) == pytest.approx(10.0)
+        assert not tp._prev_p1_time
+
+    def test_near_duplicate_above_threshold_is_accepted(self):
+        # A 2 ms forward jump (above the 1 ms threshold) is treated as a new update.
+        tp = TimeProvider()
+        tp.handle_message(_make_pose(10.0, GPS_DATE_SEC))
+        tp.handle_message(_make_pose(10.002, GPS_DATE_SEC + 0.002))
+        assert float(tp._current_p1_time) == pytest.approx(10.002)
+        assert float(tp._prev_p1_time) == pytest.approx(10.0)
+
+    def test_duplicate_does_not_corrupt_conversion(self):
+        # After a duplicate is dropped, conversion still works correctly using the
+        # original reference.
+        tp = TimeProvider()
+        tp.handle_message(_make_pose(10.0, GPS_DATE_SEC))
+        tp.handle_message(_make_pose(10.0, GPS_DATE_SEC))  # duplicate
+        result = tp.p1_to_gps(Timestamp(12.0))
+        assert float(result) == pytest.approx(GPS_DATE_SEC + 2.0)
+
 
 class TestP1ToGPS:
     def test_invalid_p1_returns_invalid(self):

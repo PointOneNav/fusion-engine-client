@@ -63,12 +63,37 @@ void TimeProvider::Reset() {
 void TimeProvider::HandleMessage(const MessageHeader& header,
                                  const void* payload) {
   if (header.message_type == MessageType::POSE) {
+    auto& message = *reinterpret_cast<const PoseMessage*>(payload);
+
+    // Sanity check for duplicate or backwards timestamps. In practice this
+    // should not happen normally unless the device was reset. If time jumps
+    // backward, we'll assume it was a reset and store the new time. If we get a
+    // duplicate timestamp, we'll ignore it as a possible error.
+    if (current_p1_time_ && message.p1_time) {
+      double dt_sec = (message.p1_time - current_p1_time_).ToSeconds();
+      if (dt_sec < -1e-3) {
+        LOG(WARNING) << "Backwards P1 time jump detected. Did the device "
+                        "restart? [prev="
+                     << P1TimeFormat(current_p1_time_)
+                     << ", current=" << P1TimeFormat(message.p1_time)
+                     << ", dt=" << std::fixed << std::setprecision(2) << dt_sec
+                     << " sec]";
+        Reset();
+      } else if (dt_sec < 1e-3) {
+        LOG(WARNING) << "Duplicate P1 timestamp detected. Ignoring. [prev="
+                     << P1TimeFormat(current_p1_time_)
+                     << ", current=" << P1TimeFormat(message.p1_time)
+                     << ", dt=" << std::fixed << std::setprecision(2) << dt_sec
+                     << " sec]";
+        return;
+      }
+    }
+
     // Store the current and previous P1/GPS times, and use them to convert
     // to/from P1 or GPS time by interpolating (or extrapolating as needed).
     //
     // Note: If we had GPS time and the incoming message no longer does, we will
     // no longer be able to convert P1<->GPS time.
-    auto& message = *reinterpret_cast<const PoseMessage*>(payload);
     prev_p1_time_ = current_p1_time_;
     prev_gps_time_ = current_gps_time_;
     current_p1_time_ = message.p1_time;

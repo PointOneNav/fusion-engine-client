@@ -34,6 +34,22 @@ class TimeProvider:
         @param message The message payload.
         """
         if isinstance(message, PoseMessage):
+            # Sanity check for duplicate or backwards timestamps. In practice this should not happen normally unless the
+            # device was reset. If time jumps backward, we'll assume it was a reset and store the new time. If we get a
+            # duplicate timestamp, we'll ignore it as a possible error.
+            if self._current_p1_time and message.p1_time:
+                dt_sec = (message.p1_time - self._current_p1_time).total_seconds()
+                if dt_sec < -1e-3:
+                    _logger.warning(f'Backwards P1 time jump detected. Did the device restart? '
+                                    f'[prev={self._current_p1_time.to_p1_str()}, '
+                                    f'current={message.p1_time.to_p1_str()}, dt={dt_sec:.2f} sec]')
+                    self.reset()
+                elif dt_sec < 1e-3:
+                    _logger.warning(f'Duplicate P1 timestamp detected. Ignoring. '
+                                    f'[prev={self._current_p1_time.to_p1_str()}, '
+                                    f'current={message.p1_time.to_p1_str()}, dt={dt_sec:.2f} sec]')
+                    return
+
             # Store the current and previous P1/GPS times, and use them to convert to/from P1 or GPS time by
             # interpolating (or extrapolating as needed).
             #
