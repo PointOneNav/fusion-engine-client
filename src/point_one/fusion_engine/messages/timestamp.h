@@ -105,10 +105,16 @@ struct P1_ALIGNAS(4) Timestamp {
    */
   static Timestamp FromGPSTime(uint16_t week_number, double tow_sec) {
     Timestamp result;
-    uint32_t tow_sec_int = static_cast<uint32_t>(tow_sec);
-    result.seconds = week_number * 604800 + tow_sec_int;
-    result.fraction_ns =
-        static_cast<uint32_t>(std::lround((tow_sec - tow_sec_int) * 1e9));
+    if (std::isfinite(tow_sec) && tow_sec >= 0.0) {
+      uint32_t tow_sec_int = static_cast<uint32_t>(tow_sec);
+      result.seconds = week_number * 604800 + tow_sec_int;
+      result.fraction_ns =
+          static_cast<uint32_t>(std::lround((tow_sec - tow_sec_int) * 1e9));
+      if (result.fraction_ns >= 1000000000) {
+        ++result.seconds;
+        result.fraction_ns -= 1000000000;
+      }
+    }
     return result;
   }
 };
@@ -174,8 +180,12 @@ struct TimeDelta {
    * @param sec The second value.
    */
   TimeDelta(double sec) {
-    seconds = static_cast<int32_t>(sec);
-    fraction_ns = static_cast<int32_t>(std::lround((sec - seconds) * 1e9));
+    if (std::isfinite(sec) && sec <= INT32_MAX &&
+        sec >= static_cast<double>(INT32_MIN) - 1.0) {
+      seconds = static_cast<int32_t>(sec);
+      fraction_ns = static_cast<int32_t>(std::lround((sec - seconds) * 1e9));
+      Normalize();
+    }
   }
 
   /**
