@@ -38,7 +38,7 @@ void PrintIMUMeasurement(const TimeProvider& time_provider,
 }
 
 /******************************************************************************/
-int main(int argc, const char* argv[]) {
+int main(int /*argc*/, const char** /*argv*/) {
   // Define a time provider we'll use to convert between P1 and GPS time.
   TimeProvider time_provider;
 
