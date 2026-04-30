@@ -12,3 +12,16 @@ cc_library(
         "@fusion_engine_client",
     ],
 )
+
+cc_library(
+    name = "time_provider",
+    srcs = [
+        "time_provider.cc",
+    ],
+    hdrs = [
+        "time_provider.h",
+    ],
+    deps = [
+        "@fusion_engine_client",
+    ],
+)

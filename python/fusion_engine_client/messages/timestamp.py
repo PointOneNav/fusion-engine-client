@@ -55,6 +55,9 @@ class Timestamp:
     def __init__(self, time_sec=math.nan):
         self.seconds = float(time_sec)
 
+    def is_valid(self) -> bool:
+        return not math.isnan(self.seconds)
+
     def is_gps(self) -> bool:
         return is_gps_time(self.seconds)
 
@@ -72,11 +75,25 @@ class Timestamp:
 
     def get_week_tow(self) -> (int, float):
         if self.is_gps():
-            week = int(self.seconds / SECONDS_PER_WEEK)
-            tow_sec = self.seconds - week * SECONDS_PER_WEEK
-            return week, tow_sec
+            week_number = int(self.seconds / SECONDS_PER_WEEK)
+            tow_sec = self.seconds - week_number * SECONDS_PER_WEEK
+            return week_number, tow_sec
         else:
             return -1, np.nan
+
+    @classmethod
+    def from_datetime(cls, time: Union[datetime, gpstime]) -> 'Timestamp':
+        if isinstance(time, gpstime):
+            return Timestamp(time.gps())
+        else:
+            return Timestamp(gpstime.fromdatetime(time).gps())
+
+    @classmethod
+    def from_gps_week_tow(cls, week_number: int, tow_sec: float) -> 'Timestamp':
+        if week_number < 0 or tow_sec < 0.0 or not math.isfinite(tow_sec):
+            return Timestamp()
+        else:
+            return Timestamp(week_number * SECONDS_PER_WEEK + tow_sec)
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = False) -> (bytes, int):
         if math.isnan(self.seconds):
@@ -110,17 +127,37 @@ class Timestamp:
         return Timestamp._SIZE
 
     def __add__(self, other):
-        return Timestamp(self.seconds + float(other))
+        if isinstance(other, timedelta):
+            return Timestamp(self.seconds + other.total_seconds())
+        else:
+            return Timestamp(self.seconds + float(other))
+
+    def __radd__(self, other):
+        return self.__add__(other)
 
     def __sub__(self, other):
-        return Timestamp(self.seconds - float(other))
+        if isinstance(other, Timestamp):
+            if self.is_valid() and other.is_valid():
+                return timedelta(seconds=(self.seconds - other.seconds))
+            else:
+                return None
+        elif isinstance(other, timedelta):
+            return Timestamp(self.seconds - other.total_seconds())
+        else:
+            return Timestamp(self.seconds - float(other))
 
     def __iadd__(self, other):
-        self.seconds += float(other)
+        if isinstance(other, timedelta):
+            self.seconds += other.total_seconds()
+        else:
+            self.seconds += float(other)
         return self
 
-    def __isub(self, other):
-        self.seconds -= float(other)
+    def __isub__(self, other):
+        if isinstance(other, timedelta):
+            self.seconds -= other.total_seconds()
+        else:
+            self.seconds -= float(other)
         return self
 
     def __eq__(self, other):
@@ -142,7 +179,7 @@ class Timestamp:
         return self.seconds >= float(other)
 
     def __bool__(self):
-        return not math.isnan(self.seconds)
+        return self.is_valid()
 
     def __float__(self):
         return self.seconds

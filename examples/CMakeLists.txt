@@ -1,5 +1,6 @@
 add_subdirectory(common)
 
+add_subdirectory(convert_time)
 add_subdirectory(generate_data)
 add_subdirectory(lband_decode)
 add_subdirectory(message_decode)

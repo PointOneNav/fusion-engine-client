@@ -11,6 +11,7 @@
 
 #include "point_one/fusion_engine/common/portability.h"
 #include "point_one/fusion_engine/messages/signal_defs.h"
+#include "point_one/fusion_engine/messages/timestamp.h"
 
 namespace point_one {
 namespace fusion_engine {
@@ -585,26 +586,6 @@ inline p1_ostream& operator<<(p1_ostream& stream, SolutionType type) {
 }
 
 /** @} */
-
-/**
- * @brief Generic timestamp representation.
- *
- * This structure may be used to store Point One system time values (referenced
- * to the start of the device), UNIX times (referenced to January 1, 1970), or
- * GPS times (referenced to January 6, 1980).
- */
-struct P1_ALIGNAS(4) Timestamp {
-  static constexpr uint32_t INVALID = 0xFFFFFFFF;
-
-  /**
-   * The number of full seconds since the epoch. Set to @ref INVALID if
-   * the timestamp is invalid or unknown.
-   */
-  uint32_t seconds = INVALID;
-
-  /** The fractional part of the second, expressed in nanoseconds. */
-  uint32_t fraction_ns = INVALID;
-};
 
 /**
  * @brief The header present at the beginning of every message.

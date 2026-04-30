@@ -8,6 +8,7 @@ cc_library(
         ":messages",
         ":parsers",
         ":rtcm",
+        ":utils",
     ],
 )
 
@@ -56,6 +57,7 @@ cc_library(
         "src/point_one/fusion_engine/messages/measurements.h",
         "src/point_one/fusion_engine/messages/signal_defs.h",
         "src/point_one/fusion_engine/messages/solution.h",
+        "src/point_one/fusion_engine/messages/timestamp.h",
     ],
     deps = [
         ":common",
@@ -103,21 +105,6 @@ cc_library(
     includes = ["src"],
 )
 
-# Message encode/decode support.
-cc_library(
-    name = "parsers",
-    srcs = [
-        "src/point_one/fusion_engine/parsers/fusion_engine_framer.cc",
-    ],
-    hdrs = [
-        "src/point_one/fusion_engine/parsers/fusion_engine_framer.h",
-    ],
-    deps = [
-        ":core_headers",
-        ":crc",
-    ],
-)
-
 # CRC support.
 cc_library(
     name = "crc",
@@ -149,6 +136,21 @@ cc_library(
 
 # Message encode/decode support.
 cc_library(
+    name = "parsers",
+    srcs = [
+        "src/point_one/fusion_engine/parsers/fusion_engine_framer.cc",
+    ],
+    hdrs = [
+        "src/point_one/fusion_engine/parsers/fusion_engine_framer.h",
+    ],
+    deps = [
+        ":core_headers",
+        ":crc",
+    ],
+)
+
+# RTCM message framing support.
+cc_library(
     name = "rtcm",
     srcs = [
         "src/point_one/rtcm/rtcm_framer.cc",
@@ -158,5 +160,45 @@ cc_library(
     ],
     deps = [
         ":common",
+    ],
+)
+
+# Helper utilities.
+cc_library(
+    name = "utils",
+    srcs = [
+        "src/point_one/fusion_engine/utils/time_provider.cc",
+    ],
+    hdrs = [
+        "src/point_one/fusion_engine/utils/time_provider.h",
+    ],
+    deps = [
+        ":common",
+        ":core_headers",
+    ],
+)
+
+################################################################################
+# Tests
+################################################################################
+
+cc_test(
+    name = "timestamp_test",
+    size = "small",
+    srcs = ["src/point_one/fusion_engine/messages/timestamp_test.cc"],
+    deps = [
+        ":core_headers",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "time_provider_test",
+    size = "small",
+    srcs = ["src/point_one/fusion_engine/utils/time_provider_test.cc"],
+    deps = [
+        ":messages",
+        ":utils",
+        "@googletest//:gtest_main",
     ],
 )

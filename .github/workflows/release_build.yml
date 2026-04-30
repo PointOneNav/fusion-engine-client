@@ -41,14 +41,19 @@ jobs:
     name: Bazel Build
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         include:
           # Do a singular build for Bazel 4.2.2 to test Bazel 4.2.2.
+          #
+          # Bazel 4.2.2 injects -std=c++11 by default; override to c++14 for
+          # googletest compatibility.
           - os: ubuntu-latest
             compiler: gcc
             version: 11
             bazel: 4.2.2
-          # Run Bazel 6.5.0 on all compilers versions.
+            cppstd: c++14
+          # Run Bazel 6.5.0 on all compiler versions.
           - os: ubuntu-latest
             compiler: gcc
             version: 9
@@ -58,13 +63,35 @@ jobs:
             version: 10
             bazel: 6.5.0
           - os: ubuntu-latest
-            compiler: gcc
-            version: 11
-            bazel: 6.5.0
-          - os: ubuntu-latest
             compiler: clang
             version: 14
             bazel: 6.5.0
+          # Test all C++ standards on Bazel 6.5.0 + GCC 11.
+          - os: ubuntu-latest
+            compiler: gcc
+            version: 11
+            bazel: 6.5.0
+            cppstd: c++11
+          - os: ubuntu-latest
+            compiler: gcc
+            version: 11
+            bazel: 6.5.0
+            cppstd: c++14
+          - os: ubuntu-latest
+            compiler: gcc
+            version: 11
+            bazel: 6.5.0
+            cppstd: c++17
+          - os: ubuntu-latest
+            compiler: gcc
+            version: 11
+            bazel: 6.5.0
+            cppstd: c++20
+          - os: ubuntu-latest
+            compiler: gcc
+            version: 11
+            bazel: 6.5.0
+            cppstd: c++23
     steps:
     - uses: actions/checkout@v2
 
@@ -114,14 +141,25 @@ jobs:
           echo "CC=/usr/bin/clang++-${{ matrix.version }}" >> $GITHUB_ENV
         fi
 
+    - name: Set C++ Standard
+      run: |
+        if [[ -n "${{ matrix.cppstd }}" ]]; then
+          echo "CXXOPT=--cxxopt=-std=${{ matrix.cppstd }}" >> $GITHUB_ENV
+        fi
+
     - name: Build Library
       run: |
-        bazel build -c opt //:*
+        bazel build -c opt ${{ env.CXXOPT }} $(bazel query '//:all except tests(//:all)')
 
     - name: Build Examples
       run: |
         cd examples &&
-        bazel build -c opt //:*
+        bazel build -c opt ${{ env.CXXOPT }} //:all
+
+    - name: Run Unit Tests
+      if: matrix.cppstd != 'c++11'
+      run: |
+        bazel test -c opt ${{ env.CXXOPT }} //:all
 
     - name: Install Test Files
       run: |
@@ -147,6 +185,7 @@ jobs:
     name: CMake Build
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
@@ -329,6 +368,7 @@ jobs:
     name: Python Unit Tests
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         python-version: ['3.8', '3.9', '3.10', '3.11', '3.12', '3.13']
     defaults:
