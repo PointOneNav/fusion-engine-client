@@ -9,10 +9,10 @@
 
 #include <ostream>
 
+#include "point_one/fusion_engine/common/logging.h"
+
 using namespace point_one::fusion_engine::messages;
 using namespace point_one::fusion_engine::utils;
-
-#include "point_one/fusion_engine/common/logging.h"
 
 /******************************************************************************/
 class P1TimeFormat {
