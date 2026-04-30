@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <point_one/fusion_engine/common/portability.h> // For P1_EXPORT
 #include <point_one/fusion_engine/messages/core.h>
 
 namespace point_one {
@@ -14,7 +15,7 @@ namespace utils {
 /**
  * @brief Utility for converting between P1 and GPS time.
  */
-class TimeProvider {
+class P1_EXPORT TimeProvider {
  public:
   TimeProvider() = default;
 
