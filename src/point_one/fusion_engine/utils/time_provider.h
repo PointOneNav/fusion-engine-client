@@ -12,6 +12,14 @@ namespace point_one {
 namespace fusion_engine {
 namespace utils {
 
+// Suppress MSVC C4251: private Timestamp members don't need DLL interface since
+// they are a POD type fully defined in the header and not directly accessible
+// by clients.
+#ifdef _MSC_VER
+#  pragma warning(push)
+#  pragma warning(disable : 4251)
+#endif
+
 /**
  * @brief Utility for converting between P1 and GPS time.
  */
@@ -60,6 +68,10 @@ class P1_EXPORT TimeProvider {
   messages::Timestamp prev_p1_time_;
   messages::Timestamp prev_gps_time_;
 };
+
+#ifdef _MSC_VER
+#  pragma warning(pop)
+#endif
 
 } // namespace utils
 } // namespace fusion_engine
