@@ -7,6 +7,8 @@
 
 #include "point_one/fusion_engine/utils/time_provider.h"
 
+#include <cmath>
+#include <iomanip>
 #include <ostream>
 
 #include "point_one/fusion_engine/common/logging.h"

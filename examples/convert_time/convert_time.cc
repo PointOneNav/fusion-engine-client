@@ -4,6 +4,9 @@
  * @file
  ******************************************************************************/
 
+#include <cmath>
+#include <cstdio>
+
 #include <point_one/fusion_engine/messages/core.h>
 #include <point_one/fusion_engine/utils/time_provider.h>
 
