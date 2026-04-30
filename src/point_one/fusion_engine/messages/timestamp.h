@@ -118,8 +118,8 @@ struct P1_ALIGNAS(4) Timestamp {
  *        Timestamp values.
  *
  * Unlike @ref Timestamp, which represents an absolute point in time using
- * unsigned fields, `TimestampDelta` uses signed integers to express durations
- * that may be negative (i.e., in the past relative to a reference time).
+ * unsigned fields, `TimeDelta` uses signed integers to express durations that
+ * may be negative (i.e., in the past relative to a reference time).
  *
  * Both @ref seconds and @ref fraction_ns always share the same sign: both
  * fields will be negative to represent negative values. For example, -1.5
@@ -130,7 +130,7 @@ struct P1_ALIGNAS(4) Timestamp {
  * Both fields are set to @ref INVALID (`INT32_MIN`) to indicate an invalid or
  * unknown delta.
  */
-struct TimestampDelta {
+struct TimeDelta {
   static constexpr int32_t INVALID = INT32_MIN;
 
   /**
@@ -149,20 +149,20 @@ struct TimestampDelta {
   int32_t fraction_ns = INVALID;
 
   /** @brief Construct an invalid delta. */
-  TimestampDelta() = default;
+  TimeDelta() = default;
 
   /**
    * @brief Construct a delta from seconds and nanoseconds, normalizing as
    *        needed.
    *
    * `fraction_ns` may exceed ±999,999,999; any excess is folded into
-   * @ref seconds. For example, `TimestampDelta(0, 1500000000)` produces
+   * @ref seconds. For example, `TimeDelta(0, 1500000000)` produces
    * `{seconds=1, fraction_ns=500000000}`.
    *
    * @param sec The whole-seconds component.
    * @param ns  The nanoseconds component. May be larger than 1 sec.
    */
-  TimestampDelta(int32_t sec, int32_t ns) : seconds(sec), fraction_ns(ns) {
+  TimeDelta(int32_t sec, int32_t ns) : seconds(sec), fraction_ns(ns) {
     if (seconds != INVALID && fraction_ns != INVALID) {
       Normalize();
     }
@@ -173,7 +173,7 @@ struct TimestampDelta {
    *
    * @param sec The second value.
    */
-  TimestampDelta(double sec) {
+  TimeDelta(double sec) {
     seconds = static_cast<int32_t>(sec);
     fraction_ns = static_cast<int32_t>(std::lround((sec - seconds) * 1e9));
   }
@@ -243,7 +243,7 @@ struct TimestampDelta {
   operator bool() const { return IsValid(); }
 
   /**
-   * @brief Add another @ref TimestampDelta to this one in place.
+   * @brief Add another @ref TimeDelta to this one in place.
    *
    * If either operand is invalid, the result is set to @ref INVALID.
    *
@@ -251,7 +251,7 @@ struct TimestampDelta {
    *
    * @return A reference to this delta after addition.
    */
-  TimestampDelta& operator+=(const TimestampDelta& rhs) {
+  TimeDelta& operator+=(const TimeDelta& rhs) {
     if (IsValid()) {
       if (rhs.IsValid()) {
         seconds += rhs.seconds;
@@ -265,7 +265,7 @@ struct TimestampDelta {
   }
 
   /**
-   * @brief Subtract another @ref TimestampDelta from this one in place.
+   * @brief Subtract another @ref TimeDelta from this one in place.
    *
    * If either operand is invalid, the result is set to @ref INVALID.
    *
@@ -273,7 +273,7 @@ struct TimestampDelta {
    *
    * @return A reference to this delta after subtraction.
    */
-  TimestampDelta& operator-=(const TimestampDelta& rhs) {
+  TimeDelta& operator-=(const TimeDelta& rhs) {
     if (IsValid()) {
       if (rhs.IsValid()) {
         seconds -= rhs.seconds;
@@ -287,7 +287,7 @@ struct TimestampDelta {
   }
 
   /**
-   * @brief Add two @ref TimestampDelta values.
+   * @brief Add two @ref TimeDelta values.
    *
    * If either operand is invalid, the result is @ref INVALID.
    *
@@ -296,14 +296,13 @@ struct TimestampDelta {
    *
    * @return The sum of the two deltas.
    */
-  friend TimestampDelta operator+(TimestampDelta lhs,
-                                  const TimestampDelta& rhs) {
+  friend TimeDelta operator+(TimeDelta lhs, const TimeDelta& rhs) {
     lhs += rhs;
     return lhs;
   }
 
   /**
-   * @brief Subtract one @ref TimestampDelta from another.
+   * @brief Subtract one @ref TimeDelta from another.
    *
    * If either operand is invalid, the result is @ref INVALID.
    *
@@ -312,8 +311,7 @@ struct TimestampDelta {
    *
    * @return The difference of the two deltas.
    */
-  friend TimestampDelta operator-(TimestampDelta lhs,
-                                  const TimestampDelta& rhs) {
+  friend TimeDelta operator-(TimeDelta lhs, const TimeDelta& rhs) {
     lhs -= rhs;
     return lhs;
   }
@@ -321,20 +319,20 @@ struct TimestampDelta {
 
 /**
  * @brief Compute the difference between two @ref Timestamp values as a
- *        @ref TimestampDelta.
+ *        @ref TimeDelta.
  *
  * @param lhs The timestamp to subtract from.
  * @param rhs The timestamp to subtract.
  *
- * @return A @ref TimestampDelta representing `lhs - rhs`, or an invalid
+ * @return A @ref TimeDelta representing `lhs - rhs`, or an invalid
  *         delta if either operand is invalid.
  */
-inline TimestampDelta operator-(const Timestamp& lhs, const Timestamp& rhs) {
+inline TimeDelta operator-(const Timestamp& lhs, const Timestamp& rhs) {
   if (!lhs.IsValid() || !rhs.IsValid()) {
-    return TimestampDelta();
+    return TimeDelta();
   }
 
-  TimestampDelta result;
+  TimeDelta result;
   result.seconds =
       static_cast<int32_t>(lhs.seconds) - static_cast<int32_t>(rhs.seconds);
   result.fraction_ns = static_cast<int32_t>(lhs.fraction_ns) -
@@ -344,7 +342,7 @@ inline TimestampDelta operator-(const Timestamp& lhs, const Timestamp& rhs) {
 }
 
 /**
- * @brief Offset a @ref Timestamp forward by a @ref TimestampDelta.
+ * @brief Offset a @ref Timestamp forward by a @ref TimeDelta.
  *
  * @param lhs The base timestamp.
  * @param rhs The delta to add.
@@ -353,7 +351,7 @@ inline TimestampDelta operator-(const Timestamp& lhs, const Timestamp& rhs) {
  *         timestamp if either operand is invalid or the result falls outside
  *         the representable range of @ref Timestamp.
  */
-inline Timestamp operator+(Timestamp lhs, const TimestampDelta& rhs) {
+inline Timestamp operator+(Timestamp lhs, const TimeDelta& rhs) {
   if (!lhs.IsValid() || !rhs.IsValid()) {
     return Timestamp();
   }
@@ -376,7 +374,7 @@ inline Timestamp operator+(Timestamp lhs, const TimestampDelta& rhs) {
 }
 
 /**
- * @brief Offset a @ref Timestamp backwards by a @ref TimestampDelta.
+ * @brief Offset a @ref Timestamp backwards by a @ref TimeDelta.
  *
  * @param lhs The base timestamp.
  * @param rhs The delta to subtract.
@@ -385,12 +383,12 @@ inline Timestamp operator+(Timestamp lhs, const TimestampDelta& rhs) {
  *         timestamp if either operand is invalid or the result falls outside
  *         the representable range of @ref Timestamp.
  */
-inline Timestamp operator-(const Timestamp& lhs, const TimestampDelta& rhs) {
+inline Timestamp operator-(const Timestamp& lhs, const TimeDelta& rhs) {
   if (!rhs.IsValid()) {
     return Timestamp();
   }
 
-  TimestampDelta negated{-rhs.seconds, -rhs.fraction_ns};
+  TimeDelta negated{-rhs.seconds, -rhs.fraction_ns};
   negated.Normalize();
   return lhs + negated;
 }

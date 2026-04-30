@@ -113,8 +113,8 @@ Timestamp TimeProvider::P1ToGPS(const Timestamp& p1_time) const {
     double delta_p1_sec = (p1_time - prev_p1_time_).ToSeconds();
     double delta_gps_sec = elapsed_gps_sec * delta_p1_sec / elapsed_p1_sec;
     int32_t int_sec = static_cast<int32_t>(delta_gps_sec);
-    TimestampDelta delta_gps(
-        int_sec, static_cast<int32_t>((delta_gps_sec - int_sec) * 1e9));
+    TimeDelta delta_gps(int_sec,
+                        static_cast<int32_t>((delta_gps_sec - int_sec) * 1e9));
     gps_time = prev_gps_time_ + delta_gps;
   }
   // Otherwise, use the current P1/GPS time offset with no interpolation. This
@@ -123,7 +123,7 @@ Timestamp TimeProvider::P1ToGPS(const Timestamp& p1_time) const {
   // recent.
   else {
     double offset_sec = (current_gps_time_ - current_p1_time_).ToSeconds();
-    gps_time = p1_time + TimestampDelta(offset_sec);
+    gps_time = p1_time + TimeDelta(offset_sec);
   }
 
   VLOG(2) << "Converted P1 " << P1TimeFormat(p1_time) << " to GPS "
@@ -152,8 +152,8 @@ Timestamp TimeProvider::GPSToP1(const Timestamp& gps_time) const {
     double delta_gps_sec = (gps_time - prev_gps_time_).ToSeconds();
     double delta_p1_sec = elapsed_p1_sec * delta_gps_sec / elapsed_gps_sec;
     int32_t int_sec = static_cast<int32_t>(delta_p1_sec);
-    TimestampDelta delta_p1(
-        int_sec, static_cast<int32_t>((delta_p1_sec - int_sec) * 1e9));
+    TimeDelta delta_p1(int_sec,
+                       static_cast<int32_t>((delta_p1_sec - int_sec) * 1e9));
     p1_time = prev_p1_time_ + delta_p1;
   }
   // Otherwise, use the current P1/GPS time offset with no interpolation. This
@@ -162,7 +162,7 @@ Timestamp TimeProvider::GPSToP1(const Timestamp& gps_time) const {
   // recent.
   else {
     double offset_sec = (current_p1_time_ - current_gps_time_).ToSeconds();
-    p1_time = gps_time + TimestampDelta(offset_sec);
+    p1_time = gps_time + TimeDelta(offset_sec);
   }
 
   VLOG(2) << "Converted GPS " << GPSTimeFormat(gps_time) << " to P1 "
