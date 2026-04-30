@@ -20,6 +20,12 @@ class TimeProvider:
         self._prev_p1_time = Timestamp()
         self._prev_gps_time = Timestamp()
 
+    def reset(self):
+        self._current_p1_time = Timestamp()
+        self._current_gps_time = Timestamp()
+        self._prev_p1_time = Timestamp()
+        self._prev_gps_time = Timestamp()
+
     def handle_message(self, message: MessagePayload, header: Optional[MessageHeader] = None):
         """!
         @brief Learn time relationships from incoming FusionEngine messages.
