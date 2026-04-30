@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "point_one/fusion_engine/common/portability.h"
+#include <point_one/fusion_engine/common/portability.h>
 
 #include <cstddef> // For size_t
 #include <cstdint>
@@ -13,7 +13,7 @@
 #  include <functional>
 #endif // P1_HAVE_STD_FUNCTION
 
-#include "point_one/fusion_engine/messages/defs.h"
+#include <point_one/fusion_engine/messages/defs.h>
 
 namespace point_one {
 namespace fusion_engine {

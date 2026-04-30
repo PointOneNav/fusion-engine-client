@@ -5,7 +5,7 @@
 
 #define P1_VMODULE_NAME fusion_engine_framer
 
-#include "point_one/fusion_engine/parsers/fusion_engine_framer.h"
+#include <point_one/fusion_engine/parsers/fusion_engine_framer.h>
 
 #include <cstring> // For memmove()
 #if P1_HAVE_STD_OSTREAM
@@ -14,8 +14,8 @@
 #  include <type_traits>
 #endif
 
-#include "point_one/fusion_engine/common/logging.h"
-#include "point_one/fusion_engine/messages/crc.h"
+#include <point_one/fusion_engine/common/logging.h>
+#include <point_one/fusion_engine/messages/crc.h>
 
 using namespace point_one::fusion_engine::messages;
 using namespace point_one::fusion_engine::parsers;
