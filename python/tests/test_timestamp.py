@@ -128,6 +128,42 @@ class TestFromDatetime:
         assert ts.is_gps()
 
 
+class TestFromGPSWeekTow:
+    def test_basic_conversion(self):
+        result = Timestamp.from_gps_week_tow(GPS_DATE_WEEK, GPS_DATE_TOW)
+        assert float(result) == pytest.approx(GPS_DATE_SEC)
+
+    def test_roundtrip_with_get_week_tow(self):
+        week, tow = Timestamp(GPS_DATE_SEC).get_week_tow()
+        result = Timestamp.from_gps_week_tow(week, tow)
+        assert float(result) == pytest.approx(GPS_DATE_SEC)
+
+    def test_week_zero_tow_zero(self):
+        result = Timestamp.from_gps_week_tow(0, 0.0)
+        assert result.is_valid()
+        assert float(result) == pytest.approx(0.0)
+
+    def test_fractional_tow_preserved(self):
+        result = Timestamp.from_gps_week_tow(GPS_DATE_WEEK, GPS_DATE_TOW + 0.123456)
+        assert float(result) == pytest.approx(GPS_DATE_SEC + 0.123456)
+
+    def test_result_is_gps(self):
+        result = Timestamp.from_gps_week_tow(GPS_DATE_WEEK, GPS_DATE_TOW)
+        assert result.is_gps()
+
+    def test_negative_week_returns_invalid(self):
+        assert not Timestamp.from_gps_week_tow(-1, 0.0)
+
+    def test_negative_tow_returns_invalid(self):
+        assert not Timestamp.from_gps_week_tow(GPS_DATE_WEEK, -1.0)
+
+    def test_nan_tow_returns_invalid(self):
+        assert not Timestamp.from_gps_week_tow(GPS_DATE_WEEK, math.nan)
+
+    def test_infinite_tow_returns_invalid(self):
+        assert not Timestamp.from_gps_week_tow(GPS_DATE_WEEK, math.inf)
+
+
 class TestArithmetic:
     def test_add_float(self):
         result = Timestamp(10.0) + 5.0

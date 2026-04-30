@@ -88,6 +88,13 @@ class Timestamp:
         else:
             return Timestamp(gpstime.fromdatetime(time).gps())
 
+    @classmethod
+    def from_gps_week_tow(cls, week_number: int, tow_sec: float) -> 'Timestamp':
+        if week_number < 0 or tow_sec < 0.0 or not math.isfinite(tow_sec):
+            return Timestamp()
+        else:
+            return Timestamp(week_number * SECONDS_PER_WEEK + tow_sec)
+
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = False) -> (bytes, int):
         if math.isnan(self.seconds):
             int_part = Timestamp._INVALID
