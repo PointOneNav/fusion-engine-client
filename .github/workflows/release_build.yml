@@ -116,12 +116,12 @@ jobs:
 
     - name: Build Library
       run: |
-        bazel build -c opt //:*
+        bazel build -c opt //:all
 
     - name: Build Examples
       run: |
         cd examples &&
-        bazel build -c opt //:*
+        bazel build -c opt //:all
 
     - name: Install Test Files
       run: |
