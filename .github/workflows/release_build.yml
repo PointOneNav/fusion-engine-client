@@ -52,7 +52,7 @@ jobs:
             compiler: gcc
             version: 11
             bazel: 4.2.2
-            cxxopt: --cxxopt=-std=c++14
+            cppstd: c++14
           # Run Bazel 6.5.0 on all compiler versions.
           - os: ubuntu-latest
             compiler: gcc
@@ -71,27 +71,27 @@ jobs:
             compiler: gcc
             version: 11
             bazel: 6.5.0
-            cxxopt: --cxxopt=-std=c++11
+            cppstd: c++11
           - os: ubuntu-latest
             compiler: gcc
             version: 11
             bazel: 6.5.0
-            cxxopt: --cxxopt=-std=c++14
+            cppstd: c++14
           - os: ubuntu-latest
             compiler: gcc
             version: 11
             bazel: 6.5.0
-            cxxopt: --cxxopt=-std=c++17
+            cppstd: c++17
           - os: ubuntu-latest
             compiler: gcc
             version: 11
             bazel: 6.5.0
-            cxxopt: --cxxopt=-std=c++20
+            cppstd: c++20
           - os: ubuntu-latest
             compiler: gcc
             version: 11
             bazel: 6.5.0
-            cxxopt: --cxxopt=-std=c++23
+            cppstd: c++23
     steps:
     - uses: actions/checkout@v2
 
@@ -141,19 +141,25 @@ jobs:
           echo "CC=/usr/bin/clang++-${{ matrix.version }}" >> $GITHUB_ENV
         fi
 
+    - name: Set C++ Standard
+      run: |
+        if [[ -n "${{ matrix.cppstd }}" ]]; then
+          echo "CXXOPT=--cxxopt=-std=${{ matrix.cppstd }}" >> $GITHUB_ENV
+        fi
+
     - name: Build Library
       run: |
-        bazel build -c opt ${{ matrix.cxxopt }} $(bazel query '//:all except tests(//:all)')
+        bazel build -c opt ${{ env.CXXOPT }} $(bazel query '//:all except tests(//:all)')
 
     - name: Build Examples
       run: |
         cd examples &&
-        bazel build -c opt ${{ matrix.cxxopt }} //:all
+        bazel build -c opt ${{ env.CXXOPT }} //:all
 
     - name: Run Unit Tests
-      if: "!contains(matrix.cxxopt, 'c++11')"
+      if: matrix.cppstd != 'c++11'
       run: |
-        bazel test -c opt ${{ matrix.cxxopt }} //:all
+        bazel test -c opt ${{ env.CXXOPT }} //:all
 
     - name: Install Test Files
       run: |
