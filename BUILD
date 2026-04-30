@@ -191,3 +191,14 @@ cc_test(
         "@googletest//:gtest_main",
     ],
 )
+
+cc_test(
+    name = "time_provider_test",
+    size = "small",
+    srcs = ["src/point_one/fusion_engine/utils/time_provider_test.cc"],
+    deps = [
+        ":messages",
+        ":utils",
+        "@googletest//:gtest_main",
+    ],
+)
