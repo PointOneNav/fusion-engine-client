@@ -63,13 +63,35 @@ jobs:
             version: 10
             bazel: 6.5.0
           - os: ubuntu-latest
-            compiler: gcc
-            version: 11
-            bazel: 6.5.0
-          - os: ubuntu-latest
             compiler: clang
             version: 14
             bazel: 6.5.0
+          # Test all C++ standards on Bazel 6.5.0 + GCC 11.
+          - os: ubuntu-latest
+            compiler: gcc
+            version: 11
+            bazel: 6.5.0
+            cxxopt: --cxxopt=-std=c++11
+          - os: ubuntu-latest
+            compiler: gcc
+            version: 11
+            bazel: 6.5.0
+            cxxopt: --cxxopt=-std=c++14
+          - os: ubuntu-latest
+            compiler: gcc
+            version: 11
+            bazel: 6.5.0
+            cxxopt: --cxxopt=-std=c++17
+          - os: ubuntu-latest
+            compiler: gcc
+            version: 11
+            bazel: 6.5.0
+            cxxopt: --cxxopt=-std=c++20
+          - os: ubuntu-latest
+            compiler: gcc
+            version: 11
+            bazel: 6.5.0
+            cxxopt: --cxxopt=-std=c++23
     steps:
     - uses: actions/checkout@v2
 
@@ -129,6 +151,7 @@ jobs:
         bazel build -c opt ${{ matrix.cxxopt }} //:all
 
     - name: Run Unit Tests
+      if: "!contains(matrix.cxxopt, 'c++11')"
       run: |
         bazel test -c opt ${{ matrix.cxxopt }} //:all
 
