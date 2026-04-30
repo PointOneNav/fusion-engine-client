@@ -177,3 +177,17 @@ cc_library(
         ":core_headers",
     ],
 )
+
+################################################################################
+# Tests
+################################################################################
+
+cc_test(
+    name = "timestamp_test",
+    size = "small",
+    srcs = ["src/point_one/fusion_engine/messages/timestamp_test.cc"],
+    deps = [
+        ":core_headers",
+        "@googletest//:gtest_main",
+    ],
+)
