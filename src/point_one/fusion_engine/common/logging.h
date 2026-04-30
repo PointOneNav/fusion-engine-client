@@ -17,9 +17,6 @@
 
 #include "point_one/fusion_engine/common/portability.h"
 
-// Included for convenience.
-#include <iomanip>
-
 // Use Google Logging Library (glog).
 #if P1_HAVE_GLOG && !P1_NO_LOGGING
 #  include <glog/logging.h>
