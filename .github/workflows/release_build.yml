@@ -45,10 +45,14 @@ jobs:
       matrix:
         include:
           # Do a singular build for Bazel 4.2.2 to test Bazel 4.2.2.
+          #
+          # Bazel 4.2.2 injects -std=c++11 by default; override to c++14 for
+          # googletest compatibility.
           - os: ubuntu-latest
             compiler: gcc
             version: 11
             bazel: 4.2.2
+            cxxopt: --cxxopt=-std=c++14
           # Run Bazel 6.5.0 on all compilers versions.
           - os: ubuntu-latest
             compiler: gcc
@@ -117,16 +121,16 @@ jobs:
 
     - name: Build Library
       run: |
-        bazel build -c opt $(bazel query '//:all except tests(//:all)')
+        bazel build -c opt ${{ matrix.cxxopt }} $(bazel query '//:all except tests(//:all)')
 
     - name: Build Examples
       run: |
         cd examples &&
-        bazel build -c opt //:all
+        bazel build -c opt ${{ matrix.cxxopt }} //:all
 
     - name: Run Unit Tests
       run: |
-        bazel test -c opt //:all
+        bazel test -c opt ${{ matrix.cxxopt }} //:all
 
     - name: Install Test Files
       run: |
