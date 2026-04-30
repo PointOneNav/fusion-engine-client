@@ -1,6 +1,6 @@
 from typing import Optional, Union
 
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta
 
 from gpstime import gpstime
 
