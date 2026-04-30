@@ -41,6 +41,7 @@ jobs:
     name: Bazel Build
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         include:
           # Do a singular build for Bazel 4.2.2 to test Bazel 4.2.2.
@@ -151,6 +152,7 @@ jobs:
     name: CMake Build
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
@@ -333,6 +335,7 @@ jobs:
     name: Python Unit Tests
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         python-version: ['3.8', '3.9', '3.10', '3.11', '3.12', '3.13']
     defaults:
