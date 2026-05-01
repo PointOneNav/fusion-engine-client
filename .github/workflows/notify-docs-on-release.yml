@@ -1,0 +1,67 @@
+name: Notify Docs on Release
+
+on:
+  release:
+    types: [released]
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate app token (scoped to docs repo only)
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: developer-resources-site
+
+      - name: Find release asset
+        id: asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ASSET_URL=$(gh release view "${{ github.event.release.tag_name }}" \
+            --repo "${{ github.repository }}" \
+            --json assets \
+            --jq --arg name "${{ vars.DOCS_ASSET_NAME }}" \
+              '.assets[] | select(.name == $name) | .url')
+
+          if [ -z "$ASSET_URL" ]; then
+            echo "::error::Asset '${{ vars.DOCS_ASSET_NAME }}' not found on release ${{ github.event.release.tag_name }}"
+            exit 1
+          fi
+
+          echo "url=$ASSET_URL" >> $GITHUB_OUTPUT
+
+      - name: Download release asset
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          mkdir -p release-asset
+          curl -L \
+            -H "Authorization: token $GH_TOKEN" \
+            -H "Accept: application/octet-stream" \
+            "${{ steps.asset.outputs.url }}" \
+            -o release-asset/${{ vars.DOCS_ASSET_NAME }}
+
+      - name: Upload as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-asset
+          path: release-asset/
+          retention-days: 3
+
+      - name: Dispatch to docs repo
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          gh api --method POST \
+            /repos/${{ github.repository_owner }}/developer-resources-site/actions/workflows/build-docs.yml/dispatches \
+            -f ref="main" \
+            -F inputs[source_repo]="${{ github.repository }}" \
+            -F inputs[release_tag]="${{ github.event.release.tag_name }}" \
+            -F inputs[run_id]="${{ github.run_id }}" \
+            -F inputs[source_run_repo]="${{ github.repository }}" \
+            -F inputs[asset_name]="${{ vars.DOCS_ASSET_NAME }}"
