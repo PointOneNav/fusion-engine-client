@@ -31,8 +31,10 @@ _CANDIDATE_USER_OUTPUT_FILES = [
 
 # Diagnostic output files containing incoming sensor data, diagnostic information, and select user output.
 _CANDIDATE_DIAG_FILES = [
-    'input.p1log',
     'output/diagnostics.p1log',
+    'input.p1log',
+    # Special key to search for a data file referenced by a log manifest file.
+    '<MANIFEST>',
 ]
 
 # Other input file formats, including mixed-binary (FusionEngine data + other protocols), RTCM, etc.
@@ -274,7 +276,7 @@ def _get_data_filename_from_manifest(manifest_path: str, log_dir: str = None) ->
             if os.path.exists(input_path):
                 return input_path
     raise FileNotFoundError(
-        f"Found manifest file in '{log_dir}' but could not find corresponding log file.")
+        f"Found manifest file in '{log_dir}' but could not find corresponding log data/diagnostics file.")
 
 
 def find_log_file(input_path, candidate_files=None, return_output_dir=False, return_log_id=False,
@@ -347,9 +349,16 @@ def find_log_file(input_path, candidate_files=None, return_output_dir=False, ret
 
         # Helper function to search a directory for any of the candidate filenames.
         def _search_directory(dir_path):
+            manifest_path = _find_manifest_file(dir_path)
+
             for i, f in enumerate(candidate_files):
                 if f is None:
                     continue
+                elif f == '<MANIFEST>':
+                    if manifest_path is None:
+                        continue
+                    else:
+                        f = _get_data_filename_from_manifest(manifest_path=manifest_path, log_dir=dir_path)
 
                 test_path = os.path.join(dir_path, f)
                 if os.path.exists(test_path):
@@ -432,7 +441,11 @@ def find_log_file(input_path, candidate_files=None, return_output_dir=False, ret
                 # If we didn't find one of the recognized log filenames, but instead found a manifest file, load the
                 # manifest and use that to infer the input filename.
                 if os.path.basename(input_path) in _MANIFEST_FILE_NAMES:
-                    input_path = _get_data_filename_from_manifest(manifest_path=input_path, log_dir=log_dir)
+                    if '<MANIFEST>' in candidate_files:
+                        input_path = _get_data_filename_from_manifest(manifest_path=input_path, log_dir=log_dir)
+                    else:
+                        raise FileNotFoundError(
+                            f"Directory '{log_dir}' matches search pattern, but diagnostic files not requested.")
             except RuntimeError as e:
                 # Multiple matching directories found.
                 raise e
