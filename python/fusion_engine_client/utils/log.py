@@ -339,8 +339,8 @@ def find_log_file(input_path, candidate_files=None, return_output_dir=False, ret
     # that the .p1log may be contained within a subdirectory).
     else:
         if candidate_files is None:
-            # No candidate files specified. Default to 'fusion_engine.p1log'.
-            candidate_files = ['fusion_engine.p1log']
+            # No candidate files specified. Default to all known candidate filenames.
+            candidate_files = _CANDIDATE_ALL_LOG_FILES
         elif not isinstance(candidate_files, (tuple, list)):
             # User specified a string, not a list. Convert to a list.
             candidate_files = [candidate_files]
