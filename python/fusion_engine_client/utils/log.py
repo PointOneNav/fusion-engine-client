@@ -330,12 +330,17 @@ def find_log_file(input_path, candidate_files=None, return_output_dir=False, ret
         parent_dir = os.path.dirname(os.path.abspath(path))
         return os.path.basename(parent_dir)
 
+    log_file_path = None
+    output_dir = None
+    log_id = None
+
     # Check if the input path is a file. If so, return it and set the output directory to its parent directory.
     if os.path.isfile(input_path) and check_exact_match:
-        output_dir = os.path.dirname(input_path)
+        log_file_path = input_path
+        output_dir = os.path.dirname(log_file_path)
         if output_dir == "":
             output_dir = "."
-        log_id = _get_log_id(input_path)
+        log_id = _get_log_id(log_file_path)
     # If the input path is a directory, see if it's a P1 log. If it is not a directory, see if it pattern matches to a
     # log directory within `log_base_dir`. If so for either case, set the output directory to the log directory (note
     # that the .p1log may be contained within a subdirectory).
@@ -375,19 +380,16 @@ def find_log_file(input_path, candidate_files=None, return_output_dir=False, ret
 
         # First, see if the user's path is an existing log directory containing a data file. If so, use that.
         log_dir = None
-        log_id = None
         if check_exact_match:
             dir_exists = os.path.isdir(input_path)
             if dir_exists:
-                matching_input_path, log_dir, log_id = _search_directory(input_path)
-                if matching_input_path is not None:
-                    input_path = matching_input_path
+                log_file_path, log_dir, log_id = _search_directory(input_path)
         else:
             dir_exists = False
 
         # If we didn't find an exact match and the path contains a *, try a glob search in the current directory first.
         # For example, if they specified 'abc*', search for './abc*'.
-        if log_dir is None and '*' in input_path:
+        if log_file_path is None and '*' in input_path:
             pattern = input_path
             matches = glob.glob(pattern)
             matching_input_path = None
@@ -408,7 +410,7 @@ def find_log_file(input_path, candidate_files=None, return_output_dir=False, ret
 
             if matching_input_path is not None:
                 if len(matches) == 1:
-                    input_path = matching_input_path
+                    log_file_path = matching_input_path
                     log_dir = matching_log_dir
                     log_id = matching_log_id
                 else:
@@ -419,13 +421,14 @@ def find_log_file(input_path, candidate_files=None, return_output_dir=False, ret
         # If the user didn't specify a directory, or the directory wasn't considered a valid log (i.e., didn't have any
         # of the candidate files in it), check if they provided a pattern match to a log (i.e., a partial log ID (e.g.,
         # 1aab35) or a search pattern (foo*/partial_id*)).
-        if log_dir is None and check_pattern_match and not (input_path.startswith('./') or input_path.startswith('/')):
+        if log_file_path is None and check_pattern_match and not (input_path.startswith('./') or
+                                                                  input_path.startswith('/')):
             if check_exact_match:
                 if dir_exists:
                     _logger.info("Directory '%s' does not contain a data file. Attempting a pattern match." %
                                  input_path)
                 else:
-                    _logger.info("File '%s' not found. Searching for a matching log." % input_path)
+                    _logger.info("File/directory '%s' not found. Searching for a matching log." % input_path)
 
             try:
                 # Include manifest filenames in the list of candidates we give to find_log_by_pattern(). That way, if
@@ -434,18 +437,23 @@ def find_log_file(input_path, candidate_files=None, return_output_dir=False, ret
                 candidate_files = list(candidate_files) + _MANIFEST_FILE_NAMES
                 matches = find_log_by_pattern(input_path, log_base_dir=log_base_dir,
                                               log_test_filenames=candidate_files, return_test_file=True)
-                log_dir = matches[0][0]
-                log_id = matches[0][1]
-                input_path = matches[0][2]
+                matching_log_dir = matches[0][0]
+                matching_log_id = matches[0][1]
+                matching_input_path = matches[0][2]
 
                 # If we didn't find one of the recognized log filenames, but instead found a manifest file, load the
                 # manifest and use that to infer the input filename.
-                if os.path.basename(input_path) in _MANIFEST_FILE_NAMES:
+                if os.path.basename(matching_input_path) in _MANIFEST_FILE_NAMES:
                     if '<MANIFEST>' in candidate_files:
-                        input_path = _get_data_filename_from_manifest(manifest_path=input_path, log_dir=log_dir)
+                        log_file_path = _get_data_filename_from_manifest(manifest_path=matching_input_path,
+                                                                         log_dir=matching_log_dir)
                     else:
                         raise FileNotFoundError(
                             f"Directory '{log_dir}' matches search pattern, but diagnostic files not requested.")
+                else:
+                    log_dir = matching_log_dir
+                    log_id = matching_log_id
+                    log_file_path = matching_input_path
             except RuntimeError as e:
                 # Multiple matching directories found.
                 raise e
@@ -458,9 +466,12 @@ def find_log_file(input_path, candidate_files=None, return_output_dir=False, ret
                     # No log directories found matching user pattern.
                     raise e
 
-        output_dir = log_dir
+        if log_file_path is None:
+            raise FileNotFoundError("File/directory '%s' not found." % input_path)
+        else:
+            output_dir = log_dir
 
-    result = [input_path]
+    result = [log_file_path]
     if return_output_dir:
         result.append(output_dir)
     if return_log_id:
