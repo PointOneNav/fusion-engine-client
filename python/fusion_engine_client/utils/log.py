@@ -331,8 +331,8 @@ def find_log_file(input_path, candidate_files=None, return_output_dir=False, ret
         parent_dir = os.path.dirname(os.path.abspath(path))
         search_dir = parent_dir
         while True:
-            for manifest in _MANIFEST_FILE_NAMES:
-                manifest_path = os.path.join(search_dir, manifest)
+            for filename in _MANIFEST_FILE_NAMES:
+                manifest_path = os.path.join(search_dir, filename)
                 if os.path.exists(manifest_path):
                     with open(manifest_path, 'rt') as f:
                         manifest = json.load(f)
