@@ -274,8 +274,9 @@ def find_log_file(input_path, candidate_files=None, return_output_dir=False, ret
     @param return_output_dir If `True`, return the output directory associated with the located input file.
     @param return_log_id If `True`, return the ID of the log if the requested path is a FusionEngine log.
     @param log_base_dir The base directory to be searched when performing a pattern match for a log directory.
-    @param check_exact_match If `True`, check if `input_path` is the path to a data file. Otherwise, skip this check and
-           only perform a pattern search.
+    @param check_exact_match If `True`, check if `input_path` is the path to either a file or a directory containing one
+           of the `candidate_files`. If `False`, skip this check and only perform a pattern search within
+           `log_base_dir`.
     @param check_pattern_match If `True` and `input_path` does not refer to a log file or directory, perform a pattern
            match using `input_path` as the pattern.
     @param skip_empty_files If `True`, ignore files that exist but are 0 bytes.
@@ -307,10 +308,7 @@ def find_log_file(input_path, candidate_files=None, return_output_dir=False, ret
             # User specified a string, not a list. Convert to a list.
             candidate_files = [candidate_files]
 
-        # First, see if the user's path is an existing log directory containing a data file. If so, use that.
-        log_dir = None
-        log_id = None
-
+        # Helper function to search a directory for any of the candidate filenames.
         def _search_directory(dir_path):
             for i, f in enumerate(candidate_files):
                 if f is None:
@@ -329,6 +327,9 @@ def find_log_file(input_path, candidate_files=None, return_output_dir=False, ret
                     return test_path, dir_path, _get_log_id(test_path)
             return None, None, None
 
+        # First, see if the user's path is an existing log directory containing a data file. If so, use that.
+        log_dir = None
+        log_id = None
         if check_exact_match:
             dir_exists = os.path.isdir(input_path)
             if dir_exists:
@@ -370,8 +371,8 @@ def find_log_file(input_path, candidate_files=None, return_output_dir=False, ret
                         (pattern, '\n  '.join(matches)))
 
         # If the user didn't specify a directory, or the directory wasn't considered a valid log (i.e., didn't have any
-        # of the candidate files in it), check if they provided a pattern match to a log (i.e., a partial log ID or a
-        # search pattern (foo*/partial_id*)).
+        # of the candidate files in it), check if they provided a pattern match to a log (i.e., a partial log ID (e.g.,
+        # 1aab35) or a search pattern (foo*/partial_id*)).
         if log_dir is None and check_pattern_match and not (input_path.startswith('./') or input_path.startswith('/')):
             if check_exact_match:
                 if dir_exists:
@@ -381,6 +382,9 @@ def find_log_file(input_path, candidate_files=None, return_output_dir=False, ret
                     _logger.info("File '%s' not found. Searching for a matching log." % input_path)
 
             try:
+                # Include manifest filenames in the list of candidates we give to find_log_by_pattern(). That way, if
+                # the log doesn't use any of the typical filenames, but does have a manifest file, we can try to locate
+                # the data file mentioned in the manifest.
                 candidate_files = list(candidate_files) + _MANIFEST_FILE_NAMES
                 matches = find_log_by_pattern(input_path, log_base_dir=log_base_dir,
                                               log_test_filenames=candidate_files, return_test_file=True)
