@@ -22,6 +22,7 @@ CANDIDATE_P1LOG_FILES = [
     'input.p1log',
     'fusion_engine.p1log',
     'output/fusion_engine.p1log',
+    'output/diagnostics.p1log',
 ]
 
 CANDIDATE_MIXED_FILES = ['input.raw', 'input.bin', 'input.rtcm3']
