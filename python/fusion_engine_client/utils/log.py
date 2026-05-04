@@ -427,7 +427,7 @@ def find_p1log_file(input_path, return_output_dir=False, return_log_id=False, lo
     else:
         p1log_path = result
 
-    if p1log_path.endswith('.p1log') or p1log_path.endswith('filter/output/fe_service/output.p1bin'):
+    if p1log_path.endswith('.p1log'):
         return result
     else:
         # If we got here and find_log_file() didn't raise an exception, the user specified a file (not a directory) and
