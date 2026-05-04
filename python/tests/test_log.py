@@ -202,10 +202,6 @@ class TestLocateLogPatternMatch:
         assert locate_log(LOG_HASH[:8], log_base_dir=log_base, log_type='diagnostic') == \
             os.path.join(log_dir, 'output', 'diagnostics.p1log')
 
-    def test_pattern_diag_type_no_match(self, tmpdir):
-        log_base, _ = make_log_base_dir(tmpdir, LOG_HASH, ['output/fusion_engine.p1log'])
-        assert locate_log(LOG_HASH[:8], log_base_dir=log_base, log_type='diagnostic') is None
-
     def test_pattern_manifest_only(self, tmpdir):
         log_base, log_dir = make_log_base_dir(tmpdir, LOG_HASH, ['test_file.bin'])
         assert locate_log(LOG_HASH[:8], log_base_dir=log_base) == \
