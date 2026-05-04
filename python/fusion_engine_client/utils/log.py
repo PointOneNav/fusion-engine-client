@@ -1,3 +1,5 @@
+from typing import Iterable, Union
+
 import fnmatch
 import glob
 import json
@@ -434,7 +436,8 @@ def find_p1log_file(input_path, return_output_dir=False, return_log_id=False, lo
         raise FileExistsError('Specified file is not a .p1log file.')
 
 
-def extract_fusion_engine_log(input_path, output_path=None, warn_on_gaps=True, return_counts=False, save_index=True):
+def extract_fusion_engine_log(input_path, output_path=None, warn_on_gaps=True, return_counts=False, save_index=True,
+                              message_types: Union[Iterable[MessageType], MessageType] = None):
     """!
     @brief Extract FusionEngine data from a file containing mixed binary data.
 
@@ -445,6 +448,8 @@ def extract_fusion_engine_log(input_path, output_path=None, warn_on_gaps=True, r
     @param return_counts If `True`, return the number of messages extracted for each message type.
     @param save_index If `True`, generate an index file to go along with the output file for faster reading in the
            future. See @ref FileIndex for details.
+    @param message_types A list of one or more @ref fusion_engine_client.messages.defs.MessageType "MessageTypes" to
+           be returned. If `None` or an empty list, read all available messages.
 
     @return A tuple containing:
             - The number of decoded messages.
@@ -458,7 +463,7 @@ def extract_fusion_engine_log(input_path, output_path=None, warn_on_gaps=True, r
     index_builder = FileIndexBuilder() if save_index else None
 
     with open(input_path, 'rb') as in_fd, open(output_path, 'wb') as out_path:
-        reader = MixedLogReader(in_fd, warn_on_gaps=warn_on_gaps, save_index=False,
+        reader = MixedLogReader(in_fd, warn_on_gaps=warn_on_gaps, save_index=False, message_types=message_types,
                                 return_header=True, return_payload=True, return_bytes=True, return_offset=False,
                                 show_progress=True)
         for header, payload, data in reader:
