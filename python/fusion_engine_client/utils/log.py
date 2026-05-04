@@ -14,8 +14,10 @@ from ..utils.argument_parser import ExtendedBooleanAction
 
 _logger = logging.getLogger('point_one.utils.log')
 
-# Note: The spelling here is intentional.
-MANIFEST_FILE_NAME = 'maniphest.json'
+_MANIFEST_FILE_NAMES = [
+    'manifest.json',
+    'maniphest.json',  # Legacy spelling.
+]
 
 # IMPORTANT: The following file lists are specified order of priority. The first located file will be returned.
 
@@ -120,7 +122,7 @@ def is_possible_log_pattern(pattern: str) -> bool:
 
 
 def find_log_by_pattern(pattern, log_base_dir=DEFAULT_LOG_BASE_DIR, allow_multiple=False, skip_empty_files=True,
-                        log_test_filenames=(MANIFEST_FILE_NAME,), return_test_file=False):
+                        log_test_filenames=_MANIFEST_FILE_NAMES, return_test_file=False):
     """!
     @brief Perform a pattern match to locate a log directory containing the specified files.
 
@@ -379,7 +381,7 @@ def find_log_file(input_path, candidate_files=None, return_output_dir=False, ret
                     _logger.info("File '%s' not found. Searching for a matching log." % input_path)
 
             try:
-                candidate_files = list(candidate_files) + [MANIFEST_FILE_NAME]
+                candidate_files = list(candidate_files) + _MANIFEST_FILE_NAMES
                 matches = find_log_by_pattern(input_path, log_base_dir=log_base_dir,
                                               log_test_filenames=candidate_files, return_test_file=True)
                 log_dir = matches[0][0]
@@ -388,7 +390,7 @@ def find_log_file(input_path, candidate_files=None, return_output_dir=False, ret
 
                 # If we didn't find one of the recognized log filenames, but instead found a manifest file, load the
                 # manifest and use that to infer the input filename.
-                if os.path.basename(input_path) == MANIFEST_FILE_NAME:
+                if os.path.basename(input_path) in _MANIFEST_FILE_NAMES:
                     manifest_path = input_path
                     input_path = None
                     with open(manifest_path, 'rt') as f:
