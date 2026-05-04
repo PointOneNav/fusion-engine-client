@@ -261,7 +261,7 @@ def _get_data_filename_from_manifest(manifest_path: str, log_dir: str = None) ->
     @brief Determine the sensor data input filename/path from a log manifest file.
 
     @param manifest_path The path to the manifest file.
-    @param log_dir The path to the log directory. Defaults to the parent dirctory of `manifest_path`.
+    @param log_dir The path to the log directory. Defaults to the parent directory of `manifest_path`.
 
     @return The path to the binary data file.
     """
@@ -327,7 +327,23 @@ def find_log_file(input_path, candidate_files=None, return_output_dir=False, ret
               `return_log_id` is `True`.
     """
     def _get_log_id(path):
+        # See if there's a manifest file in any parent directory. If so, read the log ID from the manifest.
         parent_dir = os.path.dirname(os.path.abspath(path))
+        search_dir = parent_dir
+        while True:
+            for manifest in _MANIFEST_FILE_NAMES:
+                manifest_path = os.path.join(search_dir, manifest)
+                if os.path.exists(manifest_path):
+                    with open(manifest_path, 'rt') as f:
+                        manifest = json.load(f)
+                        # If the manifest does not have a guid field for some reason, fall back to the parent directory
+                        # containing the manifest file.
+                        return manifest.get('guid', os.path.basename(search_dir))
+            search_dir = os.path.dirname(search_dir)
+            if search_dir in ('', '/', '.'):
+                break
+
+        # If no manifest file, return the parent directory name as the log ID.
         return os.path.basename(parent_dir)
 
     log_file_path = None

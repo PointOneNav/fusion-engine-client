@@ -23,10 +23,13 @@ def make_log_dir(base_dir, log_id, files):
     return log_dir
 
 
-def make_manifest(log_dir, data_filename):
+def make_manifest(log_dir, data_filename, guid=None):
     """Write manifest.json with {"channels": [data_filename]} in log_dir."""
     with open(os.path.join(str(log_dir), 'manifest.json'), 'w') as f:
-        json.dump({'channels': [data_filename]}, f)
+        manifest = {'channels': [data_filename]}
+        if guid is not None:
+            manifest['guid'] = guid
+        json.dump(manifest, f)
 
 
 def make_log_base_dir(tmpdir, log_id, files):
@@ -249,9 +252,23 @@ class TestLocateLogReturnModes:
                             return_output_dir=True, return_log_id=True)
         assert result == (None, None, None)
 
-    def test_return_log_id_from_directory_input(self, tmpdir):
+    def test_return_log_id_from_directory(self, tmpdir):
         # log_id should be the log hash, not a subdirectory name like "output".
         log_dir = make_log_dir(tmpdir, LOG_HASH, ['output/diagnostics.p1log'])
         make_manifest(log_dir, 'output/diagnostics.p1log')
         _, log_id = locate_log(log_dir, log_base_dir=str(tmpdir), return_log_id=True)
         assert log_id == LOG_HASH
+
+    def test_return_alt_log_id_from_directory(self, tmpdir):
+        # log_id should be the log hash, not a subdirectory name like "output".
+        log_dir = make_log_dir(tmpdir, LOG_HASH, ['output/diagnostics.p1log'])
+        make_manifest(log_dir, 'output/diagnostics.p1log', guid='abcdef0123456789')
+        _, log_id = locate_log(log_dir, log_base_dir=str(tmpdir), return_log_id=True)
+        assert log_id == 'abcdef0123456789'
+
+    def test_return_log_id_no_manifest(self, tmpdir):
+        # If there is no manifest file, the fallback behavior is to return the parent directory name (even if that dir
+        # happens to have its own parent dir whose name could be a valid log hash.
+        log_dir = make_log_dir(tmpdir, LOG_HASH, ['output/diagnostics.p1log'])
+        _, log_id = locate_log(log_dir, log_base_dir=str(tmpdir), return_log_id=True)
+        assert log_id == 'output'
