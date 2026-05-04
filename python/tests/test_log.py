@@ -243,6 +243,12 @@ class TestLocateLogReturnModes:
         assert out_dir == log_dir
         assert log_id == LOG_HASH
 
+    def test_return_log_id_nonstandard_filename(self, tmpdir):
+        log_base, log_dir = self._make_log(tmpdir, input_path='test_file.bin')
+        path, log_id = locate_log(LOG_HASH[:8], log_base_dir=log_base, return_log_id=True)
+        assert path == os.path.join(log_dir, 'test_file.bin')
+        assert log_id == LOG_HASH
+
     def test_error_file_only(self, tmpdir):
         assert locate_log('zzz000', log_base_dir=str(tmpdir)) is None
 

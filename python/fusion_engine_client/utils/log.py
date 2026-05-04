@@ -461,15 +461,15 @@ def find_log_file(input_path, candidate_files=None, return_output_dir=False, ret
                 # manifest and use that to infer the input filename.
                 if os.path.basename(matching_input_path) in _MANIFEST_FILE_NAMES:
                     if '<MANIFEST>' in candidate_files:
-                        log_file_path = _get_data_filename_from_manifest(manifest_path=matching_input_path,
-                                                                         log_dir=matching_log_dir)
+                        matching_input_path = _get_data_filename_from_manifest(manifest_path=matching_input_path,
+                                                                               log_dir=matching_log_dir)
                     else:
                         raise FileNotFoundError(
                             f"Directory '{log_dir}' matches search pattern, but diagnostic files not requested.")
-                else:
-                    log_dir = matching_log_dir
-                    log_id = matching_log_id
-                    log_file_path = matching_input_path
+
+                log_dir = matching_log_dir
+                log_id = matching_log_id
+                log_file_path = matching_input_path
             except RuntimeError as e:
                 # Multiple matching directories found.
                 raise e
