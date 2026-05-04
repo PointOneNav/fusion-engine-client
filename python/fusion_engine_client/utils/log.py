@@ -1,4 +1,4 @@
-from typing import Iterable, List, Union
+from typing import Iterable, List, Optional, Union
 
 import fnmatch
 import glob
@@ -240,6 +240,43 @@ def find_log_by_pattern(pattern, log_base_dir=DEFAULT_LOG_BASE_DIR, allow_multip
     return matches
 
 
+def _find_manifest_file(log_dir: str) -> Optional[str]:
+    """!
+    @brief Locate a Point One log manifest file within a log directory.
+
+    @param log_dir The path to the log directory.
+
+    @return The path to the manifest file, or `None` if not found.
+    """
+    for filename in os.listdir(log_dir):
+        if filename in _MANIFEST_FILE_NAMES:
+            return os.path.join(log_dir, filename)
+    return None
+
+
+def _get_data_filename_from_manifest(manifest_path: str, log_dir: str = None) -> str:
+    """!
+    @brief Determine the sensor data input filename/path from a log manifest file.
+
+    @param manifest_path The path to the manifest file.
+    @param log_dir The path to the log directory. Defaults to the parent dirctory of `manifest_path`.
+
+    @return The path to the binary data file.
+    """
+    if log_dir is None:
+        log_dir = os.path.dirname(manifest_path)
+
+    with open(manifest_path, 'rt') as f:
+        manifest = json.load(f)
+        channels = manifest.get('channels', [])
+        if len(channels) > 0:
+            input_path = os.path.join(log_dir, channels[0])
+            if os.path.exists(input_path):
+                return input_path
+    raise FileNotFoundError(
+        f"Found manifest file in '{log_dir}' but could not find corresponding log file.")
+
+
 def find_log_file(input_path, candidate_files=None, return_output_dir=False, return_log_id=False,
                   log_base_dir=DEFAULT_LOG_BASE_DIR, check_exact_match=True, check_pattern_match=True,
                   skip_empty_files=True):
@@ -395,16 +432,7 @@ def find_log_file(input_path, candidate_files=None, return_output_dir=False, ret
                 # If we didn't find one of the recognized log filenames, but instead found a manifest file, load the
                 # manifest and use that to infer the input filename.
                 if os.path.basename(input_path) in _MANIFEST_FILE_NAMES:
-                    manifest_path = input_path
-                    input_path = None
-                    with open(manifest_path, 'rt') as f:
-                        manifest = json.load(f)
-                        channels = manifest.get('channels', [])
-                        if len(channels) > 0:
-                            input_path = os.path.join(log_dir, channels[0])
-                        if input_path is None or not os.path.exists(input_path):
-                            raise FileNotFoundError(
-                                "Found manifest file in '%s' but could not find corresponding log file." % log_dir)
+                    input_path = _get_data_filename_from_manifest(manifest_path=input_path, log_dir=log_dir)
             except RuntimeError as e:
                 # Multiple matching directories found.
                 raise e
