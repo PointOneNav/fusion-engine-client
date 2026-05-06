@@ -810,7 +810,8 @@ class Analyzer(object):
             return
 
         # Set up the figure.
-        figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=True, subplot_titles=['Stationary Status'])
+        figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=True,
+                               subplot_titles=['Stationary Status'])
 
         figure['layout']['xaxis'].update(title=self.p1_time_label)
         figure['layout']['yaxis1'].update(title="Stationary Status",
