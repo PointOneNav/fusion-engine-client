@@ -636,6 +636,9 @@ class Analyzer(object):
         figure.add_trace(go.Scattergl(x=time, y=pose_data.velocity_body_mps[2, :], name='Z', legendgroup='z',
                                       mode='lines', line={'color': 'blue'}),
                          1, 3)
+        figure.add_trace(go.Scattergl(x=time, y=np.linalg.norm(pose_data.velocity_body_mps, axis=0), name='3D',
+                                      mode='lines', line={'color': 'orange', 'dash': 'dash'}),
+                         1, 3)
 
         figure.add_trace(go.Scattergl(x=time, y=pose_data.velocity_std_body_mps[0, :], name='X', legendgroup='x',
                                       showlegend=False, mode='lines', line={'color': 'red'}),
