@@ -139,6 +139,14 @@ class PoseMessage(MessagePayload):
             utc_str = 'None'
         string += '  GPS time: %s\n' % gps_str
         string += '  UTC time: %s\n' % utc_str
+        if self.flags == 0:
+            flag_str = 'None'
+        else:
+            flags = []
+            if self.flags & self.FLAG_STATIONARY:
+                flags.append('STATIONARY')
+            flag_str = ', '.join(flags)
+        string += '  Flags: %s\n' % flag_str
         string += '  Position (LLA): %.8f, %.8f, %.3f (deg, deg, m)\n' % tuple(self.lla_deg)
         string += '  Attitude (YPR): %.2f, %.2f, %.2f (deg, deg, deg)\n' % tuple(self.ypr_deg)
         string += '  Velocity (Body): %.2f, %.2f, %.2f (m/s, m/s, m/s)\n' % tuple(self.velocity_body_mps)
