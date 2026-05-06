@@ -796,7 +796,7 @@ class Analyzer(object):
 
     def plot_stationary_status(self):
         """!
-        @brief Plot the staionary status over time.
+        @brief Plot the stationary status over time.
         """
         if self.output_dir is None:
             return
