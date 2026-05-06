@@ -44,6 +44,12 @@ struct P1_ALIGNAS(4) PoseMessage : public MessagePayload {
 
   /** Set if the device is stationary. */
   static constexpr uint8_t FLAG_STATIONARY = 0x01;
+  /**
+   * Set if the output temporarily contains the GNSS receiver's native position
+   * solution. This can happen during initial calibration, during boot, and in
+   * extremely poor signal environments.
+   */
+  static constexpr uint8_t FLAG_RECEIVER_SOLUTION = 0x02;
 
   /** The time of the message, in P1 time (beginning at power-on). */
   Timestamp p1_time;

@@ -771,16 +771,34 @@ class Analyzer(object):
 
         # Setup the figure.
         figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=True, subplot_titles=['Solution Type'])
-
+        figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
         figure['layout']['xaxis'].update(title=self.p1_time_label)
         figure['layout']['yaxis1'].update(title="Solution Type",
                                           ticktext=['%s (%d)' % (e.name, e.value) for e in SolutionType],
                                           tickvals=[e.value for e in SolutionType])
 
-        time = pose_data.p1_time - float(self.t0)
+        all_time = pose_data.p1_time - float(self.t0)
+        is_gnss_rx = (pose_data.flags & PoseMessage.FLAG_RECEIVER_SOLUTION) != 0
+        is_nav_engine = ~is_gnss_rx
 
-        text = ["Time: %.3f sec (%.3f sec)" % (t, t + float(self.t0)) for t in time]
-        figure.add_trace(go.Scattergl(x=time, y=pose_data.solution_type, text=text, mode='markers'), 1, 1)
+        # Plot nav engine solutions.
+        if np.any(is_nav_engine):
+            idx = is_nav_engine
+            time = all_time[idx]
+            text = ["Time: %.3f sec (%.3f sec)" % (t, t + float(self.t0)) for t in time]
+            figure.add_trace(go.Scattergl(x=time, y=pose_data.solution_type[idx], text=text, name='Nav Engine',
+                                          mode='markers'),
+                             1, 1)
+
+        # Plot GNSS receiver solutions, if any.
+        if np.any(is_gnss_rx):
+            idx = is_gnss_rx
+            time = all_time[idx]
+            text = ["Time: %.3f sec (%.3f sec)" % (t, t + float(self.t0)) for t in time]
+            figure.add_trace(go.Scattergl(x=time, y=pose_data.solution_type[idx], text=text,
+                                          name='Receiver Solution',
+                                          mode='markers', marker={'color': 'red', 'symbol': 'diamond-open'}),
+                             1, 1)
 
         self._add_figure(name="solution_type", figure=figure, title="Solution Type")
 
@@ -1049,8 +1067,9 @@ class Analyzer(object):
 
         # Add data to the map.
         map_data = []
+        indices_by_engine = defaultdict(list)
 
-        def _plot_data(name, idx, source_id, marker_style=None):
+        def _plot_data(name, selected_idx, flags, source_id, marker_style=None):
             style = {'mode': 'markers', 'marker': {'size': 8}, 'showlegend': True}
             if marker_style is not None:
                 style['marker'].update(marker_style)
@@ -1059,17 +1078,36 @@ class Analyzer(object):
             legendgroup = None if len(self.source_ids) == 1 else source_id
             visible = None if source_id == min(self.source_ids) else 'legendonly'
 
-            if np.any(idx):
-                text = ["Time: %.3f sec (%.3f sec)<br>Std (ENU): (%.2f, %.2f, %.2f) m" %
-                        (t, t + float(self.t0), std[0], std[1], std[2])
-                        for t, std in zip(time[idx], std_enu_m[:, idx].T)]
-                map_data.append(go.Scattermapbox(lat=lla_deg[0, idx], lon=lla_deg[1, idx], name=name, text=text,
-                                                 legendgroup=legendgroup, visible=visible, **style))
+            if np.any(selected_idx):
+                is_nav_engine = np.logical_and(selected_idx, flags & PoseMessage.FLAG_RECEIVER_SOLUTION == 0)
+                is_gnss_rx = np.logical_and(selected_idx, flags & PoseMessage.FLAG_RECEIVER_SOLUTION != 0)
+
+                if np.any(is_nav_engine):
+                    idx = is_nav_engine
+                    text = ["Time: %.3f sec (%.3f sec)<br>Std (ENU): (%.2f, %.2f, %.2f) m" %
+                            (t, t + float(self.t0), std[0], std[1], std[2])
+                            for t, std in zip(time[idx], std_enu_m[:, idx].T)]
+                    map_data.append(go.Scattermapbox(lat=lla_deg[0, idx], lon=lla_deg[1, idx], name=name, text=text,
+                                                     legendgroup=legendgroup, visible=visible, **style))
+                    indices_by_engine['Nav Engine'].append(len(map_data) - 1)
+
+                if np.any(is_gnss_rx):
+                    idx = is_gnss_rx
+                    text = ["Time: %.3f sec (%.3f sec)<br>Std (ENU): (%.2f, %.2f, %.2f) m" %
+                            (t, t + float(self.t0), std[0], std[1], std[2])
+                            for t, std in zip(time[idx], std_enu_m[:, idx].T)]
+                    style['marker']['opacity'] = 0.5
+                    style['marker']['size'] = 5
+                    map_data.append(go.Scattermapbox(lat=lla_deg[0, idx], lon=lla_deg[1, idx],
+                                                     name=name + ' (Receiver Solution)', text=text,
+                                                     legendgroup=legendgroup, visible=visible, **style))
+                    indices_by_engine['Receiver Solution'].append(len(map_data) - 1)
 
             else:
                 # If there's no data, draw a dummy trace so it shows up in the legend anyway.
                 map_data.append(go.Scattermapbox(lat=[np.nan], lon=[np.nan], name=name, legendgroup=legendgroup,
                                                  visible='legendonly', **style))
+                indices_by_engine['Nav Engine'].append(len(map_data) - 1)
 
         # Read the pose data.
         for source_id in self.source_ids:
@@ -1088,6 +1126,7 @@ class Analyzer(object):
 
             time = pose_data.p1_time[valid_idx] - float(self.t0)
             solution_type = pose_data.solution_type[valid_idx]
+            flags = pose_data.flags[valid_idx]
             lla_deg = pose_data.lla_deg[:, valid_idx]
             std_enu_m = pose_data.position_std_enu_m[:, valid_idx]
 
@@ -1096,7 +1135,8 @@ class Analyzer(object):
                     name = info.name + ' [source_id=' + str(source_id) + ']'
                 else:
                     name = info.name
-                _plot_data(name, solution_type == type, source_id, marker_style=info.style)
+                _plot_data(name=name, selected_idx=solution_type == type, flags=flags, source_id=source_id,
+                           marker_style=info.style)
 
         # Create the map.
         title = 'Vehicle Trajectory'
@@ -1123,6 +1163,25 @@ class Analyzer(object):
 
         figure = go.Figure(data=map_data, layout=layout)
         figure['layout'].update(showlegend=True)
+
+        # Add quality selection buttons.
+        num_traces = len(figure.data)
+        buttons = [dict(label='All', method='restyle', args=['visible', [True] * num_traces])]
+        for name, indices in sorted(indices_by_engine.items()):
+            if len(indices) == 0:
+                continue
+            visible = np.full((num_traces,), False)
+            visible[indices] = True
+            buttons.append(dict(label=name, method='restyle', args=['visible', visible]))
+        figure['layout']['updatemenus'] = [{
+            'type': 'buttons',
+            'direction': 'left',
+            'buttons': buttons,
+            'x': 0.0,
+            'xanchor': 'left',
+            'y': 1.1,
+            'yanchor': 'top'
+        }]
 
         self._add_figure(name="map", figure=figure, title="Vehicle Trajectory (Map)", config={'scrollZoom': True})
 

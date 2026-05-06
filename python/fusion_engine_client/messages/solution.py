@@ -20,6 +20,7 @@ class PoseMessage(MessagePayload):
     INVALID_UNDULATION = -32768
 
     FLAG_STATIONARY = 0x1
+    FLAG_RECEIVER_SOLUTION = 0x2
 
     _STRUCT = struct.Struct('<BB h ddd fff ddd fff ddd fff fff')
 
@@ -145,6 +146,8 @@ class PoseMessage(MessagePayload):
             flags = []
             if self.flags & self.FLAG_STATIONARY:
                 flags.append('STATIONARY')
+            if self.flags & self.FLAG_RECEIVER_SOLUTION:
+                flags.append('RECEIVER_SOLUTION')
             flag_str = ', '.join(flags)
         string += '  Flags: %s\n' % flag_str
         string += '  Position (LLA): %.8f, %.8f, %.3f (deg, deg, m)\n' % tuple(self.lla_deg)
