@@ -1,0 +1,29 @@
+name: Notify Docs on Release
+
+on:
+  release:
+    types: [released]
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate app token (scoped to docs repo only)
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: developer-resources-site
+
+      - name: Dispatch to docs repo
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          gh api --method POST \
+            /repos/${{ github.repository_owner }}/developer-resources-site/actions/workflows/build-docs.yml/dispatches \
+            -f ref="master" \
+            -F inputs[source_repo]="${{ github.repository }}" \
+            -F inputs[release_tag]="${{ github.event.release.tag_name }}" \
+            -F inputs[asset_name]="${{ vars.DOCS_ASSET_NAME }}"
