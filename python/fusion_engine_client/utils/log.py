@@ -86,7 +86,7 @@ def define_cli_arguments(parser_group, define_log=True):
         'user'
     ]
     parser_group.add_argument(
-        '--log-type', metavar='TYPE', type=types,
+        '--log-type', metavar='TYPE', choices=types,
         default='auto',
         help="""\
 The type of input file to load when searching for a log directory automatically:
