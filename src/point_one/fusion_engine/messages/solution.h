@@ -28,7 +28,7 @@ namespace messages {
 
 /**
  * @brief Platform pose solution: position, velocity, attitude (@ref
- *        MessageType::POSE, version 1.2).
+ *        MessageType::POSE, version 1.3).
  * @ingroup solution_messages
  *
  * @note
@@ -39,15 +39,21 @@ namespace messages {
  */
 struct P1_ALIGNAS(4) PoseMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::POSE;
-  static constexpr uint8_t MESSAGE_VERSION = 2;
+  static constexpr uint8_t MESSAGE_VERSION = 3;
   static constexpr int16_t INVALID_UNDULATION = INT16_MIN;
 
-  /** Set if the device is stationary. */
+  /**
+   * Set if the device is stationary.
+   *
+   * Added in @ref PoseMessage version 1.2.
+   */
   static constexpr uint8_t FLAG_STATIONARY = 0x01;
   /**
    * Set if the output temporarily contains the GNSS receiver's native position
    * solution. This can happen during initial calibration, during boot, and in
    * extremely poor signal environments.
+   *
+   * Added in @ref PoseMessage version 1.3.
    */
   static constexpr uint8_t FLAG_RECEIVER_SOLUTION = 0x02;
 

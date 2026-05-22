@@ -15,7 +15,7 @@ class PoseMessage(MessagePayload):
     @brief Platform pose solution (position, velocity, attitude).
     """
     MESSAGE_TYPE = MessageType.POSE
-    MESSAGE_VERSION = 2
+    MESSAGE_VERSION = 3
 
     INVALID_UNDULATION = -32768
 
