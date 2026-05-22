@@ -307,35 +307,28 @@ class Analyzer(object):
 
             text = ['P1: %.3f sec<br>%s' % (p, self._gps_sec_to_string(g)) for p, g in zip(p1_time, gps_time)]
             figure.add_trace(go.Scattergl(x=time, y=np.full_like(time, 1), name='P1/GPS Time', text=text,
-                                          hoverlabel={'namelength': -1},
                                           mode='markers', marker={'color': 'blue'}),
                              1, 1)
 
             figure.add_trace(go.Scattergl(x=time, y=dp1_time, name='P1 Time Interval', text=text,
-                                          hoverlabel={'namelength': -1},
                                           mode='markers', marker={'color': 'red'}),
                              2, 1)
             if dp1_stats is not None:
                 figure.add_trace(go.Scattergl(x=time, y=dp1_stats['max'], name='P1 Time Interval (Max)',
-                                              hoverlabel={'namelength': -1},
                                               mode='markers', marker={'symbol': 'triangle-up-open'}),
                                  2, 1)
                 figure.add_trace(go.Scattergl(x=time, y=dp1_stats['min'], name='P1 Time Interval (Min)',
-                                              hoverlabel={'namelength': -1},
                                               mode='markers', marker={'symbol': 'triangle-down-open'}),
                                  2, 1)
 
             figure.add_trace(go.Scattergl(x=time, y=dgps_time, name='GPS Time Interval', text=text,
-                                          hoverlabel={'namelength': -1},
                                           mode='markers', marker={'color': 'green'}),
                              2, 1)
             if dgps_stats is not None:
                 figure.add_trace(go.Scattergl(x=time, y=dgps_stats['max'], name='GPS Time Interval (Max)',
-                                              hoverlabel={'namelength': -1},
                                               mode='markers', marker={'symbol': 'triangle-up-open'}),
                                  2, 1)
                 figure.add_trace(go.Scattergl(x=time, y=dgps_stats['min'], name='GPS Time Interval (Min)',
-                                              hoverlabel={'namelength': -1},
                                               mode='markers', marker={'symbol': 'triangle-down-open'}),
                                  2, 1)
 
@@ -363,7 +356,6 @@ class Analyzer(object):
 
             text = ['System: %.3f sec' % t for t in system_time_sec]
             figure.add_trace(go.Scattergl(x=time, y=np.full_like(time, 2), name='System Time', text=text,
-                                          hoverlabel={'namelength': -1},
                                           mode='markers', marker={'color': 'purple'}),
                              1, 1)
 
@@ -423,8 +415,7 @@ class Analyzer(object):
 
         text = ['P1: %.3f sec<br>%s' % (p, g) for p, g in zip(p1_time, latency_sec)]
         figure.add_trace(go.Scattergl(x=time, y=latency_sec, name='Pose Message Latency', text=text,
-                                        hoverlabel={'namelength': -1},
-                                        mode='markers', marker={'color': 'blue'}),
+                                      mode='markers', marker={'color': 'blue'}),
                          1, 1)
 
         figure.update_layout(title_text='NOTE: Latency assumes the host system clock is synced to GPS time. '
@@ -526,16 +517,13 @@ class Analyzer(object):
 
         text = ["System Time: %.3f sec" % (t + self.system_t0) for t in time]
         figure.add_trace(go.Scattergl(x=time, y=dt_reset_to_valid, text=text,
-                                      name='Command -> Valid', hoverlabel={'namelength': -1},
-                                      mode='markers'),
+                                      name='Command -> Valid', mode='markers'),
                          1, 1)
         figure.add_trace(go.Scattergl(x=time, y=dt_reset_to_invalid, text=text,
-                                      name='Command -> Invalid', hoverlabel={'namelength': -1},
-                                      mode='markers'),
+                                      name='Command -> Invalid', mode='markers'),
                          1, 1)
         figure.add_trace(go.Scattergl(x=time, y=dt_invalid_to_valid, text=text,
-                                      name='Invalid -> Valid', hoverlabel={'namelength': -1},
-                                      mode='markers'),
+                                      name='Invalid -> Valid', mode='markers'),
                          1, 1)
 
         if len(unstarted_resets) > 0:
@@ -543,8 +531,7 @@ class Analyzer(object):
             time = time[idx]
             text = ["System Time: %.3f sec" % (t + self.system_t0) for t in time]
             figure.add_trace(go.Scattergl(x=time, y=np.zeros_like(time), text=text,
-                                          name='Unstarted Resets', hoverlabel={'namelength': -1},
-                                          mode='markers'),
+                                          name='Unstarted Resets', mode='markers'),
                              1, 1)
 
         self._add_figure(name="reset_timing", figure=figure, title="Reset Recovery Timing")
@@ -649,6 +636,9 @@ class Analyzer(object):
         figure.add_trace(go.Scattergl(x=time, y=pose_data.velocity_body_mps[2, :], name='Z', legendgroup='z',
                                       mode='lines', line={'color': 'blue'}),
                          1, 3)
+        figure.add_trace(go.Scattergl(x=time, y=np.linalg.norm(pose_data.velocity_body_mps, axis=0), name='3D',
+                                      mode='lines', line={'color': 'orange', 'dash': 'dash'}),
+                         1, 3)
 
         figure.add_trace(go.Scattergl(x=time, y=pose_data.velocity_std_body_mps[0, :], name='X', legendgroup='x',
                                       showlegend=False, mode='lines', line={'color': 'red'}),
@@ -702,15 +692,15 @@ class Analyzer(object):
 
         # Plot calibration stage and completion percentages.
         figure.add_trace(go.Scattergl(x=time, y=cal_data.gyro_bias_percent_complete, text=text,
-                                      name='Gyro Bias Completion', hoverlabel={'namelength': -1},
+                                      name='Gyro Bias Completion',
                                       mode='lines', line={'color': 'red'}),
                          1, 1)
         figure.add_trace(go.Scattergl(x=time, y=cal_data.accel_bias_percent_complete, text=text,
-                                      name='Accel Bias Completion', hoverlabel={'namelength': -1},
+                                      name='Accel Bias Completion',
                                       mode='lines', line={'color': 'green'}),
                          1, 1)
         figure.add_trace(go.Scattergl(x=time, y=cal_data.mounting_angle_percent_complete, text=text,
-                                      name='Mounting Angle Completion', hoverlabel={'namelength': -1},
+                                      name='Mounting Angle Completion',
                                       mode='lines', line={'color': 'blue'}),
                          1, 1)
 
@@ -730,35 +720,35 @@ class Analyzer(object):
                          2, 1)
 
         figure.add_trace(go.Scattergl(x=time, y=cal_data.ypr_std_dev_deg[0, :], name='Yaw Std Dev', legendgroup='y',
-                                      text=text, mode='lines', line={'color': 'red'}, hoverlabel={'namelength': -1}),
+                                      text=text, mode='lines', line={'color': 'red'}),
                          3, 1)
         figure.add_trace(go.Scattergl(x=time, y=cal_data.ypr_std_dev_deg[1, :], name='Pitch Std Dev', legendgroup='p',
-                                      text=text, mode='lines', line={'color': 'green'}, hoverlabel={'namelength': -1}),
+                                      text=text, mode='lines', line={'color': 'green'}),
                          3, 1)
         figure.add_trace(go.Scattergl(x=time, y=cal_data.ypr_std_dev_deg[2, :], name='Roll Std Dev', legendgroup='r',
-                                      text=text, mode='lines', line={'color': 'blue'}, hoverlabel={'namelength': -1}),
+                                      text=text, mode='lines', line={'color': 'blue'}),
                          3, 1)
 
         thresh_time = time[np.array((0, -1))]
         figure.add_trace(go.Scattergl(x=thresh_time, y=[cal_data.mounting_angle_max_std_dev_deg[0]] * 2,
-                                      name='Max Yaw Std Dev', legendgroup='y', hoverlabel={'namelength': -1},
+                                      name='Max Yaw Std Dev', legendgroup='y',
                                       mode='lines', line={'color': 'red', 'dash': 'dash'}),
                          3, 1)
         figure.add_trace(go.Scattergl(x=thresh_time, y=[cal_data.mounting_angle_max_std_dev_deg[1]] * 2,
-                                      name='Max Pitch Std Dev', legendgroup='p', hoverlabel={'namelength': -1},
+                                      name='Max Pitch Std Dev', legendgroup='p',
                                       text=text, mode='lines', line={'color': 'green', 'dash': 'dash'}),
                          3, 1)
         figure.add_trace(go.Scattergl(x=thresh_time, y=[cal_data.mounting_angle_max_std_dev_deg[2]] * 2,
-                                      name='Max Roll Std Dev', legendgroup='r', hoverlabel={'namelength': -1},
+                                      name='Max Roll Std Dev', legendgroup='r',
                                       text=text, mode='lines', line={'color': 'blue', 'dash': 'dash'}),
                          3, 1)
 
         # Plot travel distance.
         figure.add_trace(go.Scattergl(x=time, y=cal_data.travel_distance_m, name='Travel Distance', text=text,
-                                      mode='lines', line={'color': 'blue'}, hoverlabel={'namelength': -1}),
+                                      mode='lines', line={'color': 'blue'}),
                          4, 1)
         figure.add_trace(go.Scattergl(x=thresh_time, y=[cal_data.min_travel_distance_m] * 2,
-                                      name='Min Travel Distance', text=text, hoverlabel={'namelength': -1},
+                                      name='Min Travel Distance', text=text,
                                       mode='lines', line={'color': 'black', 'dash': 'dash'}),
                          4, 1)
 
@@ -781,22 +771,40 @@ class Analyzer(object):
 
         # Setup the figure.
         figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=True, subplot_titles=['Solution Type'])
-
+        figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
         figure['layout']['xaxis'].update(title=self.p1_time_label)
         figure['layout']['yaxis1'].update(title="Solution Type",
                                           ticktext=['%s (%d)' % (e.name, e.value) for e in SolutionType],
                                           tickvals=[e.value for e in SolutionType])
 
-        time = pose_data.p1_time - float(self.t0)
+        all_time = pose_data.p1_time - float(self.t0)
+        is_gnss_rx = (pose_data.flags & PoseMessage.FLAG_RECEIVER_SOLUTION) != 0
+        is_nav_engine = ~is_gnss_rx
 
-        text = ["Time: %.3f sec (%.3f sec)" % (t, t + float(self.t0)) for t in time]
-        figure.add_trace(go.Scattergl(x=time, y=pose_data.solution_type, text=text, mode='markers'), 1, 1)
+        # Plot nav engine solutions.
+        if np.any(is_nav_engine):
+            idx = is_nav_engine
+            time = all_time[idx]
+            text = ["Time: %.3f sec (%.3f sec)" % (t, t + float(self.t0)) for t in time]
+            figure.add_trace(go.Scattergl(x=time, y=pose_data.solution_type[idx], text=text, name='Nav Engine',
+                                          mode='markers'),
+                             1, 1)
+
+        # Plot GNSS receiver solutions, if any.
+        if np.any(is_gnss_rx):
+            idx = is_gnss_rx
+            time = all_time[idx]
+            text = ["Time: %.3f sec (%.3f sec)" % (t, t + float(self.t0)) for t in time]
+            figure.add_trace(go.Scattergl(x=time, y=pose_data.solution_type[idx], text=text,
+                                          name='Receiver Solution',
+                                          mode='markers', marker={'color': 'red', 'symbol': 'diamond-open'}),
+                             1, 1)
 
         self._add_figure(name="solution_type", figure=figure, title="Solution Type")
 
     def plot_stationary_status(self):
         """!
-        @brief Plot the staionary status over time.
+        @brief Plot the stationary status over time.
         """
         if self.output_dir is None:
             return
@@ -810,7 +818,8 @@ class Analyzer(object):
             return
 
         # Set up the figure.
-        figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=True, subplot_titles=['Stationary Status'])
+        figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=True,
+                               subplot_titles=['Stationary Status'])
 
         figure['layout']['xaxis'].update(title=self.p1_time_label)
         figure['layout']['yaxis1'].update(title="Stationary Status",
@@ -886,8 +895,7 @@ class Analyzer(object):
         # Plot the data.
         max_3d_diff_m = [0.0]
         def _plot_data(name, idx, marker_style=None):
-            style = {'mode': 'markers', 'marker': {'size': 8}, 'showlegend': True, 'legendgroup': name,
-                     'hoverlabel': {'namelength': -1}}
+            style = {'mode': 'markers', 'marker': {'size': 8}, 'showlegend': True, 'legendgroup': name}
             if marker_style is not None:
                 style['marker'].update(marker_style)
 
@@ -1059,8 +1067,9 @@ class Analyzer(object):
 
         # Add data to the map.
         map_data = []
+        indices_by_engine = defaultdict(list)
 
-        def _plot_data(name, idx, source_id, marker_style=None):
+        def _plot_data(name, selected_idx, flags, source_id, marker_style=None):
             style = {'mode': 'markers', 'marker': {'size': 8}, 'showlegend': True}
             if marker_style is not None:
                 style['marker'].update(marker_style)
@@ -1069,17 +1078,36 @@ class Analyzer(object):
             legendgroup = None if len(self.source_ids) == 1 else source_id
             visible = None if source_id == min(self.source_ids) else 'legendonly'
 
-            if np.any(idx):
-                text = ["Time: %.3f sec (%.3f sec)<br>Std (ENU): (%.2f, %.2f, %.2f) m" %
-                        (t, t + float(self.t0), std[0], std[1], std[2])
-                        for t, std in zip(time[idx], std_enu_m[:, idx].T)]
-                map_data.append(go.Scattermapbox(lat=lla_deg[0, idx], lon=lla_deg[1, idx], name=name, text=text,
-                                                 legendgroup=legendgroup, visible=visible, **style))
+            if np.any(selected_idx):
+                is_nav_engine = np.logical_and(selected_idx, flags & PoseMessage.FLAG_RECEIVER_SOLUTION == 0)
+                is_gnss_rx = np.logical_and(selected_idx, flags & PoseMessage.FLAG_RECEIVER_SOLUTION != 0)
+
+                if np.any(is_nav_engine):
+                    idx = is_nav_engine
+                    text = ["Time: %.3f sec (%.3f sec)<br>Std (ENU): (%.2f, %.2f, %.2f) m" %
+                            (t, t + float(self.t0), std[0], std[1], std[2])
+                            for t, std in zip(time[idx], std_enu_m[:, idx].T)]
+                    map_data.append(go.Scattermapbox(lat=lla_deg[0, idx], lon=lla_deg[1, idx], name=name, text=text,
+                                                     legendgroup=legendgroup, visible=visible, **style))
+                    indices_by_engine['Nav Engine'].append(len(map_data) - 1)
+
+                if np.any(is_gnss_rx):
+                    idx = is_gnss_rx
+                    text = ["Time: %.3f sec (%.3f sec)<br>Std (ENU): (%.2f, %.2f, %.2f) m" %
+                            (t, t + float(self.t0), std[0], std[1], std[2])
+                            for t, std in zip(time[idx], std_enu_m[:, idx].T)]
+                    style['marker']['opacity'] = 0.5
+                    style['marker']['size'] = 5
+                    map_data.append(go.Scattermapbox(lat=lla_deg[0, idx], lon=lla_deg[1, idx],
+                                                     name=name + ' (Receiver Solution)', text=text,
+                                                     legendgroup=legendgroup, visible=visible, **style))
+                    indices_by_engine['Receiver Solution'].append(len(map_data) - 1)
 
             else:
                 # If there's no data, draw a dummy trace so it shows up in the legend anyway.
                 map_data.append(go.Scattermapbox(lat=[np.nan], lon=[np.nan], name=name, legendgroup=legendgroup,
                                                  visible='legendonly', **style))
+                indices_by_engine['Nav Engine'].append(len(map_data) - 1)
 
         # Read the pose data.
         for source_id in self.source_ids:
@@ -1098,6 +1126,7 @@ class Analyzer(object):
 
             time = pose_data.p1_time[valid_idx] - float(self.t0)
             solution_type = pose_data.solution_type[valid_idx]
+            flags = pose_data.flags[valid_idx]
             lla_deg = pose_data.lla_deg[:, valid_idx]
             std_enu_m = pose_data.position_std_enu_m[:, valid_idx]
 
@@ -1106,7 +1135,8 @@ class Analyzer(object):
                     name = info.name + ' [source_id=' + str(source_id) + ']'
                 else:
                     name = info.name
-                _plot_data(name, solution_type == type, source_id, marker_style=info.style)
+                _plot_data(name=name, selected_idx=solution_type == type, flags=flags, source_id=source_id,
+                           marker_style=info.style)
 
         # Create the map.
         title = 'Vehicle Trajectory'
@@ -1133,6 +1163,25 @@ class Analyzer(object):
 
         figure = go.Figure(data=map_data, layout=layout)
         figure['layout'].update(showlegend=True)
+
+        # Add quality selection buttons.
+        num_traces = len(figure.data)
+        buttons = [dict(label='All', method='restyle', args=['visible', [True] * num_traces])]
+        for name, indices in sorted(indices_by_engine.items()):
+            if len(indices) == 0:
+                continue
+            visible = np.full((num_traces,), False)
+            visible[indices] = True
+            buttons.append(dict(label=name, method='restyle', args=['visible', visible]))
+        figure['layout']['updatemenus'] = [{
+            'type': 'buttons',
+            'direction': 'left',
+            'buttons': buttons,
+            'x': 0.0,
+            'xanchor': 'left',
+            'y': 1.1,
+            'yanchor': 'top'
+        }]
 
         self._add_figure(name="map", figure=figure, title="Vehicle Trajectory (Map)", config={'scrollZoom': True})
 
@@ -1218,7 +1267,7 @@ class Analyzer(object):
             text = ['P1: %.1f sec<br>(Az, El): (%.2f, %.2f) deg<br>C/N0: %.1f dB-Hz' %
                     (t, a, e, c) for t, a, e, c in zip(p1_time, az_deg, el_deg, max_cn0_dbhz)]
             figure.add_trace(go.Scatterpolargl(r=el_deg, theta=(90 - az_deg), text=text,
-                                               name=name_str, hoverinfo='name+text', hoverlabel={'namelength': -1},
+                                               name=name_str, hoverinfo='name+text',
                                                mode='markers', marker=color_by_sv_format[-1]))
             indices_by_system[system].append(len(figure.data) - 1)
 
@@ -1296,8 +1345,7 @@ class Analyzer(object):
 
             text = ['P1: %.1f sec' % t for t in p1_time]
             time = p1_time - float(self.t0)
-            figure.add_trace(go.Scattergl(x=time, y=cn0_dbhz, text=text,
-                                          name=name, hoverlabel={'namelength': -1},
+            figure.add_trace(go.Scattergl(x=time, y=cn0_dbhz, text=text, name=name,
                                           mode='markers', marker={'color': color_by_prn[signal.get_prn()]}),
                              1, 1)
             indices_by_signal_type[signal.signal_type].append(len(figure.data) - 1)
@@ -1370,7 +1418,7 @@ class Analyzer(object):
             color = color_by_prn[sv_id.get_prn()]
             text = ["P1: %.3f sec" % (t + float(self.t0)) for t in time]
             figure.add_trace(go.Scattergl(x=time, y=az_deg, text=text,
-                                          name=name, hoverlabel={'namelength': -1},
+                                          name=name,
                                           mode='markers',
                                           marker={'color': color, 'symbol': 'circle', 'size': 8},
                                           showlegend=True,
@@ -1378,7 +1426,7 @@ class Analyzer(object):
                                 1, 1)
             indices_by_system[system].append(len(figure.data) - 1)
             figure.add_trace(go.Scattergl(x=time, y=el_deg, text=text,
-                                          name=name, hoverlabel={'namelength': -1},
+                                          name=name,
                                           mode='markers',
                                           marker={'color': color, 'symbol': 'circle', 'size': 8},
                                           showlegend=False,
@@ -1487,27 +1535,22 @@ Black=Unused, Red=Used'''
         # Plot the signal counts.
         time = data.p1_time - float(self.t0)
         text = ["P1: %.3f sec" % (t + float(self.t0)) for t in time]
-        figure.add_trace(go.Scattergl(x=time, y=num_svs, text=text,
-                                      name=f'# SVs', hoverlabel={'namelength': -1},
+        figure.add_trace(go.Scattergl(x=time, y=num_svs, text=text, name=f'# SVs',
                                       mode='lines', line={'color': 'black', 'dash': 'dash'}),
                          5, 1)
         if have_gnss_signals_message:
-            figure.add_trace(go.Scattergl(x=time, y=num_signals, text=text,
-                                          name=f'# Signals', hoverlabel={'namelength': -1},
+            figure.add_trace(go.Scattergl(x=time, y=num_signals, text=text, name=f'# Signals',
                                           mode='lines', line={'color': 'gray', 'dash': 'dash'}),
                              5, 1)
 
-        figure.add_trace(go.Scattergl(x=time, y=num_used_svs, text=text,
-                                      name=f'# Used SVs', hoverlabel={'namelength': -1},
+        figure.add_trace(go.Scattergl(x=time, y=num_used_svs, text=text, name=f'# Used SVs',
                                       mode='lines', line={'color': 'green'}),
                          5, 1)
         if have_gnss_signals_message:
-            figure.add_trace(go.Scattergl(x=time, y=num_used_signals, text=text,
-                                          name=f'# Used Signals', hoverlabel={'namelength': -1},
+            figure.add_trace(go.Scattergl(x=time, y=num_used_signals, text=text, name=f'# Used Signals',
                                           mode='lines', line={'color': 'red'}),
                              5, 1)
-            figure.add_trace(go.Scattergl(x=time, y=num_fixed_signals, text=text,
-                                          name=f'# Fixed Signals', hoverlabel={'namelength': -1},
+            figure.add_trace(go.Scattergl(x=time, y=num_fixed_signals, text=text, name=f'# Fixed Signals',
                                           mode='lines', line={'color': 'orange'}),
                              5, 1)
 
@@ -1622,7 +1665,7 @@ Black=Unused, Red=Used'''
                                                   customdata=np.vstack((status_flags[idx],
                                                                         cn0_dbhz[idx],
                                                                         elev_deg[idx])),
-                                                  name=name, hoverlabel={'namelength': -1},
+                                                  name=name,
                                                   showlegend=False, legendgroup=int(signal_hash),
                                                   mode='markers', marker=cond['marker']),
                                      1, 1)
@@ -1808,8 +1851,7 @@ figure.on('plotly_hover', function(data) {{
 
             text = ['P1: %.1f sec' % t for t in data.p1_time]
             time = data.p1_time - float(self.t0)
-            figure.add_trace(go.Scattergl(x=time, y=dop, text=text,
-                                          name=name, hoverlabel={'namelength': -1},
+            figure.add_trace(go.Scattergl(x=time, y=dop, text=text, name=name,
                                           mode='markers', marker={'color': color_by_dop[name]}),
                              1, 1)
 
@@ -2099,8 +2141,7 @@ figure.on('plotly_hover', function(data) {{
             if nav_engine_speed_mps is not None:
                 time = nav_engine_p1_time - float(self.t0)
                 text = ["P1: %.3f sec" % t for t in nav_engine_p1_time]
-                figure.add_trace(go.Scattergl(x=time, y=nav_engine_speed_mps, text=text,
-                                              name=nav_engine_speed_name, hoverlabel={'namelength': -1},
+                figure.add_trace(go.Scattergl(x=time, y=nav_engine_speed_mps, text=text, name=nav_engine_speed_name,
                                               mode='lines', line={'color': 'black', 'dash': 'dash'}),
                                  1, 1)
 
@@ -2112,24 +2153,17 @@ figure.on('plotly_hover', function(data) {{
             style.setdefault('line', {}).setdefault('color', color)
 
             if type == 'tick':
-                figure.add_trace(go.Scattergl(x=time, y=data, text=text,
-                                              name=name, hoverlabel={'namelength': -1},
-                                              legendgroup=name,
-                                              **style),
+                figure.add_trace(go.Scattergl(x=time, y=data, text=text, name=name, legendgroup=name, **style),
                                  1, 1)
 
                 dt_sec = np.diff(time)
                 ticks_per_sec = np.diff(data) / dt_sec
-                figure.add_trace(go.Scattergl(x=time[1:], y=ticks_per_sec, text=text,
-                                              name=name, hoverlabel={'namelength': -1},
+                figure.add_trace(go.Scattergl(x=time[1:], y=ticks_per_sec, text=text, name=name,
                                               legendgroup=name, showlegend=False,
                                               **style),
                                  2, 1)
             else:
-                figure.add_trace(go.Scattergl(x=time, y=data, text=text,
-                                              name=name, hoverlabel={'namelength': -1},
-                                              legendgroup=name,
-                                              **style),
+                figure.add_trace(go.Scattergl(x=time, y=data, text=text, name=name, legendgroup=name, **style),
                                  1, 1)
 
         def _plot_wheel_data(data, time_source, is_raw=False, show_gear=False, style=None):
@@ -2168,14 +2202,13 @@ figure.on('plotly_hover', function(data) {{
                         name='Rear Right Wheel' + name_suffix, color='purple', style=style)
 
             if show_gear:
-                figure.add_trace(go.Scattergl(x=time, y=data.gear[idx], text=text,
-                                              name='Gear (Wheel Data)', hoverlabel={'namelength': -1},
+                figure.add_trace(go.Scattergl(x=time, y=data.gear[idx], text=text, name='Gear (Wheel Data)',
                                               mode='markers', marker={'color': 'red'}),
                                  gear_y_axis, 1)
 
             name = "Wheel Interval" + name_suffix
             color = 'blue' if is_raw else 'red'
-            figure.add_trace(go.Scattergl(x=time[1:], y=np.diff(time), name=name, hoverlabel={'namelength': -1},
+            figure.add_trace(go.Scattergl(x=time[1:], y=np.diff(time), name=name,
                                           mode='markers', marker={'color': color}),
                              interval_y_axis, 1)
 
@@ -2209,14 +2242,13 @@ figure.on('plotly_hover', function(data) {{
                         name='Speed Measurement' + name_suffix, color='orange', style=style)
 
             if show_gear:
-                figure.add_trace(go.Scattergl(x=time, y=data.gear[idx], text=text,
-                                              name='Gear (Vehicle Data)', hoverlabel={'namelength': -1},
+                figure.add_trace(go.Scattergl(x=time, y=data.gear[idx], text=text, name='Gear (Vehicle Data)',
                                               mode='markers', marker={'color': 'orange'}),
                                  gear_y_axis, 1)
 
             name = "Vehicle Interval" + name_suffix
             color = 'blue' if is_raw else 'red'
-            figure.add_trace(go.Scattergl(x=time[1:], y=np.diff(time), name=name, hoverlabel={'namelength': -1},
+            figure.add_trace(go.Scattergl(x=time[1:], y=np.diff(time), name=name,
                                           mode='markers', marker={'color': color}),
                              interval_y_axis, 1)
 
@@ -2302,7 +2334,7 @@ figure.on('plotly_hover', function(data) {{
                                       showlegend=False, mode='lines', line={'color': 'blue'}),
                          2, 1)
 
-        figure.add_trace(go.Scattergl(x=time[1:], y=np.diff(time), name='Interval', hoverlabel={'namelength': -1},
+        figure.add_trace(go.Scattergl(x=time[1:], y=np.diff(time), name='Interval',
                                       mode='markers', marker={'color': 'red'}),
                          3, 1)
 
@@ -3099,6 +3131,8 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
             raise ValueError('Plot name cannot be index.')
 
         if figure is not None:
+            figure.update_traces(hoverlabel_namelength=-1)
+
             path = os.path.join(self.output_dir, self.prefix + name + '.html')
             self.logger.info('Creating %s...' % path)
 

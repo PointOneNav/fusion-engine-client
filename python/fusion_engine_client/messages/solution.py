@@ -20,6 +20,7 @@ class PoseMessage(MessagePayload):
     INVALID_UNDULATION = -32768
 
     FLAG_STATIONARY = 0x1
+    FLAG_RECEIVER_SOLUTION = 0x2
 
     _STRUCT = struct.Struct('<BB h ddd fff ddd fff ddd fff fff')
 
@@ -139,6 +140,16 @@ class PoseMessage(MessagePayload):
             utc_str = 'None'
         string += '  GPS time: %s\n' % gps_str
         string += '  UTC time: %s\n' % utc_str
+        if self.flags == 0:
+            flag_str = 'None'
+        else:
+            flags = []
+            if self.flags & self.FLAG_STATIONARY:
+                flags.append('STATIONARY')
+            if self.flags & self.FLAG_RECEIVER_SOLUTION:
+                flags.append('RECEIVER_SOLUTION')
+            flag_str = ', '.join(flags)
+        string += '  Flags: %s\n' % flag_str
         string += '  Position (LLA): %.8f, %.8f, %.3f (deg, deg, m)\n' % tuple(self.lla_deg)
         string += '  Attitude (YPR): %.2f, %.2f, %.2f (deg, deg, deg)\n' % tuple(self.ypr_deg)
         string += '  Velocity (Body): %.2f, %.2f, %.2f (m/s, m/s, m/s)\n' % tuple(self.velocity_body_mps)
