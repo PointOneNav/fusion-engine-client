@@ -1253,10 +1253,23 @@ class Analyzer(object):
                 if dt_sec < interval_sec:
                     rounded_time = np.round(p1_time / interval_sec) * interval_sec
                     idx = np.where(np.diff(rounded_time, prepend=rounded_time[0]) > 0.01)[0]
+
+                    # If this satellite appears for < interval_sec and all of its timestamps happen to round to the same
+                    # time, idx will be empty. Pick the first point where az/el is available.
+                    if len(idx) == 0:
+                        idx = [find_first(~np.isnan(el_deg))]
+                        if idx[0] < 0:
+                            continue
+
                     p1_time = p1_time[idx]
                     az_deg = az_deg[idx]
                     el_deg = el_deg[idx]
                     max_cn0_dbhz = max_cn0_dbhz[idx]
+
+                    # If we never had ephemeris for this satellite, or were otherwise not able to compute az/el, we
+                    # can't put this satellite on the sky plot.
+                    if np.all(np.isnan(el_deg)):
+                        continue
 
             # Plot the data. We set styles for both coloring by SV and by C/N0. We'll add buttons below to switch
             # between styles.
