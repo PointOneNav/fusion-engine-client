@@ -92,6 +92,7 @@ class VehicleModel(IntEnum):
     ## For most vehicles, it is not necessary to specify and particular make and
     ## model.
     J1939 = 2
+    J1939_HUMBLE = 3
 
     LEXUS_CT200H = 20
     LEXUS_RX450H = 21
