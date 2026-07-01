@@ -603,7 +603,7 @@ class Analyzer(object):
 
         # Plot position/displacement.
         position_ecef_m = np.array(geodetic2ecef(lat=pose_data.lla_deg[0, :], lon=pose_data.lla_deg[1, :],
-                                                 alt=pose_data.lla_deg[0, :], deg=True))
+                                                 alt=pose_data.lla_deg[2, :], deg=True))
         displacement_ecef_m = position_ecef_m - position_ecef_m[:, first_idx].reshape(3, 1)
         displacement_enu_m = c_enu_ecef.dot(displacement_ecef_m)
         figure.add_trace(go.Scattergl(x=time, y=displacement_enu_m[0, :], name='East', legendgroup='e',
