@@ -227,6 +227,7 @@ def is_response(message_type: MessageType) -> bool:
 
 class MessageHeader:
     INVALID_SOURCE_ID = 0xFFFFFFFF
+    EXTERNAL_POSE_OUTPUT_LEVER_ARM_SOURCE_ID = 0x80000000
 
     SYNC0 = 0x2E  # '.'
     SYNC1 = 0x31  # '1'

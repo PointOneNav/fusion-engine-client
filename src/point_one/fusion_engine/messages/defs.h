@@ -599,6 +599,8 @@ struct P1_ALIGNAS(4) MessageHeader {
   static constexpr uint8_t SYNC1 = 0x31; // '1'
 
   static constexpr uint32_t INVALID_SOURCE_ID = 0xFFFFFFFF;
+  static constexpr uint32_t EXTERNAL_POSE_OUTPUT_LEVER_ARM_SOURCE_ID =
+      0x80000000;
 
   /**
    * The maximum expected message size (in bytes), used for sanity checking.
