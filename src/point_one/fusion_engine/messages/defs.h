@@ -585,6 +585,45 @@ inline p1_ostream& operator<<(p1_ostream& stream, SolutionType type) {
   return stream;
 }
 
+/**
+ * @brief Output solution/measurement source identifiers.
+ */
+enum class SourceIdentifier : uint32_t {
+  // 0 - 99 is reserved for pose solutions.
+  /**
+   * The location on the vehicle defined by the device's output lever arm
+   * setting.
+   */
+  OUTPUT_LEVER_ARM = 0,
+
+  // 100 - 199 is reserved for IMUs.
+
+  // 300 - 399 is reserved for GNSS receivers/antennas.
+  /** Primary GNSS antenna. */
+  PRIMARY_GNSS_ANTENNA = 300,
+  /**
+   * Secondary/auxiliary GNSS antenna (heading + pitch/roll for dual-antenna
+   * systems).
+   */
+  SECONDARY_GNSS_ANTENNA = 301,
+
+  // 500 - 599 is reserved for external pose sources, such as an external SLAM
+  // or VIO/LIO.
+  /** Invalid source identifier. */
+  INVALID = 0xFFFFFFFF,
+};
+
+static constexpr SourceIdentifier INVALID_SOURCE_ID = SourceIdentifier::INVALID;
+
+/**
+ * @brief @ref SourceIdentifier stream operator.
+ * @ingroup enum_definitions
+ */
+inline p1_ostream& operator<<(p1_ostream& stream, SourceIdentifier id) {
+  stream << static_cast<uint32_t>(id);
+  return stream;
+}
+
 /** @} */
 
 /**
@@ -597,8 +636,6 @@ inline p1_ostream& operator<<(p1_ostream& stream, SolutionType type) {
 struct P1_ALIGNAS(4) MessageHeader {
   static constexpr uint8_t SYNC0 = 0x2E; // '.'
   static constexpr uint8_t SYNC1 = 0x31; // '1'
-
-  static constexpr uint32_t INVALID_SOURCE_ID = 0xFFFFFFFF;
 
   /**
    * The maximum expected message size (in bytes), used for sanity checking.
@@ -638,7 +675,7 @@ struct P1_ALIGNAS(4) MessageHeader {
   uint32_t payload_size_bytes = 0;
 
   /** Identifies the source of the serialized data. */
-  uint32_t source_identifier = INVALID_SOURCE_ID;
+  SourceIdentifier source_identifier = SourceIdentifier::INVALID;
 };
 
 /**

@@ -1,4 +1,4 @@
-from ..messages import MessageHeader, MessagePayload
+from ..messages import MessageHeader, MessagePayload, SourceIdentifier
 
 
 class FusionEngineEncoder:
@@ -15,7 +15,8 @@ class FusionEngineEncoder:
         """
         self.sequence_number = 0
 
-    def encode_message(self, message: MessagePayload, source_identifier: int = 0) -> (bytes):
+    def encode_message(self, message: MessagePayload,
+                       source_identifier: SourceIdentifier = SourceIdentifier.OUTPUT_LEVER_ARM) -> (bytes):
         """!
         @brief Serialize a message with valid header and payload.
 
