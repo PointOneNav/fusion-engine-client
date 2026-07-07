@@ -530,8 +530,8 @@ enum class SolutionType : uint8_t {
   RTKFloat = 5,
   /** Integrated position using dead reckoning. */
   Integrate = 6,
-  /** Using vision measurements. */
-  Visual = 9,
+  /** Using external (vision, lidar) measurements. */
+  External = 9,
   /**
    * GNSS precise point positioning (PPP) pseudorange/carrier phase solution.
    */
@@ -567,8 +567,8 @@ P1_CONSTEXPR_FUNC const char* to_string(SolutionType type) {
     case SolutionType::Integrate:
       return "Dead Reckoning";
 
-    case SolutionType::Visual:
-      return "Visual Navigation";
+    case SolutionType::External:
+      return "External Navigation";
 
     case SolutionType::PPP:
       return "PPP GNSS";
