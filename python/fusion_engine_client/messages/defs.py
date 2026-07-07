@@ -47,8 +47,8 @@ class SolutionType(IntEnum):
     RTKFloat = 5
     # Integrated position using dead reckoning.
     Integrate = 6
-    # Using vision measurements.
-    Visual = 9
+    # Using external (vision, lidar) measurements.
+    External = 9
     # GNSS precise point positioning (PPP) pseudorange/carrier phase solution.
     PPP = 10
 
