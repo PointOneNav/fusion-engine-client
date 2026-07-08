@@ -70,7 +70,13 @@ def build_input_message(source_message, use_gps_time, time_provider):
 
     input_message.details.data_source = source_message.details.data_source
 
-    gps_time = time_provider.p1_to_gps(source_message.p1_time) if use_gps_time else None
+    gps_time = None
+    if use_gps_time:
+        if source_message.details.measurement_time_source == SystemTimeSource.GPS_TIME:
+            gps_time = source_message.details.measurement_time
+        else:
+            gps_time = time_provider.p1_to_gps(source_message.p1_time)
+
     if gps_time:
         input_message.details.measurement_time = gps_time
         input_message.details.measurement_time_source = SystemTimeSource.GPS_TIME
