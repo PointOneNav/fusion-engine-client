@@ -83,16 +83,22 @@ def build_input_message(source_message, use_gps_time, time_provider):
 
 
 def main():
-    parser = ArgumentParser(description="""\
+    parser = ArgumentParser(
+        usage="%(prog)s SOURCE TARGET [TARGET...]",
+        description="""\
 Proxy raw wheel/vehicle speed output from a source device to a target device as wheel/vehicle speed input.
 
-Connects to a source device and a target device, enables raw wheel and vehicle speed output on the source, and
-forwards each received measurement to the target as the corresponding input message.
+Connects to a source device and one or more target devices, enables raw wheel and vehicle speed output on the
+source, and forwards each received measurement to every target as the corresponding input message.
 
 Messages may be timestamped either using GPS time (default) or on reception by the target device (--use-gps-time=false).
 
-Example:
+Examples:
+    # Proxy to a single target.
     ./proxy_wheel_speed.py tcp://192.168.1.100:30202 tcp://192.168.1.200:30201
+
+    # Proxy to multiple targets.
+    ./proxy_wheel_speed.py tcp://192.168.1.100:30202 tcp://192.168.1.200:30201 tcp://192.168.1.201:30201
 """)
 
     parser.add_argument(
@@ -100,8 +106,9 @@ Example:
         help="Source device transport (provides raw wheel/vehicle speed output).\n" + TRANSPORT_HELP_STRING)
 
     parser.add_argument(
-        'target', type=str,
-        help="Target device transport (receives wheel/vehicle speed input).\n" + TRANSPORT_HELP_STRING)
+        'target', type=str, nargs='+',
+        help="One or more target device transports (each receives wheel/vehicle speed input).\n" +
+             TRANSPORT_HELP_STRING)
 
     parser.add_argument(
         '--use-gps-time', action=ExtendedBooleanAction, default=True,
@@ -140,11 +147,14 @@ Timestamp forwarded measurements using GPS time instead of letting the target ti
         logger.error(f"Failed to connect to source: {e}")
         sys.exit(1)
 
-    try:
-        target_transport = create_transport(options.target, timeout_sec=response_timeout_sec, print_func=logger.info)
-    except Exception as e:
-        logger.error(f"Failed to connect to target: {e}")
-        sys.exit(1)
+    target_transports = []
+    for target in options.target:
+        try:
+            target_transports.append(
+                create_transport(target, timeout_sec=response_timeout_sec, print_func=logger.info))
+        except Exception as e:
+            logger.error(f"Failed to connect to target '{target}': {e}")
+            sys.exit(1)
 
     encoder = FusionEngineEncoder()
 
@@ -191,10 +201,12 @@ Timestamp forwarded measurements using GPS time instead of letting the target ti
                     input_message = build_input_message(message, use_gps_time=options.use_gps_time,
                                                         time_provider=time_provider)
                     encoded_data = encoder.encode_message(input_message)
-                    target_transport.send(encoded_data)
+                    for target_transport in target_transports:
+                        target_transport.send(encoded_data)
                     messages_forwarded += 1
 
-                    logger.debug(f"Forwarded {message.get_type().name} -> {input_message.get_type().name}.")
+                    logger.debug(f"Forwarded {message.get_type().name} -> {input_message.get_type().name} to "
+                                f"{len(target_transports)} target(s).")
 
             now = datetime.now()
             if (now - last_summary_time).total_seconds() >= options.summary_interval:
@@ -208,7 +220,8 @@ Timestamp forwarded measurements using GPS time instead of letting the target ti
         logger.error(f"Connection error: {e}")
     finally:
         source_transport.close()
-        target_transport.close()
+        for target_transport in target_transports:
+            target_transport.close()
         logger.info(f"Done. Forwarded {messages_forwarded} of {messages_received} received messages.")
 
 
