@@ -2,6 +2,8 @@ import os
 import re
 import socket
 import sys
+import threading
+import time
 from typing import Any, BinaryIO, Callable, TextIO, Union
 
 # WebSocket support is optional. To use, install with:
@@ -153,8 +155,8 @@ class SocketTransport:
 
     All other member or function accesses are deferred to the underlying `socket.socket` instance.
     """
-    def __init__(self, *args, **kwargs):
-        self._socket = socket.socket(*args, **kwargs)
+    def __init__(self, *args, sock: socket.socket = None, **kwargs):
+        self._socket = sock if sock is not None else socket.socket(*args, **kwargs)
         self._closed = False
 
     @property
@@ -174,6 +176,173 @@ class SocketTransport:
 
     def __exit__(self, *args):
         self.close()
+
+
+class TCPServerTransport(SocketTransport):
+    """!
+    @brief TCP transport that accepts incoming connections on a background thread.
+
+    Unlike connecting as a TCP client, an application acting as a TCP server does not know when (or if) a client will
+    connect. This class starts listening immediately and accepts connections on a background thread so construction
+    does not block, allowing the application to continue starting up while it waits. If the connected client
+    disconnects, the transport goes back to listening.
+
+    `setblocking()`/`settimeout()`/`setsockopt()` are recorded and replayed on each newly accepted connection if
+    called while no client is connected. `recv()` and other calls block until a client has connected, since there is
+    nothing to receive until then; if the client disconnects mid-`recv()`, this waits for a new client rather than
+    raising. `send()` does not block; if there is no connected client (including right after a disconnect), the data
+    is silently dropped.
+
+    `close()` may be called at any time, including before a client has connected, and stops the background thread
+    within `_POLL_INTERVAL_SEC` rather than blocking indefinitely on the OS-level `accept()` call.
+    """
+
+    _DEFERRABLE_METHODS = ('setblocking', 'settimeout', 'setsockopt')
+
+    # How often the background thread wakes up to check whether it should stop (or whether the current client has
+    # disconnected and it should accept a new one). This bounds how long close() can take if no client is connected.
+    _POLL_INTERVAL_SEC = 0.2
+
+    def __init__(self, port: int, timeout_sec: float = None, print_func: Callable = None):
+        self._closed = False
+        self._connect_timeout_sec = timeout_sec
+        self._print_func = print_func
+        self._connected_event = threading.Event()
+        self._lock = threading.Lock()
+        self._pending_opts = []
+        self._socket = None
+
+        self._listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self._listener.settimeout(self._POLL_INTERVAL_SEC)
+        self._listener.bind(('', port))
+        self._listener.listen(1)
+
+        self._accept_thread = threading.Thread(
+            target=self._accept_loop, name=f'tcp-server-accept-{port}', daemon=True)
+        self._accept_thread.start()
+
+    def _accept_loop(self):
+        while True:
+            with self._lock:
+                if self._closed:
+                    return
+                have_client = self._socket is not None
+            if have_client:
+                # A client is already connected. Wait for it to disconnect before accepting another.
+                time.sleep(self._POLL_INTERVAL_SEC)
+                continue
+
+            try:
+                client_socket, client_address = self._listener.accept()
+            except socket.timeout:
+                continue
+            except OSError:
+                return  # Listener was closed out from under us by close().
+
+            with self._lock:
+                if self._closed:
+                    client_socket.close()
+                    return
+
+                if self._connect_timeout_sec is not None:
+                    client_socket.settimeout(self._connect_timeout_sec)
+                for name, args, kwargs in self._pending_opts:
+                    getattr(client_socket, name)(*args, **kwargs)
+
+                self._socket = client_socket
+                self._connected_event.set()
+
+            if self._print_func is not None:
+                self._print_func(f'Accepted connection from {client_address[0]}:{client_address[1]}.')
+
+    def _handle_disconnect(self, sock: socket.socket):
+        with self._lock:
+            if self._socket is sock:
+                self._socket = None
+                self._connected_event.clear()
+        sock.close()
+        if self._print_func is not None:
+            self._print_func('Client disconnected. Waiting for a new connection.')
+
+    def recv(self, *args, **kwargs) -> bytes:
+        """!
+        @brief Receive data from the connected client.
+
+        Blocks until a client is connected. If the client disconnects, waits for a new client to connect instead of
+        raising an exception.
+        """
+        while True:
+            self._connected_event.wait()
+            sock = self._socket
+            if sock is None:
+                continue
+            try:
+                data = sock.recv(*args, **kwargs)
+            except (socket.timeout, TimeoutError):
+                raise
+            except OSError:
+                self._handle_disconnect(sock)
+                continue
+            if len(data) == 0:
+                # The client performed an orderly shutdown.
+                self._handle_disconnect(sock)
+                continue
+            return data
+
+    def send(self, data, *args, **kwargs) -> int:
+        """!
+        @brief Send data to the connected client.
+
+        Unlike `recv()`, this does not block waiting for a client to connect. If there is no connected client
+        (including right after a disconnect), the data is silently dropped.
+
+        @param data The data to be sent.
+
+        @return The number of bytes sent, or 0 if no client is connected.
+        """
+        sock = self._socket
+        if sock is None:
+            return 0
+        try:
+            return sock.send(data, *args, **kwargs)
+        except OSError:
+            self._handle_disconnect(sock)
+            return 0
+
+    def wait_for_connection(self, timeout_sec: float = None) -> bool:
+        """!
+        @brief Block until a client has connected.
+
+        @param timeout_sec Maximum time to wait (in seconds), or `None` to wait forever.
+
+        @return `True` once a client is connected, or `False` if `timeout_sec` elapses first.
+        """
+        return self._connected_event.wait(timeout_sec)
+
+    def close(self):
+        with self._lock:
+            if self._closed:
+                return
+            self._closed = True
+            sock = self._socket
+        self._listener.close()
+        self._accept_thread.join(timeout=self._POLL_INTERVAL_SEC * 2)
+        if sock is not None:
+            sock.close()
+
+    def __getattr__(self, name):
+        if name in self._DEFERRABLE_METHODS:
+            def _deferred(*args, **kwargs):
+                with self._lock:
+                    if self._socket is None:
+                        self._pending_opts.append((name, args, kwargs))
+                        return None
+                return getattr(self._socket, name)(*args, **kwargs)
+            return _deferred
+
+        self._connected_event.wait()
+        return getattr(self._socket, name)
 
 
 class WebsocketTransport:
@@ -237,6 +406,8 @@ TRANSPORT_HELP_OPTIONS = """\
   if PATH is '-'.
 - tcp://HOSTNAME[:PORT] - Connect to the specified hostname (or IP address) and
   port over TCP (e.g., tty://192.168.0.3:30202); defaults to port 30200.
+- tcp://:PORT - Listen for an incoming TCP connection on the specified port
+  (e.g., tcp://:30200).
 - udp://:PORT - Listen for incoming data on the specified UDP port (e.g.,
   udp://:12345).
   Note: When using UDP, you must configure the device to send data to your
@@ -292,8 +463,20 @@ def create_transport(descriptor: str, timeout_sec: float = None, print_func: Cal
             raise ValueError(f"Unsupported file mode '{mode}'.")
         return transport
 
+    # TCP server
+    m = re.match(r'^tcp://(?:0\.0\.0\.0)?:([0-9]+)$', descriptor)
+    if m:
+        port = int(m.group(1))
+        if print_func is not None:
+            print_func(f'Listening for TCP connections on port {port}.')
+
+        # Note: timeout_sec is applied to the accepted connection (once a client connects), not to
+        # how long we wait for that connection. We wait in the background indefinitely so the
+        # caller is not blocked before a client connects.
+        return TCPServerTransport(port, timeout_sec=timeout_sec, print_func=print_func)
+
     # TCP client
-    m = re.match(r'^tcp://([a-zA-Z0-9-_.]+)?(?::([0-9]+))?$', descriptor)
+    m = re.match(r'^tcp://([a-zA-Z0-9-_.]+)(?::([0-9]+))?$', descriptor)
     if m:
         hostname = m.group(1)
         ip_address = socket.gethostbyname(hostname)
