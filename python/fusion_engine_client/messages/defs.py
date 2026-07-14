@@ -225,10 +225,17 @@ def is_response(message_type: MessageType) -> bool:
     return message_type in RESPONSE_MESSAGES
 
 
-class MessageHeader:
-    INVALID_SOURCE_ID = 0xFFFFFFFF
-    EXTERNAL_POSE_OUTPUT_LEVER_ARM_SOURCE_ID = 0x80000000
+class SourceIdentifier(IntEnum):
+    ## Invalid source identifier.
+    INVALID = 0
+    # 1 - 99 is reserved for pose solutions.
+    EXTERNAL_OUTPUT_LEVER_ARM = 1
+    # 100 - 199 is reserved for IMUs.
+    # 300 - 399 is reserved for GNSS receivers.
+    # 500 - 599 is reserved for external pose sources, such as camera or lidar.
 
+
+class MessageHeader:
     SYNC0 = 0x2E  # '.'
     SYNC1 = 0x31  # '1'
 
@@ -247,7 +254,7 @@ class MessageHeader:
         self.message_version: int = 0
         self.message_type: MessageType = message_type
         self.payload_size_bytes: int = 0
-        self.source_identifier: int = MessageHeader.INVALID_SOURCE_ID
+        self.source_identifier: int = SourceIdentifier.INVALID
 
     def get_type_string(self):
         return MessageType.get_type_string(self.message_type)
@@ -309,7 +316,7 @@ class MessageHeader:
 
         args = (MessageHeader.SYNC0, MessageHeader.SYNC1, self.reserved, self.crc, self.protocol_version,
                 self.message_version, int(self.message_type), self.sequence_number, self.payload_size_bytes,
-                self.source_identifier)
+                int(self.source_identifier))
         if buffer is None:
             buffer = struct.pack(MessageHeader._FORMAT, *args)
             if payload is not None:

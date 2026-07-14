@@ -598,9 +598,14 @@ struct P1_ALIGNAS(4) MessageHeader {
   static constexpr uint8_t SYNC0 = 0x2E; // '.'
   static constexpr uint8_t SYNC1 = 0x31; // '1'
 
-  static constexpr uint32_t INVALID_SOURCE_ID = 0xFFFFFFFF;
-  static constexpr uint32_t EXTERNAL_POSE_OUTPUT_LEVER_ARM_SOURCE_ID =
-      0x80000000;
+  enum class SourceIdentifier : uint32_t {
+    INVALID = 0, ///< Invalid source identifier
+    // 1 - 99 is reserved for pose solutions.
+    EXTERNAL_OUTPUT_LEVER_ARM = 1,
+    // 100 - 199 is reserved for IMUs.
+    // 300 - 399 is reserved for GNSS receivers.
+    // 500 - 599 is reserved for external pose sources, such as camera or lidar.
+  };
 
   /**
    * The maximum expected message size (in bytes), used for sanity checking.
@@ -640,7 +645,7 @@ struct P1_ALIGNAS(4) MessageHeader {
   uint32_t payload_size_bytes = 0;
 
   /** Identifies the source of the serialized data. */
-  uint32_t source_identifier = INVALID_SOURCE_ID;
+  SourceIdentifier source_identifier = SourceIdentifier::INVALID;
 };
 
 /**
