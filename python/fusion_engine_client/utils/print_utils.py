@@ -203,14 +203,13 @@ class DeviceSummary:
         elif header.message_type == MessageType.VERSION_INFO:
             self.version_info = message
         elif header.message_type == MessageType.INPUT_DATA_WRAPPER:
-            wrapped_fe_header = message.get_fe_content_header()
             if include_wrapped_content:
-                # Count all wrapped content, not including FusionEngine messages.
-                if wrapped_fe_header is None:
-                    self.wrapped_non_fe_input_data_stats[message.data_type].count += 1
-                    self.wrapped_non_fe_input_data_stats[message.data_type].total_bytes += len(message.data)
-                # Count FusionEngine messages separately.
-                else:
+                # Count all wrapped content, including (framed) FusionEngine messages (M_TYPE_FUSION_ENGINE_MESSAGE).
+                self.wrapped_non_fe_input_data_stats[message.data_type].count += 1
+                self.wrapped_non_fe_input_data_stats[message.data_type].total_bytes += len(message.data)
+
+                # If this is M_TYPE_FUSION_ENGINE_MESSAGE, also count the FusionEngine messages themselves.
+                if wrapped_fe_header is not None:
                     self.wrapped_fe_input_data_stats[wrapped_fe_header.message_type].count += 1
                     self.wrapped_fe_input_data_stats[wrapped_fe_header.message_type].total_bytes += len(message.data)
 
@@ -281,19 +280,28 @@ def print_summary_table(device_summary: DeviceSummary, logger: Optional[logging.
         format_string, dividers = _print_table_header(cols)
         total_messages = 0
         total_bytes = 0
-        have_wrapped_fe = False
-        for data_type in sorted(wrapped_input_data_types):
-            if data_type in device_summary.wrapped_non_fe_input_data_stats:
-                entry = device_summary.wrapped_non_fe_input_data_stats[data_type]
-                logger.info(format_string.format(data_type.to_string(), entry.count, entry.total_bytes))
-                total_messages += entry.count
-                total_bytes += entry.total_bytes
+        have_wrapped_fe = len(device_summary.wrapped_fe_input_data_stats) > 0
 
-            if data_type in device_summary.wrapped_fe_input_data_stats:
-                entry = device_summary.wrapped_fe_input_data_stats[data_type]
-                logger.info(format_string.format(f'{data_type.to_string()} **', entry.count, entry.total_bytes))
-                have_wrapped_fe = True
+        for data_type in sorted(device_summary.wrapped_non_fe_input_data_stats.keys()):
+            entry = device_summary.wrapped_non_fe_input_data_stats[data_type]
+            logger.info(format_string.format(data_type.to_string(), entry.count, entry.total_bytes))
+            total_messages += entry.count
+            total_bytes += entry.total_bytes
         logger.info(format_string.format(*dividers))
         logger.info(format_string.format('Total', total_messages, total_bytes))
+
+        # Note: Wrapped M_TYPE_FUSION_ENGINE_MESSAGE messages are included in total_bytes above. This list displays the
+        # FusionEngine message payloads. We don't want to double-count them.
         if have_wrapped_fe:
-            logger.info('** FusionEngine content extracted from InputDataWrapperMessages.')
+            logger.info('')
+            logger.info('FusionEngine messages from M_TYPE_FUSION_ENGINE_MESSAGE:')
+            logger.info(format_string.format(*dividers))
+            for data_type in sorted(device_summary.wrapped_fe_input_data_stats.keys()):
+                entry = device_summary.wrapped_fe_input_data_stats[data_type]
+                cls = message_type_to_class.get(data_type, None)
+                if cls is None:
+                    type_str = data_type.to_string()
+                else:
+                    type_str = f'{cls.__name__} ({int(data_type)})'
+                logger.info(format_string.format(type_str, entry.count, entry.total_bytes))
+            logger.info(format_string.format(*dividers))
