@@ -226,13 +226,16 @@ def is_response(message_type: MessageType) -> bool:
 
 
 class SourceIdentifier(IntEnum):
-    ## Invalid source identifier.
-    INVALID = 0
-    # 1 - 99 is reserved for pose solutions.
-    EXTERNAL_OUTPUT_LEVER_ARM = 1
+    # 0 - 99 is reserved for pose solutions.
+    ## The location on the vehicle defined by the device's output lever arm setting.
+    OUTPUT_LEVER_ARM = 0
     # 100 - 199 is reserved for IMUs.
-    # 300 - 399 is reserved for GNSS receivers.
-    # 500 - 599 is reserved for external pose sources, such as camera or lidar.
+    # 300 - 399 is reserved for GNSS receivers/antennae.
+    PRIMARY_GNSS_ANTENNA = 300
+    SECONDARY_GNSS_ANTENNA = 301
+    # 500 - 599 is reserved for external pose sources, such as an external SLAM or VIO/LIO.
+    ## Invalid source identifier.
+    INVALID = 0xFFFFFFFF
 
 
 class MessageHeader:

@@ -393,7 +393,7 @@ meter forward relative to the source vehicle, specify: 1 0 0.""")
                 # Encode and send.
                 encoded_data = encoder.encode_message(
                     ext_pose,
-                    source_identifier=SourceIdentifier.EXTERNAL_OUTPUT_LEVER_ARM)
+                    source_identifier=SourceIdentifier.OUTPUT_LEVER_ARM)
                 logger.debug(bytes_to_hex(encoded_data, bytes_per_row=16, bytes_per_col=2))
 
                 target_transport.send(encoded_data)

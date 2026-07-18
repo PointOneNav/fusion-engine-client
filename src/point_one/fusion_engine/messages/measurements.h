@@ -1279,10 +1279,10 @@ struct P1_ALIGNAS(4) RawGNSSAttitudeOutput : public MessagePayload {
  *
  * Position is expressed in the ECEF frame, and velocity is expressed in the
  * local ENU frame. @ref position_ecef_m should correspond to the reference
- * point selected by @ref MessageHeader::source_identifier: either the external
+ * point selected by @ref MessageHeader::source_identifier - either the external
  * source's own point (for example, a lidar/camera sensor origin), or the
  * receiving device output point when the source identifier is set to @ref
- * MessageHeader::SourceIdentifier::EXTERNAL_OUTPUT_LEVER_ARM.
+ * SourceIdentifier::OUTPUT_LEVER_ARM.
  *
  * Orientation is specified as yaw, pitch, roll (YPR) angles in the local ENU
  * frame, following the same intrinsic Euler-321 convention as @ref
@@ -1313,10 +1313,10 @@ struct P1_ALIGNAS(4) ExternalPoseInput : public MessagePayload {
   /**
    * An estimate of the external source's position (in meters), resolved in the
    * ECEF frame. This should correspond to the reference point selected by
-   * @ref MessageHeader::source_identifier: either the source's own point (e.g.
+   * @ref MessageHeader::source_identifier - either the source's own point (e.g.
    * the lidar/camera sensor origin), for which the receiving device applies the
    * configured lever arm, or the device output point when the source identifier
-   * is set to @ref MessageHeader::SourceIdentifier::EXTERNAL_OUTPUT_LEVER_ARM.
+   * is set to @ref SourceIdentifier::OUTPUT_LEVER_ARM.
    */
   double position_ecef_m[3] = {NAN, NAN, NAN};
 

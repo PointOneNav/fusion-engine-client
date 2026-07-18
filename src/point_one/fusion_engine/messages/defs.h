@@ -585,6 +585,20 @@ inline p1_ostream& operator<<(p1_ostream& stream, SolutionType type) {
   return stream;
 }
 
+enum class SourceIdentifier : uint32_t {
+  // 0 - 99 is reserved for pose solutions.
+  OUTPUT_LEVER_ARM =
+      0, ///< The location on the vehicle defined by the device's output lever arm setting.
+  // 100 - 199 is reserved for IMUs.
+  // 300 - 399 is reserved for GNSS receivers/antennae.
+  PRIMARY_GNSS_ANTENNA = 300,
+  SECONDARY_GNSS_ANTENNA = 301,
+  // 500 - 599 is reserved for external pose sources, such as an external SLAM or VIO/LIO.
+  INVALID = 0xFFFFFFFF, ///< Invalid source identifier
+};
+
+static constexpr SourceIdentifier INVALID_SOURCE_ID = SourceIdentifier::INVALID;
+
 /** @} */
 
 /**
@@ -597,15 +611,6 @@ inline p1_ostream& operator<<(p1_ostream& stream, SolutionType type) {
 struct P1_ALIGNAS(4) MessageHeader {
   static constexpr uint8_t SYNC0 = 0x2E; // '.'
   static constexpr uint8_t SYNC1 = 0x31; // '1'
-
-  enum class SourceIdentifier : uint32_t {
-    INVALID = 0, ///< Invalid source identifier
-    // 1 - 99 is reserved for pose solutions.
-    EXTERNAL_OUTPUT_LEVER_ARM = 1,
-    // 100 - 199 is reserved for IMUs.
-    // 300 - 399 is reserved for GNSS receivers.
-    // 500 - 599 is reserved for external pose sources, such as camera or lidar.
-  };
 
   /**
    * The maximum expected message size (in bytes), used for sanity checking.
