@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from typing import Tuple, Union, List, Any
+from typing import Tuple, Union, List, Any, Optional
 
 from collections import namedtuple, defaultdict
 import copy
@@ -26,6 +26,7 @@ if __name__ == "__main__" and (__package__ is None or __package__ == ''):
 from ..messages import *
 from .attitude import get_enu_rotation_matrix
 from .data_loader import DataLoader, TimeRange
+from .reference import ReferenceData, _OWN_LOG_STATISTICS
 from ..parsers.file_index import HostTimeIndexMap
 from ..utils import trace as logging
 from ..utils.argument_parser import ArgumentParser, ExtendedBooleanAction, TriStateBooleanAction, CSVAction
@@ -938,23 +939,42 @@ class Analyzer(object):
         self._add_figure(name=f"{name}_top_down", figure=topo_figure, title=f"{source}: Top-Down (Topocentric)")
         self._add_figure(name=f"{name}_vs_time", figure=time_figure, title=f"{source}: vs. Time")
 
-    def plot_stationary_position_error(self, truth_lla_deg):
+    def plot_pose_error(self, reference: ReferenceData):
         """!
-        @brief Plot position error vs. a known stationary location.
+        @brief Plot position error vs. a truth reference.
 
-        @param truth_lla_deg The truth LLA location (in degrees/meters).
+        Position error is plotted both top-down (topocentric) and over time.
+
+        @param reference The truth reference to compare against.
         """
-        truth_ecef_m = np.array(geodetic2ecef(*truth_lla_deg, deg=True))
-        return self._plot_pose_displacement(title='Position Error', reference=truth_ecef_m)
+        return self._plot_pose_displacement(reference=reference)
 
-    def plot_pose_displacement(self):
+    def plot_position_displacement(self, reference_type: str):
         """!
-        @brief Generate a topocentric (top-down) plot of position displacement vs the median position, as well as plot
-               of displacement over time.
-        """
-        return self._plot_pose_displacement(reference='median')
+        @brief Plot position displacement over time compared with a fixed reference from the log data (first position,
+               median, etc.).
 
-    def _plot_pose_displacement(self, title='Pose Displacement', reference=None):
+        @param reference_type The desired reference type name.
+        """
+        # Default to the median position taken from this log's own data (we use median instead of centroid just in
+        # case there are one or two huge outliers).
+        reference = ReferenceData.resolve_cli_argument(reference=reference_type, loader=self.reader,
+                                                       source_id=self.default_source_id)
+        if reference is None:
+            self.logger.info('No valid position solutions detected. Skipping displacement plots.')
+            return None
+        else:
+            return self._plot_pose_displacement(reference=reference)
+
+    def _plot_pose_displacement(self, reference: Optional[ReferenceData] = None):
+        """!
+        @brief Generate a topocentric (top-down) plot of position displacement (or error, if `reference` is an
+               independent truth source -- see @ref ReferenceData) vs a reference position, as well as a plot of
+               displacement/error over time.
+
+        @param reference The reference to compare against. If `None`, defaults to the median position taken from
+               this log's own data.
+        """
         if self.output_dir is None:
             return None
 
@@ -973,46 +993,39 @@ class Analyzer(object):
             return None
 
         time = pose_data.p1_time[valid_idx] - float(self.t0)
+        gps_time = pose_data.gps_time[valid_idx]
         solution_type = pose_data.solution_type[valid_idx]
         lla_deg = pose_data.lla_deg[:, valid_idx]
         std_enu_m = pose_data.position_std_enu_m[:, valid_idx]
 
-        # Convert to ENU displacement with respect to the median position (we use median instead of centroid just in
-        # case there are one or two huge outliers).
         position_ecef_m = np.array(geodetic2ecef(lat=lla_deg[0, :], lon=lla_deg[1, :], alt=lla_deg[2, :], deg=True))
 
-        if reference is None:
-            reference = 'median'
+        # Interpolate the reference position onto this log's GPS timestamps, warning if the reference does not fully
+        # cover this log's time range. Any timestamps that fall outside the reference's coverage (or that could not
+        # be interpolated, e.g. due to a gap in the reference data) are dropped below.
+        valid_ref_idx = reference.get_coverage_mask(gps_time)
+        reference_ecef_m = reference.interpolate_position_ecef_m(gps_time)
+        valid_ref_idx = np.logical_and(valid_ref_idx, ~np.any(np.isnan(reference_ecef_m), axis=0))
+        if not np.any(valid_ref_idx):
+            self.logger.warning(f"Reference data '{reference.description}' does not overlap with this log's time "
+                                f"range. Skipping displacement plots.")
+            return None
+        elif not np.all(valid_ref_idx):
+            time = time[valid_ref_idx]
+            solution_type = solution_type[valid_ref_idx]
+            lla_deg = lla_deg[:, valid_ref_idx]
+            std_enu_m = std_enu_m[:, valid_ref_idx]
+            position_ecef_m = position_ecef_m[:, valid_ref_idx]
+            reference_ecef_m = reference_ecef_m[:, valid_ref_idx]
 
-        if isinstance(reference, str):
-            if reference == 'first':
-                reference_ecef_m = position_ecef_m[:, 0]
-                title_suffix = ' From First Position'
-            elif reference == 'median':
-                reference_ecef_m = np.median(position_ecef_m, axis=1)
-                title_suffix = ' From Median Position'
-            elif reference == 'median_fixed':
-                idx = solution_type == SolutionType.RTKFixed
-                if np.any(idx):
-                    reference_ecef_m = np.median(position_ecef_m[:, idx], axis=1)
-                    title_suffix = ' From Median Fixed Position'
-                else:
-                    self.logger.warning('No fixed positions available. Using median as displacement plot reference.')
-                    reference_ecef_m = np.median(position_ecef_m, axis=1)
-                    title_suffix = ' From Median Position'
-            else:
-                raise ValueError('Unrecognized reference specifier.')
-        else:
-            reference_ecef_m = reference
-            title_suffix = ''
-
-        displacement_ecef_m = position_ecef_m - reference_ecef_m.reshape(3, 1)
+        displacement_ecef_m = position_ecef_m - reference_ecef_m
         c_enu_ecef = get_enu_rotation_matrix(*lla_deg[0:2, 0], deg=True)
         displacement_enu_m = c_enu_ecef.dot(displacement_ecef_m)
 
-        axis_title = 'Error' if title == 'Position Error' else 'Displacement'
+        axis_title = reference.displacement_label
+        source = f'Position {axis_title} vs. {"Reference" if reference.is_truth else reference.description}'
 
-        self._plot_displacement(source=f'{title}{title_suffix}', title=axis_title,
+        self._plot_displacement(source=source, title=axis_title,
                                 time=time, solution_type=solution_type,
                                 displacement_enu_m=displacement_enu_m, std_enu_m=std_enu_m)
 
@@ -2876,10 +2889,11 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
 
         return times_before_resets
 
-    def generate_index(self, auto_open=True):
+    def generate_index(self, reference: Optional[ReferenceData] = None, auto_open: bool = True):
         """!
         @brief Generate an `index.html` page with links to all generated figures.
 
+        @param reference Reference data, if loaded.
         @param auto_open If `True`, open the page automatically in a web browser.
         """
         if len(self.plots) == 0:
@@ -2913,9 +2927,14 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
                 link = '<br><a href="%s" target="_blank">%s</a>' % (os.path.relpath(entry['path'], index_dir), title)
             links += link
 
+        body = ''
+        if reference is not None:
+            body += f'Reference data source: {reference.description}<br>'
+        body += links + '\n<pre>' + self.summary.replace('\n', '<br>') + '</pre>'
+
         index_html = _page_template % {
             'title': 'FusionEngine Output',
-            'body': links + '\n<pre>' + self.summary.replace('\n', '<br>') + '</pre>'
+            'body': body
         }
 
         os.makedirs(index_dir, exist_ok=True)
@@ -3299,6 +3318,13 @@ Load and display information stored in a FusionEngine binary file.
 """)
 
     plot_group = parser.add_argument_group('Plot Control')
+    plot_group.add_argument(
+        '--displacement-type', '--displacement', choices=_OWN_LOG_STATISTICS, default='median_fixed',
+        help="Specify the position statistic to use as a reference for plotting position displacement:"
+             "\n- first - Use the first-available pose solution"
+             "\n- first_fixed - Use the first RTK-fixed pose solution"
+             "\n- median - Use the median pose solution across the entire log"
+             "\n- median_fixed - Use the median pose solution only when RTK-fixed")
     plot_group.add_argument('--mapbox-token', metavar='TOKEN',
         help="A Mapbox token to use for satellite imagery when generating a map. If unspecified, the token will be "
              "read from the MAPBOX_ACCESS_TOKEN or MapboxAccessToken environment variables if set. If no token is "
@@ -3322,9 +3348,20 @@ Load and display information stored in a FusionEngine binary file.
              (Analyzer.LONG_LOG_DURATION_SEC / 3600.0, Analyzer.HIGH_MEASUREMENT_RATE_HZ))
     plot_group.add_argument(
         '--reference', '--truth',
-        help="Specify a reference data to use as a truth source for position, velocity, and orientation. Supported "
-             "formats:"
-             "\n- Stationary LLA position: 37.1234, -122.526335, 102.34")
+        help="Specify reference data to use as a truth source, or as an alternate reference, for position "
+             "displacement/error plots. Supported formats:"
+             "\n- The path to a separate log file, or a log hash/pattern to be located under --log-base-dir, whose "
+             "pose data will be used as a time-varying truth reference"
+             "\n- A stationary LLA (degrees, degrees, meters) or ECEF (meters) position, as 3 comma-separated values. "
+             "All spaces will be ignored."
+             "\n  - 37.1234, -122.526335, 102.34"
+             "\n  - lla: 37.1234, -122.526335, 102.34"
+             "\n  - -2707071.0, -4321671.7, 3817403.2"
+             "\n  - ecef: -2707071.0, -4321671.7, 3817403.2")
+    plot_group.add_argument(
+        '--reference-log-type', metavar='TYPE', default='auto',
+        help="If --reference specifies a separate log file/hash, the type of log data to load from it. See "
+             "--log-type for supported values.")
 
     plot_function_names = [n for n in dir(Analyzer) if n.startswith('plot_')]
     plot_group.add_argument(
@@ -3422,21 +3459,27 @@ Load and display information stored in a FusionEngine binary file.
             _logger.error('Source identifiers must be integers. Exiting.')
             sys.exit(1)
 
-    # Parse truth data if specified.
-    truth_lla_deg = None
-    if options.reference is not None:
-        m = re.match(r'^(-?\d+(?:\.\d+)),\s*(-?\d+(?:\.\d+)),\s*(-?\d+(?:\.\d+))$', options.reference)
-        if m:
-            truth_lla_deg = np.array((float(m.group(1)), float(m.group(2)), float(m.group(3))))
-        else:
-            _logger.error('Unrecognized reference data format.')
-            sys.exit(1)
-
     # Read pose data from the file.
     analyzer = Analyzer(file=input_path, output_dir=output_dir, ignore_index=options.ignore_index,
                         prefix=options.prefix + '.' if options.prefix is not None else '',
                         time_range=time_range, time_axis=options.time_axis,
                         truncate_long_logs=options.truncate and options.plot is None, source_id=source_id)
+
+    # Resolve reference data, if specified. This must happen after the analyzer (and its DataLoader) for the primary
+    # log is constructed since some reference types (e.g., 'median') are derived from the primary log's own data.
+    if options.reference is None:
+        ref_path = os.path.join(log_dir, 'reference.p1log')
+        if os.path.exists(ref_path):
+            options.reference = ref_path
+
+    reference_data = None
+    if options.reference is not None:
+        reference_data = ReferenceData.resolve_cli_argument(
+            options.reference, loader=analyzer.reader, log_base_dir=options.log_base_dir,
+            log_type=options.reference_log_type, source_id=analyzer.default_source_id)
+        if reference_data is None:
+            _logger.error('Unable to resolve reference data.')
+            sys.exit(1)
 
     if options.plot is None:
         analyzer.plot_events()
@@ -3447,10 +3490,14 @@ Load and display information stored in a FusionEngine binary file.
         analyzer.plot_stationary_status()
         analyzer.plot_reset_timing()
         analyzer.plot_pose()
-        analyzer.plot_pose_displacement()
+        analyzer.plot_position_displacement(reference_type=options.displacement_type)
         analyzer.plot_relative_position()
         analyzer.plot_map(mapbox_token=options.mapbox_token)
         analyzer.plot_calibration()
+
+        if reference_data is not None:
+            analyzer.plot_pose_error(reference=reference_data)
+
         analyzer.plot_gnss_cn0()
         analyzer.plot_gnss_signal_status()
         analyzer.plot_gnss_skyplot()
@@ -3463,9 +3510,6 @@ Load and display information stored in a FusionEngine binary file.
         # By default, we always plot attitude measurements (i.e., output from a secondary GNSS attitude sensor like an
         # LG69T-AH), separate from other sensor measurements controlled by --measurements.
         analyzer.plot_gnss_attitude_measurements()
-
-        if truth_lla_deg is not None:
-            analyzer.plot_stationary_position_error(truth_lla_deg)
 
         if options.measurements:
             analyzer.plot_imu()
@@ -3500,15 +3544,17 @@ Load and display information stored in a FusionEngine binary file.
                 analyzer.plot_map(mapbox_token=options.mapbox_token)
             elif func == 'plot_skyplot':
                 analyzer.plot_gnss_skyplot(decimate=False)
-            elif func == 'plot_stationary_position_error':
-                if truth_lla_deg is not None:
-                    analyzer.plot_stationary_position_error(truth_lla_deg)
+            elif func == 'plot_pose_error':
+                if reference_data is not None:
+                    analyzer.plot_pose_error(reference_data)
                 else:
-                    _logger.warning('No truth data available. Cannot plot position error.')
+                    _logger.warning('No reference data available. Cannot plot position error.')
+            elif func == 'plot_position_displacement':
+                analyzer.plot_position_displacement(reference_type=options.displacement_type)
             else:
                 getattr(analyzer, func)()
 
-    analyzer.generate_index(auto_open=not options.no_index)
+    analyzer.generate_index(reference=reference_data, auto_open=not options.no_index)
 
     _logger.info("Output stored in '%s'." % os.path.abspath(output_dir))
     return analyzer
