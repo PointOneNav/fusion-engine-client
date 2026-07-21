@@ -26,7 +26,7 @@ from fusion_engine_client.messages import MessageType, PoseMessage
 from fusion_engine_client.messages.measurements import (
     ExternalPoseInput, SystemTimeSource,
 )
-from fusion_engine_client.messages.defs import SolutionType, Timestamp
+from fusion_engine_client.messages.defs import SolutionType, SourceIdentifier, Timestamp
 from fusion_engine_client.parsers import FusionEngineDecoder, FusionEngineEncoder
 from fusion_engine_client.utils import trace as logging
 from fusion_engine_client.utils.argument_parser import ArgumentParser
@@ -391,7 +391,9 @@ meter forward relative to the source vehicle, specify: 1 0 0.""")
                     source_pose_msg, transformed_pose)
 
                 # Encode and send.
-                encoded_data = encoder.encode_message(ext_pose)
+                encoded_data = encoder.encode_message(
+                    ext_pose,
+                    source_identifier=SourceIdentifier.OUTPUT_LEVER_ARM)
                 logger.debug(bytes_to_hex(encoded_data, bytes_per_row=16, bytes_per_col=2))
 
                 target_transport.send(encoded_data)

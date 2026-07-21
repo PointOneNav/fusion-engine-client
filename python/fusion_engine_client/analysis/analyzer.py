@@ -46,7 +46,7 @@ _SOLUTION_TYPE_MAP = {
     SolutionType.RTKFloat: SolutionTypeInfo(name='RTK Float', style={'color': 'green'}),
     SolutionType.RTKFixed: SolutionTypeInfo(name='RTK Fixed', style={'color': 'orange'}),
     SolutionType.PPP: SolutionTypeInfo(name='PPP', style={'color': 'pink'}),
-    SolutionType.Visual: SolutionTypeInfo(name='Vision', style={'color': 'purple'}),
+    SolutionType.External: SolutionTypeInfo(name='External', style={'color': 'purple'}),
 }
 
 
