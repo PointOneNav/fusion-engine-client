@@ -1804,6 +1804,14 @@ figure.on('plotly_hover', function(data) {{
         params = copy.deepcopy(self.params)
         params['return_numpy'] = False
 
+        # Some devices output GNSSSignalsMessage data for both the primary and secondary GNSS antennas. Exclude the
+        # secondary antenna's data so it is not plotted on top of the primary antenna's. Source ID 1 is a legacy
+        # secondary antenna identifier predating the SourceIdentifier reserved ranges, used by some older devices
+        # instead of SECONDARY_GNSS_ANTENNA (301).
+        secondary_source_ids = {1, SourceIdentifier.SECONDARY_GNSS_ANTENNA}
+        available_source_ids = self.reader.get_available_source_ids()
+        params['source_ids'] = available_source_ids - secondary_source_ids
+
         result = self.reader.read(message_types=[GNSSSignalsMessage], **params)
         data = result[GNSSSignalsMessage.MESSAGE_TYPE]
 
