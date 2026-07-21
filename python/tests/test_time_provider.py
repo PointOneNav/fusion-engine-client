@@ -419,3 +419,77 @@ class TestGPSToP1Array:
         original = np.array([12.5, 24.0])
         recovered = tp.gps_to_p1(tp.p1_to_gps(original))
         assert recovered == pytest.approx(original)
+
+
+class TestHasGpsReference:
+    def test_default_false(self):
+        tp = TimeProvider()
+        assert not tp.has_gps_reference()
+
+    def test_true_after_loading_reference_table(self):
+        reader = _FakeReader(p1_time=[10.0, 20.0], gps_time=[GPS_DATE_SEC, GPS_DATE_SEC + 10.0])
+        tp = TimeProvider()
+        tp.set_reference_data(reader)
+        assert tp.has_gps_reference()
+
+    def test_true_when_p1_is_gps(self):
+        reader = _FakeReader(p1_time=[GPS_DATE_SEC], gps_time=[GPS_DATE_SEC])
+        tp = TimeProvider()
+        tp.set_reference_data(reader)
+        assert tp.has_gps_reference()
+
+    def test_false_when_no_gps_time_in_log(self):
+        reader = _FakeReader(p1_time=[10.0, 20.0], gps_time=[np.nan, np.nan])
+        tp = TimeProvider()
+        tp.set_reference_data(reader)
+        assert not tp.has_gps_reference()
+
+
+class TestP1IsGpsTime:
+    def test_default_false(self):
+        tp = TimeProvider()
+        assert not tp.is_p1_gps_time()
+
+    def test_normal_boot_relative_p1_time_not_detected(self):
+        reader = _FakeReader(p1_time=[10.0, 20.0], gps_time=[GPS_DATE_SEC, GPS_DATE_SEC + 10.0])
+        tp = TimeProvider()
+        tp.set_reference_data(reader)
+        assert not tp.is_p1_gps_time()
+
+    def test_detects_gps_as_p1(self):
+        reader = _FakeReader(p1_time=[GPS_DATE_SEC, GPS_DATE_SEC + 1.0], gps_time=[GPS_DATE_SEC, GPS_DATE_SEC + 1.0])
+        tp = TimeProvider()
+        tp.set_reference_data(reader)
+        assert tp.is_p1_gps_time()
+
+    def test_single_gps_like_sample_is_conclusive(self):
+        # Only one sample looks like GPS time (e.g. a reset happened partway through); that alone is conclusive.
+        reader = _FakeReader(p1_time=[5.0, GPS_DATE_SEC], gps_time=[GPS_DATE_SEC + 100.0, GPS_DATE_SEC])
+        tp = TimeProvider()
+        tp.set_reference_data(reader)
+        assert tp.is_p1_gps_time()
+
+    def test_p1_to_gps_array_is_identity_far_outside_reference_range(self):
+        reader = _FakeReader(p1_time=[GPS_DATE_SEC, GPS_DATE_SEC + 10.0],
+                             gps_time=[GPS_DATE_SEC, GPS_DATE_SEC + 10.0])
+        tp = TimeProvider()
+        tp.set_reference_data(reader)
+        # Query far outside the reference range -- still exact, since P1 IS GPS by definition.
+        result = tp.p1_to_gps(np.array([GPS_DATE_SEC + 1e6]))
+        assert result == pytest.approx([GPS_DATE_SEC + 1e6])
+
+    def test_gps_to_p1_array_is_identity_far_outside_reference_range(self):
+        reader = _FakeReader(p1_time=[GPS_DATE_SEC, GPS_DATE_SEC + 10.0],
+                             gps_time=[GPS_DATE_SEC, GPS_DATE_SEC + 10.0])
+        tp = TimeProvider()
+        tp.set_reference_data(reader)
+        result = tp.gps_to_p1(np.array([GPS_DATE_SEC + 1e6]))
+        assert result == pytest.approx([GPS_DATE_SEC + 1e6])
+
+    def test_datetime_format_when_p1_is_gps(self):
+        reader = _FakeReader(p1_time=[GPS_DATE_SEC], gps_time=[GPS_DATE_SEC])
+        tp = TimeProvider()
+        tp.set_reference_data(reader)
+        result = tp.p1_to_gps(np.array([GPS_DATE_SEC]), format='datetime')
+        assert result.dtype.kind == 'M'
+        assert not np.isnat(result[0])

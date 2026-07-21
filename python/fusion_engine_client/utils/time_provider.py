@@ -6,6 +6,7 @@ from gpstime import gpstime, gps2unix
 import numpy as np
 
 from ..messages import MessageHeader, MessagePayload, PoseMessage, Timestamp
+from ..messages.timestamp import is_gps_time
 from ..utils import trace as logging
 
 if TYPE_CHECKING:
@@ -33,6 +34,10 @@ class TimeProvider:
         self._reference_p1_time = np.array([])
         self._reference_gps_time = np.array([])
 
+        # Whether this platform's P1 time is itself GPS time (as opposed to a boot-relative counter). Populated by
+        # set_reference_data().
+        self._p1_time_is_gps = False
+
     def reset(self):
         self._current_p1_time = Timestamp()
         self._current_gps_time = Timestamp()
@@ -51,6 +56,13 @@ class TimeProvider:
         """
         result = reader.read(message_types=[PoseMessage], source_ids=source_id, return_numpy=True)
         pose_data = result[PoseMessage.MESSAGE_TYPE]
+
+        # Some platforms configure their P1 clock to be GPS time itself, rather than a boot-relative counter. If even a
+        # single sample looks like a GPS timestamp, that's conclusive -- a boot-relative counter cannot accidentally
+        # cross into GPS-timestamp-sized values. In that case, P1 time can be used as GPS time directly, with no
+        # interpolation needed at all (see @ref is_p1_gps_time()).
+        valid_p1_time = pose_data.p1_time[~np.isnan(pose_data.p1_time)]
+        self._p1_time_is_gps = bool(np.any(is_gps_time(valid_p1_time)))
 
         valid = ~np.isnan(pose_data.p1_time) & ~np.isnan(pose_data.gps_time)
         p1_time = pose_data.p1_time[valid]
@@ -99,6 +111,24 @@ class TimeProvider:
         boundaries = np.concatenate(([0], reset_idx + 1, [len(p1_time)]))
         return [(p1_time[boundaries[i]:boundaries[i + 1]], gps_time[boundaries[i]:boundaries[i + 1]])
                 for i in range(len(boundaries) - 1)]
+
+    def is_p1_gps_time(self) -> bool:
+        """!
+        @brief Test whether this platform's P1 time is itself GPS time, rather than a boot-relative counter.
+
+        Populated by @ref set_reference_data(). Always `False` until it has been called.
+
+        @return `True` if P1 time is GPS time on this platform.
+        """
+        return self._p1_time_is_gps
+
+    def has_gps_reference(self) -> bool:
+        """!
+        @brief Test whether enough information is available to convert P1 time to/from GPS time.
+
+        @return `True` if GPS time is available.
+        """
+        return self._p1_time_is_gps or len(self._reference_p1_time) > 0
 
     @staticmethod
     def _segments_mutually_exclusive(segments: list) -> bool:
@@ -216,11 +246,17 @@ Received time update ({message.get_type()} message) at:
             return gps_time
 
     def _p1_to_gps_array(self, p1_time: np.ndarray, format: str) -> np.ndarray:
-        xp, fp = self._reference_p1_time, self._reference_gps_time
-        if len(xp) == 0:
-            xp, fp = self._fallback_reference()
+        p1_time = np.asarray(p1_time, dtype=float)
 
-        gps_time = self._interp_extrap(np.asarray(p1_time, dtype=float), xp, fp)
+        # If P1 time is GPS time, no interpolation is needed -- P1 time is GPS time, by definition, for any value,
+        # no matter how far it is from the reference data used to detect this.
+        if self._p1_time_is_gps:
+            gps_time = p1_time.copy()
+        else:
+            xp, fp = self._reference_p1_time, self._reference_gps_time
+            if len(xp) == 0:
+                xp, fp = self._fallback_reference()
+            gps_time = self._interp_extrap(p1_time, xp, fp)
 
         if format == 'datetime':
             return self._gps_sec_to_datetime64_array(gps_time)
@@ -273,11 +309,16 @@ Received time update ({message.get_type()} message) at:
         return p1_time
 
     def _gps_to_p1_array(self, gps_time: np.ndarray) -> np.ndarray:
+        gps_time = np.asarray(gps_time, dtype=float)
+
+        if self._p1_time_is_gps:
+            return gps_time.copy()
+
         xp, fp = self._reference_gps_time, self._reference_p1_time
         if len(xp) == 0:
             fp, xp = self._fallback_reference()
 
-        return self._interp_extrap(np.asarray(gps_time, dtype=float), xp, fp)
+        return self._interp_extrap(gps_time, xp, fp)
 
     def _fallback_reference(self) -> (np.ndarray, np.ndarray):
         """!
