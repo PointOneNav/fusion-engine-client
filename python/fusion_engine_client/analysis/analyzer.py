@@ -1246,9 +1246,21 @@ class Analyzer(object):
             #
             # Reference: https://stackoverflow.com/a/43094244
             idx = all_signal_sv_hashes == sv_hash
-            cn0_per_epoch = np.split(data.signal_data['cn0_dbhz'][idx],
-                                     np.unique(data.signal_data['p1_time'][idx], return_index=True)[1][1:])
-            max_cn0_dbhz = np.array([max(cn0) for cn0 in cn0_per_epoch])
+            max_cn0_dbhz = np.full(len(p1_time), np.nan)
+            if idx.any():
+                # Sort by time first since the split-by-unique-time trick below requires each epoch's entries to be
+                # contiguous, which is not guaranteed if the log merges multiple out-of-order sources (e.g., duo logs).
+                sort_idx = np.argsort(data.signal_data['p1_time'][idx], kind='stable')
+                sorted_cn0 = data.signal_data['cn0_dbhz'][idx][sort_idx]
+                sorted_time = data.signal_data['p1_time'][idx][sort_idx]
+                unique_times, group_start = np.unique(sorted_time, return_index=True)
+                cn0_per_epoch = np.split(sorted_cn0, group_start[1:])
+                # Map by time value rather than assuming the signal epochs line up 1:1 with sv_data's p1_time: the two
+                # message streams can have different epochs (e.g., a signal dropout, or merged/duo logs).
+                max_cn0_by_time = dict(zip(unique_times, (max(cn0) for cn0 in cn0_per_epoch)))
+                for i, t in enumerate(p1_time):
+                    if t in max_cn0_by_time:
+                        max_cn0_dbhz[i] = max_cn0_by_time[t]
 
             if have_gnss_signals_message:
                 sv_signal_types = signal_types_by_sv[sv_hash]
@@ -1499,8 +1511,10 @@ class Analyzer(object):
         def _count_selected(selected_p1_times, return_nonzero_time=False):
             selected_p1_time, p1_time_idx, count_per_time = np.unique(selected_p1_times, return_index=True,
                                                                       return_counts=True)
-            count = np.full_like(all_p1_time, 0, dtype=int)
-            count[np.isin(all_p1_time, selected_p1_time)] = count_per_time
+            # Map by value instead of an isin() mask assignment: if all_p1_time contains duplicate timestamps (e.g.,
+            # merged logs), the mask can match more entries than there are counts to assign.
+            count_by_time = dict(zip(selected_p1_time, count_per_time))
+            count = np.array([count_by_time.get(t, 0) for t in all_p1_time], dtype=int)
             if return_nonzero_time:
                 return count, selected_p1_time, p1_time_idx
             else:
@@ -1519,8 +1533,8 @@ class Analyzer(object):
         used_sv_hashes = np.array([get_satellite_hash(h) for h in used_signal_hashes])
         used_sv_hashes_per_epoch = np.split(used_sv_hashes, used_p1_time_idx[1:])
         num_used_svs_only = np.array([len(np.unique(svs)) for svs in used_sv_hashes_per_epoch])
-        num_used_svs = np.full_like(all_p1_time, 0, dtype=int)
-        num_used_svs[np.isin(data.p1_time, used_p1_time)] = num_used_svs_only
+        num_used_svs_by_time = dict(zip(used_p1_time, num_used_svs_only))
+        num_used_svs = np.array([num_used_svs_by_time.get(t, 0) for t in all_p1_time], dtype=int)
 
         idx = (np.bitwise_and(data.signal_data['status_flags'],
                               GNSSSignalInfo.STATUS_FLAG_CARRIER_AMBIGUITY_RESOLVED) != 0)
