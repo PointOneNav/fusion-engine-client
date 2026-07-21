@@ -25,8 +25,8 @@ if __name__ == "__main__" and (__package__ is None or __package__ == ''):
 
 from ..messages import *
 from .attitude import get_enu_rotation_matrix
-from .data_loader import DataLoader, TimeRange
 from .reference import ReferenceData, _OWN_LOG_STATISTICS
+from .data_loader import DataLoader, MessageData, TimeRange
 from ..parsers.file_index import HostTimeIndexMap
 from ..utils import trace as logging
 from ..utils.argument_parser import ArgumentParser, ExtendedBooleanAction, TriStateBooleanAction, CSVAction
@@ -196,7 +196,7 @@ class Analyzer(object):
 
         self._mapbox_token_missing = False
 
-        self._gnss_signals_data = None
+        self._gnss_signals_data = {}
 
         if self.output_dir is not None:
             if not os.path.exists(self.output_dir):
@@ -1198,17 +1198,19 @@ class Analyzer(object):
 
         self._add_figure(name="map", figure=figure, title="Vehicle Trajectory (Map)", config={'scrollZoom': True})
 
-    def plot_gnss_skyplot(self, decimate=True):
+    def plot_gnss_skyplot(self, decimate=True, secondary: bool = False):
+        antenna = 'Secondary' if secondary else 'Primary'
+
         # Read the GNSS signal data.
-        data = self._get_gnss_signals_data()
+        data = self._get_gnss_signals_data(secondary=secondary)
         if len(data.messages) == 0:
-            self.logger.info('No GNSS signal data available. Skipping sky plot.')
+            self.logger.info(f'No {antenna.lower()} GNSS signal data available. Skipping sky plot.')
             return
         have_gnss_signals_message = not data.using_legacy_satellite_message
 
         # Setup the figure.
         figure = go.Figure()
-        figure['layout'].update(title='GNSS Sky Plot')
+        figure['layout'].update(title=f'{antenna} GNSS Sky Plot')
         figure['layout']['polar']['radialaxis'].update(range=[90, 0])
         figure['layout']['polar']['angularaxis'].update(visible=False)
 
@@ -1332,13 +1334,19 @@ class Analyzer(object):
 
         figure['layout']['updatemenus'] = updatemenus
 
-        self._add_figure(name='gnss_skyplot', figure=figure, title='GNSS Sky Plot')
+        name = 'gnss_skyplot_secondary' if secondary else 'gnss_skyplot'
+        self._add_figure(name=name, figure=figure, title=f'{antenna} GNSS Sky Plot')
 
-    def plot_gnss_cn0(self):
+    def plot_gnss_skyplot_secondary(self, decimate=True):
+        self.plot_gnss_skyplot(decimate=decimate, secondary=True)
+
+    def plot_gnss_cn0(self, secondary: bool = False):
+        antenna = 'Secondary' if secondary else 'Primary'
+
         # Read the GNSS signal data.
-        data = self._get_gnss_signals_data()
+        data = self._get_gnss_signals_data(secondary=secondary)
         if len(data.messages) == 0:
-            self.logger.info('No GNSS signal data available. Skipping C/N0 plot.')
+            self.logger.info(f'No {antenna.lower()} GNSS signal data available. Skipping C/N0 plot.')
             return
         have_gnss_signals_message = not data.using_legacy_satellite_message
 
@@ -1396,7 +1404,11 @@ class Analyzer(object):
             'yanchor': 'top'
         }]
 
-        self._add_figure(name='gnss_cn0', figure=figure, title='GNSS C/N0 vs. Time')
+        name = 'gnss_cn0_secondary' if secondary else 'gnss_cn0'
+        self._add_figure(name=name, figure=figure, title=f'{antenna} GNSS C/N0 vs Time')
+
+    def plot_gnss_cn0_secondary(self):
+        self.plot_gnss_cn0(secondary=True)
 
     def plot_gnss_azimuth_elevation(self):
         """!
@@ -1482,14 +1494,15 @@ class Analyzer(object):
 
         self._add_figure(name='gnss_azimuth_elevation', figure=figure, title='GNSS Azimuth & Elevation Vs. Time')
 
-    def plot_gnss_signal_status(self):
-        filename = 'gnss_signal_status'
-        figure_title = "GNSS Signal Status"
+    def plot_gnss_signal_status(self, secondary: bool = False):
+        antenna = 'Secondary' if secondary else 'Primary'
+        filename = 'gnss_signal_status_secondary' if secondary else 'gnss_signal_status'
+        figure_title = f'{antenna} GNSS Signal Status'
 
         # Read the GNSS signal data.
-        data = self._get_gnss_signals_data()
+        data = self._get_gnss_signals_data(secondary=secondary)
         if len(data.messages) == 0:
-            self.logger.info('No GNSS signal data available. Skipping signal status plot.')
+            self.logger.info(f'No {antenna.lower()} GNSS signal data available. Skipping signal status plot.')
             return
         have_gnss_signals_message = not data.using_legacy_satellite_message
 
@@ -1795,39 +1808,57 @@ figure.on('plotly_hover', function(data) {{
 
         self._add_figure(name=filename, figure=figure, title=figure_title, inject_js=hover_js)
 
-    def _get_gnss_signals_data(self):
+    def plot_gnss_signal_status_secondary(self):
+        self.plot_gnss_signal_status(secondary=True)
+
+    def _get_gnss_signals_data(self, secondary: bool = False):
         # If we already have data cached, return it.
-        if self._gnss_signals_data is not None:
-            return self._gnss_signals_data
+        if self._gnss_signals_data.get(secondary) is not None:
+            return self._gnss_signals_data[secondary]
 
         # See if we have GNSSSignalsMessages. If so, prefer those.
         params = copy.deepcopy(self.params)
         params['return_numpy'] = False
 
-        # Some devices output GNSSSignalsMessage data for both the primary and secondary GNSS antennas. Exclude the
-        # secondary antenna's data so it is not plotted on top of the primary antenna's. Source ID 1 is a legacy
-        # secondary antenna identifier predating the SourceIdentifier reserved ranges, used by some older devices
-        # instead of SECONDARY_GNSS_ANTENNA (301).
+        # Some devices output GNSSSignalsMessage data for both the primary and secondary GNSS antennas, distinguished
+        # by source ID. Source ID 1 is a legacy secondary antenna identifier predating the SourceIdentifier reserved
+        # ranges, used by some older devices instead of SECONDARY_GNSS_ANTENNA (301).
         secondary_source_ids = {1, SourceIdentifier.SECONDARY_GNSS_ANTENNA}
         available_source_ids = self.reader.get_available_source_ids()
-        params['source_ids'] = available_source_ids - secondary_source_ids
+        if secondary:
+            requested_source_ids = available_source_ids & secondary_source_ids
+        else:
+            requested_source_ids = available_source_ids - secondary_source_ids
+        params['source_ids'] = requested_source_ids
 
-        result = self.reader.read(message_types=[GNSSSignalsMessage], **params)
-        data = result[GNSSSignalsMessage.MESSAGE_TYPE]
+        # If there's no secondary antenna in this log, requested_source_ids will be empty for secondary=True (and,
+        # in the rare case a log has only secondary data, empty for secondary=False too). Passing an empty set to the
+        # reader doesn't filter to nothing — it disables the filter, so we'd get back the other antenna's data instead.
+        # To avoid that, skip the read and build an empty MessageData directly, so len(data.messages) == 0 and the
+        # existing skip logic below fires as expected.
+        if len(requested_source_ids) == 0:
+            data = MessageData(message_type=GNSSSignalsMessage.MESSAGE_TYPE, params=params)
+        else:
+            result = self.reader.read(message_types=[GNSSSignalsMessage], **params)
+            data = result[GNSSSignalsMessage.MESSAGE_TYPE]
 
         # We store the result now, even if there were no GNSSSignalsMessage messages. That way if we also don't have any
         # GNSSSatelliteMessage messages below, we'll have _something_ to return and we won't try to reload from disk on
         # each call to this function.
-        self._gnss_signals_data = data
-        self._gnss_signals_data.using_legacy_satellite_message = False
+        self._gnss_signals_data[secondary] = data
+        data.using_legacy_satellite_message = False
 
         # If we don't have any GNSSSignalsMessages, see if we have the legacy GNSSSatelliteMessage and fall back to
-        # that.
-        if len(data.messages) == 0:
+        # that. The legacy message predates dual-antenna support, so there's no secondary antenna data to fall back
+        # to.
+        if len(data.messages) == 0 and not secondary:
             # The legacy GNSSSatelliteMessage contains data per satellite, not per signal. The plotted C/N0 values will
             # reflect the L1 signal, unless L1 is not being tracked.
-            result = self.reader.read(message_types=[GNSSSatelliteMessage], **params)
-            data = result[GNSSSatelliteMessage.MESSAGE_TYPE]
+            if len(requested_source_ids) == 0:
+                data = MessageData(message_type=GNSSSatelliteMessage.MESSAGE_TYPE, params=params)
+            else:
+                result = self.reader.read(message_types=[GNSSSatelliteMessage], **params)
+                data = result[GNSSSatelliteMessage.MESSAGE_TYPE]
 
             # Convert to GNSSSignalsMessages. Some of the fields, like signal type and tracking/usage status, will be
             # approximated and may not be plotted.
@@ -1840,18 +1871,18 @@ figure.on('plotly_hover', function(data) {{
                 data.messages = [m.to_gnss_signals_message() for m in data.messages]
                 data.message_type = GNSSSignalsMessage.MESSAGE_TYPE
                 data.message_class = GNSSSignalsMessage
-                self._gnss_signals_data = data
-                self._gnss_signals_data.using_legacy_satellite_message = True
+                self._gnss_signals_data[secondary] = data
+                data.using_legacy_satellite_message = True
 
-        self._gnss_signals_data.to_numpy()
+        self._gnss_signals_data[secondary].to_numpy()
 
-        return self._gnss_signals_data
+        return self._gnss_signals_data[secondary]
 
     def clear_gnss_signal_data_cache(self):
         """!
         @brief Clear cached GNSSSignalsMessage data to free memory when finished plotting.
         """
-        self._gnss_signals_data = None
+        self._gnss_signals_data = {}
 
     def plot_dop(self):
         """!
@@ -3507,8 +3538,11 @@ Load and display information stored in a FusionEngine binary file.
             analyzer.plot_pose_error(reference=reference_data)
 
         analyzer.plot_gnss_cn0()
+        analyzer.plot_gnss_cn0_secondary()
         analyzer.plot_gnss_signal_status()
+        analyzer.plot_gnss_signal_status_secondary()
         analyzer.plot_gnss_skyplot()
+        analyzer.plot_gnss_skyplot_secondary()
         analyzer.plot_gnss_azimuth_elevation()
         analyzer.clear_gnss_signal_data_cache()
 
