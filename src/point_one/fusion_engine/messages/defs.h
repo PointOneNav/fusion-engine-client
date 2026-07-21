@@ -599,6 +599,15 @@ enum class SourceIdentifier : uint32_t {
 
 static constexpr SourceIdentifier INVALID_SOURCE_ID = SourceIdentifier::INVALID;
 
+/**
+ * @brief @ref SourceIdentifier stream operator.
+ * @ingroup enum_definitions
+ */
+inline p1_ostream& operator<<(p1_ostream& stream, SourceIdentifier id) {
+  stream << static_cast<uint32_t>(id);
+  return stream;
+}
+
 /** @} */
 
 /**
