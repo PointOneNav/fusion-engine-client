@@ -1849,9 +1849,9 @@ figure.on('plotly_hover', function(data) {{
         data.using_legacy_satellite_message = False
 
         # If we don't have any GNSSSignalsMessages, see if we have the legacy GNSSSatelliteMessage and fall back to
-        # that. The legacy message predates dual-antenna support, so there's no secondary antenna data to fall back
-        # to.
-        if len(data.messages) == 0 and not secondary:
+        # that. Currently, we can still emit the legacy message, and does so per-antenna just like
+        # GNSSSignalsMessage, so apply the same source ID filtering here.
+        if len(data.messages) == 0:
             # The legacy GNSSSatelliteMessage contains data per satellite, not per signal. The plotted C/N0 values will
             # reflect the L1 signal, unless L1 is not being tracked.
             if len(requested_source_ids) == 0:
