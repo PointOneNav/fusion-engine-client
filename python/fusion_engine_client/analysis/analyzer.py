@@ -32,6 +32,7 @@ from ..utils import trace as logging
 from ..utils.argument_parser import ArgumentParser, ExtendedBooleanAction, TriStateBooleanAction, CSVAction
 from ..utils.log import define_cli_arguments as define_log_search_arguments, locate_log
 from ..utils.numpy_utils import find_first
+from ..utils.time_provider import TimeProvider
 from ..utils.trace import HighlightFormatter
 
 
@@ -109,7 +110,7 @@ class Analyzer(object):
                  file: Union[DataLoader, str], ignore_index: bool = False,
                  output_dir: str = None, prefix: str = '',
                  time_range: TimeRange = None, max_messages: int = None,
-                 time_axis: str = 'relative',
+                 time_type: str = 'utc',
                  truncate_long_logs: bool = True, source_id: Optional[List[int]] = None):
         """!
         @brief Create an analyzer for the specified log.
@@ -123,9 +124,11 @@ class Analyzer(object):
                be read. See @ref TimeRange for more details.
         @param max_messages If set, read up to the specified maximum number of messages. Applies across all message
                types.
-        @param time_axis Specify the way in which time will be plotted:
-               - `absolute`, `abs` - Absolute P1 or system timestamps
-               - `relative`, `rel` - Elapsed time since the start of the log
+        @param time_type Specify the way in which time will be plotted:
+               - `utc` - UTC date/time, if available (falls back to P1 time otherwise)
+               - `gps` - GPS time (week and time of week), if available (falls back to P1 time otherwise)
+               - `p1` - Absolute P1 (or system) time
+               - `relative` - Elapsed time since the start of the log
         @param truncate_long_logs If `True`, reduce or skip certain plots if the log extremely long (as defined by
                @ref LONG_LOG_DURATION_SEC).
         """
@@ -170,7 +173,19 @@ class Analyzer(object):
         else:
             self.default_source_id = 0
 
-        if time_axis in ('relative', 'rel'):
+        # Load the P1/GPS time correspondence for this log, used to support time_type 'gps' and 'utc'.
+        self.time_provider = TimeProvider()
+        self.time_provider.set_reference_data(self.reader, source_id=self.default_source_id)
+
+        if time_type not in ('utc', 'gps', 'p1', 'relative'):
+            raise ValueError(f"Unsupported time type specifier '{time_type}'.")
+        elif time_type in ('gps', 'utc') and not self.time_provider.has_gps_reference():
+            _logger.warning("No GPS time reference available in this log. Falling back to P1 time.")
+            time_type = 'p1'
+
+        self.time_type = time_type
+
+        if self.time_type == 'relative':
             self.time_axis = 'relative'
             self.t0 = self.reader.t0
             if self.t0 is None:
@@ -182,14 +197,14 @@ class Analyzer(object):
 
             self.p1_time_label = 'Relative Time (sec)'
             self.system_time_label = 'Relative Time (sec)'
-        elif time_axis in ('absolute', 'abs'):
+        else:
+            # Per-plot support for 'gps'/'utc' x-axis values is added incrementally (see _resolve_x_axis()); until a
+            # given plot has been updated, it falls back to absolute P1/system time here.
             self.time_axis = 'absolute'
             self.t0 = Timestamp(0.0)
             self.system_t0 = 0.0
             self.p1_time_label = 'P1 Time (sec)'
             self.system_time_label = 'System Time (sec)'
-        else:
-            raise ValueError(f"Unsupported time axis specifier '{time_axis}'.")
 
         self.plots = {}
         self.summary = ''
@@ -3427,10 +3442,17 @@ Load and display information stored in a FusionEngine binary file.
         '-m', '--measurements', action=ExtendedBooleanAction,
         help="Plot incoming measurement data (slow). Ignored if --plot is specified.")
     plot_group.add_argument(
-        '--time-axis', choices=('absolute', 'abs', 'relative', 'rel'), default='absolute',
+        '--time-type', choices=('utc', 'gps', 'p1', 'relative'), default='utc',
         help="Specify the way in which time will be plotted:"
-             "\n- absolute, abs - Absolute P1 or system timestamps"
-             "\n- relative, rel - Elapsed time since the start of the log")
+             "\n- utc - UTC date/time, if available (falls back to P1 time otherwise)"
+             "\n- gps - GPS time (week and time of week), if available (falls back to P1 time otherwise)"
+             "\n- p1 - Absolute P1 (or system) time"
+             "\n- relative - Elapsed time since the start of the log")
+    plot_group.add_argument(
+        '--time-axis', choices=('absolute', 'abs', 'relative', 'rel'), default=None,
+        help="Deprecated. Use --time-type instead. If specified, overrides --time-type:"
+             "\n- absolute, abs - Equivalent to --time-type=utc"
+             "\n- relative, rel - Equivalent to --time-type=relative")
     plot_group.add_argument(
         '--truncate', '--trunc', action=ExtendedBooleanAction, default=True,
         help="When processing a very long log (>%.1f hours), reduce or skip some plots that may be very slow to "
@@ -3553,10 +3575,18 @@ Load and display information stored in a FusionEngine binary file.
             _logger.error('Source identifiers must be integers. Exiting.')
             sys.exit(1)
 
+    # --time-axis is deprecated in favor of --time-type, but still accepted for backwards compatibility.
+    time_type = options.time_type
+    if options.time_axis is not None:
+        if options.time_axis in ('relative', 'rel'):
+            time_type = 'relative'
+        elif options.time_axis in ('absolute', 'abs'):
+            time_type = 'utc'
+
     # Read pose data from the file.
     analyzer = Analyzer(file=input_path, output_dir=output_dir, ignore_index=options.ignore_index,
                         prefix=options.prefix + '.' if options.prefix is not None else '',
-                        time_range=time_range, time_axis=options.time_axis,
+                        time_range=time_range, time_type=time_type,
                         truncate_long_logs=options.truncate and options.plot is None, source_id=source_id)
 
     # Resolve reference data, if specified. This must happen after the analyzer (and its DataLoader) for the primary
