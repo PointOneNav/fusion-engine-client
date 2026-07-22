@@ -1124,19 +1124,22 @@ class Analyzer(object):
                 indices_by_engine['Nav Engine'].append(len(map_data) - 1)
 
         # Read the pose data.
+        have_pose_data = False
         for source_id in self.source_ids:
             result = self.reader.read(message_types=[PoseMessage], source_ids=[source_id], **self.params)
             pose_data = result[PoseMessage.MESSAGE_TYPE]
 
             if len(pose_data.p1_time) == 0:
-                self.logger.info('No pose data available for source ID {}. Skipping map display.'.format(source_id))
-                return
+                self.logger.info('No pose data available for source ID {}. Skipping.'.format(source_id))
+                continue
 
             # Remove invalid solutions.
             valid_idx = np.logical_and(~np.isnan(pose_data.p1_time), pose_data.solution_type != SolutionType.Invalid)
             if not np.any(valid_idx):
                 self.logger.info('No valid position solutions detected for source ID {}.'.format(source_id))
-                return
+                continue
+
+            have_pose_data = True
 
             time = pose_data.p1_time[valid_idx] - float(self.t0)
             solution_type = pose_data.solution_type[valid_idx]
@@ -1151,6 +1154,9 @@ class Analyzer(object):
                     name = info.name
                 _plot_data(name=name, selected_idx=solution_type == type, flags=flags, source_id=source_id,
                            marker_style=info.style)
+
+        if not have_pose_data:
+            return
 
         # Create the map.
         title = 'Vehicle Trajectory'
@@ -1417,10 +1423,17 @@ class Analyzer(object):
         """!
         @brief Plot GNSS azimuth/elevation angles.
         """
+        for source_id in self._get_gnss_antenna_source_ids():
+            self._plot_gnss_azimuth_elevation_for_source(source_id)
+
+    def _plot_gnss_azimuth_elevation_for_source(self, source_id: int):
+        label = self._gnss_antenna_label(source_id)
+
         # Read the GNSS signal data.
-        data = self._get_gnss_signals_data(self.default_source_id)
+        data = self._get_gnss_signals_data(source_id)
         if len(data.messages) == 0:
-            self.logger.info('No GNSS signal data available. Skipping azimuth/elevation time series plot.')
+            self.logger.info(f'No GNSS signal data available for source ID {source_id}. Skipping azimuth/elevation '
+                             'time series plot.')
             return
 
         # Set up the figure.
@@ -1495,7 +1508,8 @@ class Analyzer(object):
             'yanchor': 'top'
         }]
 
-        self._add_figure(name='gnss_azimuth_elevation', figure=figure, title='GNSS Azimuth & Elevation Vs. Time')
+        name = self._gnss_plot_filename('gnss_azimuth_elevation', source_id)
+        self._add_figure(name=name, figure=figure, title=f'{label} GNSS Azimuth & Elevation vs Time')
 
     def plot_gnss_signal_status(self):
         for source_id in self._get_gnss_antenna_source_ids():
