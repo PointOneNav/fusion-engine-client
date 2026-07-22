@@ -1121,8 +1121,8 @@ class CalibrationStatus(MessagePayload):
         self._STRUCT.pack_into(
             buffer, offset,
             self.calibration_stage,
-            self.ypr_deg[0], self.ypr_deg[2], self.ypr_deg[3],
-            self.ypr_std_dev_deg[0], self.ypr_std_dev_deg[2], self.ypr_std_dev_deg[3],
+            self.ypr_deg[0], self.ypr_deg[1], self.ypr_deg[2],
+            self.ypr_std_dev_deg[0], self.ypr_std_dev_deg[1], self.ypr_std_dev_deg[2],
             self.travel_distance_m,
             self.state_verified,
             self.gyro_bias_percent_complete * 2.0,
