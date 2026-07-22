@@ -24,6 +24,7 @@ if __name__ == "__main__" and (__package__ is None or __package__ == ''):
     __package__ = "fusion_engine_client.analysis"
 
 from ..messages import *
+from ..messages.timestamp import SECONDS_PER_WEEK
 from .attitude import get_enu_rotation_matrix
 from .data_loader import DataLoader, MessageData, TimeRange
 from .reference import ReferenceData, _OWN_LOG_STATISTICS
@@ -3476,9 +3477,8 @@ var time_axis_type = '{time_axis_type}';
         if gps_time_sec is None or np.isnan(gps_time_sec):
             return "GPS: N/A<br>UTC: N/A"
         else:
-            SECS_PER_WEEK = 7 * 24 * 3600.0
-            week = int(gps_time_sec / SECS_PER_WEEK)
-            tow_sec = gps_time_sec - week * SECS_PER_WEEK
+            week = int(gps_time_sec / SECONDS_PER_WEEK)
+            tow_sec = gps_time_sec - week * SECONDS_PER_WEEK
             utc_time = gpstime.fromgps(gps_time_sec)
             approx_str = ' (approximated)' if is_approx else ''
             return "GPS: %d:%.3f (%.3f sec)%s<br>UTC: %s%s" %\
