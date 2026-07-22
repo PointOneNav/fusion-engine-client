@@ -468,7 +468,7 @@ figure.on('plotly_hover', function(data) {
 
         figure.update_layout(title_text='NOTE: Latency assumes the host system clock is synced to GPS time. '
                                         'Any error will impact the latency computation.')
-        self._add_figure(name="host_latency", figure=figure, title="Host Recieved Latency")
+        self._add_figure(name="host_latency", figure=figure, title="Host Received Latency")
 
     def plot_reset_timing(self):
         if self.output_dir is None:
