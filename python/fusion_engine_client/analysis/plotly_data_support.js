@@ -83,13 +83,17 @@ function BuildTimeHoverTextFromTimes(p1_time_sec, gps_time_sec) {
 
 function ChangeHoverText(point, new_text) {
   // Note: Technically calling restyle() is more correct, however it can only restyle an entire trace, not just one
-  // point in a trace, and in practice it's very sluggish. Manually modifying fullData.text is much faster. Both options
-  // seem to have a small race condition and occasionally the text does not change before the hover div becomes visible.
-  // Nothing we can do about that right now.
-  // let text_array = point.data.text;
-  // text_array[point.pointNumber] = new_text;
-  // Plotly.restyle(d, {'text': text_array}, [point.curveNumber]);
-  point.fullData.text = new_text;
+  // point in a trace, and in practice it's very sluggish. Manually modifying fullData.text is much faster.
+  //
+  // fullData.text must stay an array indexed by pointNumber, not a single string -- Plotly treats a plain string as
+  // shared text for every point in the trace. Setting it that way here previously caused the hover box to always
+  // display whichever point was hovered *previously*: hovering point A set the whole trace's text to A's value: only
+  // on the *next* hover (now on point B) would it be overwritten, by which point the still-stale text for A had
+  // already been rendered. Mutating a single array slot for this point avoids touching every other point's entry.
+  if (!Array.isArray(point.fullData.text)) {
+    point.fullData.text = [];
+  }
+  point.fullData.text[point.pointNumber] = new_text;
 }
 
 function GetCustomData(point, row) {
