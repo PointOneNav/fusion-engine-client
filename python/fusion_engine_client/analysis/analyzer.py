@@ -25,7 +25,7 @@ if __name__ == "__main__" and (__package__ is None or __package__ == ''):
 
 from ..messages import *
 from .attitude import get_enu_rotation_matrix
-from .data_loader import DataLoader, TimeRange
+from .data_loader import DataLoader, MessageData, TimeRange
 from .reference import ReferenceData, _OWN_LOG_STATISTICS
 from ..parsers.file_index import HostTimeIndexMap
 from ..utils import trace as logging
@@ -196,7 +196,8 @@ class Analyzer(object):
 
         self._mapbox_token_missing = False
 
-        self._gnss_signals_data = None
+        self._gnss_signals_data = {}
+        self._gnss_antenna_source_ids = None
 
         if self.output_dir is not None:
             if not os.path.exists(self.output_dir):
@@ -1199,16 +1200,22 @@ class Analyzer(object):
         self._add_figure(name="map", figure=figure, title="Vehicle Trajectory (Map)", config={'scrollZoom': True})
 
     def plot_gnss_skyplot(self, decimate=True):
+        for source_id in self._get_gnss_antenna_source_ids():
+            self._plot_gnss_skyplot_for_source(source_id, decimate=decimate)
+
+    def _plot_gnss_skyplot_for_source(self, source_id: int, decimate=True):
+        label = self._gnss_antenna_label(source_id)
+
         # Read the GNSS signal data.
-        data = self._get_gnss_signals_data()
+        data = self._get_gnss_signals_data(source_id)
         if len(data.messages) == 0:
-            self.logger.info('No GNSS signal data available. Skipping sky plot.')
+            self.logger.info(f'No GNSS signal data available for source ID {source_id}. Skipping sky plot.')
             return
         have_gnss_signals_message = not data.using_legacy_satellite_message
 
         # Setup the figure.
         figure = go.Figure()
-        figure['layout'].update(title='GNSS Sky Plot')
+        figure['layout'].update(title=f'{label} GNSS Sky Plot')
         figure['layout']['polar']['radialaxis'].update(range=[90, 0])
         figure['layout']['polar']['angularaxis'].update(visible=False)
 
@@ -1332,13 +1339,20 @@ class Analyzer(object):
 
         figure['layout']['updatemenus'] = updatemenus
 
-        self._add_figure(name='gnss_skyplot', figure=figure, title='GNSS Sky Plot')
+        name = self._gnss_plot_filename('gnss_skyplot', source_id)
+        self._add_figure(name=name, figure=figure, title=f'{label} GNSS Sky Plot')
 
     def plot_gnss_cn0(self):
+        for source_id in self._get_gnss_antenna_source_ids():
+            self._plot_gnss_cn0_for_source(source_id)
+
+    def _plot_gnss_cn0_for_source(self, source_id: int):
+        label = self._gnss_antenna_label(source_id)
+
         # Read the GNSS signal data.
-        data = self._get_gnss_signals_data()
+        data = self._get_gnss_signals_data(source_id)
         if len(data.messages) == 0:
-            self.logger.info('No GNSS signal data available. Skipping C/N0 plot.')
+            self.logger.info(f'No GNSS signal data available for source ID {source_id}. Skipping C/N0 plot.')
             return
         have_gnss_signals_message = not data.using_legacy_satellite_message
 
@@ -1396,14 +1410,15 @@ class Analyzer(object):
             'yanchor': 'top'
         }]
 
-        self._add_figure(name='gnss_cn0', figure=figure, title='GNSS C/N0 vs. Time')
+        name = self._gnss_plot_filename('gnss_cn0', source_id)
+        self._add_figure(name=name, figure=figure, title=f'{label} GNSS C/N0 vs Time')
 
     def plot_gnss_azimuth_elevation(self):
         """!
         @brief Plot GNSS azimuth/elevation angles.
         """
         # Read the GNSS signal data.
-        data = self._get_gnss_signals_data()
+        data = self._get_gnss_signals_data(self.default_source_id)
         if len(data.messages) == 0:
             self.logger.info('No GNSS signal data available. Skipping azimuth/elevation time series plot.')
             return
@@ -1483,13 +1498,19 @@ class Analyzer(object):
         self._add_figure(name='gnss_azimuth_elevation', figure=figure, title='GNSS Azimuth & Elevation Vs. Time')
 
     def plot_gnss_signal_status(self):
-        filename = 'gnss_signal_status'
-        figure_title = "GNSS Signal Status"
+        for source_id in self._get_gnss_antenna_source_ids():
+            self._plot_gnss_signal_status_for_source(source_id)
+
+    def _plot_gnss_signal_status_for_source(self, source_id: int):
+        label = self._gnss_antenna_label(source_id)
+        filename = self._gnss_plot_filename('gnss_signal_status', source_id)
+        figure_title = f'{label} GNSS Signal Status'
 
         # Read the GNSS signal data.
-        data = self._get_gnss_signals_data()
+        data = self._get_gnss_signals_data(source_id)
         if len(data.messages) == 0:
-            self.logger.info('No GNSS signal data available. Skipping signal status plot.')
+            self.logger.info(f'No GNSS signal data available for source ID {source_id}. Skipping signal status '
+                             'plot.')
             return
         have_gnss_signals_message = not data.using_legacy_satellite_message
 
@@ -1795,31 +1816,75 @@ figure.on('plotly_hover', function(data) {{
 
         self._add_figure(name=filename, figure=figure, title=figure_title, inject_js=hover_js)
 
-    def _get_gnss_signals_data(self):
+    def _get_gnss_antenna_source_ids(self) -> List[int]:
+        """!
+        @brief Get the source IDs, restricted to known GNSS antenna identifiers, present in this log.
+
+        `self.source_ids` includes every source ID seen across all message types (and may be further restricted by
+        the user's --source-id argument), so it isn't specific to GNSS antennas. Restrict it here to the known
+        antenna identifiers so we don't attempt (and skip) a GNSS signal read for unrelated source IDs, e.g. ones
+        only used for IMU or wheel speed data.
+        """
+        if self._gnss_antenna_source_ids is None:
+            # 0/1 are the legacy primary/secondary antenna identifiers, predating the SourceIdentifier reserved
+            # ranges. 300-399 is reserved for GNSS receivers/antennae.
+            self._gnss_antenna_source_ids = sorted(
+                sid for sid in self.source_ids if sid in (0, 1) or 300 <= sid <= 399)
+        return self._gnss_antenna_source_ids
+
+    def _gnss_antenna_label(self, source_id: int) -> str:
+        if source_id in (0, SourceIdentifier.PRIMARY_GNSS_ANTENNA):
+            return 'Primary'
+        elif source_id in (1, SourceIdentifier.SECONDARY_GNSS_ANTENNA):
+            return 'Secondary'
+        else:
+            return f'Source {source_id}'
+
+    def _gnss_plot_filename(self, base_name: str, source_id: int) -> str:
+        # Keep the primary antenna's filename unsuffixed for backward compatibility with existing links/tooling.
+        if source_id in (0, SourceIdentifier.PRIMARY_GNSS_ANTENNA):
+            return base_name
+        else:
+            return f'{base_name}_{self._gnss_antenna_label(source_id).lower().replace(" ", "_")}'
+
+    def _get_gnss_signals_data(self, source_id: int):
         # If we already have data cached, return it.
-        if self._gnss_signals_data is not None:
-            return self._gnss_signals_data
+        if self._gnss_signals_data.get(source_id) is not None:
+            return self._gnss_signals_data[source_id]
 
         # See if we have GNSSSignalsMessages. If so, prefer those.
         params = copy.deepcopy(self.params)
         params['return_numpy'] = False
+        params['source_ids'] = {source_id}
 
-        result = self.reader.read(message_types=[GNSSSignalsMessage], **params)
-        data = result[GNSSSignalsMessage.MESSAGE_TYPE]
+        available_source_ids = self.reader.get_available_source_ids()
+
+        # DataLoader/MixedLogReader treat an empty (but non-None) source_ids filter as "no filter" rather than
+        # "match nothing", so if this source ID isn't actually present in the log, skip the read entirely instead
+        # of getting back every source ID's data.
+        if source_id not in available_source_ids:
+            data = MessageData(message_type=GNSSSignalsMessage.MESSAGE_TYPE, params=params)
+        else:
+            result = self.reader.read(message_types=[GNSSSignalsMessage], **params)
+            data = result[GNSSSignalsMessage.MESSAGE_TYPE]
 
         # We store the result now, even if there were no GNSSSignalsMessage messages. That way if we also don't have any
         # GNSSSatelliteMessage messages below, we'll have _something_ to return and we won't try to reload from disk on
         # each call to this function.
-        self._gnss_signals_data = data
-        self._gnss_signals_data.using_legacy_satellite_message = False
+        self._gnss_signals_data[source_id] = data
+        data.using_legacy_satellite_message = False
 
         # If we don't have any GNSSSignalsMessages, see if we have the legacy GNSSSatelliteMessage and fall back to
-        # that.
+        # that. Current firmware can still emit the legacy message, and does so per-antenna just like
+        # GNSSSignalsMessage, so apply the same source ID filtering here.
         if len(data.messages) == 0:
             # The legacy GNSSSatelliteMessage contains data per satellite, not per signal. The plotted C/N0 values will
             # reflect the L1 signal, unless L1 is not being tracked.
-            result = self.reader.read(message_types=[GNSSSatelliteMessage], **params)
-            data = result[GNSSSatelliteMessage.MESSAGE_TYPE]
+            if source_id not in available_source_ids:
+                data = MessageData(message_type=GNSSSatelliteMessage.MESSAGE_TYPE, params=params)
+            else:
+                result = self.reader.read(message_types=[GNSSSatelliteMessage], **params)
+                data = result[GNSSSatelliteMessage.MESSAGE_TYPE]
 
             # Convert to GNSSSignalsMessages. Some of the fields, like signal type and tracking/usage status, will be
             # approximated and may not be plotted.
@@ -1832,18 +1897,18 @@ figure.on('plotly_hover', function(data) {{
                 data.messages = [m.to_gnss_signals_message() for m in data.messages]
                 data.message_type = GNSSSignalsMessage.MESSAGE_TYPE
                 data.message_class = GNSSSignalsMessage
-                self._gnss_signals_data = data
-                self._gnss_signals_data.using_legacy_satellite_message = True
+                self._gnss_signals_data[source_id] = data
+                data.using_legacy_satellite_message = True
 
-        self._gnss_signals_data.to_numpy()
+        self._gnss_signals_data[source_id].to_numpy()
 
-        return self._gnss_signals_data
+        return self._gnss_signals_data[source_id]
 
     def clear_gnss_signal_data_cache(self):
         """!
         @brief Clear cached GNSSSignalsMessage data to free memory when finished plotting.
         """
-        self._gnss_signals_data = None
+        self._gnss_signals_data = {}
 
     def plot_dop(self):
         """!
