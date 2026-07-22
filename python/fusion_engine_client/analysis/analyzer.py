@@ -898,7 +898,7 @@ figure.on('plotly_hover', function(data) {
         self._add_figure(name="stationary_status", figure=figure, title="Stationary Status",
                          inject_js=self._TIME_HOVER_JS)
 
-    def _plot_displacement(self, source, time, solution_type, displacement_enu_m, std_enu_m,
+    def _plot_displacement(self, source, p1_time, solution_type, displacement_enu_m, std_enu_m, gps_time=None,
                            title='Displacement'):
         """!
         @brief Generate a topocentric (top-down) plot of position displacement, as well as plot of displacement over
@@ -907,9 +907,21 @@ figure.on('plotly_hover', function(data) {
         if self.output_dir is None:
             return
 
+        # Note: _resolve_x_axis() can do this internally, but we also need it for the topo customdata below.
+        if gps_time is None:
+            gps_time = self.time_provider.p1_to_gps(p1_time)
+
+        time, axis_layout = self._resolve_x_axis(p1_time=p1_time, gps_time=gps_time)
+        time_customdata = self._time_hover_customdata(p1_time=p1_time, gps_time=gps_time)
+
+        # The topocentric plot's axes are spatial (East/North), not time, so unlike time_customdata above (which
+        # carries only whichever of P1/GPS time is not already reflected by the X axis), its hover text needs both
+        # times directly -- neither is recoverable from a point's X/Y position.
+        topo_customdata = np.vstack((p1_time, gps_time, displacement_enu_m, std_enu_m))
+        time_customdata = np.vstack((time_customdata, displacement_enu_m, std_enu_m))
+
         # Setup the figure.
-        topo_figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=False,
-                                    subplot_titles=[title])
+        topo_figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=False, subplot_titles=[title])
         topo_figure['layout']['xaxis1'].update(title="East (m)")
         topo_figure['layout']['yaxis1'].update(title="North (m)")
 
@@ -917,14 +929,14 @@ figure.on('plotly_hover', function(data) {
                                     subplot_titles=['3D', 'East', 'North', 'Up'])
         time_figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
         for i in range(4):
-            time_figure['layout']['xaxis%d' % (i + 1)].update(title=self.p1_time_label, showticklabels=True)
+            time_figure['layout']['xaxis%d' % (i + 1)].update(showticklabels=True, **axis_layout)
         time_figure['layout']['yaxis1'].update(title=f"{title} (m)")
         time_figure['layout']['yaxis2'].update(title=f"{title} (m)")
         time_figure['layout']['yaxis3'].update(title=f"{title} (m)")
         time_figure['layout']['yaxis4'].update(title=f"{title} (m)")
 
         # Remove invalid solutions.
-        valid_idx = np.logical_and(~np.isnan(time), solution_type != SolutionType.Invalid)
+        valid_idx = np.logical_and(~np.isnan(p1_time), solution_type != SolutionType.Invalid)
         if not np.any(valid_idx):
             self.logger.info('No valid position solutions detected. Skipping displacement plots.')
             return
@@ -962,24 +974,22 @@ figure.on('plotly_hover', function(data) {
                 style['marker'].update(marker_style)
 
             if np.any(idx):
-                text = ["Time: %.3f sec (%.3f sec)<br>Delta (ENU): (%.2f, %.2f, %.2f) m" \
-                        "<br>Std (ENU): (%.2f, %.2f, %.2f) m" %
-                        (t, t + float(self.t0), *delta, *std)
-                        for t, delta, std in zip(time[idx], displacement_enu_m[:, idx].T, std_enu_m[:, idx].T)]
+                topo_cd = topo_customdata[:, idx]
+                time_cd = time_customdata[:, idx]
                 topo_figure.add_trace(go.Scattergl(x=displacement_enu_m[0, idx], y=displacement_enu_m[1, idx],
-                                                   name=name, text=text, **style), 1, 1)
+                                                   name=name, customdata=topo_cd, **style), 1, 1)
 
                 displacement_3d_m = np.linalg.norm(displacement_enu_m[:, idx], axis=0)
                 max_3d_diff_m[0] = max(max_3d_diff_m[0], np.nanmax(displacement_3d_m))
                 time_figure.add_trace(go.Scattergl(x=time[idx], y=displacement_3d_m,
-                                                   name=name, text=text, **style), 1, 1)
+                                                   name=name, customdata=time_cd, **style), 1, 1)
                 style['showlegend'] = False
                 time_figure.add_trace(go.Scattergl(x=time[idx], y=displacement_enu_m[0, idx], name=name,
-                                                   text=text, **style), 2, 1)
+                                                   customdata=time_cd, **style), 2, 1)
                 time_figure.add_trace(go.Scattergl(x=time[idx], y=displacement_enu_m[1, idx], name=name,
-                                                   text=text, **style), 3, 1)
+                                                   customdata=time_cd, **style), 3, 1)
                 time_figure.add_trace(go.Scattergl(x=time[idx], y=displacement_enu_m[2, idx], name=name,
-                                                   text=text, **style), 4, 1)
+                                                   customdata=time_cd, **style), 4, 1)
             else:
                 # If there's no data, draw a dummy trace so it shows up in the legend anyway.
                 topo_figure.add_trace(go.Scattergl(x=[np.nan], y=[np.nan], name=name, visible='legendonly', **style),
@@ -997,8 +1007,48 @@ figure.on('plotly_hover', function(data) {
         time_figure['layout']['yaxis1'].update(range=[0, max_y])
 
         name = source.replace(' ', '_').lower()
-        self._add_figure(name=f"{name}_top_down", figure=topo_figure, title=f"{source}: Top-Down (Topocentric)")
-        self._add_figure(name=f"{name}_vs_time", figure=time_figure, title=f"{source}: vs. Time")
+
+        # Topocentric hover: X/Y are spatial (East/North), not time, so both P1 and GPS time must come directly from
+        # customdata (rows 0/1) rather than from the point's axis position -- see BuildTimeHoverTextFromTimes().
+        _DISPLACEMENT_TOPO_HOVER_JS = """\
+figure.on('plotly_hover', function(data) {
+  for (let i = 0; i < data.points.length; ++i) {
+    let point = data.points[i];
+    if (!point.data.customdata) {
+      continue;
+    }
+    let new_text = BuildTimeHoverTextFromTimes(GetCustomData(point, 0), GetCustomData(point, 1));
+    new_text += `<br>Delta (ENU): (${GetCustomData(point, 2).toFixed(2)}, ${GetCustomData(point, 3).toFixed(2)}, ` +
+                `${GetCustomData(point, 4).toFixed(2)}) m`;
+    new_text += `<br>Std (ENU): (${GetCustomData(point, 5).toFixed(2)}, ${GetCustomData(point, 6).toFixed(2)}, ` +
+                `${GetCustomData(point, 7).toFixed(2)}) m`;
+    ChangeHoverText(point, new_text);
+  }
+});
+        """
+
+        # Time-series hover: like _TIME_HOVER_JS, but with extra Delta/Std (ENU) customdata rows appended.
+        _DISPLACEMENT_TIME_HOVER_JS = """\
+figure.on('plotly_hover', function(data) {
+  for (let i = 0; i < data.points.length; ++i) {
+    let point = data.points[i];
+    if (!point.data.customdata) {
+      continue;
+    }
+    let new_text = BuildTimeHoverText(point.x, GetCustomData(point, 0));
+    new_text += `<br>Delta (ENU): (${GetCustomData(point, 1).toFixed(2)}, ${GetCustomData(point, 2).toFixed(2)}, ` +
+                `${GetCustomData(point, 3).toFixed(2)}) m`;
+    new_text += `<br>Std (ENU): (${GetCustomData(point, 4).toFixed(2)}, ${GetCustomData(point, 5).toFixed(2)}, ` +
+                `${GetCustomData(point, 6).toFixed(2)}) m`;
+    ChangeHoverText(point, new_text);
+  }
+});
+        """ + self._GPS_TICK_REFORMAT_JS
+
+        self._add_figure(name=f"{name}_top_down", figure=topo_figure, title=f"{source}: Top-Down (Topocentric)",
+                         inject_js=_DISPLACEMENT_TOPO_HOVER_JS)
+        self._add_figure(name=f"{name}_vs_time", figure=time_figure, title=f"{source}: vs. Time",
+                         inject_js=_DISPLACEMENT_TIME_HOVER_JS)
 
     def plot_pose_error(self, reference: ReferenceData):
         """!
@@ -1053,7 +1103,7 @@ figure.on('plotly_hover', function(data) {
             self.logger.info('No valid position solutions detected. Skipping displacement plots.')
             return None
 
-        time = pose_data.p1_time[valid_idx] - float(self.t0)
+        p1_time = pose_data.p1_time[valid_idx]
         gps_time = pose_data.gps_time[valid_idx]
         solution_type = pose_data.solution_type[valid_idx]
         lla_deg = pose_data.lla_deg[:, valid_idx]
@@ -1072,7 +1122,8 @@ figure.on('plotly_hover', function(data) {
                                 f"range. Skipping displacement plots.")
             return None
         elif not np.all(valid_ref_idx):
-            time = time[valid_ref_idx]
+            p1_time = p1_time[valid_ref_idx]
+            gps_time = gps_time[valid_ref_idx]
             solution_type = solution_type[valid_ref_idx]
             lla_deg = lla_deg[:, valid_ref_idx]
             std_enu_m = std_enu_m[:, valid_ref_idx]
@@ -1087,7 +1138,7 @@ figure.on('plotly_hover', function(data) {
         source = f'Position {axis_title} vs. {"Reference" if reference.is_truth else reference.description}'
 
         self._plot_displacement(source=source, title=axis_title,
-                                time=time, solution_type=solution_type,
+                                p1_time=p1_time, gps_time=gps_time, solution_type=solution_type,
                                 displacement_enu_m=displacement_enu_m, std_enu_m=std_enu_m)
 
         return displacement_enu_m
@@ -1115,12 +1166,15 @@ figure.on('plotly_hover', function(data) {
             self.logger.info('No valid position solutions detected. Skipping relative position vs. base station plots.')
             return
 
-        time = relative_position_data.p1_time[valid_idx] - float(self.t0)
+        p1_time = relative_position_data.p1_time[valid_idx]
+        gps_time = relative_position_data.gps_time[valid_idx]
         solution_type = relative_position_data.solution_type[valid_idx]
         displacement_enu_m = relative_position_data.relative_position_enu_m[:, valid_idx]
         std_enu_m = relative_position_data.position_std_enu_m[:, valid_idx]
 
-        self._plot_displacement('Position vs. Base Station', time, solution_type, displacement_enu_m, std_enu_m)
+        self._plot_displacement('Position vs. Base Station', p1_time=p1_time, gps_time=gps_time,
+                                solution_type=solution_type, displacement_enu_m=displacement_enu_m,
+                                std_enu_m=std_enu_m)
 
     def plot_map(self, mapbox_token):
         """!

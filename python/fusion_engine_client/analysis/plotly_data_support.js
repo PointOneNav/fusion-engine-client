@@ -51,6 +51,14 @@ function BuildTimeHoverText(x_value, other_time_sec) {
     p1_time_sec = other_time_sec;
   }
 
+  return BuildTimeHoverTextFromTimes(p1_time_sec, gps_time_sec);
+}
+
+// Same as BuildTimeHoverText(), but for hover text on a plot whose X/Y axes are not time at all (e.g. a topocentric
+// East/North plot), where neither P1 nor GPS time can be recovered from the point's axis position -- both must be
+// supplied directly (e.g. via customdata).
+function BuildTimeHoverTextFromTimes(p1_time_sec, gps_time_sec) {
+  let have_offset = (typeof gps_posix_offset_sec === 'number');
   let lines = [];
 
   if (p1_time_sec !== undefined && p1_time_sec !== null && !isNaN(p1_time_sec)) {
