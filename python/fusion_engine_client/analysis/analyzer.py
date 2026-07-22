@@ -2278,13 +2278,18 @@ figure.on('plotly_hover', function(data) {{
                 self.logger.warning('Both raw and corrected %s data present, but timestamped with different '
                                     'sources. Plotted data may not align in time.' % source)
 
+        # Time-type-based (relative/P1/GPS/UTC) axis display is only meaningful when all of the data being plotted is
+        # natively in P1 time -- there's no P1/GPS correspondence to fall back on for other time sources (system time
+        # of reception, etc.), which are only ever used for input messages.
+        use_time_type = same_time_source and common_time_source == SystemTimeSource.P1_TIME
+
         if same_time_source:
             time_name = self._time_source_to_display_name(common_time_source)
             figure['layout']['annotations'][0]['text'] += '<br>Time Source: %s' % time_name
 
-            time_label = f'{time_name} Time (sec)'
+            axis_layout = self._x_axis_layout() if use_time_type else {'title': f'{time_name} Time (sec)'}
             for i in range(len(titles)):
-                figure['layout']['xaxis%d' % (i + 1)].update(title=time_label, showticklabels=True)
+                figure['layout']['xaxis%d' % (i + 1)].update(showticklabels=True, **axis_layout)
         else:
             corrected_time_name = self._time_source_to_display_name(corrected_time_source)
             raw_time_name = self._time_source_to_display_name(raw_time_source)
@@ -2335,31 +2340,67 @@ figure.on('plotly_hover', function(data) {{
                     nav_engine_speed_name = '|3D Speed Estimate| (Nav Engine)'
 
             if nav_engine_speed_mps is not None:
-                time = nav_engine_p1_time - float(self.t0)
-                text = ["P1: %.3f sec" % t for t in nav_engine_p1_time]
-                figure.add_trace(go.Scattergl(x=time, y=nav_engine_speed_mps, text=text, name=nav_engine_speed_name,
-                                              mode='lines', line={'color': 'black', 'dash': 'dash'}),
+                if use_time_type:
+                    nav_time, _ = self._resolve_x_axis(p1_time=nav_engine_p1_time)
+                    nav_kwargs = {'customdata': self._time_hover_customdata(p1_time=nav_engine_p1_time)}
+                else:
+                    nav_time = nav_engine_p1_time - float(self.t0)
+                    nav_kwargs = {'text': ["P1: %.3f sec" % t for t in nav_engine_p1_time]}
+                figure.add_trace(go.Scattergl(x=nav_time, y=nav_engine_speed_mps, name=nav_engine_speed_name,
+                                              mode='lines', line={'color': 'black', 'dash': 'dash'}, **nav_kwargs),
                                  1, 1)
 
+        # Hover text helper functions.
+        def _get_time_and_hover_data(abs_time_sec, time_source):
+            # If every message being plotted is natively in P1 time, use the current --time-type (relative/P1/GPS/
+            # UTC) axis and shared hover text; otherwise fall back to plotting in the message's own raw time source,
+            # which has no P1/GPS correspondence to convert from.
+            #
+            # Returns (time, time_sec, hover_kwargs): `time` is the X axis value to plot (may be a datetime64 array
+            # in UTC mode), while `time_sec` is always plain elapsed seconds, suitable for interval/rate calculations.
+            if use_time_type:
+                time, _ = self._resolve_x_axis(p1_time=abs_time_sec)
+                return time, abs_time_sec, {'customdata': self._time_hover_customdata(p1_time=abs_time_sec)}
+            else:
+                t0 = self._get_t0_for_time_source(time_source)
+                time = abs_time_sec - t0
+                time_name = self._time_source_to_display_name(time_source)
+                text = ["%s Time: %.3f sec" % (time_name, t) for t in abs_time_sec]
+                return time, abs_time_sec, {'text': text}
+
+        def _slice_hover_kwargs(hover_kwargs, s):
+            # Slice a {'text': ...} or {'customdata': ...} dict (see _get_time_and_hover_data()) down to a subset of
+            # points, e.g. for a trace plotted against time[1:] (an interval or rate derived via np.diff()).
+            if 'text' in hover_kwargs:
+                return {'text': hover_kwargs['text'][s]}
+            elif 'customdata' in hover_kwargs:
+                return {'customdata': hover_kwargs['customdata'][:, s]}
+            else:
+                return {}
+
         # Plot the data.
-        def _plot_trace(time, data, name, color, text, style=None):
+        def _plot_trace(time, time_sec, data, name, color, text=None, customdata=None, style=None):
             if style is None:
                 style = {}
             style.setdefault('mode', 'lines')
             style.setdefault('line', {}).setdefault('color', color)
+            kwargs = {'text': text} if text is not None else {'customdata': customdata}
 
             if type == 'tick':
-                figure.add_trace(go.Scattergl(x=time, y=data, text=text, name=name, legendgroup=name, **style),
+                figure.add_trace(go.Scattergl(x=time, y=data, name=name, legendgroup=name, **kwargs, **style),
                                  1, 1)
 
-                dt_sec = np.diff(time)
+                # Note: Rate is always computed from time_sec (plain seconds), not time -- time may be a datetime64
+                # axis (UTC mode), which does not support division.
+                dt_sec = np.diff(time_sec)
                 ticks_per_sec = np.diff(data) / dt_sec
-                figure.add_trace(go.Scattergl(x=time[1:], y=ticks_per_sec, text=text, name=name,
+                rate_kwargs = _slice_hover_kwargs(kwargs, slice(1, None))
+                figure.add_trace(go.Scattergl(x=time[1:], y=ticks_per_sec, name=name,
                                               legendgroup=name, showlegend=False,
-                                              **style),
+                                              **rate_kwargs, **style),
                                  2, 1)
             else:
-                figure.add_trace(go.Scattergl(x=time, y=data, text=text, name=name, legendgroup=name, **style),
+                figure.add_trace(go.Scattergl(x=time, y=data, name=name, legendgroup=name, **kwargs, **style),
                                  1, 1)
 
         def _plot_wheel_data(data, time_source, is_raw=False, show_gear=False, style=None):
@@ -2379,33 +2420,29 @@ figure.on('plotly_hover', function(data) {{
                 var_suffix = 'speed_mps'
                 name_suffix = ' (Uncorrected)' if is_raw else ' (Corrected)'
 
-            abs_time_sec = self._get_measurement_time(data, time_source)
-            idx = ~np.isnan(abs_time_sec)
-            abs_time_sec = abs_time_sec[idx]
+            measurement_time = self._get_measurement_time(data, time_source)
+            idx = ~np.isnan(measurement_time)
+            time, time_sec, hover_kwargs = _get_time_and_hover_data(measurement_time[idx], time_source)
 
-            t0 = self._get_t0_for_time_source(time_source)
-            time = abs_time_sec - t0
-            time_name = self._time_source_to_display_name(time_source)
-            text = ["%s Time: %.3f sec" % (time_name, t) for t in abs_time_sec]
-
-            _plot_trace(time=time, data=getattr(data, 'front_left_' + var_suffix)[idx], text=text,
-                        name='Front Left Wheel' + name_suffix, color='red', style=style)
-            _plot_trace(time=time, data=getattr(data, 'front_right_' + var_suffix)[idx], text=text,
-                        name='Front Right Wheel' + name_suffix, color='green', style=style)
-            _plot_trace(time=time, data=getattr(data, 'rear_left_' + var_suffix)[idx], text=text,
-                        name='Rear Left Wheel' + name_suffix, color='blue', style=style)
-            _plot_trace(time=time, data=getattr(data, 'rear_right_' + var_suffix)[idx], text=text,
-                        name='Rear Right Wheel' + name_suffix, color='purple', style=style)
+            _plot_trace(time=time, time_sec=time_sec, data=getattr(data, 'front_left_' + var_suffix)[idx],
+                        name='Front Left Wheel' + name_suffix, color='red', style=style, **hover_kwargs)
+            _plot_trace(time=time, time_sec=time_sec, data=getattr(data, 'front_right_' + var_suffix)[idx],
+                        name='Front Right Wheel' + name_suffix, color='green', style=style, **hover_kwargs)
+            _plot_trace(time=time, time_sec=time_sec, data=getattr(data, 'rear_left_' + var_suffix)[idx],
+                        name='Rear Left Wheel' + name_suffix, color='blue', style=style, **hover_kwargs)
+            _plot_trace(time=time, time_sec=time_sec, data=getattr(data, 'rear_right_' + var_suffix)[idx],
+                        name='Rear Right Wheel' + name_suffix, color='purple', style=style, **hover_kwargs)
 
             if show_gear:
-                figure.add_trace(go.Scattergl(x=time, y=data.gear[idx], text=text, name='Gear (Wheel Data)',
-                                              mode='markers', marker={'color': 'red'}),
+                figure.add_trace(go.Scattergl(x=time, y=data.gear[idx], name='Gear (Wheel Data)',
+                                              mode='markers', marker={'color': 'red'}, **hover_kwargs),
                                  gear_y_axis, 1)
 
             name = "Wheel Interval" + name_suffix
             color = 'blue' if is_raw else 'red'
-            figure.add_trace(go.Scattergl(x=time[1:], y=np.diff(time), name=name,
-                                          mode='markers', marker={'color': color}),
+            figure.add_trace(go.Scattergl(x=time[1:], y=np.diff(time_sec), name=name,
+                                          mode='markers', marker={'color': color},
+                                          **_slice_hover_kwargs(hover_kwargs, slice(1, None))),
                              interval_y_axis, 1)
 
         def _plot_vehicle_data(data, time_source, is_raw=False, show_gear=False, style=None):
@@ -2425,27 +2462,23 @@ figure.on('plotly_hover', function(data) {{
                 var_suffix = 'vehicle_speed_mps'
                 name_suffix = ' (Uncorrected)' if is_raw else ' (Corrected)'
 
-            abs_time_sec = self._get_measurement_time(data, time_source)
-            idx = ~np.isnan(abs_time_sec)
-            abs_time_sec = abs_time_sec[idx]
+            measurement_time = self._get_measurement_time(data, time_source)
+            idx = ~np.isnan(measurement_time)
+            time, time_sec, hover_kwargs = _get_time_and_hover_data(measurement_time[idx], time_source)
 
-            t0 = self._get_t0_for_time_source(time_source)
-            time = abs_time_sec - t0
-            time_name = self._time_source_to_display_name(time_source)
-            text = ["%s Time: %.3f sec" % (time_name, t) for t in abs_time_sec]
-
-            _plot_trace(time=time, data=getattr(data, var_suffix)[idx], text=text,
-                        name='Speed Measurement' + name_suffix, color='orange', style=style)
+            _plot_trace(time=time, time_sec=time_sec, data=getattr(data, var_suffix)[idx],
+                        name='Speed Measurement' + name_suffix, color='orange', style=style, **hover_kwargs)
 
             if show_gear:
-                figure.add_trace(go.Scattergl(x=time, y=data.gear[idx], text=text, name='Gear (Vehicle Data)',
-                                              mode='markers', marker={'color': 'orange'}),
+                figure.add_trace(go.Scattergl(x=time, y=data.gear[idx], name='Gear (Vehicle Data)',
+                                              mode='markers', marker={'color': 'orange'}, **hover_kwargs),
                                  gear_y_axis, 1)
 
             name = "Vehicle Interval" + name_suffix
             color = 'blue' if is_raw else 'red'
-            figure.add_trace(go.Scattergl(x=time[1:], y=np.diff(time), name=name,
-                                          mode='markers', marker={'color': color}),
+            figure.add_trace(go.Scattergl(x=time[1:], y=np.diff(time_sec), name=name,
+                                          mode='markers', marker={'color': color},
+                                          **_slice_hover_kwargs(hover_kwargs, slice(1, None))),
                              interval_y_axis, 1)
 
         # Plot the data. If we have both corrected (e.g., WheelSpeedOutput) and uncorrected (e.g., RawWheelSpeedOutput)
@@ -2454,7 +2487,7 @@ figure.on('plotly_hover', function(data) {{
         _plot_func(data, corrected_time_source, is_raw=False, show_gear=True)
         _plot_func(raw_data, raw_time_source, is_raw=True, show_gear=False)
 
-        self._add_figure(name=filename, figure=figure, title=figure_title)
+        self._add_figure(name=filename, figure=figure, title=figure_title, inject_js=self._TIME_HOVER_JS)
 
     def plot_imu(self):
         """!
@@ -2492,7 +2525,8 @@ figure.on('plotly_hover', function(data) {{
                              ('IMU' if message_cls is IMUOutput else 'raw IMU'))
             return
 
-        time = data.p1_time - float(self.t0)
+        time, axis_layout = self._resolve_x_axis(p1_time=data.p1_time)
+        customdata = self._time_hover_customdata(p1_time=data.p1_time)
 
         titles = ['Acceleration', 'Gyro']
         if message_cls == RawIMUOutput:
@@ -2505,36 +2539,38 @@ figure.on('plotly_hover', function(data) {{
 
         figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
         for i in range(3):
-            figure['layout']['xaxis%d' % (i + 1)].update(title=self.p1_time_label, showticklabels=True)
+            figure['layout']['xaxis%d' % (i + 1)].update(showticklabels=True, **axis_layout)
         figure['layout']['yaxis1'].update(title="Acceleration (m/s^2)")
         figure['layout']['yaxis2'].update(title="Rotation Rate (rad/s)")
         figure['layout']['yaxis3'].update(title="Interval (sec)")
 
-        figure.add_trace(go.Scattergl(x=time, y=data.accel_mps2[0, :], name='X', legendgroup='x',
-                                      mode='lines', line={'color': 'red'}),
+        figure.add_trace(go.Scattergl(x=time, y=data.accel_mps2[0, :], customdata=customdata, name='X',
+                                      legendgroup='x', mode='lines', line={'color': 'red'}),
                          1, 1)
-        figure.add_trace(go.Scattergl(x=time, y=data.accel_mps2[1, :], name='Y', legendgroup='y',
-                                      mode='lines', line={'color': 'green'}),
+        figure.add_trace(go.Scattergl(x=time, y=data.accel_mps2[1, :], customdata=customdata, name='Y',
+                                      legendgroup='y', mode='lines', line={'color': 'green'}),
                          1, 1)
-        figure.add_trace(go.Scattergl(x=time, y=data.accel_mps2[2, :], name='Z', legendgroup='z',
-                                      mode='lines', line={'color': 'blue'}),
+        figure.add_trace(go.Scattergl(x=time, y=data.accel_mps2[2, :], customdata=customdata, name='Z',
+                                      legendgroup='z', mode='lines', line={'color': 'blue'}),
                          1, 1)
 
-        figure.add_trace(go.Scattergl(x=time, y=data.gyro_rps[0, :], name='X', legendgroup='x',
-                                      showlegend=False, mode='lines', line={'color': 'red'}),
+        figure.add_trace(go.Scattergl(x=time, y=data.gyro_rps[0, :], customdata=customdata, name='X',
+                                      legendgroup='x', showlegend=False, mode='lines', line={'color': 'red'}),
                          2, 1)
-        figure.add_trace(go.Scattergl(x=time, y=data.gyro_rps[1, :], name='Y', legendgroup='y',
-                                      showlegend=False, mode='lines', line={'color': 'green'}),
+        figure.add_trace(go.Scattergl(x=time, y=data.gyro_rps[1, :], customdata=customdata, name='Y',
+                                      legendgroup='y', showlegend=False, mode='lines', line={'color': 'green'}),
                          2, 1)
-        figure.add_trace(go.Scattergl(x=time, y=data.gyro_rps[2, :], name='Z', legendgroup='z',
-                                      showlegend=False, mode='lines', line={'color': 'blue'}),
+        figure.add_trace(go.Scattergl(x=time, y=data.gyro_rps[2, :], customdata=customdata, name='Z',
+                                      legendgroup='z', showlegend=False, mode='lines', line={'color': 'blue'}),
                          2, 1)
 
-        figure.add_trace(go.Scattergl(x=time[1:], y=np.diff(time), name='Interval',
-                                      mode='markers', marker={'color': 'red'}),
+        # Note: Interval is always computed from data.p1_time (plain seconds), not time -- time may be a datetime64
+        # axis (UTC mode), which does not support subtraction the same way.
+        figure.add_trace(go.Scattergl(x=time[1:], y=np.diff(data.p1_time), customdata=customdata[:, 1:],
+                                      name='Interval', mode='markers', marker={'color': 'red'}),
                          3, 1)
 
-        self._add_figure(name=filename, figure=figure, title=figure_title)
+        self._add_figure(name=filename, figure=figure, title=figure_title, inject_js=self._TIME_HOVER_JS)
 
     def plot_gnss_attitude_measurements(self):
         """!
@@ -2556,6 +2592,28 @@ figure.on('plotly_hover', function(data) {{
         # there's no heading data in the log.
         result = self.reader.read(message_types=[PoseMessage], source_ids=self.default_source_id, **self.params)
         primary_pose_data = result[PoseMessage.MESSAGE_TYPE]
+        have_primary = (primary_pose_data is not None and
+                        np.any(primary_pose_data.solution_type != SolutionType.Invalid))
+
+        # Extract X axis data to be plotted below.
+        if have_primary:
+            primary_time, _ = self._resolve_x_axis(p1_time=primary_pose_data.p1_time,
+                                                    gps_time=primary_pose_data.gps_time)
+            primary_customdata = self._time_hover_customdata(p1_time=primary_pose_data.p1_time,
+                                                              gps_time=primary_pose_data.gps_time)
+
+        have_raw = len(raw_heading_data.p1_time) > 0
+        if have_raw:
+            raw_gps_time = getattr(raw_heading_data, 'gps_time', None)
+            raw_time, _ = self._resolve_x_axis(p1_time=raw_heading_data.p1_time, gps_time=raw_gps_time)
+            raw_customdata = self._time_hover_customdata(p1_time=raw_heading_data.p1_time, gps_time=raw_gps_time)
+
+        have_corrected = len(heading_data.p1_time) > 0
+        if have_corrected:
+            corrected_gps_time = getattr(heading_data, 'gps_time', None)
+            corrected_time, _ = self._resolve_x_axis(p1_time=heading_data.p1_time, gps_time=corrected_gps_time)
+            corrected_customdata = self._time_hover_customdata(p1_time=heading_data.p1_time,
+                                                                gps_time=corrected_gps_time)
 
         # Setup the figure.
         fig = make_subplots(
@@ -2571,7 +2629,7 @@ figure.on('plotly_hover', function(data) {{
         fig.update_layout(title='GNSS Attitude Measurements (Multi-Antenna Heading Sensor)',
                           showlegend=True, modebar_add=['v1hovermode'])
 
-        fig.update_xaxes(title_text=self.p1_time_label, showticklabels=True)
+        fig.update_xaxes(showticklabels=True, **self._x_axis_layout())
         fig.update_yaxes(title_text='Heading (deg)', rangemode='tozero', row=1, col=1)
         fig.update_yaxes(title_text='Distance (m)', row=2, col=1)
         fig.update_yaxes(
@@ -2587,9 +2645,7 @@ figure.on('plotly_hover', function(data) {{
 
         # Display the navigation engine's heading estimate, if available, for comparison with the heading sensor
         # measurement.
-        if primary_pose_data is not None and np.any(primary_pose_data.solution_type != SolutionType.Invalid):
-            p1_time = primary_pose_data.p1_time
-            time = p1_time - float(self.t0)
+        if have_primary:
             heading_deg = yaw_to_heading(primary_pose_data.ypr_deg[0, :])
             yaw_std_deg = primary_pose_data.ypr_std_deg[0, :]
 
@@ -2599,38 +2655,30 @@ figure.on('plotly_hover', function(data) {{
 
             fig.add_trace(
                 go.Scatter(
-                    x=time, y=heading_deg,
-                    customdata=np.stack((p1_time, yaw_std_deg), axis=-1),
+                    x=primary_time, y=heading_deg,
+                    customdata=np.vstack((primary_customdata, yaw_std_deg)),
                     name='Heading: Navigation Engine', legendgroup='nav',
-                    hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata[0]:.3f} sec)'
-                                  '<br><b>Heading</b>: %{y:.2f} deg (<b>Std</b>: %{customdata[1]:.2f} deg)',
                     mode='lines', line={'color': 'yellow'}
                 ),
                 row=1, col=1
             )
 
         # Raw (uncorrected) heading, derived from reported ENU vector.
-        if len(raw_heading_data.p1_time) > 0:
-            p1_time = raw_heading_data.p1_time
-            time = p1_time - float(self.t0)
+        if have_raw:
             yaw_deg = np.degrees(np.arctan2(raw_heading_data.relative_position_enu_m[1, :],
                                             raw_heading_data.relative_position_enu_m[0, :]))
             heading_deg = yaw_to_heading(yaw_deg)
             fig.add_trace(
                 go.Scatter(
-                    x=time, y=heading_deg, customdata=p1_time,
+                    x=raw_time, y=heading_deg, customdata=raw_customdata,
                     name='Heading: Raw Measurement', legendgroup='raw',
-                    hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
-                                  '<br><b>Heading</b>: %{y:.2f} deg',
                     mode='markers', marker={"color": "purple"}
                 ),
                 row=1, col=1
             )
 
         # Corrected heading plot
-        if len(heading_data.p1_time) > 0:
-            p1_time = heading_data.p1_time
-            time = p1_time - float(self.t0)
+        if have_corrected:
             heading_deg = yaw_to_heading(heading_data.ypr_deg[0, :])
             yaw_std_deg = heading_data.ypr_std_deg[0, :]
 
@@ -2639,11 +2687,9 @@ figure.on('plotly_hover', function(data) {{
 
             fig.add_trace(
                 go.Scatter(
-                    x=time, y=heading_deg,
-                    customdata=np.stack((p1_time, yaw_std_deg), axis=-1),
+                    x=corrected_time, y=heading_deg,
+                    customdata=np.vstack((corrected_customdata, yaw_std_deg)),
                     name='Heading: Corrected Measurement', legendgroup='corr',
-                    hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata[0]:.3f} sec)'
-                                  '<br><b>Heading</b>: %{y:.2f} deg (<b>Std</b>: %{customdata[1]:.2f} deg)',
                     mode='markers', marker={"color": "orange"}
                 ),
                 row=1, col=1
@@ -2654,51 +2700,41 @@ figure.on('plotly_hover', function(data) {{
         ########################################
 
         # Baseline vector from raw attitude measurement.
-        if len(raw_heading_data.p1_time) > 0:
-            p1_time = raw_heading_data.p1_time
-            time = p1_time - float(self.t0)
+        if have_raw:
             baseline_distance_m = np.linalg.norm(raw_heading_data.relative_position_enu_m, axis=0)
             fig.add_trace(
                 go.Scatter(
-                    x=time, y=baseline_distance_m, customdata=p1_time,
+                    x=raw_time, y=baseline_distance_m, customdata=raw_customdata,
                     name='Baseline Distance: Raw Measurement', legendgroup='raw',
-                    hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
-                                  '<br><b>Distance</b>: %{y:.2f} m',
                     mode='markers', marker={"color": "purple"}
                 ),
                 row=2, col=1
             )
 
         # Baseline distance from corrected measurement.
-        if len(heading_data.p1_time) > 0:
-            p1_time = heading_data.p1_time
-            time = p1_time - float(self.t0)
+        if have_corrected:
             baseline_distance_m = heading_data.baseline_distance_m
             baseline_std_m = heading_data.baseline_distance_std_m
 
             # See explanation above about the Plotly bug when the value is NAN.
-            baseline_std_m[np.isnan(yaw_std_deg)] = -1.0
+            baseline_std_m[np.isnan(baseline_std_m)] = -1.0
 
             fig.add_trace(
                 go.Scatter(
-                    x=time, y=baseline_distance_m,
-                    customdata=np.stack((p1_time, baseline_std_m), axis=-1),
+                    x=corrected_time, y=baseline_distance_m,
+                    customdata=np.vstack((corrected_customdata, baseline_std_m)),
                     name='Baseline Distance: Corrected Measurement', legendgroup='corr',
-                    hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata[0]:.3f} sec)'
-                                  '<br><b>Distance</b>: %{y:.2f} m (<b>Std</b>: %{customdata[1]:.2f} m)',
                     mode='markers', marker={"color": "orange"}
                 ),
                 row=2, col=1
             )
 
         # ENU vector from raw attitude measurement.
-        if len(raw_heading_data.p1_time) > 0:
+        if have_raw:
             fig.add_trace(
                 go.Scatter(
-                    x=time, y=raw_heading_data.relative_position_enu_m[0], customdata=p1_time,
+                    x=raw_time, y=raw_heading_data.relative_position_enu_m[0], customdata=raw_customdata,
                     name='Primary->Secondary (East)',
-                    hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
-                                  '<br><b>East</b>: %{y:.2f} m',
                     mode='markers', marker={"color": "red"}
                 ),
                 row=2, col=1
@@ -2706,10 +2742,8 @@ figure.on('plotly_hover', function(data) {{
 
             fig.add_trace(
                 go.Scatter(
-                    x=time, y=raw_heading_data.relative_position_enu_m[1], customdata=p1_time,
+                    x=raw_time, y=raw_heading_data.relative_position_enu_m[1], customdata=raw_customdata,
                     name='Primary->Secondary (North)',
-                    hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
-                                  '<br><b>North</b>: %{y:.2f} m',
                     mode='markers', marker={"color": "green"}
                 ),
                 row=2, col=1
@@ -2717,10 +2751,8 @@ figure.on('plotly_hover', function(data) {{
 
             fig.add_trace(
                 go.Scatter(
-                    x=time, y=raw_heading_data.relative_position_enu_m[2], customdata=p1_time,
+                    x=raw_time, y=raw_heading_data.relative_position_enu_m[2], customdata=raw_customdata,
                     name='Primary->Secondary (Up)',
-                    hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
-                                  '<br><b>Up</b>: %{y:.2f} m',
                     mode='markers', marker={"color": "blue"}
                 ),
                 row=2, col=1
@@ -2731,52 +2763,66 @@ figure.on('plotly_hover', function(data) {{
         ########################################
 
         # Display the navigation engine's solution type.
-        if primary_pose_data is not None:
-            p1_time = primary_pose_data.p1_time
-            time = p1_time - float(self.t0)
+        if have_primary:
             fig.add_trace(
                 go.Scatter(
-                    x=time, y=primary_pose_data.solution_type, customdata=p1_time,
+                    x=primary_time, y=primary_pose_data.solution_type, customdata=primary_customdata,
                     name='Solution Type: Navigation Engine', legendgroup='nav',
-                    hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
-                                  '<br><b>Type</b>: %{y}',
                     mode='markers', marker={'color': 'yellow'},
                 ),
                 row=3, col=1
             )
 
         # Display the raw measurement's solution type.
-        if len(raw_heading_data.p1_time) > 0:
-            p1_time = raw_heading_data.p1_time
-            time = p1_time - float(self.t0)
+        if have_raw:
             fig.add_trace(
                 go.Scatter(
-                    x=time, y=raw_heading_data.solution_type, customdata=p1_time,
+                    x=raw_time, y=raw_heading_data.solution_type, customdata=raw_customdata,
                     name='Solution Type: Raw Measurement', legendgroup='raw',
-                    hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
-                                  '<br><b>Type</b>: %{y}',
                     mode='markers', marker={'color': 'purple'},
                 ),
                 row=3, col=1
             )
 
         # Display the corrected measurement's solution type.
-        if len(heading_data.p1_time) > 0:
-            p1_time = heading_data.p1_time
-            time = p1_time - float(self.t0)
+        if have_corrected:
             fig.add_trace(
                 go.Scatter(
-                    x=time, y=heading_data.solution_type, customdata=p1_time,
+                    x=corrected_time, y=heading_data.solution_type, customdata=corrected_customdata,
                     name='Solution Type: Corrected Measurement', legendgroup='corr',
-                    hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
-                                  '<br><b>Type</b>: %{y}',
                     mode='markers', marker={'color': 'orange'},
                 ),
                 row=3, col=1
             )
 
+        # Custom hover function: like _TIME_HOVER_JS, but some traces carry a second customdata row with a standard
+        # deviation value (in degrees for heading traces, meters for baseline distance traces; -1 means not available -
+        # see the Plotly NaN customdata bug noted above).
+        _ATTITUDE_HOVER_JS = """\
+figure.on('plotly_hover', function(data) {
+  for (let i = 0; i < data.points.length; ++i) {
+    let point = data.points[i];
+    if (!point.data.customdata) {
+      continue;
+    }
+    let new_text = BuildTimeHoverText(point.x, GetCustomData(point, 0));
+    let customdata = point.data.customdata.hasOwnProperty("_inputArray") ?
+                     point.data.customdata._inputArray : point.data.customdata;
+    if (customdata.length > 1) {
+      let std = GetCustomData(point, 1);
+      if (std >= 0) {
+        let units = point.data.name.startsWith('Heading') ? 'deg' : 'm';
+        new_text += `<br>Std: ${std.toFixed(2)} ${units}`;
+      }
+    }
+    ChangeHoverText(point, new_text);
+  }
+});
+        """ + self._GPS_TICK_REFORMAT_JS
+
         self._add_figure(name='gnss_attitude_measurement', figure=fig,
-                         title='Measurements: GNSS Attitude (Multi-Antenna Heading Sensor)')
+                         title='Measurements: GNSS Attitude (Multi-Antenna Heading Sensor)',
+                         inject_js=_ATTITUDE_HOVER_JS)
 
     def plot_system_status_profiling(self):
         """!
