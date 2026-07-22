@@ -1877,7 +1877,7 @@ function SetSignalStatusHover(point) {{
 figure.on('plotly_hover', function(data) {{
   for (let i = 0; i < data.points.length; ++i) {{
     let point = data.points[i];
-    if (point.curveNumber > {num_count_traces}) {{
+    if (point.curveNumber >= {num_count_traces}) {{
       SetSignalStatusHover(point);
     }}
     else {{
