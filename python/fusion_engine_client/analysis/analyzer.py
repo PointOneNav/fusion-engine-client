@@ -106,6 +106,25 @@ class Analyzer(object):
     LONG_LOG_DURATION_SEC = 2 * 3600.0
     HIGH_MEASUREMENT_RATE_HZ = 40.0
 
+    # Generic hover JS for traces whose customdata is whichever timestamp (P1 or GPS) is not already reflected by the
+    # X axis (see BuildTimeHoverText() in plotly_data_support.js, and _time_hover_customdata() below). Plots needing
+    # additional custom hover logic (e.g., decoding a status bitmask) should not use this and should build their own
+    # 'plotly_hover' handler instead.
+    _TIME_HOVER_JS = """\
+figure.on('plotly_hover', function(data) {
+  for (let i = 0; i < data.points.length; ++i) {
+    let point = data.points[i];
+    if (point.data.customdata) {
+      ChangeHoverText(point, BuildTimeHoverText(point.x, GetCustomData(point, 0)));
+    }
+  }
+});
+figure.on('plotly_afterplot', _ReformatGpsAxisTicks);
+// The initial render's 'plotly_afterplot' can fire before tick label text is finalized, so also run once more on
+// the next tick, after the very first render has fully settled.
+setTimeout(_ReformatGpsAxisTicks, 0);
+"""
+
     def __init__(self,
                  file: Union[DataLoader, str], ignore_index: bool = False,
                  output_dir: str = None, prefix: str = '',
@@ -198,13 +217,18 @@ class Analyzer(object):
             self.p1_time_label = 'Relative Time (sec)'
             self.system_time_label = 'Relative Time (sec)'
         else:
-            # Per-plot support for 'gps'/'utc' x-axis values is added incrementally (see _resolve_x_axis()); until a
+            # Per-plot support for 'gps'/'utc' X-axis values is added incrementally (see _resolve_x_axis()); until a
             # given plot has been updated, it falls back to absolute P1/system time here.
             self.time_axis = 'absolute'
             self.t0 = Timestamp(0.0)
             self.system_t0 = 0.0
             self.p1_time_label = 'P1 Time (sec)'
             self.system_time_label = 'System Time (sec)'
+
+        # The time domain -- `p1` (covers both relative and absolute P1 time) or `gps` (covers both GPS and UTC) --
+        # implied by @c self.time_type, used by @ref _resolve_x_axis() and the default of _time_hover_customdata()'s
+        # `x_domain` argument. Some plots may use a different X axis regardles of self.time_type, and may override this.
+        self._default_x_domain = 'p1' if self.time_type in ('relative', 'p1') else 'gps'
 
         self.plots = {}
         self.summary = ''
@@ -685,8 +709,8 @@ class Analyzer(object):
             self.logger.info('No calibration data available. Skipping calibration plot.')
             return
 
-        time = cal_data.p1_time - float(self.t0)
-        text = ["Time: %.3f sec (%.3f sec)" % (t, t + float(self.t0)) for t in time]
+        time, axis_label, axis_layout = self._resolve_x_axis(p1_time=cal_data.p1_time)
+        time_customdata = self._time_hover_customdata(p1_time=cal_data.p1_time)
 
         # Map calibration stage enum values onto a [0, N) range for plotting.
         stage_map = {e.value: i for i, e in enumerate(CalibrationStage)}
@@ -700,7 +724,7 @@ class Analyzer(object):
 
         figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
         for i in range(4):
-            figure['layout']['xaxis%d' % (i + 1)].update(title=self.p1_time_label, showticklabels=True)
+            figure['layout']['xaxis%d' % (i + 1)].update(title=axis_label, showticklabels=True, **axis_layout)
         figure['layout']['yaxis1'].update(title="Percent Complete", range=[0, 100])
         figure['layout']['yaxis2'].update(ticktext=['%s' % e.name for e in CalibrationStage],
                                           tickvals=list(range(len(stage_map))))
@@ -709,44 +733,45 @@ class Analyzer(object):
         figure['layout']['yaxis5'].update(title="Meters")
 
         # Plot calibration stage and completion percentages.
-        figure.add_trace(go.Scattergl(x=time, y=cal_data.gyro_bias_percent_complete, text=text,
+        figure.add_trace(go.Scattergl(x=time, y=cal_data.gyro_bias_percent_complete, customdata=time_customdata,
                                       name='Gyro Bias Completion',
                                       mode='lines', line={'color': 'red'}),
                          1, 1)
-        figure.add_trace(go.Scattergl(x=time, y=cal_data.accel_bias_percent_complete, text=text,
+        figure.add_trace(go.Scattergl(x=time, y=cal_data.accel_bias_percent_complete, customdata=time_customdata,
                                       name='Accel Bias Completion',
                                       mode='lines', line={'color': 'green'}),
                          1, 1)
-        figure.add_trace(go.Scattergl(x=time, y=cal_data.mounting_angle_percent_complete, text=text,
+        figure.add_trace(go.Scattergl(x=time, y=cal_data.mounting_angle_percent_complete, customdata=time_customdata,
                                       name='Mounting Angle Completion',
                                       mode='lines', line={'color': 'blue'}),
                          1, 1)
 
-        figure.add_trace(go.Scattergl(x=time, y=calibration_stage, name='Stage', text=text,
+        figure.add_trace(go.Scattergl(x=time, y=calibration_stage, name='Stage', customdata=time_customdata,
                                       mode='lines', line={'color': 'black', 'dash': 'dash'}),
                          1, 1, secondary_y=True)
 
         # Plot mounting angles.
-        figure.add_trace(go.Scattergl(x=time, y=cal_data.ypr_deg[0, :], name='Yaw', legendgroup='y', text=text,
-                                      mode='lines', line={'color': 'red'}),
+        figure.add_trace(go.Scattergl(x=time, y=cal_data.ypr_deg[0, :], name='Yaw', legendgroup='y',
+                                      customdata=time_customdata, mode='lines', line={'color': 'red'}),
                          2, 1)
-        figure.add_trace(go.Scattergl(x=time, y=cal_data.ypr_deg[1, :], name='Pitch', legendgroup='p', text=text,
-                                      mode='lines', line={'color': 'green'}),
+        figure.add_trace(go.Scattergl(x=time, y=cal_data.ypr_deg[1, :], name='Pitch', legendgroup='p',
+                                      customdata=time_customdata, mode='lines', line={'color': 'green'}),
                          2, 1)
-        figure.add_trace(go.Scattergl(x=time, y=cal_data.ypr_deg[2, :], name='Roll', legendgroup='r', text=text,
-                                      mode='lines', line={'color': 'blue'}),
+        figure.add_trace(go.Scattergl(x=time, y=cal_data.ypr_deg[2, :], name='Roll', legendgroup='r',
+                                      customdata=time_customdata, mode='lines', line={'color': 'blue'}),
                          2, 1)
 
         figure.add_trace(go.Scattergl(x=time, y=cal_data.ypr_std_dev_deg[0, :], name='Yaw Std Dev', legendgroup='y',
-                                      text=text, mode='lines', line={'color': 'red'}),
+                                      customdata=time_customdata, mode='lines', line={'color': 'red'}),
                          3, 1)
         figure.add_trace(go.Scattergl(x=time, y=cal_data.ypr_std_dev_deg[1, :], name='Pitch Std Dev', legendgroup='p',
-                                      text=text, mode='lines', line={'color': 'green'}),
+                                      customdata=time_customdata, mode='lines', line={'color': 'green'}),
                          3, 1)
         figure.add_trace(go.Scattergl(x=time, y=cal_data.ypr_std_dev_deg[2, :], name='Roll Std Dev', legendgroup='r',
-                                      text=text, mode='lines', line={'color': 'blue'}),
+                                      customdata=time_customdata, mode='lines', line={'color': 'blue'}),
                          3, 1)
 
+        # Threshold reference lines only have 2 points (first/last time), so they don't get per-point hover data.
         thresh_time = time[np.array((0, -1))]
         figure.add_trace(go.Scattergl(x=thresh_time, y=[cal_data.mounting_angle_max_std_dev_deg[0]] * 2,
                                       name='Max Yaw Std Dev', legendgroup='y',
@@ -754,23 +779,23 @@ class Analyzer(object):
                          3, 1)
         figure.add_trace(go.Scattergl(x=thresh_time, y=[cal_data.mounting_angle_max_std_dev_deg[1]] * 2,
                                       name='Max Pitch Std Dev', legendgroup='p',
-                                      text=text, mode='lines', line={'color': 'green', 'dash': 'dash'}),
+                                      mode='lines', line={'color': 'green', 'dash': 'dash'}),
                          3, 1)
         figure.add_trace(go.Scattergl(x=thresh_time, y=[cal_data.mounting_angle_max_std_dev_deg[2]] * 2,
                                       name='Max Roll Std Dev', legendgroup='r',
-                                      text=text, mode='lines', line={'color': 'blue', 'dash': 'dash'}),
+                                      mode='lines', line={'color': 'blue', 'dash': 'dash'}),
                          3, 1)
 
         # Plot travel distance.
-        figure.add_trace(go.Scattergl(x=time, y=cal_data.travel_distance_m, name='Travel Distance', text=text,
-                                      mode='lines', line={'color': 'blue'}),
+        figure.add_trace(go.Scattergl(x=time, y=cal_data.travel_distance_m, name='Travel Distance',
+                                      customdata=time_customdata, mode='lines', line={'color': 'blue'}),
                          4, 1)
         figure.add_trace(go.Scattergl(x=thresh_time, y=[cal_data.min_travel_distance_m] * 2,
-                                      name='Min Travel Distance', text=text,
+                                      name='Min Travel Distance',
                                       mode='lines', line={'color': 'black', 'dash': 'dash'}),
                          4, 1)
 
-        self._add_figure(name="calibration", figure=figure, title="Calibration Status")
+        self._add_figure(name="calibration", figure=figure, title="Calibration Status", inject_js=self._TIME_HOVER_JS)
 
     def plot_solution_type(self):
         """!
@@ -3253,7 +3278,8 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
 
         self.plots[name] = {'title': title, 'path': path}
 
-    def _add_figure(self, name, figure=None, title=None, config=None, inject_js: str = None):
+    def _add_figure(self, name, figure=None, title=None, config=None, inject_js: str = None,
+                    time_axis_type: Optional[str] = None):
         """!
         @brief Generate an HTML file for the specified figure.
 
@@ -3262,9 +3288,17 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
         @param title An optional human-friendly display title to be added to the generated @c index.html file.
         @param config An optional dictionary containing Plotly.js figure config options to be included in the generated
                JavaScript.
+        @param inject_js Custom Javascript to be injected into the generated HTML file (see @ref
+               __write_html_and_inject_js()).
+        @param time_axis_type The time domain actually plotted on this figure's X axis (`relative`, `p1`, `gps`, or
+               `utc`; see @ref BuildTimeHoverText() in `plotly_data_support.js`). Defaults to `self.time_type`; only
+               needs to be overridden by plots (e.g., @ref plot_time_scale()) whose X axis does not follow it.
         """
         if title is None:
             title = name
+
+        if time_axis_type is None:
+            time_axis_type = self.time_type
 
         if name in self.plots:
             raise ValueError('Plot "%s" already exists.' % name)
@@ -3280,7 +3314,7 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
             os.makedirs(os.path.dirname(path), exist_ok=True)
 
             if inject_js is not None:
-                plotly.io.write_html = functools.partial(self.__write_html_and_inject_js, inject_js)
+                plotly.io.write_html = functools.partial(self.__write_html_and_inject_js, inject_js, time_axis_type)
 
             plotly.offline.plot(
                 figure,
@@ -3297,15 +3331,19 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
         self.plots[name] = {'title': title, 'path': path if figure is not None else None}
 
     # Support for injecting custom javascript into the generated plotly HTML file.
-    def __write_html_and_inject_js(self, inject_js, *args, **kwargs):
+    def __write_html_and_inject_js(self, inject_js, time_axis_type, *args, **kwargs):
         post_script = kwargs.get("post_script", None)
         if post_script is None:
             post_script = ""
 
-        # Create a global variable with the log's t0 timestamp.
+        # Create global variables with the log's t0 timestamp, the (leap-second accurate) GPS/POSIX offset, and the
+        # time domain plotted on this figure's X axis (see BuildTimeHoverText()).
+        gps_posix_offset_sec = self.time_provider.get_gps_posix_offset_sec()
         post_script += f"""\
 var p1_t0_sec = {float(self.reader.t0)};
 var p1_time_axis_rel = {'true' if self.time_axis == 'relative' else 'false'};
+var gps_posix_offset_sec = {gps_posix_offset_sec if gps_posix_offset_sec is not None else 'null'};
+var time_axis_type = '{time_axis_type}';
 """
 
         # Inject common plotly data support functions (GetTimeText(), etc.).
@@ -3353,6 +3391,68 @@ var p1_time_axis_rel = {'true' if self.time_axis == 'relative' else 'false'};
             return 0.0
         elif time_source == SystemTimeSource.TIMESTAMPED_ON_RECEPTION:
             return float(self.system_t0)
+
+    def _resolve_x_axis(self, p1_time: np.ndarray, gps_time: Optional[np.ndarray] = None) -> \
+            Tuple[np.ndarray, str, dict]:
+        """!
+        @brief Resolve the X axis values, label, and layout to use for a time series, per @c self.time_type.
+
+        @param p1_time The P1 time for each point.
+        @param gps_time The GPS time for each point, if already known (e.g., from a @ref PoseMessage). If `None`, it
+               will be computed from `p1_time` via @c self.time_provider when needed.
+
+        @return A tuple `(x, axis_label, axis_layout)`:
+                - `x`: The X axis values to plot.
+                - `axis_label`: The axis title to use.
+                - `axis_layout`: Extra `go.layout.XAxis` kwargs needed to display `x` (e.g., `type='date'`).
+        """
+        if self.time_type == 'relative':
+            return p1_time - float(self.t0), self.p1_time_label, {}
+        elif self.time_type == 'p1':
+            return p1_time, self.p1_time_label, {}
+
+        if gps_time is None:
+            gps_time = self.time_provider.p1_to_gps(p1_time)
+
+        if self.time_type == 'gps':
+            # GPS seconds are large enough that Plotly may otherwise render ticks in scientific/SI-prefix notation,
+            # which _ReformatGpsAxisTicks() (see plotly_data_support.js) can't parse back into week:tow. We let
+            # Plotly auto-generate normal (zoom-aware) numeric ticks here, and rewrite the rendered tick text into
+            # week:tow client-side, rather than computing fixed tick positions/labels ourselves -- those wouldn't
+            # regenerate on zoom/pan and could leave a zoomed-in view with no visible ticks at all.
+            return gps_time, 'GPS Time (week:tow)', {'exponentformat': 'none'}
+        else:
+            # Plotly serializes a datetime64 array as literal date strings, so (unlike plain milliseconds-since-
+            # epoch numbers) they display as given, without being reinterpreted in the browser's local timezone.
+            utc = self.time_provider.gps_sec_to_datetime64_array(gps_time)
+            return utc, 'UTC Time', {'type': 'date'}
+
+    def _time_hover_customdata(self, p1_time: np.ndarray, gps_time: Optional[np.ndarray] = None,
+                               x_domain: Optional[str] = None) -> np.ndarray:
+        """!
+        @brief Build the customdata array needed by `BuildTimeHoverText()` for a trace (see `plotly_data_support.js`).
+
+        Only whichever of P1/GPS time is NOT already reflected by the X axis needs to be included here -- the other
+        is recoverable in Javascript from the X value via a constant offset (P1 <-> relative, or GPS <-> UTC).
+
+        @param p1_time The P1 time for each point.
+        @param gps_time The GPS time for each point, or `None` if not already known. Computed from `p1_time` via
+               @c self.time_provider if `x_domain` is `'p1'` and this is `None`.
+        @param x_domain The time domain actually plotted on the X axis: `p1` (covers both relative and absolute P1
+               time) or `gps` (covers both GPS and UTC). Defaults to @ref _default_x_domain; only needs to be passed
+               explicitly by plots (e.g., @ref plot_time_scale()) whose X axis doesn't follow @c self.time_type.
+
+        @return A customdata array suitable for `go.Scattergl(..., customdata=...)`.
+        """
+        if x_domain is None:
+            x_domain = self._default_x_domain
+
+        if x_domain == 'p1':
+            if gps_time is None:
+                gps_time = self.time_provider.p1_to_gps(p1_time)
+            return np.vstack((gps_time,))
+        else:
+            return np.vstack((p1_time,))
 
     def _auto_detect_message_type(self, types: List[MessageType]):
         types = [t.MESSAGE_TYPE if inspect.isclass(t) else t for t in types]
