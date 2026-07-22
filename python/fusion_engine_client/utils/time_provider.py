@@ -267,7 +267,7 @@ Received time update ({message.get_type()} message) at:
             gps_time = self._interp_extrap(p1_time, xp, fp)
 
         if format == 'datetime':
-            return self._gps_sec_to_datetime64_array(gps_time)
+            return self.gps_sec_to_datetime64_array(gps_time)
         else:
             return gps_time
 
@@ -367,7 +367,7 @@ Received time update ({message.get_type()} message) at:
             return f0 + (f1 - f0) * (query - x0) / (x1 - x0)
 
     @staticmethod
-    def _gps_sec_to_datetime64_array(gps_time_sec: np.ndarray) -> np.ndarray:
+    def gps_sec_to_datetime64_array(gps_time_sec: np.ndarray) -> np.ndarray:
         """!
         @brief Convert an array of GPS times (in seconds) to UTC (`datetime64[ns]`).
 
