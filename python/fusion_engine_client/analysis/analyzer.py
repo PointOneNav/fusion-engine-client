@@ -434,15 +434,16 @@ figure.on('plotly_hover', function(data) {
 
         last_gps_time = gps_time[-1]
 
+        time, axis_layout = self._resolve_x_axis(p1_time=p1_time, gps_time=gps_time)
+        customdata = self._time_hover_customdata(p1_time=p1_time, gps_time=gps_time)
+
         # Setup the figure.
         figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=True,
                                subplot_titles=[f'Pose Message Latency'])
 
         figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
-        figure['layout']['xaxis1'].update(title=self.p1_time_label, showticklabels=True)
+        figure['layout']['xaxis1'].update(showticklabels=True, **axis_layout)
         figure['layout']['yaxis1'].update(title="Latency (sec)")
-
-        time = p1_time - float(self.t0)
 
         # Use the last GPS Time to get the offset between UNIX and GPS time. This includes the epoch difference and the
         # current leap second.
@@ -461,14 +462,14 @@ figure.on('plotly_hover', function(data) {
         # This absolute latency value is only reliable if the host clock was synced to GPS time.
         latency_sec = (host_posix_times - gps_posix_times).astype(float) / 1e9
 
-        text = ['P1: %.3f sec<br>%s' % (p, g) for p, g in zip(p1_time, latency_sec)]
-        figure.add_trace(go.Scattergl(x=time, y=latency_sec, name='Pose Message Latency', text=text,
+        figure.add_trace(go.Scattergl(x=time, y=latency_sec, customdata=customdata, name='Pose Message Latency',
                                       mode='markers', marker={'color': 'blue'}),
                          1, 1)
 
         figure.update_layout(title_text='NOTE: Latency assumes the host system clock is synced to GPS time. '
                                         'Any error will impact the latency computation.')
-        self._add_figure(name="host_latency", figure=figure, title="Host Received Latency")
+        self._add_figure(name="host_latency", figure=figure, title="Host Received Latency",
+                         inject_js=self._TIME_HOVER_JS)
 
     def plot_reset_timing(self):
         if self.output_dir is None:
@@ -2792,29 +2793,30 @@ figure.on('plotly_hover', function(data) {{
             self.logger.info('No system status data available. Skipping plot.')
             return
 
+        time, axis_layout = self._resolve_x_axis(p1_time=data.p1_time)
+        customdata = self._time_hover_customdata(p1_time=data.p1_time)
+
         # Setup the figure.
         figure = make_subplots(rows=2, cols=1, print_grid=False, shared_xaxes=True,
                                subplot_titles=['GNSS Temperature', 'Positioning Engine CPU Temperature'])
 
         figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
         for i in range(2):
-            figure['layout']['xaxis%d' % (i + 1)].update(title=self.p1_time_label, showticklabels=True)
+            figure['layout']['xaxis%d' % (i + 1)].update(showticklabels=True, **axis_layout)
         figure['layout']['yaxis1'].update(title="Temp (deg C)")
 
         # Plot the data.
-        time = data.p1_time - float(self.t0)
-        figure.add_trace(go.Scattergl(x=time, y=data.gnss_temperature_degc, customdata=data.p1_time,
+        figure.add_trace(go.Scattergl(x=time, y=data.gnss_temperature_degc, customdata=customdata,
                                       name='GNSS Temperature',
-                                      hovertemplate='Time: %{x:.3f} sec (%{customdata:.3f} sec)',
                                       mode='markers', line={'color': 'red'}),
                          1, 1)
-        figure.add_trace(go.Scattergl(x=time, y=data.pe_cpu_temperature_degc, customdata=data.p1_time,
+        figure.add_trace(go.Scattergl(x=time, y=data.pe_cpu_temperature_degc, customdata=customdata,
                                       name='PE CPU Temperature',
-                                      hovertemplate='Time: %{x:.3f} sec (%{customdata:.3f} sec)',
                                       mode='markers', line={'color': 'orange'}),
                          2, 1)
 
-        self._add_figure(name="profile_system_status", figure=figure, title="Profiling: System Status")
+        self._add_figure(name="profile_system_status", figure=figure, title="Profiling: System Status",
+                         inject_js=self._TIME_HOVER_JS)
 
     def plot_events(self):
         """!
