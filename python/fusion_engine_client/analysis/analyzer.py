@@ -25,8 +25,8 @@ if __name__ == "__main__" and (__package__ is None or __package__ == ''):
 
 from ..messages import *
 from .attitude import get_enu_rotation_matrix
-from .reference import ReferenceData, _OWN_LOG_STATISTICS
 from .data_loader import DataLoader, MessageData, TimeRange
+from .reference import ReferenceData, _OWN_LOG_STATISTICS
 from ..parsers.file_index import HostTimeIndexMap
 from ..utils import trace as logging
 from ..utils.argument_parser import ArgumentParser, ExtendedBooleanAction, TriStateBooleanAction, CSVAction
