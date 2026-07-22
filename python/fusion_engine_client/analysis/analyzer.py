@@ -599,7 +599,8 @@ figure.on('plotly_hover', function(data) {
             self.logger.info('No pose data available. Skipping pose vs. time plot.')
             return
 
-        time = pose_data.p1_time - float(self.t0)
+        time, axis_layout = self._resolve_x_axis(p1_time=pose_data.p1_time, gps_time=pose_data.gps_time)
+        customdata = self._time_hover_customdata(p1_time=pose_data.p1_time, gps_time=pose_data.gps_time)
 
         valid_idx = np.logical_and(~np.isnan(pose_data.p1_time), pose_data.solution_type != SolutionType.Invalid)
         if not np.any(valid_idx):
@@ -620,7 +621,7 @@ figure.on('plotly_hover', function(data) {
 
         figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
         for i in range(6):
-            figure['layout']['xaxis%d' % (i + 1)].update(title=self.p1_time_label, showticklabels=True, matches='x')
+            figure['layout']['xaxis%d' % (i + 1)].update(showticklabels=True, matches='x', **axis_layout)
         figure['layout']['yaxis1'].update(title="Degrees")
         figure['layout']['yaxis2'].update(title="Meters")
         figure['layout']['yaxis3'].update(title="Meters/Second")
@@ -629,24 +630,24 @@ figure.on('plotly_hover', function(data) {
         figure['layout']['yaxis6'].update(title="Meters/Second")
 
         # Plot YPR.
-        figure.add_trace(go.Scattergl(x=time, y=pose_data.ypr_deg[0, :], name='Yaw', legendgroup='yaw',
-                                      mode='lines', line={'color': 'red'}),
+        figure.add_trace(go.Scattergl(x=time, y=pose_data.ypr_deg[0, :], customdata=customdata, name='Yaw',
+                                      legendgroup='yaw', mode='lines', line={'color': 'red'}),
                          1, 1)
-        figure.add_trace(go.Scattergl(x=time, y=pose_data.ypr_deg[1, :], name='Pitch', legendgroup='pitch',
-                                      mode='lines', line={'color': 'green'}),
+        figure.add_trace(go.Scattergl(x=time, y=pose_data.ypr_deg[1, :], customdata=customdata, name='Pitch',
+                                      legendgroup='pitch', mode='lines', line={'color': 'green'}),
                          1, 1)
-        figure.add_trace(go.Scattergl(x=time, y=pose_data.ypr_deg[2, :], name='Roll', legendgroup='roll',
-                                      mode='lines', line={'color': 'blue'}),
+        figure.add_trace(go.Scattergl(x=time, y=pose_data.ypr_deg[2, :], customdata=customdata, name='Roll',
+                                      legendgroup='roll', mode='lines', line={'color': 'blue'}),
                          1, 1)
 
-        figure.add_trace(go.Scattergl(x=time, y=pose_data.ypr_std_deg[0, :], name='Yaw', legendgroup='yaw',
-                                      showlegend=False, mode='lines', line={'color': 'red'}),
+        figure.add_trace(go.Scattergl(x=time, y=pose_data.ypr_std_deg[0, :], customdata=customdata, name='Yaw',
+                                      legendgroup='yaw', showlegend=False, mode='lines', line={'color': 'red'}),
                          2, 1)
-        figure.add_trace(go.Scattergl(x=time, y=pose_data.ypr_std_deg[1, :], name='Pitch', legendgroup='pitch',
-                                      showlegend=False, mode='lines', line={'color': 'green'}),
+        figure.add_trace(go.Scattergl(x=time, y=pose_data.ypr_std_deg[1, :], customdata=customdata, name='Pitch',
+                                      legendgroup='pitch', showlegend=False, mode='lines', line={'color': 'green'}),
                          2, 1)
-        figure.add_trace(go.Scattergl(x=time, y=pose_data.ypr_std_deg[2, :], name='Roll', legendgroup='roll',
-                                      showlegend=False, mode='lines', line={'color': 'blue'}),
+        figure.add_trace(go.Scattergl(x=time, y=pose_data.ypr_std_deg[2, :], customdata=customdata, name='Roll',
+                                      legendgroup='roll', showlegend=False, mode='lines', line={'color': 'blue'}),
                          2, 1)
 
         # Plot position/displacement.
@@ -654,51 +655,58 @@ figure.on('plotly_hover', function(data) {
                                                  alt=pose_data.lla_deg[2, :], deg=True))
         displacement_ecef_m = position_ecef_m - position_ecef_m[:, first_idx].reshape(3, 1)
         displacement_enu_m = c_enu_ecef.dot(displacement_ecef_m)
-        figure.add_trace(go.Scattergl(x=time, y=displacement_enu_m[0, :], name='East', legendgroup='e',
-                                      mode='lines', line={'color': 'red'}),
+        figure.add_trace(go.Scattergl(x=time, y=displacement_enu_m[0, :], customdata=customdata, name='East',
+                                      legendgroup='e', mode='lines', line={'color': 'red'}),
                          1, 2)
-        figure.add_trace(go.Scattergl(x=time, y=displacement_enu_m[1, :], name='North', legendgroup='n',
-                                      mode='lines', line={'color': 'green'}),
+        figure.add_trace(go.Scattergl(x=time, y=displacement_enu_m[1, :], customdata=customdata, name='North',
+                                      legendgroup='n', mode='lines', line={'color': 'green'}),
                          1, 2)
-        figure.add_trace(go.Scattergl(x=time, y=displacement_enu_m[2, :], name='Up', legendgroup='u',
-                                      mode='lines', line={'color': 'blue'}),
+        figure.add_trace(go.Scattergl(x=time, y=displacement_enu_m[2, :], customdata=customdata, name='Up',
+                                      legendgroup='u', mode='lines', line={'color': 'blue'}),
                          1, 2)
 
-        figure.add_trace(go.Scattergl(x=time, y=pose_data.position_std_enu_m[0, :], name='East', legendgroup='e',
-                                      showlegend=False, mode='lines', line={'color': 'red'}),
+        figure.add_trace(go.Scattergl(x=time, y=pose_data.position_std_enu_m[0, :], customdata=customdata,
+                                      name='East', legendgroup='e', showlegend=False, mode='lines',
+                                      line={'color': 'red'}),
                          2, 2)
-        figure.add_trace(go.Scattergl(x=time, y=pose_data.position_std_enu_m[1, :], name='North', legendgroup='n',
-                                      showlegend=False, mode='lines', line={'color': 'green'}),
+        figure.add_trace(go.Scattergl(x=time, y=pose_data.position_std_enu_m[1, :], customdata=customdata,
+                                      name='North', legendgroup='n', showlegend=False, mode='lines',
+                                      line={'color': 'green'}),
                          2, 2)
-        figure.add_trace(go.Scattergl(x=time, y=pose_data.position_std_enu_m[2, :], name='Up', legendgroup='u',
-                                      showlegend=False, mode='lines', line={'color': 'blue'}),
+        figure.add_trace(go.Scattergl(x=time, y=pose_data.position_std_enu_m[2, :], customdata=customdata,
+                                      name='Up', legendgroup='u', showlegend=False, mode='lines',
+                                      line={'color': 'blue'}),
                          2, 2)
 
         # Plot velocity.
-        figure.add_trace(go.Scattergl(x=time, y=pose_data.velocity_body_mps[0, :], name='X', legendgroup='x',
-                                      mode='lines', line={'color': 'red'}),
+        figure.add_trace(go.Scattergl(x=time, y=pose_data.velocity_body_mps[0, :], customdata=customdata, name='X',
+                                      legendgroup='x', mode='lines', line={'color': 'red'}),
                          1, 3)
-        figure.add_trace(go.Scattergl(x=time, y=pose_data.velocity_body_mps[1, :], name='Y', legendgroup='y',
-                                      mode='lines', line={'color': 'green'}),
+        figure.add_trace(go.Scattergl(x=time, y=pose_data.velocity_body_mps[1, :], customdata=customdata, name='Y',
+                                      legendgroup='y', mode='lines', line={'color': 'green'}),
                          1, 3)
-        figure.add_trace(go.Scattergl(x=time, y=pose_data.velocity_body_mps[2, :], name='Z', legendgroup='z',
-                                      mode='lines', line={'color': 'blue'}),
+        figure.add_trace(go.Scattergl(x=time, y=pose_data.velocity_body_mps[2, :], customdata=customdata, name='Z',
+                                      legendgroup='z', mode='lines', line={'color': 'blue'}),
                          1, 3)
-        figure.add_trace(go.Scattergl(x=time, y=np.linalg.norm(pose_data.velocity_body_mps, axis=0), name='3D',
+        figure.add_trace(go.Scattergl(x=time, y=np.linalg.norm(pose_data.velocity_body_mps, axis=0),
+                                      customdata=customdata, name='3D',
                                       mode='lines', line={'color': 'orange', 'dash': 'dash'}),
                          1, 3)
 
-        figure.add_trace(go.Scattergl(x=time, y=pose_data.velocity_std_body_mps[0, :], name='X', legendgroup='x',
-                                      showlegend=False, mode='lines', line={'color': 'red'}),
+        figure.add_trace(go.Scattergl(x=time, y=pose_data.velocity_std_body_mps[0, :], customdata=customdata,
+                                      name='X', legendgroup='x', showlegend=False, mode='lines',
+                                      line={'color': 'red'}),
                          2, 3)
-        figure.add_trace(go.Scattergl(x=time, y=pose_data.velocity_std_body_mps[1, :], name='Y', legendgroup='y',
-                                      showlegend=False, mode='lines', line={'color': 'green'}),
+        figure.add_trace(go.Scattergl(x=time, y=pose_data.velocity_std_body_mps[1, :], customdata=customdata,
+                                      name='Y', legendgroup='y', showlegend=False, mode='lines',
+                                      line={'color': 'green'}),
                          2, 3)
-        figure.add_trace(go.Scattergl(x=time, y=pose_data.velocity_std_body_mps[2, :], name='Z', legendgroup='z',
-                                      showlegend=False, mode='lines', line={'color': 'blue'}),
+        figure.add_trace(go.Scattergl(x=time, y=pose_data.velocity_std_body_mps[2, :], customdata=customdata,
+                                      name='Z', legendgroup='z', showlegend=False, mode='lines',
+                                      line={'color': 'blue'}),
                          2, 3)
 
-        self._add_figure(name="pose", figure=figure, title="Vehicle Pose vs. Time")
+        self._add_figure(name="pose", figure=figure, title="Vehicle Pose vs. Time", inject_js=self._TIME_HOVER_JS)
 
     def plot_calibration(self):
         """!
@@ -821,35 +829,38 @@ figure.on('plotly_hover', function(data) {
         # Setup the figure.
         figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=True, subplot_titles=['Solution Type'])
         figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
-        figure['layout']['xaxis'].update(title=self.p1_time_label)
+        figure['layout']['xaxis'].update(**self._x_axis_layout())
         figure['layout']['yaxis1'].update(title="Solution Type",
                                           ticktext=['%s (%d)' % (e.name, e.value) for e in SolutionType],
                                           tickvals=[e.value for e in SolutionType])
 
-        all_time = pose_data.p1_time - float(self.t0)
         is_gnss_rx = (pose_data.flags & PoseMessage.FLAG_RECEIVER_SOLUTION) != 0
         is_nav_engine = ~is_gnss_rx
 
         # Plot nav engine solutions.
         if np.any(is_nav_engine):
             idx = is_nav_engine
-            time = all_time[idx]
-            text = ["Time: %.3f sec (%.3f sec)" % (t, t + float(self.t0)) for t in time]
-            figure.add_trace(go.Scattergl(x=time, y=pose_data.solution_type[idx], text=text, name='Nav Engine',
-                                          mode='markers'),
+            p1_time = pose_data.p1_time[idx]
+            gps_time = pose_data.gps_time[idx]
+            time, _ = self._resolve_x_axis(p1_time=p1_time, gps_time=gps_time)
+            customdata = self._time_hover_customdata(p1_time=p1_time, gps_time=gps_time)
+            figure.add_trace(go.Scattergl(x=time, y=pose_data.solution_type[idx], customdata=customdata,
+                                          name='Nav Engine', mode='markers'),
                              1, 1)
 
         # Plot GNSS receiver solutions, if any.
         if np.any(is_gnss_rx):
             idx = is_gnss_rx
-            time = all_time[idx]
-            text = ["Time: %.3f sec (%.3f sec)" % (t, t + float(self.t0)) for t in time]
-            figure.add_trace(go.Scattergl(x=time, y=pose_data.solution_type[idx], text=text,
+            p1_time = pose_data.p1_time[idx]
+            gps_time = pose_data.gps_time[idx]
+            time, _ = self._resolve_x_axis(p1_time=p1_time, gps_time=gps_time)
+            customdata = self._time_hover_customdata(p1_time=p1_time, gps_time=gps_time)
+            figure.add_trace(go.Scattergl(x=time, y=pose_data.solution_type[idx], customdata=customdata,
                                           name='Receiver Solution',
                                           mode='markers', marker={'color': 'red', 'symbol': 'diamond-open'}),
                              1, 1)
 
-        self._add_figure(name="solution_type", figure=figure, title="Solution Type")
+        self._add_figure(name="solution_type", figure=figure, title="Solution Type", inject_js=self._TIME_HOVER_JS)
 
     def plot_stationary_status(self):
         """!
@@ -870,20 +881,21 @@ figure.on('plotly_hover', function(data) {
         figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=True,
                                subplot_titles=['Stationary Status'])
 
-        figure['layout']['xaxis'].update(title=self.p1_time_label)
         figure['layout']['yaxis1'].update(title="Stationary Status",
                                           ticktext=['Moving', 'Stationary'],
                                           tickvals=[0, PoseMessage.FLAG_STATIONARY])
 
-        time = pose_data.p1_time - float(self.t0)
+        time, axis_layout = self._resolve_x_axis(p1_time=pose_data.p1_time, gps_time=pose_data.gps_time)
+        customdata = self._time_hover_customdata(p1_time=pose_data.p1_time, gps_time=pose_data.gps_time)
+        figure['layout']['xaxis'].update(**axis_layout)
 
         # Extract the stationary status from the pose data flags.
         stationary_status = pose_data.flags & PoseMessage.FLAG_STATIONARY
 
-        text = ["Time: %.3f sec (%.3f sec)" % (t, t + float(self.t0)) for t in time]
-        figure.add_trace(go.Scattergl(x=time, y=stationary_status, text=text, mode='markers'), 1, 1)
+        figure.add_trace(go.Scattergl(x=time, y=stationary_status, customdata=customdata, mode='markers'), 1, 1)
 
-        self._add_figure(name="stationary_status", figure=figure, title="Stationary Status")
+        self._add_figure(name="stationary_status", figure=figure, title="Stationary Status",
+                         inject_js=self._TIME_HOVER_JS)
 
     def _plot_displacement(self, source, time, solution_type, displacement_enu_m, std_enu_m,
                            title='Displacement'):
@@ -2009,13 +2021,16 @@ figure.on('plotly_hover', function(data) {{
             self.logger.info('No GNSS info data available. Skipping dilution of precision plot.')
             return
 
+        time, axis_layout = self._resolve_x_axis(p1_time=data.p1_time, gps_time=data.gps_time)
+        customdata = self._time_hover_customdata(p1_time=data.p1_time, gps_time=data.gps_time)
+
         # # Setup the figure.
         figure = make_subplots(
             rows=1, cols=1,  print_grid=False, shared_xaxes=True,
             subplot_titles=['Dilution of Precision (DOP)'])
 
         figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
-        figure['layout']['xaxis'].update(title=self.p1_time_label)
+        figure['layout']['xaxis'].update(**axis_layout)
 
         dops = [('GDOP', data.gdop), ('PDOP', data.pdop), ('HDOP', data.hdop), ('VDOP', data.vdop)]
 
@@ -2026,13 +2041,12 @@ figure.on('plotly_hover', function(data) {{
         for entry in dops:
             name, dop = entry
 
-            text = ['P1: %.1f sec' % t for t in data.p1_time]
-            time = data.p1_time - float(self.t0)
-            figure.add_trace(go.Scattergl(x=time, y=dop, text=text, name=name,
+            figure.add_trace(go.Scattergl(x=time, y=dop, customdata=customdata, name=name,
                                           mode='markers', marker={'color': color_by_dop[name]}),
                              1, 1)
 
-        self._add_figure(name='gnss_dop', figure=figure, title='GNSS Dilution of Precision (DOP) vs. Time')
+        self._add_figure(name='gnss_dop', figure=figure, title='GNSS Dilution of Precision (DOP) vs. Time',
+                         inject_js=self._TIME_HOVER_JS)
 
     def plot_gnss_corrections_status(self):
         """!
