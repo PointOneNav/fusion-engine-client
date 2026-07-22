@@ -1194,11 +1194,49 @@ figure.on('plotly_hover', function(data) {
             self._mapbox_token_missing = True
             mapbox_token = None
 
+        # Plotly's Mapbox/WebGL map trace hover renderer reads hover content from calcdata, baked in at plot time, and
+        # does not pick up a later client-side mutation of fullData.text the way cartesian (Scatter/Scattergl) traces
+        # do, so we cannot inject a plotly_hover() function like we do for most other plots. Instead, we have to use
+        # Plotly's `hovertemplate` function.
+        #
+        # hovertemplate can't apply date/time formatting to a bare *numeric* customdata value (that only works for a
+        # `%{x}` tied to a real date-typed axis) -- but a customdata entry with no format spec at all is substituted
+        # verbatim, so we precompute the UTC string in Python (cheap, vectorized) and reference it that way.
+        _POSITION_HOVERTEMPLATE = (
+            "LLA: %{lat:.8f}, %{lon:.8f}, %{customdata[4]:.2f}<br>"
+            "Rel: %{customdata[0]:.3f} sec (P1: %{customdata[1]:.3f} sec)<br>"
+            "UTC: %{customdata[8]}<br>"
+            "GPS: %{customdata[2]:.0f}:%{customdata[3]:.3f}<br>"
+            "Std (ENU): (%{customdata[5]:.2f}, %{customdata[6]:.2f}, %{customdata[7]:.2f}) m"
+        )
+
+        def _build_position_customdata(p1_time: np.ndarray, gps_time: np.ndarray,
+                                       lla_deg: np.ndarray, std_enu_m: np.ndarray) -> list:
+            rel_time = p1_time - float(self.reader.t0)
+            gps_week = np.floor(gps_time / SECONDS_PER_WEEK)
+            gps_tow_sec = gps_time - gps_week * SECONDS_PER_WEEK
+
+            utc_times = self.time_provider.gps_sec_to_datetime64_array(gps_time)
+            utc_strs = np.where(np.isnat(utc_times), 'N/A',
+                                np.datetime_as_string(utc_times, unit='ms'))
+            utc_strs = np.char.replace(utc_strs, 'T', ' ')
+
+            # Note: unlike the field-major (num_fields x N) arrays built by _time_hover_customdata() for use with our
+            # own GetCustomData() JS helper, Plotly's native `hovertemplate` expects customdata in the opposite,
+            # point-major layout -- one row per point, indexed as customdata[pointIndex][fieldIndex].
+            #
+            # utc_strs is a string column mixed in with the numeric ones above, so this can't be a single numpy
+            # array (that would coerce every column to strings, breaking the numeric %{customdata[N]:.3f}-style
+            # formatting for the rest); build it as a plain list of per-point rows instead.
+            numeric = np.column_stack((rel_time, p1_time, gps_week, gps_tow_sec, lla_deg[2], std_enu_m[0],
+                                       std_enu_m[1], std_enu_m[2]))
+            return [row.tolist() + [utc_str] for row, utc_str in zip(numeric, utc_strs)]
+
         # Add data to the map.
         map_data = []
         indices_by_engine = defaultdict(list)
 
-        def _plot_data(name, selected_idx, flags, source_id, marker_style=None):
+        def _plot_data(name, selected_idx, flags, source_id, lla_deg, customdata_all, marker_style=None):
             style = {'mode': 'markers', 'marker': {'size': 8}, 'showlegend': True}
             if marker_style is not None:
                 style['marker'].update(marker_style)
@@ -1213,22 +1251,20 @@ figure.on('plotly_hover', function(data) {
 
                 if np.any(is_nav_engine):
                     idx = is_nav_engine
-                    text = ["Time: %.3f sec (%.3f sec)<br>Std (ENU): (%.2f, %.2f, %.2f) m" %
-                            (t, t + float(self.t0), std[0], std[1], std[2])
-                            for t, std in zip(time[idx], std_enu_m[:, idx].T)]
-                    map_data.append(go.Scattermapbox(lat=lla_deg[0, idx], lon=lla_deg[1, idx], name=name, text=text,
+                    map_data.append(go.Scattermapbox(lat=lla_deg[0, idx], lon=lla_deg[1, idx], name=name,
+                                                     customdata=[customdata_all[i] for i in np.nonzero(idx)[0]],
+                                                     hovertemplate=_POSITION_HOVERTEMPLATE,
                                                      legendgroup=legendgroup, visible=visible, **style))
                     indices_by_engine['Nav Engine'].append(len(map_data) - 1)
 
                 if np.any(is_gnss_rx):
                     idx = is_gnss_rx
-                    text = ["Time: %.3f sec (%.3f sec)<br>Std (ENU): (%.2f, %.2f, %.2f) m" %
-                            (t, t + float(self.t0), std[0], std[1], std[2])
-                            for t, std in zip(time[idx], std_enu_m[:, idx].T)]
                     style['marker']['opacity'] = 0.5
                     style['marker']['size'] = 5
                     map_data.append(go.Scattermapbox(lat=lla_deg[0, idx], lon=lla_deg[1, idx],
-                                                     name=name + ' (Receiver Solution)', text=text,
+                                                     name=name + ' (Receiver Solution)',
+                                                     customdata=[customdata_all[i] for i in np.nonzero(idx)[0]],
+                                                     hovertemplate=_POSITION_HOVERTEMPLATE,
                                                      legendgroup=legendgroup, visible=visible, **style))
                     indices_by_engine['Receiver Solution'].append(len(map_data) - 1)
 
@@ -1256,11 +1292,14 @@ figure.on('plotly_hover', function(data) {
 
             have_pose_data = True
 
-            time = pose_data.p1_time[valid_idx] - float(self.t0)
             solution_type = pose_data.solution_type[valid_idx]
             flags = pose_data.flags[valid_idx]
             lla_deg = pose_data.lla_deg[:, valid_idx]
             std_enu_m = pose_data.position_std_enu_m[:, valid_idx]
+
+            customdata_all = _build_position_customdata(p1_time=pose_data.p1_time[valid_idx],
+                                                        gps_time=pose_data.gps_time[valid_idx],
+                                                        lla_deg=lla_deg, std_enu_m=std_enu_m)
 
             for type, info in _SOLUTION_TYPE_MAP.items():
                 if len(pose_source_ids) > 1:
@@ -1268,7 +1307,7 @@ figure.on('plotly_hover', function(data) {
                 else:
                     name = info.name
                 _plot_data(name=name, selected_idx=solution_type == type, flags=flags, source_id=source_id,
-                           marker_style=info.style)
+                           lla_deg=lla_deg, customdata_all=customdata_all, marker_style=info.style)
 
         if not have_pose_data:
             return
