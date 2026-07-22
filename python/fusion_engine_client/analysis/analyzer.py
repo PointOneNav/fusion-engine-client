@@ -197,6 +197,7 @@ class Analyzer(object):
         self._mapbox_token_missing = False
 
         self._gnss_signals_data = {}
+        self._gnss_antenna_source_ids = None
 
         if self.output_dir is not None:
             if not os.path.exists(self.output_dir):
@@ -1199,7 +1200,7 @@ class Analyzer(object):
         self._add_figure(name="map", figure=figure, title="Vehicle Trajectory (Map)", config={'scrollZoom': True})
 
     def plot_gnss_skyplot(self, decimate=True):
-        for source_id in sorted(self.source_ids):
+        for source_id in self._get_gnss_antenna_source_ids():
             self._plot_gnss_skyplot_for_source(source_id, decimate=decimate)
 
     def _plot_gnss_skyplot_for_source(self, source_id: int, decimate=True):
@@ -1342,7 +1343,7 @@ class Analyzer(object):
         self._add_figure(name=name, figure=figure, title=f'{label} GNSS Sky Plot')
 
     def plot_gnss_cn0(self):
-        for source_id in sorted(self.source_ids):
+        for source_id in self._get_gnss_antenna_source_ids():
             self._plot_gnss_cn0_for_source(source_id)
 
     def _plot_gnss_cn0_for_source(self, source_id: int):
@@ -1497,7 +1498,7 @@ class Analyzer(object):
         self._add_figure(name='gnss_azimuth_elevation', figure=figure, title='GNSS Azimuth & Elevation Vs. Time')
 
     def plot_gnss_signal_status(self):
-        for source_id in sorted(self.source_ids):
+        for source_id in self._get_gnss_antenna_source_ids():
             self._plot_gnss_signal_status_for_source(source_id)
 
     def _plot_gnss_signal_status_for_source(self, source_id: int):
@@ -1814,6 +1815,20 @@ figure.on('plotly_hover', function(data) {{
 """
 
         self._add_figure(name=filename, figure=figure, title=figure_title, inject_js=hover_js)
+
+    def _get_gnss_antenna_source_ids(self) -> List[int]:
+        """!
+        @brief Get the source IDs, restricted to known GNSS antenna identifiers, present in this log.
+
+        `self.source_ids` includes every source ID seen across all message types (and may be further restricted by
+        the user's --source-id argument), so it isn't specific to GNSS antennas. Restrict it here to the known
+        antenna identifiers so we don't attempt (and skip) a GNSS signal read for unrelated source IDs, e.g. ones
+        only used for IMU or wheel speed data.
+        """
+        if self._gnss_antenna_source_ids is None:
+            antenna_source_ids = {0, 1, SourceIdentifier.PRIMARY_GNSS_ANTENNA, SourceIdentifier.SECONDARY_GNSS_ANTENNA}
+            self._gnss_antenna_source_ids = sorted(self.source_ids.intersection(antenna_source_ids))
+        return self._gnss_antenna_source_ids
 
     def _gnss_antenna_label(self, source_id: int) -> str:
         if source_id in (0, SourceIdentifier.PRIMARY_GNSS_ANTENNA):
