@@ -8,6 +8,7 @@ import numpy as np
 from ..messages import MessageHeader, MessagePayload, PoseMessage, Timestamp
 from ..messages.timestamp import is_gps_time
 from ..utils import trace as logging
+from ..utils.numpy_utils import find_first
 
 if TYPE_CHECKING:
     from ..analysis.data_loader import DataLoader
@@ -38,6 +39,9 @@ class TimeProvider:
         # set_reference_data().
         self._p1_time_is_gps = False
 
+        # Offset between GPS time and the POSIX epoch, computed and cached in set_reference_data().
+        self._gps_posix_offset_sec = None
+
     def reset(self):
         self._current_p1_time = Timestamp()
         self._current_gps_time = Timestamp()
@@ -61,41 +65,63 @@ class TimeProvider:
         # single sample looks like a GPS timestamp, that's conclusive -- a boot-relative counter cannot accidentally
         # cross into GPS-timestamp-sized values. In that case, P1 time can be used as GPS time directly, with no
         # interpolation needed at all (see @ref is_p1_gps_time()).
-        valid_p1_time = pose_data.p1_time[~np.isnan(pose_data.p1_time)]
-        self._p1_time_is_gps = bool(np.any(is_gps_time(valid_p1_time)))
+        p1_valid_idx = ~np.isnan(pose_data.p1_time)
+        valid_p1_time = pose_data.p1_time[p1_valid_idx]
+        gps_like_mask = is_gps_time(valid_p1_time)
+        first_gps_idx = find_first(gps_like_mask)
+        self._p1_time_is_gps = first_gps_idx >= 0
 
-        valid = ~np.isnan(pose_data.p1_time) & ~np.isnan(pose_data.gps_time)
-        p1_time = pose_data.p1_time[valid]
-        gps_time = pose_data.gps_time[valid]
+        # Align matching P1 and GPS timestamps.
+        #
+        # If P1 == GPS time, we'll skip all of this and will not populate self._reference_*_time.
+        if not self._p1_time_is_gps:
+            # Limit to entries where both P1 and GPS times are valid.
+            gps_valid_idx = ~np.isnan(pose_data.gps_time)
+            valid = p1_valid_idx & gps_valid_idx
+            p1_time = pose_data.p1_time[valid]
+            gps_time = pose_data.gps_time[valid]
 
-        # P1 time is monotonic within a single boot session, but resets to 0 after a device reboot, so a reset splits
-        # the data into multiple per-session segments. If those segments' P1 time ranges don't overlap, a given P1 time
-        # can only belong to one session, so we can safely combine them into a single table sorted by P1 time.
-        # Otherwise, the same P1 time could mean two different real times, so we can only safely use the most recent
-        # (last) session.
-        segments = self._split_into_boot_segments(p1_time, gps_time)
-        if len(segments) > 1 and not self._segments_mutually_exclusive(segments):
-            _logger.warning('Detected %d device reset(s) in pose data used for time reference, with overlapping P1 '
-                            'time ranges across boot sessions. Only using data from the most recent session (%d of '
-                            '%d samples).' % (len(segments) - 1, len(segments[-1][0]), len(p1_time)))
-            segments = segments[-1:]
+            # P1 time is monotonic within a single boot session, but resets to 0 after a device reboot, so a reset
+            # splits the data into multiple per-session segments. If those segments' P1 time ranges don't overlap, a
+            # given P1 time can only belong to one session, so we can safely combine them into a single table sorted by
+            # P1 time. Otherwise, the same P1 time could mean two different real times, so we can only safely use the
+            # most recent (last) session.
+            segments = self._split_into_boot_segments(p1_time, gps_time)
+            if len(segments) > 1 and not self._segments_mutually_exclusive(segments):
+                _logger.warning('Detected %d device reset(s) in pose data used for time reference, with overlapping P1 '
+                                'time ranges across boot sessions. Only using data from the most recent session (%d of '
+                                '%d samples).' % (len(segments) - 1, len(segments[-1][0]), len(p1_time)))
+                segments = segments[-1:]
 
-        if len(segments) > 0:
-            p1_time = np.concatenate([s[0] for s in segments])
-            gps_time = np.concatenate([s[1] for s in segments])
-            order = np.argsort(p1_time)
-            p1_time = p1_time[order]
-            gps_time = gps_time[order]
+            if len(segments) > 0:
+                p1_time = np.concatenate([s[0] for s in segments])
+                gps_time = np.concatenate([s[1] for s in segments])
+                order = np.argsort(p1_time)
+                p1_time = p1_time[order]
+                gps_time = gps_time[order]
 
-        # Drop non-increasing entries (e.g., duplicate timestamps) so later interpolation can assume P1 time is
-        # strictly increasing.
-        if len(p1_time) > 0:
-            keep = np.concatenate(([True], np.diff(p1_time) > 0))
-            p1_time = p1_time[keep]
-            gps_time = gps_time[keep]
+            # Drop non-increasing entries (e.g., duplicate timestamps) so later interpolation can assume P1 time is
+            # strictly increasing.
+            if len(p1_time) > 0:
+                keep = np.concatenate(([True], np.diff(p1_time) > 0))
+                p1_time = p1_time[keep]
+                gps_time = gps_time[keep]
 
-        self._reference_p1_time = p1_time
-        self._reference_gps_time = gps_time
+            self._reference_p1_time = p1_time
+            self._reference_gps_time = gps_time
+
+        # Compute the GPS/POSIX offset for this log from the first GPS timestamp. This includes the leap second count at
+        # the start of the log. For efficiency, we assume the log does not span a leap second change. This isn't
+        # guaranteed, but it's generally safe since they only happen once every 6 months at most, and IERS is trying to
+        # avoid them in the future. The only time this assumption won't hold is when using a GNSS simulator specifically
+        # testing leap second transitions.
+        if self._p1_time_is_gps:
+            sample_gps_sec = float(valid_p1_time[first_gps_idx])
+        elif len(self._reference_gps_time) > 0:
+            sample_gps_sec = self._reference_gps_time[0]
+        else:
+            sample_gps_sec = None
+        self._gps_posix_offset_sec = None if sample_gps_sec is None else gps2unix(sample_gps_sec) - sample_gps_sec
 
     @staticmethod
     def _split_into_boot_segments(p1_time: np.ndarray, gps_time: np.ndarray) -> list:
@@ -132,6 +158,14 @@ class TimeProvider:
         @return `True` if GPS time is available.
         """
         return self._p1_time_is_gps or len(self._reference_p1_time) > 0
+
+    def get_gps_posix_offset_sec(self) -> Optional[float]:
+        """!
+        @brief Get this log's GPS-to-POSIX time offset, in seconds, i.e., `posix_sec = gps_sec + offset`.
+
+        @return The offset, in seconds, or `None` if no GPS time reference is available.
+        """
+        return self._gps_posix_offset_sec
 
     @staticmethod
     def _segments_mutually_exclusive(segments: list) -> bool:

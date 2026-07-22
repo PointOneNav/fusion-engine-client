@@ -445,6 +445,55 @@ class TestHasGpsReference:
         assert not tp.has_gps_reference()
 
 
+class TestGetGpsPosixOffsetSec:
+    def test_none_with_no_reference(self):
+        tp = TimeProvider()
+        assert tp.get_gps_posix_offset_sec() is None
+
+    def test_cached_not_recomputed_per_call(self):
+        from unittest import mock
+        reader = _FakeReader(p1_time=[10.0, 20.0], gps_time=[GPS_DATE_SEC, GPS_DATE_SEC + 10.0])
+        tp = TimeProvider()
+        tp.set_reference_data(reader)
+        with mock.patch('fusion_engine_client.utils.time_provider.gps2unix') as mock_gps2unix:
+            offset1 = tp.get_gps_posix_offset_sec()
+            offset2 = tp.get_gps_posix_offset_sec()
+            mock_gps2unix.assert_not_called()
+        assert offset1 == offset2
+
+    def test_offset_matches_gpstime_library(self):
+        from gpstime import gps2unix
+        reader = _FakeReader(p1_time=[10.0, 20.0], gps_time=[GPS_DATE_SEC, GPS_DATE_SEC + 10.0])
+        tp = TimeProvider()
+        tp.set_reference_data(reader)
+        offset = tp.get_gps_posix_offset_sec()
+        assert offset == pytest.approx(gps2unix(GPS_DATE_SEC) - GPS_DATE_SEC)
+        # Applying the offset to any GPS time in the table should recover the accurate POSIX/Unix timestamp.
+        assert GPS_DATE_SEC + offset == pytest.approx(gps2unix(GPS_DATE_SEC))
+
+    def test_uses_p1_time_as_sample_when_p1_is_gps_and_table_empty(self):
+        # p1_time looks like GPS time, but gps_time was never populated, so the reference table is empty.
+        from gpstime import gps2unix
+        reader = _FakeReader(p1_time=[GPS_DATE_SEC, GPS_DATE_SEC + 10.0], gps_time=[np.nan, np.nan])
+        tp = TimeProvider()
+        tp.set_reference_data(reader)
+        assert tp.is_p1_gps_time()
+        offset = tp.get_gps_posix_offset_sec()
+        assert offset == pytest.approx(gps2unix(GPS_DATE_SEC) - GPS_DATE_SEC)
+
+    def test_skips_non_gps_like_samples_before_gps_acquired(self):
+        # Before GPS time is first acquired, P1 time starts as a small boot-relative counter -- not GPS-like -- even
+        # though the platform switches to using GPS time as P1 time once it's available. The first valid sample
+        # (10.0) is not GPS-like and must not be used as the representative sample.
+        from gpstime import gps2unix
+        reader = _FakeReader(p1_time=[10.0, 20.0, GPS_DATE_SEC], gps_time=[np.nan, np.nan, np.nan])
+        tp = TimeProvider()
+        tp.set_reference_data(reader)
+        assert tp.is_p1_gps_time()
+        offset = tp.get_gps_posix_offset_sec()
+        assert offset == pytest.approx(gps2unix(GPS_DATE_SEC) - GPS_DATE_SEC)
+
+
 class TestP1IsGpsTime:
     def test_default_false(self):
         tp = TimeProvider()
