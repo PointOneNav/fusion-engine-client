@@ -107,10 +107,19 @@ class Analyzer(object):
     LONG_LOG_DURATION_SEC = 2 * 3600.0
     HIGH_MEASUREMENT_RATE_HZ = 40.0
 
+    # Registers _ReformatGpsAxisTicks() to run after every redraw  (see plotly_data_support.js). Needed by any plot
+    # whose X axis can be in 'gps' mode, whether or not it uses _TIME_HOVER_JS below for hover text.
+    _GPS_TICK_REFORMAT_JS = """\
+figure.on('plotly_afterplot', _ReformatGpsAxisTicks);
+// The initial render's 'plotly_afterplot' can fire before tick label text is finalized, so also run once more on
+// the next tick, after the very first render has fully settled.
+setTimeout(_ReformatGpsAxisTicks, 0);
+"""
+
     # Generic hover JS for traces whose customdata is whichever timestamp (P1 or GPS) is not already reflected by the
     # X axis (see BuildTimeHoverText() in plotly_data_support.js, and _time_hover_customdata() below). Plots needing
-    # additional custom hover logic (e.g., decoding a status bitmask) should not use this and should build their own
-    # 'plotly_hover' handler instead.
+    # additional custom hover logic (e.g., decoding a status bitmask) should not use this directly -- build a custom
+    # 'plotly_hover' handler instead, but still append _GPS_TICK_REFORMAT_JS to it.
     _TIME_HOVER_JS = """\
 figure.on('plotly_hover', function(data) {
   for (let i = 0; i < data.points.length; ++i) {
@@ -120,11 +129,7 @@ figure.on('plotly_hover', function(data) {
     }
   }
 });
-figure.on('plotly_afterplot', _ReformatGpsAxisTicks);
-// The initial render's 'plotly_afterplot' can fire before tick label text is finalized, so also run once more on
-// the next tick, after the very first render has fully settled.
-setTimeout(_ReformatGpsAxisTicks, 0);
-"""
+""" + _GPS_TICK_REFORMAT_JS
 
     def __init__(self,
                  file: Union[DataLoader, str], ignore_index: bool = False,
@@ -1414,7 +1419,7 @@ setTimeout(_ReformatGpsAxisTicks, 0);
             subplot_titles=[title])
 
         figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
-        figure['layout']['xaxis1'].update(title=self.p1_time_label, showticklabels=True)
+        figure['layout']['xaxis1'].update(showticklabels=True, **self._x_axis_layout())
         figure['layout']['yaxis1'].update(title="C/N0 (dB-Hz)")
 
         # Assign colors by PRN.
@@ -1430,11 +1435,12 @@ setTimeout(_ReformatGpsAxisTicks, 0);
 
             idx = data.signal_data['signal_hash'] == signal_hash
             p1_time = data.signal_data['p1_time'][idx]
+            gps_time = data.signal_data['gps_time'][idx]
             cn0_dbhz = data.signal_data['cn0_dbhz'][idx]
 
-            text = ['P1: %.1f sec' % t for t in p1_time]
-            time = p1_time - float(self.t0)
-            figure.add_trace(go.Scattergl(x=time, y=cn0_dbhz, text=text, name=name,
+            time, _ = self._resolve_x_axis(p1_time=p1_time, gps_time=gps_time)
+            customdata = self._time_hover_customdata(p1_time=p1_time, gps_time=gps_time)
+            figure.add_trace(go.Scattergl(x=time, y=cn0_dbhz, customdata=customdata, name=name,
                                           mode='markers', marker={'color': color_by_prn[signal.get_prn()]}),
                              1, 1)
             indices_by_signal_type[signal.signal_type].append(len(figure.data) - 1)
@@ -1460,7 +1466,7 @@ setTimeout(_ReformatGpsAxisTicks, 0);
         }]
 
         name = self._gnss_plot_filename('gnss_cn0', source_id)
-        self._add_figure(name=name, figure=figure, title=f'{label} GNSS C/N0 vs Time')
+        self._add_figure(name=name, figure=figure, title=f'{label} GNSS C/N0 vs Time', inject_js=self._TIME_HOVER_JS)
 
     def plot_gnss_azimuth_elevation(self):
         """!
@@ -1485,8 +1491,9 @@ setTimeout(_ReformatGpsAxisTicks, 0);
             subplot_titles=["Azimuth Angle",
                             "Elevation Angle"])
         figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
-        figure['layout']['xaxis1'].update(title=self.p1_time_label, showticklabels=True)
-        figure['layout']['xaxis2'].update(title=self.p1_time_label, showticklabels=True)
+        axis_layout = self._x_axis_layout()
+        figure['layout']['xaxis1'].update(showticklabels=True, **axis_layout)
+        figure['layout']['xaxis2'].update(showticklabels=True, **axis_layout)
         figure['layout']['yaxis1'].update(title="Degrees")
         figure['layout']['yaxis2'].update(title="Degrees")
 
@@ -1506,15 +1513,16 @@ setTimeout(_ReformatGpsAxisTicks, 0);
 
             idx = data.sv_data['sv_hash'] == sv_hash
             p1_time = data.sv_data['p1_time'][idx]
+            gps_time = data.sv_data['gps_time'][idx]
             az_deg = data.sv_data['azimuth_deg'][idx]
             el_deg = data.sv_data['elevation_deg'][idx]
 
-            time = p1_time - float(self.t0)
+            time, _ = self._resolve_x_axis(p1_time=p1_time, gps_time=gps_time)
+            customdata = self._time_hover_customdata(p1_time=p1_time, gps_time=gps_time)
 
             # Plot the data.
             color = color_by_prn[sv_id.get_prn()]
-            text = ["P1: %.3f sec" % (t + float(self.t0)) for t in time]
-            figure.add_trace(go.Scattergl(x=time, y=az_deg, text=text,
+            figure.add_trace(go.Scattergl(x=time, y=az_deg, customdata=customdata,
                                           name=name,
                                           mode='markers',
                                           marker={'color': color, 'symbol': 'circle', 'size': 8},
@@ -1522,7 +1530,7 @@ setTimeout(_ReformatGpsAxisTicks, 0);
                                           legendgroup=name),
                                 1, 1)
             indices_by_system[system].append(len(figure.data) - 1)
-            figure.add_trace(go.Scattergl(x=time, y=el_deg, text=text,
+            figure.add_trace(go.Scattergl(x=time, y=el_deg, customdata=customdata,
                                           name=name,
                                           mode='markers',
                                           marker={'color': color, 'symbol': 'circle', 'size': 8},
@@ -1552,7 +1560,8 @@ setTimeout(_ReformatGpsAxisTicks, 0);
         }]
 
         name = self._gnss_plot_filename('gnss_azimuth_elevation', source_id)
-        self._add_figure(name=name, figure=figure, title=f'{label} GNSS Azimuth & Elevation vs Time')
+        self._add_figure(name=name, figure=figure, title=f'{label} GNSS Azimuth & Elevation vs Time',
+                         inject_js=self._TIME_HOVER_JS)
 
     def plot_gnss_signal_status(self):
         for source_id in self._get_gnss_antenna_source_ids():
@@ -1632,29 +1641,31 @@ Black=Unused, Red=Used'''
                    [None],
                    [{}]])
         figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
-        figure['layout']['xaxis1'].update(title=self.p1_time_label)
+        axis_layout = self._x_axis_layout()
+        figure['layout']['xaxis1'].update(**axis_layout)
+        figure['layout']['xaxis2'].update(**axis_layout)
         figure['layout']['yaxis1'].update(title='Signal' if have_gnss_signals_message else 'Satellite')
         figure['layout']['yaxis2'].update(title=f"# SVs/Signals", rangemode='tozero')
 
         # Plot the signal counts.
-        time = data.p1_time - float(self.t0)
-        text = ["P1: %.3f sec" % (t + float(self.t0)) for t in time]
-        figure.add_trace(go.Scattergl(x=time, y=num_svs, text=text, name=f'# SVs',
+        time, _ = self._resolve_x_axis(p1_time=data.p1_time, gps_time=data.gps_time)
+        customdata = self._time_hover_customdata(p1_time=data.p1_time, gps_time=data.gps_time)
+        figure.add_trace(go.Scattergl(x=time, y=num_svs, customdata=customdata, name=f'# SVs',
                                       mode='lines', line={'color': 'black', 'dash': 'dash'}),
                          5, 1)
         if have_gnss_signals_message:
-            figure.add_trace(go.Scattergl(x=time, y=num_signals, text=text, name=f'# Signals',
+            figure.add_trace(go.Scattergl(x=time, y=num_signals, customdata=customdata, name=f'# Signals',
                                           mode='lines', line={'color': 'gray', 'dash': 'dash'}),
                              5, 1)
 
-        figure.add_trace(go.Scattergl(x=time, y=num_used_svs, text=text, name=f'# Used SVs',
+        figure.add_trace(go.Scattergl(x=time, y=num_used_svs, customdata=customdata, name=f'# Used SVs',
                                       mode='lines', line={'color': 'green'}),
                          5, 1)
         if have_gnss_signals_message:
-            figure.add_trace(go.Scattergl(x=time, y=num_used_signals, text=text, name=f'# Used Signals',
+            figure.add_trace(go.Scattergl(x=time, y=num_used_signals, customdata=customdata, name=f'# Used Signals',
                                           mode='lines', line={'color': 'red'}),
                              5, 1)
-            figure.add_trace(go.Scattergl(x=time, y=num_fixed_signals, text=text, name=f'# Fixed Signals',
+            figure.add_trace(go.Scattergl(x=time, y=num_fixed_signals, customdata=customdata, name=f'# Fixed Signals',
                                           mode='lines', line={'color': 'orange'}),
                              5, 1)
 
@@ -1750,10 +1761,13 @@ Black=Unused, Red=Used'''
             # Extract data for this signal.
             idx = data.signal_data['signal_hash'] == signal_hash
             p1_time = data.signal_data['p1_time'][idx]
+            gps_time = data.signal_data['gps_time'][idx]
             cn0_dbhz = data.signal_data['cn0_dbhz'][idx]
             status_flags = data.signal_data['status_flags'][idx]
             signal_has_corrections = None if have_corrections is None else have_corrections[idx]
-            time = p1_time - float(self.t0)
+            time, _ = self._resolve_x_axis(p1_time=p1_time, gps_time=gps_time)
+            # The time value NOT already reflected by the X axis, one row, to include in this signal's customdata.
+            other_time = self._time_hover_customdata(p1_time=p1_time, gps_time=gps_time)[0]
 
             # Find the satellite elevation for the times this signal was present.
             sv_idx = data.sv_data['sv_hash'] == int(signal.get_satellite_id())
@@ -1766,7 +1780,8 @@ Black=Unused, Red=Used'''
                 idx = cond['cond'](status_flags, signal_has_corrections)
                 if np.any(idx):
                     figure.add_trace(go.Scattergl(x=time[idx], y=[y_offset] * np.sum(idx),
-                                                  customdata=np.vstack((status_flags[idx],
+                                                  customdata=np.vstack((other_time[idx],
+                                                                        status_flags[idx],
                                                                         cn0_dbhz[idx],
                                                                         elev_deg[idx])),
                                                   name=name,
@@ -1806,9 +1821,10 @@ Black=Unused, Red=Used'''
 
         hover_js = f"""\
 function SetSignalStatusHover(point) {{
-  let status_flags = GetCustomData(point, 0);
-  let cn0_dbhz = GetCustomData(point, 1);
-  let elev_deg = GetCustomData(point, 2);
+  let other_time = GetCustomData(point, 0);
+  let status_flags = GetCustomData(point, 1);
+  let cn0_dbhz = GetCustomData(point, 2);
+  let elev_deg = GetCustomData(point, 3);
 
   let tracking = [];
   if (status_flags & {GNSSSignalInfo.STATUS_FLAG_VALID_PR}) {{
@@ -1848,7 +1864,7 @@ function SetSignalStatusHover(point) {{
     features.push("RTK");
   }}
 
-  let new_text = GetTimeText(point.x);
+  let new_text = BuildTimeHoverText(point.x, other_time);
   new_text += "<br>C/N0: " + cn0_dbhz.toFixed(2) + " dB-Hz";
   new_text += "<br>Elevation: " + elev_deg.toFixed(1) + " deg";
   new_text += "<br>Status mask: 0x" + status_flags.toString(16);
@@ -1865,11 +1881,11 @@ figure.on('plotly_hover', function(data) {{
       SetSignalStatusHover(point);
     }}
     else {{
-      ChangeHoverText(point, GetTimeText(point.x));
+      ChangeHoverText(point, BuildTimeHoverText(point.x, GetCustomData(point, 0)));
     }}
   }}
 }});
-"""
+""" + self._GPS_TICK_REFORMAT_JS
 
         self._add_figure(name=filename, figure=figure, title=figure_title, inject_js=hover_js)
 
@@ -2038,8 +2054,9 @@ figure.on('plotly_hover', function(data) {{
                    [None],
                    [{}]])
         figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
+        axis_layout = self._x_axis_layout()
         for i in range(2):
-            figure['layout']['xaxis%d' % (i + 1)].update(title=self.p1_time_label, showticklabels=True, matches='x')
+            figure['layout']['xaxis%d' % (i + 1)].update(showticklabels=True, matches='x', **axis_layout)
         figure['layout']['yaxis1'].update(title="Baseline Distance (km)")
         figure['layout']['yaxis2'].update(title="Age (sec)")
 
@@ -2057,20 +2074,23 @@ figure.on('plotly_hover', function(data) {{
         # Now plot data for each base station.
         for station_id in station_ids:
             idx = data.reference_station_id == station_id
-            time = data.p1_time[idx] - float(self.t0)
+            p1_time = data.p1_time[idx]
+            gps_time = data.gps_time[idx]
+            time, _ = self._resolve_x_axis(p1_time=p1_time, gps_time=gps_time)
+            customdata = self._time_hover_customdata(p1_time=p1_time, gps_time=gps_time)
             name = f'Station {station_id}'
             color = colors[station_id]
-            text = ["P1 Time: %.3f sec" % (t + float(self.t0)) for t in time]
-            figure.add_trace(go.Scattergl(x=time, y=data.baseline_distance_m[idx] * 1e-3, text=text,
+            figure.add_trace(go.Scattergl(x=time, y=data.baseline_distance_m[idx] * 1e-3, customdata=customdata,
                                           name=name, legendgroup=int(station_id), showlegend=True,
                                           mode='markers', marker={'color': color}),
                              1, 1)
-            figure.add_trace(go.Scattergl(x=time, y=data.corrections_age_sec[idx], text=text,
+            figure.add_trace(go.Scattergl(x=time, y=data.corrections_age_sec[idx], customdata=customdata,
                                           name=name, legendgroup=int(station_id), showlegend=False,
                                           mode='markers', marker={'color': color}),
                              4, 1)
 
-        self._add_figure(name="gnss_corrections_status", figure=figure, title="GNSS Corrections Status")
+        self._add_figure(name="gnss_corrections_status", figure=figure, title="GNSS Corrections Status",
+                         inject_js=self._TIME_HOVER_JS)
 
     def plot_wheel_data(self):
         """!
