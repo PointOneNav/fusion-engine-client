@@ -103,6 +103,9 @@ class TimeProvider:
         @brief Split chronologically-ordered entries into contiguous per-boot-session segments, splitting wherever
                P1 time jumps backward (i.e., a device reset).
 
+        @param p1_time Chronologically-ordered P1 times.
+        @param gps_time The corresponding GPS times, one per entry in `p1_time`.
+
         @return A list of `(p1_time, gps_time)` `ndarray` pairs, one per boot session.
         """
         if len(p1_time) == 0:
@@ -135,6 +138,11 @@ class TimeProvider:
         """!
         @brief Test whether a list of `(p1_time, gps_time)` boot session segments have non-overlapping P1 time
                ranges, i.e., whether a given P1 time can unambiguously be attributed to a single session.
+
+        @param segments A list of `(p1_time, gps_time)` `ndarray` pairs, as returned by
+               @ref _split_into_boot_segments().
+
+        @return `True` if no two segments' P1 time ranges overlap.
         """
         ranges = sorted((p1_time[0], p1_time[-1]) for p1_time, _ in segments)
         return all(ranges[i][1] < ranges[i + 1][0] for i in range(len(ranges) - 1))
@@ -361,13 +369,17 @@ Received time update ({message.get_type()} message) at:
     @staticmethod
     def _gps_sec_to_datetime64_array(gps_time_sec: np.ndarray) -> np.ndarray:
         """!
-        @brief Vectorized conversion of GPS times (in seconds) to UTC `datetime64[ns]`.
+        @brief Convert an array of GPS times (in seconds) to UTC (`datetime64[ns]`).
+
+        @param gps_time_sec The GPS times to be converted (in seconds).
+
+        @return An array of Python `datetime64` values representing the corresponding UTC time (in nanoseconds).
         """
         result = np.full(gps_time_sec.shape, np.datetime64('NaT'), dtype='datetime64[ns]')
         valid = ~np.isnan(gps_time_sec)
         if np.any(valid):
-            # The GPS/UTC offset is constant aside from leap seconds, so compute it once from a representative
-            # sample and apply it to the whole array, rather than converting one value at a time.
+            # For simplicity, we're assuming the data does not span a leap second changeover, so we can just compute a
+            # single offset and apply it to all timestamps. See explanation in set_reference_data().
             ref_gps_sec = gps_time_sec[valid][0]
             posix_offset_sec = gps2unix(ref_gps_sec) - ref_gps_sec
             result[valid] = ((gps_time_sec[valid] + posix_offset_sec) * 1e9).astype('datetime64[ns]')
