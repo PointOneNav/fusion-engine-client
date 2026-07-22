@@ -710,7 +710,7 @@ setTimeout(_ReformatGpsAxisTicks, 0);
             self.logger.info('No calibration data available. Skipping calibration plot.')
             return
 
-        time, axis_label, axis_layout = self._resolve_x_axis(p1_time=cal_data.p1_time)
+        time, axis_layout = self._resolve_x_axis(p1_time=cal_data.p1_time)
         time_customdata = self._time_hover_customdata(p1_time=cal_data.p1_time)
 
         # Map calibration stage enum values onto a [0, N) range for plotting.
@@ -725,7 +725,7 @@ setTimeout(_ReformatGpsAxisTicks, 0);
 
         figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
         for i in range(4):
-            figure['layout']['xaxis%d' % (i + 1)].update(title=axis_label, showticklabels=True, **axis_layout)
+            figure['layout']['xaxis%d' % (i + 1)].update(showticklabels=True, **axis_layout)
         figure['layout']['yaxis1'].update(title="Percent Complete", range=[0, 100])
         figure['layout']['yaxis2'].update(ticktext=['%s' % e.name for e in CalibrationStage],
                                           tickvals=list(range(len(stage_map))))
@@ -3393,40 +3393,54 @@ var time_axis_type = '{time_axis_type}';
         elif time_source == SystemTimeSource.TIMESTAMPED_ON_RECEPTION:
             return float(self.system_t0)
 
-    def _resolve_x_axis(self, p1_time: np.ndarray, gps_time: Optional[np.ndarray] = None) -> \
-            Tuple[np.ndarray, str, dict]:
+    def _x_axis_layout(self) -> dict:
         """!
-        @brief Resolve the X axis values, label, and layout to use for a time series, per @c self.time_type.
+        @brief Get the `go.layout.XAxis` kwargs (including `title`) for the current @c self.time_type.
 
-        @param p1_time The P1 time for each point.
-        @param gps_time The GPS time for each point, if already known (e.g., from a @ref PoseMessage). If `None`, it
-               will be computed from `p1_time` via @c self.time_provider when needed.
-
-        @return A tuple `(x, axis_label, axis_layout)`:
-                - `x`: The X axis values to plot.
-                - `axis_label`: The axis title to use.
-                - `axis_layout`: Extra `go.layout.XAxis` kwargs needed to display `x` (e.g., `type='date'`).
+        @return A dict of `go.layout.XAxis` kwargs, e.g. `{'title': ..., 'type': 'date'}`.
         """
-        if self.time_type == 'relative':
-            return p1_time - float(self.t0), self.p1_time_label, {}
-        elif self.time_type == 'p1':
-            return p1_time, self.p1_time_label, {}
-
-        if gps_time is None:
-            gps_time = self.time_provider.p1_to_gps(p1_time)
-
-        if self.time_type == 'gps':
+        if self.time_type in ('relative', 'p1'):
+            return {'title': self.p1_time_label}
+        elif self.time_type == 'gps':
             # GPS seconds are large enough that Plotly may otherwise render ticks in scientific/SI-prefix notation,
             # which _ReformatGpsAxisTicks() (see plotly_data_support.js) can't parse back into week:tow. We let
             # Plotly auto-generate normal (zoom-aware) numeric ticks here, and rewrite the rendered tick text into
             # week:tow client-side, rather than computing fixed tick positions/labels ourselves -- those wouldn't
             # regenerate on zoom/pan and could leave a zoomed-in view with no visible ticks at all.
-            return gps_time, 'GPS Time (week:tow)', {'exponentformat': 'none'}
+            return {'title': 'GPS Time (week:tow)', 'exponentformat': 'none'}
         else:
             # Plotly serializes a datetime64 array as literal date strings, so (unlike plain milliseconds-since-
             # epoch numbers) they display as given, without being reinterpreted in the browser's local timezone.
+            return {'title': 'UTC Time', 'type': 'date'}
+
+    def _resolve_x_axis(self, p1_time: np.ndarray, gps_time: Optional[np.ndarray] = None) -> \
+            Tuple[np.ndarray, dict]:
+        """!
+        @brief Resolve the X axis values and layout to use for a time series, per @c self.time_type.
+
+        @param p1_time The P1 time for each point.
+        @param gps_time The GPS time for each point, if already known (e.g., from a @ref PoseMessage). If `None`, it
+               will be computed from `p1_time` via @c self.time_provider when needed.
+
+        @return A tuple `(x, axis_layout)`:
+                - `x`: The X axis values to plot.
+                - `axis_layout`: `go.layout.XAxis` kwargs needed to display `x` (title, and e.g. `type='date'`).
+        """
+        axis_layout = self._x_axis_layout()
+
+        if self.time_type == 'relative':
+            return p1_time - float(self.t0), axis_layout
+        elif self.time_type == 'p1':
+            return p1_time, axis_layout
+
+        if gps_time is None:
+            gps_time = self.time_provider.p1_to_gps(p1_time)
+
+        if self.time_type == 'gps':
+            return gps_time, axis_layout
+        else:
             utc = self.time_provider.gps_sec_to_datetime64_array(gps_time)
-            return utc, 'UTC Time', {'type': 'date'}
+            return utc, axis_layout
 
     def _time_hover_customdata(self, p1_time: np.ndarray, gps_time: Optional[np.ndarray] = None,
                                x_domain: Optional[str] = None) -> np.ndarray:
