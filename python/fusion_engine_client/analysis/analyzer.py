@@ -1826,8 +1826,10 @@ figure.on('plotly_hover', function(data) {{
         only used for IMU or wheel speed data.
         """
         if self._gnss_antenna_source_ids is None:
-            antenna_source_ids = {0, 1, SourceIdentifier.PRIMARY_GNSS_ANTENNA, SourceIdentifier.SECONDARY_GNSS_ANTENNA}
-            self._gnss_antenna_source_ids = sorted(self.source_ids.intersection(antenna_source_ids))
+            # 0/1 are the legacy primary/secondary antenna identifiers, predating the SourceIdentifier reserved
+            # ranges. 300-399 is reserved for GNSS receivers/antennae.
+            self._gnss_antenna_source_ids = sorted(
+                sid for sid in self.source_ids if sid in (0, 1) or 300 <= sid <= 399)
         return self._gnss_antenna_source_ids
 
     def _gnss_antenna_label(self, source_id: int) -> str:
