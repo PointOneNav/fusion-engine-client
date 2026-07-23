@@ -2993,6 +2993,7 @@ figure.on('plotly_unhover', function(data) {
         for i in range(2):
             figure['layout']['xaxis%d' % (i + 1)].update(showticklabels=True, **axis_layout)
         figure['layout']['yaxis1'].update(title="Temp (deg C)")
+        figure['layout']['yaxis2'].update(title="Temp (deg C)")
 
         # Plot the data.
         figure.add_trace(go.Scattergl(x=time, y=data.gnss_temperature_degc, customdata=customdata,
