@@ -120,6 +120,8 @@ setTimeout(_ReformatGpsAxisTicks, 0);
     # X axis (see BuildTimeHoverText() in plotly_data_support.js, and _time_hover_customdata() below). Plots needing
     # additional custom hover logic (e.g., decoding a status bitmask) should not use this directly -- build a custom
     # 'plotly_hover' handler instead, but still append _GPS_TICK_REFORMAT_JS to it.
+    #
+    # If customdata is omitted, the hover text will just show the X axis value (absolute or relative time).
     _TIME_HOVER_JS = """\
 figure.on('plotly_hover', function(data) {
   for (let i = 0; i < data.points.length; ++i) {
@@ -127,9 +129,25 @@ figure.on('plotly_hover', function(data) {
     if (point.data.customdata) {
       ChangeHoverText(point, BuildTimeHoverText(point.x, GetCustomData(point, 0)));
     }
+    else {
+      ChangeHoverText(point, BuildTimeHoverText(point.x));
+    }
   }
 });
 """ + _GPS_TICK_REFORMAT_JS
+
+    # Generic hover JS for traces on a device system-time axis (see BuildSystemTimeHoverText() in
+    # plotly_data_support.js). Unlike _TIME_HOVER_JS, no customdata is needed -- system time has no GPS-like alternate
+    # domain, so the value not shown on the X axis (relative vs. absolute) is always a constant offset (system_t0_sec)
+    # away, not a per-point value.
+    _SYSTEM_TIME_HOVER_JS = """\
+figure.on('plotly_hover', function(data) {
+  for (let i = 0; i < data.points.length; ++i) {
+    let point = data.points[i];
+    ChangeHoverText(point, BuildSystemTimeHoverText(point.x));
+  }
+});
+"""
 
     def __init__(self,
                  file: Union[DataLoader, str], ignore_index: bool = False,
@@ -564,26 +582,25 @@ figure.on('plotly_hover', function(data) {
         figure['layout']['xaxis1'].update(showticklabels=True, **axis_layout)
         figure['layout']['yaxis1'].update(title="Elapsed Time (sec)", rangemode="tozero")
 
-        text = ["System Time: %.3f sec" % (t + self.system_t0) for t in time]
-        figure.add_trace(go.Scattergl(x=time, y=dt_reset_to_valid, text=text,
+        figure.add_trace(go.Scattergl(x=time, y=dt_reset_to_valid,
                                       name='Command -> Valid', mode='markers'),
                          1, 1)
-        figure.add_trace(go.Scattergl(x=time, y=dt_reset_to_invalid, text=text,
+        figure.add_trace(go.Scattergl(x=time, y=dt_reset_to_invalid,
                                       name='Command -> Invalid', mode='markers'),
                          1, 1)
-        figure.add_trace(go.Scattergl(x=time, y=dt_invalid_to_valid, text=text,
+        figure.add_trace(go.Scattergl(x=time, y=dt_invalid_to_valid,
                                       name='Invalid -> Valid', mode='markers'),
                          1, 1)
 
         if len(unstarted_resets) > 0:
             idx = np.array(unstarted_resets)
             time = time[idx]
-            text = ["System Time: %.3f sec" % (t + self.system_t0) for t in time]
-            figure.add_trace(go.Scattergl(x=time, y=np.zeros_like(time), text=text,
+            figure.add_trace(go.Scattergl(x=time, y=np.zeros_like(time),
                                           name='Unstarted Resets', mode='markers'),
                              1, 1)
 
-        self._add_figure(name="reset_timing", figure=figure, title="Reset Recovery Timing")
+        self._add_figure(name="reset_timing", figure=figure, title="Reset Recovery Timing",
+                         inject_js=self._SYSTEM_TIME_HOVER_JS)
 
     def plot_pose(self):
         """!
@@ -3512,13 +3529,19 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
         if post_script is None:
             post_script = ""
 
-        # Create global variables with the log's t0 timestamp, the (leap-second accurate) GPS/POSIX offset, and the
-        # time domain plotted on this figure's X axis (see BuildTimeHoverText()).
+        # Create global variables with the log's t0 timestamp, the (leap-second accurate) GPS/POSIX offset, the
+        # system time t0 (see BuildSystemTimeHoverText()), and the time domain plotted on this figure's X axis (see
+        # BuildTimeHoverText()). Note: self.reader.t0 and self.system_t0 may each independently be unavailable (e.g.
+        # a system-time-only profiling log has no P1 time at all), so both need a 'null' fallback -- plots that
+        # don't use one of these domains at all still go through this same code path whenever inject_js is set.
         gps_posix_offset_sec = self.time_provider.get_gps_posix_offset_sec()
+        p1_t0_sec = None if self.reader.t0 is None else float(self.reader.t0)
+        system_t0_sec = None if np.isnan(self.system_t0) else float(self.system_t0)
         post_script += f"""\
-var p1_t0_sec = {float(self.reader.t0)};
+var p1_t0_sec = {p1_t0_sec if p1_t0_sec is not None else 'null'};
 var p1_time_axis_rel = {'true' if self.time_axis == 'relative' else 'false'};
 var gps_posix_offset_sec = {gps_posix_offset_sec if gps_posix_offset_sec is not None else 'null'};
+var system_t0_sec = {system_t0_sec if system_t0_sec is not None else 'null'};
 var time_axis_type = '{time_axis_type}';
 """
 

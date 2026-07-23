@@ -81,6 +81,19 @@ function BuildTimeHoverTextFromTimes(p1_time_sec, gps_time_sec) {
   return lines.join('<br>');
 }
 
+// Build hover text for a point on a device system-time axis (relative or absolute, per Analyzer.time_type).
+// Unlike BuildTimeHoverText(), there's no GPS-like alternate domain to convert to/from here -- system_t0_sec is a
+// constant offset for the whole log, so the absolute value is always recoverable from x_value alone, with no
+// per-point customdata needed.
+function BuildSystemTimeHoverText(x_value) {
+  if (typeof system_t0_sec !== 'number') {
+    return `System Time: ${x_value.toFixed(3)} sec`;
+  }
+  else {
+    return `System Time: ${(x_value + system_t0_sec).toFixed(3)} sec`;
+  }
+}
+
 function ChangeHoverText(point, new_text) {
   // Note: Technically calling restyle() is more correct, however it can only restyle an entire trace, not just one
   // point in a trace, and in practice it's very sluggish. Manually modifying fullData.text is much faster.
