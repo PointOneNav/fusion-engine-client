@@ -3748,7 +3748,7 @@ var time_axis_type = '{time_axis_type}';
             return np.vstack((p1_time,))
 
     def _custom_tooltip_js(self, time_source: str = 'p1', precision: Optional[int] = 3,
-                           value_label: Optional[str] = None) -> str:
+                           value_label: Optional[str] = None, show_name: bool = True, show_value: bool = True) -> str:
         """!
         @brief Build hover JS that draws its own tooltip instead of relying on Plotly's native hover label (see
                `ShowCustomTooltip()`/`HideCustomTooltip()` in `plotly_data_support.js`).
@@ -3765,6 +3765,8 @@ var time_axis_type = '{time_axis_type}';
         @param precision Number of digits after the decimal point to show for the Y value (see
                `BuildAxisValueHoverText()`).
         @param value_label Override label to show instead of the Y axis title (see `BuildAxisValueHoverText()`).
+        @param show_name Show trace names in the tooltip.
+        @param show_value Show trace values in the tooltip.
 
         @return The JS to pass as `inject_js` to @ref _add_figure().
         """
@@ -3786,12 +3788,19 @@ var time_axis_type = '{time_axis_type}';
         if value_label is not None:
             value_options['label'] = value_label
 
+        name_arg = 'point.data.name' if show_name else 'undefined'
+        if show_value:
+            value_text_js = f'  let value_text = BuildAxisValueHoverText(point, {json.dumps(value_options)});'
+            value_arg = 'value_text'
+        else:
+            value_text_js = ''
+            value_arg = 'undefined'
+
         return ("""\
 figure.on('plotly_hover', function(data) {
   let point = data.points[0];
-""" + build_time_text_js + """
-  let value_text = BuildAxisValueHoverText(point, """ + json.dumps(value_options) + """);
-  ShowCustomTooltip(point, GetCustomTooltipHTML(point.data.name, value_text, time_text));
+""" + build_time_text_js + "\n" + value_text_js + """
+  ShowCustomTooltip(point, GetCustomTooltipHTML(""" + name_arg + ", " + value_arg + """, time_text));
 });
 figure.on('plotly_unhover', function(data) {
   HideCustomTooltip();

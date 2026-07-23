@@ -7,12 +7,18 @@ var figure = document.getElementsByClassName("plotly-graph-div js-plotly-plot")[
 // @param options.label Override for the Y axis title, if the default isn't appropriate (e.g. no title set).
 function BuildAxisValueHoverText(point, options) {
   options = options || {};
-  let label = options.label || (point.yaxis.title && point.yaxis.title.text) || 'Value';
+  let label = options.label !== undefined ? options.label :
+                                            ((point.yaxis.title && point.yaxis.title.text) || 'Value');
   let value = point.y;
   if (typeof value === 'number') {
     value = (typeof options.precision === 'number') ? value.toFixed(options.precision) : value.toPrecision(6);
   }
-  return `${label}: ${value}`;
+  if (label.length > 0) {
+    return `${label}: ${value}`;
+  }
+  else {
+    return `${value}`;
+  }
 }
 
 function GetTimeText(time_sec) {
