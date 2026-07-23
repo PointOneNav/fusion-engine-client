@@ -236,14 +236,9 @@ figure.on('plotly_hover', function(data) {
             self.system_t0 = self.reader.get_system_t0()
             if self.system_t0 is None:
                 self.system_t0 = np.nan
-
-            self.p1_time_label = 'Relative Time (sec)'
-            self.system_time_label = 'Relative Time (sec)'
         else:
             self.t0 = Timestamp(0.0)
             self.system_t0 = 0.0
-            self.p1_time_label = 'P1 Time (sec)'
-            self.system_time_label = 'System Time (sec)'
 
         # The time domain -- `p1` (covers both relative and absolute P1 time) or `gps` (covers both GPS and UTC) --
         # implied by @c self.time_type, used by @ref _resolve_x_axis() and the default of _time_hover_customdata()'s
@@ -3601,10 +3596,15 @@ var time_axis_type = '{time_axis_type}';
         @return A dict of `go.layout.XAxis` kwargs, e.g. `{'title': ..., 'type': 'date'}`.
         """
         if time_source == 'system':
-            return {'title': self.system_time_label}
+            if self.time_type == 'relative':
+                return {'title': 'Relative Time (sec)'}
+            else:
+                return {'title': 'System Time (sec)'}
 
-        if self.time_type in ('relative', 'p1'):
-            return {'title': self.p1_time_label}
+        if self.time_type == 'relative':
+            return {'title': 'Relative Time (sec)'}
+        elif self.time_type == 'p1':
+            return {'title': 'P1 Time (sec)'}
         elif self.time_type == 'gps':
             # GPS seconds are large enough that Plotly may otherwise render ticks in scientific/SI-prefix notation,
             # which _ReformatGpsAxisTicks() (see plotly_data_support.js) can't parse back into week:tow. We let
