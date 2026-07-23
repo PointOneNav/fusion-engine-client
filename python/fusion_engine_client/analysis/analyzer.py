@@ -198,6 +198,7 @@ class Analyzer(object):
 
         self._gnss_signals_data = {}
         self._gnss_antenna_source_ids = None
+        self._pose_source_ids = None
 
         if self.output_dir is not None:
             if not os.path.exists(self.output_dir):
@@ -1066,7 +1067,8 @@ class Analyzer(object):
         """!
         @brief Plot a map of the position data.
         """
-        if self.output_dir is None or len(self.source_ids) == 0:
+        pose_source_ids = self._get_pose_source_ids()
+        if self.output_dir is None or len(pose_source_ids) == 0:
             return
 
         mapbox_token = self.get_mapbox_token(mapbox_token)
@@ -1089,8 +1091,8 @@ class Analyzer(object):
                 style['marker'].update(marker_style)
 
             # Only put default source ID on map by default.
-            legendgroup = None if len(self.source_ids) == 1 else source_id
-            visible = None if source_id == min(self.source_ids) else 'legendonly'
+            legendgroup = None if len(pose_source_ids) == 1 else source_id
+            visible = None if source_id == min(pose_source_ids) else 'legendonly'
 
             if np.any(selected_idx):
                 is_nav_engine = np.logical_and(selected_idx, flags & PoseMessage.FLAG_RECEIVER_SOLUTION == 0)
@@ -1125,7 +1127,7 @@ class Analyzer(object):
 
         # Read the pose data.
         have_pose_data = False
-        for source_id in self.source_ids:
+        for source_id in pose_source_ids:
             result = self.reader.read(message_types=[PoseMessage], source_ids=[source_id], **self.params)
             pose_data = result[PoseMessage.MESSAGE_TYPE]
 
@@ -1148,7 +1150,7 @@ class Analyzer(object):
             std_enu_m = pose_data.position_std_enu_m[:, valid_idx]
 
             for type, info in _SOLUTION_TYPE_MAP.items():
-                if len(self.source_ids) > 1:
+                if len(pose_source_ids) > 1:
                     name = info.name + ' [source_id=' + str(source_id) + ']'
                 else:
                     name = info.name
@@ -1829,6 +1831,19 @@ figure.on('plotly_hover', function(data) {{
 """
 
         self._add_figure(name=filename, figure=figure, title=figure_title, inject_js=hover_js)
+
+    def _get_pose_source_ids(self) -> List[int]:
+        """!
+        @brief Get the source IDs, restricted to known pose-producing identifiers, present in this log.
+
+        `self.source_ids` includes every source ID seen across all message types, so it isn't specific to pose
+        sources. Restrict it here to the reserved pose range so we don't attempt (and log about) a PoseMessage
+        read for unrelated source IDs, e.g. GNSS antennas or IMUs.
+        """
+        if self._pose_source_ids is None:
+            # 0-99 is reserved for pose solutions.
+            self._pose_source_ids = sorted(sid for sid in self.source_ids if 0 <= sid <= 99)
+        return self._pose_source_ids
 
     def _get_gnss_antenna_source_ids(self) -> List[int]:
         """!
