@@ -198,6 +198,7 @@ class Analyzer(object):
 
         self._gnss_signals_data = {}
         self._gnss_antenna_source_ids = None
+        self._pose_source_ids = None
 
         if self.output_dir is not None:
             if not os.path.exists(self.output_dir):
@@ -1066,7 +1067,8 @@ class Analyzer(object):
         """!
         @brief Plot a map of the position data.
         """
-        if self.output_dir is None or len(self.source_ids) == 0:
+        pose_source_ids = self._get_pose_source_ids()
+        if self.output_dir is None or len(pose_source_ids) == 0:
             return
 
         mapbox_token = self.get_mapbox_token(mapbox_token)
@@ -1089,8 +1091,8 @@ class Analyzer(object):
                 style['marker'].update(marker_style)
 
             # Only put default source ID on map by default.
-            legendgroup = None if len(self.source_ids) == 1 else source_id
-            visible = None if source_id == min(self.source_ids) else 'legendonly'
+            legendgroup = None if len(pose_source_ids) == 1 else source_id
+            visible = None if source_id == min(pose_source_ids) else 'legendonly'
 
             if np.any(selected_idx):
                 is_nav_engine = np.logical_and(selected_idx, flags & PoseMessage.FLAG_RECEIVER_SOLUTION == 0)
@@ -1124,19 +1126,22 @@ class Analyzer(object):
                 indices_by_engine['Nav Engine'].append(len(map_data) - 1)
 
         # Read the pose data.
-        for source_id in self.source_ids:
+        have_pose_data = False
+        for source_id in pose_source_ids:
             result = self.reader.read(message_types=[PoseMessage], source_ids=[source_id], **self.params)
             pose_data = result[PoseMessage.MESSAGE_TYPE]
 
             if len(pose_data.p1_time) == 0:
-                self.logger.info('No pose data available for source ID {}. Skipping map display.'.format(source_id))
-                return
+                self.logger.info('No pose data available for source ID {}. Skipping.'.format(source_id))
+                continue
 
             # Remove invalid solutions.
             valid_idx = np.logical_and(~np.isnan(pose_data.p1_time), pose_data.solution_type != SolutionType.Invalid)
             if not np.any(valid_idx):
                 self.logger.info('No valid position solutions detected for source ID {}.'.format(source_id))
-                return
+                continue
+
+            have_pose_data = True
 
             time = pose_data.p1_time[valid_idx] - float(self.t0)
             solution_type = pose_data.solution_type[valid_idx]
@@ -1145,12 +1150,15 @@ class Analyzer(object):
             std_enu_m = pose_data.position_std_enu_m[:, valid_idx]
 
             for type, info in _SOLUTION_TYPE_MAP.items():
-                if len(self.source_ids) > 1:
+                if len(pose_source_ids) > 1:
                     name = info.name + ' [source_id=' + str(source_id) + ']'
                 else:
                     name = info.name
                 _plot_data(name=name, selected_idx=solution_type == type, flags=flags, source_id=source_id,
                            marker_style=info.style)
+
+        if not have_pose_data:
+            return
 
         # Create the map.
         title = 'Vehicle Trajectory'
@@ -1417,10 +1425,17 @@ class Analyzer(object):
         """!
         @brief Plot GNSS azimuth/elevation angles.
         """
+        for source_id in self._get_gnss_antenna_source_ids():
+            self._plot_gnss_azimuth_elevation_for_source(source_id)
+
+    def _plot_gnss_azimuth_elevation_for_source(self, source_id: int):
+        label = self._gnss_antenna_label(source_id)
+
         # Read the GNSS signal data.
-        data = self._get_gnss_signals_data(self.default_source_id)
+        data = self._get_gnss_signals_data(source_id)
         if len(data.messages) == 0:
-            self.logger.info('No GNSS signal data available. Skipping azimuth/elevation time series plot.')
+            self.logger.info(f'No GNSS signal data available for source ID {source_id}. Skipping azimuth/elevation '
+                             'time series plot.')
             return
 
         # Set up the figure.
@@ -1495,7 +1510,8 @@ class Analyzer(object):
             'yanchor': 'top'
         }]
 
-        self._add_figure(name='gnss_azimuth_elevation', figure=figure, title='GNSS Azimuth & Elevation Vs. Time')
+        name = self._gnss_plot_filename('gnss_azimuth_elevation', source_id)
+        self._add_figure(name=name, figure=figure, title=f'{label} GNSS Azimuth & Elevation vs Time')
 
     def plot_gnss_signal_status(self):
         for source_id in self._get_gnss_antenna_source_ids():
@@ -1815,6 +1831,19 @@ figure.on('plotly_hover', function(data) {{
 """
 
         self._add_figure(name=filename, figure=figure, title=figure_title, inject_js=hover_js)
+
+    def _get_pose_source_ids(self) -> List[int]:
+        """!
+        @brief Get the source IDs, restricted to known pose-producing identifiers, present in this log.
+
+        `self.source_ids` includes every source ID seen across all message types, so it isn't specific to pose
+        sources. Restrict it here to the reserved pose range so we don't attempt (and log about) a PoseMessage
+        read for unrelated source IDs, e.g. GNSS antennas or IMUs.
+        """
+        if self._pose_source_ids is None:
+            # 0-99 is reserved for pose solutions.
+            self._pose_source_ids = sorted(sid for sid in self.source_ids if 0 <= sid <= 99)
+        return self._pose_source_ids
 
     def _get_gnss_antenna_source_ids(self) -> List[int]:
         """!
