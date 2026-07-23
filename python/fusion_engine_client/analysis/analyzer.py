@@ -229,7 +229,6 @@ figure.on('plotly_hover', function(data) {
         self.time_type = time_type
 
         if self.time_type == 'relative':
-            self.time_axis = 'relative'
             self.t0 = self.reader.t0
             if self.t0 is None:
                 self.t0 = Timestamp()
@@ -241,9 +240,6 @@ figure.on('plotly_hover', function(data) {
             self.p1_time_label = 'Relative Time (sec)'
             self.system_time_label = 'Relative Time (sec)'
         else:
-            # Per-plot support for 'gps'/'utc' X-axis values is added incrementally (see _resolve_x_axis()); until a
-            # given plot has been updated, it falls back to absolute P1/system time here.
-            self.time_axis = 'absolute'
             self.t0 = Timestamp(0.0)
             self.system_t0 = 0.0
             self.p1_time_label = 'P1 Time (sec)'
@@ -293,8 +289,8 @@ figure.on('plotly_hover', function(data) {
             return
 
         # Setup the figure.
-        time_axis_str = 'Relative Time' if self.time_axis == 'relative' else 'P1/System Time'
-        p1_time_axis_str = 'Relative Time' if self.time_axis == 'relative' else 'P1 Time'
+        time_axis_str = 'Relative Time' if self.time_type == 'relative' else 'P1/System Time'
+        p1_time_axis_str = 'Relative Time' if self.time_type == 'relative' else 'P1 Time'
         figure = make_subplots(rows=2, cols=1, print_grid=False, shared_xaxes=True,
                                subplot_titles=[f'Device Time vs. {time_axis_str}',
                                                f'Pose Message Interval vs. {p1_time_axis_str}'])
@@ -427,7 +423,7 @@ figure.on('plotly_hover', function(data) {
 
         self._add_figure(name="time_scale", figure=figure, title="Time Scale",
                          inject_js=self._TIME_HOVER_JS + self._SYSTEM_TIME_HOVER_JS,
-                         time_axis_type='relative' if self.time_axis == 'relative' else 'p1')
+                         time_axis_type='relative' if self.time_type == 'relative' else 'p1')
 
     def plot_latency(self):
         if self.output_dir is None:
@@ -3333,7 +3329,7 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
         # in case, we'll approximate the GPS time _at_ t0 if needed.
         idx = find_first(~np.isnan(pose_data.gps_time))
         if idx >= 0:
-            first_p1_time = self.t0 if self.time_axis == 'relative' else pose_data.p1_time[0]
+            first_p1_time = self.t0 if self.time_type == 'relative' else pose_data.p1_time[0]
             dt_p1_sec = pose_data.p1_time[idx] - float(first_p1_time)
             t0_gps = Timestamp(pose_data.gps_time[idx]) - dt_p1_sec
             # If the first pose is pretty close to t0, we'll assume the approximation is reasonably accurate and not
@@ -3541,7 +3537,7 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
         system_t0_sec = None if np.isnan(self.system_t0) else float(self.system_t0)
         post_script += f"""\
 var p1_t0_sec = {p1_t0_sec if p1_t0_sec is not None else 'null'};
-var p1_time_axis_rel = {'true' if self.time_axis == 'relative' else 'false'};
+var p1_time_axis_rel = {'true' if self.time_type == 'relative' else 'false'};
 var gps_posix_offset_sec = {gps_posix_offset_sec if gps_posix_offset_sec is not None else 'null'};
 var system_t0_sec = {system_t0_sec if system_t0_sec is not None else 'null'};
 var time_axis_type = '{time_axis_type}';
