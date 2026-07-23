@@ -1395,7 +1395,7 @@ figure.on('plotly_unhover', function(data) {
 
         # Setup the figure.
         figure = go.Figure()
-        figure['layout'].update(title=f'{label} GNSS Sky Plot')
+        figure['layout'].update(title=f'{label} Antenna Sky Plot')
         figure['layout']['polar']['radialaxis'].update(range=[90, 0])
         figure['layout']['polar']['angularaxis'].update(visible=False)
 
@@ -1520,7 +1520,7 @@ figure.on('plotly_unhover', function(data) {
         figure['layout']['updatemenus'] = updatemenus
 
         name = self._gnss_plot_filename('gnss_skyplot', source_id)
-        self._add_figure(name=name, figure=figure, title=f'{label} GNSS Sky Plot')
+        self._add_figure(name=name, figure=figure, title=f'GNSS ({label}): Sky Plot')
 
     def plot_gnss_cn0(self):
         for source_id in self._get_gnss_antenna_source_ids():
@@ -1537,7 +1537,7 @@ figure.on('plotly_unhover', function(data) {
         have_gnss_signals_message = not data.using_legacy_satellite_message
 
         # Setup the figure.
-        title = 'C/N0'
+        title = f'{label} Antenna C/N0'
         if not have_gnss_signals_message:
             title += ' (L1 Only)'
         figure = make_subplots(
@@ -1592,7 +1592,7 @@ figure.on('plotly_unhover', function(data) {
         }]
 
         name = self._gnss_plot_filename('gnss_cn0', source_id)
-        self._add_figure(name=name, figure=figure, title=f'{label} GNSS C/N0 vs Time', custom_hover=True,
+        self._add_figure(name=name, figure=figure, title=f'GNSS ({label}): C/N0 vs Time', custom_hover=True,
                          inject_js=self._custom_tooltip_js(precision=2))
 
     def plot_gnss_azimuth_elevation(self):
@@ -1615,8 +1615,8 @@ figure.on('plotly_unhover', function(data) {
         # Set up the figure.
         figure = make_subplots(
             rows=2, cols=1,  print_grid=False, shared_xaxes=True,
-            subplot_titles=["Azimuth Angle",
-                            "Elevation Angle"])
+            subplot_titles=[f"{label} Antenna Azimuth Angle",
+                            f"{label} Antenna Elevation Angle"])
         figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
         axis_layout = self._x_axis_layout()
         figure['layout']['xaxis1'].update(showticklabels=True, **axis_layout)
@@ -1687,7 +1687,7 @@ figure.on('plotly_unhover', function(data) {
         }]
 
         name = self._gnss_plot_filename('gnss_azimuth_elevation', source_id)
-        self._add_figure(name=name, figure=figure, title=f'{label} GNSS Azimuth & Elevation vs Time',
+        self._add_figure(name=name, figure=figure, title=f'GNSS ({label}): Azimuth & Elevation vs Time',
                          custom_hover=True, inject_js=self._custom_tooltip_js())
 
     def plot_gnss_signal_status(self):
@@ -1697,7 +1697,7 @@ figure.on('plotly_unhover', function(data) {
     def _plot_gnss_signal_status_for_source(self, source_id: int):
         label = self._gnss_antenna_label(source_id)
         filename = self._gnss_plot_filename('gnss_signal_status', source_id)
-        figure_title = f'{label} GNSS Signal Status'
+        figure_title = f'GNSS ({label}): Signal Status'
 
         # Read the GNSS signal data.
         data = self._get_gnss_signals_data(source_id)
@@ -1746,8 +1746,8 @@ figure.on('plotly_unhover', function(data) {
                   'float': 'green', 'fixed': 'orange'}
 
         if have_gnss_signals_message:
-            title = '''\
-Signal Status<br>
+            title = f'''\
+{label} Antenna Signal Status<br>
 Black=Unused, Red=Pseudorange, Light Blue=Differential Pseudorange<br>
 Green=Float, Orange=Integer (Fixed)'''
         else:
@@ -2163,7 +2163,7 @@ figure.on('plotly_unhover', function(data) {{
                                           mode='markers', marker={'color': color_by_dop[name]}),
                              1, 1)
 
-        self._add_figure(name='gnss_dop', figure=figure, title='GNSS Dilution of Precision (DOP) vs. Time',
+        self._add_figure(name='gnss_dop', figure=figure, title='GNSS: Dilution of Precision (DOP) vs. Time',
                          custom_hover=True, inject_js=self._custom_tooltip_js(value_label='DOP'))
 
     def plot_gnss_corrections_status(self):
@@ -2221,7 +2221,7 @@ figure.on('plotly_unhover', function(data) {{
                                           mode='markers', marker={'color': color}),
                              4, 1)
 
-        self._add_figure(name="gnss_corrections_status", figure=figure, title="GNSS Corrections Status",
+        self._add_figure(name="gnss_corrections_status", figure=figure, title="GNSS: Corrections Status",
                          custom_hover=True, inject_js=self._custom_tooltip_js())
 
     def plot_wheel_data(self):
