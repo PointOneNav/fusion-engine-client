@@ -371,12 +371,15 @@ figure.on('plotly_hover', function(data) {
                 p1_time = pose_data.p1_time
                 gps_time = pose_data.gps_time
 
-            text = ['P1: %.3f sec<br>%s' % (p, self._gps_sec_to_string(g)) for p, g in zip(p1_time, gps_time)]
-            figure.add_trace(go.Scattergl(x=time, y=np.full_like(time, 1), name='P1/GPS Time', text=text,
+            # This plot's X axis is always P1 time (relative or absolute), regardless of self.time_type, since its
+            # purpose is comparing P1/GPS/System clocks against a common elapsed timeline. So customdata only needs
+            # GPS time -- BuildTimeHoverText() (see plotly_data_support.js) recovers P1 time from the X value itself.
+            customdata = self._time_hover_customdata(p1_time=p1_time, gps_time=gps_time, x_domain='p1')
+            figure.add_trace(go.Scattergl(x=time, y=np.full_like(time, 1), name='P1/GPS Time', customdata=customdata,
                                           mode='markers', marker={'color': 'blue'}),
                              1, 1)
 
-            figure.add_trace(go.Scattergl(x=time, y=dp1_time, name='P1 Time Interval', text=text,
+            figure.add_trace(go.Scattergl(x=time, y=dp1_time, name='P1 Time Interval', customdata=customdata,
                                           mode='markers', marker={'color': 'red'}),
                              2, 1)
             if dp1_stats is not None:
@@ -387,7 +390,7 @@ figure.on('plotly_hover', function(data) {
                                               mode='markers', marker={'symbol': 'triangle-down-open'}),
                                  2, 1)
 
-            figure.add_trace(go.Scattergl(x=time, y=dgps_time, name='GPS Time Interval', text=text,
+            figure.add_trace(go.Scattergl(x=time, y=dgps_time, name='GPS Time Interval', customdata=customdata,
                                           mode='markers', marker={'color': 'green'}),
                              2, 1)
             if dgps_stats is not None:
@@ -398,7 +401,7 @@ figure.on('plotly_hover', function(data) {
                                               mode='markers', marker={'symbol': 'triangle-down-open'}),
                                  2, 1)
 
-        # Read system timestamps from event notifications, if present.
+        # Read system timestamps from event notifications and profiling data, if present.
         result = self.reader.read(message_types=[EventNotificationMessage], **self.params)
         event_data = result[EventNotificationMessage.MESSAGE_TYPE]
         system_time_sec = None
@@ -407,7 +410,7 @@ figure.on('plotly_hover', function(data) {
 
         # Plot the result.
         if system_time_sec is not None:
-            time = system_time_sec - self.system_t0
+            time, _ = self._resolve_x_axis(system_time=system_time_sec, time_source='system')
 
             # plotly starts to struggle with > 2 hours of data and won't display mouseover text, so decimate if
             # necessary.
@@ -416,16 +419,15 @@ figure.on('plotly_hover', function(data) {
                 step = math.ceil(dt_sec / 7200.0)
                 idx = np.full_like(time, False, dtype=bool)
                 idx[0::step] = True
-
                 time = time[idx]
-                system_time_sec = system_time_sec[idx]
 
-            text = ['System: %.3f sec' % t for t in system_time_sec]
-            figure.add_trace(go.Scattergl(x=time, y=np.full_like(time, 2), name='System Time', text=text,
+            figure.add_trace(go.Scattergl(x=time, y=np.full_like(time, 2), name='System Time',
                                           mode='markers', marker={'color': 'purple'}),
                              1, 1)
 
-        self._add_figure(name="time_scale", figure=figure, title="Time Scale")
+        self._add_figure(name="time_scale", figure=figure, title="Time Scale",
+                         inject_js=self._TIME_HOVER_JS + self._SYSTEM_TIME_HOVER_JS,
+                         time_axis_type='relative' if self.time_axis == 'relative' else 'p1')
 
     def plot_latency(self):
         if self.output_dir is None:
