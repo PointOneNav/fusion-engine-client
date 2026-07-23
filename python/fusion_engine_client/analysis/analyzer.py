@@ -229,13 +229,6 @@ figure.on('plotly_hover', function(data) {
 
         self.time_type = time_type
 
-        if self.time_type == 'relative':
-            self.system_t0 = self.reader.get_system_t0()
-            if self.system_t0 is None:
-                self.system_t0 = np.nan
-        else:
-            self.system_t0 = 0.0
-
         # The time domain -- `p1` (covers both relative and absolute P1 time) or `gps` (covers both GPS and UTC) --
         # implied by @c self.time_type, used by @ref _resolve_x_axis() and the default of _time_hover_customdata()'s
         # `x_domain` argument. Some plots may use a different X axis regardles of self.time_type, and may override this.
@@ -3576,12 +3569,13 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
 
         # Create global variables with the log's t0 timestamp, the (leap-second accurate) GPS/POSIX offset, the
         # system time t0 (see BuildSystemTimeHoverText()), and the time domain plotted on this figure's X axis (see
-        # BuildTimeHoverText()). Note: self.reader.t0 and self.system_t0 may each independently be unavailable (e.g.
-        # a system-time-only profiling log has no P1 time at all), so both need a 'null' fallback -- plots that
+        # BuildTimeHoverText()). Note: self.reader.t0 and system_t0 may each independently be unavailable (e.g. a
+        # system-time-only profiling log has no P1 time at all), so both need a 'null' fallback -- plots that
         # don't use one of these domains at all still go through this same code path whenever inject_js is set.
         gps_posix_offset_sec = self.time_provider.get_gps_posix_offset_sec()
         p1_t0_sec = None if self.reader.t0 is None else float(self.reader.t0)
-        system_t0_sec = None if np.isnan(self.system_t0) else float(self.system_t0)
+        system_t0 = self.reader.get_system_t0() if self.time_type == 'relative' else 0.0
+        system_t0_sec = None if system_t0 is None else float(system_t0)
         post_script += f"""\
 var p1_t0_sec = {p1_t0_sec if p1_t0_sec is not None else 'null'};
 var p1_time_axis_rel = {'true' if self.time_type == 'relative' else 'false'};
@@ -3702,9 +3696,10 @@ var time_axis_type = '{time_axis_type}';
         axis_layout = self._x_axis_layout(time_source=time_source, ignore_gps=ignore_gps)
 
         if time_source == 'system':
-            # self.system_t0 is set to 0 when self.time_type == 'absolute', so this works for both absolute and relative
-            # time axes. See _x_axis_layout().
-            return system_time - float(self.system_t0), axis_layout
+            if self.time_type == 'relative':
+                return system_time - float(self.reader.get_system_t0()), axis_layout
+            else:
+                return system_time, axis_layout
 
         if self.time_type == 'relative':
             return p1_time - float(self.reader.t0), axis_layout
