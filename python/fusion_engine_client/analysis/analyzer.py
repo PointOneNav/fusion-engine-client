@@ -2447,8 +2447,8 @@ figure.on('plotly_hover', function(data) {{
                     nav_time, _ = self._resolve_x_axis(p1_time=nav_engine_p1_time)
                     nav_kwargs = {'customdata': self._time_hover_customdata(p1_time=nav_engine_p1_time)}
                 else:
-                    nav_time = nav_engine_p1_time - float(self.t0)
-                    nav_kwargs = {'text': ["P1: %.3f sec" % t for t in nav_engine_p1_time]}
+                    nav_time, _ = self._resolve_x_axis(p1_time=nav_engine_p1_time, ignore_gps=True)
+                    nav_kwargs = {}
                 figure.add_trace(go.Scattergl(x=nav_time, y=nav_engine_speed_mps, name=nav_engine_speed_name,
                                               mode='lines', line={'color': 'black', 'dash': 'dash'}, **nav_kwargs),
                                  1, 1)
@@ -3584,7 +3584,7 @@ var time_axis_type = '{time_axis_type}';
         elif time_source == SystemTimeSource.TIMESTAMPED_ON_RECEPTION:
             return float(self.system_t0)
 
-    def _x_axis_layout(self, time_source: str = 'p1') -> dict:
+    def _x_axis_layout(self, time_source: str = 'p1', ignore_gps: bool = False) -> dict:
         """!
         @brief Get the `go.layout.XAxis` kwargs (including `title`) for the current @c self.time_type.
 
@@ -3592,6 +3592,8 @@ var time_axis_type = '{time_axis_type}';
                UTC, per @c self.time_type) or `system` (device system time). There is no system-time-to-P1/GPS
                mapping yet, so `system` always resolves to plain absolute/relative system time regardless of
                @c self.time_type; once such a mapping exists, it can resolve to p1/gps/utc too, like `p1` below.
+        @param ignore_gps If `True`, return relative or absolute P1 time. Do not return GPS or UTC time, regardless of
+               @ref self.time_type.
 
         @return A dict of `go.layout.XAxis` kwargs, e.g. `{'title': ..., 'type': 'date'}`.
         """
@@ -3603,7 +3605,7 @@ var time_axis_type = '{time_axis_type}';
 
         if self.time_type == 'relative':
             return {'title': 'Relative Time (sec)'}
-        elif self.time_type == 'p1':
+        elif self.time_type == 'p1' or ignore_gps:
             return {'title': 'P1 Time (sec)'}
         elif self.time_type == 'gps':
             # GPS seconds are large enough that Plotly may otherwise render ticks in scientific/SI-prefix notation,
@@ -3618,7 +3620,8 @@ var time_axis_type = '{time_axis_type}';
             return {'title': 'UTC Time', 'type': 'date'}
 
     def _resolve_x_axis(self, p1_time: Optional[np.ndarray] = None, gps_time: Optional[np.ndarray] = None,
-                        system_time: Optional[np.ndarray] = None, time_source: str = 'p1') -> \
+                        system_time: Optional[np.ndarray] = None, time_source: str = 'p1',
+                        ignore_gps: bool = False) -> \
             Tuple[np.ndarray, dict]:
         """!
         @brief Resolve the X axis values and layout to use for a time series, per @c self.time_type.
@@ -3631,12 +3634,14 @@ var time_axis_type = '{time_axis_type}';
                `system`.
         @param time_source The native time domain of `p1_time`/`system_time`: `p1` (the default) or `system` (see
                @ref _x_axis_layout()).
+        @param ignore_gps If `True`, return relative or absolute P1 time. Do not return GPS or UTC time, regardless of
+               @ref self.time_type.
 
         @return A tuple `(x, axis_layout)`:
                 - `x`: The X axis values to plot.
                 - `axis_layout`: `go.layout.XAxis` kwargs needed to display `x` (title, and e.g. `type='date'`).
         """
-        axis_layout = self._x_axis_layout(time_source=time_source)
+        axis_layout = self._x_axis_layout(time_source=time_source, ignore_gps=ignore_gps)
 
         if time_source == 'system':
             # self.system_t0 is set to 0 when self.time_type == 'absolute', so this works for both absolute and relative
@@ -3645,7 +3650,7 @@ var time_axis_type = '{time_axis_type}';
 
         if self.time_type == 'relative':
             return p1_time - float(self.t0), axis_layout
-        elif self.time_type == 'p1':
+        elif self.time_type == 'p1' or ignore_gps:
             return p1_time, axis_layout
 
         if gps_time is None:
