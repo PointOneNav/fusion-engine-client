@@ -3324,7 +3324,7 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
         # in case, we'll approximate the GPS time _at_ t0 if needed.
         idx = find_first(~np.isnan(pose_data.gps_time))
         if idx >= 0:
-            first_p1_time = self.t0 if self.time_type == 'relative' else pose_data.p1_time[0]
+            first_p1_time = self.reader.t0
             dt_p1_sec = pose_data.p1_time[idx] - float(first_p1_time)
             t0_gps = Timestamp(pose_data.gps_time[idx]) - dt_p1_sec
             # If the first pose is pretty close to t0, we'll assume the approximation is reasonably accurate and not
@@ -3576,13 +3576,19 @@ var time_axis_type = '{time_axis_type}';
 
     def _get_t0_for_time_source(self, time_source: SystemTimeSource) -> float:
         if time_source == SystemTimeSource.P1_TIME:
-            return float(self.t0)
+            if self.time_type == 'relative':
+                return float(self.reader.t0)
+            else:
+                return 0.0
         elif time_source == SystemTimeSource.GPS_TIME:
             return 0.0
         elif time_source == SystemTimeSource.SENDER_SYSTEM_TIME:
             return 0.0
         elif time_source == SystemTimeSource.TIMESTAMPED_ON_RECEPTION:
-            return float(self.system_t0)
+            if self.time_type == 'relative':
+                return float(self.reader.get_system_t0())
+            else:
+                return 0.0
 
     def _x_axis_layout(self, time_source: str = 'p1', ignore_gps: bool = False) -> dict:
         """!
@@ -3649,7 +3655,7 @@ var time_axis_type = '{time_axis_type}';
             return system_time - float(self.system_t0), axis_layout
 
         if self.time_type == 'relative':
-            return p1_time - float(self.t0), axis_layout
+            return p1_time - float(self.reader.t0), axis_layout
         elif self.time_type == 'p1' or ignore_gps:
             return p1_time, axis_layout
 
