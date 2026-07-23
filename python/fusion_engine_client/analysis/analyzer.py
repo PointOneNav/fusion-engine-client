@@ -921,7 +921,7 @@ figure.on('plotly_unhover', function(data) {
         figure.add_trace(go.Scattergl(x=time, y=stationary_status, customdata=customdata, mode='markers'), 1, 1)
 
         self._add_figure(name="stationary_status", figure=figure, title="Stationary Status", custom_hover=True,
-                         inject_js=self._custom_tooltip_js())
+                         inject_js=self._custom_tooltip_js(value_label='Status', show_name=False))
 
     def _plot_displacement(self, source, p1_time, solution_type, displacement_enu_m, std_enu_m, gps_time=None,
                            title='Displacement'):
