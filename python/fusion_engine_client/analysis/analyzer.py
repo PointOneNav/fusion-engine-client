@@ -417,19 +417,19 @@ figure.on('plotly_hover', function(data) {
         # P1/GPS time points carry customdata (see BuildTimeHoverText()), system time points don't.
         _TIME_SCALE_HOVER_JS = """\
 figure.on('plotly_hover', function(data) {
-  for (let i = 0; i < data.points.length; ++i) {
-    let point = data.points[i];
-    if (point.data.customdata) {
-      ChangeHoverText(point, BuildTimeHoverText(point.x, GetCustomData(point, 0)));
-    }
-    else {
-      ChangeHoverText(point, BuildSystemTimeHoverText(point.x));
-    }
-  }
+  let point = data.points[0];
+  let time_text = point.data.customdata ? BuildTimeHoverText(point.x, GetCustomData(point, 0)) :
+                                          BuildSystemTimeHoverText(point.x);
+  let value_text = BuildAxisValueHoverText(point);
+  ShowCustomTooltip(point, GetCustomTooltipHTML(point.data.name, value_text, time_text));
+});
+figure.on('plotly_unhover', function(data) {
+  HideCustomTooltip();
 });
 """
 
-        self._add_figure(name="time_scale", figure=figure, title="Time Scale", inject_js=_TIME_SCALE_HOVER_JS,
+        self._add_figure(name="time_scale", figure=figure, title="Time Scale", custom_hover=True,
+                         inject_js=_TIME_SCALE_HOVER_JS,
                          time_axis_type='relative' if self.time_type == 'relative' else 'p1')
 
     def plot_latency(self):
@@ -491,8 +491,8 @@ figure.on('plotly_hover', function(data) {
 
         figure.update_layout(title_text='NOTE: Latency assumes the host system clock is synced to GPS time. '
                                         'Any error will impact the latency computation.')
-        self._add_figure(name="host_latency", figure=figure, title="Host Received Latency",
-                         inject_js=self._TIME_HOVER_JS)
+        self._add_figure(name="host_latency", figure=figure, title="Host Received Latency", custom_hover=True,
+                         inject_js=self._custom_tooltip_js())
 
     def plot_reset_timing(self):
         if self.output_dir is None:
@@ -604,8 +604,8 @@ figure.on('plotly_hover', function(data) {
                                           name='Unstarted Resets', mode='markers'),
                              1, 1)
 
-        self._add_figure(name="reset_timing", figure=figure, title="Reset Recovery Timing",
-                         inject_js=self._SYSTEM_TIME_HOVER_JS)
+        self._add_figure(name="reset_timing", figure=figure, title="Reset Recovery Timing", custom_hover=True,
+                         inject_js=self._custom_tooltip_js(time_source='system'))
 
     def plot_pose(self):
         """!
@@ -729,7 +729,8 @@ figure.on('plotly_hover', function(data) {
                                       line={'color': 'blue'}),
                          2, 3)
 
-        self._add_figure(name="pose", figure=figure, title="Vehicle Pose vs. Time", inject_js=self._TIME_HOVER_JS)
+        self._add_figure(name="pose", figure=figure, title="Vehicle Pose vs. Time", custom_hover=True,
+                         inject_js=self._custom_tooltip_js())
 
     def plot_calibration(self):
         """!
@@ -832,7 +833,8 @@ figure.on('plotly_hover', function(data) {
                                       mode='lines', line={'color': 'black', 'dash': 'dash'}),
                          4, 1)
 
-        self._add_figure(name="calibration", figure=figure, title="Calibration Status", inject_js=self._TIME_HOVER_JS)
+        self._add_figure(name="calibration", figure=figure, title="Calibration Status", custom_hover=True,
+                         inject_js=self._custom_tooltip_js())
 
     def plot_solution_type(self):
         """!
@@ -883,7 +885,8 @@ figure.on('plotly_hover', function(data) {
                                           mode='markers', marker={'color': 'red', 'symbol': 'diamond-open'}),
                              1, 1)
 
-        self._add_figure(name="solution_type", figure=figure, title="Solution Type", inject_js=self._TIME_HOVER_JS)
+        self._add_figure(name="solution_type", figure=figure, title="Solution Type", custom_hover=True,
+                         inject_js=self._custom_tooltip_js())
 
     def plot_stationary_status(self):
         """!
@@ -917,8 +920,8 @@ figure.on('plotly_hover', function(data) {
 
         figure.add_trace(go.Scattergl(x=time, y=stationary_status, customdata=customdata, mode='markers'), 1, 1)
 
-        self._add_figure(name="stationary_status", figure=figure, title="Stationary Status",
-                         inject_js=self._TIME_HOVER_JS)
+        self._add_figure(name="stationary_status", figure=figure, title="Stationary Status", custom_hover=True,
+                         inject_js=self._custom_tooltip_js())
 
     def _plot_displacement(self, source, p1_time, solution_type, displacement_enu_m, std_enu_m, gps_time=None,
                            title='Displacement'):
@@ -1034,43 +1037,45 @@ figure.on('plotly_hover', function(data) {
         # customdata (rows 0/1) rather than from the point's axis position -- see BuildTimeHoverTextFromTimes().
         _DISPLACEMENT_TOPO_HOVER_JS = """\
 figure.on('plotly_hover', function(data) {
-  for (let i = 0; i < data.points.length; ++i) {
-    let point = data.points[i];
-    if (!point.data.customdata) {
-      continue;
-    }
-    let new_text = BuildTimeHoverTextFromTimes(GetCustomData(point, 0), GetCustomData(point, 1));
-    new_text += `<br>Delta (ENU): (${GetCustomData(point, 2).toFixed(2)}, ${GetCustomData(point, 3).toFixed(2)}, ` +
-                `${GetCustomData(point, 4).toFixed(2)}) m`;
-    new_text += `<br>Std (ENU): (${GetCustomData(point, 5).toFixed(2)}, ${GetCustomData(point, 6).toFixed(2)}, ` +
-                `${GetCustomData(point, 7).toFixed(2)}) m`;
-    ChangeHoverText(point, new_text);
+  let point = data.points[0];
+  if (!point.data.customdata) {
+    return;
   }
+  let new_text = BuildTimeHoverTextFromTimes(GetCustomData(point, 0), GetCustomData(point, 1));
+  new_text += `<br>Delta (ENU): (${GetCustomData(point, 2).toFixed(2)}, ${GetCustomData(point, 3).toFixed(2)}, ` +
+              `${GetCustomData(point, 4).toFixed(2)}) m`;
+  new_text += `<br>Std (ENU): (${GetCustomData(point, 5).toFixed(2)}, ${GetCustomData(point, 6).toFixed(2)}, ` +
+              `${GetCustomData(point, 7).toFixed(2)}) m`;
+  ShowCustomTooltip(point, GetCustomTooltipHTML(point.data.name, undefined, new_text));
+});
+figure.on('plotly_unhover', function(data) {
+  HideCustomTooltip();
 });
         """
 
-        # Time-series hover: like _TIME_HOVER_JS, but with extra Delta/Std (ENU) customdata rows appended.
+        # Time-series hover: like _custom_tooltip_js(), but with extra Delta/Std (ENU) customdata rows appended.
         _DISPLACEMENT_TIME_HOVER_JS = """\
 figure.on('plotly_hover', function(data) {
-  for (let i = 0; i < data.points.length; ++i) {
-    let point = data.points[i];
-    if (!point.data.customdata) {
-      continue;
-    }
-    let new_text = BuildTimeHoverText(point.x, GetCustomData(point, 0));
-    new_text += `<br>Delta (ENU): (${GetCustomData(point, 1).toFixed(2)}, ${GetCustomData(point, 2).toFixed(2)}, ` +
-                `${GetCustomData(point, 3).toFixed(2)}) m`;
-    new_text += `<br>Std (ENU): (${GetCustomData(point, 4).toFixed(2)}, ${GetCustomData(point, 5).toFixed(2)}, ` +
-                `${GetCustomData(point, 6).toFixed(2)}) m`;
-    ChangeHoverText(point, new_text);
+  let point = data.points[0];
+  if (!point.data.customdata) {
+    return;
   }
+  let new_text = BuildTimeHoverText(point.x, GetCustomData(point, 0));
+  new_text += `<br>Delta (ENU): (${GetCustomData(point, 1).toFixed(2)}, ${GetCustomData(point, 2).toFixed(2)}, ` +
+              `${GetCustomData(point, 3).toFixed(2)}) m`;
+  new_text += `<br>Std (ENU): (${GetCustomData(point, 4).toFixed(2)}, ${GetCustomData(point, 5).toFixed(2)}, ` +
+              `${GetCustomData(point, 6).toFixed(2)}) m`;
+  ShowCustomTooltip(point, GetCustomTooltipHTML(point.data.name, undefined, new_text));
+});
+figure.on('plotly_unhover', function(data) {
+  HideCustomTooltip();
 });
         """ + self._GPS_TICK_REFORMAT_JS
 
         self._add_figure(name=f"{name}_top_down", figure=topo_figure, title=f"{source}: Top-Down (Topocentric)",
-                         inject_js=_DISPLACEMENT_TOPO_HOVER_JS)
+                         custom_hover=True, inject_js=_DISPLACEMENT_TOPO_HOVER_JS)
         self._add_figure(name=f"{name}_vs_time", figure=time_figure, title=f"{source}: vs. Time",
-                         inject_js=_DISPLACEMENT_TIME_HOVER_JS)
+                         custom_hover=True, inject_js=_DISPLACEMENT_TIME_HOVER_JS)
 
     def plot_pose_error(self, reference: ReferenceData):
         """!
@@ -1690,7 +1695,7 @@ figure.on('plotly_hover', function(data) {
 
         name = self._gnss_plot_filename('gnss_azimuth_elevation', source_id)
         self._add_figure(name=name, figure=figure, title=f'{label} GNSS Azimuth & Elevation vs Time',
-                         inject_js=self._TIME_HOVER_JS)
+                         custom_hover=True, inject_js=self._custom_tooltip_js())
 
     def plot_gnss_signal_status(self):
         for source_id in self._get_gnss_antenna_source_ids():
@@ -2000,23 +2005,26 @@ function SetSignalStatusHover(point) {{
   new_text += "<br>Available: " + tracking.join(", ");
   new_text += "<br>Used: " + used.join(", ");
   new_text += "<br>Features: " + features.join(", ");
-  ChangeHoverText(point, new_text);
+  ShowCustomTooltip(point, GetCustomTooltipHTML(point.data.name, undefined, new_text));
 }}
 
 figure.on('plotly_hover', function(data) {{
-  for (let i = 0; i < data.points.length; ++i) {{
-    let point = data.points[i];
-    if (point.curveNumber >= {num_count_traces}) {{
-      SetSignalStatusHover(point);
-    }}
-    else {{
-      ChangeHoverText(point, BuildTimeHoverText(point.x, GetCustomData(point, 0)));
-    }}
+  let point = data.points[0];
+  if (point.curveNumber >= {num_count_traces}) {{
+    SetSignalStatusHover(point);
   }}
+  else {{
+    let time_text = BuildTimeHoverText(point.x, GetCustomData(point, 0));
+    let value_text = BuildAxisValueHoverText(point);
+    ShowCustomTooltip(point, GetCustomTooltipHTML(point.data.name, value_text, time_text));
+  }}
+}});
+figure.on('plotly_unhover', function(data) {{
+  HideCustomTooltip();
 }});
 """ + self._GPS_TICK_REFORMAT_JS
 
-        self._add_figure(name=filename, figure=figure, title=figure_title, inject_js=hover_js)
+        self._add_figure(name=filename, figure=figure, title=figure_title, custom_hover=True, inject_js=hover_js)
 
     def _get_pose_source_ids(self) -> List[int]:
         """!
@@ -2163,7 +2171,7 @@ figure.on('plotly_hover', function(data) {{
                              1, 1)
 
         self._add_figure(name='gnss_dop', figure=figure, title='GNSS Dilution of Precision (DOP) vs. Time',
-                         inject_js=self._TIME_HOVER_JS)
+                         custom_hover=True, inject_js=self._custom_tooltip_js(value_label='DOP'))
 
     def plot_gnss_corrections_status(self):
         """!
@@ -2221,7 +2229,7 @@ figure.on('plotly_hover', function(data) {{
                              4, 1)
 
         self._add_figure(name="gnss_corrections_status", figure=figure, title="GNSS Corrections Status",
-                         inject_js=self._TIME_HOVER_JS)
+                         custom_hover=True, inject_js=self._custom_tooltip_js())
 
     def plot_wheel_data(self):
         """!
@@ -2603,7 +2611,30 @@ figure.on('plotly_hover', function(data) {{
         _plot_func(data, corrected_time_source, is_raw=False, show_gear=True)
         _plot_func(raw_data, raw_time_source, is_raw=True, show_gear=False)
 
-        self._add_figure(name=filename, figure=figure, title=figure_title, inject_js=self._TIME_HOVER_JS)
+        # Custom hover: like _custom_tooltip_js(), but some points carry a precomputed `text` string (see
+        # _get_time_and_hover_data() above) instead of customdata, for measurements not in P1 time (no P1/GPS
+        # correspondence to build a full BuildTimeHoverText() from) -- use that verbatim instead when present.
+        _WHEEL_HOVER_JS = """\
+figure.on('plotly_hover', function(data) {
+  let point = data.points[0];
+  let time_text;
+  if (point.data.customdata) {
+    time_text = BuildTimeHoverText(point.x, GetCustomData(point, 0));
+  } else if (point.text) {
+    time_text = point.text;
+  } else {
+    time_text = BuildTimeHoverText(point.x);
+  }
+  let value_text = BuildAxisValueHoverText(point);
+  ShowCustomTooltip(point, GetCustomTooltipHTML(point.data.name, value_text, time_text));
+});
+figure.on('plotly_unhover', function(data) {
+  HideCustomTooltip();
+});
+""" + self._GPS_TICK_REFORMAT_JS
+
+        self._add_figure(name=filename, figure=figure, title=figure_title, custom_hover=True,
+                         inject_js=_WHEEL_HOVER_JS)
 
     def plot_imu(self):
         """!
@@ -2686,7 +2717,8 @@ figure.on('plotly_hover', function(data) {{
                                       name='Interval', mode='markers', marker={'color': 'red'}),
                          3, 1)
 
-        self._add_figure(name=filename, figure=figure, title=figure_title, inject_js=self._TIME_HOVER_JS)
+        self._add_figure(name=filename, figure=figure, title=figure_title, custom_hover=True,
+                         inject_js=self._custom_tooltip_js())
 
     def plot_gnss_attitude_measurements(self):
         """!
@@ -2916,29 +2948,31 @@ figure.on('plotly_hover', function(data) {{
         # see the Plotly NaN customdata bug noted above).
         _ATTITUDE_HOVER_JS = """\
 figure.on('plotly_hover', function(data) {
-  for (let i = 0; i < data.points.length; ++i) {
-    let point = data.points[i];
-    if (!point.data.customdata) {
-      continue;
-    }
-    let new_text = BuildTimeHoverText(point.x, GetCustomData(point, 0));
-    let customdata = point.data.customdata.hasOwnProperty("_inputArray") ?
-                     point.data.customdata._inputArray : point.data.customdata;
-    if (customdata.length > 1) {
-      let std = GetCustomData(point, 1);
-      if (std >= 0) {
-        let units = point.data.name.startsWith('Heading') ? 'deg' : 'm';
-        new_text += `<br>Std: ${std.toFixed(2)} ${units}`;
-      }
-    }
-    ChangeHoverText(point, new_text);
+  let point = data.points[0];
+  if (!point.data.customdata) {
+    return;
   }
+  let new_text = BuildAxisValueHoverText(point) + '<br>' +
+                 BuildTimeHoverText(point.x, GetCustomData(point, 0));
+  let customdata = point.data.customdata.hasOwnProperty("_inputArray") ?
+                   point.data.customdata._inputArray : point.data.customdata;
+  if (customdata.length > 1) {
+    let std = GetCustomData(point, 1);
+    if (std >= 0) {
+      let units = point.data.name.startsWith('Heading') ? 'deg' : 'm';
+      new_text += `<br>Std: ${std.toFixed(2)} ${units}`;
+    }
+  }
+  ShowCustomTooltip(point, GetCustomTooltipHTML(point.data.name, undefined, new_text));
+});
+figure.on('plotly_unhover', function(data) {
+  HideCustomTooltip();
 });
         """ + self._GPS_TICK_REFORMAT_JS
 
         self._add_figure(name='gnss_attitude_measurement', figure=fig,
                          title='Measurements: GNSS Attitude (Multi-Antenna Heading Sensor)',
-                         inject_js=_ATTITUDE_HOVER_JS)
+                         custom_hover=True, inject_js=_ATTITUDE_HOVER_JS)
 
     def plot_system_status_profiling(self):
         """!
@@ -2978,7 +3012,7 @@ figure.on('plotly_hover', function(data) {
                          2, 1)
 
         self._add_figure(name="profile_system_status", figure=figure, title="Profiling: System Status",
-                         inject_js=self._TIME_HOVER_JS)
+                         custom_hover=True, inject_js=self._custom_tooltip_js())
 
     def plot_events(self):
         """!
@@ -3757,7 +3791,7 @@ figure.on('plotly_hover', function(data) {
   let point = data.points[0];
 """ + build_time_text_js + """
   let value_text = BuildAxisValueHoverText(point, """ + json.dumps(value_options) + """);
-  ShowCustomTooltip(point, `<b>${point.data.name}</b><br>${value_text}<br>${time_text}`);
+  ShowCustomTooltip(point, GetCustomTooltipHTML(point.data.name, value_text, time_text));
 });
 figure.on('plotly_unhover', function(data) {
   HideCustomTooltip();

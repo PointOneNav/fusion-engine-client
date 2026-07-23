@@ -208,6 +208,26 @@ function _GetContrastingTextColor(css_color) {
   return luminance > 0.6 ? '#000' : '#fff';
 }
 
+function GetCustomTooltipHTML(name, value, other_text) {
+  let tooltip = ``;
+  if (name) {
+    tooltip += `<b>${name}</b>`;
+  }
+  if (value) {
+    if (tooltip) {
+      tooltip += `<br>`;
+    }
+    tooltip += `${value}`;
+  }
+  if (other_text) {
+    if (tooltip) {
+      tooltip += `<br>`;
+    }
+    tooltip += `${other_text}`;
+  }
+  return tooltip;
+}
+
 // @param point A point from a 'plotly_hover' event (data.points[i]) -- used for its data value (to compute pixel
 //        position via point.xaxis/yaxis) and its trace's color (point.data.marker/line.color).
 // @param html_text The tooltip content.
