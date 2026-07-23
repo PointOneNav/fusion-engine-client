@@ -558,11 +558,11 @@ figure.on('plotly_hover', function(data) {
         figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=True,
                                subplot_titles=['Reset Recovery Time'])
 
-        figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
-        figure['layout']['xaxis1'].update(title=self.system_time_label, showticklabels=True)
-        figure['layout']['yaxis1'].update(title="Elapsed Time (sec)", rangemode="tozero")
+        time, axis_layout = self._resolve_x_axis(system_time=reset_system_time_sec, time_source='system')
 
-        time = reset_system_time_sec - self.system_t0
+        figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
+        figure['layout']['xaxis1'].update(showticklabels=True, **axis_layout)
+        figure['layout']['yaxis1'].update(title="Elapsed Time (sec)", rangemode="tozero")
 
         text = ["System Time: %.3f sec" % (t + self.system_t0) for t in time]
         figure.add_trace(go.Scattergl(x=time, y=dt_reset_to_valid, text=text,
