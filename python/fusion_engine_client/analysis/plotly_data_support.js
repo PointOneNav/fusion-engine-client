@@ -1,5 +1,20 @@
 var figure = document.getElementsByClassName("plotly-graph-div js-plotly-plot")[0];
 
+// Build a "<Y axis title>: <value>" hover line straight from the point's own axis, so callers don't need to
+// hardcode a plot-specific label/unit/precision.
+// @param options.precision If set, number of digits after the decimal point (toFixed()). Defaults to 6 significant
+//        digits (toPrecision()), which reads better across very different Y axis scales.
+// @param options.label Override for the Y axis title, if the default isn't appropriate (e.g. no title set).
+function BuildAxisValueHoverText(point, options) {
+  options = options || {};
+  let label = options.label || (point.yaxis.title && point.yaxis.title.text) || 'Value';
+  let value = point.y;
+  if (typeof value === 'number') {
+    value = (typeof options.precision === 'number') ? value.toFixed(options.precision) : value.toPrecision(6);
+  }
+  return `${label}: ${value}`;
+}
+
 function GetTimeText(time_sec) {
   if (p1_time_axis_rel) {
     return `Rel: ${time_sec.toFixed(3)} sec (P1: ${(time_sec + p1_t0_sec).toFixed(3)} sec)`;
@@ -114,6 +129,161 @@ function GetCustomData(point, row) {
                    point.data.customdata._inputArray :
                    point.data.customdata;
   return customdata[row][point.pointNumber];
+}
+
+// PROTOTYPE: a custom tooltip drawn directly by us, positioned at the hovered point via
+// 'plotly_hover'/'plotly_unhover', instead of relying on Plotly's native hover label + ChangeHoverText(). Plotly
+// renders its own hover label as part of its internal mousemove handling, separately from our injected
+// 'plotly_hover' listener -- there's no guaranteed order between "Plotly reads fullData.text to draw its label"
+// and "our handler mutates fullData.text", so on plots with many traces (more work for Plotly's internal
+// hit-testing, more timing variance) the label sometimes renders before our mutation lands, showing stale or no
+// extra text until the next mousemove. Drawing our own tooltip synchronously inside the same handler that computes
+// the text eliminates that race entirely -- there's nothing left for an external renderer to read at the wrong
+// time. Requires hoverinfo='none' on the trace so Plotly's native label doesn't also try to draw at the same time.
+//
+// Styled to resemble Plotly's own hover label: background matches the trace's color, font matches
+// layout.hoverlabel.font, and it's positioned like Plotly's does -- an arrow-and-box to the right of the point,
+// flipping to the left near the plot's right edge, vertically centered on the point.
+var _customTooltipDiv = null;
+var _customTooltipArrowDiv = null;
+var _customTooltipArrowBorderDiv = null;
+const _CUSTOM_TOOLTIP_ARROW_SIZE = 6;
+const _CUSTOM_TOOLTIP_GAP = 2;
+const _CUSTOM_TOOLTIP_BORDER_WIDTH = 1;
+
+function _GetCustomTooltipDiv() {
+  if (_customTooltipDiv === null) {
+    _customTooltipDiv = document.createElement('div');
+    _customTooltipDiv.style.position = 'fixed';
+    _customTooltipDiv.style.pointerEvents = 'none';
+    _customTooltipDiv.style.borderRadius = '2px';
+    _customTooltipDiv.style.border = _CUSTOM_TOOLTIP_BORDER_WIDTH + 'px solid black';
+    _customTooltipDiv.style.padding = '2px 4px';
+    _customTooltipDiv.style.zIndex = '10000';
+    _customTooltipDiv.style.display = 'none';
+    _customTooltipDiv.style.whiteSpace = 'nowrap';
+    document.body.appendChild(_customTooltipDiv);
+
+    // Drawn one size larger and directly behind the fill arrow below, so only a 1px black rim peeks out along the
+    // two slanted edges. Its flat (base) edge lines up exactly with the fill's, staying hidden behind/flush with
+    // the box's own border.
+    _customTooltipArrowBorderDiv = document.createElement('div');
+    _customTooltipArrowBorderDiv.style.position = 'fixed';
+    _customTooltipArrowBorderDiv.style.pointerEvents = 'none';
+    _customTooltipArrowBorderDiv.style.width = '0';
+    _customTooltipArrowBorderDiv.style.height = '0';
+    _customTooltipArrowBorderDiv.style.zIndex = '10000';
+    _customTooltipArrowBorderDiv.style.display = 'none';
+    document.body.appendChild(_customTooltipArrowBorderDiv);
+
+    _customTooltipArrowDiv = document.createElement('div');
+    _customTooltipArrowDiv.style.position = 'fixed';
+    _customTooltipArrowDiv.style.pointerEvents = 'none';
+    _customTooltipArrowDiv.style.width = '0';
+    _customTooltipArrowDiv.style.height = '0';
+    _customTooltipArrowDiv.style.borderTop = _CUSTOM_TOOLTIP_ARROW_SIZE + 'px solid transparent';
+    _customTooltipArrowDiv.style.borderBottom = _CUSTOM_TOOLTIP_ARROW_SIZE + 'px solid transparent';
+    _customTooltipArrowDiv.style.zIndex = '10000';
+    _customTooltipArrowDiv.style.display = 'none';
+    document.body.appendChild(_customTooltipArrowDiv);
+  }
+  return _customTooltipDiv;
+}
+
+// Resolve an arbitrary CSS color string (hex, rgb(), named color, ...) to a readable text color (black or white),
+// the same way Plotly picks contrasting text for its own colored hover labels.
+function _GetContrastingTextColor(css_color) {
+  let probe = document.createElement('div');
+  probe.style.display = 'none';
+  probe.style.color = css_color;
+  document.body.appendChild(probe);
+  let computed = getComputedStyle(probe).color;
+  document.body.removeChild(probe);
+
+  let m = computed.match(/\d+/g);
+  if (!m || m.length < 3) {
+    return '#000';
+  }
+  let luminance = (0.299 * m[0] + 0.587 * m[1] + 0.114 * m[2]) / 255;
+  return luminance > 0.6 ? '#000' : '#fff';
+}
+
+// @param point A point from a 'plotly_hover' event (data.points[i]) -- used for its data value (to compute pixel
+//        position via point.xaxis/yaxis) and its trace's color (point.data.marker/line.color).
+// @param html_text The tooltip content.
+function ShowCustomTooltip(point, html_text) {
+  let div = _GetCustomTooltipDiv();
+  let arrow = _customTooltipArrowDiv;
+  let arrow_border = _customTooltipArrowBorderDiv;
+  const B = _CUSTOM_TOOLTIP_BORDER_WIDTH;
+
+  let bgcolor = (point.data.marker && point.data.marker.color) || (point.data.line && point.data.line.color) ||
+               '#444';
+  let hoverlabel_font = (figure._fullLayout.hoverlabel && figure._fullLayout.hoverlabel.font) || {};
+
+  div.innerHTML = html_text;
+  div.style.backgroundColor = bgcolor;
+  div.style.color = _GetContrastingTextColor(bgcolor);
+  div.style.fontFamily = hoverlabel_font.family || 'Arial, sans-serif';
+  div.style.fontSize = (hoverlabel_font.size || 13) + 'px';
+
+  // Compute the point's own pixel position (not just wherever the mouse currently is) so the box and arrow align
+  // precisely with the marker, the way Plotly's native label does.
+  let rect = figure.getBoundingClientRect();
+  // d2l() converts the raw data value (a plain number for linear axes, but a formatted date string for date axes)
+  // into the axis's internal linearized coordinate that l2p() expects -- passing point.x/point.y to l2p() directly
+  // works for numeric axes but silently yields NaN on a date axis (e.g. UTC time), leaving the tooltip unpositioned.
+  let x_px = rect.left + point.xaxis.l2p(point.xaxis.d2l(point.x)) + point.xaxis._offset;
+  let y_px = rect.top + point.yaxis.l2p(point.yaxis.d2l(point.y)) + point.yaxis._offset;
+
+  // Render invisibly first so we can measure its size before deciding where to place it.
+  div.style.visibility = 'hidden';
+  div.style.display = 'block';
+  let box_width = div.offsetWidth;
+  let box_height = div.offsetHeight;
+
+  let draw_right = (x_px + _CUSTOM_TOOLTIP_ARROW_SIZE + _CUSTOM_TOOLTIP_GAP + box_width) <= rect.right;
+
+  let box_left, arrow_left, border_left;
+  arrow_border.style.borderTop = (_CUSTOM_TOOLTIP_ARROW_SIZE + B) + 'px solid transparent';
+  arrow_border.style.borderBottom = (_CUSTOM_TOOLTIP_ARROW_SIZE + B) + 'px solid transparent';
+  if (draw_right) {
+    box_left = x_px + _CUSTOM_TOOLTIP_ARROW_SIZE + _CUSTOM_TOOLTIP_GAP;
+    arrow_left = x_px + _CUSTOM_TOOLTIP_GAP;
+    border_left = arrow_left - B;
+    arrow.style.borderLeft = '';
+    arrow.style.borderRight = _CUSTOM_TOOLTIP_ARROW_SIZE + 'px solid ' + bgcolor;
+    arrow_border.style.borderLeft = '';
+    arrow_border.style.borderRight = (_CUSTOM_TOOLTIP_ARROW_SIZE + B) + 'px solid black';
+  } else {
+    box_left = x_px - _CUSTOM_TOOLTIP_ARROW_SIZE - _CUSTOM_TOOLTIP_GAP - box_width;
+    arrow_left = x_px - _CUSTOM_TOOLTIP_ARROW_SIZE - _CUSTOM_TOOLTIP_GAP;
+    border_left = arrow_left;
+    arrow.style.borderRight = '';
+    arrow.style.borderLeft = _CUSTOM_TOOLTIP_ARROW_SIZE + 'px solid ' + bgcolor;
+    arrow_border.style.borderRight = '';
+    arrow_border.style.borderLeft = (_CUSTOM_TOOLTIP_ARROW_SIZE + B) + 'px solid black';
+  }
+
+  div.style.left = box_left + 'px';
+  div.style.top = (y_px - box_height / 2) + 'px';
+  div.style.visibility = 'visible';
+
+  arrow.style.left = arrow_left + 'px';
+  arrow.style.top = (y_px - _CUSTOM_TOOLTIP_ARROW_SIZE) + 'px';
+  arrow.style.display = 'block';
+
+  arrow_border.style.left = border_left + 'px';
+  arrow_border.style.top = (y_px - _CUSTOM_TOOLTIP_ARROW_SIZE - B) + 'px';
+  arrow_border.style.display = 'block';
+}
+
+function HideCustomTooltip() {
+  if (_customTooltipDiv !== null) {
+    _customTooltipDiv.style.display = 'none';
+    _customTooltipArrowDiv.style.display = 'none';
+    _customTooltipArrowBorderDiv.style.display = 'none';
+  }
 }
 
 // Plotly doesn't support a custom per-tick label formatter function for numeric axes (only D3 format strings), and

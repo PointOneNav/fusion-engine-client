@@ -5,6 +5,7 @@ from typing import Union, List, Any, Optional
 from collections import namedtuple, defaultdict
 import copy
 import inspect
+import json
 import os
 import sys
 import webbrowser
@@ -1593,7 +1594,8 @@ figure.on('plotly_hover', function(data) {
         }]
 
         name = self._gnss_plot_filename('gnss_cn0', source_id)
-        self._add_figure(name=name, figure=figure, title=f'{label} GNSS C/N0 vs Time', inject_js=self._TIME_HOVER_JS)
+        self._add_figure(name=name, figure=figure, title=f'{label} GNSS C/N0 vs Time', custom_hover=True,
+                         inject_js=self._custom_tooltip_js(precision=2))
 
     def plot_gnss_azimuth_elevation(self):
         """!
@@ -3476,7 +3478,7 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
         self.plots[name] = {'title': title, 'path': path}
 
     def _add_figure(self, name, figure=None, title=None, config=None, inject_js: str = None,
-                    time_axis_type: Optional[str] = None):
+                    time_axis_type: Optional[str] = None, custom_hover: bool = False):
         """!
         @brief Generate an HTML file for the specified figure.
 
@@ -3490,6 +3492,9 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
         @param time_axis_type The time domain actually plotted on this figure's X axis (`relative`, `p1`, `gps`, or
                `utc`; see @ref BuildTimeHoverText() in `plotly_data_support.js`). Defaults to `self.time_type`; only
                needs to be overridden by plots (e.g., @ref plot_time_scale()) whose X axis does not follow it.
+        @param custom_hover If `True`, set `hoverinfo='none'` on all of this figure's traces so Plotly's native hover
+               label never draws, for use with a custom-tooltip `inject_js` (see @ref _custom_tooltip_js()) instead
+               of per-trace `hoverinfo='none'` at every `go.Scatter()`/`go.Scattergl()` call site.
         """
         if title is None:
             title = name
@@ -3504,6 +3509,8 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
 
         if figure is not None:
             figure.update_traces(hoverlabel_namelength=-1)
+            if custom_hover:
+                figure.update_traces(hoverinfo='none')
 
             path = os.path.join(self.output_dir, self.prefix + name + '.html')
             self.logger.info('Creating %s...' % path)
@@ -3705,6 +3712,57 @@ var time_axis_type = '{time_axis_type}';
             return np.vstack((gps_time,))
         else:
             return np.vstack((p1_time,))
+
+    def _custom_tooltip_js(self, time_source: str = 'p1', precision: Optional[int] = 3,
+                           value_label: Optional[str] = None) -> str:
+        """!
+        @brief Build hover JS that draws its own tooltip instead of relying on Plotly's native hover label (see
+               `ShowCustomTooltip()`/`HideCustomTooltip()` in `plotly_data_support.js`).
+
+        Unlike @ref _TIME_HOVER_JS/@ref _SYSTEM_TIME_HOVER_JS (which mutate `fullData.text` for Plotly's own hover
+        label to pick up on its next render), this draws synchronously inside the `'plotly_hover'` handler itself,
+        avoiding the race that can otherwise leave the native label blank or stale on plots with many traces/points
+        (see @ref plot_gnss_cn0()). Only supports the single-nearest-point case (the default `'closest'` hovermode),
+        not `'x'`/`'x unified'`.
+
+        @param time_source The native time domain of the data being plotted, as in @ref _x_axis_layout(): `p1` (the
+               default -- P1/relative/GPS/UTC, per @c self.time_type; requires the trace's customdata to be set per
+               @ref _time_hover_customdata()) or `system` (device system time; no customdata needed).
+        @param precision Number of digits after the decimal point to show for the Y value (see
+               `BuildAxisValueHoverText()`).
+        @param value_label Override label to show instead of the Y axis title (see `BuildAxisValueHoverText()`).
+
+        @return The JS to pass as `inject_js` to @ref _add_figure().
+        """
+        if time_source == 'p1':
+            build_time_text_js = (
+                '  let time_text = point.data.customdata ? '
+                'BuildTimeHoverText(point.x, GetCustomData(point, 0)) : BuildTimeHoverText(point.x);')
+            tick_reformat_js = self._GPS_TICK_REFORMAT_JS
+        elif time_source == 'system':
+            build_time_text_js = '  let time_text = BuildSystemTimeHoverText(point.x);'
+            tick_reformat_js = ''
+        else:
+            raise ValueError(f"Unsupported time source '{time_source}'.")
+
+        # Room to grow: additional BuildAxisValueHoverText() options can be added here as more callers need them.
+        value_options = {}
+        if precision is not None:
+            value_options['precision'] = precision
+        if value_label is not None:
+            value_options['label'] = value_label
+
+        return ("""\
+figure.on('plotly_hover', function(data) {
+  let point = data.points[0];
+""" + build_time_text_js + """
+  let value_text = BuildAxisValueHoverText(point, """ + json.dumps(value_options) + """);
+  ShowCustomTooltip(point, `<b>${point.data.name}</b><br>${value_text}<br>${time_text}`);
+});
+figure.on('plotly_unhover', function(data) {
+  HideCustomTooltip();
+});
+""" + tick_reformat_js)
 
     def _auto_detect_message_type(self, types: List[MessageType]):
         types = [t.MESSAGE_TYPE if inspect.isclass(t) else t for t in types]
