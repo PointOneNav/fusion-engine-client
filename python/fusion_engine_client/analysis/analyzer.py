@@ -283,16 +283,18 @@ figure.on('plotly_hover', function(data) {
         if self.output_dir is None:
             return
 
-        # Setup the figure.
+        # Setup the figure. This plot's X axis is always P1 time (relative or absolute), regardless of
+        # self.time_type -- see _resolve_x_axis(..., ignore_gps=True) below.
+        axis_layout = self._x_axis_layout(ignore_gps=True)
         time_axis_str = 'Relative Time' if self.time_type == 'relative' else 'P1/System Time'
-        p1_time_axis_str = 'Relative Time' if self.time_type == 'relative' else 'P1 Time'
+        p1_time_axis_str = axis_layout['title'].replace(' (sec)', '')
         figure = make_subplots(rows=2, cols=1, print_grid=False, shared_xaxes=True,
                                subplot_titles=[f'Device Time vs. {time_axis_str}',
                                                f'Pose Message Interval vs. {p1_time_axis_str}'])
 
         figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
         figure['layout']['xaxis1'].update(title=f"{time_axis_str} (sec)", showticklabels=True)
-        figure['layout']['xaxis2'].update(title=f"{p1_time_axis_str} (sec)", showticklabels=True)
+        figure['layout']['xaxis2'].update(showticklabels=True, **axis_layout)
         figure['layout']['yaxis1'].update(title="Absolute Time",
                                           ticktext=['P1/GPS Time', 'System Time'],
                                           tickvals=[1, 2])
@@ -303,7 +305,7 @@ figure.on('plotly_hover', function(data) {
         pose_data = result[PoseMessage.MESSAGE_TYPE]
 
         if len(pose_data.p1_time) > 0:
-            time = pose_data.p1_time - float(self.t0)
+            time, _ = self._resolve_x_axis(p1_time=pose_data.p1_time, gps_time=pose_data.gps_time, ignore_gps=True)
 
             # Calculate time intervals, rounded to the nearest 0.1 ms.
             dp1_time = np.diff(time, prepend=np.nan)
@@ -416,8 +418,22 @@ figure.on('plotly_hover', function(data) {
                                           mode='markers', marker={'color': 'purple'}),
                              1, 1)
 
-        self._add_figure(name="time_scale", figure=figure, title="Time Scale",
-                         inject_js=self._TIME_HOVER_JS + self._SYSTEM_TIME_HOVER_JS,
+        # P1/GPS time points carry customdata (see BuildTimeHoverText()), system time points don't.
+        _TIME_SCALE_HOVER_JS = """\
+figure.on('plotly_hover', function(data) {
+  for (let i = 0; i < data.points.length; ++i) {
+    let point = data.points[i];
+    if (point.data.customdata) {
+      ChangeHoverText(point, BuildTimeHoverText(point.x, GetCustomData(point, 0)));
+    }
+    else {
+      ChangeHoverText(point, BuildSystemTimeHoverText(point.x));
+    }
+  }
+});
+"""
+
+        self._add_figure(name="time_scale", figure=figure, title="Time Scale", inject_js=_TIME_SCALE_HOVER_JS,
                          time_axis_type='relative' if self.time_type == 'relative' else 'p1')
 
     def plot_latency(self):
