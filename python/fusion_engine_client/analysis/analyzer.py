@@ -370,8 +370,7 @@ figure.on('plotly_hover', function(data) {
                                               mode='markers', marker={'symbol': 'triangle-down-open'}),
                                  1, 1)
 
-        self._add_figure(name="time_scale", figure=figure, title="Time Scale", custom_hover=True,
-                         inject_js=self._custom_tooltip_js())
+        self._add_figure(name="time_scale", figure=figure, title="Time Scale", inject_js=self._custom_tooltip_js())
 
     def plot_latency(self):
         if self.output_dir is None:
@@ -432,7 +431,7 @@ figure.on('plotly_hover', function(data) {
 
         figure.update_layout(title_text='NOTE: Latency assumes the host system clock is synced to GPS time. '
                                         'Any error will impact the latency computation.')
-        self._add_figure(name="host_latency", figure=figure, title="Host Received Latency", custom_hover=True,
+        self._add_figure(name="host_latency", figure=figure, title="Host Received Latency",
                          inject_js=self._custom_tooltip_js())
 
     def plot_reset_timing(self):
@@ -545,7 +544,7 @@ figure.on('plotly_hover', function(data) {
                                           name='Unstarted Resets', mode='markers'),
                              1, 1)
 
-        self._add_figure(name="reset_timing", figure=figure, title="Reset Recovery Timing", custom_hover=True,
+        self._add_figure(name="reset_timing", figure=figure, title="Reset Recovery Timing",
                          inject_js=self._custom_tooltip_js(time_source='system'))
 
     def plot_pose(self):
@@ -670,7 +669,7 @@ figure.on('plotly_hover', function(data) {
                                       line={'color': 'blue'}),
                          2, 3)
 
-        self._add_figure(name="pose", figure=figure, title="Vehicle Pose vs. Time", custom_hover=True,
+        self._add_figure(name="pose", figure=figure, title="Vehicle Pose vs. Time",
                          inject_js=self._custom_tooltip_js())
 
     def plot_calibration(self):
@@ -774,7 +773,7 @@ figure.on('plotly_hover', function(data) {
                                       mode='lines', line={'color': 'black', 'dash': 'dash'}),
                          4, 1)
 
-        self._add_figure(name="calibration", figure=figure, title="Calibration Status", custom_hover=True,
+        self._add_figure(name="calibration", figure=figure, title="Calibration Status",
                          inject_js=self._custom_tooltip_js())
 
     def plot_solution_type(self):
@@ -826,7 +825,7 @@ figure.on('plotly_hover', function(data) {
                                           mode='markers', marker={'color': 'red', 'symbol': 'diamond-open'}),
                              1, 1)
 
-        self._add_figure(name="solution_type", figure=figure, title="Solution Type", custom_hover=True,
+        self._add_figure(name="solution_type", figure=figure, title="Solution Type",
                          inject_js=self._custom_tooltip_js())
 
     def plot_stationary_status(self):
@@ -861,7 +860,7 @@ figure.on('plotly_hover', function(data) {
 
         figure.add_trace(go.Scattergl(x=time, y=stationary_status, customdata=customdata, mode='markers'), 1, 1)
 
-        self._add_figure(name="stationary_status", figure=figure, title="Stationary Status", custom_hover=True,
+        self._add_figure(name="stationary_status", figure=figure, title="Stationary Status",
                          inject_js=self._custom_tooltip_js(value_label='Status', show_name=False))
 
     def _plot_displacement(self, source, p1_time, solution_type, displacement_enu_m, std_enu_m, gps_time=None,
@@ -1014,9 +1013,9 @@ figure.on('plotly_unhover', function(data) {
         """ + self._GPS_TICK_REFORMAT_JS
 
         self._add_figure(name=f"{name}_top_down", figure=topo_figure, title=f"{source}: Top-Down (Topocentric)",
-                         custom_hover=True, inject_js=_DISPLACEMENT_TOPO_HOVER_JS)
+                         inject_js=_DISPLACEMENT_TOPO_HOVER_JS)
         self._add_figure(name=f"{name}_vs_time", figure=time_figure, title=f"{source}: vs. Time",
-                         custom_hover=True, inject_js=_DISPLACEMENT_TIME_HOVER_JS)
+                         inject_js=_DISPLACEMENT_TIME_HOVER_JS)
 
     def plot_pose_error(self, reference: ReferenceData):
         """!
@@ -1325,7 +1324,8 @@ figure.on('plotly_unhover', function(data) {
             'yanchor': 'top'
         }]
 
-        self._add_figure(name="map", figure=figure, title="Vehicle Trajectory (Map)", config={'scrollZoom': True})
+        self._add_figure(name="map", figure=figure, title="Vehicle Trajectory (Map)", config={'scrollZoom': True},
+                         custom_hover=False)
 
     def plot_gnss_skyplot(self, decimate=True):
         for source_id in self._get_gnss_antenna_source_ids():
@@ -1468,7 +1468,7 @@ figure.on('plotly_unhover', function(data) {
         figure['layout']['updatemenus'] = updatemenus
 
         name = self._gnss_plot_filename('gnss_skyplot', source_id)
-        self._add_figure(name=name, figure=figure, title=f'GNSS ({label}): Sky Plot')
+        self._add_figure(name=name, figure=figure, title=f'GNSS ({label}): Sky Plot', custom_hover=False)
 
     def plot_gnss_cn0(self):
         for source_id in self._get_gnss_antenna_source_ids():
@@ -1540,7 +1540,7 @@ figure.on('plotly_unhover', function(data) {
         }]
 
         name = self._gnss_plot_filename('gnss_cn0', source_id)
-        self._add_figure(name=name, figure=figure, title=f'GNSS ({label}): C/N0 vs Time', custom_hover=True,
+        self._add_figure(name=name, figure=figure, title=f'GNSS ({label}): C/N0 vs Time',
                          inject_js=self._custom_tooltip_js(precision=2))
 
     def plot_gnss_azimuth_elevation(self):
@@ -1636,7 +1636,7 @@ figure.on('plotly_unhover', function(data) {
 
         name = self._gnss_plot_filename('gnss_azimuth_elevation', source_id)
         self._add_figure(name=name, figure=figure, title=f'GNSS ({label}): Azimuth & Elevation vs Time',
-                         custom_hover=True, inject_js=self._custom_tooltip_js())
+                         inject_js=self._custom_tooltip_js())
 
     def plot_gnss_signal_status(self):
         for source_id in self._get_gnss_antenna_source_ids():
@@ -1965,7 +1965,7 @@ figure.on('plotly_unhover', function(data) {{
 }});
 """ + self._GPS_TICK_REFORMAT_JS
 
-        self._add_figure(name=filename, figure=figure, title=figure_title, custom_hover=True, inject_js=hover_js)
+        self._add_figure(name=filename, figure=figure, title=figure_title, inject_js=hover_js)
 
     def _get_pose_source_ids(self) -> List[int]:
         """!
@@ -2112,7 +2112,7 @@ figure.on('plotly_unhover', function(data) {{
                              1, 1)
 
         self._add_figure(name='gnss_dop', figure=figure, title='GNSS: Dilution of Precision (DOP) vs. Time',
-                         custom_hover=True, inject_js=self._custom_tooltip_js(value_label='DOP'))
+                         inject_js=self._custom_tooltip_js(value_label='DOP'))
 
     def plot_gnss_corrections_status(self):
         """!
@@ -2170,7 +2170,7 @@ figure.on('plotly_unhover', function(data) {{
                              4, 1)
 
         self._add_figure(name="gnss_corrections_status", figure=figure, title="GNSS: Corrections Status",
-                         custom_hover=True, inject_js=self._custom_tooltip_js())
+                         inject_js=self._custom_tooltip_js())
 
     def plot_wheel_data(self):
         """!
@@ -2574,7 +2574,7 @@ figure.on('plotly_unhover', function(data) {
 });
 """ + self._GPS_TICK_REFORMAT_JS
 
-        self._add_figure(name=filename, figure=figure, title=figure_title, custom_hover=True,
+        self._add_figure(name=filename, figure=figure, title=figure_title,
                          inject_js=_WHEEL_HOVER_JS)
 
     def plot_imu(self):
@@ -2658,7 +2658,7 @@ figure.on('plotly_unhover', function(data) {
                                       name='Interval', mode='markers', marker={'color': 'red'}),
                          3, 1)
 
-        self._add_figure(name=filename, figure=figure, title=figure_title, custom_hover=True,
+        self._add_figure(name=filename, figure=figure, title=figure_title,
                          inject_js=self._custom_tooltip_js())
 
     def plot_gnss_attitude_measurements(self):
@@ -2913,7 +2913,7 @@ figure.on('plotly_unhover', function(data) {
 
         self._add_figure(name='gnss_attitude_measurement', figure=fig,
                          title='Measurements: GNSS Attitude (Multi-Antenna Heading Sensor)',
-                         custom_hover=True, inject_js=_ATTITUDE_HOVER_JS)
+                         inject_js=_ATTITUDE_HOVER_JS)
 
     def plot_system_status_profiling(self):
         """!
@@ -2954,7 +2954,7 @@ figure.on('plotly_unhover', function(data) {
                          2, 1)
 
         self._add_figure(name="profile_system_status", figure=figure, title="Profiling: System Status",
-                         custom_hover=True, inject_js=self._custom_tooltip_js())
+                         inject_js=self._custom_tooltip_js())
 
     def plot_events(self):
         """!
@@ -3454,7 +3454,7 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
         self.plots[name] = {'title': title, 'path': path}
 
     def _add_figure(self, name, figure=None, title=None, config=None, inject_js: str = None,
-                    time_axis_type: Optional[str] = None, custom_hover: bool = False):
+                    time_axis_type: Optional[str] = None, custom_hover: bool = True):
         """!
         @brief Generate an HTML file for the specified figure.
 
@@ -3468,9 +3468,12 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
         @param time_axis_type The time domain actually plotted on this figure's X axis (`relative`, `p1`, `gps`, or
                `utc`; see @ref BuildTimeHoverText() in `plotly_data_support.js`). Defaults to `self.time_type`; only
                needs to be overridden by plots (e.g., @ref plot_time_scale()) whose X axis does not follow it.
-        @param custom_hover If `True`, set `hoverinfo='none'` on all of this figure's traces so Plotly's native hover
-               label never draws, for use with a custom-tooltip `inject_js` (see @ref _custom_tooltip_js()) instead
-               of per-trace `hoverinfo='none'` at every `go.Scatter()`/`go.Scattergl()` call site.
+        @param custom_hover If `True` (the default), set `hoverinfo='none'` on all of this figure's traces so
+               Plotly's native hover label never draws, for use with a custom-tooltip `inject_js` (see @ref
+               _custom_tooltip_js()) instead of per-trace `hoverinfo='none'` at every `go.Scatter()`/
+               `go.Scattergl()` call site. Set to `False` for figures with no custom-tooltip `inject_js` at all
+               (e.g. @ref plot_map(), whose Mapbox traces use `hovertemplate` instead) or that still rely on the
+               older `ChangeHoverText()`-based native hover.
         """
         if title is None:
             title = name
