@@ -10,9 +10,16 @@ function BuildAxisValueHoverText(point, options) {
   let label = options.label !== undefined ? options.label :
                                             ((point.yaxis.title && point.yaxis.title.text) || 'Value');
   let value = point.y;
-  if (typeof value === 'number') {
+
+  // Categorical axis (e.g. Solution Type, Gear/Direction) -- show the tick label instead of the raw enum number.
+  let tick_idx = (point.yaxis.tickvals || []).indexOf(value);
+  if (tick_idx >= 0 && point.yaxis.ticktext) {
+    value = point.yaxis.ticktext[tick_idx];
+  }
+  else if (typeof value === 'number') {
     value = (typeof options.precision === 'number') ? value.toFixed(options.precision) : value.toPrecision(6);
   }
+
   if (label.length > 0) {
     return `${label}: ${value}`;
   }
