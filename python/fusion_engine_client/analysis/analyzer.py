@@ -3841,17 +3841,14 @@ Load and display information stored in a FusionEngine binary file.
         '-m', '--measurements', action=ExtendedBooleanAction,
         help="Plot incoming measurement data (slow). Ignored if --plot is specified.")
     plot_group.add_argument(
-        '--time-type', choices=('utc', 'gps', 'p1', 'relative'), default='utc',
+        '--time-type', '--time-axis', choices=('utc', 'gps', 'p1', 'relative', 'rel', 'absolute', 'abs'),
+        default='utc',
         help="Specify the way in which time will be plotted:"
-             "\n- utc - UTC date/time, if available (falls back to P1 time otherwise)"
+             "\n- absolute, abs - Alias for 'utc'"
              "\n- gps - GPS time (week and time of week), if available (falls back to P1 time otherwise)"
              "\n- p1 - Absolute P1 (or system) time"
-             "\n- relative - Elapsed time since the start of the log")
-    plot_group.add_argument(
-        '--time-axis', choices=('absolute', 'abs', 'relative', 'rel'), default=None,
-        help="Deprecated. Use --time-type instead. If specified, overrides --time-type:"
-             "\n- absolute, abs - Equivalent to --time-type=utc"
-             "\n- relative, rel - Equivalent to --time-type=relative")
+             "\n- relative, rel - Elapsed time since the start of the log"
+             "\n- utc - UTC date/time, if available (falls back to P1 time otherwise)")
     plot_group.add_argument(
         '--truncate', '--trunc', action=ExtendedBooleanAction, default=True,
         help="When processing a very long log (>%.1f hours), reduce or skip some plots that may be very slow to "
@@ -3942,6 +3939,12 @@ Load and display information stored in a FusionEngine binary file.
 
     HighlightFormatter.install(color=True, standoff_level=logging.WARNING)
 
+    # Convenience short-hands.
+    if options.time_type in ('abs', 'absolute'):
+        options.time_type = 'utc'
+    elif options.time_type == 'rel':
+        options.time_type = 'relative'
+
     # Parse the time range.
     if options.time is not None:
         time_range = TimeRange.parse(options.time, absolute=options.absolute_time)
@@ -3974,18 +3977,10 @@ Load and display information stored in a FusionEngine binary file.
             _logger.error('Source identifiers must be integers. Exiting.')
             sys.exit(1)
 
-    # --time-axis is deprecated in favor of --time-type, but still accepted for backwards compatibility.
-    time_type = options.time_type
-    if options.time_axis is not None:
-        if options.time_axis in ('relative', 'rel'):
-            time_type = 'relative'
-        elif options.time_axis in ('absolute', 'abs'):
-            time_type = 'utc'
-
     # Read pose data from the file.
     analyzer = Analyzer(file=input_path, output_dir=output_dir, ignore_index=options.ignore_index,
                         prefix=options.prefix + '.' if options.prefix is not None else '',
-                        time_range=time_range, time_type=time_type,
+                        time_range=time_range, time_type=options.time_type,
                         truncate_long_logs=options.truncate and options.plot is None, source_id=source_id)
 
     # Resolve reference data, if specified. This must happen after the analyzer (and its DataLoader) for the primary
