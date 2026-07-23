@@ -229,15 +229,10 @@ figure.on('plotly_hover', function(data) {
         self.time_type = time_type
 
         if self.time_type == 'relative':
-            self.t0 = self.reader.t0
-            if self.t0 is None:
-                self.t0 = Timestamp()
-
             self.system_t0 = self.reader.get_system_t0()
             if self.system_t0 is None:
                 self.system_t0 = np.nan
         else:
-            self.t0 = Timestamp(0.0)
             self.system_t0 = 0.0
 
         # The time domain -- `p1` (covers both relative and absolute P1 time) or `gps` (covers both GPS and UTC) --
