@@ -3826,8 +3826,9 @@ figure.on('plotly_unhover', function(data) {
   var PROFILE_SPEED = __PROFILE_SPEED__;
   var PROFILE_GPS_TIME = __PROFILE_GPS_TIME__;
   var SECONDS_PER_WEEK = 7 * 24 * 3600.0;
-  var SLIDER_HEIGHT_PX = 130;
+  var SLIDER_HEIGHT_PX = 80;
   var TRACK_INSET_PX = 16;
+  var TRACK_PADDING_V_PX = 4;
   var X_AXIS_LABEL_PX = 14;
   var MIN_WINDOW_SEC = Math.max(1e-3, (P1_TIME_MAX - P1_TIME_MIN) * 0.001);
 
@@ -3856,7 +3857,7 @@ figure.on('plotly_unhover', function(data) {
 
   var sliderContainer = document.createElement('div');
   sliderContainer.style.cssText = 'flex:0 0 ' + SLIDER_HEIGHT_PX + 'px; width:100%; box-sizing:border-box; ' +
-    'padding:8px ' + TRACK_INSET_PX + 'px; background:#f5f5f5; border-top:1px solid #ccc;';
+    'padding:' + TRACK_PADDING_V_PX + 'px ' + TRACK_INSET_PX + 'px; background:#f5f5f5; border-top:1px solid #ccc;';
 
   var trackDiv = document.createElement('div');
   trackDiv.style.cssText = 'position:relative; width:100%; height:100%;';
@@ -3916,29 +3917,43 @@ figure.on('plotly_unhover', function(data) {
     return PROFILE_GPS_TIME[lo] + frac * (PROFILE_GPS_TIME[hi] - PROFILE_GPS_TIME[lo]);
   }
 
+  // Split a P1 time into UTC calendar date + time-of-day, for the tick loop below to decide when a date needs to
+  // be shown (first tick, or a tick that landed on a different day than the previous one). Returns null if UTC
+  // can't be resolved (no GPS/POSIX offset, or no profile data to interpolate GPS time from).
+  function utcPartsForP1(p1) {
+    var gps = p1ToGpsTime(p1);
+    if (isNaN(gps) || typeof gps_posix_offset_sec !== 'number') {
+      return null;
+    }
+    var iso = new Date((gps + gps_posix_offset_sec) * 1000.0).toISOString();
+    return { date: iso.slice(0, 10).split('-').join('/'), time: iso.substr(11, 8) };
+  }
+
   // Match the X axis format used by the log's other time-series plots (see Analyzer.time_type / _resolve_x_axis()).
-  function formatTickLabel(p1) {
+  // The domain label ("Rel:", "P1:", "GPS:") only needs to appear once, on the first tick -- it's the same for
+  // every tick after that.
+  function formatTickLabel(p1, is_first) {
     if (time_axis_type === 'relative') {
-      return (p1 - (p1_t0_sec || 0)).toFixed(1) + ' s';
+      var s = (p1 - (p1_t0_sec || 0)).toFixed(1) + ' s';
+      return is_first ? 'Rel: ' + s : s;
     }
     if (time_axis_type === 'p1') {
-      return p1.toFixed(1) + ' s';
-    }
-    var gps = p1ToGpsTime(p1);
-    if (isNaN(gps)) {
-      return p1.toFixed(1) + ' s';
+      var s = p1.toFixed(1) + ' s';
+      return is_first ? 'P1: ' + s : s;
     }
     if (time_axis_type === 'gps') {
+      var gps = p1ToGpsTime(p1);
+      if (isNaN(gps)) {
+        return p1.toFixed(1) + ' s';
+      }
       var week = Math.floor(gps / SECONDS_PER_WEEK);
       var tow_sec = gps - week * SECONDS_PER_WEEK;
-      return week + ':' + tow_sec.toFixed(1);
+      var s = week + ':' + tow_sec.toFixed(1);
+      return is_first ? 'GPS: ' + s : s;
     }
-    // 'utc'
-    if (typeof gps_posix_offset_sec !== 'number') {
-      return p1.toFixed(1) + ' s';
-    }
-    var d = new Date((gps + gps_posix_offset_sec) * 1000.0);
-    return d.toISOString().substr(11, 8);
+    // 'utc' -- no date-change context here (see the tick loop's own UTC handling below), just the time of day.
+    var parts = utcPartsForP1(p1);
+    return parts ? parts.time : p1.toFixed(1) + ' s';
   }
 
   function resizeCanvas() {
@@ -3982,17 +3997,37 @@ figure.on('plotly_unhover', function(data) {
     ctx.font = Math.round(10 * dpr) + 'px sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
-    ctx.fillText('Speed: ' + maxSpeed + ' m/s', 4 * dpr, 3 * dpr);
+    ctx.fillText(maxSpeed + ' m/s', 4 * dpr, 3 * dpr);
     ctx.textBaseline = 'alphabetic';
     ctx.fillText('0 m/s', 4 * dpr, chartH - 3 * dpr);
 
-    // X axis time, in whatever format the rest of the log's plots use (self.time_type).
+    // X axis time, in whatever format the rest of the log's plots use (self.time_type). The domain marker
+    // ("Rel:"/"P1:"/"GPS:"/"UTC:") only appears once, on the first tick. In 'utc' mode, the bare time of day is
+    // also ambiguous about which day it's from, so the first tick -- and any later tick that lands on a different
+    // UTC calendar day than the one before it, however many days apart -- gets the date too (but not the "UTC:"
+    // marker again, since that was already established by the first tick).
     var tickFracs = [0, 0.25, 0.5, 0.75, 1.0];
     ctx.font = Math.round(9 * dpr) + 'px sans-serif';
     ctx.textBaseline = 'top';
+    var lastUtcDate = null;
     tickFracs.forEach(function(f, idx) {
       ctx.textAlign = (idx === 0) ? 'left' : (idx === tickFracs.length - 1) ? 'right' : 'center';
-      ctx.fillText(formatTickLabel(fracToTime(f)), f * w, chartH + 2 * dpr);
+      var p1 = fracToTime(f);
+      var label;
+      if (time_axis_type === 'utc') {
+        var parts = utcPartsForP1(p1);
+        if (parts === null) {
+          label = p1.toFixed(1) + ' s';
+        } else {
+          var showDate = (idx === 0) || (parts.date !== lastUtcDate);
+          lastUtcDate = parts.date;
+          var dateTime = showDate ? (parts.date + ' ' + parts.time) : parts.time;
+          label = (idx === 0) ? ('UTC: ' + dateTime) : dateTime;
+        }
+      } else {
+        label = formatTickLabel(p1, idx === 0);
+      }
+      ctx.fillText(label, f * w, chartH + 2 * dpr);
     });
   }
 
