@@ -1243,6 +1243,12 @@ figure.on('plotly_unhover', function(data) {
 
         # Read the pose data.
         have_pose_data = False
+        primary_source_id = min(pose_source_ids)
+        overall_t_min = None
+        overall_t_max = None
+        profile_time_sec = None
+        profile_speed_mps = None
+        profile_gps_time_sec = None
         for source_id in pose_source_ids:
             result = self.reader.read(message_types=[PoseMessage], source_ids=[source_id], **self.params)
             pose_data = result[PoseMessage.MESSAGE_TYPE]
@@ -1263,8 +1269,21 @@ figure.on('plotly_unhover', function(data) {
             flags = pose_data.flags[valid_idx]
             lla_deg = pose_data.lla_deg[:, valid_idx]
             std_enu_m = pose_data.position_std_enu_m[:, valid_idx]
+            p1_time = pose_data.p1_time[valid_idx]
 
-            customdata_all = _build_position_customdata(p1_time=pose_data.p1_time[valid_idx],
+            t_min = float(np.min(p1_time))
+            t_max = float(np.max(p1_time))
+            overall_t_min = t_min if overall_t_min is None else min(overall_t_min, t_min)
+            overall_t_max = t_max if overall_t_max is None else max(overall_t_max, t_max)
+
+            # Speed profile (for the time slider below the map) is only computed for the default source -- it's a
+            # visual aid for picking a time range, not a plotted data source, so it doesn't need every source's data.
+            if source_id == primary_source_id:
+                profile_time_sec = p1_time
+                profile_speed_mps = np.linalg.norm(pose_data.velocity_body_mps[:, valid_idx], axis=0)
+                profile_gps_time_sec = pose_data.gps_time[valid_idx]
+
+            customdata_all = _build_position_customdata(p1_time=p1_time,
                                                         gps_time=pose_data.gps_time[valid_idx],
                                                         lla_deg=lla_deg, std_enu_m=std_enu_m)
 
@@ -1324,8 +1343,34 @@ figure.on('plotly_unhover', function(data) {
             'yanchor': 'top'
         }]
 
+        # Decimate the speed profile for the time slider so a long log doesn't inflate the HTML with a huge embedded
+        # array -- it's just a visual aid for picking a time range, precision doesn't matter.
+        _MAX_PROFILE_POINTS = 3000
+        if profile_time_sec is not None and len(profile_time_sec) > 0:
+            order = np.argsort(profile_time_sec)
+            sorted_time = profile_time_sec[order]
+            sorted_speed = profile_speed_mps[order]
+            sorted_gps_time = profile_gps_time_sec[order]
+            if len(sorted_time) > _MAX_PROFILE_POINTS:
+                stride = int(np.ceil(len(sorted_time) / _MAX_PROFILE_POINTS))
+                sorted_time = sorted_time[::stride]
+                sorted_speed = sorted_speed[::stride]
+                sorted_gps_time = sorted_gps_time[::stride]
+            profile_time_json = json.dumps(np.round(sorted_time, 3).tolist())
+            profile_speed_json = json.dumps(np.round(sorted_speed, 3).tolist())
+            profile_gps_time_json = json.dumps(np.round(sorted_gps_time, 3).tolist())
+        else:
+            profile_time_json = '[]'
+            profile_speed_json = '[]'
+            profile_gps_time_json = '[]'
+
+        slider_js = self._map_time_slider_js(t_min=overall_t_min, t_max=overall_t_max,
+                                             profile_time_json=profile_time_json,
+                                             profile_speed_json=profile_speed_json,
+                                             profile_gps_time_json=profile_gps_time_json)
+
         self._add_figure(name="map", figure=figure, title="Vehicle Trajectory (Map)", config={'scrollZoom': True},
-                         custom_hover=False)
+                         custom_hover=False, inject_js=slider_js)
 
     def plot_gnss_skyplot(self, decimate=True):
         for source_id in self._get_gnss_antenna_source_ids():
@@ -3753,6 +3798,318 @@ figure.on('plotly_unhover', function(data) {
   HideCustomTooltip();
 });
 """ + tick_reformat_js)
+
+    def _map_time_slider_js(self, t_min: float, t_max: float, profile_time_json: str, profile_speed_json: str,
+                            profile_gps_time_json: str) -> str:
+        """!
+        @brief Build JS for a time-range control injected below @ref plot_map()'s figure.
+
+        Draws a speed-vs-time background chart (from pose velocity data) with a draggable/resizable window on top:
+        dragging an edge narrows the P1 time range shown on the map, dragging the body pans it, and double-clicking
+        resets it to the full range. Filtering re-slices each trace's original (already-rendered)
+        lat/lon/customdata via `Plotly.restyle()`, so no extra per-window traces are added to the page.
+
+        @param t_min/t_max The full P1 time range (sec) spanned by the map's traces (matches `customdata[1]`).
+        @param profile_time_json/profile_speed_json JSON arrays of (decimated) P1 time (sec) and 3D speed (m/s) for
+               the background chart, from the default pose source.
+        @param profile_gps_time_json JSON array of GPS time (sec), parallel to `profile_time_json`, used to label
+               the X axis in `gps`/`utc` mode (see `self.time_type`) -- P1 and GPS time aren't a fixed offset apart,
+               so converting an arbitrary tick's P1 time requires interpolating within the actual per-point data.
+
+        @return The JS to pass as `inject_js` to @ref _add_figure().
+        """
+        js = """\
+(function() {
+  var P1_TIME_MIN = __T_MIN__;
+  var P1_TIME_MAX = __T_MAX__;
+  var PROFILE_TIME = __PROFILE_TIME__;
+  var PROFILE_SPEED = __PROFILE_SPEED__;
+  var PROFILE_GPS_TIME = __PROFILE_GPS_TIME__;
+  var SECONDS_PER_WEEK = 7 * 24 * 3600.0;
+  var SLIDER_HEIGHT_PX = 130;
+  var TRACK_INSET_PX = 16;
+  var X_AXIS_LABEL_PX = 14;
+  var MIN_WINDOW_SEC = Math.max(1e-3, (P1_TIME_MAX - P1_TIME_MIN) * 0.001);
+
+  // Snapshot each trace's original lat/lon/customdata before any restyle() call mutates figure.data in place --
+  // narrowing/widening the window always re-filters from this pristine copy, never from what's currently displayed.
+  var ORIGINAL_TRACES = figure.data.map(function(trace) {
+    return {
+      lat: trace.lat ? trace.lat.slice() : null,
+      lon: trace.lon ? trace.lon.slice() : null,
+      customdata: trace.customdata ? trace.customdata.slice() : null,
+    };
+  });
+
+  // Reflow so the map shrinks to make room for the slider below it, instead of the slider being pushed below the
+  // fold by the map's normal 100vh height.
+  document.documentElement.style.height = '100%';
+  document.body.style.height = '100%';
+  document.body.style.margin = '0';
+  var mapContainer = figure.parentNode;
+  mapContainer.style.height = '100%';
+  mapContainer.style.display = 'flex';
+  mapContainer.style.flexDirection = 'column';
+  figure.style.flex = '1 1 auto';
+  figure.style.minHeight = '0';
+  figure.style.width = '100%';
+
+  var sliderContainer = document.createElement('div');
+  sliderContainer.style.cssText = 'flex:0 0 ' + SLIDER_HEIGHT_PX + 'px; width:100%; box-sizing:border-box; ' +
+    'padding:8px ' + TRACK_INSET_PX + 'px; background:#f5f5f5; border-top:1px solid #ccc;';
+
+  var trackDiv = document.createElement('div');
+  trackDiv.style.cssText = 'position:relative; width:100%; height:100%;';
+  sliderContainer.appendChild(trackDiv);
+
+  var canvas = document.createElement('canvas');
+  canvas.style.cssText = 'position:absolute; left:0; top:0; width:100%; height:100%;';
+  trackDiv.appendChild(canvas);
+
+  // windowDiv (the draggable selection) only covers the plotted chart area, not the X axis label strip below it
+  // (see drawProfile()), so the highlighted band lines up with the speed curve it's overlaid on.
+  var windowDiv = document.createElement('div');
+  windowDiv.style.cssText = 'position:absolute; top:0; bottom:' + X_AXIS_LABEL_PX + 'px; ' +
+    'background:rgba(31,119,180,0.25); border:1px solid rgba(31,119,180,0.9); box-sizing:border-box; cursor:grab;';
+  trackDiv.appendChild(windowDiv);
+
+  // Solid, protruding grab bars -- a plain hit-region (no visible affordance) didn't make it obvious the window's
+  // edges are independently draggable to resize the range, as opposed to just dragging the body to pan it.
+  var HANDLE_CSS = 'position:absolute; top:-4px; bottom:-4px; width:9px; background:rgb(31,119,180); ' +
+    'border-radius:3px; box-shadow:0 0 0 1px rgba(255,255,255,0.8); cursor:ew-resize;';
+  var leftHandle = document.createElement('div');
+  leftHandle.style.cssText = HANDLE_CSS + 'left:-5px;';
+  windowDiv.appendChild(leftHandle);
+
+  var rightHandle = document.createElement('div');
+  rightHandle.style.cssText = HANDLE_CSS + 'right:-5px;';
+  windowDiv.appendChild(rightHandle);
+
+  mapContainer.appendChild(sliderContainer);
+
+  function timeToFrac(t) { return (t - P1_TIME_MIN) / (P1_TIME_MAX - P1_TIME_MIN); }
+  function fracToTime(f) { return P1_TIME_MIN + f * (P1_TIME_MAX - P1_TIME_MIN); }
+
+  function pixelToTime(clientX) {
+    var rect = trackDiv.getBoundingClientRect();
+    var frac = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+    return fracToTime(frac);
+  }
+
+  // Interpolate GPS time for an arbitrary P1 time using the actual per-point profile samples -- P1 and GPS time
+  // aren't related by a fixed offset (see Analyzer._map_time_slider_js() docstring), but both progress at ~1
+  // sec/sec, so linear interpolation between the nearest two samples is effectively exact.
+  function p1ToGpsTime(p1) {
+    var n = PROFILE_GPS_TIME.length;
+    if (n < 2) return NaN;
+    var lo = 0, hi = n - 1;
+    if (p1 <= PROFILE_TIME[0]) { lo = 0; hi = 1; }
+    else if (p1 >= PROFILE_TIME[hi]) { lo = hi - 1; }
+    else {
+      while (hi - lo > 1) {
+        var mid = (lo + hi) >> 1;
+        if (PROFILE_TIME[mid] <= p1) lo = mid; else hi = mid;
+      }
+    }
+    var t0 = PROFILE_TIME[lo], t1 = PROFILE_TIME[hi];
+    var frac = (t1 > t0) ? (p1 - t0) / (t1 - t0) : 0;
+    return PROFILE_GPS_TIME[lo] + frac * (PROFILE_GPS_TIME[hi] - PROFILE_GPS_TIME[lo]);
+  }
+
+  // Match the X axis format used by the log's other time-series plots (see Analyzer.time_type / _resolve_x_axis()).
+  function formatTickLabel(p1) {
+    if (time_axis_type === 'relative') {
+      return (p1 - (p1_t0_sec || 0)).toFixed(1) + ' s';
+    }
+    if (time_axis_type === 'p1') {
+      return p1.toFixed(1) + ' s';
+    }
+    var gps = p1ToGpsTime(p1);
+    if (isNaN(gps)) {
+      return p1.toFixed(1) + ' s';
+    }
+    if (time_axis_type === 'gps') {
+      var week = Math.floor(gps / SECONDS_PER_WEEK);
+      var tow_sec = gps - week * SECONDS_PER_WEEK;
+      return week + ':' + tow_sec.toFixed(1);
+    }
+    // 'utc'
+    if (typeof gps_posix_offset_sec !== 'number') {
+      return p1.toFixed(1) + ' s';
+    }
+    var d = new Date((gps + gps_posix_offset_sec) * 1000.0);
+    return d.toISOString().substr(11, 8);
+  }
+
+  function resizeCanvas() {
+    var rect = trackDiv.getBoundingClientRect();
+    var dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(rect.width * dpr);
+    canvas.height = Math.round(rect.height * dpr);
+    drawProfile();
+  }
+
+  function drawProfile() {
+    var ctx = canvas.getContext('2d');
+    var dpr = window.devicePixelRatio || 1;
+    var w = canvas.width, h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+
+    var axisPx = Math.round(X_AXIS_LABEL_PX * dpr);
+    var chartH = Math.max(0, h - axisPx);
+
+    var maxSpeed = 0;
+    for (var i = 0; i < PROFILE_SPEED.length; i++) {
+      if (PROFILE_SPEED[i] > maxSpeed) maxSpeed = PROFILE_SPEED[i];
+    }
+    maxSpeed = Math.max(1, Math.ceil(maxSpeed));
+
+    if (PROFILE_TIME.length >= 2) {
+      function y(speed) { return chartH - (speed / maxSpeed) * chartH; }
+      ctx.beginPath();
+      for (var i = 0; i < PROFILE_TIME.length; i++) {
+        var x = timeToFrac(PROFILE_TIME[i]) * w;
+        if (i === 0) ctx.moveTo(x, y(PROFILE_SPEED[i])); else ctx.lineTo(x, y(PROFILE_SPEED[i]));
+      }
+      ctx.strokeStyle = '#ff7f0e';
+      ctx.lineWidth = Math.max(1, 1.5 * dpr);
+      ctx.stroke();
+    }
+
+    // Y axis context (0 at the baseline, ceil(max) at the top) -- without this there's no indication the
+    // background trace is even speed, let alone its scale.
+    ctx.fillStyle = 'rgba(90,90,90,0.95)';
+    ctx.font = Math.round(10 * dpr) + 'px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText('Speed: ' + maxSpeed + ' m/s', 4 * dpr, 3 * dpr);
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText('0 m/s', 4 * dpr, chartH - 3 * dpr);
+
+    // X axis time, in whatever format the rest of the log's plots use (self.time_type).
+    var tickFracs = [0, 0.25, 0.5, 0.75, 1.0];
+    ctx.font = Math.round(9 * dpr) + 'px sans-serif';
+    ctx.textBaseline = 'top';
+    tickFracs.forEach(function(f, idx) {
+      ctx.textAlign = (idx === 0) ? 'left' : (idx === tickFracs.length - 1) ? 'right' : 'center';
+      ctx.fillText(formatTickLabel(fracToTime(f)), f * w, chartH + 2 * dpr);
+    });
+  }
+
+  var winStart = P1_TIME_MIN;
+  var winEnd = P1_TIME_MAX;
+
+  function updateWindowDivStyle() {
+    var f0 = timeToFrac(winStart), f1 = timeToFrac(winEnd);
+    windowDiv.style.left = (f0 * 100) + '%';
+    windowDiv.style.width = Math.max(0, (f1 - f0) * 100) + '%';
+  }
+
+  // Re-slice from ORIGINAL_TRACES (not figure.data) so widening the window can bring back points a previous
+  // restyle() dropped.
+  function applyMapFilter() {
+    var traceIndices = [], latUpdate = [], lonUpdate = [], cdUpdate = [];
+    for (var i = 0; i < ORIGINAL_TRACES.length; i++) {
+      var orig = ORIGINAL_TRACES[i];
+      if (!orig.customdata) continue;
+      var lat = [], lon = [], cd = [];
+      for (var j = 0; j < orig.customdata.length; j++) {
+        var t = orig.customdata[j][1];
+        if (t >= winStart && t <= winEnd) {
+          lat.push(orig.lat[j]);
+          lon.push(orig.lon[j]);
+          cd.push(orig.customdata[j]);
+        }
+      }
+      traceIndices.push(i);
+      latUpdate.push(lat);
+      lonUpdate.push(lon);
+      cdUpdate.push(cd);
+    }
+    if (traceIndices.length > 0) {
+      Plotly.restyle(figure, {lat: latUpdate, lon: lonUpdate, customdata: cdUpdate}, traceIndices);
+    }
+  }
+
+  var pendingFilter = null;
+  function scheduleFilter() {
+    updateWindowDivStyle();
+    if (pendingFilter) return;
+    pendingFilter = setTimeout(function() {
+      pendingFilter = null;
+      applyMapFilter();
+    }, 16);
+  }
+
+  function resetWindow() {
+    winStart = P1_TIME_MIN;
+    winEnd = P1_TIME_MAX;
+    scheduleFilter();
+  }
+
+  var dragMode = null, dragStartX = 0, dragWinStart = 0, dragWinEnd = 0;
+
+  function onPointerMove(evt) {
+    if (!dragMode) return;
+    if (dragMode === 'left') {
+      winStart = Math.max(P1_TIME_MIN, Math.min(pixelToTime(evt.clientX), winEnd - MIN_WINDOW_SEC));
+    } else if (dragMode === 'right') {
+      winEnd = Math.min(P1_TIME_MAX, Math.max(pixelToTime(evt.clientX), winStart + MIN_WINDOW_SEC));
+    } else if (dragMode === 'pan') {
+      var rect = trackDiv.getBoundingClientRect();
+      var deltaTime = ((evt.clientX - dragStartX) / rect.width) * (P1_TIME_MAX - P1_TIME_MIN);
+      var width = dragWinEnd - dragWinStart;
+      var newStart = dragWinStart + deltaTime, newEnd = dragWinEnd + deltaTime;
+      if (newStart < P1_TIME_MIN) { newStart = P1_TIME_MIN; newEnd = newStart + width; }
+      if (newEnd > P1_TIME_MAX) { newEnd = P1_TIME_MAX; newStart = newEnd - width; }
+      winStart = newStart;
+      winEnd = newEnd;
+    }
+    scheduleFilter();
+  }
+
+  function onPointerUp() {
+    dragMode = null;
+    windowDiv.style.cursor = 'grab';
+    document.removeEventListener('mousemove', onPointerMove);
+    document.removeEventListener('mouseup', onPointerUp);
+  }
+
+  function beginDrag(mode) {
+    return function(evt) {
+      evt.preventDefault();
+      evt.stopPropagation();
+      dragMode = mode;
+      dragStartX = evt.clientX;
+      dragWinStart = winStart;
+      dragWinEnd = winEnd;
+      if (mode === 'pan') windowDiv.style.cursor = 'grabbing';
+      document.addEventListener('mousemove', onPointerMove);
+      document.addEventListener('mouseup', onPointerUp);
+    };
+  }
+
+  leftHandle.addEventListener('mousedown', beginDrag('left'));
+  rightHandle.addEventListener('mousedown', beginDrag('right'));
+  windowDiv.addEventListener('mousedown', function(evt) {
+    if (evt.target === leftHandle || evt.target === rightHandle) return;
+    beginDrag('pan')(evt);
+  });
+  trackDiv.addEventListener('dblclick', resetWindow);
+
+  window.addEventListener('resize', function() {
+    setTimeout(function() { Plotly.Plots.resize(figure); resizeCanvas(); }, 0);
+  });
+
+  updateWindowDivStyle();
+  setTimeout(function() { Plotly.Plots.resize(figure); resizeCanvas(); }, 0);
+})();
+"""
+        return (js.replace('__T_MIN__', json.dumps(t_min))
+                  .replace('__T_MAX__', json.dumps(t_max))
+                  .replace('__PROFILE_TIME__', profile_time_json)
+                  .replace('__PROFILE_SPEED__', profile_speed_json)
+                  .replace('__PROFILE_GPS_TIME__', profile_gps_time_json))
 
     def _auto_detect_message_type(self, types: List[MessageType]):
         types = [t.MESSAGE_TYPE if inspect.isclass(t) else t for t in types]
