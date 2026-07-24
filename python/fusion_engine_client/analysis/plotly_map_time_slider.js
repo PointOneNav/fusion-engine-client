@@ -1,8 +1,13 @@
 // Time-range control injected below plot_map()'s figure (see Analyzer._map_time_slider_js()). Draws a
 // speed-vs-time background chart (from pose velocity data) with a draggable/resizable window on top: dragging an
 // edge narrows the P1 time range shown on the map, dragging the body pans it, and double-clicking resets it to the
-// full range. Filtering re-slices each trace's original (already-rendered) lat/lon/customdata via
-// `Plotly.restyle()`, so no extra per-window traces are added to the page.
+// full range. A one-line "Showing X -> Y" readout below the slider echoes the current window as text. Filtering
+// re-slices each trace's original (already-rendered) lat/lon/customdata via `Plotly.restyle()`, so no extra
+// per-window traces are added to the page.
+//
+// Styled to sit quietly under the plain-white Plotly figures the rest of the report generates -- amber is
+// reserved for the two things that are actually interactive (the selection band and its handles), while the
+// speed curve itself stays a neutral grey so it doesn't compete with them.
 //
 // Requires the MAP_SLIDER_* globals (set by Analyzer._map_time_slider_js() immediately before this file is
 // injected) plus the common per-figure globals set up by Analyzer.__write_html_and_inject_js() (`figure`,
@@ -15,9 +20,11 @@
   var PROFILE_GPS_TIME = MAP_SLIDER_PROFILE_GPS_TIME;
   var SECONDS_PER_WEEK = 7 * 24 * 3600.0;
   var SLIDER_HEIGHT_PX = 80;
+  var READOUT_HEIGHT_PX = 22;
   var TRACK_INSET_PX = 16;
   var TRACK_PADDING_V_PX = 4;
   var X_AXIS_LABEL_PX = 14;
+  var ACCENT_COLOR = '#FF9C00';
   var MIN_WINDOW_SEC = Math.max(1e-3, (P1_TIME_MAX - P1_TIME_MIN) * 0.001);
 
   // Snapshot each trace's original lat/lon/customdata before any restyle() call mutates figure.data in place --
@@ -45,7 +52,7 @@
 
   var sliderContainer = document.createElement('div');
   sliderContainer.style.cssText = 'flex:0 0 ' + SLIDER_HEIGHT_PX + 'px; width:100%; box-sizing:border-box; ' +
-    'padding:' + TRACK_PADDING_V_PX + 'px ' + TRACK_INSET_PX + 'px; background:#f5f5f5; border-top:1px solid #ccc;';
+    'padding:' + TRACK_PADDING_V_PX + 'px ' + TRACK_INSET_PX + 'px; background:#ffffff; border-top:1px solid #e4e4e1;';
 
   var trackDiv = document.createElement('div');
   trackDiv.style.cssText = 'position:relative; width:100%; height:100%;';
@@ -59,13 +66,13 @@
   // (see drawProfile()), so the highlighted band lines up with the speed curve it's overlaid on.
   var windowDiv = document.createElement('div');
   windowDiv.style.cssText = 'position:absolute; top:0; bottom:' + X_AXIS_LABEL_PX + 'px; ' +
-    'background:rgba(31,119,180,0.25); border:1px solid rgba(31,119,180,0.9); box-sizing:border-box; cursor:grab;';
+    'background:rgba(201,127,10,0.10); border:1px solid ' + ACCENT_COLOR + '; box-sizing:border-box; cursor:grab;';
   trackDiv.appendChild(windowDiv);
 
   // Solid, protruding grab bars -- a plain hit-region (no visible affordance) didn't make it obvious the window's
   // edges are independently draggable to resize the range, as opposed to just dragging the body to pan it.
-  var HANDLE_CSS = 'position:absolute; top:-4px; bottom:-4px; width:9px; background:rgb(31,119,180); ' +
-    'border-radius:3px; box-shadow:0 0 0 1px rgba(255,255,255,0.8); cursor:ew-resize;';
+  var HANDLE_CSS = 'position:absolute; top:-4px; bottom:-4px; width:8px; background:' + ACCENT_COLOR + '; ' +
+    'cursor:ew-resize;';
   var leftHandle = document.createElement('div');
   leftHandle.style.cssText = HANDLE_CSS + 'left:-5px;';
   windowDiv.appendChild(leftHandle);
@@ -75,6 +82,14 @@
   windowDiv.appendChild(rightHandle);
 
   mapContainer.appendChild(sliderContainer);
+
+  // Text echo of the current window, in the same time_type-aware format as the axis ticks -- lets the current
+  // range be read precisely (and copy-pasted) without having to eyeball tick positions.
+  var readoutDiv = document.createElement('div');
+  readoutDiv.style.cssText = 'flex:0 0 ' + READOUT_HEIGHT_PX + 'px; width:100%; box-sizing:border-box; ' +
+    'padding:2px ' + TRACK_INSET_PX + 'px; background:#ffffff; color:' + ACCENT_COLOR + '; ' +
+    'font:12px -apple-system, "Segoe UI", Roboto, sans-serif;';
+  mapContainer.appendChild(readoutDiv);
 
   function timeToFrac(t) { return (t - P1_TIME_MIN) / (P1_TIME_MAX - P1_TIME_MIN); }
   function fracToTime(f) { return P1_TIME_MIN + f * (P1_TIME_MAX - P1_TIME_MIN); }
@@ -174,14 +189,14 @@
         var x = timeToFrac(PROFILE_TIME[i]) * w;
         if (i === 0) ctx.moveTo(x, y(PROFILE_SPEED[i])); else ctx.lineTo(x, y(PROFILE_SPEED[i]));
       }
-      ctx.strokeStyle = '#ff7f0e';
-      ctx.lineWidth = Math.max(1, 1.5 * dpr);
+      ctx.strokeStyle = '#aab2bc';
+      ctx.lineWidth = Math.max(1, 1.4 * dpr);
       ctx.stroke();
     }
 
     // Y axis context (0 at the baseline, ceil(max) at the top) -- without this there's no indication the
     // background trace is even speed, let alone its scale.
-    ctx.fillStyle = 'rgba(90,90,90,0.95)';
+    ctx.fillStyle = '#6b6b66';
     ctx.font = Math.round(10 * dpr) + 'px sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
@@ -222,10 +237,27 @@
   var winStart = P1_TIME_MIN;
   var winEnd = P1_TIME_MAX;
 
+  // Neither side gets a "Rel:"/"P1:"/"GPS:"/"UTC:" prefix here -- "Showing" already establishes these are times,
+  // and the axis ticks above spell out which domain. In 'utc' mode, the end date is only repeated if it actually
+  // differs from the start's (mirrors the axis ticks' own midnight-crossing rule, just for these two values).
+  function formatRangeReadout() {
+    if (time_axis_type === 'utc') {
+      var p0 = utcPartsForP1(winStart);
+      var p1 = utcPartsForP1(winEnd);
+      if (p0 === null || p1 === null) {
+        return 'Showing ' + winStart.toFixed(1) + ' s → ' + winEnd.toFixed(1) + ' s';
+      }
+      var endText = (p1.date !== p0.date) ? (p1.date + ' ' + p1.time) : p1.time;
+      return 'Showing ' + p0.date + ' ' + p0.time + ' → ' + endText;
+    }
+    return 'Showing ' + formatTickLabel(winStart, false) + ' → ' + formatTickLabel(winEnd, false);
+  }
+
   function updateWindowDivStyle() {
     var f0 = timeToFrac(winStart), f1 = timeToFrac(winEnd);
     windowDiv.style.left = (f0 * 100) + '%';
     windowDiv.style.width = Math.max(0, (f1 - f0) * 100) + '%';
+    readoutDiv.textContent = formatRangeReadout();
   }
 
   // Re-slice from ORIGINAL_TRACES (not figure.data) so widening the window can bring back points a previous
