@@ -1307,7 +1307,12 @@ figure.on('plotly_unhover', function(data) {
         layout = go.Layout(
             autosize=True,
             hovermode='closest',
-            title=title,
+            # Anchored to the plot area's own left edge (paper x=0) rather than left at the default (centered on
+            # the whole container) -- the container also includes the legend, which Plotly auto-widens to fit,
+            # so a container-centered title drifts right of where the map itself actually ends up.
+            title=dict(text=title, x=0, xanchor='left', xref='paper'),
+            # Reduce padding around the map, leaving enough space for the title.
+            margin=dict(l=16, r=16, t=70, b=8),
             mapbox=dict(
                 accesstoken=mapbox_token,
                 bearing=0,
@@ -1337,10 +1342,12 @@ figure.on('plotly_unhover', function(data) {
             'type': 'buttons',
             'direction': 'left',
             'buttons': buttons,
-            'x': 0.0,
-            'xanchor': 'left',
-            'y': 1.1,
-            'yanchor': 'top'
+            # Move the buttons inside the map to avoid overlap and reduce unused whitespace.
+            'x': 1.0,
+            'xanchor': 'right',
+            'y': 0.99,
+            'yanchor': 'top',
+            'bgcolor': 'rgba(255,255,255,0.85)',
         }]
 
         # Decimate the speed profile for the time slider so a long log doesn't inflate the HTML with a huge embedded
