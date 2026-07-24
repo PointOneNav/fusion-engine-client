@@ -1246,9 +1246,6 @@ figure.on('plotly_unhover', function(data) {
         primary_source_id = min(pose_source_ids)
         overall_t_min = None
         overall_t_max = None
-        profile_time_sec = None
-        profile_speed_mps = None
-        profile_gps_time_sec = None
         for source_id in pose_source_ids:
             result = self.reader.read(message_types=[PoseMessage], source_ids=[source_id], **self.params)
             pose_data = result[PoseMessage.MESSAGE_TYPE]
@@ -1275,13 +1272,6 @@ figure.on('plotly_unhover', function(data) {
             t_max = float(np.max(p1_time))
             overall_t_min = t_min if overall_t_min is None else min(overall_t_min, t_min)
             overall_t_max = t_max if overall_t_max is None else max(overall_t_max, t_max)
-
-            # Speed profile (for the time slider below the map) is only computed for the default source -- it's a
-            # visual aid for picking a time range, not a plotted data source, so it doesn't need every source's data.
-            if source_id == primary_source_id:
-                profile_time_sec = p1_time
-                profile_speed_mps = np.linalg.norm(pose_data.velocity_body_mps[:, valid_idx], axis=0)
-                profile_gps_time_sec = pose_data.gps_time[valid_idx]
 
             customdata_all = _build_position_customdata(p1_time=p1_time,
                                                         gps_time=pose_data.gps_time[valid_idx],
@@ -1349,6 +1339,11 @@ figure.on('plotly_unhover', function(data) {
             'yanchor': 'top',
             'bgcolor': 'rgba(255,255,255,0.85)',
         }]
+
+        # Speed profile (for the time slider below the map) is only computed for the default source -- it's a
+        # visual aid for picking a time range, not a plotted data source, so it doesn't need every source's data.
+        profile_time_sec, profile_speed_mps, profile_gps_time_sec, _ = \
+            self._estimate_speed_mps(source_id=primary_source_id, forward_only=False, signed=False)
 
         # Decimate the speed profile for the time slider so a long log doesn't inflate the HTML with a huge embedded
         # array -- it's just a visual aid for picking a time range, precision doesn't matter.
@@ -2236,6 +2231,77 @@ figure.on('plotly_unhover', function(data) {{
         self._plot_wheel_ticks_or_speeds(source='vehicle', type='speed')
         self._plot_wheel_ticks_or_speeds(source='vehicle', type='tick')
 
+    def _estimate_speed_mps(self, source_id, forward_only: bool = False, signed: bool = False):
+        """!
+        @brief Estimate speed (m/s) from the best available data, falling back through progressively coarser
+               sources.
+
+        Sources in order of priority:
+        1. `PoseMessage.velocity_body_mps` -- forward (X) component only if `forward_only`, otherwise the
+           full 3D norm.
+        2. `PoseAuxMessage.velocity_enu_mps` -- always an unsigned 3D norm; ENU velocity can't convey forward speed.
+        3. Differential position -- unsigned 3D norm of consecutive ECEF position deltas (from
+           `PoseMessage.lla_deg`) divided by elapsed time. Coarser (no velocity filtering/smoothing) and one
+           sample shorter than the other sources (undefined at the first time).
+
+        @param source_id The pose source ID to read.
+        @param forward_only If `True`, return body forward velocity, if known, or 3D speed otherwise.
+        @param signed If `True`, return signed forward velocity (negative when reversing) instead of speed (unsigned)
+               when known. When using ENU velocity or differential position, speed is always unsigned.
+
+        @return `(p1_time, speed_mps, gps_time, source)`, all `None` if no usable data exists at all. `source` is
+                one of `'body'`, `'enu'`, or `'diff_position'`, identifying which tier was used. `gps_time` is
+                NaN-filled if the winning source has no way to recover real GPS time (only possible for `'enu'`,
+                and only when there's no `PoseMessage` in the log at all to borrow it from -- see below).
+        """
+        result = self.reader.read(message_types=[PoseMessage], source_ids=source_id, **self.params)
+        pose_data = result[PoseMessage.MESSAGE_TYPE]
+        have_pose = len(pose_data.p1_time) != 0
+
+        if have_pose and np.any(~np.isnan(pose_data.velocity_body_mps)):
+            if forward_only:
+                speed_mps = pose_data.velocity_body_mps[0, :]
+                if not signed:
+                    speed_mps = np.abs(speed_mps)
+            else:
+                speed_mps = np.linalg.norm(pose_data.velocity_body_mps, axis=0)
+            return pose_data.p1_time, speed_mps, pose_data.gps_time, 'body'
+
+        result = self.reader.read(message_types=[PoseAuxMessage], source_ids=source_id, **self.params)
+        pose_aux_data = result[PoseAuxMessage.MESSAGE_TYPE]
+        if len(pose_aux_data.p1_time) != 0 and np.any(~np.isnan(pose_aux_data.velocity_enu_mps)):
+            self.logger.warning('Body velocity not available. Estimating |speed| from ENU velocity. May not '
+                                'match other speed sources when reversing.')
+            speed_mps = np.linalg.norm(pose_aux_data.velocity_enu_mps, axis=0)
+            # PoseAuxMessage doesn't carry GPS time itself, but it's emitted in lockstep with PoseMessage at the
+            # same P1 times -- if PoseMessage is present too (just without usable velocity), borrow its GPS time
+            # via interpolation rather than leaving this all NaN.
+            valid_gps_idx = np.logical_and(~np.isnan(pose_data.p1_time), ~np.isnan(pose_data.gps_time))
+            if have_pose and np.any(valid_gps_idx):
+                gps_time = np.interp(pose_aux_data.p1_time, pose_data.p1_time[valid_gps_idx],
+                                     pose_data.gps_time[valid_gps_idx])
+            else:
+                gps_time = np.full_like(pose_aux_data.p1_time, np.nan)
+            return pose_aux_data.p1_time, speed_mps, gps_time, 'enu'
+
+        if not have_pose:
+            return None, None, None, None
+
+        valid_idx = np.logical_and(~np.isnan(pose_data.p1_time), ~np.any(np.isnan(pose_data.lla_deg), axis=0))
+        if np.sum(valid_idx) < 2:
+            return None, None, None, None
+
+        self.logger.warning('Body and ENU velocity not available. Approximating |speed| from differential '
+                            'position.')
+        p1_time = pose_data.p1_time[valid_idx]
+        gps_time = pose_data.gps_time[valid_idx]
+        position_ecef_m = np.array(geodetic2ecef(lat=pose_data.lla_deg[0, valid_idx],
+                                                  lon=pose_data.lla_deg[1, valid_idx],
+                                                  alt=pose_data.lla_deg[2, valid_idx], deg=True))
+        dt_sec = np.diff(p1_time)
+        speed_mps = np.linalg.norm(np.diff(position_ecef_m, axis=1), axis=0) / dt_sec
+        return p1_time[1:], speed_mps, gps_time[1:], 'diff_position'
+
     def _plot_wheel_ticks_or_speeds(self, source, type):
         """!
         @brief Plot wheel speed or tick data.
@@ -2425,38 +2491,19 @@ figure.on('plotly_unhover', function(data) {{
         # Note: Pose data is not read when plotting ticks (ticks do not plot in meters/second). If the wheel data is not
         # in P1 time, we cannot compare against the pose data, which is.
         if type == 'speed' and p1_time_present:
-            nav_engine_p1_time = None
-            nav_engine_speed_mps = None
-
-            # If we have pose messages _and_ they contain body velocity, we can use that.
-            #
-            # Note that we are using this to compare vs wheel speeds, so we're only interested in forward speed here.
-            result = self.reader.read(message_types=[PoseMessage], source_ids=self.default_source_id, **self.params)
-            pose_data = result[PoseMessage.MESSAGE_TYPE]
-            if len(pose_data.p1_time) != 0 and np.any(~np.isnan(pose_data.velocity_body_mps[0, :])):
-                nav_engine_p1_time = pose_data.p1_time
-                nav_engine_speed_mps = pose_data.velocity_body_mps[0, :]
-                if data_signed:
-                    nav_engine_speed_name = 'Speed Estimate (Nav Engine)'
-                else:
-                    nav_engine_speed_mps = np.abs(nav_engine_speed_mps)
-                    nav_engine_speed_name = '|Speed Estimate| (Nav Engine)'
-            # Otherwise, if we have pose aux messages, read those and use the ENU velocity to estimate speed. Since we
-            # don't know attitude, the best we can do is estimate 3D speed and assume it's primarily in the along-track
-            # direction. This will also be an absolute value, so may not match the wheel data if it is signed and the
-            # vehicle is going backward.
-            else:
-                result = self.reader.read(message_types=[PoseAuxMessage], source_ids=self.default_source_id,
-                                          **self.params)
-                pose_aux_data = result[PoseAuxMessage.MESSAGE_TYPE]
-                if len(pose_aux_data.p1_time) != 0:
-                    self.logger.warning('Body forward velocity not available. Estimating |speed| from ENU velocity. '
-                                        'May not match wheel speeds when going backward.')
-                    nav_engine_p1_time = pose_aux_data.p1_time
-                    nav_engine_speed_mps = np.linalg.norm(pose_aux_data.velocity_enu_mps, axis=0)
-                    nav_engine_speed_name = '|3D Speed Estimate| (Nav Engine)'
+            # We're comparing this to wheel speed, so prefer a signed forward (body-frame X) estimate when real
+            # body velocity is available. The ENU-velocity and differential-position fallbacks (see
+            # _estimate_speed_mps()) can only ever produce an unsigned 3D speed -- attitude/heading isn't known
+            # from either -- so may not match the wheel data if it's signed and the vehicle is going backward.
+            nav_engine_p1_time, nav_engine_speed_mps, _, speed_source = \
+                self._estimate_speed_mps(source_id=self.default_source_id, forward_only=True, signed=data_signed)
 
             if nav_engine_speed_mps is not None:
+                nav_engine_speed_name = {
+                    'body': 'Speed Estimate' if data_signed else '|Speed Estimate|',
+                    'enu': '|3D Speed Estimate|',
+                    'diff_position': '|Differential Position Speed Estimate|',
+                }[speed_source] + ' (Nav Engine)'
                 if use_time_type:
                     nav_time, _ = self._resolve_x_axis(p1_time=nav_engine_p1_time)
                     nav_kwargs = {'customdata': self._time_hover_customdata(p1_time=nav_engine_p1_time)}
