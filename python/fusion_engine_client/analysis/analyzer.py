@@ -1345,31 +1345,10 @@ figure.on('plotly_unhover', function(data) {
         profile_time_sec, profile_speed_mps, profile_gps_time_sec, _ = \
             self._estimate_speed_mps(source_id=primary_source_id, forward_only=False, signed=False)
 
-        # Decimate the speed profile for the time slider so a long log doesn't inflate the HTML with a huge embedded
-        # array -- it's just a visual aid for picking a time range, precision doesn't matter.
-        _MAX_PROFILE_POINTS = 3000
-        if profile_time_sec is not None and len(profile_time_sec) > 0:
-            order = np.argsort(profile_time_sec)
-            sorted_time = profile_time_sec[order]
-            sorted_speed = profile_speed_mps[order]
-            sorted_gps_time = profile_gps_time_sec[order]
-            if len(sorted_time) > _MAX_PROFILE_POINTS:
-                stride = int(np.ceil(len(sorted_time) / _MAX_PROFILE_POINTS))
-                sorted_time = sorted_time[::stride]
-                sorted_speed = sorted_speed[::stride]
-                sorted_gps_time = sorted_gps_time[::stride]
-            profile_time_json = json.dumps(np.round(sorted_time, 3).tolist())
-            profile_speed_json = json.dumps(np.round(sorted_speed, 3).tolist())
-            profile_gps_time_json = json.dumps(np.round(sorted_gps_time, 3).tolist())
-        else:
-            profile_time_json = '[]'
-            profile_speed_json = '[]'
-            profile_gps_time_json = '[]'
-
         slider_js = self._map_time_slider_js(t_min=overall_t_min, t_max=overall_t_max,
-                                             profile_time_json=profile_time_json,
-                                             profile_speed_json=profile_speed_json,
-                                             profile_gps_time_json=profile_gps_time_json)
+                                             profile_time_sec=profile_time_sec,
+                                             profile_speed_mps=profile_speed_mps,
+                                             profile_gps_time_sec=profile_gps_time_sec)
 
         self._add_figure(name="map", figure=figure, title="Vehicle Trajectory (Map)", config={'scrollZoom': True},
                          custom_hover=False, inject_js=slider_js)
@@ -3853,24 +3832,47 @@ figure.on('plotly_unhover', function(data) {
 });
 """ + tick_reformat_js)
 
-    def _map_time_slider_js(self, t_min: float, t_max: float, profile_time_json: str, profile_speed_json: str,
-                            profile_gps_time_json: str) -> str:
+    def _map_time_slider_js(self, t_min: float, t_max: float, profile_time_sec: Optional[np.ndarray],
+                            profile_speed_mps: Optional[np.ndarray],
+                            profile_gps_time_sec: Optional[np.ndarray]) -> str:
         """!
         @brief Build JS for a time-range control injected below @ref plot_map()'s figure.
 
         The control itself (DOM/canvas setup, drag handling, axis formatting) lives in `plotly_map_time_slider.js`,
-        injected the same way as `plotly_data_support.js` (see @ref __write_html_and_inject_js()); this just
-        supplies the per-log data that static file reads from a handful of `MAP_SLIDER_*` globals.
+        injected the same way as `plotly_data_support.js` (see @ref __write_html_and_inject_js()); this decimates
+        and JSON-encodes the per-log data that static file reads from a handful of `MAP_SLIDER_*` globals.
 
         @param t_min/t_max The full P1 time range (sec) spanned by the map's traces (matches `customdata[1]`).
-        @param profile_time_json/profile_speed_json JSON arrays of (decimated) P1 time (sec) and 3D speed (m/s) for
-               the background chart, from the default pose source.
-        @param profile_gps_time_json JSON array of GPS time (sec), parallel to `profile_time_json`, used to label
-               the X axis in `gps`/`utc` mode (see `self.time_type`) -- P1 and GPS time aren't a fixed offset apart,
-               so converting an arbitrary tick's P1 time requires interpolating within the actual per-point data.
+        @param profile_time_sec/profile_speed_mps Parallel arrays of P1 time (sec) and 3D speed (m/s) for the
+               background chart, from the default pose source (e.g., from @ref _estimate_speed_mps()). `None` (or
+               empty) if no speed data is available at all, in which case the chart is simply left blank.
+        @param profile_gps_time_sec GPS time (sec), parallel to `profile_time_sec`, used to label the X axis in
+               `gps`/`utc` mode (see `self.time_type`) -- P1 and GPS time aren't a fixed offset apart, so
+               converting an arbitrary tick's P1 time requires interpolating within the actual per-point data.
 
         @return The JS to pass as `inject_js` to @ref _add_figure().
         """
+        # Decimate the speed profile so a long log doesn't inflate the HTML with a huge embedded array -- it's
+        # just a visual aid for picking a time range, precision doesn't matter.
+        _MAX_PROFILE_POINTS = 3000
+        if profile_time_sec is not None and len(profile_time_sec) > 0:
+            order = np.argsort(profile_time_sec)
+            sorted_time = profile_time_sec[order]
+            sorted_speed = profile_speed_mps[order]
+            sorted_gps_time = profile_gps_time_sec[order]
+            if len(sorted_time) > _MAX_PROFILE_POINTS:
+                stride = int(np.ceil(len(sorted_time) / _MAX_PROFILE_POINTS))
+                sorted_time = sorted_time[::stride]
+                sorted_speed = sorted_speed[::stride]
+                sorted_gps_time = sorted_gps_time[::stride]
+            profile_time_json = json.dumps(np.round(sorted_time, 3).tolist())
+            profile_speed_json = json.dumps(np.round(sorted_speed, 3).tolist())
+            profile_gps_time_json = json.dumps(np.round(sorted_gps_time, 3).tolist())
+        else:
+            profile_time_json = '[]'
+            profile_speed_json = '[]'
+            profile_gps_time_json = '[]'
+
         preamble = f"""\
 var MAP_SLIDER_T_MIN = {json.dumps(t_min)};
 var MAP_SLIDER_T_MAX = {json.dumps(t_max)};
