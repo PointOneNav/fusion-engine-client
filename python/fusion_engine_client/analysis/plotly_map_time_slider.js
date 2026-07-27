@@ -277,7 +277,19 @@
   // date is only repeated if it actually differs from the start's (mirrors the axis ticks' own midnight-crossing
   // rule, just for these two values) -- unless the start itself fell back to P1, in which case there's no prior
   // date to compare against, so the end always shows its date too.
+  // Always HH:MM:SS, even when hours is 0 -- dropping leading zero fields reads ambiguously (is "01:25" one
+  // minute or one hour?).
+  function formatDuration(duration_sec) {
+    var total_sec = Math.max(0, Math.round(duration_sec));
+    var hh = Math.floor(total_sec / 3600);
+    var mm = Math.floor((total_sec % 3600) / 60);
+    var ss = total_sec % 60;
+    function pad(n) { return (n < 10 ? '0' : '') + n; }
+    return pad(hh) + ':' + pad(mm) + ':' + pad(ss);
+  }
+
   function formatRangeReadout() {
+    var rangeText;
     if (time_axis_type === 'utc') {
       var p0 = utcPartsForP1(winStart);
       var p1 = utcPartsForP1(winEnd);
@@ -290,9 +302,11 @@
       } else {
         endText = p1.time;
       }
-      return 'Showing ' + startText + ' → ' + endText;
+      rangeText = startText + ' → ' + endText;
+    } else {
+      rangeText = formatTickLabel(winStart, false) + ' - ' + formatTickLabel(winEnd, false);
     }
-    return 'Showing ' + formatTickLabel(winStart, false) + ' → ' + formatTickLabel(winEnd, false);
+    return 'Displaying: ' + rangeText + ' | Duration: ' + formatDuration(winEnd - winStart);
   }
 
   function updateWindowDivStyle() {
