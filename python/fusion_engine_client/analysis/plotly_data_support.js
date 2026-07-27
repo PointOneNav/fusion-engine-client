@@ -144,9 +144,10 @@ function GetCustomData(point, row) {
   return customdata[row][point.pointNumber];
 }
 
-// PROTOTYPE: a custom tooltip drawn directly by us, positioned at the hovered point via
-// 'plotly_hover'/'plotly_unhover', instead of relying on Plotly's native hover label + ChangeHoverText(). Plotly
-// renders its own hover label as part of its internal mousemove handling, separately from our injected
+// Draw a custom mouse hover/tooltip box (by handling 'plotly_hover'/'plotly_unhover' manually), rather than use
+// Plotly's built-in box and just changing the text by calling ChangeHoverText().
+//
+// Plotly renders its own hover label as part of its internal mousemove handling, separately from our injected
 // 'plotly_hover' listener -- there's no guaranteed order between "Plotly reads fullData.text to draw its label"
 // and "our handler mutates fullData.text", so on plots with many traces (more work for Plotly's internal
 // hit-testing, more timing variance) the label sometimes renders before our mutation lands, showing stale or no
