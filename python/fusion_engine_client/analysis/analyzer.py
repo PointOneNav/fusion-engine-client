@@ -290,7 +290,7 @@ figure.on('plotly_hover', function(data) {
             time, _ = self._resolve_x_axis(p1_time=pose_data.p1_time, gps_time=pose_data.gps_time, ignore_gps=True)
 
             # Calculate time intervals, rounded to the nearest 0.1 ms.
-            dp1_time = np.diff(time, prepend=np.nan)
+            dp1_time = np.diff(pose_data.p1_time, prepend=np.nan)
             dp1_time = np.round(dp1_time * 1e4) * 1e-4
 
             dgps_time = np.diff(pose_data.gps_time, prepend=np.nan)
