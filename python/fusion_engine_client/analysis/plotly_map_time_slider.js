@@ -325,6 +325,18 @@
           cd.push(orig.customdata[j]);
         }
       }
+
+      if (lat.length === 0) {
+        // A trace with a genuinely empty lat/lon array gets dropped from the legend entirely -- making a solution
+        // type that just has no points in *this* window look like it never had any data at all (unlike the
+        // always-present placeholder trace Analyzer.plot_map() draws for solution types with no data in the whole
+        // log, which uses a single [NaN] point specifically to stay in the legend). Match that same convention
+        // here so narrowing the window doesn't make legend entries disappear.
+        lat = [NaN];
+        lon = [NaN];
+        cd = [];
+      }
+
       traceIndices.push(i);
       latUpdate.push(lat);
       lonUpdate.push(lon);
