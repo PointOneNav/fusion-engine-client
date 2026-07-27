@@ -1319,26 +1319,27 @@ figure.on('plotly_unhover', function(data) {
         figure = go.Figure(data=map_data, layout=layout)
         figure['layout'].update(showlegend=True)
 
-        # Add quality selection buttons.
-        num_traces = len(figure.data)
-        buttons = [dict(label='All', method='restyle', args=['visible', [True] * num_traces])]
-        for name, indices in sorted(indices_by_engine.items()):
-            if len(indices) == 0:
-                continue
-            visible = np.full((num_traces,), False)
-            visible[indices] = True
-            buttons.append(dict(label=name, method='restyle', args=['visible', visible]))
-        figure['layout']['updatemenus'] = [{
-            'type': 'buttons',
-            'direction': 'left',
-            'buttons': buttons,
-            # Move the buttons inside the map to avoid overlap and reduce unused whitespace.
-            'x': 1.0,
-            'xanchor': 'right',
-            'y': 0.99,
-            'yanchor': 'top',
-            'bgcolor': 'rgba(255,255,255,0.85)',
-        }]
+        # Add selection buttons for different engines (nav engine, GNSS receiver, etc.).
+        if len(indices_by_engine) > 1:
+            num_traces = len(figure.data)
+            buttons = [dict(label='All', method='restyle', args=['visible', [True] * num_traces])]
+            for name, indices in sorted(indices_by_engine.items()):
+                if len(indices) == 0:
+                    continue
+                visible = np.full((num_traces,), False)
+                visible[indices] = True
+                buttons.append(dict(label=name, method='restyle', args=['visible', visible]))
+            figure['layout']['updatemenus'] = [{
+                'type': 'buttons',
+                'direction': 'left',
+                'buttons': buttons,
+                # Move the buttons inside the map to avoid overlap and reduce unused whitespace.
+                'x': 1.0,
+                'xanchor': 'right',
+                'y': 0.99,
+                'yanchor': 'top',
+                'bgcolor': 'rgba(255,255,255,0.85)',
+            }]
 
         # Speed profile (for the time slider below the map) is only computed for the default source -- it's a
         # visual aid for picking a time range, not a plotted data source, so it doesn't need every source's data.
