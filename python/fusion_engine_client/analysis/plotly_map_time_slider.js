@@ -31,18 +31,11 @@
     };
   });
 
-  // Reflow so the map shrinks to make room for the slider below it, instead of the slider being pushed below the
-  // fold by the map's normal 100vh height.
-  document.documentElement.style.height = '100%';
-  document.body.style.height = '100%';
-  document.body.style.margin = '0';
+  // Locate the slider below the map. We'll reflow the map and make it visible below, in scheduleReveal(), after Plotly
+  // finishes rendering it, to make sure it displays at the correct size right away, making room vertically for the
+  // slider. If we display it immediately, instead of after the first render, it will initially appear full size and
+  // then shrink to accommodate the slider.
   var mapContainer = figure.parentNode;
-  mapContainer.style.height = '100%';
-  mapContainer.style.display = 'flex';
-  mapContainer.style.flexDirection = 'column';
-  figure.style.flex = '1 1 auto';
-  figure.style.minHeight = '0';
-  figure.style.width = '100%';
 
   var sliderContainer = document.createElement('div');
   sliderContainer.style.cssText = 'flex:0 0 ' + SLIDER_HEIGHT_PX + 'px; width:100%; box-sizing:border-box; ' +
@@ -413,5 +406,28 @@
   });
 
   updateWindowDivStyle();
-  setTimeout(function() { Plotly.Plots.resize(figure); resizeCanvas(); }, 0);
+
+  // The <head> <style> block (see Analyzer.plot_map()) starts the map hidden (visibility:hidden, not display:none,
+  // so it still occupies its final layout space) and already-shrunk to make room for the slider -- so the slider
+  // and readout below are correctly positioned from the very first paint. But Plotly.newPlot()'s initial autosize
+  // pass computes its internal plot dimensions from the window size, not the (already-correct) container box, and
+  // -- worse, for a WebGL/mapbox trace -- doesn't finish reflecting a resize() call in the same tick it's called,
+  // so revealing the map right away (even after calling resize() synchronously) can still show a visible moment of
+  // it at the wrong (window-sized) dimensions before catching up. Instead, reveal only once Plotly itself reports
+  // a completed (re)draw following the resize -- debounced, in case that triggers more than one -- with a fixed
+  // fallback delay in case 'plotly_afterplot' never fires for some reason (so the map is never stuck invisible).
+  var revealTimer = null;
+  function scheduleReveal(delay_ms) {
+    if (revealTimer !== null) {
+      clearTimeout(revealTimer);
+    }
+    revealTimer = setTimeout(function() {
+      figure.style.visibility = 'visible';
+    }, delay_ms);
+  }
+  figure.on('plotly_afterplot', function() { scheduleReveal(50); });
+  scheduleReveal(500);
+
+  Plotly.Plots.resize(figure);
+  resizeCanvas();
 })();

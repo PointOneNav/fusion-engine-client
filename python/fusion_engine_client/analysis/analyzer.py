@@ -1350,8 +1350,25 @@ figure.on('plotly_unhover', function(data) {
                                              profile_speed_mps=profile_speed_mps,
                                              profile_gps_time_sec=profile_gps_time_sec)
 
+        # Make room for the slider *before* Plotly's own first render so the map doesn't appear full-size and then
+        # shrink after the time scale renders.
+        #
+        # The map itself starts hidden (`visibility:hidden`, which still reserves its final layout space, unlike
+        # `display:none`) -- even with the container correctly sized up front, Plotly's own WebGL/mapbox-gl
+        # rendering doesn't necessarily catch up to a resize() call within the same paint, so revealing it right
+        # away can still show one frame at the wrong (window-sized) dimensions overlapping the slider. It's
+        # revealed by JS (plotly_map_time_slider.js) once Plotly itself reports the post-resize redraw is done.
+        slider_head_css = """\
+<style>
+html, body { height: 100%; margin: 0; }
+body { display: flex; flex-direction: column; }
+body > div { display: contents; }
+.plotly-graph-div.js-plotly-plot { flex: 1 1 auto; min-height: 0; width: 100%; visibility: hidden; }
+</style>
+"""
+
         self._add_figure(name="map", figure=figure, title="Vehicle Trajectory (Map)", config={'scrollZoom': True},
-                         custom_hover=False, inject_js=slider_js)
+                         custom_hover=False, inject_js=slider_js, inject_head=slider_head_css)
 
     def plot_gnss_skyplot(self, decimate=True):
         for source_id in self._get_gnss_antenna_source_ids():
@@ -3532,7 +3549,7 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
         self.plots[name] = {'title': title, 'path': path}
 
     def _add_figure(self, name, figure=None, title=None, config=None, inject_js: str = None,
-                    time_axis_type: Optional[str] = None, custom_hover: bool = True):
+                    inject_head: str = None, time_axis_type: Optional[str] = None, custom_hover: bool = True):
         """!
         @brief Generate an HTML file for the specified figure.
 
@@ -3542,7 +3559,13 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
         @param config An optional dictionary containing Plotly.js figure config options to be included in the generated
                JavaScript.
         @param inject_js Custom Javascript to be injected into the generated HTML file (see @ref
-               __write_html_and_inject_js()).
+               __write_html_and_inject_js()). Runs *after* `Plotly.newPlot()`, so it's too late to affect the
+               container's size before Plotly's own initial (auto-sized) render -- use `inject_head` for that.
+        @param inject_head Raw HTML (typically a `<style>` block) inserted immediately after the generated file's
+               `<head>` tag -- i.e., before any of Plotly's own script tags run. Unlike CSS/DOM changes made from
+               `inject_js`, this takes effect before `Plotly.newPlot()`'s first (auto-sized) render, so it's the
+               only way to affect a figure's initial layout without a visible resize right after load (see @ref
+               plot_map(), which uses this to make room for its time slider before the map's first paint).
         @param time_axis_type The time domain actually plotted on this figure's X axis (`relative`, `p1`, `gps`, or
                `utc`; see @ref BuildTimeHoverText() in `plotly_data_support.js`). Defaults to `self.time_type`; only
                needs to be overridden by plots (e.g., @ref plot_time_scale()) whose X axis does not follow it.
@@ -3588,6 +3611,12 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
 
             if inject_js is not None:
                 plotly.io.write_html = Analyzer.__original_write_html
+
+            if inject_head is not None:
+                with open(path, 'rt') as f:
+                    html = f.read()
+                with open(path, 'wt') as f:
+                    f.write(html.replace('<head>', '<head>' + inject_head, 1))
 
         self.plots[name] = {'title': title, 'path': path if figure is not None else None}
 
