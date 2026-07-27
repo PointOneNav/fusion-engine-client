@@ -971,7 +971,7 @@ figure.on('plotly_hover', function(data) {
             max_y = 1.0
         time_figure['layout']['yaxis1'].update(range=[0, max_y])
 
-        name = source.replace(' ', '_').lower()
+        name = source.replace(' ', '_').replace('.', '').replace('(', '').replace(')', '').lower()
 
         # Topocentric hover: X/Y are spatial (East/North), not time, so both P1 and GPS time must come directly from
         # customdata (rows 0/1) rather than from the point's axis position -- see BuildTimeHoverTextFromTimes().
@@ -1025,7 +1025,8 @@ figure.on('plotly_unhover', function(data) {
 
         @param reference The truth reference to compare against.
         """
-        return self._plot_position_displacement_vs_reference(reference=reference)
+        return self._plot_position_displacement_vs_reference(reference=reference,
+                                                             source_id=SourceIdentifier.OUTPUT_LEVER_ARM)
 
     def plot_position_displacement(self, reference_type: str):
         """!
@@ -1039,12 +1040,13 @@ figure.on('plotly_unhover', function(data) {
         reference = ReferenceData.resolve_cli_argument(reference=reference_type, loader=self.reader,
                                                        source_id=self.default_source_id)
         if reference is None:
-            self.logger.info('No valid position solutions detected. Skipping displacement plots.')
+            self.logger.info('No valid position solutions detected. Skipping position displacement plots.')
             return None
         else:
-            return self._plot_position_displacement_vs_reference(reference=reference)
+            return self._plot_position_displacement_vs_reference(reference=reference, source_id=self.default_source_id)
 
-    def _plot_position_displacement_vs_reference(self, reference: Optional[ReferenceData] = None):
+    def _plot_position_displacement_vs_reference(self, reference: Optional[ReferenceData] = None,
+                                                 source_id: Optional[int] = None):
         """!
         @brief Generate a topocentric (top-down) plot of position displacement (or error, if `reference` is an
                independent truth source -- see @ref ReferenceData) vs a reference position, as well as a plot of
@@ -1056,8 +1058,11 @@ figure.on('plotly_unhover', function(data) {
         if self.output_dir is None:
             return None
 
+        if source_id is None:
+            source_id = self.default_source_id
+
         # Read the pose data.
-        result = self.reader.read(message_types=[PoseMessage], source_ids=self.default_source_id, **self.params)
+        result = self.reader.read(message_types=[PoseMessage], source_ids=source_id, **self.params)
         pose_data = result[PoseMessage.MESSAGE_TYPE]
 
         if len(pose_data.p1_time) == 0:
@@ -1098,6 +1103,8 @@ figure.on('plotly_unhover', function(data) {
 
         axis_title = reference.displacement_label
         source = f'Position {axis_title} vs. {"Reference" if reference.is_truth else reference.description}'
+        if source_id != SourceIdentifier.OUTPUT_LEVER_ARM:
+            source += f' (Source {source_id})'
 
         self._plot_displacement(source=source, title=axis_title,
                                 p1_time=p1_time, gps_time=gps_time, solution_type=solution_type,
