@@ -1,17 +1,11 @@
 // Time-range control injected below plot_map()'s figure (see Analyzer._map_time_slider_js()). Draws a
 // speed-vs-time background chart (from pose velocity data) with a draggable/resizable window on top: dragging an
 // edge narrows the P1 time range shown on the map, dragging the body pans it, and double-clicking resets it to the
-// full range. A one-line "Showing X -> Y" readout below the slider echoes the current window as text. Filtering
-// re-slices each trace's original (already-rendered) lat/lon/customdata via `Plotly.restyle()`, so no extra
-// per-window traces are added to the page.
+// full range. A one-line "Showing X -> Y" readout below the slider echoes the current window as text.
 //
-// Styled to sit quietly under the plain-white Plotly figures the rest of the report generates -- amber is
-// reserved for the two things that are actually interactive (the selection band and its handles), while the
-// speed curve itself stays a neutral grey so it doesn't compete with them.
-//
-// Requires the MAP_SLIDER_* globals (set by Analyzer._map_time_slider_js() immediately before this file is
-// injected) plus the common per-figure globals set up by Analyzer.__write_html_and_inject_js() (`figure`,
-// `time_axis_type`, `p1_t0_sec`, `gps_posix_offset_sec`).
+// Requires the MAP_SLIDER_* globals (set by Analyzer._map_time_slider_js() immediately before this file is injected)
+// plus the common per-figure globals set up by Analyzer.__write_html_and_inject_js() (`figure`, `time_axis_type`,
+// `p1_t0_sec`, `gps_posix_offset_sec`).
 (function() {
   var P1_TIME_MIN = MAP_SLIDER_T_MIN;
   var P1_TIME_MAX = MAP_SLIDER_T_MAX;
@@ -69,8 +63,7 @@
     'background:rgba(201,127,10,0.10); border:1px solid ' + ACCENT_COLOR + '; box-sizing:border-box; cursor:grab;';
   trackDiv.appendChild(windowDiv);
 
-  // Solid, protruding grab bars -- a plain hit-region (no visible affordance) didn't make it obvious the window's
-  // edges are independently draggable to resize the range, as opposed to just dragging the body to pan it.
+  // Solid, protruding grab bars for dragging the size of the visible time range.
   var HANDLE_CSS = 'position:absolute; top:-4px; bottom:-4px; width:8px; background:' + ACCENT_COLOR + '; ' +
     'cursor:ew-resize;';
   var leftHandle = document.createElement('div');
@@ -83,7 +76,7 @@
 
   mapContainer.appendChild(sliderContainer);
 
-  // Text echo of the current window, in the same time_type-aware format as the axis ticks -- lets the current
+  // Text echo of the current window, in the same time-type-aware format as the axis ticks -- lets the current
   // range be read precisely (and copy-pasted) without having to eyeball tick positions.
   var readoutDiv = document.createElement('div');
   readoutDiv.style.cssText = 'flex:0 0 ' + READOUT_HEIGHT_PX + 'px; width:100%; box-sizing:border-box; ' +
@@ -100,24 +93,58 @@
     return fracToTime(frac);
   }
 
-  // Interpolate GPS time for an arbitrary P1 time using the actual per-point profile samples -- P1 and GPS time
-  // aren't related by a fixed offset (see Analyzer._map_time_slider_js() docstring), but both progress at ~1
-  // sec/sec, so linear interpolation between the nearest two samples is effectively exact.
-  function p1ToGpsTime(p1) {
-    var n = PROFILE_GPS_TIME.length;
-    if (n < 2) return NaN;
-    var lo = 0, hi = n - 1;
-    if (p1 <= PROFILE_TIME[0]) { lo = 0; hi = 1; }
-    else if (p1 >= PROFILE_TIME[hi]) { lo = hi - 1; }
-    else {
-      while (hi - lo > 1) {
-        var mid = (lo + hi) >> 1;
-        if (PROFILE_TIME[mid] <= p1) lo = mid; else hi = mid;
-      }
+  // Only P1 times with a real (non-NaN) GPS time can be used as GPS time interpolation/extrapolation anchors below.
+  var VALID_PROFILE_TIME = [];
+  var VALID_PROFILE_GPS_TIME = [];
+  for (var vi = 0; vi < PROFILE_TIME.length; vi++) {
+    if (!isNaN(PROFILE_GPS_TIME[vi])) {
+      VALID_PROFILE_TIME.push(PROFILE_TIME[vi]);
+      VALID_PROFILE_GPS_TIME.push(PROFILE_GPS_TIME[vi]);
     }
-    var t0 = PROFILE_TIME[lo], t1 = PROFILE_TIME[hi];
+  }
+
+  // Interpolate (or, beyond the known data, extrapolate) GPS time for an arbitrary P1 time -- P1 and GPS time
+  // aren't related by a fixed offset (see Analyzer._map_time_slider_js() docstring) but P1 time should be rate-locked
+  // to GPS time when it is available.
+  //
+  // For timeline purposes, displayed timestamps don't need to be precise: the scale is large and can't be zoomed in on
+  // the map's slider. Before GPS time is known, extrapolate assuming P1 time tracks real elapsed time 1:1 -- it does
+  // not, but this is a good enough approximation for a while.
+  //
+  // Before GPS time is available, P1 time is rate-locked to the device's local oscillator. Even a very poor 300 PPM
+  // oscillator only accumulates ~1 sec of error per hour. A 1-2 hour window should be good enough for display purposes.
+  // Past that, the error is large enough it's better to just say so (fall back to a P1 reading) than to show a
+  // wrong-looking UTC/GPS time -- see formatTickLabel()/utcPartsForP1() callers.
+  var GPS_EXTRAPOLATION_LIMIT_SEC = 2 * 3600;
+
+  function p1ToGpsTime(p1) {
+    var n = VALID_PROFILE_TIME.length;
+    if (n === 0) {
+      return NaN;
+    }
+    if (n === 1) {
+      var dtOnly = p1 - VALID_PROFILE_TIME[0];
+      return Math.abs(dtOnly) <= GPS_EXTRAPOLATION_LIMIT_SEC ? VALID_PROFILE_GPS_TIME[0] + dtOnly : NaN;
+    }
+    if (p1 <= VALID_PROFILE_TIME[0]) {
+      var dtBefore = VALID_PROFILE_TIME[0] - p1;
+      return dtBefore <= GPS_EXTRAPOLATION_LIMIT_SEC ? VALID_PROFILE_GPS_TIME[0] - dtBefore : NaN;
+    }
+    if (p1 >= VALID_PROFILE_TIME[n - 1]) {
+      var dtAfter = p1 - VALID_PROFILE_TIME[n - 1];
+      return dtAfter <= GPS_EXTRAPOLATION_LIMIT_SEC ? VALID_PROFILE_GPS_TIME[n - 1] + dtAfter : NaN;
+    }
+    // Interior: bracket and linearly interpolate between the two nearest valid points -- no error cap needed here
+    // (unlike the edges above), since the real GPS time is known at both ends, however far apart a mid-log gap in
+    // GPS availability left them.
+    var lo = 0, hi = n - 1;
+    while (hi - lo > 1) {
+      var mid = (lo + hi) >> 1;
+      if (VALID_PROFILE_TIME[mid] <= p1) lo = mid; else hi = mid;
+    }
+    var t0 = VALID_PROFILE_TIME[lo], t1 = VALID_PROFILE_TIME[hi];
     var frac = (t1 > t0) ? (p1 - t0) / (t1 - t0) : 0;
-    return PROFILE_GPS_TIME[lo] + frac * (PROFILE_GPS_TIME[hi] - PROFILE_GPS_TIME[lo]);
+    return VALID_PROFILE_GPS_TIME[lo] + frac * (VALID_PROFILE_GPS_TIME[hi] - VALID_PROFILE_GPS_TIME[lo]);
   }
 
   // Split a P1 time into UTC calendar date + time-of-day, for the tick loop below to decide when a date needs to
@@ -146,8 +173,11 @@
     }
     if (time_axis_type === 'gps') {
       var gps = p1ToGpsTime(p1);
+      // GPS time may not be available at the start of the timeline if we have to extrapolate backward for a very long
+      // time. Rather than silently showing a bare number that looks like a GPS value but isn't, label it as what it
+      // actually is.
       if (isNaN(gps)) {
-        return p1.toFixed(1) + ' s';
+        return 'P1: ' + p1.toFixed(1) + ' s';
       }
       var week = Math.floor(gps / SECONDS_PER_WEEK);
       var tow_sec = gps - week * SECONDS_PER_WEEK;
@@ -156,7 +186,7 @@
     }
     // 'utc' -- no date-change context here (see the tick loop's own UTC handling below), just the time of day.
     var parts = utcPartsForP1(p1);
-    return parts ? parts.time : p1.toFixed(1) + ' s';
+    return parts ? parts.time : 'P1: ' + p1.toFixed(1) + ' s';
   }
 
   function resizeCanvas() {
@@ -194,8 +224,7 @@
       ctx.stroke();
     }
 
-    // Y axis context (0 at the baseline, ceil(max) at the top) -- without this there's no indication the
-    // background trace is even speed, let alone its scale.
+    // Y axis context (vehicle speed) - 0 at the bottom, ceil(max) at the top.
     ctx.fillStyle = '#6b6b66';
     ctx.font = Math.round(10 * dpr) + 'px sans-serif';
     ctx.textAlign = 'left';
@@ -205,14 +234,17 @@
     ctx.fillText('0 m/s', 4 * dpr, chartH - 3 * dpr);
 
     // X axis time, in whatever format the rest of the log's plots use (self.time_type). The domain marker
-    // ("Rel:"/"P1:"/"GPS:"/"UTC:") only appears once, on the first tick. In 'utc' mode, the bare time of day is
-    // also ambiguous about which day it's from, so the first tick -- and any later tick that lands on a different
-    // UTC calendar day than the one before it, however many days apart -- gets the date too (but not the "UTC:"
-    // marker again, since that was already established by the first tick).
+    // ("Rel:"/"P1:"/"GPS:"/"UTC:") only appears once, on the first tick that actually has it -- usually tick 0,
+    // but GPS/UTC time may not be available yet that early in the log (e.g. before first fix), in which case that
+    // tick falls back to a clearly-labeled "P1: ..." reading instead, and the "UTC:" marker moves to the first
+    // tick that does resolve. In 'utc' mode, the bare time of day is also ambiguous about which day it's from, so
+    // that same first-resolved tick -- and any later tick that lands on a different UTC calendar day than the one
+    // before it, however many days apart -- gets the date too.
     var tickFracs = [0, 0.25, 0.5, 0.75, 1.0];
     ctx.font = Math.round(9 * dpr) + 'px sans-serif';
     ctx.textBaseline = 'top';
     var lastUtcDate = null;
+    var utcDomainLabelShown = false;
     tickFracs.forEach(function(f, idx) {
       ctx.textAlign = (idx === 0) ? 'left' : (idx === tickFracs.length - 1) ? 'right' : 'center';
       var p1 = fracToTime(f);
@@ -220,12 +252,13 @@
       if (time_axis_type === 'utc') {
         var parts = utcPartsForP1(p1);
         if (parts === null) {
-          label = p1.toFixed(1) + ' s';
+          label = 'P1: ' + p1.toFixed(1) + ' s';
         } else {
-          var showDate = (idx === 0) || (parts.date !== lastUtcDate);
+          var showDate = !utcDomainLabelShown || (parts.date !== lastUtcDate);
           lastUtcDate = parts.date;
           var dateTime = showDate ? (parts.date + ' ' + parts.time) : parts.time;
-          label = (idx === 0) ? ('UTC: ' + dateTime) : dateTime;
+          label = !utcDomainLabelShown ? ('UTC: ' + dateTime) : dateTime;
+          utcDomainLabelShown = true;
         }
       } else {
         label = formatTickLabel(p1, idx === 0);
@@ -238,17 +271,26 @@
   var winEnd = P1_TIME_MAX;
 
   // Neither side gets a "Rel:"/"P1:"/"GPS:"/"UTC:" prefix here -- "Showing" already establishes these are times,
-  // and the axis ticks above spell out which domain. In 'utc' mode, the end date is only repeated if it actually
-  // differs from the start's (mirrors the axis ticks' own midnight-crossing rule, just for these two values).
+  // and the axis ticks above spell out which domain -- *unless* GPS/UTC time isn't actually available for that
+  // particular value (e.g. before first fix), in which case it falls back to an explicitly-labeled "P1: ..."
+  // reading instead of a bare number that looks like it's in the axis's domain but isn't. In 'utc' mode, the end
+  // date is only repeated if it actually differs from the start's (mirrors the axis ticks' own midnight-crossing
+  // rule, just for these two values) -- unless the start itself fell back to P1, in which case there's no prior
+  // date to compare against, so the end always shows its date too.
   function formatRangeReadout() {
     if (time_axis_type === 'utc') {
       var p0 = utcPartsForP1(winStart);
       var p1 = utcPartsForP1(winEnd);
-      if (p0 === null || p1 === null) {
-        return 'Showing ' + winStart.toFixed(1) + ' s → ' + winEnd.toFixed(1) + ' s';
+      var startText = p0 ? (p0.date + ' ' + p0.time) : ('P1: ' + winStart.toFixed(1) + ' s');
+      var endText;
+      if (p1 === null) {
+        endText = 'P1: ' + winEnd.toFixed(1) + ' s';
+      } else if (p0 === null || p1.date !== p0.date) {
+        endText = p1.date + ' ' + p1.time;
+      } else {
+        endText = p1.time;
       }
-      var endText = (p1.date !== p0.date) ? (p1.date + ' ' + p1.time) : p1.time;
-      return 'Showing ' + p0.date + ' ' + p0.time + ' → ' + endText;
+      return 'Showing ' + startText + ' → ' + endText;
     }
     return 'Showing ' + formatTickLabel(winStart, false) + ' → ' + formatTickLabel(winEnd, false);
   }
