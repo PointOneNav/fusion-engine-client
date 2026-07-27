@@ -15,7 +15,7 @@ from palettable.tableau import Tableau_20
 import plotly
 import plotly.graph_objs as go
 from plotly.subplots import make_subplots
-from pymap3d import geodetic2ecef
+from pymap3d import ecef2geodetic, geodetic2ecef
 
 # If running as a script, add fusion-engine-client/ to the Python import path and correct __package__ to enable relative
 # imports.
@@ -1078,12 +1078,12 @@ figure.on('plotly_unhover', function(data) {
 
         position_ecef_m = np.array(geodetic2ecef(lat=lla_deg[0, :], lon=lla_deg[1, :], alt=lla_deg[2, :], deg=True))
 
-        # Interpolate the reference position onto this log's GPS timestamps, warning if the reference does not fully
-        # cover this log's time range. Any timestamps that fall outside the reference's coverage (or that could not
-        # be interpolated, e.g. due to a gap in the reference data) are dropped below.
-        valid_ref_idx = reference.get_coverage_mask(gps_time)
-        reference_ecef_m = reference.interpolate_position_ecef_m(gps_time)
-        valid_ref_idx = np.logical_and(valid_ref_idx, ~np.any(np.isnan(reference_ecef_m), axis=0))
+        # Compute the ENU displacement/error vs. the reference, warning if the reference does not fully cover this
+        # log's time range. Any timestamps that fall outside the reference's coverage (or that could not be
+        # interpolated, e.g. due to a gap in the reference data) are dropped below.
+        reference.get_coverage_mask(gps_time)
+        displacement_enu_m, valid_ref_idx = self._compute_position_error_enu_m(
+            reference=reference, gps_time_sec=gps_time, position_ecef_m=position_ecef_m)
         if not np.any(valid_ref_idx):
             self.logger.warning(f"Reference data '{reference.description}' does not overlap with this log's time "
                                 f"range. Skipping displacement plots.")
@@ -1092,14 +1092,8 @@ figure.on('plotly_unhover', function(data) {
             p1_time = p1_time[valid_ref_idx]
             gps_time = gps_time[valid_ref_idx]
             solution_type = solution_type[valid_ref_idx]
-            lla_deg = lla_deg[:, valid_ref_idx]
             std_enu_m = std_enu_m[:, valid_ref_idx]
-            position_ecef_m = position_ecef_m[:, valid_ref_idx]
-            reference_ecef_m = reference_ecef_m[:, valid_ref_idx]
-
-        displacement_ecef_m = position_ecef_m - reference_ecef_m
-        c_enu_ecef = get_enu_rotation_matrix(*lla_deg[0:2, 0], deg=True)
-        displacement_enu_m = c_enu_ecef.dot(displacement_ecef_m)
+            displacement_enu_m = displacement_enu_m[:, valid_ref_idx]
 
         axis_title = reference.displacement_label
         source = f'Position {axis_title} vs. {"Reference" if reference.is_truth else reference.description}'
@@ -4008,6 +4002,33 @@ var MAP_SLIDER_PROFILE_GPS_TIME = {profile_gps_time_json};
             return 'External'
         elif time_source == SystemTimeSource.TIMESTAMPED_ON_RECEPTION:
             return 'System'
+
+    @classmethod
+    def _compute_position_error_enu_m(cls, reference: ReferenceData, gps_time_sec: np.ndarray,
+                                      position_ecef_m: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        """!
+        @brief Interpolate `reference`'s position onto `gps_time_sec`, then compute the resulting ENU position error
+               (`position_ecef_m` minus the interpolated reference position) in a local ENU frame.
+
+        @param reference The reference/truth position to compare against.
+        @param gps_time_sec GPS timestamps (sec) at which `position_ecef_m` was sampled.
+        @param position_ecef_m The 3xN ECEF position(s) being evaluated, in meters.
+
+        @return A tuple `(error_enu_m, valid_idx)`: the 3xN ENU error, and a boolean mask marking samples where the
+                reference had valid (non-NaN, in-range) data to interpolate against.
+        """
+        reference_ecef_m = reference.interpolate_position_ecef_m(gps_time_sec)
+        valid_idx = ~np.any(np.isnan(reference_ecef_m), axis=0)
+
+        first_pos_idx = find_first(~np.isnan(position_ecef_m[0, :]))
+        if first_pos_idx >= 0:
+            origin_ecef_m = position_ecef_m[:, first_pos_idx]
+            origin_lat_deg, origin_lon_deg, _ = ecef2geodetic(*origin_ecef_m, deg=True)
+            c_enu_ecef = get_enu_rotation_matrix(latitude=origin_lat_deg, longitude=origin_lon_deg, deg=True)
+            error_enu_m = c_enu_ecef.dot(position_ecef_m - reference_ecef_m)
+        else:
+            error_enu_m = np.full_like(position_ecef_m, np.nan)
+        return error_enu_m, valid_idx
 
     @classmethod
     def _get_colors(cls, num_colors=None):
