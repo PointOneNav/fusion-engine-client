@@ -241,7 +241,7 @@
     // that same first-resolved tick -- and any later tick that lands on a different UTC calendar day than the one
     // before it, however many days apart -- gets the date too.
     var tickFracs = [0, 0.25, 0.5, 0.75, 1.0];
-    ctx.font = Math.round(9 * dpr) + 'px sans-serif';
+    ctx.font = Math.round(10 * dpr) + 'px sans-serif';
     ctx.textBaseline = 'top';
     var lastUtcDate = null;
     var utcDomainLabelShown = false;
