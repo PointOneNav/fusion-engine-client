@@ -1209,6 +1209,13 @@ figure.on('plotly_unhover', function(data) {
                 return [[utc_str] + row.tolist() + error_row.tolist()
                        for utc_str, row, error_row in zip(utc_strs, numeric, error_numeric)]
 
+        def _with_bold_name(hovertemplate: Optional[str], name: str) -> str:
+            # Note: <extra></extra> hides Plotly's secondary box, which by default displays the trace name to the right
+            # of the hover box with a hard-to-read transparent background.
+            if not hovertemplate:
+                return f"<b>{name}</b><extra></extra>"
+            return f"<b>{name}</b><br>{hovertemplate}<extra></extra>"
+
         # Add data to the map.
         map_data = []
         indices_by_engine = defaultdict(list)
@@ -1231,7 +1238,7 @@ figure.on('plotly_unhover', function(data) {
                     idx = is_nav_engine
                     map_data.append(go.Scattermapbox(lat=lla_deg[0, idx], lon=lla_deg[1, idx], name=name,
                                                      customdata=[customdata_all[i] for i in np.nonzero(idx)[0]],
-                                                     hovertemplate=hovertemplate,
+                                                     hovertemplate=_with_bold_name(hovertemplate, name),
                                                      legendgroup=legendgroup, visible=visible, **style))
                     indices_by_engine['Nav Engine'].append(len(map_data) - 1)
 
@@ -1239,10 +1246,11 @@ figure.on('plotly_unhover', function(data) {
                     idx = is_gnss_rx
                     style['marker']['opacity'] = 0.5
                     style['marker']['size'] = 5
+                    gnss_name = name + ' (Receiver Solution)'
                     map_data.append(go.Scattermapbox(lat=lla_deg[0, idx], lon=lla_deg[1, idx],
-                                                     name=name + ' (Receiver Solution)',
+                                                     name=gnss_name,
                                                      customdata=[customdata_all[i] for i in np.nonzero(idx)[0]],
-                                                     hovertemplate=hovertemplate,
+                                                     hovertemplate=_with_bold_name(hovertemplate, gnss_name),
                                                      legendgroup=legendgroup, visible=visible, **style))
                     indices_by_engine['Receiver Solution'].append(len(map_data) - 1)
 
@@ -1370,7 +1378,7 @@ figure.on('plotly_unhover', function(data) {
                                                            marker={'size': 8, 'color': color},
                                                            showlegend=True, legendgroup='ref',
                                                            customdata=trace_customdata,
-                                                           hovertemplate=ref_hovertemplate))
+                                                           hovertemplate=_with_bold_name(ref_hovertemplate, name)))
 
         if ref_traces:
             # Shift the pose traces' button indices to account for the reference traces now being inserted ahead of
