@@ -13,6 +13,9 @@
   var PROFILE_SPEED = MAP_SLIDER_PROFILE_SPEED;
   var PROFILE_GPS_TIME = MAP_SLIDER_PROFILE_GPS_TIME;
   var SECONDS_PER_WEEK = 7 * 24 * 3600.0;
+  // Column index of P1 time within each point's customdata row -- must match the column order built by
+  // Analyzer._build_position_customdata() in analyzer.py (currently [utc_str, rel_time, p1_time, ...]).
+  var P1_TIME_CUSTOMDATA_INDEX = 2;
   var SLIDER_HEIGHT_PX = 80;
   var READOUT_HEIGHT_PX = 22;
   var TRACK_INSET_PX = 16;
@@ -318,7 +321,7 @@
       if (!orig.customdata) continue;
       var lat = [], lon = [], cd = [];
       for (var j = 0; j < orig.customdata.length; j++) {
-        var t = orig.customdata[j][1];
+        var t = orig.customdata[j][P1_TIME_CUSTOMDATA_INDEX];
         if (t >= winStart && t <= winEnd) {
           lat.push(orig.lat[j]);
           lon.push(orig.lon[j]);
