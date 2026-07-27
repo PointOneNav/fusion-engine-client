@@ -1143,9 +1143,12 @@ figure.on('plotly_unhover', function(data) {
                                 solution_type=solution_type, displacement_enu_m=displacement_enu_m,
                                 std_enu_m=std_enu_m)
 
-    def plot_map(self, mapbox_token):
+    def plot_map(self, mapbox_token, reference: Optional[ReferenceData] = None):
         """!
         @brief Plot a map of the position data.
+
+        @param reference If specified, also plot this reference/truth position, restricted to the time range
+               covered by the pose data.
         """
         pose_source_ids = self._get_pose_source_ids()
         if self.output_dir is None or len(pose_source_ids) == 0:
@@ -1246,6 +1249,8 @@ figure.on('plotly_unhover', function(data) {
         primary_source_id = min(pose_source_ids)
         overall_t_min = None
         overall_t_max = None
+        overall_gps_t_min = None
+        overall_gps_t_max = None
         for source_id in pose_source_ids:
             result = self.reader.read(message_types=[PoseMessage], source_ids=[source_id], **self.params)
             pose_data = result[PoseMessage.MESSAGE_TYPE]
@@ -1273,9 +1278,16 @@ figure.on('plotly_unhover', function(data) {
             overall_t_min = t_min if overall_t_min is None else min(overall_t_min, t_min)
             overall_t_max = t_max if overall_t_max is None else max(overall_t_max, t_max)
 
-            customdata_all = _build_position_customdata(p1_time=p1_time,
-                                                        gps_time=pose_data.gps_time[valid_idx],
-                                                        lla_deg=lla_deg, std_enu_m=std_enu_m)
+            gps_time = pose_data.gps_time[valid_idx]
+            valid_gps_idx = ~np.isnan(gps_time)
+            if np.any(valid_gps_idx):
+                gps_t_min = float(np.min(gps_time[valid_gps_idx]))
+                gps_t_max = float(np.max(gps_time[valid_gps_idx]))
+                overall_gps_t_min = gps_t_min if overall_gps_t_min is None else min(overall_gps_t_min, gps_t_min)
+                overall_gps_t_max = gps_t_max if overall_gps_t_max is None else max(overall_gps_t_max, gps_t_max)
+
+            customdata_all = _build_position_customdata(p1_time=p1_time, gps_time=gps_time, lla_deg=lla_deg,
+                                                        std_enu_m=std_enu_m)
 
             for type, info in _SOLUTION_TYPE_MAP.items():
                 if len(pose_source_ids) > 1:
@@ -1287,6 +1299,41 @@ figure.on('plotly_unhover', function(data) {
 
         if not have_pose_data:
             return
+
+        # Add reference/truth data to the map, if available, restricted to the time range covered by the pose data.
+        # Built as a separate list and prepended below (rather than appended to map_data directly) so the reference
+        # is drawn first -- Scattermapbox layers later traces on top, and we want the pose data on top of the
+        # reference, not the other way around.
+        ref_traces = []
+        if reference is not None and (reference.is_stationary or overall_gps_t_min is not None):
+            if reference.is_stationary:
+                ref_lla_deg = reference.lla_deg.reshape(3, 1)
+                ref_solution_type = None
+            else:
+                in_range = np.logical_and(reference.gps_time_sec >= overall_gps_t_min,
+                                          reference.gps_time_sec <= overall_gps_t_max)
+                ref_lla_deg = reference.lla_deg[:, in_range]
+                ref_solution_type = reference.solution_type[in_range]
+
+            if ref_lla_deg.shape[1] > 0:
+                is_fixed = (np.full(ref_lla_deg.shape[1], True) if ref_solution_type is None
+                           else ref_solution_type == SolutionType.RTKFixed)
+                for name, color, idx in (('Reference (RTK Fixed)', '#EBFFA3', is_fixed),
+                                         ('Reference (Not Fixed)', '#A8C443', ~is_fixed)):
+                    if np.any(idx):
+                        ref_traces.append(go.Scattermapbox(lat=ref_lla_deg[0, idx], lon=ref_lla_deg[1, idx],
+                                                           name=name, mode='markers',
+                                                           marker={'size': 8, 'color': color},
+                                                           showlegend=True, legendgroup='ref'))
+
+        if ref_traces:
+            # Shift the pose traces' button indices to account for the reference traces now being inserted ahead of
+            # them, and keep the reference visible regardless of which quality-selection button is active.
+            offset = len(ref_traces)
+            for indices in indices_by_engine.values():
+                indices[:] = [i + offset for i in indices]
+                indices.extend(range(offset))
+            map_data = ref_traces + map_data
 
         # Create the map.
         title = 'Vehicle Trajectory'
@@ -4170,7 +4217,7 @@ Load and display information stored in a FusionEngine binary file.
         analyzer.plot_pose()
         analyzer.plot_position_displacement(reference_type=options.displacement_type)
         analyzer.plot_relative_position()
-        analyzer.plot_map(mapbox_token=options.mapbox_token)
+        analyzer.plot_map(mapbox_token=options.mapbox_token, reference=reference_data)
         analyzer.plot_calibration()
 
         if reference_data is not None:
@@ -4219,7 +4266,7 @@ Load and display information stored in a FusionEngine binary file.
 
         for func in functions:
             if func == 'plot_map':
-                analyzer.plot_map(mapbox_token=options.mapbox_token)
+                analyzer.plot_map(mapbox_token=options.mapbox_token, reference=reference_data)
             elif func == 'plot_skyplot':
                 analyzer.plot_gnss_skyplot(decimate=False)
             elif func == 'plot_pose_error':

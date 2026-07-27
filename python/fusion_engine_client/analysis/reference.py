@@ -3,7 +3,7 @@ from typing import Optional, Union
 import re
 
 import numpy as np
-from pymap3d import geodetic2ecef
+from pymap3d import ecef2geodetic, geodetic2ecef
 
 from .data_loader import DataLoader, TimeAlignmentMode
 from ..messages import PoseMessage, PoseAuxMessage, SolutionType
@@ -76,6 +76,9 @@ class ReferenceData:
         # time, end time, and sample count (not the full time vector) to avoid recomputing for repeated queries.
         self._interp_cache = {}
 
+        # Cached data generated on demand.
+        self._lla_deg = None
+
     @property
     def is_stationary(self) -> bool:
         return self.gps_time_sec is None
@@ -94,6 +97,13 @@ class ReferenceData:
         @brief 'Error' if this is an independent truth source, or 'Displacement' if derived from the log's own data.
         """
         return 'Error' if self.is_truth else 'Displacement'
+
+    @property
+    def lla_deg(self) -> np.ndarray:
+        if self._lla_deg is None:
+            self._lla_deg = np.array(ecef2geodetic(self.position_ecef_m[0, :], self.position_ecef_m[1, :],
+                                                   self.position_ecef_m[2, :], deg=True))
+        return self._lla_deg
 
     def __repr__(self):
         extent = 'stationary' if self.is_stationary else f'{len(self.gps_time_sec)} samples'
