@@ -1025,7 +1025,7 @@ figure.on('plotly_unhover', function(data) {
 
         @param reference The truth reference to compare against.
         """
-        return self._plot_pose_displacement(reference=reference)
+        return self._plot_position_displacement_vs_reference(reference=reference)
 
     def plot_position_displacement(self, reference_type: str):
         """!
@@ -1034,17 +1034,17 @@ figure.on('plotly_unhover', function(data) {
 
         @param reference_type The desired reference type name.
         """
-        # Default to the median position taken from this log's own data (we use median instead of centroid just in
-        # case there are one or two huge outliers).
+        # Note that this is using the ReferenceData class to compute the median, etc. position from the log's pose
+        # messages to pass to _plot_pose_displacement(). It is not loading truth data.
         reference = ReferenceData.resolve_cli_argument(reference=reference_type, loader=self.reader,
                                                        source_id=self.default_source_id)
         if reference is None:
             self.logger.info('No valid position solutions detected. Skipping displacement plots.')
             return None
         else:
-            return self._plot_pose_displacement(reference=reference)
+            return self._plot_position_displacement_vs_reference(reference=reference)
 
-    def _plot_pose_displacement(self, reference: Optional[ReferenceData] = None):
+    def _plot_position_displacement_vs_reference(self, reference: Optional[ReferenceData] = None):
         """!
         @brief Generate a topocentric (top-down) plot of position displacement (or error, if `reference` is an
                independent truth source -- see @ref ReferenceData) vs a reference position, as well as a plot of
@@ -1061,13 +1061,14 @@ figure.on('plotly_unhover', function(data) {
         pose_data = result[PoseMessage.MESSAGE_TYPE]
 
         if len(pose_data.p1_time) == 0:
-            self.logger.info('No pose data available. Skipping displacement plots.')
+            self.logger.info(f'No pose data available. Skipping position {reference.displacement_label.lower()} plots.')
             return None
 
         # Remove invalid solutions.
         valid_idx = np.logical_and(~np.isnan(pose_data.p1_time), pose_data.solution_type != SolutionType.Invalid)
         if not np.any(valid_idx):
-            self.logger.info('No valid position solutions detected. Skipping displacement plots.')
+            self.logger.info(f'No valid position solutions detected. Skipping position '
+                             f'{reference.displacement_label.lower()}  plots.')
             return None
 
         p1_time = pose_data.p1_time[valid_idx]
@@ -1086,7 +1087,7 @@ figure.on('plotly_unhover', function(data) {
             reference=reference, gps_time_sec=gps_time, position_ecef_m=position_ecef_m)
         if not np.any(valid_ref_idx):
             self.logger.warning(f"Reference data '{reference.description}' does not overlap with this log's time "
-                                f"range. Skipping displacement plots.")
+                                f"range. Skipping position {reference.displacement_label.lower()}  plots.")
             return None
         elif not np.all(valid_ref_idx):
             p1_time = p1_time[valid_ref_idx]
