@@ -1326,17 +1326,12 @@ figure.on('plotly_unhover', function(data) {
         # Built as a separate list and prepended below (rather than appended to map_data directly) so the reference
         # is drawn first -- Scattermapbox layers later traces on top, and we want the pose data on top of the
         # reference, not the other way around.
-        _REF_HOVERTEMPLATE = (
-            "Std Dev: %{customdata[5]:.2f} m (2D), %{customdata[6]:.2f} m (3D)"
-        )
-
         ref_traces = []
         if reference is not None and (reference.is_stationary or overall_gps_t_min is not None):
             if reference.is_stationary:
                 ref_lla_deg = reference.lla_deg.reshape(3, 1)
                 ref_solution_type = None
-                ref_std_enu_m = (None if reference.position_std_enu_m is None
-                                 else reference.position_std_enu_m.reshape(3, 1))
+                ref_std_enu_m = None
             else:
                 in_range = np.logical_and(reference.gps_time_sec >= overall_gps_t_min,
                                           reference.gps_time_sec <= overall_gps_t_max)
@@ -1346,23 +1341,36 @@ figure.on('plotly_unhover', function(data) {
                                  else reference.position_std_enu_m[:, in_range])
 
             if ref_lla_deg.shape[1] > 0:
-                n = ref_lla_deg.shape[1]
-                if ref_std_enu_m is None:
-                    ref_std_enu_m = np.full((3, n), np.nan)
+                if reference.is_stationary:
+                    ref_customdata = None
+                    ref_hovertemplate = None
+                else:
+                    # Reuse the same Rel/P1/UTC/GPS/Std layout as the pose data hover -- converting the reference's
+                    # GPS time to this log's P1 time (via the primary log's known P1<->GPS relationship) so "Rel"
+                    # and "P1" line up with the pose data's own time base.
+                    ref_gps_time = reference.gps_time_sec[in_range]
+                    ref_p1_time = self.time_provider.gps_to_p1(ref_gps_time)
+                    if ref_std_enu_m is None:
+                        ref_std_enu_m = np.full_like(ref_lla_deg, np.nan)
+                    ref_customdata = _build_position_customdata(p1_time=ref_p1_time, gps_time=ref_gps_time,
+                                                                lla_deg=ref_lla_deg, std_enu_m=ref_std_enu_m)
+                    ref_hovertemplate = _POSITION_HOVERTEMPLATE
 
-                ref_customdata = np.column_stack((ref_std_enu_m[0], ref_std_enu_m[1], ref_std_enu_m[2]))
-
-                is_fixed = (np.full(n, True) if ref_solution_type is None
+                is_fixed = (np.full_like(ref_lla_deg, True) if ref_solution_type is None
                            else ref_solution_type == SolutionType.RTKFixed)
                 for name, color, idx in (('Reference (RTK Fixed)', '#EBFFA3', is_fixed),
                                          ('Reference (Not Fixed)', '#A8C443', ~is_fixed)):
                     if np.any(idx):
+                        if ref_customdata is None:
+                            trace_customdata = None
+                        else:
+                            trace_customdata = [ref_customdata[i] for i in np.nonzero(idx)[0]]
                         ref_traces.append(go.Scattermapbox(lat=ref_lla_deg[0, idx], lon=ref_lla_deg[1, idx],
                                                            name=name, mode='markers',
                                                            marker={'size': 8, 'color': color},
                                                            showlegend=True, legendgroup='ref',
-                                                           customdata=ref_customdata[idx],
-                                                           hovertemplate=_REF_HOVERTEMPLATE))
+                                                           customdata=trace_customdata,
+                                                           hovertemplate=ref_hovertemplate))
 
         if ref_traces:
             # Shift the pose traces' button indices to account for the reference traces now being inserted ahead of
