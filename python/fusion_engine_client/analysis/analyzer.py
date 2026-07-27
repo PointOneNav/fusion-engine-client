@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from typing import Union, List, Any, Optional
+from typing import Union, List, Any, Optional, Tuple
 
 from collections import namedtuple, defaultdict
 import copy
