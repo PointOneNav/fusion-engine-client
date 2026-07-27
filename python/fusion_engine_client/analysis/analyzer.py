@@ -2689,7 +2689,7 @@ figure.on('plotly_unhover', function(data) {
             primary_time, _ = self._resolve_x_axis(p1_time=primary_pose_data.p1_time,
                                                     gps_time=primary_pose_data.gps_time)
             primary_customdata = self._time_hover_customdata(p1_time=primary_pose_data.p1_time,
-                                                              gps_time=primary_pose_data.gps_time)
+                                                             gps_time=primary_pose_data.gps_time)
 
         have_raw = len(raw_heading_data.p1_time) > 0
         if have_raw:
@@ -2702,7 +2702,7 @@ figure.on('plotly_unhover', function(data) {
             corrected_gps_time = getattr(heading_data, 'gps_time', None)
             corrected_time, _ = self._resolve_x_axis(p1_time=heading_data.p1_time, gps_time=corrected_gps_time)
             corrected_customdata = self._time_hover_customdata(p1_time=heading_data.p1_time,
-                                                                gps_time=corrected_gps_time)
+                                                               gps_time=corrected_gps_time)
 
         # Setup the figure.
         fig = make_subplots(
