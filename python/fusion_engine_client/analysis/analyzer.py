@@ -287,7 +287,7 @@ figure.on('plotly_hover', function(data) {
         pose_data = result[PoseMessage.MESSAGE_TYPE]
 
         if len(pose_data.p1_time) > 0:
-            time, _ = self._resolve_x_axis(p1_time=pose_data.p1_time, gps_time=pose_data.gps_time, ignore_gps=True)
+            time, _ = self._resolve_x_axis(p1_time=pose_data.p1_time, gps_time=pose_data.gps_time)
 
             # Calculate time intervals, rounded to the nearest 0.1 ms.
             dp1_time = np.diff(pose_data.p1_time, prepend=np.nan)
@@ -299,7 +299,7 @@ figure.on('plotly_hover', function(data) {
             # plotly starts to struggle with > 3 hours of data and won't display mouseover text, so decimate if
             # necessary.
             decimation_limit_sec = 3 * 3600.0
-            dt_sec = time[-1] - time[0]
+            dt_sec = pose_data.p1_time[-1] - pose_data.p1_time[0]
             dp1_stats = None
             dgps_stats = None
             if dt_sec >= decimation_limit_sec:
