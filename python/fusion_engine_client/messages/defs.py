@@ -242,6 +242,8 @@ class MessageHeader:
     SYNC0 = 0x2E  # '.'
     SYNC1 = 0x31  # '1'
 
+    INVALID_SOURCE_ID = SourceIdentifier.INVALID
+
     SYNC = bytes((SYNC0, SYNC1))
 
     _FORMAT = '<BBHIBBHIII'

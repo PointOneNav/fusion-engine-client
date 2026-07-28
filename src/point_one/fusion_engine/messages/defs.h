@@ -613,8 +613,6 @@ enum class SourceIdentifier : uint32_t {
   INVALID = 0xFFFFFFFF,
 };
 
-static constexpr SourceIdentifier INVALID_SOURCE_ID = SourceIdentifier::INVALID;
-
 /**
  * @brief @ref SourceIdentifier stream operator.
  * @ingroup enum_definitions
@@ -636,6 +634,9 @@ inline p1_ostream& operator<<(p1_ostream& stream, SourceIdentifier id) {
 struct P1_ALIGNAS(4) MessageHeader {
   static constexpr uint8_t SYNC0 = 0x2E; // '.'
   static constexpr uint8_t SYNC1 = 0x31; // '1'
+
+  static constexpr SourceIdentifier INVALID_SOURCE_ID =
+      SourceIdentifier::INVALID;
 
   /**
    * The maximum expected message size (in bytes), used for sanity checking.
