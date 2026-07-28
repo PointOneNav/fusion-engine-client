@@ -77,6 +77,7 @@ class DeviceType(IntEnum):
     NEXAR_BEAM2K = 5
     SSR_LG69T = 6
     SSR_DESKTOP = 7
+    ATLAS_R2 = 9
 
 
 class DeviceIDMessage(MessagePayload):
