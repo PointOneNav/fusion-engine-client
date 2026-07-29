@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 
-from typing import Union, List, Any, Optional
+from typing import Union, List, Any, Optional, Tuple
 
 from collections import namedtuple, defaultdict
 import copy
 import inspect
+import json
 import os
 import sys
 import webbrowser
@@ -24,6 +25,7 @@ if __name__ == "__main__" and (__package__ is None or __package__ == ''):
     __package__ = "fusion_engine_client.analysis"
 
 from ..messages import *
+from ..messages.timestamp import SECONDS_PER_WEEK
 from .attitude import get_enu_rotation_matrix
 from .data_loader import DataLoader, MessageData, TimeRange
 from .reference import ReferenceData, _OWN_LOG_STATISTICS
@@ -32,6 +34,7 @@ from ..utils import trace as logging
 from ..utils.argument_parser import ArgumentParser, ExtendedBooleanAction, TriStateBooleanAction, CSVAction
 from ..utils.log import define_cli_arguments as define_log_search_arguments, locate_log
 from ..utils.numpy_utils import find_first
+from ..utils.time_provider import TimeProvider
 from ..utils.trace import HighlightFormatter
 
 
@@ -105,11 +108,53 @@ class Analyzer(object):
     LONG_LOG_DURATION_SEC = 2 * 3600.0
     HIGH_MEASUREMENT_RATE_HZ = 40.0
 
+    # Registers _ReformatGpsAxisTicks() to run after every redraw  (see plotly_data_support.js). Needed by any plot
+    # whose X axis can be in 'gps' mode, whether or not it uses _TIME_HOVER_JS below for hover text.
+    _GPS_TICK_REFORMAT_JS = """\
+figure.on('plotly_afterplot', _ReformatGpsAxisTicks);
+// The initial render's 'plotly_afterplot' can fire before tick label text is finalized, so also run once more on
+// the next tick, after the very first render has fully settled.
+setTimeout(_ReformatGpsAxisTicks, 0);
+"""
+
+    # Generic hover JS for traces whose customdata is whichever timestamp (P1 or GPS) is not already reflected by the
+    # X axis (see BuildTimeHoverText() in plotly_data_support.js, and _time_hover_customdata() below). Plots needing
+    # additional custom hover logic (e.g., decoding a status bitmask) should not use this directly -- build a custom
+    # 'plotly_hover' handler instead, but still append _GPS_TICK_REFORMAT_JS to it.
+    #
+    # If customdata is omitted, the hover text will just show the X axis value (absolute or relative time).
+    _TIME_HOVER_JS = """\
+figure.on('plotly_hover', function(data) {
+  for (let i = 0; i < data.points.length; ++i) {
+    let point = data.points[i];
+    if (point.data.customdata) {
+      ChangeHoverText(point, BuildTimeHoverText(point.x, GetCustomData(point, 0)));
+    }
+    else {
+      ChangeHoverText(point, BuildTimeHoverText(point.x));
+    }
+  }
+});
+""" + _GPS_TICK_REFORMAT_JS
+
+    # Generic hover JS for traces on a device system-time axis (see BuildSystemTimeHoverText() in
+    # plotly_data_support.js). Unlike _TIME_HOVER_JS, no customdata is needed -- system time has no GPS-like alternate
+    # domain, so the value not shown on the X axis (relative vs. absolute) is always a constant offset (system_t0_sec)
+    # away, not a per-point value.
+    _SYSTEM_TIME_HOVER_JS = """\
+figure.on('plotly_hover', function(data) {
+  for (let i = 0; i < data.points.length; ++i) {
+    let point = data.points[i];
+    ChangeHoverText(point, BuildSystemTimeHoverText(point.x));
+  }
+});
+"""
+
     def __init__(self,
                  file: Union[DataLoader, str], ignore_index: bool = False,
                  output_dir: str = None, prefix: str = '',
                  time_range: TimeRange = None, max_messages: int = None,
-                 time_axis: str = 'relative',
+                 time_type: str = 'utc',
                  truncate_long_logs: bool = True, source_id: Optional[List[int]] = None):
         """!
         @brief Create an analyzer for the specified log.
@@ -123,9 +168,11 @@ class Analyzer(object):
                be read. See @ref TimeRange for more details.
         @param max_messages If set, read up to the specified maximum number of messages. Applies across all message
                types.
-        @param time_axis Specify the way in which time will be plotted:
-               - `absolute`, `abs` - Absolute P1 or system timestamps
-               - `relative`, `rel` - Elapsed time since the start of the log
+        @param time_type Specify the way in which time will be plotted:
+               - `utc` - UTC date/time, if available (falls back to P1 time otherwise)
+               - `gps` - GPS time (week and time of week), if available (falls back to P1 time otherwise)
+               - `p1` - Absolute P1 (or system) time
+               - `relative` - Elapsed time since the start of the log
         @param truncate_long_logs If `True`, reduce or skip certain plots if the log extremely long (as defined by
                @ref LONG_LOG_DURATION_SEC).
         """
@@ -170,26 +217,22 @@ class Analyzer(object):
         else:
             self.default_source_id = 0
 
-        if time_axis in ('relative', 'rel'):
-            self.time_axis = 'relative'
-            self.t0 = self.reader.t0
-            if self.t0 is None:
-                self.t0 = Timestamp()
+        # Load the P1/GPS time correspondence for this log, used to support time_type 'gps' and 'utc'.
+        self.time_provider = TimeProvider()
+        self.time_provider.set_reference_data(self.reader, source_id=self.default_source_id)
 
-            self.system_t0 = self.reader.get_system_t0()
-            if self.system_t0 is None:
-                self.system_t0 = np.nan
+        if time_type not in ('utc', 'gps', 'p1', 'relative'):
+            raise ValueError(f"Unsupported time type specifier '{time_type}'.")
+        elif time_type in ('gps', 'utc') and not self.time_provider.has_gps_reference():
+            _logger.warning("No GPS time reference available in this log. Falling back to P1 time.")
+            time_type = 'p1'
 
-            self.p1_time_label = 'Relative Time (sec)'
-            self.system_time_label = 'Relative Time (sec)'
-        elif time_axis in ('absolute', 'abs'):
-            self.time_axis = 'absolute'
-            self.t0 = Timestamp(0.0)
-            self.system_t0 = 0.0
-            self.p1_time_label = 'P1 Time (sec)'
-            self.system_time_label = 'System Time (sec)'
-        else:
-            raise ValueError(f"Unsupported time axis specifier '{time_axis}'.")
+        self.time_type = time_type
+
+        # The time domain -- `p1` (covers both relative and absolute P1 time) or `gps` (covers both GPS and UTC) --
+        # implied by @c self.time_type, used by @ref _resolve_x_axis() and the default of _time_hover_customdata()'s
+        # `x_domain` argument. Some plots may use a different X axis regardles of self.time_type, and may override this.
+        self._default_x_domain = 'p1' if self.time_type in ('relative', 'p1') else 'gps'
 
         self.plots = {}
         self.summary = ''
@@ -230,29 +273,24 @@ class Analyzer(object):
             return
 
         # Setup the figure.
-        time_axis_str = 'Relative Time' if self.time_axis == 'relative' else 'P1/System Time'
-        p1_time_axis_str = 'Relative Time' if self.time_axis == 'relative' else 'P1 Time'
-        figure = make_subplots(rows=2, cols=1, print_grid=False, shared_xaxes=True,
-                               subplot_titles=[f'Device Time vs. {time_axis_str}',
-                                               f'Pose Message Interval vs. {p1_time_axis_str}'])
+        axis_layout = self._x_axis_layout()
+        p1_time_axis_str = axis_layout['title'].replace(' (sec)', '')
+        figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=True,
+                               subplot_titles=[f'Pose Message Interval vs. {p1_time_axis_str}'])
 
         figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
-        figure['layout']['xaxis1'].update(title=f"{time_axis_str} (sec)", showticklabels=True)
-        figure['layout']['xaxis2'].update(title=f"{p1_time_axis_str} (sec)", showticklabels=True)
-        figure['layout']['yaxis1'].update(title="Absolute Time",
-                                          ticktext=['P1/GPS Time', 'System Time'],
-                                          tickvals=[1, 2])
-        figure['layout']['yaxis2'].update(title="Interval (sec)", rangemode="tozero")
+        figure['layout']['xaxis1'].update(showticklabels=True, **axis_layout)
+        figure['layout']['yaxis1'].update(title="Interval (sec)", rangemode="tozero")
 
         # Read the pose data to get P1 and GPS timestamps.
         result = self.reader.read(message_types=[PoseMessage], source_ids=self.default_source_id, **self.params)
         pose_data = result[PoseMessage.MESSAGE_TYPE]
 
         if len(pose_data.p1_time) > 0:
-            time = pose_data.p1_time - float(self.t0)
+            time, _ = self._resolve_x_axis(p1_time=pose_data.p1_time, gps_time=pose_data.gps_time)
 
             # Calculate time intervals, rounded to the nearest 0.1 ms.
-            dp1_time = np.diff(time, prepend=np.nan)
+            dp1_time = np.diff(pose_data.p1_time, prepend=np.nan)
             dp1_time = np.round(dp1_time * 1e4) * 1e-4
 
             dgps_time = np.diff(pose_data.gps_time, prepend=np.nan)
@@ -261,7 +299,7 @@ class Analyzer(object):
             # plotly starts to struggle with > 3 hours of data and won't display mouseover text, so decimate if
             # necessary.
             decimation_limit_sec = 3 * 3600.0
-            dt_sec = time[-1] - time[0]
+            dt_sec = pose_data.p1_time[-1] - pose_data.p1_time[0]
             dp1_stats = None
             dgps_stats = None
             if dt_sec >= decimation_limit_sec:
@@ -308,61 +346,31 @@ class Analyzer(object):
                 p1_time = pose_data.p1_time
                 gps_time = pose_data.gps_time
 
-            text = ['P1: %.3f sec<br>%s' % (p, self._gps_sec_to_string(g)) for p, g in zip(p1_time, gps_time)]
-            figure.add_trace(go.Scattergl(x=time, y=np.full_like(time, 1), name='P1/GPS Time', text=text,
-                                          mode='markers', marker={'color': 'blue'}),
-                             1, 1)
+            customdata = self._time_hover_customdata(p1_time=p1_time, gps_time=gps_time)
 
-            figure.add_trace(go.Scattergl(x=time, y=dp1_time, name='P1 Time Interval', text=text,
+            figure.add_trace(go.Scattergl(x=time, y=dp1_time, name='P1 Time Interval', customdata=customdata,
                                           mode='markers', marker={'color': 'red'}),
-                             2, 1)
+                             1, 1)
             if dp1_stats is not None:
                 figure.add_trace(go.Scattergl(x=time, y=dp1_stats['max'], name='P1 Time Interval (Max)',
                                               mode='markers', marker={'symbol': 'triangle-up-open'}),
-                                 2, 1)
+                                 1, 1)
                 figure.add_trace(go.Scattergl(x=time, y=dp1_stats['min'], name='P1 Time Interval (Min)',
                                               mode='markers', marker={'symbol': 'triangle-down-open'}),
-                                 2, 1)
+                                 1, 1)
 
-            figure.add_trace(go.Scattergl(x=time, y=dgps_time, name='GPS Time Interval', text=text,
+            figure.add_trace(go.Scattergl(x=time, y=dgps_time, name='GPS Time Interval', customdata=customdata,
                                           mode='markers', marker={'color': 'green'}),
-                             2, 1)
+                             1, 1)
             if dgps_stats is not None:
                 figure.add_trace(go.Scattergl(x=time, y=dgps_stats['max'], name='GPS Time Interval (Max)',
                                               mode='markers', marker={'symbol': 'triangle-up-open'}),
-                                 2, 1)
+                                 1, 1)
                 figure.add_trace(go.Scattergl(x=time, y=dgps_stats['min'], name='GPS Time Interval (Min)',
                                               mode='markers', marker={'symbol': 'triangle-down-open'}),
-                                 2, 1)
+                                 1, 1)
 
-        # Read system timestamps from event notifications, if present.
-        result = self.reader.read(message_types=[EventNotificationMessage], **self.params)
-        event_data = result[EventNotificationMessage.MESSAGE_TYPE]
-
-        system_time_sec = None
-        if len(event_data.messages) > 0:
-            system_time_sec = np.array([(m.system_time_ns * 1e-9) for m in event_data.messages])
-
-        if system_time_sec is not None:
-            time = system_time_sec - self.system_t0
-
-            # plotly starts to struggle with > 2 hours of data and won't display mouseover text, so decimate if
-            # necessary.
-            dt_sec = time[-1] - time[0]
-            if dt_sec > 7200.0:
-                step = math.ceil(dt_sec / 7200.0)
-                idx = np.full_like(time, False, dtype=bool)
-                idx[0::step] = True
-
-                time = time[idx]
-                system_time_sec = system_time_sec[idx]
-
-            text = ['System: %.3f sec' % t for t in system_time_sec]
-            figure.add_trace(go.Scattergl(x=time, y=np.full_like(time, 2), name='System Time', text=text,
-                                          mode='markers', marker={'color': 'purple'}),
-                             1, 1)
-
-        self._add_figure(name="time_scale", figure=figure, title="Time Scale")
+        self._add_figure(name="time_scale", figure=figure, title="Time Scale", inject_js=self._custom_tooltip_js())
 
     def plot_latency(self):
         if self.output_dir is None:
@@ -389,15 +397,16 @@ class Analyzer(object):
 
         last_gps_time = gps_time[-1]
 
+        time, axis_layout = self._resolve_x_axis(p1_time=p1_time, gps_time=gps_time)
+        customdata = self._time_hover_customdata(p1_time=p1_time, gps_time=gps_time)
+
         # Setup the figure.
         figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=True,
                                subplot_titles=[f'Pose Message Latency'])
 
         figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
-        figure['layout']['xaxis1'].update(title=self.p1_time_label, showticklabels=True)
+        figure['layout']['xaxis1'].update(showticklabels=True, **axis_layout)
         figure['layout']['yaxis1'].update(title="Latency (sec)")
-
-        time = p1_time - float(self.t0)
 
         # Use the last GPS Time to get the offset between UNIX and GPS time. This includes the epoch difference and the
         # current leap second.
@@ -416,14 +425,14 @@ class Analyzer(object):
         # This absolute latency value is only reliable if the host clock was synced to GPS time.
         latency_sec = (host_posix_times - gps_posix_times).astype(float) / 1e9
 
-        text = ['P1: %.3f sec<br>%s' % (p, g) for p, g in zip(p1_time, latency_sec)]
-        figure.add_trace(go.Scattergl(x=time, y=latency_sec, name='Pose Message Latency', text=text,
+        figure.add_trace(go.Scattergl(x=time, y=latency_sec, customdata=customdata, name='Pose Message Latency',
                                       mode='markers', marker={'color': 'blue'}),
                          1, 1)
 
         figure.update_layout(title_text='NOTE: Latency assumes the host system clock is synced to GPS time. '
                                         'Any error will impact the latency computation.')
-        self._add_figure(name="host_latency", figure=figure, title="Host Recieved Latency")
+        self._add_figure(name="host_latency", figure=figure, title="Host Received Latency",
+                         inject_js=self._custom_tooltip_js())
 
     def plot_reset_timing(self):
         if self.output_dir is None:
@@ -512,32 +521,31 @@ class Analyzer(object):
         figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=True,
                                subplot_titles=['Reset Recovery Time'])
 
+        time, axis_layout = self._resolve_x_axis(system_time=reset_system_time_sec, time_source='system')
+
         figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
-        figure['layout']['xaxis1'].update(title=self.system_time_label, showticklabels=True)
+        figure['layout']['xaxis1'].update(showticklabels=True, **axis_layout)
         figure['layout']['yaxis1'].update(title="Elapsed Time (sec)", rangemode="tozero")
 
-        time = reset_system_time_sec - self.system_t0
-
-        text = ["System Time: %.3f sec" % (t + self.system_t0) for t in time]
-        figure.add_trace(go.Scattergl(x=time, y=dt_reset_to_valid, text=text,
+        figure.add_trace(go.Scattergl(x=time, y=dt_reset_to_valid,
                                       name='Command -> Valid', mode='markers'),
                          1, 1)
-        figure.add_trace(go.Scattergl(x=time, y=dt_reset_to_invalid, text=text,
+        figure.add_trace(go.Scattergl(x=time, y=dt_reset_to_invalid,
                                       name='Command -> Invalid', mode='markers'),
                          1, 1)
-        figure.add_trace(go.Scattergl(x=time, y=dt_invalid_to_valid, text=text,
+        figure.add_trace(go.Scattergl(x=time, y=dt_invalid_to_valid,
                                       name='Invalid -> Valid', mode='markers'),
                          1, 1)
 
         if len(unstarted_resets) > 0:
             idx = np.array(unstarted_resets)
             time = time[idx]
-            text = ["System Time: %.3f sec" % (t + self.system_t0) for t in time]
-            figure.add_trace(go.Scattergl(x=time, y=np.zeros_like(time), text=text,
+            figure.add_trace(go.Scattergl(x=time, y=np.zeros_like(time),
                                           name='Unstarted Resets', mode='markers'),
                              1, 1)
 
-        self._add_figure(name="reset_timing", figure=figure, title="Reset Recovery Timing")
+        self._add_figure(name="reset_timing", figure=figure, title="Reset Recovery Timing",
+                         inject_js=self._custom_tooltip_js(time_source='system'))
 
     def plot_pose(self):
         """!
@@ -554,7 +562,8 @@ class Analyzer(object):
             self.logger.info('No pose data available. Skipping pose vs. time plot.')
             return
 
-        time = pose_data.p1_time - float(self.t0)
+        time, axis_layout = self._resolve_x_axis(p1_time=pose_data.p1_time, gps_time=pose_data.gps_time)
+        customdata = self._time_hover_customdata(p1_time=pose_data.p1_time, gps_time=pose_data.gps_time)
 
         valid_idx = np.logical_and(~np.isnan(pose_data.p1_time), pose_data.solution_type != SolutionType.Invalid)
         if not np.any(valid_idx):
@@ -575,7 +584,7 @@ class Analyzer(object):
 
         figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
         for i in range(6):
-            figure['layout']['xaxis%d' % (i + 1)].update(title=self.p1_time_label, showticklabels=True, matches='x')
+            figure['layout']['xaxis%d' % (i + 1)].update(showticklabels=True, matches='x', **axis_layout)
         figure['layout']['yaxis1'].update(title="Degrees")
         figure['layout']['yaxis2'].update(title="Meters")
         figure['layout']['yaxis3'].update(title="Meters/Second")
@@ -584,24 +593,24 @@ class Analyzer(object):
         figure['layout']['yaxis6'].update(title="Meters/Second")
 
         # Plot YPR.
-        figure.add_trace(go.Scattergl(x=time, y=pose_data.ypr_deg[0, :], name='Yaw', legendgroup='yaw',
-                                      mode='lines', line={'color': 'red'}),
+        figure.add_trace(go.Scattergl(x=time, y=pose_data.ypr_deg[0, :], customdata=customdata, name='Yaw',
+                                      legendgroup='yaw', mode='lines', line={'color': 'red'}),
                          1, 1)
-        figure.add_trace(go.Scattergl(x=time, y=pose_data.ypr_deg[1, :], name='Pitch', legendgroup='pitch',
-                                      mode='lines', line={'color': 'green'}),
+        figure.add_trace(go.Scattergl(x=time, y=pose_data.ypr_deg[1, :], customdata=customdata, name='Pitch',
+                                      legendgroup='pitch', mode='lines', line={'color': 'green'}),
                          1, 1)
-        figure.add_trace(go.Scattergl(x=time, y=pose_data.ypr_deg[2, :], name='Roll', legendgroup='roll',
-                                      mode='lines', line={'color': 'blue'}),
+        figure.add_trace(go.Scattergl(x=time, y=pose_data.ypr_deg[2, :], customdata=customdata, name='Roll',
+                                      legendgroup='roll', mode='lines', line={'color': 'blue'}),
                          1, 1)
 
-        figure.add_trace(go.Scattergl(x=time, y=pose_data.ypr_std_deg[0, :], name='Yaw', legendgroup='yaw',
-                                      showlegend=False, mode='lines', line={'color': 'red'}),
+        figure.add_trace(go.Scattergl(x=time, y=pose_data.ypr_std_deg[0, :], customdata=customdata, name='Yaw',
+                                      legendgroup='yaw', showlegend=False, mode='lines', line={'color': 'red'}),
                          2, 1)
-        figure.add_trace(go.Scattergl(x=time, y=pose_data.ypr_std_deg[1, :], name='Pitch', legendgroup='pitch',
-                                      showlegend=False, mode='lines', line={'color': 'green'}),
+        figure.add_trace(go.Scattergl(x=time, y=pose_data.ypr_std_deg[1, :], customdata=customdata, name='Pitch',
+                                      legendgroup='pitch', showlegend=False, mode='lines', line={'color': 'green'}),
                          2, 1)
-        figure.add_trace(go.Scattergl(x=time, y=pose_data.ypr_std_deg[2, :], name='Roll', legendgroup='roll',
-                                      showlegend=False, mode='lines', line={'color': 'blue'}),
+        figure.add_trace(go.Scattergl(x=time, y=pose_data.ypr_std_deg[2, :], customdata=customdata, name='Roll',
+                                      legendgroup='roll', showlegend=False, mode='lines', line={'color': 'blue'}),
                          2, 1)
 
         # Plot position/displacement.
@@ -609,51 +618,59 @@ class Analyzer(object):
                                                  alt=pose_data.lla_deg[2, :], deg=True))
         displacement_ecef_m = position_ecef_m - position_ecef_m[:, first_idx].reshape(3, 1)
         displacement_enu_m = c_enu_ecef.dot(displacement_ecef_m)
-        figure.add_trace(go.Scattergl(x=time, y=displacement_enu_m[0, :], name='East', legendgroup='e',
-                                      mode='lines', line={'color': 'red'}),
+        figure.add_trace(go.Scattergl(x=time, y=displacement_enu_m[0, :], customdata=customdata, name='East',
+                                      legendgroup='e', mode='lines', line={'color': 'red'}),
                          1, 2)
-        figure.add_trace(go.Scattergl(x=time, y=displacement_enu_m[1, :], name='North', legendgroup='n',
-                                      mode='lines', line={'color': 'green'}),
+        figure.add_trace(go.Scattergl(x=time, y=displacement_enu_m[1, :], customdata=customdata, name='North',
+                                      legendgroup='n', mode='lines', line={'color': 'green'}),
                          1, 2)
-        figure.add_trace(go.Scattergl(x=time, y=displacement_enu_m[2, :], name='Up', legendgroup='u',
-                                      mode='lines', line={'color': 'blue'}),
+        figure.add_trace(go.Scattergl(x=time, y=displacement_enu_m[2, :], customdata=customdata, name='Up',
+                                      legendgroup='u', mode='lines', line={'color': 'blue'}),
                          1, 2)
 
-        figure.add_trace(go.Scattergl(x=time, y=pose_data.position_std_enu_m[0, :], name='East', legendgroup='e',
-                                      showlegend=False, mode='lines', line={'color': 'red'}),
+        figure.add_trace(go.Scattergl(x=time, y=pose_data.position_std_enu_m[0, :], customdata=customdata,
+                                      name='East', legendgroup='e', showlegend=False, mode='lines',
+                                      line={'color': 'red'}),
                          2, 2)
-        figure.add_trace(go.Scattergl(x=time, y=pose_data.position_std_enu_m[1, :], name='North', legendgroup='n',
-                                      showlegend=False, mode='lines', line={'color': 'green'}),
+        figure.add_trace(go.Scattergl(x=time, y=pose_data.position_std_enu_m[1, :], customdata=customdata,
+                                      name='North', legendgroup='n', showlegend=False, mode='lines',
+                                      line={'color': 'green'}),
                          2, 2)
-        figure.add_trace(go.Scattergl(x=time, y=pose_data.position_std_enu_m[2, :], name='Up', legendgroup='u',
-                                      showlegend=False, mode='lines', line={'color': 'blue'}),
+        figure.add_trace(go.Scattergl(x=time, y=pose_data.position_std_enu_m[2, :], customdata=customdata,
+                                      name='Up', legendgroup='u', showlegend=False, mode='lines',
+                                      line={'color': 'blue'}),
                          2, 2)
 
         # Plot velocity.
-        figure.add_trace(go.Scattergl(x=time, y=pose_data.velocity_body_mps[0, :], name='X', legendgroup='x',
-                                      mode='lines', line={'color': 'red'}),
+        figure.add_trace(go.Scattergl(x=time, y=pose_data.velocity_body_mps[0, :], customdata=customdata, name='X',
+                                      legendgroup='x', mode='lines', line={'color': 'red'}),
                          1, 3)
-        figure.add_trace(go.Scattergl(x=time, y=pose_data.velocity_body_mps[1, :], name='Y', legendgroup='y',
-                                      mode='lines', line={'color': 'green'}),
+        figure.add_trace(go.Scattergl(x=time, y=pose_data.velocity_body_mps[1, :], customdata=customdata, name='Y',
+                                      legendgroup='y', mode='lines', line={'color': 'green'}),
                          1, 3)
-        figure.add_trace(go.Scattergl(x=time, y=pose_data.velocity_body_mps[2, :], name='Z', legendgroup='z',
-                                      mode='lines', line={'color': 'blue'}),
+        figure.add_trace(go.Scattergl(x=time, y=pose_data.velocity_body_mps[2, :], customdata=customdata, name='Z',
+                                      legendgroup='z', mode='lines', line={'color': 'blue'}),
                          1, 3)
-        figure.add_trace(go.Scattergl(x=time, y=np.linalg.norm(pose_data.velocity_body_mps, axis=0), name='3D',
+        figure.add_trace(go.Scattergl(x=time, y=np.linalg.norm(pose_data.velocity_body_mps, axis=0),
+                                      customdata=customdata, name='3D',
                                       mode='lines', line={'color': 'orange', 'dash': 'dash'}),
                          1, 3)
 
-        figure.add_trace(go.Scattergl(x=time, y=pose_data.velocity_std_body_mps[0, :], name='X', legendgroup='x',
-                                      showlegend=False, mode='lines', line={'color': 'red'}),
+        figure.add_trace(go.Scattergl(x=time, y=pose_data.velocity_std_body_mps[0, :], customdata=customdata,
+                                      name='X', legendgroup='x', showlegend=False, mode='lines',
+                                      line={'color': 'red'}),
                          2, 3)
-        figure.add_trace(go.Scattergl(x=time, y=pose_data.velocity_std_body_mps[1, :], name='Y', legendgroup='y',
-                                      showlegend=False, mode='lines', line={'color': 'green'}),
+        figure.add_trace(go.Scattergl(x=time, y=pose_data.velocity_std_body_mps[1, :], customdata=customdata,
+                                      name='Y', legendgroup='y', showlegend=False, mode='lines',
+                                      line={'color': 'green'}),
                          2, 3)
-        figure.add_trace(go.Scattergl(x=time, y=pose_data.velocity_std_body_mps[2, :], name='Z', legendgroup='z',
-                                      showlegend=False, mode='lines', line={'color': 'blue'}),
+        figure.add_trace(go.Scattergl(x=time, y=pose_data.velocity_std_body_mps[2, :], customdata=customdata,
+                                      name='Z', legendgroup='z', showlegend=False, mode='lines',
+                                      line={'color': 'blue'}),
                          2, 3)
 
-        self._add_figure(name="pose", figure=figure, title="Vehicle Pose vs. Time")
+        self._add_figure(name="pose", figure=figure, title="Vehicle Pose vs. Time",
+                         inject_js=self._custom_tooltip_js())
 
     def plot_calibration(self):
         """!
@@ -670,8 +687,8 @@ class Analyzer(object):
             self.logger.info('No calibration data available. Skipping calibration plot.')
             return
 
-        time = cal_data.p1_time - float(self.t0)
-        text = ["Time: %.3f sec (%.3f sec)" % (t, t + float(self.t0)) for t in time]
+        time, axis_layout = self._resolve_x_axis(p1_time=cal_data.p1_time)
+        time_customdata = self._time_hover_customdata(p1_time=cal_data.p1_time)
 
         # Map calibration stage enum values onto a [0, N) range for plotting.
         stage_map = {e.value: i for i, e in enumerate(CalibrationStage)}
@@ -685,7 +702,7 @@ class Analyzer(object):
 
         figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
         for i in range(4):
-            figure['layout']['xaxis%d' % (i + 1)].update(title=self.p1_time_label, showticklabels=True)
+            figure['layout']['xaxis%d' % (i + 1)].update(showticklabels=True, **axis_layout)
         figure['layout']['yaxis1'].update(title="Percent Complete", range=[0, 100])
         figure['layout']['yaxis2'].update(ticktext=['%s' % e.name for e in CalibrationStage],
                                           tickvals=list(range(len(stage_map))))
@@ -694,44 +711,45 @@ class Analyzer(object):
         figure['layout']['yaxis5'].update(title="Meters")
 
         # Plot calibration stage and completion percentages.
-        figure.add_trace(go.Scattergl(x=time, y=cal_data.gyro_bias_percent_complete, text=text,
+        figure.add_trace(go.Scattergl(x=time, y=cal_data.gyro_bias_percent_complete, customdata=time_customdata,
                                       name='Gyro Bias Completion',
                                       mode='lines', line={'color': 'red'}),
                          1, 1)
-        figure.add_trace(go.Scattergl(x=time, y=cal_data.accel_bias_percent_complete, text=text,
+        figure.add_trace(go.Scattergl(x=time, y=cal_data.accel_bias_percent_complete, customdata=time_customdata,
                                       name='Accel Bias Completion',
                                       mode='lines', line={'color': 'green'}),
                          1, 1)
-        figure.add_trace(go.Scattergl(x=time, y=cal_data.mounting_angle_percent_complete, text=text,
+        figure.add_trace(go.Scattergl(x=time, y=cal_data.mounting_angle_percent_complete, customdata=time_customdata,
                                       name='Mounting Angle Completion',
                                       mode='lines', line={'color': 'blue'}),
                          1, 1)
 
-        figure.add_trace(go.Scattergl(x=time, y=calibration_stage, name='Stage', text=text,
+        figure.add_trace(go.Scattergl(x=time, y=calibration_stage, name='Stage', customdata=time_customdata,
                                       mode='lines', line={'color': 'black', 'dash': 'dash'}),
                          1, 1, secondary_y=True)
 
         # Plot mounting angles.
-        figure.add_trace(go.Scattergl(x=time, y=cal_data.ypr_deg[0, :], name='Yaw', legendgroup='y', text=text,
-                                      mode='lines', line={'color': 'red'}),
+        figure.add_trace(go.Scattergl(x=time, y=cal_data.ypr_deg[0, :], name='Yaw', legendgroup='y',
+                                      customdata=time_customdata, mode='lines', line={'color': 'red'}),
                          2, 1)
-        figure.add_trace(go.Scattergl(x=time, y=cal_data.ypr_deg[1, :], name='Pitch', legendgroup='p', text=text,
-                                      mode='lines', line={'color': 'green'}),
+        figure.add_trace(go.Scattergl(x=time, y=cal_data.ypr_deg[1, :], name='Pitch', legendgroup='p',
+                                      customdata=time_customdata, mode='lines', line={'color': 'green'}),
                          2, 1)
-        figure.add_trace(go.Scattergl(x=time, y=cal_data.ypr_deg[2, :], name='Roll', legendgroup='r', text=text,
-                                      mode='lines', line={'color': 'blue'}),
+        figure.add_trace(go.Scattergl(x=time, y=cal_data.ypr_deg[2, :], name='Roll', legendgroup='r',
+                                      customdata=time_customdata, mode='lines', line={'color': 'blue'}),
                          2, 1)
 
         figure.add_trace(go.Scattergl(x=time, y=cal_data.ypr_std_dev_deg[0, :], name='Yaw Std Dev', legendgroup='y',
-                                      text=text, mode='lines', line={'color': 'red'}),
+                                      customdata=time_customdata, mode='lines', line={'color': 'red'}),
                          3, 1)
         figure.add_trace(go.Scattergl(x=time, y=cal_data.ypr_std_dev_deg[1, :], name='Pitch Std Dev', legendgroup='p',
-                                      text=text, mode='lines', line={'color': 'green'}),
+                                      customdata=time_customdata, mode='lines', line={'color': 'green'}),
                          3, 1)
         figure.add_trace(go.Scattergl(x=time, y=cal_data.ypr_std_dev_deg[2, :], name='Roll Std Dev', legendgroup='r',
-                                      text=text, mode='lines', line={'color': 'blue'}),
+                                      customdata=time_customdata, mode='lines', line={'color': 'blue'}),
                          3, 1)
 
+        # Threshold reference lines only have 2 points (first/last time), so they don't get per-point hover data.
         thresh_time = time[np.array((0, -1))]
         figure.add_trace(go.Scattergl(x=thresh_time, y=[cal_data.mounting_angle_max_std_dev_deg[0]] * 2,
                                       name='Max Yaw Std Dev', legendgroup='y',
@@ -739,23 +757,24 @@ class Analyzer(object):
                          3, 1)
         figure.add_trace(go.Scattergl(x=thresh_time, y=[cal_data.mounting_angle_max_std_dev_deg[1]] * 2,
                                       name='Max Pitch Std Dev', legendgroup='p',
-                                      text=text, mode='lines', line={'color': 'green', 'dash': 'dash'}),
+                                      mode='lines', line={'color': 'green', 'dash': 'dash'}),
                          3, 1)
         figure.add_trace(go.Scattergl(x=thresh_time, y=[cal_data.mounting_angle_max_std_dev_deg[2]] * 2,
                                       name='Max Roll Std Dev', legendgroup='r',
-                                      text=text, mode='lines', line={'color': 'blue', 'dash': 'dash'}),
+                                      mode='lines', line={'color': 'blue', 'dash': 'dash'}),
                          3, 1)
 
         # Plot travel distance.
-        figure.add_trace(go.Scattergl(x=time, y=cal_data.travel_distance_m, name='Travel Distance', text=text,
-                                      mode='lines', line={'color': 'blue'}),
+        figure.add_trace(go.Scattergl(x=time, y=cal_data.travel_distance_m, name='Travel Distance',
+                                      customdata=time_customdata, mode='lines', line={'color': 'blue'}),
                          4, 1)
         figure.add_trace(go.Scattergl(x=thresh_time, y=[cal_data.min_travel_distance_m] * 2,
-                                      name='Min Travel Distance', text=text,
+                                      name='Min Travel Distance',
                                       mode='lines', line={'color': 'black', 'dash': 'dash'}),
                          4, 1)
 
-        self._add_figure(name="calibration", figure=figure, title="Calibration Status")
+        self._add_figure(name="calibration", figure=figure, title="Calibration Status",
+                         inject_js=self._custom_tooltip_js())
 
     def plot_solution_type(self):
         """!
@@ -775,35 +794,39 @@ class Analyzer(object):
         # Setup the figure.
         figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=True, subplot_titles=['Solution Type'])
         figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
-        figure['layout']['xaxis'].update(title=self.p1_time_label)
+        figure['layout']['xaxis'].update(**self._x_axis_layout())
         figure['layout']['yaxis1'].update(title="Solution Type",
                                           ticktext=['%s (%d)' % (e.name, e.value) for e in SolutionType],
                                           tickvals=[e.value for e in SolutionType])
 
-        all_time = pose_data.p1_time - float(self.t0)
         is_gnss_rx = (pose_data.flags & PoseMessage.FLAG_RECEIVER_SOLUTION) != 0
         is_nav_engine = ~is_gnss_rx
 
         # Plot nav engine solutions.
         if np.any(is_nav_engine):
             idx = is_nav_engine
-            time = all_time[idx]
-            text = ["Time: %.3f sec (%.3f sec)" % (t, t + float(self.t0)) for t in time]
-            figure.add_trace(go.Scattergl(x=time, y=pose_data.solution_type[idx], text=text, name='Nav Engine',
-                                          mode='markers'),
+            p1_time = pose_data.p1_time[idx]
+            gps_time = pose_data.gps_time[idx]
+            time, _ = self._resolve_x_axis(p1_time=p1_time, gps_time=gps_time)
+            customdata = self._time_hover_customdata(p1_time=p1_time, gps_time=gps_time)
+            figure.add_trace(go.Scattergl(x=time, y=pose_data.solution_type[idx], customdata=customdata,
+                                          name='Nav Engine', mode='markers'),
                              1, 1)
 
         # Plot GNSS receiver solutions, if any.
         if np.any(is_gnss_rx):
             idx = is_gnss_rx
-            time = all_time[idx]
-            text = ["Time: %.3f sec (%.3f sec)" % (t, t + float(self.t0)) for t in time]
-            figure.add_trace(go.Scattergl(x=time, y=pose_data.solution_type[idx], text=text,
+            p1_time = pose_data.p1_time[idx]
+            gps_time = pose_data.gps_time[idx]
+            time, _ = self._resolve_x_axis(p1_time=p1_time, gps_time=gps_time)
+            customdata = self._time_hover_customdata(p1_time=p1_time, gps_time=gps_time)
+            figure.add_trace(go.Scattergl(x=time, y=pose_data.solution_type[idx], customdata=customdata,
                                           name='Receiver Solution',
                                           mode='markers', marker={'color': 'red', 'symbol': 'diamond-open'}),
                              1, 1)
 
-        self._add_figure(name="solution_type", figure=figure, title="Solution Type")
+        self._add_figure(name="solution_type", figure=figure, title="Solution Type",
+                         inject_js=self._custom_tooltip_js())
 
     def plot_stationary_status(self):
         """!
@@ -824,22 +847,23 @@ class Analyzer(object):
         figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=True,
                                subplot_titles=['Stationary Status'])
 
-        figure['layout']['xaxis'].update(title=self.p1_time_label)
         figure['layout']['yaxis1'].update(title="Stationary Status",
                                           ticktext=['Moving', 'Stationary'],
                                           tickvals=[0, PoseMessage.FLAG_STATIONARY])
 
-        time = pose_data.p1_time - float(self.t0)
+        time, axis_layout = self._resolve_x_axis(p1_time=pose_data.p1_time, gps_time=pose_data.gps_time)
+        customdata = self._time_hover_customdata(p1_time=pose_data.p1_time, gps_time=pose_data.gps_time)
+        figure['layout']['xaxis'].update(**axis_layout)
 
         # Extract the stationary status from the pose data flags.
         stationary_status = pose_data.flags & PoseMessage.FLAG_STATIONARY
 
-        text = ["Time: %.3f sec (%.3f sec)" % (t, t + float(self.t0)) for t in time]
-        figure.add_trace(go.Scattergl(x=time, y=stationary_status, text=text, mode='markers'), 1, 1)
+        figure.add_trace(go.Scattergl(x=time, y=stationary_status, customdata=customdata, mode='markers'), 1, 1)
 
-        self._add_figure(name="stationary_status", figure=figure, title="Stationary Status")
+        self._add_figure(name="stationary_status", figure=figure, title="Stationary Status",
+                         inject_js=self._custom_tooltip_js(value_label='Status', show_name=False))
 
-    def _plot_displacement(self, source, time, solution_type, displacement_enu_m, std_enu_m,
+    def _plot_displacement(self, source, p1_time, solution_type, displacement_enu_m, std_enu_m, gps_time=None,
                            title='Displacement'):
         """!
         @brief Generate a topocentric (top-down) plot of position displacement, as well as plot of displacement over
@@ -848,9 +872,21 @@ class Analyzer(object):
         if self.output_dir is None:
             return
 
+        # Note: _resolve_x_axis() can do this internally, but we also need it for the topo customdata below.
+        if gps_time is None:
+            gps_time = self.time_provider.p1_to_gps(p1_time)
+
+        time, axis_layout = self._resolve_x_axis(p1_time=p1_time, gps_time=gps_time)
+        time_customdata = self._time_hover_customdata(p1_time=p1_time, gps_time=gps_time)
+
+        # The topocentric plot's axes are spatial (East/North), not time, so unlike time_customdata above (which
+        # carries only whichever of P1/GPS time is not already reflected by the X axis), its hover text needs both
+        # times directly -- neither is recoverable from a point's X/Y position.
+        topo_customdata = np.vstack((p1_time, gps_time, displacement_enu_m, std_enu_m))
+        time_customdata = np.vstack((time_customdata, displacement_enu_m, std_enu_m))
+
         # Setup the figure.
-        topo_figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=False,
-                                    subplot_titles=[title])
+        topo_figure = make_subplots(rows=1, cols=1, print_grid=False, shared_xaxes=False, subplot_titles=[title])
         topo_figure['layout']['xaxis1'].update(title="East (m)")
         topo_figure['layout']['yaxis1'].update(title="North (m)")
 
@@ -858,14 +894,14 @@ class Analyzer(object):
                                     subplot_titles=['3D', 'East', 'North', 'Up'])
         time_figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
         for i in range(4):
-            time_figure['layout']['xaxis%d' % (i + 1)].update(title=self.p1_time_label, showticklabels=True)
+            time_figure['layout']['xaxis%d' % (i + 1)].update(showticklabels=True, **axis_layout)
         time_figure['layout']['yaxis1'].update(title=f"{title} (m)")
         time_figure['layout']['yaxis2'].update(title=f"{title} (m)")
         time_figure['layout']['yaxis3'].update(title=f"{title} (m)")
         time_figure['layout']['yaxis4'].update(title=f"{title} (m)")
 
         # Remove invalid solutions.
-        valid_idx = np.logical_and(~np.isnan(time), solution_type != SolutionType.Invalid)
+        valid_idx = np.logical_and(~np.isnan(p1_time), solution_type != SolutionType.Invalid)
         if not np.any(valid_idx):
             self.logger.info('No valid position solutions detected. Skipping displacement plots.')
             return
@@ -903,24 +939,22 @@ class Analyzer(object):
                 style['marker'].update(marker_style)
 
             if np.any(idx):
-                text = ["Time: %.3f sec (%.3f sec)<br>Delta (ENU): (%.2f, %.2f, %.2f) m" \
-                        "<br>Std (ENU): (%.2f, %.2f, %.2f) m" %
-                        (t, t + float(self.t0), *delta, *std)
-                        for t, delta, std in zip(time[idx], displacement_enu_m[:, idx].T, std_enu_m[:, idx].T)]
+                topo_cd = topo_customdata[:, idx]
+                time_cd = time_customdata[:, idx]
                 topo_figure.add_trace(go.Scattergl(x=displacement_enu_m[0, idx], y=displacement_enu_m[1, idx],
-                                                   name=name, text=text, **style), 1, 1)
+                                                   name=name, customdata=topo_cd, **style), 1, 1)
 
                 displacement_3d_m = np.linalg.norm(displacement_enu_m[:, idx], axis=0)
                 max_3d_diff_m[0] = max(max_3d_diff_m[0], np.nanmax(displacement_3d_m))
                 time_figure.add_trace(go.Scattergl(x=time[idx], y=displacement_3d_m,
-                                                   name=name, text=text, **style), 1, 1)
+                                                   name=name, customdata=time_cd, **style), 1, 1)
                 style['showlegend'] = False
                 time_figure.add_trace(go.Scattergl(x=time[idx], y=displacement_enu_m[0, idx], name=name,
-                                                   text=text, **style), 2, 1)
+                                                   customdata=time_cd, **style), 2, 1)
                 time_figure.add_trace(go.Scattergl(x=time[idx], y=displacement_enu_m[1, idx], name=name,
-                                                   text=text, **style), 3, 1)
+                                                   customdata=time_cd, **style), 3, 1)
                 time_figure.add_trace(go.Scattergl(x=time[idx], y=displacement_enu_m[2, idx], name=name,
-                                                   text=text, **style), 4, 1)
+                                                   customdata=time_cd, **style), 4, 1)
             else:
                 # If there's no data, draw a dummy trace so it shows up in the legend anyway.
                 topo_figure.add_trace(go.Scattergl(x=[np.nan], y=[np.nan], name=name, visible='legendonly', **style),
@@ -938,8 +972,50 @@ class Analyzer(object):
         time_figure['layout']['yaxis1'].update(range=[0, max_y])
 
         name = source.replace(' ', '_').lower()
-        self._add_figure(name=f"{name}_top_down", figure=topo_figure, title=f"{source}: Top-Down (Topocentric)")
-        self._add_figure(name=f"{name}_vs_time", figure=time_figure, title=f"{source}: vs. Time")
+
+        # Topocentric hover: X/Y are spatial (East/North), not time, so both P1 and GPS time must come directly from
+        # customdata (rows 0/1) rather than from the point's axis position -- see BuildTimeHoverTextFromTimes().
+        _DISPLACEMENT_TOPO_HOVER_JS = """\
+figure.on('plotly_hover', function(data) {
+  let point = data.points[0];
+  if (!point.data.customdata) {
+    return;
+  }
+  let new_text = BuildTimeHoverTextFromTimes(GetCustomData(point, 0), GetCustomData(point, 1));
+  new_text += `<br>Delta (ENU): (${GetCustomData(point, 2).toFixed(2)}, ${GetCustomData(point, 3).toFixed(2)}, ` +
+              `${GetCustomData(point, 4).toFixed(2)}) m`;
+  new_text += `<br>Std (ENU): (${GetCustomData(point, 5).toFixed(2)}, ${GetCustomData(point, 6).toFixed(2)}, ` +
+              `${GetCustomData(point, 7).toFixed(2)}) m`;
+  ShowCustomTooltip(point, GetCustomTooltipHTML(point.data.name, undefined, new_text));
+});
+figure.on('plotly_unhover', function(data) {
+  HideCustomTooltip();
+});
+        """
+
+        # Time-series hover: like _custom_tooltip_js(), but with extra Delta/Std (ENU) customdata rows appended.
+        _DISPLACEMENT_TIME_HOVER_JS = """\
+figure.on('plotly_hover', function(data) {
+  let point = data.points[0];
+  if (!point.data.customdata) {
+    return;
+  }
+  let new_text = BuildTimeHoverText(point.x, GetCustomData(point, 0));
+  new_text += `<br>Delta (ENU): (${GetCustomData(point, 1).toFixed(2)}, ${GetCustomData(point, 2).toFixed(2)}, ` +
+              `${GetCustomData(point, 3).toFixed(2)}) m`;
+  new_text += `<br>Std (ENU): (${GetCustomData(point, 4).toFixed(2)}, ${GetCustomData(point, 5).toFixed(2)}, ` +
+              `${GetCustomData(point, 6).toFixed(2)}) m`;
+  ShowCustomTooltip(point, GetCustomTooltipHTML(point.data.name, undefined, new_text));
+});
+figure.on('plotly_unhover', function(data) {
+  HideCustomTooltip();
+});
+        """ + self._GPS_TICK_REFORMAT_JS
+
+        self._add_figure(name=f"{name}_top_down", figure=topo_figure, title=f"{source}: Top-Down (Topocentric)",
+                         inject_js=_DISPLACEMENT_TOPO_HOVER_JS)
+        self._add_figure(name=f"{name}_vs_time", figure=time_figure, title=f"{source}: vs. Time",
+                         inject_js=_DISPLACEMENT_TIME_HOVER_JS)
 
     def plot_pose_error(self, reference: ReferenceData):
         """!
@@ -994,7 +1070,7 @@ class Analyzer(object):
             self.logger.info('No valid position solutions detected. Skipping displacement plots.')
             return None
 
-        time = pose_data.p1_time[valid_idx] - float(self.t0)
+        p1_time = pose_data.p1_time[valid_idx]
         gps_time = pose_data.gps_time[valid_idx]
         solution_type = pose_data.solution_type[valid_idx]
         lla_deg = pose_data.lla_deg[:, valid_idx]
@@ -1013,7 +1089,8 @@ class Analyzer(object):
                                 f"range. Skipping displacement plots.")
             return None
         elif not np.all(valid_ref_idx):
-            time = time[valid_ref_idx]
+            p1_time = p1_time[valid_ref_idx]
+            gps_time = gps_time[valid_ref_idx]
             solution_type = solution_type[valid_ref_idx]
             lla_deg = lla_deg[:, valid_ref_idx]
             std_enu_m = std_enu_m[:, valid_ref_idx]
@@ -1028,7 +1105,7 @@ class Analyzer(object):
         source = f'Position {axis_title} vs. {"Reference" if reference.is_truth else reference.description}'
 
         self._plot_displacement(source=source, title=axis_title,
-                                time=time, solution_type=solution_type,
+                                p1_time=p1_time, gps_time=gps_time, solution_type=solution_type,
                                 displacement_enu_m=displacement_enu_m, std_enu_m=std_enu_m)
 
         return displacement_enu_m
@@ -1056,12 +1133,15 @@ class Analyzer(object):
             self.logger.info('No valid position solutions detected. Skipping relative position vs. base station plots.')
             return
 
-        time = relative_position_data.p1_time[valid_idx] - float(self.t0)
+        p1_time = relative_position_data.p1_time[valid_idx]
+        gps_time = relative_position_data.gps_time[valid_idx]
         solution_type = relative_position_data.solution_type[valid_idx]
         displacement_enu_m = relative_position_data.relative_position_enu_m[:, valid_idx]
         std_enu_m = relative_position_data.position_std_enu_m[:, valid_idx]
 
-        self._plot_displacement('Position vs. Base Station', time, solution_type, displacement_enu_m, std_enu_m)
+        self._plot_displacement('Position vs. Base Station', p1_time=p1_time, gps_time=gps_time,
+                                solution_type=solution_type, displacement_enu_m=displacement_enu_m,
+                                std_enu_m=std_enu_m)
 
     def plot_map(self, mapbox_token):
         """!
@@ -1081,11 +1161,49 @@ class Analyzer(object):
             self._mapbox_token_missing = True
             mapbox_token = None
 
+        # Plotly's Mapbox/WebGL map trace hover renderer reads hover content from calcdata, baked in at plot time, and
+        # does not pick up a later client-side mutation of fullData.text the way cartesian (Scatter/Scattergl) traces
+        # do, so we cannot inject a plotly_hover() function like we do for most other plots. Instead, we have to use
+        # Plotly's `hovertemplate` function.
+        #
+        # hovertemplate can't apply date/time formatting to a bare *numeric* customdata value (that only works for a
+        # `%{x}` tied to a real date-typed axis) -- but a customdata entry with no format spec at all is substituted
+        # verbatim, so we precompute the UTC string in Python (cheap, vectorized) and reference it that way.
+        _POSITION_HOVERTEMPLATE = (
+            "LLA: %{lat:.8f}, %{lon:.8f}, %{customdata[4]:.2f}<br>"
+            "Rel: %{customdata[0]:.3f} sec (P1: %{customdata[1]:.3f} sec)<br>"
+            "UTC: %{customdata[8]}<br>"
+            "GPS: %{customdata[2]:.0f}:%{customdata[3]:.3f}<br>"
+            "Std (ENU): (%{customdata[5]:.2f}, %{customdata[6]:.2f}, %{customdata[7]:.2f}) m"
+        )
+
+        def _build_position_customdata(p1_time: np.ndarray, gps_time: np.ndarray,
+                                       lla_deg: np.ndarray, std_enu_m: np.ndarray) -> list:
+            rel_time = p1_time - float(self.reader.t0)
+            gps_week = np.floor(gps_time / SECONDS_PER_WEEK)
+            gps_tow_sec = gps_time - gps_week * SECONDS_PER_WEEK
+
+            utc_times = self.time_provider.gps_sec_to_datetime64_array(gps_time)
+            utc_strs = np.where(np.isnat(utc_times), 'N/A',
+                                np.datetime_as_string(utc_times, unit='ms'))
+            utc_strs = np.char.replace(utc_strs, 'T', ' ')
+
+            # Note: unlike the field-major (num_fields x N) arrays built by _time_hover_customdata() for use with our
+            # own GetCustomData() JS helper, Plotly's native `hovertemplate` expects customdata in the opposite,
+            # point-major layout -- one row per point, indexed as customdata[pointIndex][fieldIndex].
+            #
+            # utc_strs is a string column mixed in with the numeric ones above, so this can't be a single numpy
+            # array (that would coerce every column to strings, breaking the numeric %{customdata[N]:.3f}-style
+            # formatting for the rest); build it as a plain list of per-point rows instead.
+            numeric = np.column_stack((rel_time, p1_time, gps_week, gps_tow_sec, lla_deg[2], std_enu_m[0],
+                                       std_enu_m[1], std_enu_m[2]))
+            return [row.tolist() + [utc_str] for row, utc_str in zip(numeric, utc_strs)]
+
         # Add data to the map.
         map_data = []
         indices_by_engine = defaultdict(list)
 
-        def _plot_data(name, selected_idx, flags, source_id, marker_style=None):
+        def _plot_data(name, selected_idx, flags, source_id, lla_deg, customdata_all, marker_style=None):
             style = {'mode': 'markers', 'marker': {'size': 8}, 'showlegend': True}
             if marker_style is not None:
                 style['marker'].update(marker_style)
@@ -1100,22 +1218,20 @@ class Analyzer(object):
 
                 if np.any(is_nav_engine):
                     idx = is_nav_engine
-                    text = ["Time: %.3f sec (%.3f sec)<br>Std (ENU): (%.2f, %.2f, %.2f) m" %
-                            (t, t + float(self.t0), std[0], std[1], std[2])
-                            for t, std in zip(time[idx], std_enu_m[:, idx].T)]
-                    map_data.append(go.Scattermapbox(lat=lla_deg[0, idx], lon=lla_deg[1, idx], name=name, text=text,
+                    map_data.append(go.Scattermapbox(lat=lla_deg[0, idx], lon=lla_deg[1, idx], name=name,
+                                                     customdata=[customdata_all[i] for i in np.nonzero(idx)[0]],
+                                                     hovertemplate=_POSITION_HOVERTEMPLATE,
                                                      legendgroup=legendgroup, visible=visible, **style))
                     indices_by_engine['Nav Engine'].append(len(map_data) - 1)
 
                 if np.any(is_gnss_rx):
                     idx = is_gnss_rx
-                    text = ["Time: %.3f sec (%.3f sec)<br>Std (ENU): (%.2f, %.2f, %.2f) m" %
-                            (t, t + float(self.t0), std[0], std[1], std[2])
-                            for t, std in zip(time[idx], std_enu_m[:, idx].T)]
                     style['marker']['opacity'] = 0.5
                     style['marker']['size'] = 5
                     map_data.append(go.Scattermapbox(lat=lla_deg[0, idx], lon=lla_deg[1, idx],
-                                                     name=name + ' (Receiver Solution)', text=text,
+                                                     name=name + ' (Receiver Solution)',
+                                                     customdata=[customdata_all[i] for i in np.nonzero(idx)[0]],
+                                                     hovertemplate=_POSITION_HOVERTEMPLATE,
                                                      legendgroup=legendgroup, visible=visible, **style))
                     indices_by_engine['Receiver Solution'].append(len(map_data) - 1)
 
@@ -1143,11 +1259,14 @@ class Analyzer(object):
 
             have_pose_data = True
 
-            time = pose_data.p1_time[valid_idx] - float(self.t0)
             solution_type = pose_data.solution_type[valid_idx]
             flags = pose_data.flags[valid_idx]
             lla_deg = pose_data.lla_deg[:, valid_idx]
             std_enu_m = pose_data.position_std_enu_m[:, valid_idx]
+
+            customdata_all = _build_position_customdata(p1_time=pose_data.p1_time[valid_idx],
+                                                        gps_time=pose_data.gps_time[valid_idx],
+                                                        lla_deg=lla_deg, std_enu_m=std_enu_m)
 
             for type, info in _SOLUTION_TYPE_MAP.items():
                 if len(pose_source_ids) > 1:
@@ -1155,7 +1274,7 @@ class Analyzer(object):
                 else:
                     name = info.name
                 _plot_data(name=name, selected_idx=solution_type == type, flags=flags, source_id=source_id,
-                           marker_style=info.style)
+                           lla_deg=lla_deg, customdata_all=customdata_all, marker_style=info.style)
 
         if not have_pose_data:
             return
@@ -1205,7 +1324,8 @@ class Analyzer(object):
             'yanchor': 'top'
         }]
 
-        self._add_figure(name="map", figure=figure, title="Vehicle Trajectory (Map)", config={'scrollZoom': True})
+        self._add_figure(name="map", figure=figure, title="Vehicle Trajectory (Map)", config={'scrollZoom': True},
+                         custom_hover=False)
 
     def plot_gnss_skyplot(self, decimate=True):
         for source_id in self._get_gnss_antenna_source_ids():
@@ -1223,7 +1343,7 @@ class Analyzer(object):
 
         # Setup the figure.
         figure = go.Figure()
-        figure['layout'].update(title=f'{label} GNSS Sky Plot')
+        figure['layout'].update(title=f'{label} Antenna Sky Plot')
         figure['layout']['polar']['radialaxis'].update(range=[90, 0])
         figure['layout']['polar']['angularaxis'].update(visible=False)
 
@@ -1348,7 +1468,7 @@ class Analyzer(object):
         figure['layout']['updatemenus'] = updatemenus
 
         name = self._gnss_plot_filename('gnss_skyplot', source_id)
-        self._add_figure(name=name, figure=figure, title=f'{label} GNSS Sky Plot')
+        self._add_figure(name=name, figure=figure, title=f'GNSS ({label}): Sky Plot', custom_hover=False)
 
     def plot_gnss_cn0(self):
         for source_id in self._get_gnss_antenna_source_ids():
@@ -1365,7 +1485,7 @@ class Analyzer(object):
         have_gnss_signals_message = not data.using_legacy_satellite_message
 
         # Setup the figure.
-        title = 'C/N0'
+        title = f'{label} Antenna C/N0'
         if not have_gnss_signals_message:
             title += ' (L1 Only)'
         figure = make_subplots(
@@ -1373,7 +1493,7 @@ class Analyzer(object):
             subplot_titles=[title])
 
         figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
-        figure['layout']['xaxis1'].update(title=self.p1_time_label, showticklabels=True)
+        figure['layout']['xaxis1'].update(showticklabels=True, **self._x_axis_layout())
         figure['layout']['yaxis1'].update(title="C/N0 (dB-Hz)")
 
         # Assign colors by PRN.
@@ -1389,11 +1509,12 @@ class Analyzer(object):
 
             idx = data.signal_data['signal_hash'] == signal_hash
             p1_time = data.signal_data['p1_time'][idx]
+            gps_time = data.signal_data['gps_time'][idx]
             cn0_dbhz = data.signal_data['cn0_dbhz'][idx]
 
-            text = ['P1: %.1f sec' % t for t in p1_time]
-            time = p1_time - float(self.t0)
-            figure.add_trace(go.Scattergl(x=time, y=cn0_dbhz, text=text, name=name,
+            time, _ = self._resolve_x_axis(p1_time=p1_time, gps_time=gps_time)
+            customdata = self._time_hover_customdata(p1_time=p1_time, gps_time=gps_time)
+            figure.add_trace(go.Scattergl(x=time, y=cn0_dbhz, customdata=customdata, name=name,
                                           mode='markers', marker={'color': color_by_prn[signal.get_prn()]}),
                              1, 1)
             indices_by_signal_type[signal.signal_type].append(len(figure.data) - 1)
@@ -1419,7 +1540,8 @@ class Analyzer(object):
         }]
 
         name = self._gnss_plot_filename('gnss_cn0', source_id)
-        self._add_figure(name=name, figure=figure, title=f'{label} GNSS C/N0 vs Time')
+        self._add_figure(name=name, figure=figure, title=f'GNSS ({label}): C/N0 vs Time',
+                         inject_js=self._custom_tooltip_js(precision=2))
 
     def plot_gnss_azimuth_elevation(self):
         """!
@@ -1441,11 +1563,12 @@ class Analyzer(object):
         # Set up the figure.
         figure = make_subplots(
             rows=2, cols=1,  print_grid=False, shared_xaxes=True,
-            subplot_titles=["Azimuth Angle",
-                            "Elevation Angle"])
+            subplot_titles=[f"{label} Antenna Azimuth Angle",
+                            f"{label} Antenna Elevation Angle"])
         figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
-        figure['layout']['xaxis1'].update(title=self.p1_time_label, showticklabels=True)
-        figure['layout']['xaxis2'].update(title=self.p1_time_label, showticklabels=True)
+        axis_layout = self._x_axis_layout()
+        figure['layout']['xaxis1'].update(showticklabels=True, **axis_layout)
+        figure['layout']['xaxis2'].update(showticklabels=True, **axis_layout)
         figure['layout']['yaxis1'].update(title="Degrees")
         figure['layout']['yaxis2'].update(title="Degrees")
 
@@ -1465,15 +1588,16 @@ class Analyzer(object):
 
             idx = data.sv_data['sv_hash'] == sv_hash
             p1_time = data.sv_data['p1_time'][idx]
+            gps_time = data.sv_data['gps_time'][idx]
             az_deg = data.sv_data['azimuth_deg'][idx]
             el_deg = data.sv_data['elevation_deg'][idx]
 
-            time = p1_time - float(self.t0)
+            time, _ = self._resolve_x_axis(p1_time=p1_time, gps_time=gps_time)
+            customdata = self._time_hover_customdata(p1_time=p1_time, gps_time=gps_time)
 
             # Plot the data.
             color = color_by_prn[sv_id.get_prn()]
-            text = ["P1: %.3f sec" % (t + float(self.t0)) for t in time]
-            figure.add_trace(go.Scattergl(x=time, y=az_deg, text=text,
+            figure.add_trace(go.Scattergl(x=time, y=az_deg, customdata=customdata,
                                           name=name,
                                           mode='markers',
                                           marker={'color': color, 'symbol': 'circle', 'size': 8},
@@ -1481,7 +1605,7 @@ class Analyzer(object):
                                           legendgroup=name),
                                 1, 1)
             indices_by_system[system].append(len(figure.data) - 1)
-            figure.add_trace(go.Scattergl(x=time, y=el_deg, text=text,
+            figure.add_trace(go.Scattergl(x=time, y=el_deg, customdata=customdata,
                                           name=name,
                                           mode='markers',
                                           marker={'color': color, 'symbol': 'circle', 'size': 8},
@@ -1511,7 +1635,8 @@ class Analyzer(object):
         }]
 
         name = self._gnss_plot_filename('gnss_azimuth_elevation', source_id)
-        self._add_figure(name=name, figure=figure, title=f'{label} GNSS Azimuth & Elevation vs Time')
+        self._add_figure(name=name, figure=figure, title=f'GNSS ({label}): Azimuth & Elevation vs Time',
+                         inject_js=self._custom_tooltip_js())
 
     def plot_gnss_signal_status(self):
         for source_id in self._get_gnss_antenna_source_ids():
@@ -1520,7 +1645,7 @@ class Analyzer(object):
     def _plot_gnss_signal_status_for_source(self, source_id: int):
         label = self._gnss_antenna_label(source_id)
         filename = self._gnss_plot_filename('gnss_signal_status', source_id)
-        figure_title = f'{label} GNSS Signal Status'
+        figure_title = f'GNSS ({label}): Signal Status'
 
         # Read the GNSS signal data.
         data = self._get_gnss_signals_data(source_id)
@@ -1569,8 +1694,8 @@ class Analyzer(object):
                   'float': 'green', 'fixed': 'orange'}
 
         if have_gnss_signals_message:
-            title = '''\
-Signal Status<br>
+            title = f'''\
+{label} Antenna Signal Status<br>
 Black=Unused, Red=Pseudorange, Light Blue=Differential Pseudorange<br>
 Green=Float, Orange=Integer (Fixed)'''
         else:
@@ -1591,29 +1716,31 @@ Black=Unused, Red=Used'''
                    [None],
                    [{}]])
         figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
-        figure['layout']['xaxis1'].update(title=self.p1_time_label)
+        axis_layout = self._x_axis_layout()
+        figure['layout']['xaxis1'].update(**axis_layout)
+        figure['layout']['xaxis2'].update(**axis_layout)
         figure['layout']['yaxis1'].update(title='Signal' if have_gnss_signals_message else 'Satellite')
         figure['layout']['yaxis2'].update(title=f"# SVs/Signals", rangemode='tozero')
 
         # Plot the signal counts.
-        time = data.p1_time - float(self.t0)
-        text = ["P1: %.3f sec" % (t + float(self.t0)) for t in time]
-        figure.add_trace(go.Scattergl(x=time, y=num_svs, text=text, name=f'# SVs',
+        time, _ = self._resolve_x_axis(p1_time=data.p1_time, gps_time=data.gps_time)
+        customdata = self._time_hover_customdata(p1_time=data.p1_time, gps_time=data.gps_time)
+        figure.add_trace(go.Scattergl(x=time, y=num_svs, customdata=customdata, name=f'# SVs',
                                       mode='lines', line={'color': 'black', 'dash': 'dash'}),
                          5, 1)
         if have_gnss_signals_message:
-            figure.add_trace(go.Scattergl(x=time, y=num_signals, text=text, name=f'# Signals',
+            figure.add_trace(go.Scattergl(x=time, y=num_signals, customdata=customdata, name=f'# Signals',
                                           mode='lines', line={'color': 'gray', 'dash': 'dash'}),
                              5, 1)
 
-        figure.add_trace(go.Scattergl(x=time, y=num_used_svs, text=text, name=f'# Used SVs',
+        figure.add_trace(go.Scattergl(x=time, y=num_used_svs, customdata=customdata, name=f'# Used SVs',
                                       mode='lines', line={'color': 'green'}),
                          5, 1)
         if have_gnss_signals_message:
-            figure.add_trace(go.Scattergl(x=time, y=num_used_signals, text=text, name=f'# Used Signals',
+            figure.add_trace(go.Scattergl(x=time, y=num_used_signals, customdata=customdata, name=f'# Used Signals',
                                           mode='lines', line={'color': 'red'}),
                              5, 1)
-            figure.add_trace(go.Scattergl(x=time, y=num_fixed_signals, text=text, name=f'# Fixed Signals',
+            figure.add_trace(go.Scattergl(x=time, y=num_fixed_signals, customdata=customdata, name=f'# Fixed Signals',
                                           mode='lines', line={'color': 'orange'}),
                              5, 1)
 
@@ -1709,10 +1836,13 @@ Black=Unused, Red=Used'''
             # Extract data for this signal.
             idx = data.signal_data['signal_hash'] == signal_hash
             p1_time = data.signal_data['p1_time'][idx]
+            gps_time = data.signal_data['gps_time'][idx]
             cn0_dbhz = data.signal_data['cn0_dbhz'][idx]
             status_flags = data.signal_data['status_flags'][idx]
             signal_has_corrections = None if have_corrections is None else have_corrections[idx]
-            time = p1_time - float(self.t0)
+            time, _ = self._resolve_x_axis(p1_time=p1_time, gps_time=gps_time)
+            # The time value NOT already reflected by the X axis, one row, to include in this signal's customdata.
+            other_time = self._time_hover_customdata(p1_time=p1_time, gps_time=gps_time)[0]
 
             # Find the satellite elevation for the times this signal was present.
             sv_idx = data.sv_data['sv_hash'] == int(signal.get_satellite_id())
@@ -1725,7 +1855,8 @@ Black=Unused, Red=Used'''
                 idx = cond['cond'](status_flags, signal_has_corrections)
                 if np.any(idx):
                     figure.add_trace(go.Scattergl(x=time[idx], y=[y_offset] * np.sum(idx),
-                                                  customdata=np.vstack((status_flags[idx],
+                                                  customdata=np.vstack((other_time[idx],
+                                                                        status_flags[idx],
                                                                         cn0_dbhz[idx],
                                                                         elev_deg[idx])),
                                                   name=name,
@@ -1765,9 +1896,10 @@ Black=Unused, Red=Used'''
 
         hover_js = f"""\
 function SetSignalStatusHover(point) {{
-  let status_flags = GetCustomData(point, 0);
-  let cn0_dbhz = GetCustomData(point, 1);
-  let elev_deg = GetCustomData(point, 2);
+  let other_time = GetCustomData(point, 0);
+  let status_flags = GetCustomData(point, 1);
+  let cn0_dbhz = GetCustomData(point, 2);
+  let elev_deg = GetCustomData(point, 3);
 
   let tracking = [];
   if (status_flags & {GNSSSignalInfo.STATUS_FLAG_VALID_PR}) {{
@@ -1807,28 +1939,31 @@ function SetSignalStatusHover(point) {{
     features.push("RTK");
   }}
 
-  let new_text = GetTimeText(point.x);
+  let new_text = BuildTimeHoverText(point.x, other_time);
   new_text += "<br>C/N0: " + cn0_dbhz.toFixed(2) + " dB-Hz";
   new_text += "<br>Elevation: " + elev_deg.toFixed(1) + " deg";
   new_text += "<br>Status mask: 0x" + status_flags.toString(16);
   new_text += "<br>Available: " + tracking.join(", ");
   new_text += "<br>Used: " + used.join(", ");
   new_text += "<br>Features: " + features.join(", ");
-  ChangeHoverText(point, new_text);
+  ShowCustomTooltip(point, GetCustomTooltipHTML(point.data.name, undefined, new_text));
 }}
 
 figure.on('plotly_hover', function(data) {{
-  for (let i = 0; i < data.points.length; ++i) {{
-    let point = data.points[i];
-    if (point.curveNumber > {num_count_traces}) {{
-      SetSignalStatusHover(point);
-    }}
-    else {{
-      ChangeHoverText(point, GetTimeText(point.x));
-    }}
+  let point = data.points[0];
+  if (point.curveNumber >= {num_count_traces}) {{
+    SetSignalStatusHover(point);
+  }}
+  else {{
+    let time_text = BuildTimeHoverText(point.x, GetCustomData(point, 0));
+    let value_text = BuildAxisValueHoverText(point);
+    ShowCustomTooltip(point, GetCustomTooltipHTML(point.data.name, value_text, time_text));
   }}
 }});
-"""
+figure.on('plotly_unhover', function(data) {{
+  HideCustomTooltip();
+}});
+""" + self._GPS_TICK_REFORMAT_JS
 
         self._add_figure(name=filename, figure=figure, title=figure_title, inject_js=hover_js)
 
@@ -1952,13 +2087,16 @@ figure.on('plotly_hover', function(data) {{
             self.logger.info('No GNSS info data available. Skipping dilution of precision plot.')
             return
 
+        time, axis_layout = self._resolve_x_axis(p1_time=data.p1_time, gps_time=data.gps_time)
+        customdata = self._time_hover_customdata(p1_time=data.p1_time, gps_time=data.gps_time)
+
         # # Setup the figure.
         figure = make_subplots(
             rows=1, cols=1,  print_grid=False, shared_xaxes=True,
             subplot_titles=['Dilution of Precision (DOP)'])
 
         figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
-        figure['layout']['xaxis'].update(title=self.p1_time_label)
+        figure['layout']['xaxis'].update(**axis_layout)
 
         dops = [('GDOP', data.gdop), ('PDOP', data.pdop), ('HDOP', data.hdop), ('VDOP', data.vdop)]
 
@@ -1969,13 +2107,12 @@ figure.on('plotly_hover', function(data) {{
         for entry in dops:
             name, dop = entry
 
-            text = ['P1: %.1f sec' % t for t in data.p1_time]
-            time = data.p1_time - float(self.t0)
-            figure.add_trace(go.Scattergl(x=time, y=dop, text=text, name=name,
+            figure.add_trace(go.Scattergl(x=time, y=dop, customdata=customdata, name=name,
                                           mode='markers', marker={'color': color_by_dop[name]}),
                              1, 1)
 
-        self._add_figure(name='gnss_dop', figure=figure, title='GNSS Dilution of Precision (DOP) vs. Time')
+        self._add_figure(name='gnss_dop', figure=figure, title='GNSS: Dilution of Precision (DOP) vs. Time',
+                         inject_js=self._custom_tooltip_js(value_label='DOP'))
 
     def plot_gnss_corrections_status(self):
         """!
@@ -1997,8 +2134,9 @@ figure.on('plotly_hover', function(data) {{
                    [None],
                    [{}]])
         figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
+        axis_layout = self._x_axis_layout()
         for i in range(2):
-            figure['layout']['xaxis%d' % (i + 1)].update(title=self.p1_time_label, showticklabels=True, matches='x')
+            figure['layout']['xaxis%d' % (i + 1)].update(showticklabels=True, matches='x', **axis_layout)
         figure['layout']['yaxis1'].update(title="Baseline Distance (km)")
         figure['layout']['yaxis2'].update(title="Age (sec)")
 
@@ -2016,20 +2154,23 @@ figure.on('plotly_hover', function(data) {{
         # Now plot data for each base station.
         for station_id in station_ids:
             idx = data.reference_station_id == station_id
-            time = data.p1_time[idx] - float(self.t0)
+            p1_time = data.p1_time[idx]
+            gps_time = data.gps_time[idx]
+            time, _ = self._resolve_x_axis(p1_time=p1_time, gps_time=gps_time)
+            customdata = self._time_hover_customdata(p1_time=p1_time, gps_time=gps_time)
             name = f'Station {station_id}'
             color = colors[station_id]
-            text = ["P1 Time: %.3f sec" % (t + float(self.t0)) for t in time]
-            figure.add_trace(go.Scattergl(x=time, y=data.baseline_distance_m[idx] * 1e-3, text=text,
+            figure.add_trace(go.Scattergl(x=time, y=data.baseline_distance_m[idx] * 1e-3, customdata=customdata,
                                           name=name, legendgroup=int(station_id), showlegend=True,
                                           mode='markers', marker={'color': color}),
                              1, 1)
-            figure.add_trace(go.Scattergl(x=time, y=data.corrections_age_sec[idx], text=text,
+            figure.add_trace(go.Scattergl(x=time, y=data.corrections_age_sec[idx], customdata=customdata,
                                           name=name, legendgroup=int(station_id), showlegend=False,
                                           mode='markers', marker={'color': color}),
                              4, 1)
 
-        self._add_figure(name="gnss_corrections_status", figure=figure, title="GNSS Corrections Status")
+        self._add_figure(name="gnss_corrections_status", figure=figure, title="GNSS: Corrections Status",
+                         inject_js=self._custom_tooltip_js())
 
     def plot_wheel_data(self):
         """!
@@ -2202,13 +2343,18 @@ figure.on('plotly_hover', function(data) {{
                 self.logger.warning('Both raw and corrected %s data present, but timestamped with different '
                                     'sources. Plotted data may not align in time.' % source)
 
+        # Time-type-based (relative/P1/GPS/UTC) axis display is only meaningful when all of the data being plotted is
+        # natively in P1 time -- there's no P1/GPS correspondence to fall back on for other time sources (system time
+        # of reception, etc.), which are only ever used for input messages.
+        use_time_type = same_time_source and common_time_source == SystemTimeSource.P1_TIME
+
         if same_time_source:
             time_name = self._time_source_to_display_name(common_time_source)
             figure['layout']['annotations'][0]['text'] += '<br>Time Source: %s' % time_name
 
-            time_label = f'{time_name} Time (sec)'
+            axis_layout = self._x_axis_layout() if use_time_type else {'title': f'{time_name} Time (sec)'}
             for i in range(len(titles)):
-                figure['layout']['xaxis%d' % (i + 1)].update(title=time_label, showticklabels=True)
+                figure['layout']['xaxis%d' % (i + 1)].update(showticklabels=True, **axis_layout)
         else:
             corrected_time_name = self._time_source_to_display_name(corrected_time_source)
             raw_time_name = self._time_source_to_display_name(raw_time_source)
@@ -2259,31 +2405,67 @@ figure.on('plotly_hover', function(data) {{
                     nav_engine_speed_name = '|3D Speed Estimate| (Nav Engine)'
 
             if nav_engine_speed_mps is not None:
-                time = nav_engine_p1_time - float(self.t0)
-                text = ["P1: %.3f sec" % t for t in nav_engine_p1_time]
-                figure.add_trace(go.Scattergl(x=time, y=nav_engine_speed_mps, text=text, name=nav_engine_speed_name,
-                                              mode='lines', line={'color': 'black', 'dash': 'dash'}),
+                if use_time_type:
+                    nav_time, _ = self._resolve_x_axis(p1_time=nav_engine_p1_time)
+                    nav_kwargs = {'customdata': self._time_hover_customdata(p1_time=nav_engine_p1_time)}
+                else:
+                    nav_time, _ = self._resolve_x_axis(p1_time=nav_engine_p1_time, ignore_gps=True)
+                    nav_kwargs = {}
+                figure.add_trace(go.Scattergl(x=nav_time, y=nav_engine_speed_mps, name=nav_engine_speed_name,
+                                              mode='lines', line={'color': 'black', 'dash': 'dash'}, **nav_kwargs),
                                  1, 1)
 
+        # Hover text helper functions.
+        def _get_time_and_hover_data(abs_time_sec, time_source):
+            # If every message being plotted is natively in P1 time, use the current --time-type (relative/P1/GPS/
+            # UTC) axis and shared hover text; otherwise fall back to plotting in the message's own raw time source,
+            # which has no P1/GPS correspondence to convert from.
+            #
+            # Returns (time, time_sec, hover_kwargs): `time` is the X axis value to plot (may be a datetime64 array
+            # in UTC mode), while `time_sec` is always plain elapsed seconds, suitable for interval/rate calculations.
+            if use_time_type:
+                time, _ = self._resolve_x_axis(p1_time=abs_time_sec)
+                return time, abs_time_sec, {'customdata': self._time_hover_customdata(p1_time=abs_time_sec)}
+            else:
+                t0 = self._get_t0_for_time_source(time_source)
+                time = abs_time_sec - t0
+                time_name = self._time_source_to_display_name(time_source)
+                text = ["%s Time: %.3f sec" % (time_name, t) for t in abs_time_sec]
+                return time, abs_time_sec, {'text': text}
+
+        def _slice_hover_kwargs(hover_kwargs, s):
+            # Slice a {'text': ...} or {'customdata': ...} dict (see _get_time_and_hover_data()) down to a subset of
+            # points, e.g. for a trace plotted against time[1:] (an interval or rate derived via np.diff()).
+            if 'text' in hover_kwargs:
+                return {'text': hover_kwargs['text'][s]}
+            elif 'customdata' in hover_kwargs:
+                return {'customdata': hover_kwargs['customdata'][:, s]}
+            else:
+                return {}
+
         # Plot the data.
-        def _plot_trace(time, data, name, color, text, style=None):
+        def _plot_trace(time, time_sec, data, name, color, text=None, customdata=None, style=None):
             if style is None:
                 style = {}
             style.setdefault('mode', 'lines')
             style.setdefault('line', {}).setdefault('color', color)
+            kwargs = {'text': text} if text is not None else {'customdata': customdata}
 
             if type == 'tick':
-                figure.add_trace(go.Scattergl(x=time, y=data, text=text, name=name, legendgroup=name, **style),
+                figure.add_trace(go.Scattergl(x=time, y=data, name=name, legendgroup=name, **kwargs, **style),
                                  1, 1)
 
-                dt_sec = np.diff(time)
+                # Note: Rate is always computed from time_sec (plain seconds), not time -- time may be a datetime64
+                # axis (UTC mode), which does not support division.
+                dt_sec = np.diff(time_sec)
                 ticks_per_sec = np.diff(data) / dt_sec
-                figure.add_trace(go.Scattergl(x=time[1:], y=ticks_per_sec, text=text, name=name,
+                rate_kwargs = _slice_hover_kwargs(kwargs, slice(1, None))
+                figure.add_trace(go.Scattergl(x=time[1:], y=ticks_per_sec, name=name,
                                               legendgroup=name, showlegend=False,
-                                              **style),
+                                              **rate_kwargs, **style),
                                  2, 1)
             else:
-                figure.add_trace(go.Scattergl(x=time, y=data, text=text, name=name, legendgroup=name, **style),
+                figure.add_trace(go.Scattergl(x=time, y=data, name=name, legendgroup=name, **kwargs, **style),
                                  1, 1)
 
         def _plot_wheel_data(data, time_source, is_raw=False, show_gear=False, style=None):
@@ -2303,33 +2485,29 @@ figure.on('plotly_hover', function(data) {{
                 var_suffix = 'speed_mps'
                 name_suffix = ' (Uncorrected)' if is_raw else ' (Corrected)'
 
-            abs_time_sec = self._get_measurement_time(data, time_source)
-            idx = ~np.isnan(abs_time_sec)
-            abs_time_sec = abs_time_sec[idx]
+            measurement_time = self._get_measurement_time(data, time_source)
+            idx = ~np.isnan(measurement_time)
+            time, time_sec, hover_kwargs = _get_time_and_hover_data(measurement_time[idx], time_source)
 
-            t0 = self._get_t0_for_time_source(time_source)
-            time = abs_time_sec - t0
-            time_name = self._time_source_to_display_name(time_source)
-            text = ["%s Time: %.3f sec" % (time_name, t) for t in abs_time_sec]
-
-            _plot_trace(time=time, data=getattr(data, 'front_left_' + var_suffix)[idx], text=text,
-                        name='Front Left Wheel' + name_suffix, color='red', style=style)
-            _plot_trace(time=time, data=getattr(data, 'front_right_' + var_suffix)[idx], text=text,
-                        name='Front Right Wheel' + name_suffix, color='green', style=style)
-            _plot_trace(time=time, data=getattr(data, 'rear_left_' + var_suffix)[idx], text=text,
-                        name='Rear Left Wheel' + name_suffix, color='blue', style=style)
-            _plot_trace(time=time, data=getattr(data, 'rear_right_' + var_suffix)[idx], text=text,
-                        name='Rear Right Wheel' + name_suffix, color='purple', style=style)
+            _plot_trace(time=time, time_sec=time_sec, data=getattr(data, 'front_left_' + var_suffix)[idx],
+                        name='Front Left Wheel' + name_suffix, color='red', style=style, **hover_kwargs)
+            _plot_trace(time=time, time_sec=time_sec, data=getattr(data, 'front_right_' + var_suffix)[idx],
+                        name='Front Right Wheel' + name_suffix, color='green', style=style, **hover_kwargs)
+            _plot_trace(time=time, time_sec=time_sec, data=getattr(data, 'rear_left_' + var_suffix)[idx],
+                        name='Rear Left Wheel' + name_suffix, color='blue', style=style, **hover_kwargs)
+            _plot_trace(time=time, time_sec=time_sec, data=getattr(data, 'rear_right_' + var_suffix)[idx],
+                        name='Rear Right Wheel' + name_suffix, color='purple', style=style, **hover_kwargs)
 
             if show_gear:
-                figure.add_trace(go.Scattergl(x=time, y=data.gear[idx], text=text, name='Gear (Wheel Data)',
-                                              mode='markers', marker={'color': 'red'}),
+                figure.add_trace(go.Scattergl(x=time, y=data.gear[idx], name='Gear (Wheel Data)',
+                                              mode='markers', marker={'color': 'red'}, **hover_kwargs),
                                  gear_y_axis, 1)
 
             name = "Wheel Interval" + name_suffix
             color = 'blue' if is_raw else 'red'
-            figure.add_trace(go.Scattergl(x=time[1:], y=np.diff(time), name=name,
-                                          mode='markers', marker={'color': color}),
+            figure.add_trace(go.Scattergl(x=time[1:], y=np.diff(time_sec), name=name,
+                                          mode='markers', marker={'color': color},
+                                          **_slice_hover_kwargs(hover_kwargs, slice(1, None))),
                              interval_y_axis, 1)
 
         def _plot_vehicle_data(data, time_source, is_raw=False, show_gear=False, style=None):
@@ -2349,27 +2527,23 @@ figure.on('plotly_hover', function(data) {{
                 var_suffix = 'vehicle_speed_mps'
                 name_suffix = ' (Uncorrected)' if is_raw else ' (Corrected)'
 
-            abs_time_sec = self._get_measurement_time(data, time_source)
-            idx = ~np.isnan(abs_time_sec)
-            abs_time_sec = abs_time_sec[idx]
+            measurement_time = self._get_measurement_time(data, time_source)
+            idx = ~np.isnan(measurement_time)
+            time, time_sec, hover_kwargs = _get_time_and_hover_data(measurement_time[idx], time_source)
 
-            t0 = self._get_t0_for_time_source(time_source)
-            time = abs_time_sec - t0
-            time_name = self._time_source_to_display_name(time_source)
-            text = ["%s Time: %.3f sec" % (time_name, t) for t in abs_time_sec]
-
-            _plot_trace(time=time, data=getattr(data, var_suffix)[idx], text=text,
-                        name='Speed Measurement' + name_suffix, color='orange', style=style)
+            _plot_trace(time=time, time_sec=time_sec, data=getattr(data, var_suffix)[idx],
+                        name='Speed Measurement' + name_suffix, color='orange', style=style, **hover_kwargs)
 
             if show_gear:
-                figure.add_trace(go.Scattergl(x=time, y=data.gear[idx], text=text, name='Gear (Vehicle Data)',
-                                              mode='markers', marker={'color': 'orange'}),
+                figure.add_trace(go.Scattergl(x=time, y=data.gear[idx], name='Gear (Vehicle Data)',
+                                              mode='markers', marker={'color': 'orange'}, **hover_kwargs),
                                  gear_y_axis, 1)
 
             name = "Vehicle Interval" + name_suffix
             color = 'blue' if is_raw else 'red'
-            figure.add_trace(go.Scattergl(x=time[1:], y=np.diff(time), name=name,
-                                          mode='markers', marker={'color': color}),
+            figure.add_trace(go.Scattergl(x=time[1:], y=np.diff(time_sec), name=name,
+                                          mode='markers', marker={'color': color},
+                                          **_slice_hover_kwargs(hover_kwargs, slice(1, None))),
                              interval_y_axis, 1)
 
         # Plot the data. If we have both corrected (e.g., WheelSpeedOutput) and uncorrected (e.g., RawWheelSpeedOutput)
@@ -2378,7 +2552,30 @@ figure.on('plotly_hover', function(data) {{
         _plot_func(data, corrected_time_source, is_raw=False, show_gear=True)
         _plot_func(raw_data, raw_time_source, is_raw=True, show_gear=False)
 
-        self._add_figure(name=filename, figure=figure, title=figure_title)
+        # Custom hover: like _custom_tooltip_js(), but some points carry a precomputed `text` string (see
+        # _get_time_and_hover_data() above) instead of customdata, for measurements not in P1 time (no P1/GPS
+        # correspondence to build a full BuildTimeHoverText() from) -- use that verbatim instead when present.
+        _WHEEL_HOVER_JS = """\
+figure.on('plotly_hover', function(data) {
+  let point = data.points[0];
+  let time_text;
+  if (point.data.customdata) {
+    time_text = BuildTimeHoverText(point.x, GetCustomData(point, 0));
+  } else if (point.text) {
+    time_text = point.text;
+  } else {
+    time_text = BuildTimeHoverText(point.x);
+  }
+  let value_text = BuildAxisValueHoverText(point);
+  ShowCustomTooltip(point, GetCustomTooltipHTML(point.data.name, value_text, time_text));
+});
+figure.on('plotly_unhover', function(data) {
+  HideCustomTooltip();
+});
+""" + self._GPS_TICK_REFORMAT_JS
+
+        self._add_figure(name=filename, figure=figure, title=figure_title,
+                         inject_js=_WHEEL_HOVER_JS)
 
     def plot_imu(self):
         """!
@@ -2416,7 +2613,8 @@ figure.on('plotly_hover', function(data) {{
                              ('IMU' if message_cls is IMUOutput else 'raw IMU'))
             return
 
-        time = data.p1_time - float(self.t0)
+        time, axis_layout = self._resolve_x_axis(p1_time=data.p1_time)
+        customdata = self._time_hover_customdata(p1_time=data.p1_time)
 
         titles = ['Acceleration', 'Gyro']
         if message_cls == RawIMUOutput:
@@ -2429,36 +2627,39 @@ figure.on('plotly_hover', function(data) {{
 
         figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
         for i in range(3):
-            figure['layout']['xaxis%d' % (i + 1)].update(title=self.p1_time_label, showticklabels=True)
+            figure['layout']['xaxis%d' % (i + 1)].update(showticklabels=True, **axis_layout)
         figure['layout']['yaxis1'].update(title="Acceleration (m/s^2)")
         figure['layout']['yaxis2'].update(title="Rotation Rate (rad/s)")
         figure['layout']['yaxis3'].update(title="Interval (sec)")
 
-        figure.add_trace(go.Scattergl(x=time, y=data.accel_mps2[0, :], name='X', legendgroup='x',
-                                      mode='lines', line={'color': 'red'}),
+        figure.add_trace(go.Scattergl(x=time, y=data.accel_mps2[0, :], customdata=customdata, name='X',
+                                      legendgroup='x', mode='lines', line={'color': 'red'}),
                          1, 1)
-        figure.add_trace(go.Scattergl(x=time, y=data.accel_mps2[1, :], name='Y', legendgroup='y',
-                                      mode='lines', line={'color': 'green'}),
+        figure.add_trace(go.Scattergl(x=time, y=data.accel_mps2[1, :], customdata=customdata, name='Y',
+                                      legendgroup='y', mode='lines', line={'color': 'green'}),
                          1, 1)
-        figure.add_trace(go.Scattergl(x=time, y=data.accel_mps2[2, :], name='Z', legendgroup='z',
-                                      mode='lines', line={'color': 'blue'}),
+        figure.add_trace(go.Scattergl(x=time, y=data.accel_mps2[2, :], customdata=customdata, name='Z',
+                                      legendgroup='z', mode='lines', line={'color': 'blue'}),
                          1, 1)
 
-        figure.add_trace(go.Scattergl(x=time, y=data.gyro_rps[0, :], name='X', legendgroup='x',
-                                      showlegend=False, mode='lines', line={'color': 'red'}),
+        figure.add_trace(go.Scattergl(x=time, y=data.gyro_rps[0, :], customdata=customdata, name='X',
+                                      legendgroup='x', showlegend=False, mode='lines', line={'color': 'red'}),
                          2, 1)
-        figure.add_trace(go.Scattergl(x=time, y=data.gyro_rps[1, :], name='Y', legendgroup='y',
-                                      showlegend=False, mode='lines', line={'color': 'green'}),
+        figure.add_trace(go.Scattergl(x=time, y=data.gyro_rps[1, :], customdata=customdata, name='Y',
+                                      legendgroup='y', showlegend=False, mode='lines', line={'color': 'green'}),
                          2, 1)
-        figure.add_trace(go.Scattergl(x=time, y=data.gyro_rps[2, :], name='Z', legendgroup='z',
-                                      showlegend=False, mode='lines', line={'color': 'blue'}),
+        figure.add_trace(go.Scattergl(x=time, y=data.gyro_rps[2, :], customdata=customdata, name='Z',
+                                      legendgroup='z', showlegend=False, mode='lines', line={'color': 'blue'}),
                          2, 1)
 
-        figure.add_trace(go.Scattergl(x=time[1:], y=np.diff(time), name='Interval',
-                                      mode='markers', marker={'color': 'red'}),
+        # Note: Interval is always computed from data.p1_time (plain seconds), not time -- time may be a datetime64
+        # axis (UTC mode), which does not support subtraction the same way.
+        figure.add_trace(go.Scattergl(x=time[1:], y=np.diff(data.p1_time), customdata=customdata[:, 1:],
+                                      name='Interval', mode='markers', marker={'color': 'red'}),
                          3, 1)
 
-        self._add_figure(name=filename, figure=figure, title=figure_title)
+        self._add_figure(name=filename, figure=figure, title=figure_title,
+                         inject_js=self._custom_tooltip_js())
 
     def plot_gnss_attitude_measurements(self):
         """!
@@ -2480,6 +2681,28 @@ figure.on('plotly_hover', function(data) {{
         # there's no heading data in the log.
         result = self.reader.read(message_types=[PoseMessage], source_ids=self.default_source_id, **self.params)
         primary_pose_data = result[PoseMessage.MESSAGE_TYPE]
+        have_primary = (primary_pose_data is not None and
+                        np.any(primary_pose_data.solution_type != SolutionType.Invalid))
+
+        # Extract X axis data to be plotted below.
+        if have_primary:
+            primary_time, _ = self._resolve_x_axis(p1_time=primary_pose_data.p1_time,
+                                                    gps_time=primary_pose_data.gps_time)
+            primary_customdata = self._time_hover_customdata(p1_time=primary_pose_data.p1_time,
+                                                             gps_time=primary_pose_data.gps_time)
+
+        have_raw = len(raw_heading_data.p1_time) > 0
+        if have_raw:
+            raw_gps_time = getattr(raw_heading_data, 'gps_time', None)
+            raw_time, _ = self._resolve_x_axis(p1_time=raw_heading_data.p1_time, gps_time=raw_gps_time)
+            raw_customdata = self._time_hover_customdata(p1_time=raw_heading_data.p1_time, gps_time=raw_gps_time)
+
+        have_corrected = len(heading_data.p1_time) > 0
+        if have_corrected:
+            corrected_gps_time = getattr(heading_data, 'gps_time', None)
+            corrected_time, _ = self._resolve_x_axis(p1_time=heading_data.p1_time, gps_time=corrected_gps_time)
+            corrected_customdata = self._time_hover_customdata(p1_time=heading_data.p1_time,
+                                                               gps_time=corrected_gps_time)
 
         # Setup the figure.
         fig = make_subplots(
@@ -2495,7 +2718,7 @@ figure.on('plotly_hover', function(data) {{
         fig.update_layout(title='GNSS Attitude Measurements (Multi-Antenna Heading Sensor)',
                           showlegend=True, modebar_add=['v1hovermode'])
 
-        fig.update_xaxes(title_text=self.p1_time_label, showticklabels=True)
+        fig.update_xaxes(showticklabels=True, **self._x_axis_layout())
         fig.update_yaxes(title_text='Heading (deg)', rangemode='tozero', row=1, col=1)
         fig.update_yaxes(title_text='Distance (m)', row=2, col=1)
         fig.update_yaxes(
@@ -2511,9 +2734,7 @@ figure.on('plotly_hover', function(data) {{
 
         # Display the navigation engine's heading estimate, if available, for comparison with the heading sensor
         # measurement.
-        if primary_pose_data is not None and np.any(primary_pose_data.solution_type != SolutionType.Invalid):
-            p1_time = primary_pose_data.p1_time
-            time = p1_time - float(self.t0)
+        if have_primary:
             heading_deg = yaw_to_heading(primary_pose_data.ypr_deg[0, :])
             yaw_std_deg = primary_pose_data.ypr_std_deg[0, :]
 
@@ -2523,38 +2744,30 @@ figure.on('plotly_hover', function(data) {{
 
             fig.add_trace(
                 go.Scatter(
-                    x=time, y=heading_deg,
-                    customdata=np.stack((p1_time, yaw_std_deg), axis=-1),
+                    x=primary_time, y=heading_deg,
+                    customdata=np.vstack((primary_customdata, yaw_std_deg)),
                     name='Heading: Navigation Engine', legendgroup='nav',
-                    hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata[0]:.3f} sec)'
-                                  '<br><b>Heading</b>: %{y:.2f} deg (<b>Std</b>: %{customdata[1]:.2f} deg)',
                     mode='lines', line={'color': 'yellow'}
                 ),
                 row=1, col=1
             )
 
         # Raw (uncorrected) heading, derived from reported ENU vector.
-        if len(raw_heading_data.p1_time) > 0:
-            p1_time = raw_heading_data.p1_time
-            time = p1_time - float(self.t0)
+        if have_raw:
             yaw_deg = np.degrees(np.arctan2(raw_heading_data.relative_position_enu_m[1, :],
                                             raw_heading_data.relative_position_enu_m[0, :]))
             heading_deg = yaw_to_heading(yaw_deg)
             fig.add_trace(
                 go.Scatter(
-                    x=time, y=heading_deg, customdata=p1_time,
+                    x=raw_time, y=heading_deg, customdata=raw_customdata,
                     name='Heading: Raw Measurement', legendgroup='raw',
-                    hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
-                                  '<br><b>Heading</b>: %{y:.2f} deg',
                     mode='markers', marker={"color": "purple"}
                 ),
                 row=1, col=1
             )
 
         # Corrected heading plot
-        if len(heading_data.p1_time) > 0:
-            p1_time = heading_data.p1_time
-            time = p1_time - float(self.t0)
+        if have_corrected:
             heading_deg = yaw_to_heading(heading_data.ypr_deg[0, :])
             yaw_std_deg = heading_data.ypr_std_deg[0, :]
 
@@ -2563,11 +2776,9 @@ figure.on('plotly_hover', function(data) {{
 
             fig.add_trace(
                 go.Scatter(
-                    x=time, y=heading_deg,
-                    customdata=np.stack((p1_time, yaw_std_deg), axis=-1),
+                    x=corrected_time, y=heading_deg,
+                    customdata=np.vstack((corrected_customdata, yaw_std_deg)),
                     name='Heading: Corrected Measurement', legendgroup='corr',
-                    hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata[0]:.3f} sec)'
-                                  '<br><b>Heading</b>: %{y:.2f} deg (<b>Std</b>: %{customdata[1]:.2f} deg)',
                     mode='markers', marker={"color": "orange"}
                 ),
                 row=1, col=1
@@ -2578,51 +2789,41 @@ figure.on('plotly_hover', function(data) {{
         ########################################
 
         # Baseline vector from raw attitude measurement.
-        if len(raw_heading_data.p1_time) > 0:
-            p1_time = raw_heading_data.p1_time
-            time = p1_time - float(self.t0)
+        if have_raw:
             baseline_distance_m = np.linalg.norm(raw_heading_data.relative_position_enu_m, axis=0)
             fig.add_trace(
                 go.Scatter(
-                    x=time, y=baseline_distance_m, customdata=p1_time,
+                    x=raw_time, y=baseline_distance_m, customdata=raw_customdata,
                     name='Baseline Distance: Raw Measurement', legendgroup='raw',
-                    hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
-                                  '<br><b>Distance</b>: %{y:.2f} m',
                     mode='markers', marker={"color": "purple"}
                 ),
                 row=2, col=1
             )
 
         # Baseline distance from corrected measurement.
-        if len(heading_data.p1_time) > 0:
-            p1_time = heading_data.p1_time
-            time = p1_time - float(self.t0)
+        if have_corrected:
             baseline_distance_m = heading_data.baseline_distance_m
             baseline_std_m = heading_data.baseline_distance_std_m
 
             # See explanation above about the Plotly bug when the value is NAN.
-            baseline_std_m[np.isnan(yaw_std_deg)] = -1.0
+            baseline_std_m[np.isnan(baseline_std_m)] = -1.0
 
             fig.add_trace(
                 go.Scatter(
-                    x=time, y=baseline_distance_m,
-                    customdata=np.stack((p1_time, baseline_std_m), axis=-1),
+                    x=corrected_time, y=baseline_distance_m,
+                    customdata=np.vstack((corrected_customdata, baseline_std_m)),
                     name='Baseline Distance: Corrected Measurement', legendgroup='corr',
-                    hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata[0]:.3f} sec)'
-                                  '<br><b>Distance</b>: %{y:.2f} m (<b>Std</b>: %{customdata[1]:.2f} m)',
                     mode='markers', marker={"color": "orange"}
                 ),
                 row=2, col=1
             )
 
         # ENU vector from raw attitude measurement.
-        if len(raw_heading_data.p1_time) > 0:
+        if have_raw:
             fig.add_trace(
                 go.Scatter(
-                    x=time, y=raw_heading_data.relative_position_enu_m[0], customdata=p1_time,
+                    x=raw_time, y=raw_heading_data.relative_position_enu_m[0], customdata=raw_customdata,
                     name='Primary->Secondary (East)',
-                    hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
-                                  '<br><b>East</b>: %{y:.2f} m',
                     mode='markers', marker={"color": "red"}
                 ),
                 row=2, col=1
@@ -2630,10 +2831,8 @@ figure.on('plotly_hover', function(data) {{
 
             fig.add_trace(
                 go.Scatter(
-                    x=time, y=raw_heading_data.relative_position_enu_m[1], customdata=p1_time,
+                    x=raw_time, y=raw_heading_data.relative_position_enu_m[1], customdata=raw_customdata,
                     name='Primary->Secondary (North)',
-                    hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
-                                  '<br><b>North</b>: %{y:.2f} m',
                     mode='markers', marker={"color": "green"}
                 ),
                 row=2, col=1
@@ -2641,10 +2840,8 @@ figure.on('plotly_hover', function(data) {{
 
             fig.add_trace(
                 go.Scatter(
-                    x=time, y=raw_heading_data.relative_position_enu_m[2], customdata=p1_time,
+                    x=raw_time, y=raw_heading_data.relative_position_enu_m[2], customdata=raw_customdata,
                     name='Primary->Secondary (Up)',
-                    hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
-                                  '<br><b>Up</b>: %{y:.2f} m',
                     mode='markers', marker={"color": "blue"}
                 ),
                 row=2, col=1
@@ -2655,52 +2852,68 @@ figure.on('plotly_hover', function(data) {{
         ########################################
 
         # Display the navigation engine's solution type.
-        if primary_pose_data is not None:
-            p1_time = primary_pose_data.p1_time
-            time = p1_time - float(self.t0)
+        if have_primary:
             fig.add_trace(
                 go.Scatter(
-                    x=time, y=primary_pose_data.solution_type, customdata=p1_time,
+                    x=primary_time, y=primary_pose_data.solution_type, customdata=primary_customdata,
                     name='Solution Type: Navigation Engine', legendgroup='nav',
-                    hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
-                                  '<br><b>Type</b>: %{y}',
                     mode='markers', marker={'color': 'yellow'},
                 ),
                 row=3, col=1
             )
 
         # Display the raw measurement's solution type.
-        if len(raw_heading_data.p1_time) > 0:
-            p1_time = raw_heading_data.p1_time
-            time = p1_time - float(self.t0)
+        if have_raw:
             fig.add_trace(
                 go.Scatter(
-                    x=time, y=raw_heading_data.solution_type, customdata=p1_time,
+                    x=raw_time, y=raw_heading_data.solution_type, customdata=raw_customdata,
                     name='Solution Type: Raw Measurement', legendgroup='raw',
-                    hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
-                                  '<br><b>Type</b>: %{y}',
                     mode='markers', marker={'color': 'purple'},
                 ),
                 row=3, col=1
             )
 
         # Display the corrected measurement's solution type.
-        if len(heading_data.p1_time) > 0:
-            p1_time = heading_data.p1_time
-            time = p1_time - float(self.t0)
+        if have_corrected:
             fig.add_trace(
                 go.Scatter(
-                    x=time, y=heading_data.solution_type, customdata=p1_time,
+                    x=corrected_time, y=heading_data.solution_type, customdata=corrected_customdata,
                     name='Solution Type: Corrected Measurement', legendgroup='corr',
-                    hovertemplate='<b>Time</b>: %{x:.3f} sec (%{customdata:.3f} sec)'
-                                  '<br><b>Type</b>: %{y}',
                     mode='markers', marker={'color': 'orange'},
                 ),
                 row=3, col=1
             )
 
+        # Custom hover function: like _TIME_HOVER_JS, but some traces carry a second customdata row with a standard
+        # deviation value (in degrees for heading traces, meters for baseline distance traces; -1 means not available -
+        # see the Plotly NaN customdata bug noted above).
+        _ATTITUDE_HOVER_JS = """\
+figure.on('plotly_hover', function(data) {
+  let point = data.points[0];
+  if (!point.data.customdata) {
+    return;
+  }
+  let new_text = BuildAxisValueHoverText(point) + '<br>' +
+                 BuildTimeHoverText(point.x, GetCustomData(point, 0));
+  let customdata = point.data.customdata.hasOwnProperty("_inputArray") ?
+                   point.data.customdata._inputArray : point.data.customdata;
+  if (customdata.length > 1) {
+    let std = GetCustomData(point, 1);
+    if (std >= 0) {
+      let units = point.data.name.startsWith('Heading') ? 'deg' : 'm';
+      new_text += `<br>Std: ${std.toFixed(2)} ${units}`;
+    }
+  }
+  ShowCustomTooltip(point, GetCustomTooltipHTML(point.data.name, undefined, new_text));
+});
+figure.on('plotly_unhover', function(data) {
+  HideCustomTooltip();
+});
+        """ + self._GPS_TICK_REFORMAT_JS
+
         self._add_figure(name='gnss_attitude_measurement', figure=fig,
-                         title='Measurements: GNSS Attitude (Multi-Antenna Heading Sensor)')
+                         title='Measurements: GNSS Attitude (Multi-Antenna Heading Sensor)',
+                         inject_js=_ATTITUDE_HOVER_JS)
 
     def plot_system_status_profiling(self):
         """!
@@ -2717,29 +2930,31 @@ figure.on('plotly_hover', function(data) {{
             self.logger.info('No system status data available. Skipping plot.')
             return
 
+        time, axis_layout = self._resolve_x_axis(p1_time=data.p1_time)
+        customdata = self._time_hover_customdata(p1_time=data.p1_time)
+
         # Setup the figure.
         figure = make_subplots(rows=2, cols=1, print_grid=False, shared_xaxes=True,
                                subplot_titles=['GNSS Temperature', 'Positioning Engine CPU Temperature'])
 
         figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
         for i in range(2):
-            figure['layout']['xaxis%d' % (i + 1)].update(title=self.p1_time_label, showticklabels=True)
+            figure['layout']['xaxis%d' % (i + 1)].update(showticklabels=True, **axis_layout)
         figure['layout']['yaxis1'].update(title="Temp (deg C)")
+        figure['layout']['yaxis2'].update(title="Temp (deg C)")
 
         # Plot the data.
-        time = data.p1_time - float(self.t0)
-        figure.add_trace(go.Scattergl(x=time, y=data.gnss_temperature_degc, customdata=data.p1_time,
+        figure.add_trace(go.Scattergl(x=time, y=data.gnss_temperature_degc, customdata=customdata,
                                       name='GNSS Temperature',
-                                      hovertemplate='Time: %{x:.3f} sec (%{customdata:.3f} sec)',
                                       mode='markers', line={'color': 'red'}),
                          1, 1)
-        figure.add_trace(go.Scattergl(x=time, y=data.pe_cpu_temperature_degc, customdata=data.p1_time,
+        figure.add_trace(go.Scattergl(x=time, y=data.pe_cpu_temperature_degc, customdata=customdata,
                                       name='PE CPU Temperature',
-                                      hovertemplate='Time: %{x:.3f} sec (%{customdata:.3f} sec)',
                                       mode='markers', line={'color': 'orange'}),
                          2, 1)
 
-        self._add_figure(name="profile_system_status", figure=figure, title="Profiling: System Status")
+        self._add_figure(name="profile_system_status", figure=figure, title="Profiling: System Status",
+                         inject_js=self._custom_tooltip_js())
 
     def plot_events(self):
         """!
@@ -3098,7 +3313,7 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
         # in case, we'll approximate the GPS time _at_ t0 if needed.
         idx = find_first(~np.isnan(pose_data.gps_time))
         if idx >= 0:
-            first_p1_time = self.t0 if self.time_axis == 'relative' else pose_data.p1_time[0]
+            first_p1_time = self.reader.t0
             dt_p1_sec = pose_data.p1_time[idx] - float(first_p1_time)
             t0_gps = Timestamp(pose_data.gps_time[idx]) - dt_p1_sec
             # If the first pose is pretty close to t0, we'll assume the approximation is reasonably accurate and not
@@ -3238,7 +3453,8 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
 
         self.plots[name] = {'title': title, 'path': path}
 
-    def _add_figure(self, name, figure=None, title=None, config=None, inject_js: str = None):
+    def _add_figure(self, name, figure=None, title=None, config=None, inject_js: str = None,
+                    time_axis_type: Optional[str] = None, custom_hover: bool = True):
         """!
         @brief Generate an HTML file for the specified figure.
 
@@ -3247,9 +3463,23 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
         @param title An optional human-friendly display title to be added to the generated @c index.html file.
         @param config An optional dictionary containing Plotly.js figure config options to be included in the generated
                JavaScript.
+        @param inject_js Custom Javascript to be injected into the generated HTML file (see @ref
+               __write_html_and_inject_js()).
+        @param time_axis_type The time domain actually plotted on this figure's X axis (`relative`, `p1`, `gps`, or
+               `utc`; see @ref BuildTimeHoverText() in `plotly_data_support.js`). Defaults to `self.time_type`; only
+               needs to be overridden by plots (e.g., @ref plot_time_scale()) whose X axis does not follow it.
+        @param custom_hover If `True` (the default), set `hoverinfo='none'` on all of this figure's traces so
+               Plotly's native hover label never draws, for use with a custom-tooltip `inject_js` (see @ref
+               _custom_tooltip_js()) instead of per-trace `hoverinfo='none'` at every `go.Scatter()`/
+               `go.Scattergl()` call site. Set to `False` for figures with no custom-tooltip `inject_js` at all
+               (e.g. @ref plot_map(), whose Mapbox traces use `hovertemplate` instead) or that still rely on the
+               older `ChangeHoverText()`-based native hover.
         """
         if title is None:
             title = name
+
+        if time_axis_type is None:
+            time_axis_type = self.time_type
 
         if name in self.plots:
             raise ValueError('Plot "%s" already exists.' % name)
@@ -3258,6 +3488,8 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
 
         if figure is not None:
             figure.update_traces(hoverlabel_namelength=-1)
+            if custom_hover:
+                figure.update_traces(hoverinfo='none')
 
             path = os.path.join(self.output_dir, self.prefix + name + '.html')
             self.logger.info('Creating %s...' % path)
@@ -3265,7 +3497,7 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
             os.makedirs(os.path.dirname(path), exist_ok=True)
 
             if inject_js is not None:
-                plotly.io.write_html = functools.partial(self.__write_html_and_inject_js, inject_js)
+                plotly.io.write_html = functools.partial(self.__write_html_and_inject_js, inject_js, time_axis_type)
 
             plotly.offline.plot(
                 figure,
@@ -3282,15 +3514,26 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
         self.plots[name] = {'title': title, 'path': path if figure is not None else None}
 
     # Support for injecting custom javascript into the generated plotly HTML file.
-    def __write_html_and_inject_js(self, inject_js, *args, **kwargs):
+    def __write_html_and_inject_js(self, inject_js, time_axis_type, *args, **kwargs):
         post_script = kwargs.get("post_script", None)
         if post_script is None:
             post_script = ""
 
-        # Create a global variable with the log's t0 timestamp.
+        # Create global variables with the log's t0 timestamp, the (leap-second accurate) GPS/POSIX offset, the
+        # system time t0 (see BuildSystemTimeHoverText()), and the time domain plotted on this figure's X axis (see
+        # BuildTimeHoverText()). Note: self.reader.t0 and system_t0 may each independently be unavailable (e.g. a
+        # system-time-only profiling log has no P1 time at all), so both need a 'null' fallback -- plots that
+        # don't use one of these domains at all still go through this same code path whenever inject_js is set.
+        gps_posix_offset_sec = self.time_provider.get_gps_posix_offset_sec()
+        p1_t0_sec = None if self.reader.t0 is None else float(self.reader.t0)
+        system_t0 = self.reader.get_system_t0() if self.time_type == 'relative' else 0.0
+        system_t0_sec = None if system_t0 is None else float(system_t0)
         post_script += f"""\
-var p1_t0_sec = {float(self.reader.t0)};
-var p1_time_axis_rel = {'true' if self.time_axis == 'relative' else 'false'};
+var p1_t0_sec = {p1_t0_sec if p1_t0_sec is not None else 'null'};
+var p1_time_axis_rel = {'true' if self.time_type == 'relative' else 'false'};
+var gps_posix_offset_sec = {gps_posix_offset_sec if gps_posix_offset_sec is not None else 'null'};
+var system_t0_sec = {system_t0_sec if system_t0_sec is not None else 'null'};
+var time_axis_type = '{time_axis_type}';
 """
 
         # Inject common plotly data support functions (GetTimeText(), etc.).
@@ -3331,13 +3574,185 @@ var p1_time_axis_rel = {'true' if self.time_axis == 'relative' else 'false'};
 
     def _get_t0_for_time_source(self, time_source: SystemTimeSource) -> float:
         if time_source == SystemTimeSource.P1_TIME:
-            return float(self.t0)
+            if self.time_type == 'relative':
+                return float(self.reader.t0)
+            else:
+                return 0.0
         elif time_source == SystemTimeSource.GPS_TIME:
             return 0.0
         elif time_source == SystemTimeSource.SENDER_SYSTEM_TIME:
             return 0.0
         elif time_source == SystemTimeSource.TIMESTAMPED_ON_RECEPTION:
-            return float(self.system_t0)
+            if self.time_type == 'relative':
+                return float(self.reader.get_system_t0())
+            else:
+                return 0.0
+
+    def _x_axis_layout(self, time_source: str = 'p1', ignore_gps: bool = False) -> dict:
+        """!
+        @brief Get the `go.layout.XAxis` kwargs (including `title`) for the current @c self.time_type.
+
+        @param time_source The native time domain of the data being plotted: `p1` (the default -- P1/relative/GPS/
+               UTC, per @c self.time_type) or `system` (device system time). There is no system-time-to-P1/GPS
+               mapping yet, so `system` always resolves to plain absolute/relative system time regardless of
+               @c self.time_type; once such a mapping exists, it can resolve to p1/gps/utc too, like `p1` below.
+        @param ignore_gps If `True`, return relative or absolute P1 time. Do not return GPS or UTC time, regardless of
+               @ref self.time_type.
+
+        @return A dict of `go.layout.XAxis` kwargs, e.g. `{'title': ..., 'type': 'date'}`.
+        """
+        if time_source == 'system':
+            if self.time_type == 'relative':
+                return {'title': 'Relative Time (sec)'}
+            else:
+                return {'title': 'System Time (sec)'}
+
+        if self.time_type == 'relative':
+            return {'title': 'Relative Time (sec)'}
+        elif self.time_type == 'p1' or ignore_gps:
+            return {'title': 'P1 Time (sec)'}
+        elif self.time_type == 'gps':
+            # GPS seconds are large enough that Plotly may otherwise render ticks in scientific/SI-prefix notation,
+            # which _ReformatGpsAxisTicks() (see plotly_data_support.js) can't parse back into week:tow. We let
+            # Plotly auto-generate normal (zoom-aware) numeric ticks here, and rewrite the rendered tick text into
+            # week:tow client-side, rather than computing fixed tick positions/labels ourselves -- those wouldn't
+            # regenerate on zoom/pan and could leave a zoomed-in view with no visible ticks at all.
+            return {'title': 'GPS Time (week:tow)', 'exponentformat': 'none'}
+        else:
+            # Plotly serializes a datetime64 array as literal date strings, so (unlike plain milliseconds-since-
+            # epoch numbers) they display as given, without being reinterpreted in the browser's local timezone.
+            return {'title': 'UTC Time', 'type': 'date'}
+
+    def _resolve_x_axis(self, p1_time: Optional[np.ndarray] = None, gps_time: Optional[np.ndarray] = None,
+                        system_time: Optional[np.ndarray] = None, time_source: str = 'p1',
+                        ignore_gps: bool = False) -> \
+            Tuple[np.ndarray, dict]:
+        """!
+        @brief Resolve the X axis values and layout to use for a time series, per @c self.time_type.
+
+        @param p1_time The P1 time for each point. Required (and only used) when `time_source` is `p1`.
+        @param gps_time The GPS time for each point, if already known (e.g., from a @ref PoseMessage). If `None`, it
+               will be computed from `p1_time` via @c self.time_provider when needed. Only used when `time_source`
+               is `p1`.
+        @param system_time The device system time for each point. Required (and only used) when `time_source` is
+               `system`.
+        @param time_source The native time domain of `p1_time`/`system_time`: `p1` (the default) or `system` (see
+               @ref _x_axis_layout()).
+        @param ignore_gps If `True`, return relative or absolute P1 time. Do not return GPS or UTC time, regardless of
+               @ref self.time_type.
+
+        @return A tuple `(x, axis_layout)`:
+                - `x`: The X axis values to plot.
+                - `axis_layout`: `go.layout.XAxis` kwargs needed to display `x` (title, and e.g. `type='date'`).
+        """
+        axis_layout = self._x_axis_layout(time_source=time_source, ignore_gps=ignore_gps)
+
+        if time_source == 'system':
+            if self.time_type == 'relative':
+                return system_time - float(self.reader.get_system_t0()), axis_layout
+            else:
+                return system_time, axis_layout
+
+        if self.time_type == 'relative':
+            return p1_time - float(self.reader.t0), axis_layout
+        elif self.time_type == 'p1' or ignore_gps:
+            return p1_time, axis_layout
+
+        if gps_time is None:
+            gps_time = self.time_provider.p1_to_gps(p1_time)
+
+        if self.time_type == 'gps':
+            return gps_time, axis_layout
+        else:
+            utc = self.time_provider.gps_sec_to_datetime64_array(gps_time)
+            return utc, axis_layout
+
+    def _time_hover_customdata(self, p1_time: np.ndarray, gps_time: Optional[np.ndarray] = None,
+                               x_domain: Optional[str] = None) -> np.ndarray:
+        """!
+        @brief Build the customdata array needed by `BuildTimeHoverText()` for a trace (see `plotly_data_support.js`).
+
+        Only whichever of P1/GPS time is NOT already reflected by the X axis needs to be included here -- the other
+        is recoverable in Javascript from the X value via a constant offset (P1 <-> relative, or GPS <-> UTC).
+
+        @param p1_time The P1 time for each point.
+        @param gps_time The GPS time for each point, or `None` if not already known. Computed from `p1_time` via
+               @c self.time_provider if `x_domain` is `'p1'` and this is `None`.
+        @param x_domain The time domain actually plotted on the X axis: `p1` (covers both relative and absolute P1
+               time) or `gps` (covers both GPS and UTC). Defaults to @ref _default_x_domain; only needs to be passed
+               explicitly by plots (e.g., @ref plot_time_scale()) whose X axis doesn't follow @c self.time_type.
+
+        @return A customdata array suitable for `go.Scattergl(..., customdata=...)`.
+        """
+        if x_domain is None:
+            x_domain = self._default_x_domain
+
+        if x_domain == 'p1':
+            if gps_time is None:
+                gps_time = self.time_provider.p1_to_gps(p1_time)
+            return np.vstack((gps_time,))
+        else:
+            return np.vstack((p1_time,))
+
+    def _custom_tooltip_js(self, time_source: str = 'p1', precision: Optional[int] = 3,
+                           value_label: Optional[str] = None, show_name: bool = True, show_value: bool = True) -> str:
+        """!
+        @brief Build hover JS that draws its own tooltip instead of relying on Plotly's native hover label (see
+               `ShowCustomTooltip()`/`HideCustomTooltip()` in `plotly_data_support.js`).
+
+        Unlike @ref _TIME_HOVER_JS/@ref _SYSTEM_TIME_HOVER_JS (which mutate `fullData.text` for Plotly's own hover
+        label to pick up on its next render), this draws synchronously inside the `'plotly_hover'` handler itself,
+        avoiding the race that can otherwise leave the native label blank or stale on plots with many traces/points
+        (see @ref plot_gnss_cn0()). Only supports the single-nearest-point case (the default `'closest'` hovermode),
+        not `'x'`/`'x unified'`.
+
+        @param time_source The native time domain of the data being plotted, as in @ref _x_axis_layout(): `p1` (the
+               default -- P1/relative/GPS/UTC, per @c self.time_type; requires the trace's customdata to be set per
+               @ref _time_hover_customdata()) or `system` (device system time; no customdata needed).
+        @param precision Number of digits after the decimal point to show for the Y value (see
+               `BuildAxisValueHoverText()`).
+        @param value_label Override label to show instead of the Y axis title (see `BuildAxisValueHoverText()`).
+        @param show_name Show trace names in the tooltip.
+        @param show_value Show trace values in the tooltip.
+
+        @return The JS to pass as `inject_js` to @ref _add_figure().
+        """
+        if time_source == 'p1':
+            build_time_text_js = (
+                '  let time_text = point.data.customdata ? '
+                'BuildTimeHoverText(point.x, GetCustomData(point, 0)) : BuildTimeHoverText(point.x);')
+            tick_reformat_js = self._GPS_TICK_REFORMAT_JS
+        elif time_source == 'system':
+            build_time_text_js = '  let time_text = BuildSystemTimeHoverText(point.x);'
+            tick_reformat_js = ''
+        else:
+            raise ValueError(f"Unsupported time source '{time_source}'.")
+
+        # Room to grow: additional BuildAxisValueHoverText() options can be added here as more callers need them.
+        value_options = {}
+        if precision is not None:
+            value_options['precision'] = precision
+        if value_label is not None:
+            value_options['label'] = value_label
+
+        name_arg = 'point.data.name' if show_name else 'undefined'
+        if show_value:
+            value_text_js = f'  let value_text = BuildAxisValueHoverText(point, {json.dumps(value_options)});'
+            value_arg = 'value_text'
+        else:
+            value_text_js = ''
+            value_arg = 'undefined'
+
+        return ("""\
+figure.on('plotly_hover', function(data) {
+  let point = data.points[0];
+""" + build_time_text_js + "\n" + value_text_js + """
+  ShowCustomTooltip(point, GetCustomTooltipHTML(""" + name_arg + ", " + value_arg + """, time_text));
+});
+figure.on('plotly_unhover', function(data) {
+  HideCustomTooltip();
+});
+""" + tick_reformat_js)
 
     def _auto_detect_message_type(self, types: List[MessageType]):
         types = [t.MESSAGE_TYPE if inspect.isclass(t) else t for t in types]
@@ -3361,9 +3776,8 @@ var p1_time_axis_rel = {'true' if self.time_axis == 'relative' else 'false'};
         if gps_time_sec is None or np.isnan(gps_time_sec):
             return "GPS: N/A<br>UTC: N/A"
         else:
-            SECS_PER_WEEK = 7 * 24 * 3600.0
-            week = int(gps_time_sec / SECS_PER_WEEK)
-            tow_sec = gps_time_sec - week * SECS_PER_WEEK
+            week = int(gps_time_sec / SECONDS_PER_WEEK)
+            tow_sec = gps_time_sec - week * SECONDS_PER_WEEK
             utc_time = gpstime.fromgps(gps_time_sec)
             approx_str = ' (approximated)' if is_approx else ''
             return "GPS: %d:%.3f (%.3f sec)%s<br>UTC: %s%s" %\
@@ -3427,10 +3841,14 @@ Load and display information stored in a FusionEngine binary file.
         '-m', '--measurements', action=ExtendedBooleanAction,
         help="Plot incoming measurement data (slow). Ignored if --plot is specified.")
     plot_group.add_argument(
-        '--time-axis', choices=('absolute', 'abs', 'relative', 'rel'), default='absolute',
+        '--time-type', '--time-axis', choices=('utc', 'gps', 'p1', 'relative', 'rel', 'absolute', 'abs'),
+        default='utc',
         help="Specify the way in which time will be plotted:"
-             "\n- absolute, abs - Absolute P1 or system timestamps"
-             "\n- relative, rel - Elapsed time since the start of the log")
+             "\n- absolute, abs - Alias for 'utc'"
+             "\n- gps - GPS time (week and time of week), if available (falls back to P1 time otherwise)"
+             "\n- p1 - Absolute P1 (or system) time"
+             "\n- relative, rel - Elapsed time since the start of the log"
+             "\n- utc - UTC date/time, if available (falls back to P1 time otherwise)")
     plot_group.add_argument(
         '--truncate', '--trunc', action=ExtendedBooleanAction, default=True,
         help="When processing a very long log (>%.1f hours), reduce or skip some plots that may be very slow to "
@@ -3521,6 +3939,12 @@ Load and display information stored in a FusionEngine binary file.
 
     HighlightFormatter.install(color=True, standoff_level=logging.WARNING)
 
+    # Convenience short-hands.
+    if options.time_type in ('abs', 'absolute'):
+        options.time_type = 'utc'
+    elif options.time_type == 'rel':
+        options.time_type = 'relative'
+
     # Parse the time range.
     if options.time is not None:
         time_range = TimeRange.parse(options.time, absolute=options.absolute_time)
@@ -3556,7 +3980,7 @@ Load and display information stored in a FusionEngine binary file.
     # Read pose data from the file.
     analyzer = Analyzer(file=input_path, output_dir=output_dir, ignore_index=options.ignore_index,
                         prefix=options.prefix + '.' if options.prefix is not None else '',
-                        time_range=time_range, time_axis=options.time_axis,
+                        time_range=time_range, time_type=options.time_type,
                         truncate_long_logs=options.truncate and options.plot is None, source_id=source_id)
 
     # Resolve reference data, if specified. This must happen after the analyzer (and its DataLoader) for the primary

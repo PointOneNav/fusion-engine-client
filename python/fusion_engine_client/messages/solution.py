@@ -1121,13 +1121,13 @@ class CalibrationStatus(MessagePayload):
         self._STRUCT.pack_into(
             buffer, offset,
             self.calibration_stage,
-            self.ypr_deg[0], self.ypr_deg[2], self.ypr_deg[3],
-            self.ypr_std_dev_deg[0], self.ypr_std_dev_deg[2], self.ypr_std_dev_deg[3],
+            self.ypr_deg[0], self.ypr_deg[1], self.ypr_deg[2],
+            self.ypr_std_dev_deg[0], self.ypr_std_dev_deg[1], self.ypr_std_dev_deg[2],
             self.travel_distance_m,
             self.state_verified,
-            self.gyro_bias_percent_complete * 2.0,
-            self.accel_bias_percent_complete * 2.0,
-            self.mounting_angle_percent_complete * 2.0,
+            percent_to_fixed_point(self.gyro_bias_percent_complete, scale=2.0),
+            percent_to_fixed_point(self.accel_bias_percent_complete, scale=2.0),
+            percent_to_fixed_point(self.mounting_angle_percent_complete, scale=2.0),
             self.min_travel_distance_m,
             self.mounting_angle_max_std_dev_deg[0], self.mounting_angle_max_std_dev_deg[1],
             self.mounting_angle_max_std_dev_deg[2])
@@ -1148,9 +1148,9 @@ class CalibrationStatus(MessagePayload):
          self.ypr_std_dev_deg[0], self.ypr_std_dev_deg[1], self.ypr_std_dev_deg[2],
          self.travel_distance_m,
          self.state_verified,
-         self.gyro_bias_percent_complete,
-         self.accel_bias_percent_complete,
-         self.mounting_angle_percent_complete,
+         gyro_bias_percent_complete_int,
+         accel_bias_percent_complete_int,
+         mounting_angle_percent_complete_int,
          self.min_travel_distance_m,
          self.mounting_angle_max_std_dev_deg[0], self.mounting_angle_max_std_dev_deg[1],
          self.mounting_angle_max_std_dev_deg[2]) = \
@@ -1159,9 +1159,9 @@ class CalibrationStatus(MessagePayload):
 
         self.calibration_stage = CalibrationStage(self.calibration_stage)
 
-        self.gyro_bias_percent_complete /= 2.0
-        self.accel_bias_percent_complete /= 2.0
-        self.mounting_angle_percent_complete /= 2.0
+        self.gyro_bias_percent_complete = gyro_bias_percent_complete_int / 2.0
+        self.accel_bias_percent_complete = accel_bias_percent_complete_int / 2.0
+        self.mounting_angle_percent_complete = mounting_angle_percent_complete_int / 2.0
 
         return offset - initial_offset
 

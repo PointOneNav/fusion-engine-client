@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from gpstime import gpstime
+import numpy as np
 import pytest
 
 from fusion_engine_client.messages import PoseMessage, Timestamp
@@ -16,6 +17,21 @@ def _make_pose(p1_sec, gps_sec):
     msg.p1_time = Timestamp(p1_sec)
     msg.gps_time = Timestamp(gps_sec)
     return msg
+
+
+class _FakeReader:
+    """!
+    @brief Minimal stand-in for a @ref DataLoader, returning pre-baked pose arrays from read().
+    """
+    def __init__(self, p1_time, gps_time):
+        self.p1_time = np.asarray(p1_time, dtype=float)
+        self.gps_time = np.asarray(gps_time, dtype=float)
+        self.last_read_kwargs = None
+
+    def read(self, **kwargs):
+        self.last_read_kwargs = kwargs
+        pose_data = type('PoseData', (), {'p1_time': self.p1_time, 'gps_time': self.gps_time})()
+        return {PoseMessage.MESSAGE_TYPE: pose_data}
 
 
 class TestHandleMessage:
@@ -234,3 +250,295 @@ class TestGPSToP1:
         gps = tp.p1_to_gps(original)
         recovered = tp.gps_to_p1(gps)
         assert float(recovered) == pytest.approx(float(original), abs=1e-6)
+
+
+class TestSetReferenceData:
+    def test_loads_table_in_chronological_order(self):
+        reader = _FakeReader(p1_time=[10.0, 20.0], gps_time=[GPS_DATE_SEC, GPS_DATE_SEC + 10.0])
+        tp = TimeProvider()
+        tp.set_reference_data(reader)
+        assert list(tp._reference_p1_time) == [10.0, 20.0]
+        assert list(tp._reference_gps_time) == pytest.approx([GPS_DATE_SEC, GPS_DATE_SEC + 10.0])
+
+    def test_reset_discards_data_before_it(self):
+        # P1 time jumps backward at index 2 (device reboot) -- only data from the most recent boot session
+        # (starting at the new, smaller P1 time) should be kept, not reordered in with the earlier session.
+        reader = _FakeReader(p1_time=[10.0, 20.0, 5.0, 15.0],
+                             gps_time=[GPS_DATE_SEC, GPS_DATE_SEC + 10.0,
+                                       GPS_DATE_SEC + 1000.0, GPS_DATE_SEC + 1010.0])
+        tp = TimeProvider()
+        tp.set_reference_data(reader)
+        assert list(tp._reference_p1_time) == [5.0, 15.0]
+        assert list(tp._reference_gps_time) == pytest.approx([GPS_DATE_SEC + 1000.0, GPS_DATE_SEC + 1010.0])
+
+    def test_multiple_resets_keeps_only_last_segment(self):
+        reader = _FakeReader(p1_time=[10.0, 5.0, 20.0, 3.0, 8.0],
+                             gps_time=[GPS_DATE_SEC, GPS_DATE_SEC + 100.0, GPS_DATE_SEC + 110.0,
+                                       GPS_DATE_SEC + 500.0, GPS_DATE_SEC + 505.0])
+        tp = TimeProvider()
+        tp.set_reference_data(reader)
+        assert list(tp._reference_p1_time) == [3.0, 8.0]
+        assert list(tp._reference_gps_time) == pytest.approx([GPS_DATE_SEC + 500.0, GPS_DATE_SEC + 505.0])
+
+    def test_reset_with_mutually_exclusive_ranges_combines_segments(self):
+        # Session 1 (recorded late, P1 in [50, 60]) is followed by a reset, then session 2 (recorded from near the
+        # start, P1 in [5, 10]). The ranges don't overlap, so both sessions can be safely combined and sorted.
+        reader = _FakeReader(p1_time=[50.0, 60.0, 5.0, 10.0],
+                             gps_time=[GPS_DATE_SEC + 50.0, GPS_DATE_SEC + 60.0,
+                                       GPS_DATE_SEC + 500.0, GPS_DATE_SEC + 505.0])
+        tp = TimeProvider()
+        tp.set_reference_data(reader)
+        assert list(tp._reference_p1_time) == [5.0, 10.0, 50.0, 60.0]
+        assert list(tp._reference_gps_time) == pytest.approx(
+            [GPS_DATE_SEC + 500.0, GPS_DATE_SEC + 505.0, GPS_DATE_SEC + 50.0, GPS_DATE_SEC + 60.0])
+        # Interpolating within either session's own range should use that session's local relationship.
+        result = tp.p1_to_gps(np.array([7.5, 55.0]))
+        assert result == pytest.approx([GPS_DATE_SEC + 502.5, GPS_DATE_SEC + 55.0])
+
+    def test_drops_nan_entries(self):
+        reader = _FakeReader(p1_time=[10.0, np.nan, 20.0], gps_time=[GPS_DATE_SEC, GPS_DATE_SEC + 5.0, np.nan])
+        tp = TimeProvider()
+        tp.set_reference_data(reader)
+        assert list(tp._reference_p1_time) == [10.0]
+        assert list(tp._reference_gps_time) == pytest.approx([GPS_DATE_SEC])
+
+    def test_drops_duplicate_p1_times(self):
+        reader = _FakeReader(p1_time=[10.0, 10.0, 20.0], gps_time=[GPS_DATE_SEC, GPS_DATE_SEC, GPS_DATE_SEC + 10.0])
+        tp = TimeProvider()
+        tp.set_reference_data(reader)
+        assert list(tp._reference_p1_time) == [10.0, 20.0]
+
+    def test_passes_source_id_through(self):
+        reader = _FakeReader(p1_time=[10.0], gps_time=[GPS_DATE_SEC])
+        tp = TimeProvider()
+        tp.set_reference_data(reader, source_id=3)
+        assert reader.last_read_kwargs['source_ids'] == 3
+
+    def test_empty_pose_data(self):
+        reader = _FakeReader(p1_time=[], gps_time=[])
+        tp = TimeProvider()
+        tp.set_reference_data(reader)
+        assert len(tp._reference_p1_time) == 0
+
+
+class TestP1ToGPSArray:
+    def test_no_reference_returns_nan(self):
+        tp = TimeProvider()
+        result = tp.p1_to_gps(np.array([10.0, 12.0]))
+        assert isinstance(result, np.ndarray)
+        assert np.all(np.isnan(result))
+
+    def test_uses_bulk_reference_table_interpolation(self):
+        reader = _FakeReader(p1_time=[10.0, 20.0, 30.0],
+                             gps_time=[GPS_DATE_SEC, GPS_DATE_SEC + 10.0, GPS_DATE_SEC + 20.0])
+        tp = TimeProvider()
+        tp.set_reference_data(reader)
+        result = tp.p1_to_gps(np.array([15.0, 25.0]))
+        assert result == pytest.approx([GPS_DATE_SEC + 5.0, GPS_DATE_SEC + 15.0])
+
+    def test_bulk_reference_table_extrapolation(self):
+        reader = _FakeReader(p1_time=[10.0, 20.0], gps_time=[GPS_DATE_SEC, GPS_DATE_SEC + 10.0])
+        tp = TimeProvider()
+        tp.set_reference_data(reader)
+        result = tp.p1_to_gps(np.array([5.0, 25.0]))
+        assert result == pytest.approx([GPS_DATE_SEC - 5.0, GPS_DATE_SEC + 15.0])
+
+    def test_falls_back_to_sequential_state_when_no_table_loaded(self):
+        tp = TimeProvider()
+        tp.handle_message(_make_pose(10.0, GPS_DATE_SEC))
+        tp.handle_message(_make_pose(20.0, GPS_DATE_SEC + 10.0))
+        result = tp.p1_to_gps(np.array([15.0, 25.0]))
+        assert result == pytest.approx([GPS_DATE_SEC + 5.0, GPS_DATE_SEC + 15.0])
+
+    def test_bulk_table_takes_priority_over_sequential_state(self):
+        reader = _FakeReader(p1_time=[10.0, 20.0], gps_time=[GPS_DATE_SEC, GPS_DATE_SEC + 10.0])
+        tp = TimeProvider()
+        tp.set_reference_data(reader)
+        # Sequential state implies a different (wrong) relationship; the bulk table should win.
+        tp.handle_message(_make_pose(10.0, GPS_DATE_SEC + 1000.0))
+        result = tp.p1_to_gps(np.array([15.0]))
+        assert result == pytest.approx([GPS_DATE_SEC + 5.0])
+
+    def test_matches_scalar_result(self):
+        reader = _FakeReader(p1_time=[10.0, 20.0, 30.0],
+                             gps_time=[GPS_DATE_SEC, GPS_DATE_SEC + 10.0, GPS_DATE_SEC + 20.0])
+        tp = TimeProvider()
+        tp.set_reference_data(reader)
+        tp.handle_message(_make_pose(10.0, GPS_DATE_SEC))
+        tp.handle_message(_make_pose(20.0, GPS_DATE_SEC + 10.0))
+        array_result = tp.p1_to_gps(np.array([15.0]))[0]
+        scalar_result = float(tp.p1_to_gps(Timestamp(15.0)))
+        assert array_result == pytest.approx(scalar_result)
+
+    def test_datetime_format(self):
+        reader = _FakeReader(p1_time=[10.0, 20.0], gps_time=[GPS_DATE_SEC, GPS_DATE_SEC + 10.0])
+        tp = TimeProvider()
+        tp.set_reference_data(reader)
+        result = tp.p1_to_gps(np.array([10.0, np.nan]), format='datetime')
+        assert result.dtype.kind == 'M'
+        assert not np.isnat(result[0])
+        assert np.isnat(result[1])
+        expected = gpstime.fromgps(GPS_DATE_SEC)
+        assert result[0].astype('datetime64[us]').item() == expected.replace(tzinfo=None)
+
+    def test_nan_input_returns_nan(self):
+        reader = _FakeReader(p1_time=[10.0, 20.0], gps_time=[GPS_DATE_SEC, GPS_DATE_SEC + 10.0])
+        tp = TimeProvider()
+        tp.set_reference_data(reader)
+        result = tp.p1_to_gps(np.array([15.0, np.nan]))
+        assert result[0] == pytest.approx(GPS_DATE_SEC + 5.0)
+        assert np.isnan(result[1])
+
+
+class TestGPSToP1Array:
+    def test_no_reference_returns_nan(self):
+        tp = TimeProvider()
+        result = tp.gps_to_p1(np.array([GPS_DATE_SEC]))
+        assert np.all(np.isnan(result))
+
+    def test_uses_bulk_reference_table_interpolation(self):
+        reader = _FakeReader(p1_time=[10.0, 20.0, 30.0],
+                             gps_time=[GPS_DATE_SEC, GPS_DATE_SEC + 10.0, GPS_DATE_SEC + 20.0])
+        tp = TimeProvider()
+        tp.set_reference_data(reader)
+        result = tp.gps_to_p1(np.array([GPS_DATE_SEC + 5.0, GPS_DATE_SEC + 15.0]))
+        assert result == pytest.approx([15.0, 25.0])
+
+    def test_falls_back_to_sequential_state_when_no_table_loaded(self):
+        tp = TimeProvider()
+        tp.handle_message(_make_pose(10.0, GPS_DATE_SEC))
+        tp.handle_message(_make_pose(20.0, GPS_DATE_SEC + 10.0))
+        result = tp.gps_to_p1(np.array([GPS_DATE_SEC + 5.0]))
+        assert result == pytest.approx([15.0])
+
+    def test_roundtrip_with_bulk_table(self):
+        reader = _FakeReader(p1_time=[10.0, 20.0, 30.0],
+                             gps_time=[GPS_DATE_SEC, GPS_DATE_SEC + 10.0, GPS_DATE_SEC + 20.0])
+        tp = TimeProvider()
+        tp.set_reference_data(reader)
+        original = np.array([12.5, 24.0])
+        recovered = tp.gps_to_p1(tp.p1_to_gps(original))
+        assert recovered == pytest.approx(original)
+
+
+class TestHasGpsReference:
+    def test_default_false(self):
+        tp = TimeProvider()
+        assert not tp.has_gps_reference()
+
+    def test_true_after_loading_reference_table(self):
+        reader = _FakeReader(p1_time=[10.0, 20.0], gps_time=[GPS_DATE_SEC, GPS_DATE_SEC + 10.0])
+        tp = TimeProvider()
+        tp.set_reference_data(reader)
+        assert tp.has_gps_reference()
+
+    def test_true_when_p1_is_gps(self):
+        reader = _FakeReader(p1_time=[GPS_DATE_SEC], gps_time=[GPS_DATE_SEC])
+        tp = TimeProvider()
+        tp.set_reference_data(reader)
+        assert tp.has_gps_reference()
+
+    def test_false_when_no_gps_time_in_log(self):
+        reader = _FakeReader(p1_time=[10.0, 20.0], gps_time=[np.nan, np.nan])
+        tp = TimeProvider()
+        tp.set_reference_data(reader)
+        assert not tp.has_gps_reference()
+
+
+class TestGetGpsPosixOffsetSec:
+    def test_none_with_no_reference(self):
+        tp = TimeProvider()
+        assert tp.get_gps_posix_offset_sec() is None
+
+    def test_cached_not_recomputed_per_call(self):
+        from unittest import mock
+        reader = _FakeReader(p1_time=[10.0, 20.0], gps_time=[GPS_DATE_SEC, GPS_DATE_SEC + 10.0])
+        tp = TimeProvider()
+        tp.set_reference_data(reader)
+        with mock.patch('fusion_engine_client.utils.time_provider.gps2unix') as mock_gps2unix:
+            offset1 = tp.get_gps_posix_offset_sec()
+            offset2 = tp.get_gps_posix_offset_sec()
+            mock_gps2unix.assert_not_called()
+        assert offset1 == offset2
+
+    def test_offset_matches_gpstime_library(self):
+        from gpstime import gps2unix
+        reader = _FakeReader(p1_time=[10.0, 20.0], gps_time=[GPS_DATE_SEC, GPS_DATE_SEC + 10.0])
+        tp = TimeProvider()
+        tp.set_reference_data(reader)
+        offset = tp.get_gps_posix_offset_sec()
+        assert offset == pytest.approx(gps2unix(GPS_DATE_SEC) - GPS_DATE_SEC)
+        # Applying the offset to any GPS time in the table should recover the accurate POSIX/Unix timestamp.
+        assert GPS_DATE_SEC + offset == pytest.approx(gps2unix(GPS_DATE_SEC))
+
+    def test_uses_p1_time_as_sample_when_p1_is_gps_and_table_empty(self):
+        # p1_time looks like GPS time, but gps_time was never populated, so the reference table is empty.
+        from gpstime import gps2unix
+        reader = _FakeReader(p1_time=[GPS_DATE_SEC, GPS_DATE_SEC + 10.0], gps_time=[np.nan, np.nan])
+        tp = TimeProvider()
+        tp.set_reference_data(reader)
+        assert tp.is_p1_gps_time()
+        offset = tp.get_gps_posix_offset_sec()
+        assert offset == pytest.approx(gps2unix(GPS_DATE_SEC) - GPS_DATE_SEC)
+
+    def test_skips_non_gps_like_samples_before_gps_acquired(self):
+        # Before GPS time is first acquired, P1 time starts as a small boot-relative counter -- not GPS-like -- even
+        # though the platform switches to using GPS time as P1 time once it's available. The first valid sample
+        # (10.0) is not GPS-like and must not be used as the representative sample.
+        from gpstime import gps2unix
+        reader = _FakeReader(p1_time=[10.0, 20.0, GPS_DATE_SEC], gps_time=[np.nan, np.nan, np.nan])
+        tp = TimeProvider()
+        tp.set_reference_data(reader)
+        assert tp.is_p1_gps_time()
+        offset = tp.get_gps_posix_offset_sec()
+        assert offset == pytest.approx(gps2unix(GPS_DATE_SEC) - GPS_DATE_SEC)
+
+
+class TestP1IsGpsTime:
+    def test_default_false(self):
+        tp = TimeProvider()
+        assert not tp.is_p1_gps_time()
+
+    def test_normal_boot_relative_p1_time_not_detected(self):
+        reader = _FakeReader(p1_time=[10.0, 20.0], gps_time=[GPS_DATE_SEC, GPS_DATE_SEC + 10.0])
+        tp = TimeProvider()
+        tp.set_reference_data(reader)
+        assert not tp.is_p1_gps_time()
+
+    def test_detects_gps_as_p1(self):
+        reader = _FakeReader(p1_time=[GPS_DATE_SEC, GPS_DATE_SEC + 1.0], gps_time=[GPS_DATE_SEC, GPS_DATE_SEC + 1.0])
+        tp = TimeProvider()
+        tp.set_reference_data(reader)
+        assert tp.is_p1_gps_time()
+
+    def test_single_gps_like_sample_is_conclusive(self):
+        # Only one sample looks like GPS time (e.g. a reset happened partway through); that alone is conclusive.
+        reader = _FakeReader(p1_time=[5.0, GPS_DATE_SEC], gps_time=[GPS_DATE_SEC + 100.0, GPS_DATE_SEC])
+        tp = TimeProvider()
+        tp.set_reference_data(reader)
+        assert tp.is_p1_gps_time()
+
+    def test_p1_to_gps_array_is_identity_far_outside_reference_range(self):
+        reader = _FakeReader(p1_time=[GPS_DATE_SEC, GPS_DATE_SEC + 10.0],
+                             gps_time=[GPS_DATE_SEC, GPS_DATE_SEC + 10.0])
+        tp = TimeProvider()
+        tp.set_reference_data(reader)
+        # Query far outside the reference range -- still exact, since P1 IS GPS by definition.
+        result = tp.p1_to_gps(np.array([GPS_DATE_SEC + 1e6]))
+        assert result == pytest.approx([GPS_DATE_SEC + 1e6])
+
+    def test_gps_to_p1_array_is_identity_far_outside_reference_range(self):
+        reader = _FakeReader(p1_time=[GPS_DATE_SEC, GPS_DATE_SEC + 10.0],
+                             gps_time=[GPS_DATE_SEC, GPS_DATE_SEC + 10.0])
+        tp = TimeProvider()
+        tp.set_reference_data(reader)
+        result = tp.gps_to_p1(np.array([GPS_DATE_SEC + 1e6]))
+        assert result == pytest.approx([GPS_DATE_SEC + 1e6])
+
+    def test_datetime_format_when_p1_is_gps(self):
+        reader = _FakeReader(p1_time=[GPS_DATE_SEC], gps_time=[GPS_DATE_SEC])
+        tp = TimeProvider()
+        tp.set_reference_data(reader)
+        result = tp.p1_to_gps(np.array([GPS_DATE_SEC]), format='datetime')
+        assert result.dtype.kind == 'M'
+        assert not np.isnat(result[0])

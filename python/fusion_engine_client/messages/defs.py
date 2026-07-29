@@ -830,3 +830,28 @@ def heading_to_yaw(heading: Union[float, np.ndarray], deg: bool = True):
         yaw_rad = math.pi / 2.0 - heading
         yaw_rad = (yaw_rad + math.pi) % (2.0 * math.pi) - math.pi
         return np.where(yaw_rad == math.pi, -math.pi, yaw_rad)
+
+def percent_to_fixed_point(percent: float, scale: float = 2.0, tolerance: float = 0.999) -> int:
+    """!
+    @brief Convert a percentage to a fixed-point integer for packing, rounding down except when the value is
+           within floating-point noise of the next integer.
+
+    Percentages are always rounded down so we don't report reaching a milestone (e.g., 100%) before it's actually
+    reached (e.g., truncating 99.6% to 99, not rounding it up to 100). The `tolerance` exception exists only to
+    correct for floating-point representation error in values that were intended to land exactly on an integer
+    (e.g., 49.99999997 meant to be 50.0) -- it is not a general round-to-nearest.
+
+    @param percent The percentage value to convert, in `[0, 100]`.
+    @param scale The fixed-point scale factor (e.g., `2.0` to store 0.5% increments in a single byte).
+    @param tolerance How close (as a fraction of `scale`) `percent * scale` must be to the next integer to be
+           rounded up instead of down. `0.999` means within `0.1%` of `scale` (e.g., within `0.002` for
+           `scale=2.0`).
+
+    @return The scaled, floored (or ceiling-snapped) integer value.
+    """
+    scaled = percent * scale
+    ceil_scaled = math.ceil(scaled)
+    if ceil_scaled - scaled < (1.0 - tolerance) * scale:
+        return int(ceil_scaled)
+    else:
+        return int(math.floor(scaled))
