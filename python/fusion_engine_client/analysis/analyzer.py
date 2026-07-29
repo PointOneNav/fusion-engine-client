@@ -3568,12 +3568,20 @@ var time_axis_type = '{time_axis_type}';
         elif time_source == SystemTimeSource.TIMESTAMPED_ON_RECEPTION:
             return float(self.system_t0)
 
-    def _x_axis_layout(self) -> dict:
+    def _x_axis_layout(self, time_source: str = 'p1') -> dict:
         """!
         @brief Get the `go.layout.XAxis` kwargs (including `title`) for the current @c self.time_type.
 
+        @param time_source The native time domain of the data being plotted: `p1` (the default -- P1/relative/GPS/
+               UTC, per @c self.time_type) or `system` (device system time). There is no system-time-to-P1/GPS
+               mapping yet, so `system` always resolves to plain absolute/relative system time regardless of
+               @c self.time_type; once such a mapping exists, it can resolve to p1/gps/utc too, like `p1` below.
+
         @return A dict of `go.layout.XAxis` kwargs, e.g. `{'title': ..., 'type': 'date'}`.
         """
+        if time_source == 'system':
+            return {'title': self.system_time_label}
+
         if self.time_type in ('relative', 'p1'):
             return {'title': self.p1_time_label}
         elif self.time_type == 'gps':
@@ -3588,20 +3596,31 @@ var time_axis_type = '{time_axis_type}';
             # epoch numbers) they display as given, without being reinterpreted in the browser's local timezone.
             return {'title': 'UTC Time', 'type': 'date'}
 
-    def _resolve_x_axis(self, p1_time: np.ndarray, gps_time: Optional[np.ndarray] = None) -> \
+    def _resolve_x_axis(self, p1_time: Optional[np.ndarray] = None, gps_time: Optional[np.ndarray] = None,
+                        system_time: Optional[np.ndarray] = None, time_source: str = 'p1') -> \
             Tuple[np.ndarray, dict]:
         """!
         @brief Resolve the X axis values and layout to use for a time series, per @c self.time_type.
 
-        @param p1_time The P1 time for each point.
+        @param p1_time The P1 time for each point. Required (and only used) when `time_source` is `p1`.
         @param gps_time The GPS time for each point, if already known (e.g., from a @ref PoseMessage). If `None`, it
-               will be computed from `p1_time` via @c self.time_provider when needed.
+               will be computed from `p1_time` via @c self.time_provider when needed. Only used when `time_source`
+               is `p1`.
+        @param system_time The device system time for each point. Required (and only used) when `time_source` is
+               `system`.
+        @param time_source The native time domain of `p1_time`/`system_time`: `p1` (the default) or `system` (see
+               @ref _x_axis_layout()).
 
         @return A tuple `(x, axis_layout)`:
                 - `x`: The X axis values to plot.
                 - `axis_layout`: `go.layout.XAxis` kwargs needed to display `x` (title, and e.g. `type='date'`).
         """
-        axis_layout = self._x_axis_layout()
+        axis_layout = self._x_axis_layout(time_source=time_source)
+
+        if time_source == 'system':
+            # self.system_t0 is set to 0 when self.time_type == 'absolute', so this works for both absolute and relative
+            # time axes. See _x_axis_layout().
+            return system_time - float(self.system_t0), axis_layout
 
         if self.time_type == 'relative':
             return p1_time - float(self.t0), axis_layout
