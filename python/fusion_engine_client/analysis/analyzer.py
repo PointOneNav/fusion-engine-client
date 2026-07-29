@@ -15,7 +15,7 @@ from palettable.tableau import Tableau_20
 import plotly
 import plotly.graph_objs as go
 from plotly.subplots import make_subplots
-from pymap3d import geodetic2ecef
+from pymap3d import ecef2geodetic, geodetic2ecef
 
 # If running as a script, add fusion-engine-client/ to the Python import path and correct __package__ to enable relative
 # imports.
@@ -971,7 +971,7 @@ figure.on('plotly_hover', function(data) {
             max_y = 1.0
         time_figure['layout']['yaxis1'].update(range=[0, max_y])
 
-        name = source.replace(' ', '_').lower()
+        name = source.replace(' ', '_').replace('.', '').replace('(', '').replace(')', '').lower()
 
         # Topocentric hover: X/Y are spatial (East/North), not time, so both P1 and GPS time must come directly from
         # customdata (rows 0/1) rather than from the point's axis position -- see BuildTimeHoverTextFromTimes().
@@ -1025,7 +1025,8 @@ figure.on('plotly_unhover', function(data) {
 
         @param reference The truth reference to compare against.
         """
-        return self._plot_pose_displacement(reference=reference)
+        return self._plot_position_displacement_vs_reference(reference=reference,
+                                                             source_id=SourceIdentifier.OUTPUT_LEVER_ARM)
 
     def plot_position_displacement(self, reference_type: str):
         """!
@@ -1034,17 +1035,18 @@ figure.on('plotly_unhover', function(data) {
 
         @param reference_type The desired reference type name.
         """
-        # Default to the median position taken from this log's own data (we use median instead of centroid just in
-        # case there are one or two huge outliers).
+        # Note that this is using the ReferenceData class to compute the median, etc. position from the log's pose
+        # messages to pass to _plot_pose_displacement(). It is not loading truth data.
         reference = ReferenceData.resolve_cli_argument(reference=reference_type, loader=self.reader,
                                                        source_id=self.default_source_id)
         if reference is None:
-            self.logger.info('No valid position solutions detected. Skipping displacement plots.')
+            self.logger.info('No valid position solutions detected. Skipping position displacement plots.')
             return None
         else:
-            return self._plot_pose_displacement(reference=reference)
+            return self._plot_position_displacement_vs_reference(reference=reference, source_id=self.default_source_id)
 
-    def _plot_pose_displacement(self, reference: Optional[ReferenceData] = None):
+    def _plot_position_displacement_vs_reference(self, reference: Optional[ReferenceData] = None,
+                                                 source_id: Optional[int] = None):
         """!
         @brief Generate a topocentric (top-down) plot of position displacement (or error, if `reference` is an
                independent truth source -- see @ref ReferenceData) vs a reference position, as well as a plot of
@@ -1056,18 +1058,22 @@ figure.on('plotly_unhover', function(data) {
         if self.output_dir is None:
             return None
 
+        if source_id is None:
+            source_id = self.default_source_id
+
         # Read the pose data.
-        result = self.reader.read(message_types=[PoseMessage], source_ids=self.default_source_id, **self.params)
+        result = self.reader.read(message_types=[PoseMessage], source_ids=source_id, **self.params)
         pose_data = result[PoseMessage.MESSAGE_TYPE]
 
         if len(pose_data.p1_time) == 0:
-            self.logger.info('No pose data available. Skipping displacement plots.')
+            self.logger.info(f'No pose data available. Skipping position {reference.displacement_label.lower()} plots.')
             return None
 
         # Remove invalid solutions.
         valid_idx = np.logical_and(~np.isnan(pose_data.p1_time), pose_data.solution_type != SolutionType.Invalid)
         if not np.any(valid_idx):
-            self.logger.info('No valid position solutions detected. Skipping displacement plots.')
+            self.logger.info(f'No valid position solutions detected. Skipping position '
+                             f'{reference.displacement_label.lower()}  plots.')
             return None
 
         p1_time = pose_data.p1_time[valid_idx]
@@ -1078,31 +1084,27 @@ figure.on('plotly_unhover', function(data) {
 
         position_ecef_m = np.array(geodetic2ecef(lat=lla_deg[0, :], lon=lla_deg[1, :], alt=lla_deg[2, :], deg=True))
 
-        # Interpolate the reference position onto this log's GPS timestamps, warning if the reference does not fully
-        # cover this log's time range. Any timestamps that fall outside the reference's coverage (or that could not
-        # be interpolated, e.g. due to a gap in the reference data) are dropped below.
-        valid_ref_idx = reference.get_coverage_mask(gps_time)
-        reference_ecef_m = reference.interpolate_position_ecef_m(gps_time)
-        valid_ref_idx = np.logical_and(valid_ref_idx, ~np.any(np.isnan(reference_ecef_m), axis=0))
+        # Compute the ENU displacement/error vs. the reference, warning if the reference does not fully cover this
+        # log's time range. Any timestamps that fall outside the reference's coverage (or that could not be
+        # interpolated, e.g. due to a gap in the reference data) are dropped below.
+        reference.get_coverage_mask(gps_time)
+        displacement_enu_m, valid_ref_idx = self._compute_position_error_enu_m(
+            reference=reference, gps_time_sec=gps_time, position_ecef_m=position_ecef_m)
         if not np.any(valid_ref_idx):
             self.logger.warning(f"Reference data '{reference.description}' does not overlap with this log's time "
-                                f"range. Skipping displacement plots.")
+                                f"range. Skipping position {reference.displacement_label.lower()}  plots.")
             return None
         elif not np.all(valid_ref_idx):
             p1_time = p1_time[valid_ref_idx]
             gps_time = gps_time[valid_ref_idx]
             solution_type = solution_type[valid_ref_idx]
-            lla_deg = lla_deg[:, valid_ref_idx]
             std_enu_m = std_enu_m[:, valid_ref_idx]
-            position_ecef_m = position_ecef_m[:, valid_ref_idx]
-            reference_ecef_m = reference_ecef_m[:, valid_ref_idx]
-
-        displacement_ecef_m = position_ecef_m - reference_ecef_m
-        c_enu_ecef = get_enu_rotation_matrix(*lla_deg[0:2, 0], deg=True)
-        displacement_enu_m = c_enu_ecef.dot(displacement_ecef_m)
+            displacement_enu_m = displacement_enu_m[:, valid_ref_idx]
 
         axis_title = reference.displacement_label
         source = f'Position {axis_title} vs. {"Reference" if reference.is_truth else reference.description}'
+        if source_id != SourceIdentifier.OUTPUT_LEVER_ARM:
+            source += f' (Source {source_id})'
 
         self._plot_displacement(source=source, title=axis_title,
                                 p1_time=p1_time, gps_time=gps_time, solution_type=solution_type,
@@ -1143,9 +1145,12 @@ figure.on('plotly_unhover', function(data) {
                                 solution_type=solution_type, displacement_enu_m=displacement_enu_m,
                                 std_enu_m=std_enu_m)
 
-    def plot_map(self, mapbox_token):
+    def plot_map(self, mapbox_token, reference: Optional[ReferenceData] = None):
         """!
         @brief Plot a map of the position data.
+
+        @param reference If specified, also plot this reference/truth position, restricted to the time range
+               covered by the pose data.
         """
         pose_source_ids = self._get_pose_source_ids()
         if self.output_dir is None or len(pose_source_ids) == 0:
@@ -1170,15 +1175,20 @@ figure.on('plotly_unhover', function(data) {
         # `%{x}` tied to a real date-typed axis) -- but a customdata entry with no format spec at all is substituted
         # verbatim, so we precompute the UTC string in Python (cheap, vectorized) and reference it that way.
         _POSITION_HOVERTEMPLATE = (
-            "LLA: %{lat:.8f}, %{lon:.8f}, %{customdata[4]:.2f}<br>"
-            "Rel: %{customdata[0]:.3f} sec (P1: %{customdata[1]:.3f} sec)<br>"
-            "UTC: %{customdata[8]}<br>"
-            "GPS: %{customdata[2]:.0f}:%{customdata[3]:.3f}<br>"
-            "Std (ENU): (%{customdata[5]:.2f}, %{customdata[6]:.2f}, %{customdata[7]:.2f}) m"
+            "LLA: %{lat:.8f}, %{lon:.8f}, %{customdata[5]:.2f}<br>"
+            "Rel: %{customdata[1]:.3f} sec (P1: %{customdata[2]:.3f} sec)<br>"
+            "UTC: %{customdata[0]}<br>"
+            "GPS: %{customdata[3]:.0f}:%{customdata[4]:.3f}<br>"
+            "Std Dev: %{customdata[6]:.2f} m (2D), %{customdata[7]:.2f} m (3D)"
+        )
+        # Used instead of _POSITION_HOVERTEMPLATE when reference data is avaiable to compute position error.
+        _POSITION_HOVERTEMPLATE_WITH_ERROR = (
+            _POSITION_HOVERTEMPLATE +
+            "<br>Error: %{customdata[8]:.2f} m (2D), %{customdata[9]:.2f} m (3D)"
         )
 
-        def _build_position_customdata(p1_time: np.ndarray, gps_time: np.ndarray,
-                                       lla_deg: np.ndarray, std_enu_m: np.ndarray) -> list:
+        def _build_position_customdata(p1_time: np.ndarray, gps_time: np.ndarray, lla_deg: np.ndarray,
+                                       std_enu_m: np.ndarray, error_enu_m: Optional[np.ndarray] = None) -> list:
             rel_time = p1_time - float(self.reader.t0)
             gps_week = np.floor(gps_time / SECONDS_PER_WEEK)
             gps_tow_sec = gps_time - gps_week * SECONDS_PER_WEEK
@@ -1194,16 +1204,32 @@ figure.on('plotly_unhover', function(data) {
             #
             # utc_strs is a string column mixed in with the numeric ones above, so this can't be a single numpy
             # array (that would coerce every column to strings, breaking the numeric %{customdata[N]:.3f}-style
-            # formatting for the rest); build it as a plain list of per-point rows instead.
-            numeric = np.column_stack((rel_time, p1_time, gps_week, gps_tow_sec, lla_deg[2], std_enu_m[0],
-                                       std_enu_m[1], std_enu_m[2]))
-            return [row.tolist() + [utc_str] for row, utc_str in zip(numeric, utc_strs)]
+            # formatting for the rest); build it as a plain list of per-point rows instead. error_enu_m, when
+            # present, is appended after the UTC string so its indices stay fixed regardless of whether it's used.
+            numeric = np.column_stack((rel_time, p1_time, gps_week, gps_tow_sec, lla_deg[2],
+                                       np.linalg.norm(std_enu_m[0:2, :], axis=0),
+                                       np.linalg.norm(std_enu_m, axis=0)))
+            if error_enu_m is None:
+                return [[utc_str] + row.tolist()for utc_str, row in zip(utc_strs, numeric)]
+            else:
+                error_numeric = np.column_stack((np.linalg.norm(error_enu_m[0:2, :], axis=0),
+                                                 np.linalg.norm(error_enu_m, axis=0)))
+                return [[utc_str] + row.tolist() + error_row.tolist()
+                       for utc_str, row, error_row in zip(utc_strs, numeric, error_numeric)]
+
+        def _with_bold_name(hovertemplate: Optional[str], name: str) -> str:
+            # Note: <extra></extra> hides Plotly's secondary box, which by default displays the trace name to the right
+            # of the hover box with a hard-to-read transparent background.
+            if not hovertemplate:
+                return f"<b>{name}</b><extra></extra>"
+            return f"<b>{name}</b><br>{hovertemplate}<extra></extra>"
 
         # Add data to the map.
         map_data = []
         indices_by_engine = defaultdict(list)
 
-        def _plot_data(name, selected_idx, flags, source_id, lla_deg, customdata_all, marker_style=None):
+        def _plot_data(name, selected_idx, flags, source_id, lla_deg, customdata_all, marker_style=None,
+                      hovertemplate=_POSITION_HOVERTEMPLATE):
             style = {'mode': 'markers', 'marker': {'size': 8}, 'showlegend': True}
             if marker_style is not None:
                 style['marker'].update(marker_style)
@@ -1220,7 +1246,7 @@ figure.on('plotly_unhover', function(data) {
                     idx = is_nav_engine
                     map_data.append(go.Scattermapbox(lat=lla_deg[0, idx], lon=lla_deg[1, idx], name=name,
                                                      customdata=[customdata_all[i] for i in np.nonzero(idx)[0]],
-                                                     hovertemplate=_POSITION_HOVERTEMPLATE,
+                                                     hovertemplate=_with_bold_name(hovertemplate, name),
                                                      legendgroup=legendgroup, visible=visible, **style))
                     indices_by_engine['Nav Engine'].append(len(map_data) - 1)
 
@@ -1228,10 +1254,11 @@ figure.on('plotly_unhover', function(data) {
                     idx = is_gnss_rx
                     style['marker']['opacity'] = 0.5
                     style['marker']['size'] = 5
+                    gnss_name = name + ' (Receiver Solution)'
                     map_data.append(go.Scattermapbox(lat=lla_deg[0, idx], lon=lla_deg[1, idx],
-                                                     name=name + ' (Receiver Solution)',
+                                                     name=gnss_name,
                                                      customdata=[customdata_all[i] for i in np.nonzero(idx)[0]],
-                                                     hovertemplate=_POSITION_HOVERTEMPLATE,
+                                                     hovertemplate=_with_bold_name(hovertemplate, gnss_name),
                                                      legendgroup=legendgroup, visible=visible, **style))
                     indices_by_engine['Receiver Solution'].append(len(map_data) - 1)
 
@@ -1246,6 +1273,8 @@ figure.on('plotly_unhover', function(data) {
         primary_source_id = min(pose_source_ids)
         overall_t_min = None
         overall_t_max = None
+        overall_gps_t_min = None
+        overall_gps_t_max = None
         for source_id in pose_source_ids:
             result = self.reader.read(message_types=[PoseMessage], source_ids=[source_id], **self.params)
             pose_data = result[PoseMessage.MESSAGE_TYPE]
@@ -1273,9 +1302,29 @@ figure.on('plotly_unhover', function(data) {
             overall_t_min = t_min if overall_t_min is None else min(overall_t_min, t_min)
             overall_t_max = t_max if overall_t_max is None else max(overall_t_max, t_max)
 
-            customdata_all = _build_position_customdata(p1_time=p1_time,
-                                                        gps_time=pose_data.gps_time[valid_idx],
-                                                        lla_deg=lla_deg, std_enu_m=std_enu_m)
+            gps_time = pose_data.gps_time[valid_idx]
+            valid_gps_idx = ~np.isnan(gps_time)
+            if np.any(valid_gps_idx):
+                gps_t_min = float(np.min(gps_time[valid_gps_idx]))
+                gps_t_max = float(np.max(gps_time[valid_gps_idx]))
+                overall_gps_t_min = gps_t_min if overall_gps_t_min is None else min(overall_gps_t_min, gps_t_min)
+                overall_gps_t_max = gps_t_max if overall_gps_t_max is None else max(overall_gps_t_max, gps_t_max)
+
+            # If we have reference data, compute and display position error.
+            #
+            # Position error applies to the source at the device's output lever arm location, which we assume is the
+            # location of the reference data, not to other pose sources (e.g., position of the IMU).
+            error_enu_m = None
+            hovertemplate = _POSITION_HOVERTEMPLATE
+            if reference is not None and source_id == SourceIdentifier.OUTPUT_LEVER_ARM:
+                position_ecef_m = np.array(geodetic2ecef(lat=lla_deg[0, :], lon=lla_deg[1, :], alt=lla_deg[2, :],
+                                                         deg=True))
+                error_enu_m, _ = self._compute_position_error_enu_m(reference=reference, gps_time_sec=gps_time,
+                                                                    position_ecef_m=position_ecef_m)
+                hovertemplate = _POSITION_HOVERTEMPLATE_WITH_ERROR
+
+            customdata_all = _build_position_customdata(p1_time=p1_time, gps_time=gps_time, lla_deg=lla_deg,
+                                                        std_enu_m=std_enu_m, error_enu_m=error_enu_m)
 
             for type, info in _SOLUTION_TYPE_MAP.items():
                 if len(pose_source_ids) > 1:
@@ -1283,10 +1332,70 @@ figure.on('plotly_unhover', function(data) {
                 else:
                     name = info.name
                 _plot_data(name=name, selected_idx=solution_type == type, flags=flags, source_id=source_id,
-                           lla_deg=lla_deg, customdata_all=customdata_all, marker_style=info.style)
+                           lla_deg=lla_deg, customdata_all=customdata_all, marker_style=info.style,
+                           hovertemplate=hovertemplate)
 
         if not have_pose_data:
             return
+
+        # Add reference/truth data to the map, if available, restricted to the time range covered by the pose data.
+        # Built as a separate list and prepended below (rather than appended to map_data directly) so the reference
+        # is drawn first -- Scattermapbox layers later traces on top, and we want the pose data on top of the
+        # reference, not the other way around.
+        ref_traces = []
+        if reference is not None and (reference.is_stationary or overall_gps_t_min is not None):
+            if reference.is_stationary:
+                ref_lla_deg = reference.lla_deg.reshape(3, 1)
+                ref_solution_type = None
+                ref_std_enu_m = None
+            else:
+                in_range = np.logical_and(reference.gps_time_sec >= overall_gps_t_min,
+                                          reference.gps_time_sec <= overall_gps_t_max)
+                ref_lla_deg = reference.lla_deg[:, in_range]
+                ref_solution_type = reference.solution_type[in_range]
+                ref_std_enu_m = (None if reference.position_std_enu_m is None
+                                 else reference.position_std_enu_m[:, in_range])
+
+            if ref_lla_deg.shape[1] > 0:
+                if reference.is_stationary:
+                    ref_customdata = None
+                    ref_hovertemplate = None
+                else:
+                    # Reuse the same Rel/P1/UTC/GPS/Std layout as the pose data hover -- converting the reference's
+                    # GPS time to this log's P1 time (via the primary log's known P1<->GPS relationship) so "Rel"
+                    # and "P1" line up with the pose data's own time base.
+                    ref_gps_time = reference.gps_time_sec[in_range]
+                    ref_p1_time = self.time_provider.gps_to_p1(ref_gps_time)
+                    if ref_std_enu_m is None:
+                        ref_std_enu_m = np.full_like(ref_lla_deg, np.nan)
+                    ref_customdata = _build_position_customdata(p1_time=ref_p1_time, gps_time=ref_gps_time,
+                                                                lla_deg=ref_lla_deg, std_enu_m=ref_std_enu_m)
+                    ref_hovertemplate = _POSITION_HOVERTEMPLATE
+
+                is_fixed = (np.full_like(ref_lla_deg, True) if ref_solution_type is None
+                           else ref_solution_type == SolutionType.RTKFixed)
+                for name, color, idx in (('Reference (RTK Fixed)', '#EBFFA3', is_fixed),
+                                         ('Reference (Not Fixed)', '#A8C443', ~is_fixed)):
+                    if np.any(idx):
+                        if ref_customdata is None:
+                            trace_customdata = None
+                        else:
+                            trace_customdata = [ref_customdata[i] for i in np.nonzero(idx)[0]]
+                        ref_traces.append(go.Scattermapbox(lat=ref_lla_deg[0, idx], lon=ref_lla_deg[1, idx],
+                                                           name=name, mode='markers',
+                                                           marker={'size': 8, 'color': color},
+                                                           showlegend=True, legendgroup='ref',
+                                                           customdata=trace_customdata,
+                                                           hovertemplate=_with_bold_name(ref_hovertemplate, name)))
+
+        if ref_traces:
+            # Shift the pose traces' button indices to account for the reference traces now being inserted ahead of
+            # them, and keep the reference visible regardless of which quality-selection button is active.
+            offset = len(ref_traces)
+            for indices in indices_by_engine.values():
+                indices[:] = [i + offset for i in indices]
+                indices.extend(range(offset))
+            map_data = ref_traces + map_data
 
         # Create the map.
         title = 'Vehicle Trajectory'
@@ -3872,7 +3981,9 @@ figure.on('plotly_unhover', function(data) {
         injected the same way as `plotly_data_support.js` (see @ref __write_html_and_inject_js()); this decimates
         and JSON-encodes the per-log data that static file reads from a handful of `MAP_SLIDER_*` globals.
 
-        @param t_min/t_max The full P1 time range (sec) spanned by the map's traces (matches `customdata[1]`).
+        @param t_min/t_max The full P1 time range (sec) spanned by the map's traces (matches `customdata[2]`, per
+               `P1_TIME_CUSTOMDATA_INDEX` in `plotly_map_time_slider.js` -- must stay in sync with the column order
+               built by @ref _build_position_customdata()).
         @param profile_time_sec/profile_speed_mps Parallel arrays of P1 time (sec) and 3D speed (m/s) for the
                background chart, from the default pose source (e.g., from @ref _estimate_speed_mps()). `None` (or
                empty) if no speed data is available at all, in which case the chart is simply left blank.
@@ -3961,6 +4072,33 @@ var MAP_SLIDER_PROFILE_GPS_TIME = {profile_gps_time_json};
             return 'External'
         elif time_source == SystemTimeSource.TIMESTAMPED_ON_RECEPTION:
             return 'System'
+
+    @classmethod
+    def _compute_position_error_enu_m(cls, reference: ReferenceData, gps_time_sec: np.ndarray,
+                                      position_ecef_m: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        """!
+        @brief Interpolate `reference`'s position onto `gps_time_sec`, then compute the resulting ENU position error
+               (`position_ecef_m` minus the interpolated reference position) in a local ENU frame.
+
+        @param reference The reference/truth position to compare against.
+        @param gps_time_sec GPS timestamps (sec) at which `position_ecef_m` was sampled.
+        @param position_ecef_m The 3xN ECEF position(s) being evaluated, in meters.
+
+        @return A tuple `(error_enu_m, valid_idx)`: the 3xN ENU error, and a boolean mask marking samples where the
+                reference had valid (non-NaN, in-range) data to interpolate against.
+        """
+        reference_ecef_m = reference.interpolate_position_ecef_m(gps_time_sec)
+        valid_idx = ~np.any(np.isnan(reference_ecef_m), axis=0)
+
+        first_pos_idx = find_first(~np.isnan(position_ecef_m[0, :]))
+        if first_pos_idx >= 0:
+            origin_ecef_m = position_ecef_m[:, first_pos_idx]
+            origin_lat_deg, origin_lon_deg, _ = ecef2geodetic(*origin_ecef_m, deg=True)
+            c_enu_ecef = get_enu_rotation_matrix(latitude=origin_lat_deg, longitude=origin_lon_deg, deg=True)
+            error_enu_m = c_enu_ecef.dot(position_ecef_m - reference_ecef_m)
+        else:
+            error_enu_m = np.full_like(position_ecef_m, np.nan)
+        return error_enu_m, valid_idx
 
     @classmethod
     def _get_colors(cls, num_colors=None):
@@ -4170,7 +4308,7 @@ Load and display information stored in a FusionEngine binary file.
         analyzer.plot_pose()
         analyzer.plot_position_displacement(reference_type=options.displacement_type)
         analyzer.plot_relative_position()
-        analyzer.plot_map(mapbox_token=options.mapbox_token)
+        analyzer.plot_map(mapbox_token=options.mapbox_token, reference=reference_data)
         analyzer.plot_calibration()
 
         if reference_data is not None:
@@ -4219,7 +4357,7 @@ Load and display information stored in a FusionEngine binary file.
 
         for func in functions:
             if func == 'plot_map':
-                analyzer.plot_map(mapbox_token=options.mapbox_token)
+                analyzer.plot_map(mapbox_token=options.mapbox_token, reference=reference_data)
             elif func == 'plot_skyplot':
                 analyzer.plot_gnss_skyplot(decimate=False)
             elif func == 'plot_pose_error':

@@ -3,7 +3,7 @@ from typing import Optional, Union
 import re
 
 import numpy as np
-from pymap3d import geodetic2ecef
+from pymap3d import ecef2geodetic, geodetic2ecef
 
 from .data_loader import DataLoader, TimeAlignmentMode
 from ..messages import PoseMessage, PoseAuxMessage, SolutionType
@@ -44,6 +44,7 @@ class ReferenceData:
 
     def __init__(self, description: str, is_truth: bool,
                  position_ecef_m: np.ndarray,
+                 position_std_enu_m: Optional[np.ndarray] = None,
                  gps_time_sec: Optional[np.ndarray] = None,
                  solution_type: Optional[np.ndarray] = None,
                  velocity_enu_mps: Optional[np.ndarray] = None,
@@ -58,6 +59,7 @@ class ReferenceData:
                separate reference log). If `False`, this data is derived from the primary log's own data (e.g., its
                median or first position).
         @param position_ecef_m A 3-element (stationary) or 3xN (time-varying) ECEF position array, in meters.
+        @param position_std_enu_m Optional ENU position standard deviation (3-element or 3xN), in meters.
         @param gps_time_sec GPS time of week/epoch (sec) for each time-varying sample, sorted in ascending order.
                `None` for a stationary reference.
         @param solution_type Solution type for each time-varying sample. `None` for a stationary reference.
@@ -67,6 +69,7 @@ class ReferenceData:
         self.description = description
         self.is_truth = is_truth
         self.position_ecef_m = np.asarray(position_ecef_m, dtype=float)
+        self.position_std_enu_m = position_std_enu_m
         self.gps_time_sec = None if gps_time_sec is None else np.asarray(gps_time_sec, dtype=float)
         self.solution_type = solution_type
         self.velocity_enu_mps = velocity_enu_mps
@@ -75,6 +78,9 @@ class ReferenceData:
         # Cache of the most recent interpolate_*() result for each field, keyed by the query time vector's start
         # time, end time, and sample count (not the full time vector) to avoid recomputing for repeated queries.
         self._interp_cache = {}
+
+        # Cached data generated on demand.
+        self._lla_deg = None
 
     @property
     def is_stationary(self) -> bool:
@@ -94,6 +100,13 @@ class ReferenceData:
         @brief 'Error' if this is an independent truth source, or 'Displacement' if derived from the log's own data.
         """
         return 'Error' if self.is_truth else 'Displacement'
+
+    @property
+    def lla_deg(self) -> np.ndarray:
+        if self._lla_deg is None:
+            self._lla_deg = np.array(ecef2geodetic(self.position_ecef_m[0, :], self.position_ecef_m[1, :],
+                                                   self.position_ecef_m[2, :], deg=True))
+        return self._lla_deg
 
     def __repr__(self):
         extent = 'stationary' if self.is_stationary else f'{len(self.gps_time_sec)} samples'
@@ -271,20 +284,25 @@ class ReferenceData:
         position_ecef_m = np.array(geodetic2ecef(lat=lla_deg[0, :], lon=lla_deg[1, :], alt=lla_deg[2, :], deg=True))
         velocity_enu_mps = aux_data.velocity_enu_mps[:, selected_idx]
         ypr_deg = pose_data.ypr_deg[:, selected_idx]
+        position_std_enu_m = pose_data.position_std_enu_m[:, selected_idx]
 
         if statistic in ('first', 'first_fixed'):
             position_ecef_m = position_ecef_m[:, 0]
             velocity_enu_mps = None if np.any(np.isnan(velocity_enu_mps[:, 0])) else velocity_enu_mps[:, 0]
             ypr_deg = None if np.any(np.isnan(ypr_deg[:, 0])) else ypr_deg[:, 0]
+            position_std_enu_m = (None if np.any(np.isnan(position_std_enu_m[:, 0]))
+                                  else position_std_enu_m[:, 0])
         else:
             position_ecef_m = np.median(position_ecef_m, axis=1)
             with np.errstate(invalid='ignore'):
                 velocity_enu_mps = (None if np.all(np.isnan(velocity_enu_mps))
                                     else np.nanmedian(velocity_enu_mps, axis=1))
                 ypr_deg = None if np.all(np.isnan(ypr_deg)) else np.nanmedian(ypr_deg, axis=1)
+                position_std_enu_m = (None if np.all(np.isnan(position_std_enu_m))
+                                      else np.nanmedian(position_std_enu_m, axis=1))
 
         return cls(description=description, is_truth=False, position_ecef_m=position_ecef_m,
-                   velocity_enu_mps=velocity_enu_mps, ypr_deg=ypr_deg)
+                   velocity_enu_mps=velocity_enu_mps, ypr_deg=ypr_deg, position_std_enu_m=position_std_enu_m)
 
     @classmethod
     def from_reference_log(cls, path_or_loader: Union[str, DataLoader], log_base_dir: str = None,
@@ -344,10 +362,11 @@ class ReferenceData:
         position_ecef_m = np.array(geodetic2ecef(lat=lla_deg[0, :], lon=lla_deg[1, :], alt=lla_deg[2, :], deg=True))
         velocity_enu_mps = aux_data.velocity_enu_mps[:, valid_idx][:, order]
         ypr_deg = pose_data.ypr_deg[:, valid_idx][:, order]
+        position_std_enu_m = pose_data.position_std_enu_m[:, valid_idx][:, order]
 
         return cls(description=description, is_truth=True, position_ecef_m=position_ecef_m,
-                   gps_time_sec=gps_time_sec, solution_type=solution_type, velocity_enu_mps=velocity_enu_mps,
-                   ypr_deg=ypr_deg)
+                   position_std_enu_m=position_std_enu_m, gps_time_sec=gps_time_sec, solution_type=solution_type,
+                   velocity_enu_mps=velocity_enu_mps, ypr_deg=ypr_deg)
 
     # -------------------------------------------------------------------------------------------------------------
     # CLI argument parsing
