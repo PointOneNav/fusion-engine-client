@@ -1243,6 +1243,9 @@ figure.on('plotly_unhover', function(data) {
 
         # Read the pose data.
         have_pose_data = False
+        primary_source_id = min(pose_source_ids)
+        overall_t_min = None
+        overall_t_max = None
         for source_id in pose_source_ids:
             result = self.reader.read(message_types=[PoseMessage], source_ids=[source_id], **self.params)
             pose_data = result[PoseMessage.MESSAGE_TYPE]
@@ -1263,8 +1266,14 @@ figure.on('plotly_unhover', function(data) {
             flags = pose_data.flags[valid_idx]
             lla_deg = pose_data.lla_deg[:, valid_idx]
             std_enu_m = pose_data.position_std_enu_m[:, valid_idx]
+            p1_time = pose_data.p1_time[valid_idx]
 
-            customdata_all = _build_position_customdata(p1_time=pose_data.p1_time[valid_idx],
+            t_min = float(np.min(p1_time))
+            t_max = float(np.max(p1_time))
+            overall_t_min = t_min if overall_t_min is None else min(overall_t_min, t_min)
+            overall_t_max = t_max if overall_t_max is None else max(overall_t_max, t_max)
+
+            customdata_all = _build_position_customdata(p1_time=p1_time,
                                                         gps_time=pose_data.gps_time[valid_idx],
                                                         lla_deg=lla_deg, std_enu_m=std_enu_m)
 
@@ -1288,7 +1297,12 @@ figure.on('plotly_unhover', function(data) {
         layout = go.Layout(
             autosize=True,
             hovermode='closest',
-            title=title,
+            # Anchored to the plot area's own left edge (paper x=0) rather than left at the default (centered on
+            # the whole container) -- the container also includes the legend, which Plotly auto-widens to fit,
+            # so a container-centered title drifts right of where the map itself actually ends up.
+            title=dict(text=title, x=0, xanchor='left', xref='paper'),
+            # Reduce padding around the map, leaving enough space for the title.
+            margin=dict(l=16, r=16, t=70, b=8),
             mapbox=dict(
                 accesstoken=mapbox_token,
                 bearing=0,
@@ -1305,27 +1319,57 @@ figure.on('plotly_unhover', function(data) {
         figure = go.Figure(data=map_data, layout=layout)
         figure['layout'].update(showlegend=True)
 
-        # Add quality selection buttons.
-        num_traces = len(figure.data)
-        buttons = [dict(label='All', method='restyle', args=['visible', [True] * num_traces])]
-        for name, indices in sorted(indices_by_engine.items()):
-            if len(indices) == 0:
-                continue
-            visible = np.full((num_traces,), False)
-            visible[indices] = True
-            buttons.append(dict(label=name, method='restyle', args=['visible', visible]))
-        figure['layout']['updatemenus'] = [{
-            'type': 'buttons',
-            'direction': 'left',
-            'buttons': buttons,
-            'x': 0.0,
-            'xanchor': 'left',
-            'y': 1.1,
-            'yanchor': 'top'
-        }]
+        # Add selection buttons for different engines (nav engine, GNSS receiver, etc.).
+        if len(indices_by_engine) > 1:
+            num_traces = len(figure.data)
+            buttons = [dict(label='All', method='restyle', args=['visible', [True] * num_traces])]
+            for name, indices in sorted(indices_by_engine.items()):
+                if len(indices) == 0:
+                    continue
+                visible = np.full((num_traces,), False)
+                visible[indices] = True
+                buttons.append(dict(label=name, method='restyle', args=['visible', visible]))
+            figure['layout']['updatemenus'] = [{
+                'type': 'buttons',
+                'direction': 'left',
+                'buttons': buttons,
+                # Move the buttons inside the map to avoid overlap and reduce unused whitespace.
+                'x': 1.0,
+                'xanchor': 'right',
+                'y': 0.99,
+                'yanchor': 'top',
+                'bgcolor': 'rgba(255,255,255,0.85)',
+            }]
+
+        # Speed profile (for the time slider below the map) is only computed for the default source -- it's a
+        # visual aid for picking a time range, not a plotted data source, so it doesn't need every source's data.
+        profile_time_sec, profile_speed_mps, profile_gps_time_sec, _ = \
+            self._estimate_speed_mps(source_id=primary_source_id, forward_only=False, signed=False)
+
+        slider_js = self._map_time_slider_js(t_min=overall_t_min, t_max=overall_t_max,
+                                             profile_time_sec=profile_time_sec,
+                                             profile_speed_mps=profile_speed_mps,
+                                             profile_gps_time_sec=profile_gps_time_sec)
+
+        # Make room for the slider *before* Plotly's own first render so the map doesn't appear full-size and then
+        # shrink after the time scale renders.
+        #
+        # The map itself starts hidden (`visibility:hidden`, which still reserves its final layout space, unlike
+        # `display:none`) -- even with the container correctly sized up front, Plotly's own WebGL/mapbox-gl
+        # rendering doesn't necessarily catch up to a resize() call within the same paint, so revealing it right
+        # away can still show one frame at the wrong (window-sized) dimensions overlapping the slider. It's
+        # revealed by JS (plotly_map_time_slider.js) once Plotly itself reports the post-resize redraw is done.
+        slider_head_css = """\
+<style>
+html, body { height: 100%; margin: 0; }
+body { display: flex; flex-direction: column; }
+body > div { display: contents; }
+.plotly-graph-div.js-plotly-plot { flex: 1 1 auto; min-height: 0; width: 100%; visibility: hidden; }
+</style>
+"""
 
         self._add_figure(name="map", figure=figure, title="Vehicle Trajectory (Map)", config={'scrollZoom': True},
-                         custom_hover=False)
+                         custom_hover=False, inject_js=slider_js, inject_head=slider_head_css)
 
     def plot_gnss_skyplot(self, decimate=True):
         for source_id in self._get_gnss_antenna_source_ids():
@@ -2184,6 +2228,77 @@ figure.on('plotly_unhover', function(data) {{
         self._plot_wheel_ticks_or_speeds(source='vehicle', type='speed')
         self._plot_wheel_ticks_or_speeds(source='vehicle', type='tick')
 
+    def _estimate_speed_mps(self, source_id, forward_only: bool = False, signed: bool = False):
+        """!
+        @brief Estimate speed (m/s) from the best available data, falling back through progressively coarser
+               sources.
+
+        Sources in order of priority:
+        1. `PoseMessage.velocity_body_mps` -- forward (X) component only if `forward_only`, otherwise the
+           full 3D norm.
+        2. `PoseAuxMessage.velocity_enu_mps` -- always an unsigned 3D norm; ENU velocity can't convey forward speed.
+        3. Differential position -- unsigned 3D norm of consecutive ECEF position deltas (from
+           `PoseMessage.lla_deg`) divided by elapsed time. Coarser (no velocity filtering/smoothing) and one
+           sample shorter than the other sources (undefined at the first time).
+
+        @param source_id The pose source ID to read.
+        @param forward_only If `True`, return body forward velocity, if known, or 3D speed otherwise.
+        @param signed If `True`, return signed forward velocity (negative when reversing) instead of speed (unsigned)
+               when known. When using ENU velocity or differential position, speed is always unsigned.
+
+        @return `(p1_time, speed_mps, gps_time, source)`, all `None` if no usable data exists at all. `source` is
+                one of `'body'`, `'enu'`, or `'diff_position'`, identifying which tier was used. `gps_time` is
+                NaN-filled if the winning source has no way to recover real GPS time (only possible for `'enu'`,
+                and only when there's no `PoseMessage` in the log at all to borrow it from -- see below).
+        """
+        result = self.reader.read(message_types=[PoseMessage], source_ids=source_id, **self.params)
+        pose_data = result[PoseMessage.MESSAGE_TYPE]
+        have_pose = len(pose_data.p1_time) != 0
+
+        if have_pose and np.any(~np.isnan(pose_data.velocity_body_mps)):
+            if forward_only:
+                speed_mps = pose_data.velocity_body_mps[0, :]
+                if not signed:
+                    speed_mps = np.abs(speed_mps)
+            else:
+                speed_mps = np.linalg.norm(pose_data.velocity_body_mps, axis=0)
+            return pose_data.p1_time, speed_mps, pose_data.gps_time, 'body'
+
+        result = self.reader.read(message_types=[PoseAuxMessage], source_ids=source_id, **self.params)
+        pose_aux_data = result[PoseAuxMessage.MESSAGE_TYPE]
+        if len(pose_aux_data.p1_time) != 0 and np.any(~np.isnan(pose_aux_data.velocity_enu_mps)):
+            self.logger.warning('Body velocity not available. Estimating |speed| from ENU velocity. May not '
+                                'match other speed sources when reversing.')
+            speed_mps = np.linalg.norm(pose_aux_data.velocity_enu_mps, axis=0)
+            # PoseAuxMessage doesn't carry GPS time itself, but it's emitted in lockstep with PoseMessage at the
+            # same P1 times -- if PoseMessage is present too (just without usable velocity), borrow its GPS time
+            # via interpolation rather than leaving this all NaN.
+            valid_gps_idx = np.logical_and(~np.isnan(pose_data.p1_time), ~np.isnan(pose_data.gps_time))
+            if have_pose and np.any(valid_gps_idx):
+                gps_time = np.interp(pose_aux_data.p1_time, pose_data.p1_time[valid_gps_idx],
+                                     pose_data.gps_time[valid_gps_idx])
+            else:
+                gps_time = np.full_like(pose_aux_data.p1_time, np.nan)
+            return pose_aux_data.p1_time, speed_mps, gps_time, 'enu'
+
+        if not have_pose:
+            return None, None, None, None
+
+        valid_idx = np.logical_and(~np.isnan(pose_data.p1_time), ~np.any(np.isnan(pose_data.lla_deg), axis=0))
+        if np.sum(valid_idx) < 2:
+            return None, None, None, None
+
+        self.logger.warning('Body and ENU velocity not available. Approximating |speed| from differential '
+                            'position.')
+        p1_time = pose_data.p1_time[valid_idx]
+        gps_time = pose_data.gps_time[valid_idx]
+        position_ecef_m = np.array(geodetic2ecef(lat=pose_data.lla_deg[0, valid_idx],
+                                                  lon=pose_data.lla_deg[1, valid_idx],
+                                                  alt=pose_data.lla_deg[2, valid_idx], deg=True))
+        dt_sec = np.diff(p1_time)
+        speed_mps = np.linalg.norm(np.diff(position_ecef_m, axis=1), axis=0) / dt_sec
+        return p1_time[1:], speed_mps, gps_time[1:], 'diff_position'
+
     def _plot_wheel_ticks_or_speeds(self, source, type):
         """!
         @brief Plot wheel speed or tick data.
@@ -2373,38 +2488,19 @@ figure.on('plotly_unhover', function(data) {{
         # Note: Pose data is not read when plotting ticks (ticks do not plot in meters/second). If the wheel data is not
         # in P1 time, we cannot compare against the pose data, which is.
         if type == 'speed' and p1_time_present:
-            nav_engine_p1_time = None
-            nav_engine_speed_mps = None
-
-            # If we have pose messages _and_ they contain body velocity, we can use that.
-            #
-            # Note that we are using this to compare vs wheel speeds, so we're only interested in forward speed here.
-            result = self.reader.read(message_types=[PoseMessage], source_ids=self.default_source_id, **self.params)
-            pose_data = result[PoseMessage.MESSAGE_TYPE]
-            if len(pose_data.p1_time) != 0 and np.any(~np.isnan(pose_data.velocity_body_mps[0, :])):
-                nav_engine_p1_time = pose_data.p1_time
-                nav_engine_speed_mps = pose_data.velocity_body_mps[0, :]
-                if data_signed:
-                    nav_engine_speed_name = 'Speed Estimate (Nav Engine)'
-                else:
-                    nav_engine_speed_mps = np.abs(nav_engine_speed_mps)
-                    nav_engine_speed_name = '|Speed Estimate| (Nav Engine)'
-            # Otherwise, if we have pose aux messages, read those and use the ENU velocity to estimate speed. Since we
-            # don't know attitude, the best we can do is estimate 3D speed and assume it's primarily in the along-track
-            # direction. This will also be an absolute value, so may not match the wheel data if it is signed and the
-            # vehicle is going backward.
-            else:
-                result = self.reader.read(message_types=[PoseAuxMessage], source_ids=self.default_source_id,
-                                          **self.params)
-                pose_aux_data = result[PoseAuxMessage.MESSAGE_TYPE]
-                if len(pose_aux_data.p1_time) != 0:
-                    self.logger.warning('Body forward velocity not available. Estimating |speed| from ENU velocity. '
-                                        'May not match wheel speeds when going backward.')
-                    nav_engine_p1_time = pose_aux_data.p1_time
-                    nav_engine_speed_mps = np.linalg.norm(pose_aux_data.velocity_enu_mps, axis=0)
-                    nav_engine_speed_name = '|3D Speed Estimate| (Nav Engine)'
+            # We're comparing this to wheel speed, so prefer a signed forward (body-frame X) estimate when real
+            # body velocity is available. The ENU-velocity and differential-position fallbacks (see
+            # _estimate_speed_mps()) can only ever produce an unsigned 3D speed -- attitude/heading isn't known
+            # from either -- so may not match the wheel data if it's signed and the vehicle is going backward.
+            nav_engine_p1_time, nav_engine_speed_mps, _, speed_source = \
+                self._estimate_speed_mps(source_id=self.default_source_id, forward_only=True, signed=data_signed)
 
             if nav_engine_speed_mps is not None:
+                nav_engine_speed_name = {
+                    'body': 'Speed Estimate' if data_signed else '|Speed Estimate|',
+                    'enu': '|3D Speed Estimate|',
+                    'diff_position': '|Differential Position Speed Estimate|',
+                }[speed_source] + ' (Nav Engine)'
                 if use_time_type:
                     nav_time, _ = self._resolve_x_axis(p1_time=nav_engine_p1_time)
                     nav_kwargs = {'customdata': self._time_hover_customdata(p1_time=nav_engine_p1_time)}
@@ -3454,7 +3550,7 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
         self.plots[name] = {'title': title, 'path': path}
 
     def _add_figure(self, name, figure=None, title=None, config=None, inject_js: str = None,
-                    time_axis_type: Optional[str] = None, custom_hover: bool = True):
+                    inject_head: str = None, time_axis_type: Optional[str] = None, custom_hover: bool = True):
         """!
         @brief Generate an HTML file for the specified figure.
 
@@ -3464,7 +3560,13 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
         @param config An optional dictionary containing Plotly.js figure config options to be included in the generated
                JavaScript.
         @param inject_js Custom Javascript to be injected into the generated HTML file (see @ref
-               __write_html_and_inject_js()).
+               __write_html_and_inject_js()). Runs *after* `Plotly.newPlot()`, so it's too late to affect the
+               container's size before Plotly's own initial (auto-sized) render -- use `inject_head` for that.
+        @param inject_head Raw HTML (typically a `<style>` block) inserted immediately after the generated file's
+               `<head>` tag -- i.e., before any of Plotly's own script tags run. Unlike CSS/DOM changes made from
+               `inject_js`, this takes effect before `Plotly.newPlot()`'s first (auto-sized) render, so it's the
+               only way to affect a figure's initial layout without a visible resize right after load (see @ref
+               plot_map(), which uses this to make room for its time slider before the map's first paint).
         @param time_axis_type The time domain actually plotted on this figure's X axis (`relative`, `p1`, `gps`, or
                `utc`; see @ref BuildTimeHoverText() in `plotly_data_support.js`). Defaults to `self.time_type`; only
                needs to be overridden by plots (e.g., @ref plot_time_scale()) whose X axis does not follow it.
@@ -3510,6 +3612,12 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
 
             if inject_js is not None:
                 plotly.io.write_html = Analyzer.__original_write_html
+
+            if inject_head is not None:
+                with open(path, 'rt') as f:
+                    html = f.read()
+                with open(path, 'wt') as f:
+                    f.write(html.replace('<head>', '<head>' + inject_head, 1))
 
         self.plots[name] = {'title': title, 'path': path if figure is not None else None}
 
@@ -3753,6 +3861,58 @@ figure.on('plotly_unhover', function(data) {
   HideCustomTooltip();
 });
 """ + tick_reformat_js)
+
+    def _map_time_slider_js(self, t_min: float, t_max: float, profile_time_sec: Optional[np.ndarray],
+                            profile_speed_mps: Optional[np.ndarray],
+                            profile_gps_time_sec: Optional[np.ndarray]) -> str:
+        """!
+        @brief Build JS for a time-range control injected below @ref plot_map()'s figure.
+
+        The control itself (DOM/canvas setup, drag handling, axis formatting) lives in `plotly_map_time_slider.js`,
+        injected the same way as `plotly_data_support.js` (see @ref __write_html_and_inject_js()); this decimates
+        and JSON-encodes the per-log data that static file reads from a handful of `MAP_SLIDER_*` globals.
+
+        @param t_min/t_max The full P1 time range (sec) spanned by the map's traces (matches `customdata[1]`).
+        @param profile_time_sec/profile_speed_mps Parallel arrays of P1 time (sec) and 3D speed (m/s) for the
+               background chart, from the default pose source (e.g., from @ref _estimate_speed_mps()). `None` (or
+               empty) if no speed data is available at all, in which case the chart is simply left blank.
+        @param profile_gps_time_sec GPS time (sec), parallel to `profile_time_sec`, used to label the X axis in
+               `gps`/`utc` mode (see `self.time_type`) -- P1 and GPS time aren't a fixed offset apart, so
+               converting an arbitrary tick's P1 time requires interpolating within the actual per-point data.
+
+        @return The JS to pass as `inject_js` to @ref _add_figure().
+        """
+        # Decimate the speed profile so a long log doesn't inflate the HTML with a huge embedded array -- it's
+        # just a visual aid for picking a time range, precision doesn't matter.
+        _MAX_PROFILE_POINTS = 3000
+        if profile_time_sec is not None and len(profile_time_sec) > 0:
+            order = np.argsort(profile_time_sec)
+            sorted_time = profile_time_sec[order]
+            sorted_speed = profile_speed_mps[order]
+            sorted_gps_time = profile_gps_time_sec[order]
+            if len(sorted_time) > _MAX_PROFILE_POINTS:
+                stride = int(np.ceil(len(sorted_time) / _MAX_PROFILE_POINTS))
+                sorted_time = sorted_time[::stride]
+                sorted_speed = sorted_speed[::stride]
+                sorted_gps_time = sorted_gps_time[::stride]
+            profile_time_json = json.dumps(np.round(sorted_time, 3).tolist())
+            profile_speed_json = json.dumps(np.round(sorted_speed, 3).tolist())
+            profile_gps_time_json = json.dumps(np.round(sorted_gps_time, 3).tolist())
+        else:
+            profile_time_json = '[]'
+            profile_speed_json = '[]'
+            profile_gps_time_json = '[]'
+
+        preamble = f"""\
+var MAP_SLIDER_T_MIN = {json.dumps(t_min)};
+var MAP_SLIDER_T_MAX = {json.dumps(t_max)};
+var MAP_SLIDER_PROFILE_TIME = {profile_time_json};
+var MAP_SLIDER_PROFILE_SPEED = {profile_speed_json};
+var MAP_SLIDER_PROFILE_GPS_TIME = {profile_gps_time_json};
+"""
+        script_dir = os.path.join(os.path.dirname(__file__))
+        with open(os.path.join(script_dir, 'plotly_map_time_slider.js'), 'rt') as f:
+            return preamble + f.read()
 
     def _auto_detect_message_type(self, types: List[MessageType]):
         types = [t.MESSAGE_TYPE if inspect.isclass(t) else t for t in types]
