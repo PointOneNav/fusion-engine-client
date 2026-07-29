@@ -383,11 +383,11 @@ figure.on('plotly_hover', function(data) {
         # Read system timestamps from event notifications, if present.
         result = self.reader.read(message_types=[EventNotificationMessage], **self.params)
         event_data = result[EventNotificationMessage.MESSAGE_TYPE]
-
         system_time_sec = None
-        if len(event_data.messages) > 0:
-            system_time_sec = np.array([(m.system_time_ns * 1e-9) for m in event_data.messages])
+        if len(event_data.system_time) > 0:
+            system_time_sec = event_data.system_time
 
+        # Plot the result.
         if system_time_sec is not None:
             time = system_time_sec - self.system_t0
 
