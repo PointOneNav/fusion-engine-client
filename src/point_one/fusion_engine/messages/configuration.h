@@ -545,8 +545,8 @@ struct P1_ALIGNAS(4) GetConfigMessage : public MessagePayload {
 
   /**
    * When @ref config_type is @ref ConfigType::INTERFACE_CONFIG, a @ref
-   * InterfaceConfigSubmessage must be added to the end of this message with
-   * empty @ref InterfaceConfigSubmessage::config_data.
+   * InterfaceConfigSubmessage must be added to the end of this message
+   * specifying the interface and parameter to be queried.
    */
   //uint8_t optional_submessage_header[0];
 };
