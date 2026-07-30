@@ -1,4 +1,4 @@
-var figure = document.getElementsByClassName("plotly-graph-div js-plotly-plot")[0];
+var figure = document.getElementsByClassName("plotly-graph-div")[0];
 
 // Build a "<Y axis title>: <value>" hover line straight from the point's own axis, so callers don't need to
 // hardcode a plot-specific label/unit/precision.

@@ -1473,7 +1473,7 @@ figure.on('plotly_unhover', function(data) {
 html, body { height: 100%; margin: 0; }
 body { display: flex; flex-direction: column; }
 body > div { display: contents; }
-.plotly-graph-div.js-plotly-plot { flex: 1 1 auto; min-height: 0; width: 100%; visibility: hidden; }
+.plotly-graph-div { flex: 1 1 auto; min-height: 0; width: 100%; visibility: hidden; }
 </style>
 """
 

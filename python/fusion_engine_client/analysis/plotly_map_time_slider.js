@@ -24,13 +24,27 @@
   var ACCENT_COLOR = '#FF9C00';
   var MIN_WINDOW_SEC = Math.max(1e-3, (P1_TIME_MAX - P1_TIME_MIN) * 0.001);
 
+  // Plotly stores large numeric arrays (e.g. lat/lon built from numpy arrays) internally as a typed-array wrapper
+  // object (`{dtype, bdata, _inputArray}`) rather than a plain Array, so a real Array can't always be recovered with
+  // trace.lat.slice() -- unwrap `_inputArray` (an array-like object keyed "0", "1", ... with a few extra
+  // non-numeric metadata keys mixed in) and copy its numeric entries out by hand instead.
+  function toPlainArray(value) {
+    if (value == null) return null;
+    if (Array.isArray(value)) return value.slice();
+    var src = value.hasOwnProperty('_inputArray') ? value._inputArray : value;
+    if (Array.isArray(src)) return src.slice();
+    var out = [];
+    for (var i = 0; src.hasOwnProperty(i); i++) out.push(src[i]);
+    return out;
+  }
+
   // Snapshot each trace's original lat/lon/customdata before any restyle() call mutates figure.data in place --
   // narrowing/widening the window always re-filters from this pristine copy, never from what's currently displayed.
   var ORIGINAL_TRACES = figure.data.map(function(trace) {
     return {
-      lat: trace.lat ? trace.lat.slice() : null,
-      lon: trace.lon ? trace.lon.slice() : null,
-      customdata: trace.customdata ? trace.customdata.slice() : null,
+      lat: toPlainArray(trace.lat),
+      lon: toPlainArray(trace.lon),
+      customdata: toPlainArray(trace.customdata),
     };
   });
 
