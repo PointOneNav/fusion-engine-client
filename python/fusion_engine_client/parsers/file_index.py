@@ -384,35 +384,40 @@ class FileIndex(object):
             raise IndexError(f'No P1 timestamps present in index. Cannot apply time bounds. '
                              f'[start={start}, stop={stop}]')
         else:
-            # Note: The index stores only the integer part of the timestamp.
+            # Both bounds are intentionally over-inclusive: the index stores only the integer part of each timestamp, so
+            # floor `start` to avoid dropping a message whose true time is in range. `stop` needs no adjustment.
+            #
+            # nan entries (no P1Time) never satisfy `>=`, so find_first() either lands on a timestamped entry or returns
+            # -1. Treat -1 as len(self._data): an empty range for `start`, or the end of the data for `stop`.
+            def _first_at_or_after(time_sec: float) -> int:
+                with np.errstate(invalid='ignore'):
+                    idx = find_first(self._data['time'] >= time_sec)
+                return len(self._data) if idx < 0 else idx
 
-            # If self._data['time'] ends _before_ `start``, use 0 as start_idx. If self._data['time'] ends _after_
-            # `end`, use len(self._data['time']) as end_idx.
-            with np.errstate(invalid='ignore'):
-                start_idx = find_first(self._data['time'] >= np.floor(start)) if start is not None else 0
-                end_idx = find_first(self._data['time'] >= stop) if stop is not None else len(self._data)
+            # Messages without P1Time are in range while the surrounding P1 time is in range, so an omitted bound takes
+            # in the initial/final block of them at that end of the log. Keep this consistent with @ref
+            # TimeRange.is_in_range(), which is used to read a log with no index.
+            start_idx = _first_at_or_after(np.floor(start)) if start is not None else 0
+            end_idx = _first_at_or_after(stop) if stop is not None else len(self._data)
 
-            # Corner case: if all messages with timestamps are >= stop (i.e., the log starts after the stop time), if
-            # there are some messages at the start of the log that do not have timestamps, find_first() will include
-            # them but we don't want that. For example, if stop is 4 and we have:
-            #   {nan, 6, 7, 8}
-            # we expect end_idx = -1 (i.e., nothing in range), not end_idx = 1 (i.e., include the nan message).
-            nan_idx = np.isnan(self._data['time'])
-            if end_idx >= 1 and np.all(nan_idx[:end_idx]):
-                end_idx = -1
+            # With `start` omitted the range begins at index 0, which may cover an initial block of messages without
+            # P1Time. If it covers _nothing else_, no timestamped data is in range, so the range is empty: stop=4 over
+            # {nan, nan, 6, 7, 8} must yield nothing, not end_idx == 2. Note that is_in_range() would return the two
+            # leading messages; this is our one intentional deviation.
+            is_nan = np.isnan(self._data['time'])
+            if stop is not None and np.all(is_nan[start_idx:end_idx]):
+                end_idx = start_idx
 
-            # Note: start_idx or end_idx == -1 indicates there was no data in the time range.
             idx = np.full_like(self._data['time'], False, dtype=bool)
-            if start_idx >= 0 and end_idx >= 0:
-                idx[start_idx:end_idx] = True
+            idx[start_idx:end_idx] = True
 
             if hint in ('all_nans', 'remove_nans'):
                 if hint == 'all_nans':
-                    idx[nan_idx] = True
+                    idx[is_nan] = True
                 elif hint == 'remove_nans':
-                    idx[nan_idx] = False
+                    idx[is_nan] = False
             elif hint != 'include_nans':
-                raise ValueError('Unrecognized control hint.')
+                raise ValueError(f'Unrecognized control hint: "{hint}".')
 
             return FileIndex(data=self._data[idx], t0=self.t0)
 

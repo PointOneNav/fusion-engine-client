@@ -194,6 +194,19 @@ def test_time_range_slice():
     assert (sliced_index.offset == [e[2] for e in raw]).all()
     assert (sliced_index.message_index == [e[3] for e in raw]).all()
 
+    # End time beyond end of data: the range extends to the end of the data.
+    sliced_index = index[TimeRange(end=1000.0, absolute=True)]
+    assert _test_time(sliced_index.time, RAW_DATA)
+    assert (sliced_index.offset == [e[2] for e in RAW_DATA]).all()
+    assert (sliced_index.message_index == [e[3] for e in RAW_DATA]).all()
+
+    # Start time within the data, end time beyond the end of the data.
+    sliced_index = index[TimeRange(start=3.0, end=1000.0, absolute=True)]
+    raw = RAW_DATA[_lower_bound(3.0):]
+    assert _test_time(sliced_index.time, raw)
+    assert (sliced_index.offset == [e[2] for e in raw]).all()
+    assert (sliced_index.message_index == [e[3] for e in raw]).all()
+
     # Start time beyond end of data.
     sliced_index = index[TimeRange(start=1000.0, absolute=True)]
     assert len(sliced_index) == 0
