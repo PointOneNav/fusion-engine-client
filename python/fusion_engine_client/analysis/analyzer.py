@@ -88,6 +88,37 @@ def _data_to_table(col_titles: List[str], values: List[List[Any]], row_major: bo
     return table_html.replace('\n', '')
 
 
+def _build_map_style(mapbox_token: Optional[str]):
+    """!
+    @brief Build a `layout.map.style` value for a MapLibre-based Scattermap figure.
+
+    If a Mapbox access token is available, pull Mapbox satellite tiles via a custom raster style spec (the mechanism
+    MapLibre-based maps use in place of the old `layout.mapbox.accesstoken` field, which no longer exists). Otherwise,
+    fall back to Plotly's built-in token-free `satellite-streets` style, which serves ESRI World Imagery aerial tiles
+    (max zoom 16, lower resolution than Mapbox) with OpenMapTiles street labels drawn on top.
+    """
+    if not mapbox_token:
+        return 'satellite-streets'
+
+    return {
+        'version': 8,
+        'sources': {
+            'mapbox-satellite': {
+                'type': 'raster',
+                'tiles': [
+                    f'https://api.mapbox.com/v4/mapbox.satellite/{{z}}/{{x}}/{{y}}@2x.jpg90'
+                    f'?access_token={mapbox_token}'
+                ],
+                'tileSize': 256,
+                'attribution': '© Mapbox',
+            },
+        },
+        'layers': [
+            {'id': 'mapbox-satellite-layer', 'type': 'raster', 'source': 'mapbox-satellite'},
+        ],
+    }
+
+
 _page_template = '''\
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
@@ -1159,9 +1190,9 @@ figure.on('plotly_unhover', function(data) {
         mapbox_token = self.get_mapbox_token(mapbox_token)
         if mapbox_token is None or mapbox_token == "":
             self.logger.info('*' * 80 + '\n\n' +
-                             'Mapbox token not specified. Disabling satellite imagery. For satellite imagery,\n'
-                             'please provide a Mapbox token using --mapbox-token or by setting the\n'
-                             'MAPBOX_ACCESS_TOKEN environment variable.' +
+                             'Mapbox token not specified. Falling back to lower-resolution free satellite\n'
+                             'imagery. For high-resolution imagery, please provide a Mapbox token using\n'
+                             '--mapbox-token or by setting the MAPBOX_ACCESS_TOKEN environment variable.' +
                              '\n\n' + '*' * 80)
             self._mapbox_token_missing = True
             mapbox_token = None
@@ -1244,10 +1275,10 @@ figure.on('plotly_unhover', function(data) {
 
                 if np.any(is_nav_engine):
                     idx = is_nav_engine
-                    map_data.append(go.Scattermapbox(lat=lla_deg[0, idx], lon=lla_deg[1, idx], name=name,
-                                                     customdata=[customdata_all[i] for i in np.nonzero(idx)[0]],
-                                                     hovertemplate=_with_bold_name(hovertemplate, name),
-                                                     legendgroup=legendgroup, visible=visible, **style))
+                    map_data.append(go.Scattermap(lat=lla_deg[0, idx], lon=lla_deg[1, idx], name=name,
+                                                  customdata=[customdata_all[i] for i in np.nonzero(idx)[0]],
+                                                  hovertemplate=_with_bold_name(hovertemplate, name),
+                                                  legendgroup=legendgroup, visible=visible, **style))
                     indices_by_engine['Nav Engine'].append(len(map_data) - 1)
 
                 if np.any(is_gnss_rx):
@@ -1255,17 +1286,17 @@ figure.on('plotly_unhover', function(data) {
                     style['marker']['opacity'] = 0.5
                     style['marker']['size'] = 5
                     gnss_name = name + ' (Receiver Solution)'
-                    map_data.append(go.Scattermapbox(lat=lla_deg[0, idx], lon=lla_deg[1, idx],
-                                                     name=gnss_name,
-                                                     customdata=[customdata_all[i] for i in np.nonzero(idx)[0]],
-                                                     hovertemplate=_with_bold_name(hovertemplate, gnss_name),
-                                                     legendgroup=legendgroup, visible=visible, **style))
+                    map_data.append(go.Scattermap(lat=lla_deg[0, idx], lon=lla_deg[1, idx],
+                                                  name=gnss_name,
+                                                  customdata=[customdata_all[i] for i in np.nonzero(idx)[0]],
+                                                  hovertemplate=_with_bold_name(hovertemplate, gnss_name),
+                                                  legendgroup=legendgroup, visible=visible, **style))
                     indices_by_engine['Receiver Solution'].append(len(map_data) - 1)
 
             else:
                 # If there's no data, draw a dummy trace so it shows up in the legend anyway.
-                map_data.append(go.Scattermapbox(lat=[np.nan], lon=[np.nan], name=name, legendgroup=legendgroup,
-                                                 visible='legendonly', **style))
+                map_data.append(go.Scattermap(lat=[np.nan], lon=[np.nan], name=name, legendgroup=legendgroup,
+                                              visible='legendonly', **style))
                 indices_by_engine['Nav Engine'].append(len(map_data) - 1)
 
         # Read the pose data.
@@ -1340,7 +1371,7 @@ figure.on('plotly_unhover', function(data) {
 
         # Add reference/truth data to the map, if available, restricted to the time range covered by the pose data.
         # Built as a separate list and prepended below (rather than appended to map_data directly) so the reference
-        # is drawn first -- Scattermapbox layers later traces on top, and we want the pose data on top of the
+        # is drawn first -- Scattermap layers later traces on top, and we want the pose data on top of the
         # reference, not the other way around.
         ref_traces = []
         if reference is not None and (reference.is_stationary or overall_gps_t_min is not None):
@@ -1381,12 +1412,12 @@ figure.on('plotly_unhover', function(data) {
                             trace_customdata = None
                         else:
                             trace_customdata = [ref_customdata[i] for i in np.nonzero(idx)[0]]
-                        ref_traces.append(go.Scattermapbox(lat=ref_lla_deg[0, idx], lon=ref_lla_deg[1, idx],
-                                                           name=name, mode='markers',
-                                                           marker={'size': 8, 'color': color},
-                                                           showlegend=True, legendgroup='ref',
-                                                           customdata=trace_customdata,
-                                                           hovertemplate=_with_bold_name(ref_hovertemplate, name)))
+                        ref_traces.append(go.Scattermap(lat=ref_lla_deg[0, idx], lon=ref_lla_deg[1, idx],
+                                                        name=name, mode='markers',
+                                                        marker={'size': 8, 'color': color},
+                                                        showlegend=True, legendgroup='ref',
+                                                        customdata=trace_customdata,
+                                                        hovertemplate=_with_bold_name(ref_hovertemplate, name)))
 
         if ref_traces:
             # Shift the pose traces' button indices to account for the reference traces now being inserted ahead of
@@ -1400,8 +1431,8 @@ figure.on('plotly_unhover', function(data) {
         # Create the map.
         title = 'Vehicle Trajectory'
         if mapbox_token is None:
-            title += '<br>For satellite imagery, please provide a Mapbox token using --mapbox-token or by setting ' \
-                     'MAPBOX_ACCESS_TOKEN.'
+            title += '<br>For higher-resolution satellite imagery, please provide a Mapbox token using ' \
+                     '--mapbox-token or by setting MAPBOX_ACCESS_TOKEN.'
 
         layout = go.Layout(
             autosize=True,
@@ -1412,8 +1443,7 @@ figure.on('plotly_unhover', function(data) {
             title=dict(text=title, x=0, xanchor='left', xref='paper'),
             # Reduce padding around the map, leaving enough space for the title.
             margin=dict(l=16, r=16, t=70, b=8),
-            mapbox=dict(
-                accesstoken=mapbox_token,
+            map=dict(
                 bearing=0,
                 center=dict(
                     lat=lla_deg[0, 0],
@@ -1421,7 +1451,7 @@ figure.on('plotly_unhover', function(data) {
                 ),
                 pitch=0,
                 zoom=18,
-                style='open-street-map' if mapbox_token is None else 'satellite-streets',
+                style=_build_map_style(mapbox_token),
             ),
         )
 
@@ -1464,7 +1494,7 @@ figure.on('plotly_unhover', function(data) {
         # shrink after the time scale renders.
         #
         # The map itself starts hidden (`visibility:hidden`, which still reserves its final layout space, unlike
-        # `display:none`) -- even with the container correctly sized up front, Plotly's own WebGL/mapbox-gl
+        # `display:none`) -- even with the container correctly sized up front, Plotly's own WebGL/MapLibre
         # rendering doesn't necessarily catch up to a resize() call within the same paint, so revealing it right
         # away can still show one frame at the wrong (window-sized) dimensions overlapping the slider. It's
         # revealed by JS (plotly_map_time_slider.js) once Plotly itself reports the post-resize redraw is done.
@@ -3418,9 +3448,9 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
         if self._mapbox_token_missing:
             self.summary += """\n
 <p style="color: red">
-  Warning: Mapbox token not specified. Generated map using Open Street Maps
-  street data. For satellite imagery, please request a free access token from
-  https://account.mapbox.com/access-tokens, then provide the token by
+  Warning: Mapbox token not specified. Generated map using free, lower-resolution
+  satellite imagery. For high-resolution imagery, please request a free access
+  token from https://account.mapbox.com/access-tokens, then provide the token by
   specifying --mapbox-token or setting the MAPBOX_ACCESS_TOKEN environment
   variable.
 </p>
