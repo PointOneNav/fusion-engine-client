@@ -103,6 +103,8 @@ enum class DeviceType : uint8_t {
   SSR_LG69T = 6,
   /** Point One SSR client running on a desktop platform. */
   SSR_DESKTOP = 7,
+  /** Point One Atlas R2. */
+  ATLAS_R2 = 9,
 };
 
 /**
@@ -131,6 +133,8 @@ P1_CONSTEXPR_FUNC const char* to_string(DeviceType val) {
       return "SSR_LG69T";
     case DeviceType::SSR_DESKTOP:
       return "SSR_DESKTOP";
+    case DeviceType::ATLAS_R2:
+      return "ATLAS_R2";
   }
   return "Unrecognized";
 }
