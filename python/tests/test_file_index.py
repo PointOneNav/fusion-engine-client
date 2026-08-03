@@ -19,6 +19,10 @@ RAW_DATA = [
 RAW_DATA = [(*entry, i) for i, entry in enumerate(RAW_DATA)]
 
 
+def _make_index(entries):
+    return FileIndex(data=[(*entry, i) for i, entry in enumerate(entries)])
+
+
 def _test_time(time, raw_data):
     raw_time = [e[0] for e in raw_data]
     raw_is_none = [e is None for e in raw_time]
@@ -194,6 +198,19 @@ def test_time_range_slice():
     assert (sliced_index.offset == [e[2] for e in raw]).all()
     assert (sliced_index.message_index == [e[3] for e in raw]).all()
 
+    # End time beyond end of data: the range extends to the end of the data.
+    sliced_index = index[TimeRange(end=1000.0, absolute=True)]
+    assert _test_time(sliced_index.time, RAW_DATA)
+    assert (sliced_index.offset == [e[2] for e in RAW_DATA]).all()
+    assert (sliced_index.message_index == [e[3] for e in RAW_DATA]).all()
+
+    # Start time within the data, end time beyond the end of the data.
+    sliced_index = index[TimeRange(start=3.0, end=1000.0, absolute=True)]
+    raw = RAW_DATA[_lower_bound(3.0):]
+    assert _test_time(sliced_index.time, raw)
+    assert (sliced_index.offset == [e[2] for e in raw]).all()
+    assert (sliced_index.message_index == [e[3] for e in raw]).all()
+
     # Start time beyond end of data.
     sliced_index = index[TimeRange(start=1000.0, absolute=True)]
     assert len(sliced_index) == 0
@@ -215,6 +232,115 @@ def test_time_range_slice():
     assert _test_time(sliced_index.time, raw)
     assert (sliced_index.offset == [e[2] for e in raw]).all()
     assert (sliced_index.message_index == [e[3] for e in raw]).all()
+
+
+def test_time_range_slice_corner_cases():
+    index = FileIndex(data=RAW_DATA)
+
+    # The index stores only the integer part of each timestamp, so both bounds are intentionally over-inclusive: a
+    # fractional `start` is floored so we don't drop a message whose true time may fall in range, and a fractional
+    # `stop` keeps the messages sharing its integer second.
+    sliced_index = index[TimeRange(start=2.5, end=3.5, absolute=True)]
+    raw = RAW_DATA[2:6]
+    assert _test_time(sliced_index.time, raw)
+    assert (sliced_index.offset == [e[2] for e in raw]).all()
+    assert (sliced_index.message_index == [e[3] for e in raw]).all()
+
+    # Empty and inverted ranges.
+    assert len(index[TimeRange(start=3.0, end=3.0, absolute=True)]) == 0
+    assert len(index[TimeRange(start=3.0, end=2.0, absolute=True)]) == 0
+
+    # An initial block of messages without P1Time is treated as being "before" a specified `start`, and is included only
+    # when `start` is not specified. Note that TimeRange normalizes an absolute start of 0.0 to None ("not specified"),
+    # so use a nonzero start that still precedes the first timestamp.
+    leading_index = _make_index([
+        (None, MessageType.VERSION_INFO, 0),
+        (None, MessageType.VERSION_INFO, 10),
+        (Timestamp(6.0), MessageType.POSE, 20),
+        (Timestamp(7.0), MessageType.POSE, 30),
+        (Timestamp(8.0), MessageType.POSE, 40),
+    ])
+    sliced_index = leading_index[TimeRange(end=7.0, absolute=True)]
+    assert (sliced_index.message_index == [0, 1, 2]).all()
+    sliced_index = leading_index[TimeRange(start=1.0, end=7.0, absolute=True)]
+    assert (sliced_index.message_index == [2]).all()
+
+    # Corner case: the log starts after the requested stop time, but begins with messages without P1Time. Those
+    # messages must not be treated as in range, since no timestamped data is in range at all.
+    assert len(leading_index[TimeRange(end=4.0, absolute=True)]) == 0
+
+    # The leading messages are still returned if the caller explicitly asks for all nans.
+    sliced_index = leading_index[TimeRange(end=4.0, absolute=True), 'all_nans']
+    assert (sliced_index.message_index == [0, 1]).all()
+
+    # Same corner case, but with a `stop` of 0.0: the range is empty, so the leading messages are still out of range.
+    # Note that this requires testing `stop is not None`, not the truthiness of `stop`.
+    assert len(leading_index[TimeRange(end=0.0, absolute=True)]) == 0
+    assert len(leading_index.get_time_range(stop=0.0)) == 0
+
+    # A final block of messages without P1Time is in range as long as the range has not already ended, i.e. as long as
+    # no timestamp >= `stop` was found. This matches TimeRange.is_in_range(), which only ends a range on a timestamped
+    # message, so that an indexed read and a non-indexed read of the same log agree.
+    trailing_index = _make_index([
+        (Timestamp(1.0), MessageType.POSE, 0),
+        (Timestamp(2.0), MessageType.POSE, 10),
+        (None, MessageType.VERSION_INFO, 20),
+        (None, MessageType.VERSION_INFO, 30),
+    ])
+    sliced_index = trailing_index[TimeRange(start=1.0, absolute=True)]
+    assert (sliced_index.message_index == [0, 1, 2, 3]).all()
+    sliced_index = trailing_index[TimeRange(start=1.0, end=1000.0, absolute=True)]
+    assert (sliced_index.message_index == [0, 1, 2, 3]).all()
+
+    # ...but once a timestamp >= `stop` is found, the range ends there, so a following block is out of range.
+    sliced_index = trailing_index[TimeRange(start=1.0, end=2.0, absolute=True)]
+    assert (sliced_index.message_index == [0]).all()
+
+    # A block of messages without P1Time between two timestamps is in range as usual.
+    interior_index = _make_index([
+        (Timestamp(1.0), MessageType.POSE, 0),
+        (None, MessageType.VERSION_INFO, 10),
+        (Timestamp(9.0), MessageType.POSE, 20),
+    ])
+    sliced_index = interior_index[TimeRange(start=1.0, end=1000.0, absolute=True)]
+    assert (sliced_index.message_index == [0, 1, 2]).all()
+    sliced_index = interior_index[TimeRange(start=1.0, end=9.0, absolute=True)]
+    assert (sliced_index.message_index == [0, 1]).all()
+
+    # Untimed messages within the range may be dropped on request.
+    sliced_index = index.get_time_range(time_range=TimeRange(start=1.0, end=3.0, absolute=True), hint='remove_nans')
+    raw = [e for e in RAW_DATA[1:5] if e[0] is not None]
+    assert _test_time(sliced_index.time, raw)
+    assert (sliced_index.message_index == [e[3] for e in raw]).all()
+
+    with pytest.raises(ValueError):
+        index.get_time_range(time_range=TimeRange(start=1.0, absolute=True), hint='not_a_hint')
+
+    # No time bounds specified: return everything.
+    sliced_index = index.get_time_range()
+    assert (sliced_index.message_index == [e[3] for e in RAW_DATA]).all()
+
+    # An index containing _only_ messages without P1Time, but which still knows its t0 -- as produced by an 'all_nans'
+    # slice -- can be sliced by time again. Its handling depends on which bounds were specified:
+    nan_only = index[TimeRange(start=1000.0, absolute=True), 'all_nans']
+    assert len(nan_only) > 0 and np.isnan(nan_only.time).all() and nan_only.t0 is not None
+
+    # - Neither bound: it is okay to return messages outside the extreme P1Times, so return everything.
+    assert (nan_only.get_time_range().message_index == list(nan_only.message_index)).all()
+    # - `stop` specified: no timestamped data is in range, so the range is empty.
+    assert len(nan_only[TimeRange(end=1000.0, absolute=True)]) == 0
+    assert len(nan_only[TimeRange(start=1.0, end=1000.0, absolute=True)]) == 0
+    # - Only `start` specified: there is no timestamp at or after it, so the range is empty as well.
+    assert len(nan_only[TimeRange(start=1.0, absolute=True)]) == 0
+
+    # An empty index has nothing to bound. Note that __getitem__() short-circuits empty indices, so call
+    # get_time_range() directly to exercise its own empty handling.
+    assert len(FileIndex().get_time_range(time_range=TimeRange(start=1.0, end=2.0, absolute=True))) == 0
+    assert len(FileIndex()[TimeRange(start=1.0, end=2.0, absolute=True)]) == 0
+
+    # `start`/`stop` and a TimeRange are mutually exclusive.
+    with pytest.raises(ValueError):
+        index.get_time_range(start=1.0, time_range=TimeRange(start=1.0, absolute=True))
 
 
 def test_time_slice_no_p1_time():
