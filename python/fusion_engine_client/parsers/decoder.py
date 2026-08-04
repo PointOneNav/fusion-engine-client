@@ -257,11 +257,12 @@ class FusionEngineDecoder:
             # Get the class for the received message type and deserialize the message payload. If cls is not None, it is
             # a child of @ref MessagePayload that maps to the received @ref MessageType.
             cls = message_type_to_class.get(self._header.message_type, None)
+            payload = bytes(self._buffer[MessageHeader.calcsize():self._msg_len])
             contents = None
             if cls is not None:
                 contents = cls()
                 try:
-                    contents.unpack(buffer=self._buffer, offset=MessageHeader.calcsize())
+                    contents.unpack(buffer=payload, offset=0)
                     _logger.debug('Decoded FusionEngine message %s.', repr(contents))
                 except NotImplementedError as e:
                     print_func = _logger.warning if self._warn_on_unrecognized else _logger.debug
@@ -277,7 +278,7 @@ class FusionEngineDecoder:
                            self._header.message_type, self._header.payload_size_bytes)
 
             if contents is None:
-                contents = bytes(self._buffer[MessageHeader.calcsize():self._msg_len])
+                contents = payload
 
             # Store the result.
             result = [self._header, contents]
