@@ -372,7 +372,6 @@ figure.on('plotly_hover', function(data) {
                 dgps_time = dgps_time[idx]
 
                 figure.layout.annotations[0].text += "<br>Decimated %dx" % step
-                figure.layout.annotations[1].text += "<br>Decimated %dx" % step
             else:
                 p1_time = pose_data.p1_time
                 gps_time = pose_data.gps_time
