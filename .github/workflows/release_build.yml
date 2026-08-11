@@ -5,7 +5,7 @@ on:
   push:
     # Build on a push to any branch.
     branches:
-      - '*'
+      - '**'
     # Build on a push of any tag named v* (v1.0, etc.) and generate a release.
     tags:
       - 'v*'

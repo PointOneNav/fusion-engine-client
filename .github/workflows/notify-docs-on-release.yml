@@ -23,7 +23,7 @@ jobs:
         run: |
           gh api --method POST \
             /repos/${{ github.repository_owner }}/developer-resources-site/actions/workflows/build-docs.yml/dispatches \
-            -f ref="master" \
+            -f ref="main" \
             -F inputs[source_repo]="${{ github.repository }}" \
             -F inputs[release_tag]="${{ github.event.release.tag_name }}" \
             -F inputs[asset_name]="${{ vars.DOCS_ASSET_NAME }}"
