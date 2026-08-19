@@ -353,10 +353,13 @@ def test_time_slice_no_p1_time():
 
     # If the log does not contain P1 time, slicing it by time is not supported.
     with pytest.raises(IndexError):
-        sliced_index = index[1.0:]
-        sliced_index = index.get_time_range(start=1.0)
-        sliced_index = index[TimeRange(start=2.0, absolute=True)]
-        sliced_index = index[TimeRange(start=2.0, absolute=False)]
+        index[1.0:]
+    with pytest.raises(IndexError):
+        index.get_time_range(start=1.0)
+    with pytest.raises(IndexError):
+        index[TimeRange(start=2.0, absolute=True)]
+    with pytest.raises(IndexError):
+        index[TimeRange(start=2.0, absolute=False)]
 
     # However, if you don't set start or stop, setting hint should still work.
     sliced_index = index.get_time_range(hint='include_nans')
