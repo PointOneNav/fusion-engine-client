@@ -376,11 +376,11 @@ class FileIndex(object):
         if len(self._data) == 0:
             return FileIndex(data=np.copy(self._data), t0=self.t0)
         # No time bounds specified. Return the complete dataset.
-        elif start is None and stop is None:
+        elif start is None and stop is None and hint is None:
             return FileIndex(data=np.copy(self._data), t0=self.t0)
         # If there's no P1 timestamps in the index file whatsoever, t0 will be None. In that case, we cannot apply time
         # bounds to the data, since they are based on P1 time. This should be extremely rare.
-        elif self.t0 is None:
+        elif (start is not None or stop is not None) and self.t0 is None:
             raise IndexError(f'No P1 timestamps present in index. Cannot apply time bounds. '
                              f'[start={start}, stop={stop}]')
         else:

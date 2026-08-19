@@ -92,10 +92,11 @@ def _build_map_style(mapbox_token: Optional[str]):
     """!
     @brief Build a `layout.map.style` value for a MapLibre-based Scattermap figure.
 
-    If a Mapbox access token is available, pull Mapbox satellite tiles via a custom raster style spec (the mechanism
-    MapLibre-based maps use in place of the old `layout.mapbox.accesstoken` field, which no longer exists). Otherwise,
-    fall back to Plotly's built-in token-free `satellite-streets` style, which serves ESRI World Imagery aerial tiles
-    (max zoom 16, lower resolution than Mapbox) with OpenMapTiles street labels drawn on top.
+    If a Mapbox access token is available, pull Mapbox's rendered `satellite-streets-v12` tiles (imagery with street
+    labels composited on top) via a custom raster style spec, the mechanism MapLibre-based maps use in place of the
+    old `layout.mapbox.accesstoken` field, which no longer exists. Otherwise, fall back to Plotly's built-in
+    token-free `satellite-streets` style, which serves ESRI World Imagery aerial tiles (max zoom 16, lower resolution
+    than Mapbox) with OpenMapTiles street labels drawn on top.
     """
     if not mapbox_token:
         return 'satellite-streets'
@@ -103,10 +104,10 @@ def _build_map_style(mapbox_token: Optional[str]):
     return {
         'version': 8,
         'sources': {
-            'mapbox-satellite': {
+            'mapbox-satellite-streets': {
                 'type': 'raster',
                 'tiles': [
-                    f'https://api.mapbox.com/v4/mapbox.satellite/{{z}}/{{x}}/{{y}}@2x.jpg90'
+                    f'https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/tiles/256/{{z}}/{{x}}/{{y}}@2x'
                     f'?access_token={mapbox_token}'
                 ],
                 'tileSize': 256,
@@ -114,7 +115,7 @@ def _build_map_style(mapbox_token: Optional[str]):
             },
         },
         'layers': [
-            {'id': 'mapbox-satellite-layer', 'type': 'raster', 'source': 'mapbox-satellite'},
+            {'id': 'mapbox-satellite-streets-layer', 'type': 'raster', 'source': 'mapbox-satellite-streets'},
         ],
     }
 

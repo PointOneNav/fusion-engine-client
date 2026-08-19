@@ -441,8 +441,12 @@ class DataLoader(object):
         # fast reading, messages with system times may have their index entry timestamps set to NAN since A) they can
         # occur in a log before P1 time is established, and B) there's not necessarily a direct way to convert between
         # system and P1 time.
-        p1_time_messages_requested = any([t in messages_with_p1_time for t in needed_message_types])
-        system_time_messages_requested = any([t in messages_with_system_time for t in needed_message_types])
+        requested_messages_with_p1_time = any([t in messages_with_p1_time for t in needed_message_types])
+        requested_messages_with_system_time = any([t in messages_with_system_time for t in needed_message_types])
+        all_system_time_messages_have_p1_time = all([t in messages_with_p1_time
+                                                     for t in needed_message_types if t in messages_with_system_time])
+        requested_messages_with_only_system_time = (requested_messages_with_system_time
+                                                    and not all_system_time_messages_have_p1_time)
 
         # Create a dict with references to the requested types only to be returned below. If any data was already
         # cached, it will be present in self.data and populated here.
@@ -471,8 +475,8 @@ class DataLoader(object):
 
         # If we need to establish t0 (either P1 time or system time), we will wait to apply the user's filter criteria.
         # We can get t0 from any message type.
-        need_t0 = self._need_t0 and p1_time_messages_requested
-        need_system_t0 = self._need_system_t0 and system_time_messages_requested
+        need_t0 = self._need_t0 and requested_messages_with_p1_time
+        need_system_t0 = self._need_system_t0 and requested_messages_with_system_time
 
         reader_max_messages_applied = False
         if need_t0 or need_system_t0:
@@ -486,7 +490,7 @@ class DataLoader(object):
             self.reader.filter_in_place(None, source_ids=source_ids)
 
             # If the user is requiring (valid) P1 timestamps, filter to those now.
-            if require_p1_time and not system_time_messages_requested:
+            if require_p1_time and not requested_messages_with_only_system_time:
                 self.reader.filter_out_invalid_p1_times()
 
             # If the user requested max messages, tell the reader to return max N results. The reader only supports this
@@ -497,7 +501,7 @@ class DataLoader(object):
             # not system time. The read_next() call below will apply this condition and only return messages with valid
             # system time.
             if (max_messages is not None and self.reader.have_index() and
-                    not (require_system_time and system_time_messages_requested)):
+                    not (require_system_time and requested_messages_with_system_time)):
                 reader_max_messages_applied = True
                 if max_messages >= 0:
                     self.reader.filter_in_place(slice(None, max_messages))
