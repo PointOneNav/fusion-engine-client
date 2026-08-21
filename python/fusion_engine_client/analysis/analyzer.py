@@ -2173,10 +2173,25 @@ figure.on('plotly_unhover', function(data) {{
         only used for IMU or wheel speed data.
         """
         if self._gnss_antenna_source_ids is None:
-            # 0/1 are the legacy primary/secondary antenna identifiers, predating the SourceIdentifier reserved
-            # ranges. 300-399 is reserved for GNSS receivers/antennae.
-            self._gnss_antenna_source_ids = sorted(
-                sid for sid in self.source_ids if sid in (0, 1) or 300 <= sid <= 399)
+            # 300-399 is reserved for GNSS receivers/antennas.
+            self._gnss_antenna_source_ids = sorted(sid for sid in self.source_ids if 300 <= sid <= 399)
+
+            # For backwards compatibility, 0/1 are the legacy primary/secondary antenna identifiers, predating the
+            # SourceIdentifier reserved range definition, but only if there are GNSS signals messages present in the
+            # log. If not, ignore source 0 from pose messages, etc. so we don't issue "no data for source 0" warnings
+            # later.
+            if len(self._gnss_antenna_source_ids) == 0:
+                params = copy.deepcopy(self.params)
+                params['return_numpy'] = False
+                params['max_messages'] = 1
+                result = self.reader.read(message_types=[GNSSSignalsMessage, GNSSSatelliteMessage,
+                                                         RawGNSSAttitudeOutput, GNSSAttitudeOutput], **params)
+                if any(r.num_messages > 0 for r in result.values()):
+                    self._gnss_antenna_source_ids = sorted(sid for sid in self.source_ids if sid in (0, 1))
+
+            if len(self._gnss_antenna_source_ids) == 0:
+                self.logger.info(f'No GNSS signal data detected. Skipping all GNSS plots.')
+
         return self._gnss_antenna_source_ids
 
     def _gnss_antenna_label(self, source_id: int) -> str:
