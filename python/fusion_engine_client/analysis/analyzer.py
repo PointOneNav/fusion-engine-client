@@ -1566,7 +1566,7 @@ body > div { display: contents; }
             idx = all_signal_sv_hashes == sv_hash
             cn0_per_epoch = np.split(data.signal_data['cn0_dbhz'][idx],
                                      np.unique(data.signal_data['p1_time'][idx], return_index=True)[1][1:])
-            max_cn0_dbhz = np.array([max(cn0) for cn0 in cn0_per_epoch])
+            max_cn0_dbhz = np.array([max(cn0) if len(cn0) > 0 else 0.0 for cn0 in cn0_per_epoch])
 
             if have_gnss_signals_message:
                 sv_signal_types = signal_types_by_sv[sv_hash]
