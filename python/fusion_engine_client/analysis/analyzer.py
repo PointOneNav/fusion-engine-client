@@ -608,9 +608,23 @@ figure.on('plotly_hover', function(data) {
 
         c_enu_ecef = get_enu_rotation_matrix(*pose_data.lla_deg[0:2, first_idx], deg=True)
 
+        # If there's no body velocity available, see if we have PoseAux messages and plot ENU velocity instead.
+        vel_mps = pose_data.velocity_body_mps
+        vel_std_mps = pose_data.velocity_std_body_mps
+        is_body_vel = True
+
+        if np.all(np.isnan(vel_mps)):
+            result = self.reader.read(message_types=[PoseAuxMessage], source_ids=self.default_source_id, **self.params)
+            pose_aux_data = result[PoseAuxMessage.MESSAGE_TYPE]
+            if len(pose_aux_data.p1_time) != 0:
+                vel_mps = pose_aux_data.velocity_enu_mps
+                vel_std_mps = pose_aux_data.velocity_std_enu_mps
+                is_body_vel = False
+
         # Setup the figure.
         figure = make_subplots(rows=2, cols=3, print_grid=False, shared_xaxes=True,
-                               subplot_titles=['Attitude (YPR)', 'ENU Displacement', 'Body Velocity',
+                               subplot_titles=['Attitude (YPR)', 'ENU Displacement',
+                                               'Body Velocity' if is_body_vel else 'ENU Velocity',
                                                'Attitude Std', 'ENU Position Std', 'Velocity Std'])
 
         figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
@@ -673,29 +687,29 @@ figure.on('plotly_hover', function(data) {
                          2, 2)
 
         # Plot velocity.
-        figure.add_trace(go.Scattergl(x=time, y=pose_data.velocity_body_mps[0, :], customdata=customdata, name='X',
+        figure.add_trace(go.Scattergl(x=time, y=vel_mps[0, :], customdata=customdata, name='X',
                                       legendgroup='x', mode='lines', line={'color': 'red'}),
                          1, 3)
-        figure.add_trace(go.Scattergl(x=time, y=pose_data.velocity_body_mps[1, :], customdata=customdata, name='Y',
+        figure.add_trace(go.Scattergl(x=time, y=vel_mps[1, :], customdata=customdata, name='Y',
                                       legendgroup='y', mode='lines', line={'color': 'green'}),
                          1, 3)
-        figure.add_trace(go.Scattergl(x=time, y=pose_data.velocity_body_mps[2, :], customdata=customdata, name='Z',
+        figure.add_trace(go.Scattergl(x=time, y=vel_mps[2, :], customdata=customdata, name='Z',
                                       legendgroup='z', mode='lines', line={'color': 'blue'}),
                          1, 3)
-        figure.add_trace(go.Scattergl(x=time, y=np.linalg.norm(pose_data.velocity_body_mps, axis=0),
+        figure.add_trace(go.Scattergl(x=time, y=np.linalg.norm(vel_mps, axis=0),
                                       customdata=customdata, name='3D',
                                       mode='lines', line={'color': 'orange', 'dash': 'dash'}),
                          1, 3)
 
-        figure.add_trace(go.Scattergl(x=time, y=pose_data.velocity_std_body_mps[0, :], customdata=customdata,
+        figure.add_trace(go.Scattergl(x=time, y=vel_std_mps[0, :], customdata=customdata,
                                       name='X', legendgroup='x', showlegend=False, mode='lines',
                                       line={'color': 'red'}),
                          2, 3)
-        figure.add_trace(go.Scattergl(x=time, y=pose_data.velocity_std_body_mps[1, :], customdata=customdata,
+        figure.add_trace(go.Scattergl(x=time, y=vel_std_mps[1, :], customdata=customdata,
                                       name='Y', legendgroup='y', showlegend=False, mode='lines',
                                       line={'color': 'green'}),
                          2, 3)
-        figure.add_trace(go.Scattergl(x=time, y=pose_data.velocity_std_body_mps[2, :], customdata=customdata,
+        figure.add_trace(go.Scattergl(x=time, y=vel_std_mps[2, :], customdata=customdata,
                                       name='Z', legendgroup='z', showlegend=False, mode='lines',
                                       line={'color': 'blue'}),
                          2, 3)
