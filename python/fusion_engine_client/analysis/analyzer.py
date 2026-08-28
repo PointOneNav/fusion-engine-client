@@ -266,6 +266,11 @@ figure.on('plotly_hover', function(data) {
         # `x_domain` argument. Some plots may use a different X axis regardles of self.time_type, and may override this.
         self._default_x_domain = 'p1' if self.time_type in ('relative', 'p1') else 'gps'
 
+        # The start of the reference data (P1 and GPS time), used as the relative time origin in place of the start of
+        # the log if @ref set_reference_t0() is called. See @ref t0.
+        self._reference_t0 = None
+        self._reference_t0_gps = None
+
         self.plots = {}
         self.summary = ''
 
@@ -299,6 +304,50 @@ figure.on('plotly_hover', function(data) {
                 _logger.warning('Log duration very long (%.1f hours > %.1f hours). Some plots may be very slow to '
                                 'generate or load.' %
                                 (processing_duration_sec / 3600.0, self.LONG_LOG_DURATION_SEC / 3600.0))
+
+    @property
+    def t0(self) -> Optional[Timestamp]:
+        """!
+        @brief The P1 time used as the origin when plotting relative time.
+
+        This is the timestamp of the first entry in the log, unless @ref set_reference_t0() was used to measure
+        relative time from the start of the reference data instead.
+
+        @return The origin timestamp, or `None` if the log does not contain P1 time.
+        """
+        return self.reader.t0 if self._reference_t0 is None else self._reference_t0
+
+    def set_reference_t0(self, reference: ReferenceData):
+        """!
+        @brief Use the start of the specified reference data as the origin when plotting relative time (see @ref t0).
+
+        Has no effect for a stationary reference, which has no timestamps, or if the reference's GPS timestamps
+        cannot be converted to this log's P1 time.
+
+        @param reference The reference data to take the start time from.
+        """
+        if reference.is_stationary or len(reference.gps_time_sec) == 0:
+            return
+
+        # The reference is timestamped in GPS time, so convert its start time to P1 time to be used as the origin for
+        # the P1 timestamps in this log.
+        gps_t0_sec = float(reference.gps_time_sec[0])
+        p1_t0_sec = float(self.time_provider.gps_to_p1(np.array([gps_t0_sec]))[0])
+        if np.isnan(p1_t0_sec):
+            self.logger.warning('Unable to convert the reference data start time to P1 time. Measuring relative time '
+                                'from the start of the log.')
+            return
+
+        self._reference_t0 = Timestamp(p1_t0_sec)
+        self._reference_t0_gps = Timestamp(gps_t0_sec)
+
+        message = ('Measuring relative time from the start of the reference data (P1 %s).' %
+                   self._reference_t0.to_p1_str())
+        if self.reader.t0 is not None:
+            dt_sec = float(self.reader.t0) - p1_t0_sec
+            message += (' The reference starts %.1f seconds %s the first entry in the log.' %
+                        (abs(dt_sec), 'before' if dt_sec >= 0.0 else 'after'))
+        self.logger.info(message)
 
     def plot_time_scale(self):
         if self.output_dir is None:
@@ -1234,7 +1283,7 @@ figure.on('plotly_unhover', function(data) {
 
         def _build_position_customdata(p1_time: np.ndarray, gps_time: np.ndarray, lla_deg: np.ndarray,
                                        std_enu_m: np.ndarray, error_enu_m: Optional[np.ndarray] = None) -> list:
-            rel_time = p1_time - float(self.reader.t0)
+            rel_time = p1_time - float(self.t0)
             gps_week = np.floor(gps_time / SECONDS_PER_WEEK)
             gps_tow_sec = gps_time - gps_week * SECONDS_PER_WEEK
 
@@ -3644,6 +3693,15 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
                            t0_gps=processed_t0_gps, t0_is_approx=processed_t0_is_approx),
             '%.1f seconds' % processing_duration_sec,
         ]
+
+        # If relative time is measured from the start of the reference data instead of the start of the log, call that
+        # out (see @ref set_reference_t0()).
+        if self._reference_t0 is not None:
+            descriptions += ['', 'Relative Time Origin', '(reference data start)']
+            times += ['',
+                      f'P1: {self._reference_t0.to_p1_str()}',
+                      self._gps_sec_to_string(self._reference_t0_gps)]
+
         time_table = _data_to_table(['Description', 'Time'], [descriptions, times])
 
         # Create a table with the types and counts of each FusionEngine message type in the log.
@@ -3794,13 +3852,13 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
         if post_script is None:
             post_script = ""
 
-        # Create global variables with the log's t0 timestamp, the (leap-second accurate) GPS/POSIX offset, the
-        # system time t0 (see BuildSystemTimeHoverText()), and the time domain plotted on this figure's X axis (see
-        # BuildTimeHoverText()). Note: self.reader.t0 and system_t0 may each independently be unavailable (e.g. a
-        # system-time-only profiling log has no P1 time at all), so both need a 'null' fallback -- plots that
-        # don't use one of these domains at all still go through this same code path whenever inject_js is set.
+        # Create global variables with the relative time origin (see @ref t0), the (leap-second accurate) GPS/POSIX
+        # offset, the system time t0 (see BuildSystemTimeHoverText()), and the time domain plotted on this figure's X
+        # axis (see BuildTimeHoverText()). Note: self.t0 and system_t0 may each independently be unavailable (e.g. a
+        # system-time-only profiling log has no P1 time at all), so both need a 'null' fallback -- plots that don't
+        # use one of these domains at all still go through this same code path whenever inject_js is set.
         gps_posix_offset_sec = self.time_provider.get_gps_posix_offset_sec()
-        p1_t0_sec = None if self.reader.t0 is None else float(self.reader.t0)
+        p1_t0_sec = None if self.t0 is None else float(self.t0)
         system_t0 = self.reader.get_system_t0() if self.time_type == 'relative' else 0.0
         system_t0_sec = None if system_t0 is None else float(system_t0)
         post_script += f"""\
@@ -3850,7 +3908,7 @@ var time_axis_type = '{time_axis_type}';
     def _get_t0_for_time_source(self, time_source: SystemTimeSource) -> float:
         if time_source == SystemTimeSource.P1_TIME:
             if self.time_type == 'relative':
-                return float(self.reader.t0)
+                return float(self.t0)
             else:
                 return 0.0
         elif time_source == SystemTimeSource.GPS_TIME:
@@ -3929,7 +3987,7 @@ var time_axis_type = '{time_axis_type}';
                 return system_time, axis_layout
 
         if self.time_type == 'relative':
-            return p1_time - float(self.reader.t0), axis_layout
+            return p1_time - float(self.t0), axis_layout
         elif self.time_type == 'p1' or ignore_gps:
             return p1_time, axis_layout
 
@@ -4354,6 +4412,10 @@ Load and display information stored in a FusionEngine binary file.
         if reference_data is None:
             _logger.error('Unable to resolve reference data.')
             sys.exit(1)
+
+        # The reference data typically starts before the log being analyzed, so use its start time as the origin for
+        # relative time.
+        analyzer.set_reference_t0(reference_data)
 
     if options.plot is None:
         analyzer.plot_events()
