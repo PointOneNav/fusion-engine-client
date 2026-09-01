@@ -271,7 +271,8 @@ class EventNotificationMessage(MessagePayload):
                         message = message_cls()
                         message.unpack(buffer=self.event_description, offset=header.calcsize())
                         message_repr = repr(message)
-                    except ValueError as e:
+                    except Exception:
+                        # Fall back to the hex dump below on any parse failure.
                         pass
             else:
                 message_repr = '<Malformed>'
