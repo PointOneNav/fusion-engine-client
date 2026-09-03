@@ -611,6 +611,16 @@ enum class SourceIdentifier : uint32_t {
 
   // 500 - 599 is reserved for external pose sources, such as an external SLAM
   // or VIO/LIO.
+
+  // 600 - 699 is reserved for redundant/secondary processing engines. The
+  // ranges above identify the sensor or vehicle location that the data
+  // corresponds to. These instead identify *which device/process produced a
+  // message*.
+  /** The primary processing engine. */
+  PRIMARY_PROCESSING_ENGINE = 600,
+  /** A redundant/secondary processing engine. */
+  SECONDARY_PROCESSING_ENGINE = 601,
+
   /** Invalid source identifier. */
   INVALID = 0xFFFFFFFF,
 };
