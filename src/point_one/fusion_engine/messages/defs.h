@@ -607,6 +607,8 @@ enum class SourceIdentifier : uint32_t {
    */
   SECONDARY_GNSS_ANTENNA = 301,
 
+  // 400 - 499 is reserved for wheel speeds.
+
   // 500 - 599 is reserved for external pose sources, such as an external SLAM
   // or VIO/LIO.
   /** Invalid source identifier. */
