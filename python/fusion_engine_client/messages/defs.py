@@ -233,7 +233,12 @@ class SourceIdentifier(IntEnum):
     # 300 - 399 is reserved for GNSS receivers/antennae.
     PRIMARY_GNSS_ANTENNA = 300
     SECONDARY_GNSS_ANTENNA = 301
+    # 400 - 499 is reserved for wheel speeds.
     # 500 - 599 is reserved for external pose sources, such as an external SLAM or VIO/LIO.
+    # 600 - 699 is reserved for redundant/secondary processing engines. The ranges above identify the sensor or vehicle
+    # location that the data corresponds to. These instead identify *which device/process produced a message*.
+    PRIMARY_PROCESSING_ENGINE = 600
+    SECONDARY_PROCESSING_ENGINE = 601
     ## Invalid source identifier.
     INVALID = 0xFFFFFFFF
 
