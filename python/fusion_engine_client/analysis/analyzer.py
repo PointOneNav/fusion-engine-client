@@ -3746,7 +3746,6 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
                 filename=path,
                 include_plotlyjs=True,
                 auto_open=False,
-                show_link=False,
                 config=config)
 
             if inject_js is not None:
