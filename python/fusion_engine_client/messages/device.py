@@ -154,6 +154,22 @@ class EventType(IntEnum):
     COMMAND_RESPONSE = 4
 
 
+class LogSeverity(IntEnum):
+    FATAL = -3
+    ERROR = -2
+    WARNING = -1
+    INFO = 0
+
+    def __str__(self):
+        value = int(self)
+        if value > LogSeverity.INFO:
+            return f'VLOG({-value})'
+        elif value >= LogSeverity.FATAL:
+            return self.name
+        else:
+            return "(Unrecognized)"
+
+
 class EventNotificationMessage(MessagePayload):
     """!
     @brief Notification of a system event for logging purposes.
@@ -182,6 +198,9 @@ class EventNotificationMessage(MessagePayload):
         values['event_description_len_bytes'] = len(self.event_description)
         if isinstance(self.event_description, str):
             values['event_description'] = self.event_description.encode('utf-8')
+        # For LOG events, treat the flags field as a signed log severity level.
+        if self.event_type == EventType.LOG and values['event_flags'] < 0:
+            values['event_flags'] += 2**64
         packed_data = self.EventNotificationConstruct.build(values)
         return PackedDataToBuffer(packed_data, buffer, offset, return_buffer)
 
@@ -199,11 +218,19 @@ class EventNotificationMessage(MessagePayload):
             self.event_description[0] -= 1
             self.event_description[1] -= 1
 
+        # For LOG events, treat the flags field as a signed log severity level.
+        if self.event_type == EventType.LOG and self.event_flags >= 2**63:
+            self.event_flags -= 2**64
+
         return parsed._io.tell()
 
     def __repr__(self):
         result = super().__repr__()[:-1]
-        result += f', type={self.event_type}, flags=0x{self.event_flags:X}'
+        result += f', type={self.event_type}'
+        if self.event_type == EventType.LOG:
+            result += f', severity={LogSeverity(self.event_flags, raise_on_unrecognized=False).to_string()}'
+        else:
+            result += f', flags=0x{self.event_flags:X}'
         if self.event_type == EventType.COMMAND or self.event_type == EventType.COMMAND_RESPONSE:
             result += f', data={len(self.event_description)} B'
         else:
@@ -212,12 +239,17 @@ class EventNotificationMessage(MessagePayload):
         return result
 
     def __str__(self):
+        def _flags_to_string(value):
+            if self.event_type == EventType.LOG:
+                return LogSeverity(value, raise_on_unrecognized=False).to_string()
+            else:
+                return '0x%016X' % value
         return construct_message_to_string(
             message=self, construct=self.EventNotificationConstruct,
             title=f'Event Notification @ %s' % system_time_to_str(self.system_time_ns),
             fields=['event_type', 'event_flags', 'event_description'],
             value_to_string={
-                'event_flags': lambda x: '0x%016X' % x,
+                'event_flags': _flags_to_string,
                 'event_description': lambda x: self.event_description_to_string(),
             })
 
