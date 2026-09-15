@@ -1631,10 +1631,13 @@ figure.on('plotly_unhover', function(data) {
         # than letting each one choose its own nearest sample to a 30 second boundary. The sky plot is a snapshot of
         # the sky at a moment in time, so a satellite sampled a few seconds away from the rest reads as a moment of
         # its own holding one or two satellites, which is what the time slider below the plot would then step to.
+        #
+        # The epochs to choose from are the messages themselves, not the satellites in them, so that one reporting
+        # nothing still takes a slot: the time slider's chart below draws it as a zero rather than a break.
         interval_sec = 30.0
+        all_p1_time = np.unique(data.p1_time[~np.isnan(data.p1_time)])
         decimated_p1_time = None
         if decimate:
-            all_p1_time = np.unique(data.sv_data['p1_time'])
             if len(all_p1_time) > 1 and np.min(np.diff(all_p1_time)) < interval_sec:
                 rounded_time = np.round(all_p1_time / interval_sec) * interval_sec
                 decimated_p1_time = all_p1_time[np.unique(rounded_time, return_index=True)[1]]
@@ -1802,20 +1805,26 @@ figure.on('plotly_unhover', function(data) {
         # The sky plot draws every epoch's satellites on top of each other, so a time slider is the only way to see
         # the constellation at one moment, or to watch it change. Draw it the total and in-use satellite counts tallied
         # above as its background chart.
+        #
+        # The chart runs over every epoch the receiver reported, not just the ones something was drawn at, so that an
+        # epoch tracking nothing (or nothing we could place in the sky) reads as the zero it is. Leaving those out
+        # would instead break the chart, which is reserved for the receiver going quiet altogether.
         slider_js = None
         if np.isfinite(plotted_t_min):
-            epoch_p1_time_sec, epoch_idx = np.unique(np.concatenate(chart_p1_time), return_inverse=True)
+            epoch_p1_time_sec = all_p1_time if decimated_p1_time is None else decimated_p1_time
+            epoch_idx = np.searchsorted(epoch_p1_time_sec, np.concatenate(chart_p1_time))
             num_svs = np.bincount(epoch_idx, minlength=len(epoch_p1_time_sec))
             num_used_svs = np.bincount(epoch_idx, weights=np.concatenate(chart_used),
                                        minlength=len(epoch_p1_time_sec))
 
-            # Each epoch's GPS time, for the chart's own time axis, taken from the first message that carries it.
-            message_p1_time, message_idx = np.unique(data.sv_data['p1_time'], return_index=True)
-            epoch_gps_time_sec = data.sv_data['gps_time'][message_idx][np.searchsorted(message_p1_time,
-                                                                                       epoch_p1_time_sec)]
+            # Each epoch's GPS time, for the chart's own time axis.
+            message_order = np.argsort(data.p1_time)
+            epoch_gps_time_sec = data.gps_time[message_order][
+                np.searchsorted(data.p1_time[message_order], epoch_p1_time_sec)]
 
             slider_js = self._time_slider_js(
-                t_min=plotted_t_min, t_max=plotted_t_max,
+                t_min=min(plotted_t_min, epoch_p1_time_sec[0]),
+                t_max=max(plotted_t_max, epoch_p1_time_sec[-1]),
                 point_fields=['r', 'theta', 'text', 'customdata', 'marker.color', 'marker.symbol',
                               'marker.line.width'],
                 time_customdata_index=0, profile_time_sec=epoch_p1_time_sec,
