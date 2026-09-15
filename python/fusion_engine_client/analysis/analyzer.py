@@ -46,6 +46,11 @@ SolutionTypeInfo = namedtuple('SolutionTypeInfo', ['name', 'style'])
 # and is left empty where there is only one curve to name.
 TimeSliderSeries = namedtuple('TimeSliderSeries', ['values', 'color', 'label'])
 
+# The location of a plot's buttons sit above the plot, as a fraction of the plot's height. A button's height is fixed
+# but its position is a fraction of the plot's, so stacking two rows of them leaves them either overlapping each other
+# on a short plot or riding up over the title on a tall one, with no pair of positions that suits both.
+_BUTTON_ROW_Y = 1.02
+
 # The signal status flags that mean the navigation engine made use of a signal in some way.
 _SIGNAL_USED_MASK = (GNSSSignalInfo.STATUS_FLAG_USED_PR | GNSSSignalInfo.STATUS_FLAG_USED_DOPPLER |
                      GNSSSignalInfo.STATUS_FLAG_USED_CARRIER)
@@ -1604,6 +1609,18 @@ figure.on('plotly_unhover', function(data) {
             return
         have_gnss_signals_message = not data.using_legacy_satellite_message
 
+        # Decimate the data to 30 second intervals, picking a single set of epochs shared by every satellite rather
+        # than letting each one choose its own nearest sample to a 30 second boundary. The sky plot is a snapshot of
+        # the sky at a moment in time, so a satellite sampled a few seconds away from the rest reads as a moment of
+        # its own holding one or two satellites, which is what the time slider below the plot would then step to.
+        interval_sec = 30.0
+        decimated_p1_time = None
+        if decimate:
+            all_p1_time = np.unique(data.sv_data['p1_time'])
+            if len(all_p1_time) > 1 and np.min(np.diff(all_p1_time)) < interval_sec:
+                rounded_time = np.round(all_p1_time / interval_sec) * interval_sec
+                decimated_p1_time = all_p1_time[np.unique(rounded_time, return_index=True)[1]]
+
         # Setup the figure.
         figure = go.Figure()
         figure['layout'].update(title=f'{label} Antenna Sky Plot')
@@ -1625,19 +1642,13 @@ figure.on('plotly_unhover', function(data) {
         # Convert the full list of signals for all time epochs to corresponding satellites.
         all_signal_sv_hashes = np.array([get_satellite_hash(s) for s in data.signal_data['signal_hash']])
 
-        # Decimate the data to 30 second intervals, picking a single set of epochs shared by every satellite rather
-        # than letting each one choose its own nearest sample to a 30 second boundary. The sky plot is a snapshot of
-        # the sky at a moment in time, so a satellite sampled a few seconds away from the rest reads as a moment of
-        # its own holding one or two satellites, which is what the time slider below the plot would then step to.
-        decimated_p1_time = None
-        if decimate:
-            interval_sec = 30.0
-            all_p1_time = np.unique(data.sv_data['p1_time'])
-            if len(all_p1_time) > 1 and np.min(np.diff(all_p1_time)) < interval_sec:
-                rounded_time = np.round(all_p1_time / interval_sec) * interval_sec
-                decimated_p1_time = all_p1_time[np.unique(rounded_time, return_index=True)[1]]
-
-        # Plot each satellite.
+        # Plot each satellite, tallying as we go what the time slider's background chart shows: how many satellites
+        # are drawn at each epoch, and how many of those had a signal in use. Tallying here rather than from the
+        # message data keeps the chart counting exactly what the plot draws.
+        chart_p1_time = []
+        chart_used = []
+        plotted_t_min = np.inf
+        plotted_t_max = -np.inf
         indices_by_system = defaultdict(list)
         color_by_sv = []
         color_by_cn0 = []
@@ -1691,6 +1702,7 @@ figure.on('plotly_unhover', function(data) {
                 max_cn0_dbhz = max_cn0_dbhz[idx]
                 symbols = symbols[idx]
                 outline_widths = outline_widths[idx]
+                any_used = any_used[idx]
 
                 # A satellite tracked entirely between two of those epochs has nothing left to draw, as does one we
                 # never had ephemeris for (or were otherwise not able to compute az/el for).
@@ -1705,13 +1717,27 @@ figure.on('plotly_unhover', function(data) {
             text = ['P1: %.1f sec<br>(Az, El): (%.2f, %.2f) deg<br>C/N0: %.1f dB-Hz' %
                     (t, a, e, c) for t, a, e, c in zip(p1_time, az_deg, el_deg, max_cn0_dbhz)]
 
+            # The per-point P1 time is what the time slider below the plot filters on (see _time_slider_js()). It
+            # is not referenced by the hover text, which uses `text` above.
+            customdata = [[t] for t in p1_time]
+
             marker = {'color': color_by_sv[-1], 'symbol': symbols, 'line': {'width': outline_widths}}
-            figure.add_trace(go.Scatterpolargl(r=el_deg, theta=(90 - az_deg), text=text,
+            figure.add_trace(go.Scatterpolargl(r=el_deg, theta=(90 - az_deg), text=text, customdata=customdata,
                                                name=name_str, hoverinfo='name+text',
                                                mode='markers', marker=marker))
             indices_by_system[system].append(len(figure.data) - 1)
+            plotted_t_min = min(plotted_t_min, np.min(p1_time))
+            plotted_t_max = max(plotted_t_max, np.max(p1_time))
+
+            # Epochs where we couldn't compute an az/el draw nothing, so they aren't counted either.
+            drawn_idx = ~np.isnan(el_deg)
+            chart_p1_time.append(p1_time[drawn_idx])
+            chart_used.append(any_used[drawn_idx])
 
         # Add selection buttons for each system and for choosing between coloring by SV and C/N0.
+        #
+        # Both sit on one row just above the plot, the satellite systems at its left end and the coloring at its
+        # right (see @ref _BUTTON_ROW_Y).
         num_traces = len(figure.data)
         num_svs = len(sv_hashes)
         buttons = [dict(label=f'All ({num_svs})', method='restyle', args=['visible', [True] * num_traces])]
@@ -1727,7 +1753,7 @@ figure.on('plotly_unhover', function(data) {
             'buttons': buttons,
             'x': 0.0,
             'xanchor': 'left',
-            'y': 1.1,
+            'y': _BUTTON_ROW_Y,
             'yanchor': 'top'
         }]
 
@@ -1742,16 +1768,47 @@ figure.on('plotly_unhover', function(data) {
                             'marker.colorscale': 'RdBu', 'marker.showscale': True,
                             'marker.colorbar': {'x': 0}}])
             ],
-            'x': 0.0,
-            'xanchor': 'left',
-            'y': 1.045,
+            'x': 1.0,
+            'xanchor': 'right',
+            'y': _BUTTON_ROW_Y,
             'yanchor': 'top'
         }]
 
         figure['layout']['updatemenus'] = updatemenus
 
+        # Say that the data is decimated, and how coarsely: the plot otherwise gives no hint that the log holds far
+        # more epochs than are drawn, which makes stepping through it with the time slider look broken.
+        decimation_note = '' if decimated_p1_time is None else \
+            f'Decimated to one point every {interval_sec:.0f} seconds (--plot skyplot for full rate)'
+
+        # The sky plot draws every epoch's satellites on top of each other, so a time slider is the only way to see
+        # the constellation at one moment, or to watch it change. Draw it the total and in-use satellite counts tallied
+        # above as its background chart.
+        slider_js = None
+        if np.isfinite(plotted_t_min):
+            epoch_p1_time_sec, epoch_idx = np.unique(np.concatenate(chart_p1_time), return_inverse=True)
+            num_svs = np.bincount(epoch_idx, minlength=len(epoch_p1_time_sec))
+            num_used_svs = np.bincount(epoch_idx, weights=np.concatenate(chart_used),
+                                       minlength=len(epoch_p1_time_sec))
+
+            # Each epoch's GPS time, for the chart's own time axis, taken from the first message that carries it.
+            message_p1_time, message_idx = np.unique(data.sv_data['p1_time'], return_index=True)
+            epoch_gps_time_sec = data.sv_data['gps_time'][message_idx][np.searchsorted(message_p1_time,
+                                                                                       epoch_p1_time_sec)]
+
+            slider_js = self._time_slider_js(
+                t_min=plotted_t_min, t_max=plotted_t_max,
+                point_fields=['r', 'theta', 'text', 'customdata', 'marker.color', 'marker.symbol',
+                              'marker.line.width'],
+                time_customdata_index=0, profile_time_sec=epoch_p1_time_sec,
+                profile_series=[TimeSliderSeries(values=num_svs, color='#aab2bc', label='total'),
+                                TimeSliderSeries(values=num_used_svs, color='green', label='used')],
+                profile_gps_time_sec=epoch_gps_time_sec, profile_units='SVs', note=decimation_note)
+
         name = self._gnss_plot_filename('gnss_skyplot', source_id)
-        self._add_figure(name=name, figure=figure, title=f'GNSS ({label}): Sky Plot', custom_hover=False)
+        self._add_figure(name=name, figure=figure, title=f'GNSS ({label}): Sky Plot', custom_hover=False,
+                         inject_js=slider_js,
+                         inject_head=self._TIME_SLIDER_HEAD_CSS if slider_js is not None else None)
 
     def plot_gnss_cn0(self):
         for source_id in self._get_gnss_antenna_source_ids():
@@ -1818,7 +1875,7 @@ figure.on('plotly_unhover', function(data) {
             'buttons': buttons,
             'x': 0.0,
             'xanchor': 'left',
-            'y': 1.1,
+            'y': _BUTTON_ROW_Y,
             'yanchor': 'top'
         }]
 
@@ -1913,7 +1970,7 @@ figure.on('plotly_unhover', function(data) {
             'buttons': buttons,
             'x': 0.0,
             'xanchor': 'left',
-            'y': 1.1,
+            'y': _BUTTON_ROW_Y,
             'yanchor': 'top'
         }]
 
@@ -2171,7 +2228,7 @@ Black=Unused, Red=Used'''
             'buttons': buttons,
             'x': 0.0,
             'xanchor': 'left',
-            'y': 1.1,
+            'y': _BUTTON_ROW_Y,
             'yanchor': 'top'
         }]
 
