@@ -1613,6 +1613,18 @@ body > div { display: contents; }
         # Convert the full list of signals for all time epochs to corresponding satellites.
         all_signal_sv_hashes = np.array([get_satellite_hash(s) for s in data.signal_data['signal_hash']])
 
+        # Decimate the data to 30 second intervals, picking a single set of epochs shared by every satellite rather
+        # than letting each one choose its own nearest sample to a 30 second boundary. The sky plot is a snapshot of
+        # the sky at a moment in time, so a satellite sampled a few seconds away from the rest reads as a moment of
+        # its own holding one or two satellites, which is what the time slider below the plot would then step to.
+        decimated_p1_time = None
+        if decimate:
+            interval_sec = 30.0
+            all_p1_time = np.unique(data.sv_data['p1_time'])
+            if len(all_p1_time) > 1 and np.min(np.diff(all_p1_time)) < interval_sec:
+                rounded_time = np.round(all_p1_time / interval_sec) * interval_sec
+                decimated_p1_time = all_p1_time[np.unique(rounded_time, return_index=True)[1]]
+
         # Plot each satellite.
         indices_by_system = defaultdict(list)
         color_by_sv_format = []
@@ -1645,30 +1657,18 @@ body > div { display: contents; }
             else:
                 name_str = name
 
-            # Decimate the data to 30 second intervals.
-            if decimate and len(p1_time) > 1:
-                interval_sec = 30.0
-                dt_sec = np.round(np.min(np.diff(p1_time)) / 0.1) * 0.1
-                if dt_sec < interval_sec:
-                    rounded_time = np.round(p1_time / interval_sec) * interval_sec
-                    idx = np.where(np.diff(rounded_time, prepend=rounded_time[0]) > 0.01)[0]
+            # Keep only this satellite's data at the shared epochs selected above.
+            if decimated_p1_time is not None:
+                idx = np.isin(p1_time, decimated_p1_time)
+                p1_time = p1_time[idx]
+                az_deg = az_deg[idx]
+                el_deg = el_deg[idx]
+                max_cn0_dbhz = max_cn0_dbhz[idx]
 
-                    # If this satellite appears for < interval_sec and all of its timestamps happen to round to the same
-                    # time, idx will be empty. Pick the first point where az/el is available.
-                    if len(idx) == 0:
-                        idx = [find_first(~np.isnan(el_deg))]
-                        if idx[0] < 0:
-                            continue
-
-                    p1_time = p1_time[idx]
-                    az_deg = az_deg[idx]
-                    el_deg = el_deg[idx]
-                    max_cn0_dbhz = max_cn0_dbhz[idx]
-
-                    # If we never had ephemeris for this satellite, or were otherwise not able to compute az/el, we
-                    # can't put this satellite on the sky plot.
-                    if np.all(np.isnan(el_deg)):
-                        continue
+                # A satellite tracked entirely between two of those epochs has nothing left to draw, as does one we
+                # never had ephemeris for (or were otherwise not able to compute az/el for).
+                if len(el_deg) == 0 or np.all(np.isnan(el_deg)):
+                    continue
 
             # Plot the data. We set styles for both coloring by SV and by C/N0. We'll add buttons below to switch
             # between styles.
