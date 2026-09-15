@@ -42,6 +42,10 @@ _logger = logging.getLogger('point_one.fusion_engine.analysis.analyzer')
 
 SolutionTypeInfo = namedtuple('SolutionTypeInfo', ['name', 'style'])
 
+# One curve on the time slider's background chart (see @ref Analyzer._time_slider_js()). `label` names it on the chart,
+# and is left empty where there is only one curve to name.
+TimeSliderSeries = namedtuple('TimeSliderSeries', ['values', 'color', 'label'])
+
 # The signal status flags that mean the navigation engine made use of a signal in some way.
 _SIGNAL_USED_MASK = (GNSSSignalInfo.STATUS_FLAG_USED_PR | GNSSSignalInfo.STATUS_FLAG_USED_DOPPLER |
                      GNSSSignalInfo.STATUS_FLAG_USED_CARRIER)
@@ -184,6 +188,23 @@ figure.on('plotly_hover', function(data) {
     ChangeHoverText(point, BuildSystemTimeHoverText(point.x));
   }
 });
+"""
+
+    # `inject_head` for any figure using the time slider (see _time_slider_js()). Makes room for the slider *before*
+    # Plotly's own first render, so the figure doesn't appear full-size and then shrink once the slider is added.
+    #
+    # The figure itself starts hidden (`visibility:hidden`, which still reserves its final layout space, unlike
+    # `display:none`) -- even with the container correctly sized up front, Plotly's WebGL rendering doesn't
+    # necessarily catch up to a resize() call within the same paint, so revealing it right away can still show a
+    # visible moment of it at the wrong (window-sized) dimensions overlapping the slider. It's revealed by
+    # `plotly_time_slider.js` once Plotly itself reports the post-resize redraw is done.
+    _TIME_SLIDER_HEAD_CSS = """\
+<style>
+html, body { height: 100%; margin: 0; }
+body { display: flex; flex-direction: column; }
+body > div { display: contents; }
+.plotly-graph-div { flex: 1 1 auto; min-height: 0; width: 100%; visibility: hidden; }
+</style>
 """
 
     def __init__(self,
@@ -1557,30 +1578,16 @@ figure.on('plotly_unhover', function(data) {
         profile_time_sec, profile_speed_mps, profile_gps_time_sec, _ = \
             self._estimate_speed_mps(source_id=primary_source_id, forward_only=False, signed=False)
 
-        slider_js = self._map_time_slider_js(t_min=overall_t_min, t_max=overall_t_max,
-                                             profile_time_sec=profile_time_sec,
-                                             profile_speed_mps=profile_speed_mps,
-                                             profile_gps_time_sec=profile_gps_time_sec)
-
-        # Make room for the slider *before* Plotly's own first render so the map doesn't appear full-size and then
-        # shrink after the time scale renders.
-        #
-        # The map itself starts hidden (`visibility:hidden`, which still reserves its final layout space, unlike
-        # `display:none`) -- even with the container correctly sized up front, Plotly's own WebGL/MapLibre
-        # rendering doesn't necessarily catch up to a resize() call within the same paint, so revealing it right
-        # away can still show one frame at the wrong (window-sized) dimensions overlapping the slider. It's
-        # revealed by JS (plotly_map_time_slider.js) once Plotly itself reports the post-resize redraw is done.
-        slider_head_css = """\
-<style>
-html, body { height: 100%; margin: 0; }
-body { display: flex; flex-direction: column; }
-body > div { display: contents; }
-.plotly-graph-div { flex: 1 1 auto; min-height: 0; width: 100%; visibility: hidden; }
-</style>
-"""
+        # The P1 time column index below must stay in sync with the column order built by _build_position_customdata().
+        slider_js = self._time_slider_js(t_min=overall_t_min, t_max=overall_t_max,
+                                         point_fields=['lat', 'lon', 'customdata'], time_customdata_index=2,
+                                         profile_time_sec=profile_time_sec,
+                                         profile_series=[TimeSliderSeries(values=profile_speed_mps,
+                                                                          color='#aab2bc', label='')],
+                                         profile_gps_time_sec=profile_gps_time_sec, profile_units='m/s')
 
         self._add_figure(name="map", figure=figure, title="Vehicle Trajectory (Map)", config={'scrollZoom': True},
-                         custom_hover=False, inject_js=slider_js, inject_head=slider_head_css)
+                         custom_hover=False, inject_js=slider_js, inject_head=self._TIME_SLIDER_HEAD_CSS)
 
     def plot_gnss_skyplot(self, decimate=True):
         for source_id in self._get_gnss_antenna_source_ids():
@@ -4121,58 +4128,72 @@ figure.on('plotly_unhover', function(data) {
 });
 """ + tick_reformat_js)
 
-    def _map_time_slider_js(self, t_min: float, t_max: float, profile_time_sec: Optional[np.ndarray],
-                            profile_speed_mps: Optional[np.ndarray],
-                            profile_gps_time_sec: Optional[np.ndarray]) -> str:
+    def _time_slider_js(self, t_min: float, t_max: float, point_fields: List[str],
+                        time_customdata_index: int, profile_time_sec: Optional[np.ndarray],
+                        profile_series: List[TimeSliderSeries], profile_gps_time_sec: Optional[np.ndarray],
+                        profile_units: str, note: str = '') -> str:
         """!
-        @brief Build JS for a time-range control injected below @ref plot_map()'s figure.
+        @brief Build JS for a time-range control injected below a non-time-series figure.
 
-        The control itself (DOM/canvas setup, drag handling, axis formatting) lives in `plotly_map_time_slider.js`,
-        injected the same way as `plotly_data_support.js` (see @ref __write_html_and_inject_js()); this decimates
-        and JSON-encodes the per-log data that static file reads from a handful of `MAP_SLIDER_*` globals.
+        The control itself (DOM/canvas setup, drag handling, axis formatting) lives in `plotly_time_slider.js`,
+        injected the same way as `plotly_data_support.js` (see @ref __write_html_and_inject_js()). This decimates
+        and JSON-encodes the per-log data that static file reads from a handful of `TIME_SLIDER_*` globals.
 
-        @param t_min/t_max The full P1 time range (sec) spanned by the map's traces (matches `customdata[2]`, per
-               `P1_TIME_CUSTOMDATA_INDEX` in `plotly_map_time_slider.js` -- must stay in sync with the column order
-               built by @ref _build_position_customdata()).
-        @param profile_time_sec/profile_speed_mps Parallel arrays of P1 time (sec) and 3D speed (m/s) for the
-               background chart, from the default pose source (e.g., from @ref _estimate_speed_mps()). `None` (or
-               empty) if no speed data is available at all, in which case the chart is simply left blank.
+        The figure must carry a P1 timestamp for every plotted point in its `customdata`, which is what the control
+        filters on. Use @ref _TIME_SLIDER_HEAD_CSS as `inject_head` so the figure makes room for the control before
+        its first paint.
+
+        @param t_min/t_max The full P1 time range (sec) spanned by the figure's traces.
+        @param point_fields The trace attributes holding one entry per plotted point, which are sliced together
+               whenever the displayed time range changes (e.g. `['lat', 'lon', 'customdata']`). Nested attributes
+               are named with a dot, the way `Plotly.restyle()` addresses them (e.g. `marker.color`).
+        @param time_customdata_index The column within each point's `customdata` row holding its P1 time (sec).
+        @param profile_time_sec The P1 times (sec) of the control's background chart, which gives the log some
+               visual shape to pick a time range against. `None` (or empty) if no such data is available at all,
+               in which case the chart is simply left blank.
+        @param profile_series The quantities to draw against `profile_time_sec` (vehicle speed, satellite count,
+               etc.), each parallel to it. Multiple series share one scale, so they should be comparable.
         @param profile_gps_time_sec GPS time (sec), parallel to `profile_time_sec`, used to label the X axis in
                `gps`/`utc` mode (see `self.time_type`) -- P1 and GPS time aren't a fixed offset apart, so
                converting an arbitrary tick's P1 time requires interpolating within the actual per-point data.
+        @param profile_units The units shared by every series, used to label the chart's Y axis (e.g. `m/s`).
+        @param note An optional short line about the times the figure holds, displayed alongside the control (e.g.
+               to say that the plotted data is decimated, and how coarsely).
 
         @return The JS to pass as `inject_js` to @ref _add_figure().
         """
-        # Decimate the speed profile so a long log doesn't inflate the HTML with a huge embedded array -- it's
-        # just a visual aid for picking a time range, precision doesn't matter.
+        # Decimate the profile so a long log doesn't inflate the HTML with a huge embedded array -- it's just a
+        # visual aid for picking a time range, precision doesn't matter.
         _MAX_PROFILE_POINTS = 3000
         if profile_time_sec is not None and len(profile_time_sec) > 0:
             order = np.argsort(profile_time_sec)
-            sorted_time = profile_time_sec[order]
-            sorted_speed = profile_speed_mps[order]
-            sorted_gps_time = profile_gps_time_sec[order]
-            if len(sorted_time) > _MAX_PROFILE_POINTS:
-                stride = int(np.ceil(len(sorted_time) / _MAX_PROFILE_POINTS))
-                sorted_time = sorted_time[::stride]
-                sorted_speed = sorted_speed[::stride]
-                sorted_gps_time = sorted_gps_time[::stride]
-            profile_time_json = json.dumps(np.round(sorted_time, 3).tolist())
-            profile_speed_json = json.dumps(np.round(sorted_speed, 3).tolist())
-            profile_gps_time_json = json.dumps(np.round(sorted_gps_time, 3).tolist())
+            stride = max(1, int(np.ceil(len(order) / _MAX_PROFILE_POINTS)))
+
+            def _decimate(values):
+                return np.round(np.asarray(values)[order][::stride], 3).tolist()
+
+            profile_time_json = json.dumps(_decimate(profile_time_sec))
+            profile_gps_time_json = json.dumps(_decimate(profile_gps_time_sec))
+            profile_series_json = json.dumps([{'values': _decimate(s.values), 'color': s.color, 'label': s.label}
+                                              for s in profile_series])
         else:
             profile_time_json = '[]'
-            profile_speed_json = '[]'
             profile_gps_time_json = '[]'
+            profile_series_json = '[]'
 
         preamble = f"""\
-var MAP_SLIDER_T_MIN = {json.dumps(t_min)};
-var MAP_SLIDER_T_MAX = {json.dumps(t_max)};
-var MAP_SLIDER_PROFILE_TIME = {profile_time_json};
-var MAP_SLIDER_PROFILE_SPEED = {profile_speed_json};
-var MAP_SLIDER_PROFILE_GPS_TIME = {profile_gps_time_json};
+var TIME_SLIDER_T_MIN = {json.dumps(t_min)};
+var TIME_SLIDER_T_MAX = {json.dumps(t_max)};
+var TIME_SLIDER_POINT_FIELDS = {json.dumps(point_fields)};
+var TIME_SLIDER_TIME_CUSTOMDATA_INDEX = {json.dumps(time_customdata_index)};
+var TIME_SLIDER_PROFILE_TIME = {profile_time_json};
+var TIME_SLIDER_PROFILE_SERIES = {profile_series_json};
+var TIME_SLIDER_PROFILE_GPS_TIME = {profile_gps_time_json};
+var TIME_SLIDER_PROFILE_UNITS = {json.dumps(profile_units)};
+var TIME_SLIDER_NOTE = {json.dumps(note)};
 """
         script_dir = os.path.join(os.path.dirname(__file__))
-        with open(os.path.join(script_dir, 'plotly_map_time_slider.js'), 'rt') as f:
+        with open(os.path.join(script_dir, 'plotly_time_slider.js'), 'rt') as f:
             return preamble + f.read()
 
     def _auto_detect_message_type(self, types: List[MessageType]):
