@@ -1584,7 +1584,8 @@ figure.on('plotly_unhover', function(data) {
                                          profile_time_sec=profile_time_sec,
                                          profile_series=[TimeSliderSeries(values=profile_speed_mps,
                                                                           color='#aab2bc', label='')],
-                                         profile_gps_time_sec=profile_gps_time_sec, profile_units='m/s')
+                                         profile_gps_time_sec=profile_gps_time_sec, profile_units='m/s',
+                                         has_draggable_view=True)
 
         self._add_figure(name="map", figure=figure, title="Vehicle Trajectory (Map)", config={'scrollZoom': True},
                          custom_hover=False, inject_js=slider_js, inject_head=self._TIME_SLIDER_HEAD_CSS)
@@ -4131,13 +4132,14 @@ figure.on('plotly_unhover', function(data) {
     def _time_slider_js(self, t_min: float, t_max: float, point_fields: List[str],
                         time_customdata_index: int, profile_time_sec: Optional[np.ndarray],
                         profile_series: List[TimeSliderSeries], profile_gps_time_sec: Optional[np.ndarray],
-                        profile_units: str, note: str = '') -> str:
+                        profile_units: str, note: str = '', has_draggable_view: bool = False) -> str:
         """!
         @brief Build JS for a time-range control injected below a non-time-series figure.
 
-        The control itself (DOM/canvas setup, drag handling, axis formatting) lives in `plotly_time_slider.js`,
-        injected the same way as `plotly_data_support.js` (see @ref __write_html_and_inject_js()). This decimates
-        and JSON-encodes the per-log data that static file reads from a handful of `TIME_SLIDER_*` globals.
+        The control itself (DOM/canvas setup, drag handling, playback, axis formatting) lives in
+        `plotly_time_slider.js`, injected the same way as `plotly_data_support.js` (see @ref
+        __write_html_and_inject_js()). This decimates and JSON-encodes the per-log data that static file reads from
+        a handful of `TIME_SLIDER_*` globals.
 
         The figure must carry a P1 timestamp for every plotted point in its `customdata`, which is what the control
         filters on. Use @ref _TIME_SLIDER_HEAD_CSS as `inject_head` so the figure makes room for the control before
@@ -4159,6 +4161,10 @@ figure.on('plotly_unhover', function(data) {
         @param profile_units The units shared by every series, used to label the chart's Y axis (e.g. `m/s`).
         @param note An optional short line about the times the figure holds, displayed alongside the control (e.g.
                to say that the plotted data is decimated, and how coarsely).
+        @param has_draggable_view `True` for a figure the pointer drags a view around in, like a map. Redrawing
+               one of those in the middle of a drag drops the drag, so the control holds its redraws -- and its
+               playback, visibly -- until the gesture is done. A figure that doesn't move under the pointer (a
+               polar sky plot, say) has nothing to hold for.
 
         @return The JS to pass as `inject_js` to @ref _add_figure().
         """
@@ -4191,6 +4197,7 @@ var TIME_SLIDER_PROFILE_SERIES = {profile_series_json};
 var TIME_SLIDER_PROFILE_GPS_TIME = {profile_gps_time_json};
 var TIME_SLIDER_PROFILE_UNITS = {json.dumps(profile_units)};
 var TIME_SLIDER_NOTE = {json.dumps(note)};
+var TIME_SLIDER_HAS_DRAGGABLE_VIEW = {json.dumps(has_draggable_view)};
 """
         script_dir = os.path.join(os.path.dirname(__file__))
         with open(os.path.join(script_dir, 'plotly_time_slider.js'), 'rt') as f:

@@ -8,7 +8,8 @@
 //   an edge of it to adjust that edge.
 // - Double-click the window to narrow it to a single step in time, and again to go back to the whole log. With a
 //   step selected, clicking anywhere on the track jumps to the step there.
-// - The left/right arrow keys move the window.
+// - The left/right arrow keys move the window, and a play button (or the space bar) animates it forward at a
+//   selectable multiple of real time.
 //
 // Moving around the time scale itself, which is independent of the range selected on it:
 //
@@ -33,6 +34,7 @@
   var PROFILE_GPS_TIME = TIME_SLIDER_PROFILE_GPS_TIME;
   var PROFILE_UNITS = TIME_SLIDER_PROFILE_UNITS;
   var NOTE = TIME_SLIDER_NOTE;
+  var HAS_DRAGGABLE_VIEW = TIME_SLIDER_HAS_DRAGGABLE_VIEW;
   var SECONDS_PER_WEEK = 7 * 24 * 3600.0;
   var SLIDER_HEIGHT_PX = 80;
   var READOUT_HEIGHT_PX = 26;
@@ -42,6 +44,12 @@
   var ACCENT_COLOR = '#FF9C00';
   var WINDOW_FILL = 'rgba(201,127,10,0.10)';
   var PANEL_COLOR = '#ffffff';
+  // Everything the control draws in the accent color goes grey while playback is held for a figure gesture. The
+  // readout says so too, but a line of text at the end of a status line is easy to miss, where the whole control
+  // changing color is not.
+  var HELD_COLOR = '#9a9a92';
+  var HELD_WINDOW_FILL = 'rgba(120,120,112,0.12)';
+  var HELD_PANEL_COLOR = '#f1f1ee';
   var MIN_WINDOW_SEC = 1e-3;
   // Smallest time span the X axis can be zoomed in to with ctrl+scroll.
   var MIN_VIEW_SPAN_SEC = 0.05;
@@ -55,6 +63,9 @@
   // Largest half-width of the padding placed around a single-step selection, so the window reaches every trace's
   // data at that step without touching the neighboring ones.
   var MAX_STEP_PAD_SEC = 0.05;
+  var PLAY_GLYPH = '▶';
+  var PAUSE_GLYPH = '⏸';
+  var SPEED_OPTIONS = [0.25, 0.5, 1, 2, 5, 10, 25, 50, 100];
 
   // Plotly stores large numeric arrays (e.g. lat/lon built from numpy arrays) internally as a typed-array wrapper
   // object (`{dtype, bdata, _inputArray}`) rather than a plain Array, so a real Array can't always be recovered with
@@ -112,6 +123,7 @@
   // together than a fraction of that are the same moment seen through different traces, not different moments.
   var STEPS = [];
   var STEP_PAD_SEC = MAX_STEP_PAD_SEC;
+  var STEP_SPACING_SEC = 0;
   (function() {
     var diffs = [];
     var all = [];
@@ -125,8 +137,8 @@
     if (all.length === 0) return;
 
     diffs.sort(function(a, b) { return a - b; });
-    var spacing_sec = diffs.length > 0 ? diffs[diffs.length >> 1] : 0;
-    var tolerance_sec = Math.max(1e-4, 0.25 * spacing_sec);
+    STEP_SPACING_SEC = diffs.length > 0 ? diffs[diffs.length >> 1] : 0;
+    var tolerance_sec = Math.max(1e-4, 0.25 * STEP_SPACING_SEC);
     STEP_PAD_SEC = Math.max(1e-4, Math.min(MAX_STEP_PAD_SEC, 0.25 * tolerance_sec));
 
     all.sort(function(a, b) { return a - b; });
@@ -157,7 +169,7 @@
     'With a step selected, click anywhere on the track to jump to the step there.\n' +
     'Ctrl+scroll to zoom the time scale, shift+drag or shift+scroll to pan it, and double-click away from the\n' +
     'selection to fit the whole log back on it.\n' +
-    'Left/right arrow keys step back and forth through the log.';
+    'Left/right arrow keys step back and forth through the log, and space plays and pauses.';
 
   var trackDiv = document.createElement('div');
   trackDiv.style.cssText = 'position:relative; width:100%; height:100%; cursor:crosshair;';
@@ -199,14 +211,46 @@
 
   mapContainer.appendChild(sliderContainer);
 
-  // A text echo of the current window, in the same time-type-aware format as the axis ticks -- the readout lets
-  // the current range be read precisely (and copy-pasted) without having to eyeball tick positions.
+  // Playback controls, plus a text echo of the current window in the same time-type-aware format as the axis ticks
+  // -- the readout lets the current range be read precisely (and copy-pasted) without having to eyeball tick
+  // positions.
   var controlsDiv = document.createElement('div');
   controlsDiv.style.cssText = 'flex:0 0 ' + READOUT_HEIGHT_PX + 'px; width:100%; box-sizing:border-box; ' +
     'display:flex; align-items:center; gap:6px; padding:2px ' + TRACK_INSET_PX + 'px; ' +
     'background:' + PANEL_COLOR + '; ' +
     'font:12px -apple-system, "Segoe UI", Roboto, sans-serif;';
   mapContainer.appendChild(controlsDiv);
+
+  var playButton = document.createElement('button');
+  playButton.type = 'button';
+  playButton.textContent = PLAY_GLYPH;
+  playButton.style.cssText = 'flex:0 0 auto; width:26px; height:20px; padding:0; line-height:1; cursor:pointer; ' +
+    'border:1px solid #c9c9c4; border-radius:3px; background:#f7f7f5; color:#3a3a36; font-size:11px;';
+  controlsDiv.appendChild(playButton);
+
+  var speedSelect = document.createElement('select');
+  speedSelect.style.cssText = 'flex:0 0 auto; height:20px; padding:0 2px; cursor:pointer; ' +
+    'border:1px solid #c9c9c4; border-radius:3px; background:#f7f7f5; color:#3a3a36; font-size:11px;';
+  speedSelect.title = 'Playback speed, as a multiple of real time.';
+  // A sky plot decimated to one point every 30 seconds would sit on the same frame for half a minute at real
+  // time, which reads as broken rather than slow. Start at the slowest speed of at least real time that advances
+  // about once a second, which leaves plots sampled faster than that at 1x.
+  var DEFAULT_SPEED = SPEED_OPTIONS[SPEED_OPTIONS.length - 1];
+  for (var si = 0; si < SPEED_OPTIONS.length; si++) {
+    if (SPEED_OPTIONS[si] >= 1 && STEP_SPACING_SEC / SPEED_OPTIONS[si] <= 1.0) {
+      DEFAULT_SPEED = SPEED_OPTIONS[si];
+      break;
+    }
+  }
+
+  SPEED_OPTIONS.forEach(function(speed) {
+    var option = document.createElement('option');
+    option.value = String(speed);
+    option.textContent = speed + 'x';
+    if (speed === DEFAULT_SPEED) option.selected = true;
+    speedSelect.appendChild(option);
+  });
+  controlsDiv.appendChild(speedSelect);
 
   var readoutDiv = document.createElement('div');
   readoutDiv.style.cssText = 'flex:1 1 auto; color:' + ACCENT_COLOR + '; overflow:hidden; white-space:nowrap;';
@@ -342,7 +386,7 @@
 
   // The track's own width, remeasured only when it actually changes (see the ResizeObserver below). Measuring it
   // forces the browser to flush a layout it is otherwise free to defer, which is not something to ask for on every
-  // pointer move of a drag.
+  // animation frame of a playback running alongside a figure the user is trying to drag.
   var trackWidthPx = 1;
 
   // The background chart is broken wherever the data behind it stops for longer than this, so that a stretch of
@@ -480,10 +524,6 @@
 
   var winStart = P1_TIME_MIN;
   var winEnd = P1_TIME_MAX;
-  // `true` when the window spans the whole log, so there is no room left to slide it.
-  function isFullRangeWindow() {
-    return (winEnd - winStart) >= (P1_TIME_MAX - P1_TIME_MIN) - 1e-9;
-  }
   // Index into STEPS of the step the window is locked to, or -1 when the window is a free time range.
   var stepIndex = -1;
 
@@ -497,6 +537,13 @@
       if (STEPS[mid].center <= t) lo = mid; else hi = mid;
     }
     return (Math.abs(STEPS[hi].center - t) < Math.abs(t - STEPS[lo].center)) ? hi : lo;
+  }
+
+  // Index of the last step at or before a given time, for stepping forward during playback.
+  function stepIndexAtOrBefore(t) {
+    var i = nearestStepIndex(t);
+    if (i > 0 && STEPS[i].center > t) i--;
+    return i;
   }
 
   // Narrow the window to a single step.
@@ -533,10 +580,12 @@
   // rule, just for these two values) -- unless the start itself fell back to P1, in which case there's no prior
   // date to compare against, so the end always shows its date too.
   function formatRangeReadout() {
+    var held_text = isPlaybackHeld() ? ' | Paused while the plot is moved' : '';
+
     if (stepIndex >= 0) {
       // A single step is worth reading to the millisecond, however coarse the axis ticks currently are.
       return 'Step ' + (stepIndex + 1) + ' of ' + STEPS.length + ': ' +
-             formatTickLabel(STEPS[stepIndex].center, false, 3);
+             formatTickLabel(STEPS[stepIndex].center, false, 3) + held_text;
     }
 
     var rangeText;
@@ -556,7 +605,7 @@
     } else {
       rangeText = formatTickLabel(winStart, false) + ' - ' + formatTickLabel(winEnd, false);
     }
-    return 'Displaying: ' + rangeText + ' | Duration: ' + formatDuration(winEnd - winStart);
+    return 'Displaying: ' + rangeText + ' | Duration: ' + formatDuration(winEnd - winStart) + held_text;
   }
 
   // `true` when the selection is wide enough to draw usable resize handles on.
@@ -573,7 +622,22 @@
     return Math.round(offset_px * dpr) / dpr;
   }
 
-  var drawnLeft = null, drawnWidth = null;
+  var drawnLeft = null, drawnWidth = null, drawnHeld = null;
+
+  function updateHeldStyle() {
+    var held = !!isPlaybackHeld();
+    if (held === drawnHeld) return;
+    drawnHeld = held;
+
+    var color = held ? HELD_COLOR : ACCENT_COLOR;
+    windowDiv.style.borderColor = color;
+    windowDiv.style.background = held ? HELD_WINDOW_FILL : WINDOW_FILL;
+    leftHandle.style.background = color;
+    rightHandle.style.background = color;
+    readoutDiv.style.color = color;
+    sliderContainer.style.background = held ? HELD_PANEL_COLOR : PANEL_COLOR;
+    controlsDiv.style.background = held ? HELD_PANEL_COLOR : PANEL_COLOR;
+  }
 
   function updateWindowDivStyle() {
     var width_px = trackWidthPx;
@@ -620,6 +684,8 @@
     }
 
     readoutDiv.textContent = formatRangeReadout();
+    updateHeldStyle();
+    updatePlayEnabled();
   }
 
   function sliceField(source, keep, path) {
@@ -682,8 +748,8 @@
       }
     }
 
-    // Redrawing a figure holding a lot of points can take tens of milliseconds, and redrawing it for every
-    // change to the window leaves the figure's own pan and zoom nothing to run in. Hold the next redraw off for a
+    // Redrawing a figure holding a lot of points can take tens of milliseconds, and running one redraw per
+    // animation frame leaves the figure's own pan and zoom nothing to run in. Hold the next redraw off for a
     // multiple of however long this one took, so that however heavy the figure is, most of the time is still the
     // browser's to spend on whatever the user is doing with it.
     lastFilterMs = performance.now();
@@ -699,6 +765,43 @@
   var lastFilterMs = -Infinity;
   var pendingFilter = null;
 
+  // How long after the figure was last panned or zoomed to treat the gesture as still going.
+  var FIGURE_SETTLE_MS = 150;
+  var lastFigureMoveMs = -Infinity;
+  var figurePointerDown = false;
+
+  // Only a figure the pointer drags a view around in has anything to be disturbed by a redraw landing mid-drag.
+  // Where it does, a drag reports nothing until it has actually moved, and a redraw in that gap takes the data
+  // layers out from under the gesture, dropping it for good rather than merely stuttering it -- hence watching for
+  // the press itself, not just for the movement it goes on to report.
+  if (HAS_DRAGGABLE_VIEW) {
+    figure.on('plotly_relayouting', function() { lastFigureMoveMs = performance.now(); });
+
+    figure.addEventListener('pointerdown', function() {
+      figurePointerDown = true;
+      updateWindowDivStyle();
+    });
+
+    ['pointerup', 'pointercancel'].forEach(function(name) {
+      document.addEventListener(name, function() {
+        if (!figurePointerDown) return;
+        figurePointerDown = false;
+        lastFigureMoveMs = performance.now();
+      });
+    });
+  }
+
+  function isFigureBusy() {
+    return figurePointerDown || (performance.now() - lastFigureMoveMs) < FIGURE_SETTLE_MS;
+  }
+
+  // Redraws are held while the figure is being moved, so playback holds with them. Letting the clock run on
+  // against a figure that isn't being redrawn to match would read as the vehicle having stopped there, which is
+  // worse than briefly not advancing at all.
+  function isPlaybackHeld() {
+    return playing && isFigureBusy();
+  }
+
   // The slider itself is redrawn right away -- it is a handful of style writes, and it is what the pointer is
   // following. The figure is rate-limited (see applyFilter()), leading edge first so that a one-off change lands
   // immediately rather than waiting out an interval set by some earlier redraw.
@@ -709,6 +812,12 @@
   }
 
   function runFilter() {
+    // Let the figure's own pan or zoom finish first (see isFigureBusy()).
+    if (isFigureBusy()) {
+      pendingFilter = setTimeout(runFilter, FIGURE_SETTLE_MS);
+      return;
+    }
+
     pendingFilter = null;
     applyFilter();
   }
@@ -809,7 +918,7 @@
 
   function onPointerUp(evt) {
     // A click while a single step is selected jumps straight to the step under the cursor, rather than having to
-    // walk to it.
+    // walk to it. Playback, if running, carries on from there.
     if (!dragMoved && dragMode !== 'view' && stepIndex >= 0) {
       setStepWindow(nearestStepIndex(pixelToTime(evt.clientX)));
     }
@@ -817,6 +926,7 @@
     dragMode = null;
     dragSelecting = false;
     dragMoved = false;
+    reseatPlayback();
     updateWindowDivStyle();
     document.removeEventListener('mousemove', onPointerMove);
     document.removeEventListener('mouseup', onPointerUp);
@@ -874,6 +984,7 @@
     } else {
       setStepWindow(nearestStepIndex(pixelToTime(evt.clientX)));
     }
+    reseatPlayback();
   });
 
   // `true` when the time scale shows less than the whole log, so there is something off screen.
@@ -919,21 +1030,138 @@
     }
   }, {passive: false});
 
+  // Playback: a virtual clock runs forward through the log at the selected multiple of real time, dragging the
+  // window along with it. A window locked to a single step jumps from step to step as the clock reaches them, so
+  // the figure always shows one complete step rather than a partial blend of two. The time scale stays where
+  // it was left, so on a zoomed-in scale the window simply passes through the visible stretch of the log.
+  var playing = false;
+  var playTime = 0;
+  var lastFrameMs = 0;
+  var animationHandle = null;
+
+  // `true` when the window spans the whole log, so there is no room left to slide it.
+  function isFullRangeWindow() {
+    return (winEnd - winStart) >= (P1_TIME_MAX - P1_TIME_MIN) - 1e-9;
+  }
+
+  function canPlay() {
+    return STEPS.length > 0 || !isFullRangeWindow();
+  }
+
+  var playEnabled = null;
+
+  function updatePlayEnabled() {
+    var enabled = canPlay();
+    if (enabled === playEnabled) return;
+    playEnabled = enabled;
+
+    playButton.disabled = !enabled;
+    playButton.style.opacity = enabled ? '1' : '0.4';
+    playButton.style.cursor = enabled ? 'pointer' : 'default';
+    playButton.title = enabled ? 'Animate the displayed time range forward through the log (space bar).' :
+      'There is nothing to animate.';
+  }
+
+  // Pick playback up from wherever the window is now. Choosing a range while it runs carries on from there rather
+  // than snapping back to where the clock had got to, so only the space bar and the play button stop it.
+  function reseatPlayback() {
+    if (!playing) return;
+
+    // Selecting the whole log leaves nothing to animate, so let playback end there rather than sit frozen.
+    if (stepIndex < 0 && isFullRangeWindow()) {
+      stopPlayback();
+      return;
+    }
+
+    playTime = (stepIndex >= 0) ? STEPS[stepIndex].center : winStart;
+  }
+
+  function onFrame(nowMs) {
+    if (!playing) return;
+
+    // Hold the clock while the window is being dragged, so that playback isn't fighting the drag for it, and
+    // while the figure is being moved (see isPlaybackHeld()). The readout is still refreshed, since what it says
+    // changes when playback goes on hold.
+    if (dragMode !== null || isFigureBusy()) {
+      lastFrameMs = nowMs;
+      updateWindowDivStyle();
+      animationHandle = requestAnimationFrame(onFrame);
+      return;
+    }
+
+    // Cap the step so returning to a backgrounded tab doesn't jump the whole log at once.
+    var dt_sec = Math.min(0.25, (nowMs - lastFrameMs) / 1000.0);
+    lastFrameMs = nowMs;
+    playTime += dt_sec * parseFloat(speedSelect.value);
+
+    // Playback runs to the end of the log and stops there, leaving the last of it on screen. Starting over is
+    // the play button again, from wherever the window is left.
+    if (stepIndex >= 0) {
+      var last_step = STEPS.length - 1;
+      var index = Math.min(last_step, stepIndexAtOrBefore(playTime));
+      if (index !== stepIndex) setStepWindow(index);
+      if (playTime >= STEPS[last_step].center) {
+        stopPlayback();
+        return;
+      }
+    } else {
+      var width = winEnd - winStart;
+      winStart = Math.min(playTime, P1_TIME_MAX - width);
+      winEnd = winStart + width;
+      scheduleFilter();
+      if (playTime >= P1_TIME_MAX - width) {
+        stopPlayback();
+        return;
+      }
+    }
+
+    animationHandle = requestAnimationFrame(onFrame);
+  }
+
+  function startPlayback() {
+    if (playing || !canPlay()) return;
+    // With the whole log selected there is nothing to slide, so step through it one step at a time instead.
+    if (stepIndex < 0 && isFullRangeWindow()) {
+      setStepWindow(0);
+    }
+    playing = true;
+    playTime = (stepIndex >= 0) ? STEPS[stepIndex].center : winStart;
+    lastFrameMs = performance.now();
+    playButton.textContent = PAUSE_GLYPH;
+    animationHandle = requestAnimationFrame(onFrame);
+  }
+
+  function stopPlayback() {
+    if (!playing) return;
+    playing = false;
+    if (animationHandle !== null) cancelAnimationFrame(animationHandle);
+    animationHandle = null;
+    playButton.textContent = PLAY_GLYPH;
+  }
+
+  function togglePlayback() {
+    if (playing) stopPlayback(); else startPlayback();
+  }
+
+  playButton.addEventListener('click', togglePlayback);
+
   // Step the window back and forth with the arrow keys: one step at a time when it is locked to a single step,
   // otherwise a tenth of its own width, which stays a useful step whatever range is selected. The figure's pages
-  // don't scroll, so the arrow keys have nothing else to do here.
+  // don't scroll, so the arrow keys and the space bar have nothing else to do here.
   var ARROW_STEP_FRACTION = 0.1;
 
   function stepWindow(direction) {
     if (stepIndex >= 0) {
       setStepWindow(stepIndex + direction);
+      reseatPlayback();
       return;
     }
 
-    // A window covering the whole log has nowhere to slide to, so start stepping through its steps from whichever
-    // end the key is heading away from.
+    // As in startPlayback(), a window covering the whole log has nowhere to slide to, so start stepping through
+    // its steps from whichever end the key is heading away from.
     if (isFullRangeWindow() && STEPS.length > 0) {
       setStepWindow(direction > 0 ? 0 : STEPS.length - 1);
+      reseatPlayback();
       return;
     }
 
@@ -941,19 +1169,32 @@
     var step_sec = direction * ARROW_STEP_FRACTION * width;
     winStart = Math.max(P1_TIME_MIN, Math.min(P1_TIME_MAX - width, winStart + step_sec));
     winEnd = winStart + width;
+    reseatPlayback();
     scheduleFilter();
   }
 
   document.addEventListener('keydown', function(evt) {
-    if (evt.key !== 'ArrowLeft' && evt.key !== 'ArrowRight') return;
+    var is_arrow = (evt.key === 'ArrowLeft' || evt.key === 'ArrowRight');
+    var is_space = (evt.key === ' ' || evt.key === 'Spacebar');
+    if (!is_arrow && !is_space) return;
 
-    // Leave the arrow keys wherever they already mean something, such as text entry.
+    // Leave these keys wherever they already mean something: text entry takes both, the play button answers the
+    // space bar itself rather than toggling playback twice, and the speed selector takes the arrow keys to move
+    // between its speeds. The space bar is taken back off the selector, though -- once it has been clicked it
+    // keeps the focus, and opening its list again is a small thing to lose beside the space bar meaning play
+    // wherever you happen to have clicked last.
     var target = evt.target;
     if (!target) return;
     if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
+    if (is_space && target === playButton) return;
+    if (is_arrow && target.tagName === 'SELECT') return;
 
     evt.preventDefault();
-    stepWindow(evt.key === 'ArrowRight' ? 1 : -1);
+    if (is_space) {
+      togglePlayback();
+    } else {
+      stepWindow(evt.key === 'ArrowRight' ? 1 : -1);
+    }
   });
 
   window.addEventListener('resize', function() {
