@@ -5,7 +5,8 @@
 // Choosing a range:
 //
 // - Drag outside the window to pick out a new range, drag the window itself to slide it through the log, and drag
-//   an edge of it to adjust that edge.
+//   an edge of it to adjust that edge. Narrowing it past the gap between two steps selects the step under the
+//   cursor, so the window never gets too narrow to hold anything.
 // - Double-click the window to narrow it to a single step in time, and again to go back to the whole log. With a
 //   step selected, clicking anywhere on the track jumps to the step there.
 // - The left/right arrow keys move the window, and a play button (or the space bar) animates it forward at a
@@ -124,6 +125,11 @@
   var STEPS = [];
   var STEP_PAD_SEC = MAX_STEP_PAD_SEC;
   var STEP_SPACING_SEC = 0;
+  // The narrowest free-floating range worth selecting, set once the step spacing is known. Anything narrower than
+  // the gap between two steps can land between them and come up empty, so a drag asking for less selects a single
+  // step instead -- the state a double-click already selects, which always has something in it and which the arrow
+  // keys and playback move a step at a time.
+  var MIN_FREE_WINDOW_SEC = MIN_WINDOW_SEC;
   (function() {
     var diffs = [];
     var all = [];
@@ -138,6 +144,7 @@
 
     diffs.sort(function(a, b) { return a - b; });
     STEP_SPACING_SEC = diffs.length > 0 ? diffs[diffs.length >> 1] : 0;
+    MIN_FREE_WINDOW_SEC = Math.max(MIN_WINDOW_SEC, STEP_SPACING_SEC);
     var tolerance_sec = Math.max(1e-4, 0.25 * STEP_SPACING_SEC);
     STEP_PAD_SEC = Math.max(1e-4, Math.min(MAX_STEP_PAD_SEC, 0.25 * tolerance_sec));
 
@@ -165,6 +172,7 @@
     'padding:' + TRACK_PADDING_V_PX + 'px ' + TRACK_INSET_PX + 'px; background:' + PANEL_COLOR + '; ' +
     'border-top:1px solid #e4e4e1;';
   sliderContainer.title = 'Drag outside the selection to pick a new time range, or drag the selection to move it.\n' +
+    'Narrowing the selection below a single step in time selects that step.\n' +
     'Double-click the selection to narrow it to a single step in time, and again to go back to the full range.\n' +
     'With a step selected, click anywhere on the track to jump to the step there.\n' +
     'Ctrl+scroll to zoom the time scale, shift+drag or shift+scroll to pan it, and double-click away from the\n' +
@@ -883,12 +891,22 @@
       return;
     }
 
-    if (dragMode === 'left') {
+    if (dragMode === 'left' || dragMode === 'right') {
+      var edge_time = pixelToTime(evt.clientX);
+      var fixed_time = (dragMode === 'left') ? dragWinEnd : dragWinStart;
+      if (STEPS.length > 0 && Math.abs(fixed_time - edge_time) < MIN_FREE_WINDOW_SEC) {
+        setStepWindow(nearestStepIndex(edge_time));
+        return;
+      }
+
       stepIndex = -1;
-      winStart = Math.max(P1_TIME_MIN, Math.min(pixelToTime(evt.clientX), winEnd - MIN_WINDOW_SEC));
-    } else if (dragMode === 'right') {
-      stepIndex = -1;
-      winEnd = Math.min(P1_TIME_MAX, Math.max(pixelToTime(evt.clientX), winStart + MIN_WINDOW_SEC));
+      if (dragMode === 'left') {
+        winEnd = fixed_time;
+        winStart = Math.max(P1_TIME_MIN, Math.min(edge_time, fixed_time - MIN_FREE_WINDOW_SEC));
+      } else {
+        winStart = fixed_time;
+        winEnd = Math.min(P1_TIME_MAX, Math.max(edge_time, fixed_time + MIN_FREE_WINDOW_SEC));
+      }
     } else if (dragMode === 'move') {
       var delta_sec = ((evt.clientX - dragStartX) / rect.width) * (view_max - view_min);
       // A window locked to a single step stays locked while it's dragged, moving from step to step as the
@@ -907,11 +925,16 @@
     } else if (dragMode === 'select') {
       if (!dragSelecting && !dragMoved) return;
       dragSelecting = true;
-      stepIndex = -1;
 
       var from = pixelToTime(dragStartX), to = pixelToTime(evt.clientX);
+      if (STEPS.length > 0 && Math.abs(to - from) < MIN_FREE_WINDOW_SEC) {
+        setStepWindow(nearestStepIndex(to));
+        return;
+      }
+
+      stepIndex = -1;
       winStart = Math.min(from, to);
-      winEnd = Math.max(winStart + MIN_WINDOW_SEC, Math.max(from, to));
+      winEnd = Math.max(winStart + MIN_FREE_WINDOW_SEC, Math.max(from, to));
     }
     scheduleFilter();
   }
@@ -1166,7 +1189,7 @@
     }
 
     var width = winEnd - winStart;
-    var step_sec = direction * ARROW_STEP_FRACTION * width;
+    var step_sec = direction * Math.max(ARROW_STEP_FRACTION * width, STEP_SPACING_SEC);
     winStart = Math.max(P1_TIME_MIN, Math.min(P1_TIME_MAX - width, winStart + step_sec));
     winEnd = winStart + width;
     reseatPlayback();
