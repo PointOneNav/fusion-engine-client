@@ -4490,7 +4490,7 @@ Load and display information stored in a FusionEngine binary file.
         for func in functions:
             if func == 'plot_map':
                 analyzer.plot_map(mapbox_token=options.mapbox_token, reference=reference_data)
-            elif func == 'plot_skyplot':
+            elif func == 'plot_gnss_skyplot':
                 analyzer.plot_gnss_skyplot(decimate=False)
             elif func == 'plot_pose_error':
                 if reference_data is not None:
