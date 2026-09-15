@@ -42,6 +42,10 @@ _logger = logging.getLogger('point_one.fusion_engine.analysis.analyzer')
 
 SolutionTypeInfo = namedtuple('SolutionTypeInfo', ['name', 'style'])
 
+# The signal status flags that mean the navigation engine made use of a signal in some way.
+_SIGNAL_USED_MASK = (GNSSSignalInfo.STATUS_FLAG_USED_PR | GNSSSignalInfo.STATUS_FLAG_USED_DOPPLER |
+                     GNSSSignalInfo.STATUS_FLAG_USED_CARRIER)
+
 _SOLUTION_TYPE_MAP = {
     SolutionType.Invalid: SolutionTypeInfo(name='Invalid', style={'color': 'black'}),
     SolutionType.Integrate: SolutionTypeInfo(name='Integrated', style={'color': 'cyan'}),
@@ -1627,8 +1631,8 @@ body > div { display: contents; }
 
         # Plot each satellite.
         indices_by_system = defaultdict(list)
-        color_by_sv_format = []
-        color_by_cn0_format = []
+        color_by_sv = []
+        color_by_cn0 = []
         for sv_hash in sv_hashes:
             sv_id = SatelliteID(sv_hash=sv_hash)
             name = sv_id.to_string(short=False)
@@ -1644,9 +1648,22 @@ body > div { display: contents; }
             #
             # Reference: https://stackoverflow.com/a/43094244
             idx = all_signal_sv_hashes == sv_hash
-            cn0_per_epoch = np.split(data.signal_data['cn0_dbhz'][idx],
-                                     np.unique(data.signal_data['p1_time'][idx], return_index=True)[1][1:])
+            epoch_starts = np.unique(data.signal_data['p1_time'][idx], return_index=True)[1][1:]
+            cn0_per_epoch = np.split(data.signal_data['cn0_dbhz'][idx], epoch_starts)
             max_cn0_dbhz = np.array([max(cn0) if len(cn0) > 0 else 0.0 for cn0 in cn0_per_epoch])
+
+            # Flag epochs where the navigation engine used at least one of this satellite's signals vs epochs where none
+            # were used. When no signals were used, draw a different marker.
+            #
+            # Note: Open markers have to be named rather than given as Plotly's equivalent symbol numbers, and need a
+            # marker outline width set explicitly. WebGL traces like this one draw an open marker as a transparent fill
+            # plus an outline, and default that outline to no width unless the trace's symbol is a single open one,
+            # which a per-point mix of open and filled is not.
+            is_used = np.bitwise_and(data.signal_data['status_flags'][idx], _SIGNAL_USED_MASK) != 0
+            any_used_per_epoch = np.split(is_used, epoch_starts)
+            any_used = np.array([np.any(used) for used in any_used_per_epoch])
+            symbols = np.where(any_used, 'circle', 'circle-open')
+            outline_widths = np.where(any_used, 0, 1).astype(np.int8)
 
             if have_gnss_signals_message:
                 sv_signal_types = signal_types_by_sv[sv_hash]
@@ -1664,23 +1681,26 @@ body > div { display: contents; }
                 az_deg = az_deg[idx]
                 el_deg = el_deg[idx]
                 max_cn0_dbhz = max_cn0_dbhz[idx]
+                symbols = symbols[idx]
+                outline_widths = outline_widths[idx]
 
                 # A satellite tracked entirely between two of those epochs has nothing left to draw, as does one we
                 # never had ephemeris for (or were otherwise not able to compute az/el for).
                 if len(el_deg) == 0 or np.all(np.isnan(el_deg)):
                     continue
 
-            # Plot the data. We set styles for both coloring by SV and by C/N0. We'll add buttons below to switch
-            # between styles.
-            color_by_sv_format.append({'color': color_by_prn[sv_id.get_prn()]})
-            color_by_cn0_format.append({'cmin': 20, 'cmax': 55, 'colorscale': 'RdBu', 'showscale': True,
-                                        'colorbar': {'x': 0}, 'color': max_cn0_dbhz})
+            # Collect the marker colors for both coloring by SV and by C/N0. We'll add buttons below to switch
+            # between them, restyling only the color so that the marker's symbol stays as set above.
+            color_by_sv.append(color_by_prn[sv_id.get_prn()])
+            color_by_cn0.append(max_cn0_dbhz)
 
             text = ['P1: %.1f sec<br>(Az, El): (%.2f, %.2f) deg<br>C/N0: %.1f dB-Hz' %
                     (t, a, e, c) for t, a, e, c in zip(p1_time, az_deg, el_deg, max_cn0_dbhz)]
+
+            marker = {'color': color_by_sv[-1], 'symbol': symbols, 'line': {'width': outline_widths}}
             figure.add_trace(go.Scatterpolargl(r=el_deg, theta=(90 - az_deg), text=text,
                                                name=name_str, hoverinfo='name+text',
-                                               mode='markers', marker=color_by_sv_format[-1]))
+                                               mode='markers', marker=marker))
             indices_by_system[system].append(len(figure.data) - 1)
 
         # Add selection buttons for each system and for choosing between coloring by SV and C/N0.
@@ -1707,8 +1727,12 @@ body > div { display: contents; }
             'type': 'buttons',
             'direction': 'left',
             'buttons': [
-                dict(label='Color By SV', method='restyle', args=['marker', color_by_sv_format]),
-                dict(label='Color By C/N0', method='restyle', args=['marker', color_by_cn0_format])
+                dict(label='Color By SV', method='restyle',
+                     args=[{'marker.color': color_by_sv, 'marker.showscale': False}]),
+                dict(label='Color By C/N0', method='restyle',
+                     args=[{'marker.color': color_by_cn0, 'marker.cmin': 20, 'marker.cmax': 55,
+                            'marker.colorscale': 'RdBu', 'marker.showscale': True,
+                            'marker.colorbar': {'x': 0}}])
             ],
             'x': 0.0,
             'xanchor': 'left',
@@ -1922,9 +1946,7 @@ body > div { display: contents; }
         num_svs = _count_selected(data.sv_data["p1_time"])
         num_signals = _count_selected(data.signal_data["p1_time"])
 
-        is_used_mask = (GNSSSignalInfo.STATUS_FLAG_USED_PR | GNSSSignalInfo.STATUS_FLAG_USED_DOPPLER |
-                        GNSSSignalInfo.STATUS_FLAG_USED_CARRIER)
-        idx = (np.bitwise_and(data.signal_data['status_flags'], is_used_mask) != 0)
+        idx = (np.bitwise_and(data.signal_data['status_flags'], _SIGNAL_USED_MASK) != 0)
         num_used_signals, used_p1_time, used_p1_time_idx = _count_selected(data.signal_data['p1_time'][idx],
                                                                            return_nonzero_time=True)
 
@@ -2042,7 +2064,7 @@ Black=Unused, Red=Used'''
                 },
                 # Signal not used
                 {
-                    'cond': lambda status_flags, _: np.bitwise_and(status_flags, is_used_mask) == 0,
+                    'cond': lambda status_flags, _: np.bitwise_and(status_flags, _SIGNAL_USED_MASK) == 0,
                     'marker': {'color': colors['unused'], 'symbol': 'x', 'size': 8}
                 },
             ]
@@ -2063,12 +2085,12 @@ Black=Unused, Red=Used'''
             conditions = [
                 # Signal used
                 {
-                    'cond': lambda status_flags, _: np.bitwise_and(status_flags, is_used_mask) != 0,
+                    'cond': lambda status_flags, _: np.bitwise_and(status_flags, _SIGNAL_USED_MASK) != 0,
                     'marker': {'color': colors['pr'], 'symbol': 'circle', 'size': 8}
                 },
                 # Signal not used
                 {
-                    'cond': lambda status_flags, _: np.bitwise_and(status_flags, is_used_mask) == 0,
+                    'cond': lambda status_flags, _: np.bitwise_and(status_flags, _SIGNAL_USED_MASK) == 0,
                     'marker': {'color': colors['unused'], 'symbol': 'x', 'size': 8}
                 },
             ]
