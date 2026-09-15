@@ -1011,7 +1011,10 @@ body > div { display: contents; }
         # The topocentric plot's axes are spatial (East/North), not time, so unlike time_customdata above (which
         # carries only whichever of P1/GPS time is not already reflected by the X axis), its hover text needs both
         # times directly -- neither is recoverable from a point's X/Y position.
-        topo_customdata = np.vstack((p1_time, gps_time, displacement_enu_m, std_enu_m))
+        #
+        # Laid out one row per point, rather than the field-major layout `GetCustomData()` reads, so that the time
+        # slider added below can slice it a point at a time (see _time_slider_js()).
+        topo_customdata = np.column_stack((p1_time, gps_time, displacement_enu_m.T, std_enu_m.T))
         time_customdata = np.vstack((time_customdata, displacement_enu_m, std_enu_m))
 
         # Setup the figure.
@@ -1068,7 +1071,7 @@ body > div { display: contents; }
                 style['marker'].update(marker_style)
 
             if np.any(idx):
-                topo_cd = topo_customdata[:, idx]
+                topo_cd = topo_customdata[idx, :]
                 time_cd = time_customdata[:, idx]
                 topo_figure.add_trace(go.Scattergl(x=displacement_enu_m[0, idx], y=displacement_enu_m[1, idx],
                                                    name=name, customdata=topo_cd, **style), 1, 1)
@@ -1103,18 +1106,18 @@ body > div { display: contents; }
         name = source.replace(' ', '_').replace('.', '').replace('(', '').replace(')', '').lower()
 
         # Topocentric hover: X/Y are spatial (East/North), not time, so both P1 and GPS time must come directly from
-        # customdata (rows 0/1) rather than from the point's axis position -- see BuildTimeHoverTextFromTimes().
+        # customdata (columns 0/1) rather than from the point's axis position -- see BuildTimeHoverTextFromTimes().
+        # `point.customdata` is this point's own row, since topo_customdata above is point-major.
         _DISPLACEMENT_TOPO_HOVER_JS = """\
 figure.on('plotly_hover', function(data) {
   let point = data.points[0];
-  if (!point.data.customdata) {
+  if (!point.customdata) {
     return;
   }
-  let new_text = BuildTimeHoverTextFromTimes(GetCustomData(point, 0), GetCustomData(point, 1));
-  new_text += `<br>Delta (ENU): (${GetCustomData(point, 2).toFixed(2)}, ${GetCustomData(point, 3).toFixed(2)}, ` +
-              `${GetCustomData(point, 4).toFixed(2)}) m`;
-  new_text += `<br>Std (ENU): (${GetCustomData(point, 5).toFixed(2)}, ${GetCustomData(point, 6).toFixed(2)}, ` +
-              `${GetCustomData(point, 7).toFixed(2)}) m`;
+  let cd = point.customdata;
+  let new_text = BuildTimeHoverTextFromTimes(cd[0], cd[1]);
+  new_text += `<br>Delta (ENU): (${cd[2].toFixed(2)}, ${cd[3].toFixed(2)}, ${cd[4].toFixed(2)}) m`;
+  new_text += `<br>Std (ENU): (${cd[5].toFixed(2)}, ${cd[6].toFixed(2)}, ${cd[7].toFixed(2)}) m`;
   ShowCustomTooltip(point, GetCustomTooltipHTML(point.data.name, undefined, new_text));
 });
 figure.on('plotly_unhover', function(data) {
@@ -1141,8 +1144,23 @@ figure.on('plotly_unhover', function(data) {
 });
         """ + self._GPS_TICK_REFORMAT_JS
 
+        # The top-down plot's axes are spatial, so the whole log is drawn on top of itself. A time slider is the
+        # only way to see where the position was at one moment, or to watch it move. Chart the 3D displacement it is
+        # showing, which is the same quantity the vs. time plot leads with.
+        slider_js = None
+        timed_idx = ~np.isnan(p1_time)
+        if np.any(timed_idx):
+            slider_js = self._time_slider_js(
+                t_min=np.min(p1_time[timed_idx]), t_max=np.max(p1_time[timed_idx]),
+                point_fields=['x', 'y', 'customdata'], time_customdata_index=0,
+                profile_time_sec=p1_time[timed_idx],
+                profile_series=[TimeSliderSeries(
+                    values=np.linalg.norm(displacement_enu_m[:, timed_idx], axis=0), color='#aab2bc', label='')],
+                profile_gps_time_sec=gps_time[timed_idx], profile_units='m', has_draggable_view=True)
+
         self._add_figure(name=f"{name}_top_down", figure=topo_figure, title=f"{source}: Top-Down (Topocentric)",
-                         inject_js=_DISPLACEMENT_TOPO_HOVER_JS)
+                         inject_js=_DISPLACEMENT_TOPO_HOVER_JS + (slider_js or ''),
+                         inject_head=self._TIME_SLIDER_HEAD_CSS if slider_js is not None else None)
         self._add_figure(name=f"{name}_vs_time", figure=time_figure, title=f"{source}: vs. Time",
                          inject_js=_DISPLACEMENT_TIME_HOVER_JS)
 
