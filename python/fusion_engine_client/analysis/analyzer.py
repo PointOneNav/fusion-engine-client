@@ -3308,12 +3308,19 @@ figure.on('plotly_unhover', function(data) {
                                    EventNotificationMessage._populate_data_byte_string(message_bytes,
                                                                                        max_bytes=max_bytes))
 
+            if flags is None:
+                flag_str = 'N/A'
+            elif event_type == EventType.LOG:
+                flag_str = LogSeverity(flags, raise_on_unrecognized=False).to_string()
+            else:
+                flag_str = '0x%016X' % flags
+
             rows.append([
                 f'{(system_time_ns - system_t0_ns) / 1e9:.3f}' if system_time_ns is not None else 'N/A',
                 f'{system_time_ns / 1e9:.3f}' if system_time_ns is not None else 'N/A',
                 '',
                 event_type.to_string(include_value=True),
-                f'0x{flags:016X}' if flags is not None else 'N/A',
+                flag_str,
                 description_str.replace('<', '[').replace('>', ']').replace('\n', '<br>'),
             ])
 
