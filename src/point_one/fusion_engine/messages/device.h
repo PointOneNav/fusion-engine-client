@@ -267,6 +267,13 @@ struct P1_ALIGNAS(4) EventNotificationMessage : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE = MessageType::EVENT_NOTIFICATION;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
+  /**
+   * For command/response messages, this flag indicates that the command could
+   * not be serialized completely within this message, and the payload was
+   * truncated.
+   */
+  constexpr uint64_t FLAG_COMMAND_TRUNCATED = 0x80000000'00000000ULL;
+
   /** The type of event that occurred. */
   EventType type = EventType::LOG;
 
