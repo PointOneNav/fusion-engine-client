@@ -266,6 +266,11 @@ figure.on('plotly_hover', function(data) {
         # `x_domain` argument. Some plots may use a different X axis regardles of self.time_type, and may override this.
         self._default_x_domain = 'p1' if self.time_type in ('relative', 'p1') else 'gps'
 
+        # The start of the reference data (P1 and GPS time), used as the relative time origin in place of the start of
+        # the log if @ref set_reference_t0() is called. See @ref t0.
+        self._reference_t0 = None
+        self._reference_t0_gps = None
+
         self.plots = {}
         self.summary = ''
 
@@ -299,6 +304,50 @@ figure.on('plotly_hover', function(data) {
                 _logger.warning('Log duration very long (%.1f hours > %.1f hours). Some plots may be very slow to '
                                 'generate or load.' %
                                 (processing_duration_sec / 3600.0, self.LONG_LOG_DURATION_SEC / 3600.0))
+
+    @property
+    def t0(self) -> Optional[Timestamp]:
+        """!
+        @brief The P1 time used as the origin when plotting relative time.
+
+        This is the timestamp of the first entry in the log, unless @ref set_reference_t0() was used to measure
+        relative time from the start of the reference data instead.
+
+        @return The origin timestamp, or `None` if the log does not contain P1 time.
+        """
+        return self.reader.t0 if self._reference_t0 is None else self._reference_t0
+
+    def set_reference_t0(self, reference: ReferenceData):
+        """!
+        @brief Use the start of the specified reference data as the origin when plotting relative time (see @ref t0).
+
+        Has no effect for a stationary reference, which has no timestamps, or if the reference's GPS timestamps
+        cannot be converted to this log's P1 time.
+
+        @param reference The reference data to take the start time from.
+        """
+        if reference.is_stationary or len(reference.gps_time_sec) == 0:
+            return
+
+        # The reference is timestamped in GPS time, so convert its start time to P1 time to be used as the origin for
+        # the P1 timestamps in this log.
+        gps_t0_sec = float(reference.gps_time_sec[0])
+        p1_t0_sec = float(self.time_provider.gps_to_p1(np.array([gps_t0_sec]))[0])
+        if np.isnan(p1_t0_sec):
+            self.logger.warning('Unable to convert the reference data start time to P1 time. Measuring relative time '
+                                'from the start of the log.')
+            return
+
+        self._reference_t0 = Timestamp(p1_t0_sec)
+        self._reference_t0_gps = Timestamp(gps_t0_sec)
+
+        message = ('Measuring relative time from the start of the reference data (P1 %s).' %
+                   self._reference_t0.to_p1_str())
+        if self.reader.t0 is not None:
+            dt_sec = float(self.reader.t0) - p1_t0_sec
+            message += (' The reference starts %.1f seconds %s the first entry in the log.' %
+                        (abs(dt_sec), 'before' if dt_sec >= 0.0 else 'after'))
+        self.logger.info(message)
 
     def plot_time_scale(self):
         if self.output_dir is None:
@@ -608,9 +657,23 @@ figure.on('plotly_hover', function(data) {
 
         c_enu_ecef = get_enu_rotation_matrix(*pose_data.lla_deg[0:2, first_idx], deg=True)
 
+        # If there's no body velocity available, see if we have PoseAux messages and plot ENU velocity instead.
+        vel_mps = pose_data.velocity_body_mps
+        vel_std_mps = pose_data.velocity_std_body_mps
+        is_body_vel = True
+
+        if np.all(np.isnan(vel_mps)):
+            result = self.reader.read(message_types=[PoseAuxMessage], source_ids=self.default_source_id, **self.params)
+            pose_aux_data = result[PoseAuxMessage.MESSAGE_TYPE]
+            if len(pose_aux_data.p1_time) != 0:
+                vel_mps = pose_aux_data.velocity_enu_mps
+                vel_std_mps = pose_aux_data.velocity_std_enu_mps
+                is_body_vel = False
+
         # Setup the figure.
         figure = make_subplots(rows=2, cols=3, print_grid=False, shared_xaxes=True,
-                               subplot_titles=['Attitude (YPR)', 'ENU Displacement', 'Body Velocity',
+                               subplot_titles=['Attitude (YPR)', 'ENU Displacement',
+                                               'Body Velocity' if is_body_vel else 'ENU Velocity',
                                                'Attitude Std', 'ENU Position Std', 'Velocity Std'])
 
         figure['layout'].update(showlegend=True, modebar_add=['v1hovermode'])
@@ -673,29 +736,29 @@ figure.on('plotly_hover', function(data) {
                          2, 2)
 
         # Plot velocity.
-        figure.add_trace(go.Scattergl(x=time, y=pose_data.velocity_body_mps[0, :], customdata=customdata, name='X',
+        figure.add_trace(go.Scattergl(x=time, y=vel_mps[0, :], customdata=customdata, name='X',
                                       legendgroup='x', mode='lines', line={'color': 'red'}),
                          1, 3)
-        figure.add_trace(go.Scattergl(x=time, y=pose_data.velocity_body_mps[1, :], customdata=customdata, name='Y',
+        figure.add_trace(go.Scattergl(x=time, y=vel_mps[1, :], customdata=customdata, name='Y',
                                       legendgroup='y', mode='lines', line={'color': 'green'}),
                          1, 3)
-        figure.add_trace(go.Scattergl(x=time, y=pose_data.velocity_body_mps[2, :], customdata=customdata, name='Z',
+        figure.add_trace(go.Scattergl(x=time, y=vel_mps[2, :], customdata=customdata, name='Z',
                                       legendgroup='z', mode='lines', line={'color': 'blue'}),
                          1, 3)
-        figure.add_trace(go.Scattergl(x=time, y=np.linalg.norm(pose_data.velocity_body_mps, axis=0),
+        figure.add_trace(go.Scattergl(x=time, y=np.linalg.norm(vel_mps, axis=0),
                                       customdata=customdata, name='3D',
                                       mode='lines', line={'color': 'orange', 'dash': 'dash'}),
                          1, 3)
 
-        figure.add_trace(go.Scattergl(x=time, y=pose_data.velocity_std_body_mps[0, :], customdata=customdata,
+        figure.add_trace(go.Scattergl(x=time, y=vel_std_mps[0, :], customdata=customdata,
                                       name='X', legendgroup='x', showlegend=False, mode='lines',
                                       line={'color': 'red'}),
                          2, 3)
-        figure.add_trace(go.Scattergl(x=time, y=pose_data.velocity_std_body_mps[1, :], customdata=customdata,
+        figure.add_trace(go.Scattergl(x=time, y=vel_std_mps[1, :], customdata=customdata,
                                       name='Y', legendgroup='y', showlegend=False, mode='lines',
                                       line={'color': 'green'}),
                          2, 3)
-        figure.add_trace(go.Scattergl(x=time, y=pose_data.velocity_std_body_mps[2, :], customdata=customdata,
+        figure.add_trace(go.Scattergl(x=time, y=vel_std_mps[2, :], customdata=customdata,
                                       name='Z', legendgroup='z', showlegend=False, mode='lines',
                                       line={'color': 'blue'}),
                          2, 3)
@@ -1220,7 +1283,7 @@ figure.on('plotly_unhover', function(data) {
 
         def _build_position_customdata(p1_time: np.ndarray, gps_time: np.ndarray, lla_deg: np.ndarray,
                                        std_enu_m: np.ndarray, error_enu_m: Optional[np.ndarray] = None) -> list:
-            rel_time = p1_time - float(self.reader.t0)
+            rel_time = p1_time - float(self.t0)
             gps_week = np.floor(gps_time / SECONDS_PER_WEEK)
             gps_tow_sec = gps_time - gps_week * SECONDS_PER_WEEK
 
@@ -1566,7 +1629,7 @@ body > div { display: contents; }
             idx = all_signal_sv_hashes == sv_hash
             cn0_per_epoch = np.split(data.signal_data['cn0_dbhz'][idx],
                                      np.unique(data.signal_data['p1_time'][idx], return_index=True)[1][1:])
-            max_cn0_dbhz = np.array([max(cn0) for cn0 in cn0_per_epoch])
+            max_cn0_dbhz = np.array([max(cn0) if len(cn0) > 0 else 0.0 for cn0 in cn0_per_epoch])
 
             if have_gnss_signals_message:
                 sv_signal_types = signal_types_by_sv[sv_hash]
@@ -2173,10 +2236,25 @@ figure.on('plotly_unhover', function(data) {{
         only used for IMU or wheel speed data.
         """
         if self._gnss_antenna_source_ids is None:
-            # 0/1 are the legacy primary/secondary antenna identifiers, predating the SourceIdentifier reserved
-            # ranges. 300-399 is reserved for GNSS receivers/antennae.
-            self._gnss_antenna_source_ids = sorted(
-                sid for sid in self.source_ids if sid in (0, 1) or 300 <= sid <= 399)
+            # 300-399 is reserved for GNSS receivers/antennas.
+            self._gnss_antenna_source_ids = sorted(sid for sid in self.source_ids if 300 <= sid <= 399)
+
+            # For backwards compatibility, 0/1 are the legacy primary/secondary antenna identifiers, predating the
+            # SourceIdentifier reserved range definition, but only if there are GNSS signals messages present in the
+            # log. If not, ignore source 0 from pose messages, etc. so we don't issue "no data for source 0" warnings
+            # later.
+            if len(self._gnss_antenna_source_ids) == 0:
+                params = copy.deepcopy(self.params)
+                params['return_numpy'] = False
+                params['max_messages'] = 1
+                result = self.reader.read(message_types=[GNSSSignalsMessage, GNSSSatelliteMessage,
+                                                         RawGNSSAttitudeOutput, GNSSAttitudeOutput], **params)
+                if any(r.num_messages > 0 for r in result.values()):
+                    self._gnss_antenna_source_ids = sorted(sid for sid in self.source_ids if sid in (0, 1))
+
+            if len(self._gnss_antenna_source_ids) == 0:
+                self.logger.info(f'No GNSS signal data detected. Skipping all GNSS plots.')
+
         return self._gnss_antenna_source_ids
 
     def _gnss_antenna_label(self, source_id: int) -> str:
@@ -3615,6 +3693,15 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
                            t0_gps=processed_t0_gps, t0_is_approx=processed_t0_is_approx),
             '%.1f seconds' % processing_duration_sec,
         ]
+
+        # If relative time is measured from the start of the reference data instead of the start of the log, call that
+        # out (see @ref set_reference_t0()).
+        if self._reference_t0 is not None:
+            descriptions += ['', 'Relative Time Origin', '(reference data start)']
+            times += ['',
+                      f'P1: {self._reference_t0.to_p1_str()}',
+                      self._gps_sec_to_string(self._reference_t0_gps)]
+
         time_table = _data_to_table(['Description', 'Time'], [descriptions, times])
 
         # Create a table with the types and counts of each FusionEngine message type in the log.
@@ -3765,13 +3852,13 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
         if post_script is None:
             post_script = ""
 
-        # Create global variables with the log's t0 timestamp, the (leap-second accurate) GPS/POSIX offset, the
-        # system time t0 (see BuildSystemTimeHoverText()), and the time domain plotted on this figure's X axis (see
-        # BuildTimeHoverText()). Note: self.reader.t0 and system_t0 may each independently be unavailable (e.g. a
-        # system-time-only profiling log has no P1 time at all), so both need a 'null' fallback -- plots that
-        # don't use one of these domains at all still go through this same code path whenever inject_js is set.
+        # Create global variables with the relative time origin (see @ref t0), the (leap-second accurate) GPS/POSIX
+        # offset, the system time t0 (see BuildSystemTimeHoverText()), and the time domain plotted on this figure's X
+        # axis (see BuildTimeHoverText()). Note: self.t0 and system_t0 may each independently be unavailable (e.g. a
+        # system-time-only profiling log has no P1 time at all), so both need a 'null' fallback -- plots that don't
+        # use one of these domains at all still go through this same code path whenever inject_js is set.
         gps_posix_offset_sec = self.time_provider.get_gps_posix_offset_sec()
-        p1_t0_sec = None if self.reader.t0 is None else float(self.reader.t0)
+        p1_t0_sec = None if self.t0 is None else float(self.t0)
         system_t0 = self.reader.get_system_t0() if self.time_type == 'relative' else 0.0
         system_t0_sec = None if system_t0 is None else float(system_t0)
         post_script += f"""\
@@ -3821,7 +3908,7 @@ var time_axis_type = '{time_axis_type}';
     def _get_t0_for_time_source(self, time_source: SystemTimeSource) -> float:
         if time_source == SystemTimeSource.P1_TIME:
             if self.time_type == 'relative':
-                return float(self.reader.t0)
+                return float(self.t0)
             else:
                 return 0.0
         elif time_source == SystemTimeSource.GPS_TIME:
@@ -3900,7 +3987,7 @@ var time_axis_type = '{time_axis_type}';
                 return system_time, axis_layout
 
         if self.time_type == 'relative':
-            return p1_time - float(self.reader.t0), axis_layout
+            return p1_time - float(self.t0), axis_layout
         elif self.time_type == 'p1' or ignore_gps:
             return p1_time, axis_layout
 
@@ -4325,6 +4412,10 @@ Load and display information stored in a FusionEngine binary file.
         if reference_data is None:
             _logger.error('Unable to resolve reference data.')
             sys.exit(1)
+
+        # The reference data typically starts before the log being analyzed, so use its start time as the origin for
+        # relative time.
+        analyzer.set_reference_t0(reference_data)
 
     if options.plot is None:
         analyzer.plot_events()
