@@ -1772,7 +1772,7 @@ class ExportDataMessage(MessagePayload):
     ExportDataMessageConstruct = Struct(
         "data_type" / AutoEnum(Int8ul, DataType),
         "source" / AutoEnum(Int8ul, ConfigurationSource),
-        Padding(3),
+        Padding(2),
     )
 
     def __init__(self, data_type=DataType.INVALID, source=ConfigurationSource.ACTIVE):
