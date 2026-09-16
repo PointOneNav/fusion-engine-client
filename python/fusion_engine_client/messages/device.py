@@ -177,6 +177,10 @@ class EventNotificationMessage(MessagePayload):
     MESSAGE_TYPE = MessageType.EVENT_NOTIFICATION
     MESSAGE_VERSION = 0
 
+    ## For command/response messages, this flag indicates that the command could not be serialized completely within
+    ## this message, and the payload was truncated.
+    FLAG_COMMAND_TRUNCATED = 0x8000000000000000
+
     EventNotificationConstruct = Struct(
         "event_type" / AutoEnum(Int8ul, EventType),
         Padding(3),
@@ -256,24 +260,41 @@ class EventNotificationMessage(MessagePayload):
     def calcsize(self) -> int:
         return len(self.pack())
 
+    def is_truncated(self) -> bool:
+        """!
+        @brief Check whether the device stored only part of the event description.
+
+        @return `True` if @ref event_description holds only the leading bytes of the original description.
+        """
+        return (self.event_flags & self.FLAG_COMMAND_TRUNCATED) != 0
+
     def event_description_to_string(self, max_bytes=None):
         # For commands and responses, the payload should contain the binary FusionEngine message. Try to decode the
-        # message type.
+        # message type and description, and print that instead of just the binary representation.
         if self.event_type == EventType.COMMAND or self.event_type == EventType.COMMAND_RESPONSE:
             if len(self.event_description) >= MessageHeader.calcsize():
                 header = MessageHeader()
                 header.unpack(self.event_description, validate_crc=False, warn_on_unrecognized=False)
                 message_repr = f'[{header.message_type.to_string(include_value=True)}]'
 
-                message_cls = MessagePayload.get_message_class(header.message_type)
-                if message_cls is not None:
-                    try:
-                        message = message_cls()
-                        message.unpack(buffer=self.event_description, offset=header.calcsize())
-                        message_repr = repr(message)
-                    except Exception:
-                        # Fall back to the hex dump below on any parse failure.
-                        pass
+                # The device stores the complete command, header and payload, so anything shorter than the header says
+                # it should be means the device ran out of room and kept only the leading bytes. The truncated flag
+                # should be set any time this happens, but worth checking the expected size too just in case.
+                if (self.is_truncated() or
+                    len(self.event_description) < (MessageHeader.calcsize() + header.payload_size_bytes)):
+                    message_repr += ' <Truncated>'
+                else:
+                    message_cls = MessagePayload.get_message_class(header.message_type)
+                    if message_cls is not None:
+                        try:
+                            message = message_cls()
+                            message.unpack(buffer=self.event_description, offset=header.calcsize())
+                            message_repr = repr(message)
+                        except Exception:
+                            # Fall back to the hex dump below on any parse failure.
+                            pass
+            elif self.is_truncated():
+                message_repr = '<Truncated>'
             else:
                 message_repr = '<Malformed>'
 
