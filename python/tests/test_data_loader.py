@@ -245,6 +245,20 @@ class TestReader:
         result = reader.read(message_types=[PoseMessage, EventNotificationMessage], return_in_order=True)
         self._check_results(result, expected_result)
 
+    # A time-aligned read must not be satisfied by the results of an earlier unaligned read of the same messages.
+    def test_time_align_not_cached(self, data_path):
+        generate_data(data_path=str(data_path), include_binary=False, return_dict=False)
+        reader = DataLoader(path=str(data_path))
+
+        message_types = [PoseMessage, PoseAuxMessage]
+        result = reader.read(message_types=message_types)
+        assert len(result[PoseMessage.MESSAGE_TYPE].messages) == 2
+        assert len(result[PoseAuxMessage.MESSAGE_TYPE].messages) == 2
+
+        result = reader.read(message_types=message_types, time_align=TimeAlignmentMode.INSERT)
+        assert len(result[PoseMessage.MESSAGE_TYPE].messages) == 3
+        assert len(result[PoseAuxMessage.MESSAGE_TYPE].messages) == 3
+
     # Note: TimeRange objects keep internal state, so we can't use them here since the state will remain across multiple
     # calls for different use_index values. Instead we store range strings and parse them on each call.
     @pytest.mark.parametrize("time_range", [
