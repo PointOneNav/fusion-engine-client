@@ -13,7 +13,7 @@ from fusion_engine_client.parsers import FusionEngineEncoder
 # A small, deterministic set of pose epochs used across several tests:
 #   index 0: Invalid solution -- must be excluded from every statistic.
 #   index 1: AutonomousGPS, has PoseAux data -- "first" valid epoch.
-#   index 2: RTKFloat, PoseAux missing (tests NaN gap handling via TimeAlignmentMode.INSERT).
+#   index 2: RTKFloat, PoseAux missing -- tests NaN gap handling for epochs with no velocity.
 #   index 3: RTKFixed.
 #   index 4: RTKFixed.
 _EPOCHS = [
@@ -170,6 +170,30 @@ class TestFromOwnLog:
         invalid_loader = DataLoader(path=str(path))
 
         assert ReferenceData.from_own_log(invalid_loader, statistic='median') is None
+
+    @pytest.mark.parametrize("statistic", ['first', 'median'])
+    def test_no_aux_data(self, tmp_path, statistic):
+        # A log with no PoseAuxMessages at all should produce a reference with no velocity, not an error.
+        epochs = [dict(e, velocity_enu_mps=None) for e in _EPOCHS]
+        path = tmp_path / 'no_aux.p1log'
+        _write_log(path, epochs)
+        no_aux_loader = DataLoader(path=str(path))
+
+        ref = ReferenceData.from_own_log(no_aux_loader, statistic=statistic)
+        assert not ref.has_velocity
+        assert ref.velocity_enu_mps is None
+        assert ref.position_ecef_m is not None
+
+    def test_first_epoch_missing_aux(self, tmp_path):
+        # PoseAux is present in the log, but not at the epoch the statistic selects.
+        epochs = [dict(e, velocity_enu_mps=None) if i == 1 else e for i, e in enumerate(_EPOCHS)]
+        path = tmp_path / 'first_no_aux.p1log'
+        _write_log(path, epochs)
+        partial_loader = DataLoader(path=str(path))
+
+        ref = ReferenceData.from_own_log(partial_loader, statistic='first')
+        assert not ref.has_velocity
+        assert ref.position_ecef_m == pytest.approx(_expected_ecef(1)[:, 0])
 
     def test_invalid_statistic_raises(self, loader):
         with pytest.raises(ValueError):

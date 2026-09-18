@@ -243,8 +243,7 @@ class ReferenceData:
         params.setdefault('return_numpy', True)
         params.setdefault('show_progress', True)
         source_ids = None if source_id is None else [source_id]
-        result = loader.read(message_types=[PoseMessage, PoseAuxMessage], source_ids=source_ids,
-                             time_align=TimeAlignmentMode.INSERT, **params)
+        result = loader.read(message_types=[PoseMessage, PoseAuxMessage], source_ids=source_ids, **params)
         pose_data = result[PoseMessage.MESSAGE_TYPE]
         aux_data = result[PoseAuxMessage.MESSAGE_TYPE]
 
@@ -282,9 +281,16 @@ class ReferenceData:
 
         lla_deg = pose_data.lla_deg[:, selected_idx]
         position_ecef_m = np.array(geodetic2ecef(lat=lla_deg[0, :], lon=lla_deg[1, :], alt=lla_deg[2, :], deg=True))
-        velocity_enu_mps = aux_data.velocity_enu_mps[:, selected_idx]
         ypr_deg = pose_data.ypr_deg[:, selected_idx]
         position_std_enu_m = pose_data.position_std_enu_m[:, selected_idx]
+
+        # Velocity comes from PoseAuxMessage, which may not be present at every selected epoch, or in the log at all,
+        # so match it to the selected epochs by P1 time and leave the rest NAN.
+        velocity_enu_mps = np.full((3, len(selected_idx)), np.nan)
+        if len(aux_data.p1_time) > 0:
+            _, aux_idx, selected_offsets = np.intersect1d(aux_data.p1_time, pose_data.p1_time[selected_idx],
+                                                          return_indices=True)
+            velocity_enu_mps[:, selected_offsets] = aux_data.velocity_enu_mps[:, aux_idx]
 
         if statistic in ('first', 'first_fixed'):
             position_ecef_m = position_ecef_m[:, 0]
