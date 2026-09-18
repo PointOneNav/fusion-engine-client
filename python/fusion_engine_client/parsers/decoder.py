@@ -262,7 +262,8 @@ class FusionEngineDecoder:
             if cls is not None:
                 contents = cls()
                 try:
-                    contents.unpack(buffer=payload, offset=0)
+                    contents.unpack(buffer=payload, offset=0,
+                                    message_version=self._header.message_version)
                     _logger.debug('Decoded FusionEngine message %s.', repr(contents))
                 except NotImplementedError as e:
                     print_func = _logger.warning if self._warn_on_unrecognized else _logger.debug
