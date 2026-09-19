@@ -184,7 +184,7 @@ figure.on('plotly_hover', function(data) {
 
     # Generic hover JS for traces on a device system-time axis (see BuildSystemTimeHoverText() in
     # plotly_data_support.js). Unlike _TIME_HOVER_JS, no customdata is needed -- system time has no GPS-like alternate
-    # domain, so the value not shown on the X axis (relative vs. absolute) is always a constant offset (system_t0_sec)
+    # domain, so the time not shown on the X axis (relative vs. absolute) is always a constant offset (system_t0_sec)
     # away, not a per-point value.
     _SYSTEM_TIME_HOVER_JS = """\
 figure.on('plotly_hover', function(data) {
@@ -3985,13 +3985,14 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
         # use one of these domains at all still go through this same code path whenever inject_js is set.
         gps_posix_offset_sec = self.time_provider.get_gps_posix_offset_sec()
         p1_t0_sec = None if self.t0 is None else float(self.t0)
-        system_t0 = self.reader.get_system_t0() if self.time_type == 'relative' else 0.0
+        system_t0 = self.reader.get_system_t0()
         system_t0_sec = None if system_t0 is None else float(system_t0)
         post_script += f"""\
 var p1_t0_sec = {p1_t0_sec if p1_t0_sec is not None else 'null'};
 var p1_time_axis_rel = {'true' if self.time_type == 'relative' else 'false'};
 var gps_posix_offset_sec = {gps_posix_offset_sec if gps_posix_offset_sec is not None else 'null'};
 var system_t0_sec = {system_t0_sec if system_t0_sec is not None else 'null'};
+var system_time_axis_rel = {'true' if self.time_type == 'relative' else 'false'};
 var time_axis_type = '{time_axis_type}';
 """
 
