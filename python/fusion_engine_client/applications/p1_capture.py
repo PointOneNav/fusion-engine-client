@@ -357,7 +357,7 @@ class Application:
                             if ready[0]:
                                 received_data, kernel_ts, hw_ts = recv(self.input_transport, self.read_size_bytes)
                             else:
-                                received_data = []
+                                received_data = bytes()
                         # If this is a serial port or file, we set the read timeout above.
                         else:
                             received_data = recv_from_transport(self.input_transport, self.read_size_bytes)
