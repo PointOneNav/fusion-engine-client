@@ -10,12 +10,14 @@ from typing import Any, BinaryIO, Callable, TextIO, Union
 #   pip install websockets
 try:
     import websockets.sync.client as ws
+    from websockets.exceptions import ConnectionClosed as WSConnectionClosed
     ws_supported = True
 except ImportError:
     ws_supported = False
     # Dummy stand-ins for type hinting if websockets is not installed.
     class ws:
         class ClientConnection: pass
+    class WSConnectionClosed(Exception): pass
 
 # Serial port support is optional. To use, install with:
 #   pip install pyserial
@@ -149,6 +151,13 @@ class FileTransport:
             raise RuntimeError('Output file not opened.')
 
 
+class TransportDisconnected(Exception):
+    """!
+    @brief Exception raised when the peer on a connection-oriented transport closes the connection.
+    """
+    pass
+
+
 class SocketTransport:
     """!
     @brief Socket wrapper class, protecting against multiple close() calls.
@@ -264,6 +273,17 @@ class TCPServerTransport(SocketTransport):
         sock.close()
         if self._print_func is not None:
             self._print_func('Client disconnected. Waiting for a new connection.')
+
+    def notify_disconnected(self):
+        """!
+        @brief Report that the connected client has disconnected.
+
+        This is intended for callers that bypass @ref recv() and read from the underlying socket directly. It closes
+        the current connection and goes back to listening for a new client.
+        """
+        sock = self._socket
+        if sock is not None:
+            self._handle_disconnect(sock)
 
     def recv(self, *args, **kwargs) -> bytes:
         """!
@@ -575,6 +595,73 @@ def create_transport(descriptor: str, timeout_sec: float = None, print_func: Cal
     raise ValueError(f"Unsupported transport descriptor '{descriptor}'.")
 
 
+def is_connection_oriented(transport: TransportClass) -> bool:
+    """!
+    @brief Check whether a transport has a peer that can disconnect.
+
+    A connection-oriented transport (TCP, UNIX stream socket, WebSocket) can be recovered with @ref
+    reconnect_transport() when its peer goes away. Connectionless transports (UDP, files, and serial ports) cannot.
+
+    @param transport The transport to be checked.
+
+    @return `True` if the transport is connection-oriented.
+    """
+    # Check for a TCP server first since it is a SocketTransport, but accessing the underlying socket blocks until a
+    # client connects.
+    if isinstance(transport, TCPServerTransport):
+        return True
+    elif isinstance(transport, SocketTransport):
+        return transport.type == socket.SOCK_STREAM
+    else:
+        return isinstance(transport, WebsocketTransport)
+
+
+def reconnect_transport(transport: TransportClass, descriptor: str, timeout_sec: float = None,
+                        mode: str = 'both', retry_interval_sec: float = 1.0,
+                        print_func: Callable = None) -> TransportClass:
+    """!
+    @brief Reestablish a connection-oriented transport after its peer disconnects.
+
+    Blocks until the connection is reestablished, retrying every `retry_interval_sec` seconds.
+
+    When acting as a TCP server, there is nothing to reconnect to: the transport goes back to listening on the same
+    port and the same instance is returned.
+
+    @param transport The disconnected transport. It will be closed unless it is reused.
+    @param descriptor The transport descriptor originally passed to @ref create_transport().
+    @param timeout_sec The connection timeout (in seconds).
+    @param mode The transport mode (`both`, `input`, or `output`).
+    @param retry_interval_sec How long to wait (in seconds) between connection attempts.
+    @param print_func A function used to print status messages.
+
+    @return The transport to continue using, which may or may not be the original instance.
+    """
+    if not is_connection_oriented(transport):
+        raise ValueError('Transport cannot be reconnected.')
+
+    # When acting as a TCP server, the transport handles this internally by listening for a new incoming connection.
+    if isinstance(transport, TCPServerTransport):
+        transport.notify_disconnected()
+        return transport
+
+    # Otherwise, we were the one that established the connection, so close the dead one and keep trying to open a new
+    # one. We suppress create_transport()'s own status message since it would be printed on every attempt.
+    if print_func is not None:
+        print_func('Connection closed by the remote end. Reconnecting...')
+    transport.close()
+    while True:
+        time.sleep(retry_interval_sec)
+        try:
+            transport = create_transport(descriptor, timeout_sec=timeout_sec, mode=mode)
+        except (OSError, TimeoutError):
+            # The peer isn't listening (yet). Try again.
+            continue
+
+        if print_func is not None:
+            print_func('Reconnected.')
+        return transport
+
+
 def recv_from_transport(transport: TransportClass, size_bytes: int) -> bytes:
     '''!
     @brief Helper function for reading from any type of transport.
@@ -584,15 +671,26 @@ def recv_from_transport(transport: TransportClass, size_bytes: int) -> bytes:
     @param transport The transport to read from.
     @param size_bytes The maximum number of bytes to read.
 
-    @return A `bytes` array.
+    @return A `bytes` array, which will be empty if the read timed out.
+
+    @throw TransportDisconnected The peer closed the connection.
     '''
     try:
         if isinstance(transport, (SocketTransport, WebsocketTransport)):
-            return transport.recv(size_bytes)
+            data = transport.recv(size_bytes)
         else:
             return transport.read(size_bytes)
     except (socket.timeout, TimeoutError):
         return bytes()
+    except WSConnectionClosed as e:
+        raise TransportDisconnected(str(e))
+
+    # For a stream socket, a zero-length read means the peer performed an orderly shutdown. An empty UDP datagram, on
+    # the other hand, is perfectly legal.
+    if len(data) == 0 and is_connection_oriented(transport):
+        raise TransportDisconnected('The connection was closed by the remote end.')
+    else:
+        return data
 
 
 def set_read_timeout(transport: TransportClass, timeout_sec: float):

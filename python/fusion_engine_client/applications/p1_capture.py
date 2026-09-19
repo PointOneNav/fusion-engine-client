@@ -356,6 +356,11 @@ class Application:
                             ready = select.select([self.input_transport], [], [], self.read_timeout_sec)
                             if ready[0]:
                                 received_data, kernel_ts, hw_ts = recv(self.input_transport, self.read_size_bytes)
+
+                                # A socket that is ready to read but returns no data means the peer closed the
+                                # connection.
+                                if len(received_data) == 0 and is_connection_oriented(self.input_transport):
+                                    raise TransportDisconnected('The connection was closed by the remote end.')
                             else:
                                 received_data = bytes()
                         # If this is a serial port or file, we set the read timeout above.
@@ -373,6 +378,15 @@ class Application:
                         if self.show_summary_live or self.show_status:
                             if (now - self.last_print_time).total_seconds() > self.print_timeout_sec:
                                 self._print_display(now)
+                    except TransportDisconnected:
+                        transport = reconnect_transport(
+                            self.input_transport, self.options.input, print_func=self._print, mode='input')
+                        # A reused transport (e.g., a TCP server waiting for a new client) reapplies its own settings
+                        # when the next connection is established.
+                        if transport is not self.input_transport:
+                            self.input_transport = transport
+                            self._set_read_timeout()
+                        continue
                     except serial.SerialException as e:
                         _logger.error('Unexpected error reading from device:\r%s' % str(e))
                         break
