@@ -137,6 +137,8 @@ class Application:
             self.include_input_data_wrapper = True
             if self.wrapped_data_format == 'auto':
                 self.wrapped_data_format = 'content'
+        elif self.wrapped_data_format == 'auto':
+            self.wrapped_data_format = 'all'
 
     def _init_input_data_type_filter(self) -> None:
         if self.options.wrapped_data_type is not None and self.options.unwrap is not None:
