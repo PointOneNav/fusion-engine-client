@@ -164,11 +164,11 @@ def test_message_to_numpy():
 
 @pytest.mark.parametrize('gps_week', [2345, None])
 def test_raw_gnss_position_pack_unpack(gps_week):
-    from fusion_engine_client.messages import RawGNSSPositionMessage, SolutionType, SystemTimeSource
+    from fusion_engine_client.messages import RawGNSSPositionOutput, SolutionType, SystemTimeSource
 
-    assert RawGNSSPositionMessage.calcsize() == 108
+    assert RawGNSSPositionOutput.calcsize() == 108
 
-    message = RawGNSSPositionMessage()
+    message = RawGNSSPositionOutput()
     tow_sec = 123456.789
     if gps_week is not None:
         message.details.measurement_time = Timestamp.from_gps_week_tow(gps_week, tow_sec)
@@ -189,7 +189,7 @@ def test_raw_gnss_position_pack_unpack(gps_week):
     buffer = message.pack()
     assert len(buffer) == 108
 
-    result = RawGNSSPositionMessage()
+    result = RawGNSSPositionOutput()
     assert result.unpack(buffer) == 108
     assert result.solution_type == SolutionType.RTKFixed
     assert result.num_svs == 23

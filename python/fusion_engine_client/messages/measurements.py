@@ -1422,7 +1422,7 @@ Raw GNSS Attitude Output @ {str(self.details.p1_time)}
 ################################################################################
 
 
-class RawGNSSPositionMessage(MessagePayload):
+class RawGNSSPositionOutput(MessagePayload):
     """!
     @brief Raw GNSS receiver position, velocity, and time (PVT) solution output.
 
@@ -1570,7 +1570,7 @@ Raw GNSS Position Output @ {str(self.details.p1_time)}
         return cls._STRUCT.size + MeasurementDetails.calcsize()
 
     @classmethod
-    def to_numpy(cls, messages: Sequence['RawGNSSPositionMessage']):
+    def to_numpy(cls, messages: Sequence['RawGNSSPositionOutput']):
         result = {
             'solution_type': np.array([int(m.solution_type) for m in messages], dtype=int),
             'num_svs': np.array([m.num_svs for m in messages], dtype=int),

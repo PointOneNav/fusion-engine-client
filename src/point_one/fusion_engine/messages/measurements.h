@@ -1292,7 +1292,7 @@ struct P1_ALIGNAS(4) RawGNSSAttitudeOutput : public MessagePayload {
  *
  * Any elements that are not available will be set to `NAN`.
  */
-struct P1_ALIGNAS(4) RawGNSSPositionMessage : public MessagePayload {
+struct P1_ALIGNAS(4) RawGNSSPositionOutput : public MessagePayload {
   static constexpr MessageType MESSAGE_TYPE =
       MessageType::RAW_GNSS_POSITION_OUTPUT;
   static constexpr uint8_t MESSAGE_VERSION = 0;
@@ -1358,8 +1358,8 @@ struct P1_ALIGNAS(4) RawGNSSPositionMessage : public MessagePayload {
   /** The receiver clock drift rate (in seconds/second). */
   float clock_drift_sps = NAN;
 };
-static_assert(sizeof(RawGNSSPositionMessage) == 108,
-              "RawGNSSPositionMessage does not match expected packed size.");
+static_assert(sizeof(RawGNSSPositionOutput) == 108,
+              "RawGNSSPositionOutput does not match expected packed size.");
 
 ////////////////////////////////////////////////////////////////////////////////
 // External Pose Measurements

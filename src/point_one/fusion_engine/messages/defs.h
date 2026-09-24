@@ -56,7 +56,7 @@ enum class MessageType : uint16_t {
   GNSS_ATTITUDE_OUTPUT = 11005, ///< @ref GNSSAttitudeOutput
   RAW_GNSS_ATTITUDE_OUTPUT = 11006, ///< @ref RawGNSSAttitudeOutput
   EXTERNAL_POSE_INPUT = 11007, ///< @ref ExternalPoseInput
-  RAW_GNSS_POSITION_OUTPUT = 11008, ///< @ref RawGNSSPositionMessage
+  RAW_GNSS_POSITION_OUTPUT = 11008, ///< @ref RawGNSSPositionOutput
 
   // Vehicle measurement messages.
   DEPRECATED_WHEEL_SPEED_MEASUREMENT =
