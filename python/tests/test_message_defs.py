@@ -175,7 +175,7 @@ def test_raw_gnss_position_pack_unpack(gps_week):
         message.details.measurement_time_source = SystemTimeSource.GPS_TIME
     message.details.p1_time = Timestamp(100.5)
     message.solution_type = SolutionType.RTKFixed
-    message.num_svs = 23
+    message.num_svs = 23 if gps_week is not None else None
     message.gps_week = gps_week
     message.gps_tow_ms = int(round(tow_sec * 1e3))
     message.flags = 0x5
@@ -192,7 +192,7 @@ def test_raw_gnss_position_pack_unpack(gps_week):
     result = RawGNSSPositionOutput()
     assert result.unpack(buffer) == 108
     assert result.solution_type == SolutionType.RTKFixed
-    assert result.num_svs == 23
+    assert result.num_svs == message.num_svs
     assert result.gps_week == gps_week
     assert result.gps_tow_ms == 123456789
     assert result.get_week_tow() == (gps_week, 123456.789)

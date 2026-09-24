@@ -1437,6 +1437,7 @@ class RawGNSSPositionOutput(MessagePayload):
     MESSAGE_TYPE = MessageType.RAW_GNSS_POSITION_OUTPUT
     MESSAGE_VERSION = 0
 
+    _INVALID_NUM_SVS = 0xFF
     _INVALID_GPS_WEEK = 0xFFFF
     _INVALID_GPS_TOW = 0xFFFFFFFF
 
@@ -1448,8 +1449,8 @@ class RawGNSSPositionOutput(MessagePayload):
 
         ## The type of solution reported by the receiver.
         self.solution_type = SolutionType.Invalid
-        ## The number of satellites used in the solution, or 0 if unknown.
-        self.num_svs = 0
+        ## The number of satellites used in the solution, or `None` if unknown.
+        self.num_svs: Optional[int] = None
         ## The GPS week number, or `None` if unknown.
         self.gps_week: Optional[int] = None
         ## The GPS time of week (in milliseconds), or `None` if unknown. May be set even if @ref gps_week is not known.
@@ -1495,7 +1496,7 @@ class RawGNSSPositionOutput(MessagePayload):
         self._STRUCT.pack_into(
             buffer, offset,
             int(self.solution_type),
-            self.num_svs,
+            self._INVALID_NUM_SVS if self.num_svs is None else self.num_svs,
             self._INVALID_GPS_WEEK if self.gps_week is None else self.gps_week,
             self._INVALID_GPS_TOW if self.gps_tow_ms is None else self.gps_tow_ms,
             self.flags,
@@ -1521,8 +1522,9 @@ class RawGNSSPositionOutput(MessagePayload):
         values = self._STRUCT.unpack_from(buffer, offset)
         offset += self._STRUCT.size
 
-        (solution_type_int, self.num_svs, gps_week_int, gps_tow_ms_int, self.flags) = values[:5]
+        (solution_type_int, num_svs_int, gps_week_int, gps_tow_ms_int, self.flags) = values[:5]
         self.solution_type = SolutionType(solution_type_int)
+        self.num_svs = None if num_svs_int == self._INVALID_NUM_SVS else num_svs_int
         self.gps_week = None if gps_week_int == self._INVALID_GPS_WEEK else gps_week_int
         self.gps_tow_ms = None if gps_tow_ms_int == self._INVALID_GPS_TOW else gps_tow_ms_int
 
@@ -1573,7 +1575,7 @@ Raw GNSS Position Output @ {str(self.details.p1_time)}
     def to_numpy(cls, messages: Sequence['RawGNSSPositionOutput']):
         result = {
             'solution_type': np.array([int(m.solution_type) for m in messages], dtype=int),
-            'num_svs': np.array([m.num_svs for m in messages], dtype=int),
+            'num_svs': np.array([(m.num_svs if m.num_svs is not None else -1) for m in messages], dtype=int),
             'gps_week': np.array([(m.gps_week if m.gps_week is not None else -1) for m in messages], dtype=int),
             'gps_tow_sec': np.array([(m.gps_tow_ms * 1e-3 if m.gps_tow_ms is not None else np.nan) for m in messages]),
             'flags': np.array([int(m.flags) for m in messages], dtype=np.uint32),

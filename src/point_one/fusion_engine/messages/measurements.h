@@ -1297,6 +1297,7 @@ struct P1_ALIGNAS(4) RawGNSSPositionOutput : public MessagePayload {
       MessageType::RAW_GNSS_POSITION_OUTPUT;
   static constexpr uint8_t MESSAGE_VERSION = 0;
 
+  static constexpr uint8_t INVALID_NUM_SVS = 0xFF;
   static constexpr uint16_t INVALID_GPS_WEEK = 0xFFFF;
   static constexpr uint32_t INVALID_GPS_TOW = 0xFFFFFFFF;
 
@@ -1309,8 +1310,11 @@ struct P1_ALIGNAS(4) RawGNSSPositionOutput : public MessagePayload {
   /** The type of solution reported by the receiver. */
   SolutionType solution_type = SolutionType::Invalid;
 
-  /** The number of satellites used in the solution, or 0 if unknown. */
-  uint8_t num_svs = 0;
+  /**
+   * The number of satellites used in the solution, or @ref INVALID_NUM_SVS if
+   * unknown.
+   */
+  uint8_t num_svs = INVALID_NUM_SVS;
 
   /** The GPS week number, or @ref INVALID_GPS_WEEK if unknown. */
   uint16_t gps_week = INVALID_GPS_WEEK;
