@@ -1458,7 +1458,9 @@ class RawGNSSPositionOutput(MessagePayload):
         ## A bitmask of flags associated with the solution.
         self.flags = 0
 
-        ## The geodetic latitude, longitude, and altitude (in degrees/meters), expressed using the WGS-84 ellipsoid.
+        ##
+        # The geodetic latitude, longitude, and altitude of the GNSS antenna (in degrees/meters), expressed using the
+        # WGS-84 ellipsoid.
         self.lla_deg = np.full((3,), np.nan)
         ## The position standard deviation (in meters), resolved in the local ENU tangent plane.
         self.position_std_enu_m = np.full((3,), np.nan)
