@@ -1265,6 +1265,98 @@ struct P1_ALIGNAS(4) RawGNSSAttitudeOutput : public MessagePayload {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+// GNSS Position Definitions
+////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * @brief Raw GNSS receiver position, velocity, and time (PVT) solution output
+ *        (@ref MessageType::RAW_GNSS_POSITION_OUTPUT, version 1.0).
+ * @ingroup measurement_messages
+ *
+ * This message is an output from the device containing the native PVT
+ * solution computed by the GNSS receiver itself. It is not the navigation
+ * engine output, and may be less accurate than the solution in @ref
+ * PoseMessage.
+ *
+ * When the GPS week number is known, @ref details will contain the full GPS
+ * time of the solution (@ref SystemTimeSource::GPS_TIME), and both @ref
+ * gps_week and @ref gps_tow_ms will be set. If the receiver has not yet
+ * determined the week number, @ref gps_week will be set to @ref
+ * INVALID_GPS_WEEK, and @ref gps_tow_ms will contain the time of week if
+ * available.
+ *
+ * Any elements that are not available will be set to `NAN`.
+ */
+struct P1_ALIGNAS(4) RawGNSSPositionMessage : public MessagePayload {
+  static constexpr MessageType MESSAGE_TYPE =
+      MessageType::RAW_GNSS_POSITION_OUTPUT;
+  static constexpr uint8_t MESSAGE_VERSION = 0;
+
+  static constexpr uint16_t INVALID_GPS_WEEK = 0xFFFF;
+  static constexpr uint32_t INVALID_GPS_TOW = 0xFFFFFFFF;
+
+  /**
+   * Measurement timestamp and additional information, if available. See @ref
+   * MeasurementDetails for details.
+   */
+  MeasurementDetails details;
+
+  /** The type of solution reported by the receiver. */
+  SolutionType solution_type = SolutionType::Invalid;
+
+  /** The number of satellites used in the solution, or 0 if unknown. */
+  uint8_t num_svs = 0;
+
+  /** The GPS week number, or @ref INVALID_GPS_WEEK if unknown. */
+  uint16_t gps_week = INVALID_GPS_WEEK;
+
+  /**
+   * The GPS time of week (in milliseconds), or @ref INVALID_GPS_TOW if unknown.
+   * This may be set even if @ref gps_week is not known.
+   */
+  uint32_t gps_tow_ms = INVALID_GPS_TOW;
+
+  /** A bitmask of flags associated with the solution. */
+  uint32_t flags = 0;
+
+  /**
+   * The geodetic latitude, longitude, and altitude (in degrees/meters),
+   * expressed using the WGS-84 reference ellipsoid. See @ref
+   * PoseMessage::lla_deg.
+   */
+  double lla_deg[3] = {NAN, NAN, NAN};
+
+  /**
+   * The position standard deviation (in meters), resolved with respect to the
+   * local ENU tangent plane: east, north, up.
+   */
+  float position_std_enu_m[3] = {NAN, NAN, NAN};
+
+  /**
+   * The velocity (in m/s), resolved with respect to the local ENU tangent
+   * plane: east, north, up.
+   */
+  float velocity_enu_mps[3] = {NAN, NAN, NAN};
+
+  /**
+   * The velocity standard deviation (in m/s), resolved with respect to the
+   * local ENU tangent plane: east, north, up.
+   */
+  float velocity_std_enu_mps[3] = {NAN, NAN, NAN};
+
+  /** The standard deviation of @ref clock_bias_s (in seconds). */
+  float clock_bias_std_s = NAN;
+
+  /** The receiver clock bias with respect to GPS time (in seconds). */
+  double clock_bias_s = NAN;
+
+  /** The receiver clock drift rate (in seconds/second). */
+  float clock_drift_sps = NAN;
+};
+static_assert(sizeof(RawGNSSPositionMessage) == 108,
+              "RawGNSSPositionMessage does not match expected packed size.");
+
+////////////////////////////////////////////////////////////////////////////////
 // External Pose Measurements
 ////////////////////////////////////////////////////////////////////////////////
 

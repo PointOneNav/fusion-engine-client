@@ -1418,6 +1418,173 @@ Raw GNSS Attitude Output @ {str(self.details.p1_time)}
         return result
 
 ################################################################################
+# GNSS Position Definitions
+################################################################################
+
+
+class RawGNSSPositionMessage(MessagePayload):
+    """!
+    @brief Raw GNSS receiver position, velocity, and time (PVT) solution output.
+
+    When the GPS week number is known, @ref details contains the full GPS time of the solution, and both @ref gps_week
+    and @ref gps_tow_ms are set. If the week number is not known, @ref gps_week will be `None`, and @ref gps_tow_ms
+    will contain the time of week if available.
+    """
+    MESSAGE_TYPE = MessageType.RAW_GNSS_POSITION_OUTPUT
+    MESSAGE_VERSION = 0
+
+    _INVALID_GPS_WEEK = 0xFFFF
+    _INVALID_GPS_TOW = 0xFFFFFFFF
+
+    _STRUCT = struct.Struct('<BBHII3d3f3f3ffdf')
+
+    def __init__(self):
+        ## Measurement timestamps, if available. See @ref measurement_messages.
+        self.details = MeasurementDetails()
+
+        ## The type of solution reported by the receiver.
+        self.solution_type = SolutionType.Invalid
+        ## The number of satellites used in the solution, or 0 if unknown.
+        self.num_svs = 0
+        ## The GPS week number, or `None` if unknown.
+        self.gps_week: Optional[int] = None
+        ## The GPS time of week (in milliseconds), or `None` if unknown. May be set even if @ref gps_week is not known.
+        self.gps_tow_ms: Optional[int] = None
+        ## A bitmask of flags associated with the solution.
+        self.flags = 0
+
+        ## The geodetic latitude, longitude, and altitude (in degrees/meters), expressed using the WGS-84 ellipsoid.
+        self.lla_deg = np.full((3,), np.nan)
+        ## The position standard deviation (in meters), resolved in the local ENU tangent plane.
+        self.position_std_enu_m = np.full((3,), np.nan)
+
+        ## The velocity (in m/s), resolved in the local ENU tangent plane.
+        self.velocity_enu_mps = np.full((3,), np.nan)
+        ## The velocity standard deviation (in m/s), resolved in the local ENU tangent plane.
+        self.velocity_std_enu_mps = np.full((3,), np.nan)
+
+        ## The standard deviation of @ref clock_bias_s (in seconds).
+        self.clock_bias_std_s = np.nan
+        ## The receiver clock bias with respect to GPS time (in seconds).
+        self.clock_bias_s = np.nan
+        ## The receiver clock drift rate (in seconds/second).
+        self.clock_drift_sps = np.nan
+
+    def get_week_tow(self) -> Tuple[Optional[int], Optional[float]]:
+        """!
+        @brief Get the GPS week number and time of week (in seconds).
+
+        @return A tuple containing the week number and time of week, each of which may be `None` if not known.
+        """
+        tow_sec = None if self.gps_tow_ms is None else self.gps_tow_ms * 1e-3
+        return self.gps_week, tow_sec
+
+    def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
+        if buffer is None:
+            buffer = bytearray(self.calcsize())
+            offset = 0
+
+        initial_offset = offset
+
+        offset += self.details.pack(buffer, offset, return_buffer=False)
+
+        self._STRUCT.pack_into(
+            buffer, offset,
+            int(self.solution_type),
+            self.num_svs,
+            self._INVALID_GPS_WEEK if self.gps_week is None else self.gps_week,
+            self._INVALID_GPS_TOW if self.gps_tow_ms is None else self.gps_tow_ms,
+            self.flags,
+            *self.lla_deg,
+            *self.position_std_enu_m,
+            *self.velocity_enu_mps,
+            *self.velocity_std_enu_mps,
+            self.clock_bias_std_s,
+            self.clock_bias_s,
+            self.clock_drift_sps)
+        offset += self._STRUCT.size
+
+        if return_buffer:
+            return buffer
+        else:
+            return offset - initial_offset
+
+    def unpack(self, buffer: bytes, offset: int = 0, message_version: int = MessagePayload._UNSPECIFIED_VERSION) -> int:
+        initial_offset = offset
+
+        offset += self.details.unpack(buffer, offset)
+
+        values = self._STRUCT.unpack_from(buffer, offset)
+        offset += self._STRUCT.size
+
+        (solution_type_int, self.num_svs, gps_week_int, gps_tow_ms_int, self.flags) = values[:5]
+        self.solution_type = SolutionType(solution_type_int)
+        self.gps_week = None if gps_week_int == self._INVALID_GPS_WEEK else gps_week_int
+        self.gps_tow_ms = None if gps_tow_ms_int == self._INVALID_GPS_TOW else gps_tow_ms_int
+
+        self.lla_deg[:] = values[5:8]
+        self.position_std_enu_m[:] = values[8:11]
+        self.velocity_enu_mps[:] = values[11:14]
+        self.velocity_std_enu_mps[:] = values[14:17]
+        (self.clock_bias_std_s, self.clock_bias_s, self.clock_drift_sps) = values[17:20]
+
+        return offset - initial_offset
+
+    def __repr__(self):
+        result = super().__repr__()[:-1]
+        lla_str = '(%.6f, %.6f, %.2f)' % tuple(self.lla_deg)
+        result += f', solution_type={self.solution_type}, lla={lla_str}]'
+        return result
+
+    def __str__(self):
+        gps_time = self.get_gps_time()
+        if gps_time is not None:
+            gps_str = f'{str(gps_time).replace("GPS: ", "")}'
+            utc_str = f'{datetime_to_string(gps_time.as_utc())}'
+        else:
+            gps_str = 'None'
+            utc_str = 'None'
+        week, tow_sec = self.get_week_tow()
+        week_str = 'None' if week is None else str(week)
+        tow_str = 'None' if tow_sec is None else f'{tow_sec:.3f}'
+        return f"""\
+Raw GNSS Position Output @ {str(self.details.p1_time)}
+  GPS time: {gps_str}
+  UTC time: {utc_str}
+  GPS week/TOW: {week_str} / {tow_str} sec
+  Solution Type: {self.solution_type}
+  # SVs: {self.num_svs}
+  Position (LLA): {self.lla_deg[0]:.6f}, {self.lla_deg[1]:.6f}, {self.lla_deg[2]:.2f} (deg, deg, m)
+  Position std (ENU) (m): {self.position_std_enu_m[0]:.2f}, {self.position_std_enu_m[1]:.2f}, {self.position_std_enu_m[2]:.2f}
+  Velocity (ENU) (m/s): {self.velocity_enu_mps[0]:.2f}, {self.velocity_enu_mps[1]:.2f}, {self.velocity_enu_mps[2]:.2f}
+  Velocity std (ENU) (m/s): {self.velocity_std_enu_mps[0]:.2f}, {self.velocity_std_enu_mps[1]:.2f}, {self.velocity_std_enu_mps[2]:.2f}
+  Clock bias (s): {self.clock_bias_s:.9f} (std {self.clock_bias_std_s:.9f})
+  Clock drift (s/s): {self.clock_drift_sps:.3e}"""
+
+    @classmethod
+    def calcsize(cls) -> int:
+        return cls._STRUCT.size + MeasurementDetails.calcsize()
+
+    @classmethod
+    def to_numpy(cls, messages: Sequence['RawGNSSPositionMessage']):
+        result = {
+            'solution_type': np.array([int(m.solution_type) for m in messages], dtype=int),
+            'num_svs': np.array([m.num_svs for m in messages], dtype=int),
+            'gps_week': np.array([(m.gps_week if m.gps_week is not None else -1) for m in messages], dtype=int),
+            'gps_tow_sec': np.array([(m.gps_tow_ms * 1e-3 if m.gps_tow_ms is not None else np.nan) for m in messages]),
+            'flags': np.array([int(m.flags) for m in messages], dtype=np.uint32),
+            'lla_deg': np.array([m.lla_deg for m in messages]).T,
+            'position_std_enu_m': np.array([m.position_std_enu_m for m in messages]).T,
+            'velocity_enu_mps': np.array([m.velocity_enu_mps for m in messages]).T,
+            'velocity_std_enu_mps': np.array([m.velocity_std_enu_mps for m in messages]).T,
+            'clock_bias_std_s': np.array([m.clock_bias_std_s for m in messages]),
+            'clock_bias_s': np.array([m.clock_bias_s for m in messages]),
+            'clock_drift_sps': np.array([m.clock_drift_sps for m in messages]),
+        }
+        result.update(MeasurementDetails.to_numpy([m.details for m in messages]))
+        return result
+
+################################################################################
 # External Pose Measurements
 ################################################################################
 
