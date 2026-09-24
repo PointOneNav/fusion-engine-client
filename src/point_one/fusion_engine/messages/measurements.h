@@ -1285,6 +1285,11 @@ struct P1_ALIGNAS(4) RawGNSSAttitudeOutput : public MessagePayload {
  * INVALID_GPS_WEEK, and @ref gps_tow_ms will contain the time of week if
  * available.
  *
+ * On devices with multiple GNSS receivers, @ref MessageHeader::source_identifier
+ * identifies the receiver that generated the solution (for example, @ref
+ * SourceIdentifier::PRIMARY_GNSS_ANTENNA or @ref
+ * SourceIdentifier::SECONDARY_GNSS_ANTENNA).
+ *
  * Any elements that are not available will be set to `NAN`.
  */
 struct P1_ALIGNAS(4) RawGNSSPositionMessage : public MessagePayload {

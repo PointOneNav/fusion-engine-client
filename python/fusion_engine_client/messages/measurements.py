@@ -1429,6 +1429,10 @@ class RawGNSSPositionMessage(MessagePayload):
     When the GPS week number is known, @ref details contains the full GPS time of the solution, and both @ref gps_week
     and @ref gps_tow_ms are set. If the week number is not known, @ref gps_week will be `None`, and @ref gps_tow_ms
     will contain the time of week if available.
+
+    On devices with multiple GNSS receivers, @ref MessageHeader::source_identifier identifies the receiver that
+    generated the solution (for example, @ref SourceIdentifier::PRIMARY_GNSS_ANTENNA or
+    @ref SourceIdentifier::SECONDARY_GNSS_ANTENNA).
     """
     MESSAGE_TYPE = MessageType.RAW_GNSS_POSITION_OUTPUT
     MESSAGE_VERSION = 0
