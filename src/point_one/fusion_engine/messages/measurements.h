@@ -1353,16 +1353,13 @@ struct P1_ALIGNAS(4) RawGNSSPositionOutput : public MessagePayload {
    */
   float velocity_std_enu_mps[3] = {NAN, NAN, NAN};
 
-  /** The standard deviation of @ref clock_bias_s (in seconds). */
-  float clock_bias_std_s = NAN;
-
-  /** The receiver clock bias with respect to GPS time (in seconds). */
-  double clock_bias_s = NAN;
-
   /** The receiver clock drift rate (in seconds/second). */
   float clock_drift_sps = NAN;
+
+  /** The receiver clock bias with respect to GPS time (in seconds). */
+  double clock_bias_sec = NAN;
 };
-static_assert(sizeof(RawGNSSPositionOutput) == 108,
+static_assert(sizeof(RawGNSSPositionOutput) == 104,
               "RawGNSSPositionOutput does not match expected packed size.");
 
 ////////////////////////////////////////////////////////////////////////////////

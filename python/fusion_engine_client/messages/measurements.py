@@ -1441,7 +1441,7 @@ class RawGNSSPositionOutput(MessagePayload):
     _INVALID_GPS_WEEK = 0xFFFF
     _INVALID_GPS_TOW = 0xFFFFFFFF
 
-    _STRUCT = struct.Struct('<BBHII3d3f3f3ffdf')
+    _STRUCT = struct.Struct('<BBHII3d3f3f3ffd')
 
     def __init__(self):
         ## Measurement timestamps, if available. See @ref measurement_messages.
@@ -1468,12 +1468,10 @@ class RawGNSSPositionOutput(MessagePayload):
         ## The velocity standard deviation (in m/s), resolved in the local ENU tangent plane.
         self.velocity_std_enu_mps = np.full((3,), np.nan)
 
-        ## The standard deviation of @ref clock_bias_s (in seconds).
-        self.clock_bias_std_s = np.nan
-        ## The receiver clock bias with respect to GPS time (in seconds).
-        self.clock_bias_s = np.nan
         ## The receiver clock drift rate (in seconds/second).
         self.clock_drift_sps = np.nan
+        ## The receiver clock bias with respect to GPS time (in seconds).
+        self.clock_bias_sec = np.nan
 
     def get_week_tow(self) -> Tuple[Optional[int], Optional[float]]:
         """!
@@ -1504,9 +1502,8 @@ class RawGNSSPositionOutput(MessagePayload):
             *self.position_std_enu_m,
             *self.velocity_enu_mps,
             *self.velocity_std_enu_mps,
-            self.clock_bias_std_s,
-            self.clock_bias_s,
-            self.clock_drift_sps)
+            self.clock_drift_sps,
+            self.clock_bias_sec)
         offset += self._STRUCT.size
 
         if return_buffer:
@@ -1532,7 +1529,7 @@ class RawGNSSPositionOutput(MessagePayload):
         self.position_std_enu_m[:] = values[8:11]
         self.velocity_enu_mps[:] = values[11:14]
         self.velocity_std_enu_mps[:] = values[14:17]
-        (self.clock_bias_std_s, self.clock_bias_s, self.clock_drift_sps) = values[17:20]
+        (self.clock_drift_sps, self.clock_bias_sec) = values[17:19]
 
         return offset - initial_offset
 
@@ -1564,7 +1561,7 @@ Raw GNSS Position Output @ {str(self.details.p1_time)}
   Position std (ENU) (m): {self.position_std_enu_m[0]:.2f}, {self.position_std_enu_m[1]:.2f}, {self.position_std_enu_m[2]:.2f}
   Velocity (ENU) (m/s): {self.velocity_enu_mps[0]:.2f}, {self.velocity_enu_mps[1]:.2f}, {self.velocity_enu_mps[2]:.2f}
   Velocity std (ENU) (m/s): {self.velocity_std_enu_mps[0]:.2f}, {self.velocity_std_enu_mps[1]:.2f}, {self.velocity_std_enu_mps[2]:.2f}
-  Clock bias (s): {self.clock_bias_s:.9f} (std {self.clock_bias_std_s:.9f})
+  Clock bias (s): {self.clock_bias_sec:.9f}
   Clock drift (s/s): {self.clock_drift_sps:.3e}"""
 
     @classmethod
@@ -1583,9 +1580,8 @@ Raw GNSS Position Output @ {str(self.details.p1_time)}
             'position_std_enu_m': np.array([m.position_std_enu_m for m in messages]).T,
             'velocity_enu_mps': np.array([m.velocity_enu_mps for m in messages]).T,
             'velocity_std_enu_mps': np.array([m.velocity_std_enu_mps for m in messages]).T,
-            'clock_bias_std_s': np.array([m.clock_bias_std_s for m in messages]),
-            'clock_bias_s': np.array([m.clock_bias_s for m in messages]),
             'clock_drift_sps': np.array([m.clock_drift_sps for m in messages]),
+            'clock_bias_sec': np.array([m.clock_bias_sec for m in messages]),
         }
         result.update(MeasurementDetails.to_numpy([m.details for m in messages]))
         return result
