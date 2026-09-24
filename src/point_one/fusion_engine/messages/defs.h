@@ -56,6 +56,7 @@ enum class MessageType : uint16_t {
   GNSS_ATTITUDE_OUTPUT = 11005, ///< @ref GNSSAttitudeOutput
   RAW_GNSS_ATTITUDE_OUTPUT = 11006, ///< @ref RawGNSSAttitudeOutput
   EXTERNAL_POSE_INPUT = 11007, ///< @ref ExternalPoseInput
+  RAW_GNSS_POSITION_OUTPUT = 11008, ///< @ref RawGNSSPositionOutput
 
   // Vehicle measurement messages.
   DEPRECATED_WHEEL_SPEED_MEASUREMENT =
@@ -180,6 +181,9 @@ P1_CONSTEXPR_FUNC const char* to_string(MessageType type) {
 
     case MessageType::EXTERNAL_POSE_INPUT:
       return "External Pose Input";
+
+    case MessageType::RAW_GNSS_POSITION_OUTPUT:
+      return "Raw GNSS Position Output";
 
     case MessageType::DEPRECATED_WHEEL_SPEED_MEASUREMENT:
       return "Wheel Speed Measurement";
@@ -359,6 +363,7 @@ P1_CONSTEXPR_FUNC bool IsCommand(MessageType message_type) {
     case MessageType::GNSS_ATTITUDE_OUTPUT:
     case MessageType::RAW_GNSS_ATTITUDE_OUTPUT:
     case MessageType::EXTERNAL_POSE_INPUT:
+    case MessageType::RAW_GNSS_POSITION_OUTPUT:
     case MessageType::DEPRECATED_WHEEL_SPEED_MEASUREMENT:
     case MessageType::DEPRECATED_VEHICLE_SPEED_MEASUREMENT:
     case MessageType::WHEEL_TICK_INPUT:

@@ -160,3 +160,50 @@ def test_message_to_numpy():
     for key, expected_value in expected_result.items():
         assert np.allclose(expected_value, result[key], equal_nan=True), \
             f"'{key}' values did not match:\n\nExpected:\n{repr(expected_value)}\n\nGot:\n{repr(result[key])}"
+
+
+@pytest.mark.parametrize('gps_week', [2345, None])
+def test_raw_gnss_position_pack_unpack(gps_week):
+    from fusion_engine_client.messages import RawGNSSPositionOutput, SolutionType, SystemTimeSource
+
+    assert RawGNSSPositionOutput.calcsize() == 104
+
+    message = RawGNSSPositionOutput()
+    tow_sec = 123456.789
+    if gps_week is not None:
+        message.details.measurement_time = Timestamp.from_gps_week_tow(gps_week, tow_sec)
+        message.details.measurement_time_source = SystemTimeSource.GPS_TIME
+    message.details.p1_time = Timestamp(100.5)
+    message.solution_type = SolutionType.RTKFixed
+    message.num_svs = 23 if gps_week is not None else None
+    message.gps_week = gps_week
+    message.gps_tow_ms = int(round(tow_sec * 1e3))
+    message.flags = 0x5
+    message.lla_deg[:] = (37.123456789, -122.123456789, 12.345)
+    message.position_std_enu_m[:] = (0.01, 0.02, 0.03)
+    message.velocity_enu_mps[:] = (1.0, -2.0, 0.5)
+    message.clock_bias_sec = 5.123456789e-4
+    message.clock_drift_sps = 1e-7
+
+    buffer = message.pack()
+    assert len(buffer) == 104
+
+    result = RawGNSSPositionOutput()
+    assert result.unpack(buffer) == 104
+    assert result.solution_type == SolutionType.RTKFixed
+    assert result.num_svs == message.num_svs
+    assert result.gps_week == gps_week
+    assert result.gps_tow_ms == 123456789
+    assert result.get_week_tow() == (gps_week, 123456.789)
+    assert result.flags == 0x5
+    assert np.array_equal(result.lla_deg, message.lla_deg)
+    assert np.allclose(result.position_std_enu_m, message.position_std_enu_m)
+    assert np.allclose(result.velocity_enu_mps, message.velocity_enu_mps)
+    assert np.all(np.isnan(result.velocity_std_enu_mps))
+    assert result.clock_bias_sec == message.clock_bias_sec
+    assert np.isclose(result.clock_drift_sps, 1e-7)
+    if gps_week is None:
+        assert result.get_gps_time() is None or not result.get_gps_time()
+    else:
+        assert float(result.get_gps_time()) == pytest.approx(gps_week * 604800 + tow_sec)
+    str(result)
