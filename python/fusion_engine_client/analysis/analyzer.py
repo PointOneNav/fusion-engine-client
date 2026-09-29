@@ -666,8 +666,13 @@ figure.on('plotly_hover', function(data) {
             result = self.reader.read(message_types=[PoseAuxMessage], source_ids=self.default_source_id, **self.params)
             pose_aux_data = result[PoseAuxMessage.MESSAGE_TYPE]
             if len(pose_aux_data.p1_time) != 0:
-                vel_mps = pose_aux_data.velocity_enu_mps
-                vel_std_mps = pose_aux_data.velocity_std_enu_mps
+                # PoseAux is not guaranteed to be present at every pose epoch, so match it to the pose time vector by
+                # P1 time and leave the rest NAN.
+                vel_mps = np.full((3, len(pose_data.p1_time)), np.nan)
+                vel_std_mps = np.full((3, len(pose_data.p1_time)), np.nan)
+                _, aux_idx, pose_idx = np.intersect1d(pose_aux_data.p1_time, pose_data.p1_time, return_indices=True)
+                vel_mps[:, pose_idx] = pose_aux_data.velocity_enu_mps[:, aux_idx]
+                vel_std_mps[:, pose_idx] = pose_aux_data.velocity_std_enu_mps[:, aux_idx]
                 is_body_vel = False
 
         # Setup the figure.
