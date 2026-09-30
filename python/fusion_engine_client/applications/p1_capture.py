@@ -137,6 +137,8 @@ class Application:
             self.include_input_data_wrapper = True
             if self.wrapped_data_format == 'auto':
                 self.wrapped_data_format = 'content'
+        elif self.wrapped_data_format == 'auto':
+            self.wrapped_data_format = 'all'
 
     def _init_input_data_type_filter(self) -> None:
         if self.options.wrapped_data_type is not None and self.options.unwrap is not None:
@@ -224,9 +226,10 @@ class Application:
                     time_range=self.time_range, source_ids=self.source_ids)
 
                 # MixedLogReader will apply the time range, message type, and source ID filters, so we will clear them
-                # here so they are not applied twice by _apply_filters().
+                # here so they are not applied twice by _apply_filters(). If we added InputDataWrapper to the message
+                # type filter, we keep the user's message types so _apply_filters() can check the wrapped content.
                 self.time_range = None
-                if message_types_plus_wrapper is not None:
+                if message_types_plus_wrapper is not None and not self.include_input_data_wrapper:
                     self.message_types = set()
                 self.source_ids = set()
         except Exception as e:
@@ -522,10 +525,13 @@ class Application:
         # messages.
         #
         # When not in unwrap mode, the user may or may not have requested InputDataWrapper. However, if they set
-        # --wrapped-data-format=auto|all|content, we will pass wrappers through here and filter them out below.
+        # --wrapped-data-format=auto|all|content, we will keep wrappers whose FusionEngine content matches the list.
         if len(self.message_types) > 0:
             if header.message_type == MessageType.INPUT_DATA_WRAPPER and self.include_input_data_wrapper:
-                pass
+                wrapped_fe_header = message.get_fe_content_header() if isinstance(message, MessagePayload) else None
+                wrapped_type = None if wrapped_fe_header is None else wrapped_fe_header.message_type
+                if (wrapped_type in self.message_types) == self.options.invert:
+                    return False
             elif not self.options.invert and header.message_type not in self.message_types:
                 return False
             elif self.options.invert and header.message_type in self.message_types:
