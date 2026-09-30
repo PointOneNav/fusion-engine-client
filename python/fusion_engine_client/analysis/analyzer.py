@@ -42,6 +42,19 @@ _logger = logging.getLogger('point_one.fusion_engine.analysis.analyzer')
 
 SolutionTypeInfo = namedtuple('SolutionTypeInfo', ['name', 'style'])
 
+# One curve on the time slider's background chart (see @ref Analyzer._time_slider_js()). `label` names it on the chart,
+# and is left empty where there is only one curve to name.
+TimeSliderSeries = namedtuple('TimeSliderSeries', ['values', 'color', 'label'])
+
+# The location of a plot's buttons sit above the plot, as a fraction of the plot's height. A button's height is fixed
+# but its position is a fraction of the plot's, so stacking two rows of them leaves them either overlapping each other
+# on a short plot or riding up over the title on a tall one, with no pair of positions that suits both.
+_BUTTON_ROW_Y = 1.02
+
+# The signal status flags that mean the navigation engine made use of a signal in some way.
+_SIGNAL_USED_MASK = (GNSSSignalInfo.STATUS_FLAG_USED_PR | GNSSSignalInfo.STATUS_FLAG_USED_DOPPLER |
+                     GNSSSignalInfo.STATUS_FLAG_USED_CARRIER)
+
 _SOLUTION_TYPE_MAP = {
     SolutionType.Invalid: SolutionTypeInfo(name='Invalid', style={'color': 'black'}),
     SolutionType.Integrate: SolutionTypeInfo(name='Integrated', style={'color': 'cyan'}),
@@ -180,6 +193,23 @@ figure.on('plotly_hover', function(data) {
     ChangeHoverText(point, BuildSystemTimeHoverText(point.x));
   }
 });
+"""
+
+    # `inject_head` for any figure using the time slider (see _time_slider_js()). Makes room for the slider *before*
+    # Plotly's own first render, so the figure doesn't appear full-size and then shrink once the slider is added.
+    #
+    # The figure itself starts hidden (`visibility:hidden`, which still reserves its final layout space, unlike
+    # `display:none`) -- even with the container correctly sized up front, Plotly's WebGL rendering doesn't
+    # necessarily catch up to a resize() call within the same paint, so revealing it right away can still show a
+    # visible moment of it at the wrong (window-sized) dimensions overlapping the slider. It's revealed by
+    # `plotly_time_slider.js` once Plotly itself reports the post-resize redraw is done.
+    _TIME_SLIDER_HEAD_CSS = """\
+<style>
+html, body { height: 100%; margin: 0; }
+body { display: flex; flex-direction: column; }
+body > div { display: contents; }
+.plotly-graph-div { flex: 1 1 auto; min-height: 0; width: 100%; visibility: hidden; }
+</style>
 """
 
     def __init__(self,
@@ -981,7 +1011,10 @@ figure.on('plotly_hover', function(data) {
         # The topocentric plot's axes are spatial (East/North), not time, so unlike time_customdata above (which
         # carries only whichever of P1/GPS time is not already reflected by the X axis), its hover text needs both
         # times directly -- neither is recoverable from a point's X/Y position.
-        topo_customdata = np.vstack((p1_time, gps_time, displacement_enu_m, std_enu_m))
+        #
+        # Laid out one row per point, rather than the field-major layout `GetCustomData()` reads, so that the time
+        # slider added below can slice it a point at a time (see _time_slider_js()).
+        topo_customdata = np.column_stack((p1_time, gps_time, displacement_enu_m.T, std_enu_m.T))
         time_customdata = np.vstack((time_customdata, displacement_enu_m, std_enu_m))
 
         # Setup the figure.
@@ -1038,7 +1071,7 @@ figure.on('plotly_hover', function(data) {
                 style['marker'].update(marker_style)
 
             if np.any(idx):
-                topo_cd = topo_customdata[:, idx]
+                topo_cd = topo_customdata[idx, :]
                 time_cd = time_customdata[:, idx]
                 topo_figure.add_trace(go.Scattergl(x=displacement_enu_m[0, idx], y=displacement_enu_m[1, idx],
                                                    name=name, customdata=topo_cd, **style), 1, 1)
@@ -1073,18 +1106,18 @@ figure.on('plotly_hover', function(data) {
         name = source.replace(' ', '_').replace('.', '').replace('(', '').replace(')', '').lower()
 
         # Topocentric hover: X/Y are spatial (East/North), not time, so both P1 and GPS time must come directly from
-        # customdata (rows 0/1) rather than from the point's axis position -- see BuildTimeHoverTextFromTimes().
+        # customdata (columns 0/1) rather than from the point's axis position -- see BuildTimeHoverTextFromTimes().
+        # `point.customdata` is this point's own row, since topo_customdata above is point-major.
         _DISPLACEMENT_TOPO_HOVER_JS = """\
 figure.on('plotly_hover', function(data) {
   let point = data.points[0];
-  if (!point.data.customdata) {
+  if (!point.customdata) {
     return;
   }
-  let new_text = BuildTimeHoverTextFromTimes(GetCustomData(point, 0), GetCustomData(point, 1));
-  new_text += `<br>Delta (ENU): (${GetCustomData(point, 2).toFixed(2)}, ${GetCustomData(point, 3).toFixed(2)}, ` +
-              `${GetCustomData(point, 4).toFixed(2)}) m`;
-  new_text += `<br>Std (ENU): (${GetCustomData(point, 5).toFixed(2)}, ${GetCustomData(point, 6).toFixed(2)}, ` +
-              `${GetCustomData(point, 7).toFixed(2)}) m`;
+  let cd = point.customdata;
+  let new_text = BuildTimeHoverTextFromTimes(cd[0], cd[1]);
+  new_text += `<br>Delta (ENU): (${cd[2].toFixed(2)}, ${cd[3].toFixed(2)}, ${cd[4].toFixed(2)}) m`;
+  new_text += `<br>Std (ENU): (${cd[5].toFixed(2)}, ${cd[6].toFixed(2)}, ${cd[7].toFixed(2)}) m`;
   ShowCustomTooltip(point, GetCustomTooltipHTML(point.data.name, undefined, new_text));
 });
 figure.on('plotly_unhover', function(data) {
@@ -1111,8 +1144,23 @@ figure.on('plotly_unhover', function(data) {
 });
         """ + self._GPS_TICK_REFORMAT_JS
 
+        # The top-down plot's axes are spatial, so the whole log is drawn on top of itself. A time slider is the
+        # only way to see where the position was at one moment, or to watch it move. Chart the 3D displacement it is
+        # showing, which is the same quantity the vs. time plot leads with.
+        slider_js = None
+        timed_idx = ~np.isnan(p1_time)
+        if np.any(timed_idx):
+            slider_js = self._time_slider_js(
+                t_min=np.min(p1_time[timed_idx]), t_max=np.max(p1_time[timed_idx]),
+                point_fields=['x', 'y', 'customdata'], time_customdata_index=0,
+                profile_time_sec=p1_time[timed_idx],
+                profile_series=[TimeSliderSeries(
+                    values=np.linalg.norm(displacement_enu_m[:, timed_idx], axis=0), color='#aab2bc', label='')],
+                profile_gps_time_sec=gps_time[timed_idx], profile_units='m', has_draggable_view=True)
+
         self._add_figure(name=f"{name}_top_down", figure=topo_figure, title=f"{source}: Top-Down (Topocentric)",
-                         inject_js=_DISPLACEMENT_TOPO_HOVER_JS)
+                         inject_js=_DISPLACEMENT_TOPO_HOVER_JS + (slider_js or ''),
+                         inject_head=self._TIME_SLIDER_HEAD_CSS if slider_js is not None else None)
         self._add_figure(name=f"{name}_vs_time", figure=time_figure, title=f"{source}: vs. Time",
                          inject_js=_DISPLACEMENT_TIME_HOVER_JS)
 
@@ -1553,30 +1601,17 @@ figure.on('plotly_unhover', function(data) {
         profile_time_sec, profile_speed_mps, profile_gps_time_sec, _ = \
             self._estimate_speed_mps(source_id=primary_source_id, forward_only=False, signed=False)
 
-        slider_js = self._map_time_slider_js(t_min=overall_t_min, t_max=overall_t_max,
-                                             profile_time_sec=profile_time_sec,
-                                             profile_speed_mps=profile_speed_mps,
-                                             profile_gps_time_sec=profile_gps_time_sec)
-
-        # Make room for the slider *before* Plotly's own first render so the map doesn't appear full-size and then
-        # shrink after the time scale renders.
-        #
-        # The map itself starts hidden (`visibility:hidden`, which still reserves its final layout space, unlike
-        # `display:none`) -- even with the container correctly sized up front, Plotly's own WebGL/MapLibre
-        # rendering doesn't necessarily catch up to a resize() call within the same paint, so revealing it right
-        # away can still show one frame at the wrong (window-sized) dimensions overlapping the slider. It's
-        # revealed by JS (plotly_map_time_slider.js) once Plotly itself reports the post-resize redraw is done.
-        slider_head_css = """\
-<style>
-html, body { height: 100%; margin: 0; }
-body { display: flex; flex-direction: column; }
-body > div { display: contents; }
-.plotly-graph-div { flex: 1 1 auto; min-height: 0; width: 100%; visibility: hidden; }
-</style>
-"""
+        # The P1 time column index below must stay in sync with the column order built by _build_position_customdata().
+        slider_js = self._time_slider_js(t_min=overall_t_min, t_max=overall_t_max,
+                                         point_fields=['lat', 'lon', 'customdata'], time_customdata_index=2,
+                                         profile_time_sec=profile_time_sec,
+                                         profile_series=[TimeSliderSeries(values=profile_speed_mps,
+                                                                          color='#aab2bc', label='')],
+                                         profile_gps_time_sec=profile_gps_time_sec, profile_units='m/s',
+                                         has_draggable_view=True)
 
         self._add_figure(name="map", figure=figure, title="Vehicle Trajectory (Map)", config={'scrollZoom': True},
-                         custom_hover=False, inject_js=slider_js, inject_head=slider_head_css)
+                         custom_hover=False, inject_js=slider_js, inject_head=self._TIME_SLIDER_HEAD_CSS)
 
     def plot_gnss_skyplot(self, decimate=True):
         for source_id in self._get_gnss_antenna_source_ids():
@@ -1591,6 +1626,21 @@ body > div { display: contents; }
             self.logger.info(f'No GNSS signal data available for source ID {source_id}. Skipping sky plot.')
             return
         have_gnss_signals_message = not data.using_legacy_satellite_message
+
+        # Decimate the data to 30 second intervals, picking a single set of epochs shared by every satellite rather
+        # than letting each one choose its own nearest sample to a 30 second boundary. The sky plot is a snapshot of
+        # the sky at a moment in time, so a satellite sampled a few seconds away from the rest reads as a moment of
+        # its own holding one or two satellites, which is what the time slider below the plot would then step to.
+        #
+        # The epochs to choose from are the messages themselves, not the satellites in them, so that one reporting
+        # nothing still takes a slot: the time slider's chart below draws it as a zero rather than a break.
+        interval_sec = 30.0
+        all_p1_time = np.unique(data.p1_time[~np.isnan(data.p1_time)])
+        decimated_p1_time = None
+        if decimate:
+            if len(all_p1_time) > 1 and np.min(np.diff(all_p1_time)) < interval_sec:
+                rounded_time = np.round(all_p1_time / interval_sec) * interval_sec
+                decimated_p1_time = all_p1_time[np.unique(rounded_time, return_index=True)[1]]
 
         # Setup the figure.
         figure = go.Figure()
@@ -1613,10 +1663,16 @@ body > div { display: contents; }
         # Convert the full list of signals for all time epochs to corresponding satellites.
         all_signal_sv_hashes = np.array([get_satellite_hash(s) for s in data.signal_data['signal_hash']])
 
-        # Plot each satellite.
+        # Plot each satellite, tallying as we go what the time slider's background chart shows: how many satellites
+        # are drawn at each epoch, and how many of those had a signal in use. Tallying here rather than from the
+        # message data keeps the chart counting exactly what the plot draws.
+        chart_p1_time = []
+        chart_used = []
+        plotted_t_min = np.inf
+        plotted_t_max = -np.inf
         indices_by_system = defaultdict(list)
-        color_by_sv_format = []
-        color_by_cn0_format = []
+        color_by_sv = []
+        color_by_cn0 = []
         for sv_hash in sv_hashes:
             sv_id = SatelliteID(sv_hash=sv_hash)
             name = sv_id.to_string(short=False)
@@ -1632,9 +1688,22 @@ body > div { display: contents; }
             #
             # Reference: https://stackoverflow.com/a/43094244
             idx = all_signal_sv_hashes == sv_hash
-            cn0_per_epoch = np.split(data.signal_data['cn0_dbhz'][idx],
-                                     np.unique(data.signal_data['p1_time'][idx], return_index=True)[1][1:])
+            epoch_starts = np.unique(data.signal_data['p1_time'][idx], return_index=True)[1][1:]
+            cn0_per_epoch = np.split(data.signal_data['cn0_dbhz'][idx], epoch_starts)
             max_cn0_dbhz = np.array([max(cn0) if len(cn0) > 0 else 0.0 for cn0 in cn0_per_epoch])
+
+            # Flag epochs where the navigation engine used at least one of this satellite's signals vs epochs where none
+            # were used. When no signals were used, draw a different marker.
+            #
+            # Note: Open markers have to be named rather than given as Plotly's equivalent symbol numbers, and need a
+            # marker outline width set explicitly. WebGL traces like this one draw an open marker as a transparent fill
+            # plus an outline, and default that outline to no width unless the trace's symbol is a single open one,
+            # which a per-point mix of open and filled is not.
+            is_used = np.bitwise_and(data.signal_data['status_flags'][idx], _SIGNAL_USED_MASK) != 0
+            any_used_per_epoch = np.split(is_used, epoch_starts)
+            any_used = np.array([np.any(used) for used in any_used_per_epoch])
+            symbols = np.where(any_used, 'circle', 'circle-open')
+            outline_widths = np.where(any_used, 0, 1).astype(np.int8)
 
             if have_gnss_signals_message:
                 sv_signal_types = signal_types_by_sv[sv_hash]
@@ -1645,45 +1714,51 @@ body > div { display: contents; }
             else:
                 name_str = name
 
-            # Decimate the data to 30 second intervals.
-            if decimate and len(p1_time) > 1:
-                interval_sec = 30.0
-                dt_sec = np.round(np.min(np.diff(p1_time)) / 0.1) * 0.1
-                if dt_sec < interval_sec:
-                    rounded_time = np.round(p1_time / interval_sec) * interval_sec
-                    idx = np.where(np.diff(rounded_time, prepend=rounded_time[0]) > 0.01)[0]
+            # Keep only this satellite's data at the shared epochs selected above.
+            if decimated_p1_time is not None:
+                idx = np.isin(p1_time, decimated_p1_time)
+                p1_time = p1_time[idx]
+                az_deg = az_deg[idx]
+                el_deg = el_deg[idx]
+                max_cn0_dbhz = max_cn0_dbhz[idx]
+                symbols = symbols[idx]
+                outline_widths = outline_widths[idx]
+                any_used = any_used[idx]
 
-                    # If this satellite appears for < interval_sec and all of its timestamps happen to round to the same
-                    # time, idx will be empty. Pick the first point where az/el is available.
-                    if len(idx) == 0:
-                        idx = [find_first(~np.isnan(el_deg))]
-                        if idx[0] < 0:
-                            continue
+                # A satellite tracked entirely between two of those epochs has nothing left to draw, as does one we
+                # never had ephemeris for (or were otherwise not able to compute az/el for).
+                if len(el_deg) == 0 or np.all(np.isnan(el_deg)):
+                    continue
 
-                    p1_time = p1_time[idx]
-                    az_deg = az_deg[idx]
-                    el_deg = el_deg[idx]
-                    max_cn0_dbhz = max_cn0_dbhz[idx]
-
-                    # If we never had ephemeris for this satellite, or were otherwise not able to compute az/el, we
-                    # can't put this satellite on the sky plot.
-                    if np.all(np.isnan(el_deg)):
-                        continue
-
-            # Plot the data. We set styles for both coloring by SV and by C/N0. We'll add buttons below to switch
-            # between styles.
-            color_by_sv_format.append({'color': color_by_prn[sv_id.get_prn()]})
-            color_by_cn0_format.append({'cmin': 20, 'cmax': 55, 'colorscale': 'RdBu', 'showscale': True,
-                                        'colorbar': {'x': 0}, 'color': max_cn0_dbhz})
+            # Collect the marker colors for both coloring by SV and by C/N0. We'll add buttons below to switch
+            # between them, restyling only the color so that the marker's symbol stays as set above.
+            color_by_sv.append(color_by_prn[sv_id.get_prn()])
+            color_by_cn0.append(max_cn0_dbhz)
 
             text = ['P1: %.1f sec<br>(Az, El): (%.2f, %.2f) deg<br>C/N0: %.1f dB-Hz' %
                     (t, a, e, c) for t, a, e, c in zip(p1_time, az_deg, el_deg, max_cn0_dbhz)]
-            figure.add_trace(go.Scatterpolargl(r=el_deg, theta=(90 - az_deg), text=text,
+
+            # The per-point P1 time is what the time slider below the plot filters on (see _time_slider_js()). It
+            # is not referenced by the hover text, which uses `text` above.
+            customdata = [[t] for t in p1_time]
+
+            marker = {'color': color_by_sv[-1], 'symbol': symbols, 'line': {'width': outline_widths}}
+            figure.add_trace(go.Scatterpolargl(r=el_deg, theta=(90 - az_deg), text=text, customdata=customdata,
                                                name=name_str, hoverinfo='name+text',
-                                               mode='markers', marker=color_by_sv_format[-1]))
+                                               mode='markers', marker=marker))
             indices_by_system[system].append(len(figure.data) - 1)
+            plotted_t_min = min(plotted_t_min, np.min(p1_time))
+            plotted_t_max = max(plotted_t_max, np.max(p1_time))
+
+            # Epochs where we couldn't compute an az/el draw nothing, so they aren't counted either.
+            drawn_idx = ~np.isnan(el_deg)
+            chart_p1_time.append(p1_time[drawn_idx])
+            chart_used.append(any_used[drawn_idx])
 
         # Add selection buttons for each system and for choosing between coloring by SV and C/N0.
+        #
+        # Both sit on one row just above the plot, the satellite systems at its left end and the coloring at its
+        # right (see @ref _BUTTON_ROW_Y).
         num_traces = len(figure.data)
         num_svs = len(sv_hashes)
         buttons = [dict(label=f'All ({num_svs})', method='restyle', args=['visible', [True] * num_traces])]
@@ -1699,7 +1774,7 @@ body > div { display: contents; }
             'buttons': buttons,
             'x': 0.0,
             'xanchor': 'left',
-            'y': 1.1,
+            'y': _BUTTON_ROW_Y,
             'yanchor': 'top'
         }]
 
@@ -1707,19 +1782,60 @@ body > div { display: contents; }
             'type': 'buttons',
             'direction': 'left',
             'buttons': [
-                dict(label='Color By SV', method='restyle', args=['marker', color_by_sv_format]),
-                dict(label='Color By C/N0', method='restyle', args=['marker', color_by_cn0_format])
+                dict(label='Color By SV', method='restyle',
+                     args=[{'marker.color': color_by_sv, 'marker.showscale': False}]),
+                dict(label='Color By C/N0', method='restyle',
+                     args=[{'marker.color': color_by_cn0, 'marker.cmin': 20, 'marker.cmax': 55,
+                            'marker.colorscale': 'RdBu', 'marker.showscale': True,
+                            'marker.colorbar': {'x': 0}}])
             ],
-            'x': 0.0,
-            'xanchor': 'left',
-            'y': 1.045,
+            'x': 1.0,
+            'xanchor': 'right',
+            'y': _BUTTON_ROW_Y,
             'yanchor': 'top'
         }]
 
         figure['layout']['updatemenus'] = updatemenus
 
+        # Say that the data is decimated, and how coarsely: the plot otherwise gives no hint that the log holds far
+        # more epochs than are drawn, which makes stepping through it with the time slider look broken.
+        decimation_note = '' if decimated_p1_time is None else \
+            f'Decimated to one point every {interval_sec:.0f} seconds (--plot skyplot for full rate)'
+
+        # The sky plot draws every epoch's satellites on top of each other, so a time slider is the only way to see
+        # the constellation at one moment, or to watch it change. Draw it the total and in-use satellite counts tallied
+        # above as its background chart.
+        #
+        # The chart runs over every epoch the receiver reported, not just the ones something was drawn at, so that an
+        # epoch tracking nothing (or nothing we could place in the sky) reads as the zero it is. Leaving those out
+        # would instead break the chart, which is reserved for the receiver going quiet altogether.
+        slider_js = None
+        if np.isfinite(plotted_t_min):
+            epoch_p1_time_sec = all_p1_time if decimated_p1_time is None else decimated_p1_time
+            epoch_idx = np.searchsorted(epoch_p1_time_sec, np.concatenate(chart_p1_time))
+            num_svs = np.bincount(epoch_idx, minlength=len(epoch_p1_time_sec))
+            num_used_svs = np.bincount(epoch_idx, weights=np.concatenate(chart_used),
+                                       minlength=len(epoch_p1_time_sec))
+
+            # Each epoch's GPS time, for the chart's own time axis.
+            message_order = np.argsort(data.p1_time)
+            epoch_gps_time_sec = data.gps_time[message_order][
+                np.searchsorted(data.p1_time[message_order], epoch_p1_time_sec)]
+
+            slider_js = self._time_slider_js(
+                t_min=min(plotted_t_min, epoch_p1_time_sec[0]),
+                t_max=max(plotted_t_max, epoch_p1_time_sec[-1]),
+                point_fields=['r', 'theta', 'text', 'customdata', 'marker.color', 'marker.symbol',
+                              'marker.line.width'],
+                time_customdata_index=0, profile_time_sec=epoch_p1_time_sec,
+                profile_series=[TimeSliderSeries(values=num_svs, color='#aab2bc', label='total'),
+                                TimeSliderSeries(values=num_used_svs, color='green', label='used')],
+                profile_gps_time_sec=epoch_gps_time_sec, profile_units='SVs', note=decimation_note)
+
         name = self._gnss_plot_filename('gnss_skyplot', source_id)
-        self._add_figure(name=name, figure=figure, title=f'GNSS ({label}): Sky Plot', custom_hover=False)
+        self._add_figure(name=name, figure=figure, title=f'GNSS ({label}): Sky Plot', custom_hover=False,
+                         inject_js=slider_js,
+                         inject_head=self._TIME_SLIDER_HEAD_CSS if slider_js is not None else None)
 
     def plot_gnss_cn0(self):
         for source_id in self._get_gnss_antenna_source_ids():
@@ -1786,7 +1902,7 @@ body > div { display: contents; }
             'buttons': buttons,
             'x': 0.0,
             'xanchor': 'left',
-            'y': 1.1,
+            'y': _BUTTON_ROW_Y,
             'yanchor': 'top'
         }]
 
@@ -1881,7 +1997,7 @@ body > div { display: contents; }
             'buttons': buttons,
             'x': 0.0,
             'xanchor': 'left',
-            'y': 1.1,
+            'y': _BUTTON_ROW_Y,
             'yanchor': 'top'
         }]
 
@@ -1922,9 +2038,7 @@ body > div { display: contents; }
         num_svs = _count_selected(data.sv_data["p1_time"])
         num_signals = _count_selected(data.signal_data["p1_time"])
 
-        is_used_mask = (GNSSSignalInfo.STATUS_FLAG_USED_PR | GNSSSignalInfo.STATUS_FLAG_USED_DOPPLER |
-                        GNSSSignalInfo.STATUS_FLAG_USED_CARRIER)
-        idx = (np.bitwise_and(data.signal_data['status_flags'], is_used_mask) != 0)
+        idx = (np.bitwise_and(data.signal_data['status_flags'], _SIGNAL_USED_MASK) != 0)
         num_used_signals, used_p1_time, used_p1_time_idx = _count_selected(data.signal_data['p1_time'][idx],
                                                                            return_nonzero_time=True)
 
@@ -2042,7 +2156,7 @@ Black=Unused, Red=Used'''
                 },
                 # Signal not used
                 {
-                    'cond': lambda status_flags, _: np.bitwise_and(status_flags, is_used_mask) == 0,
+                    'cond': lambda status_flags, _: np.bitwise_and(status_flags, _SIGNAL_USED_MASK) == 0,
                     'marker': {'color': colors['unused'], 'symbol': 'x', 'size': 8}
                 },
             ]
@@ -2063,12 +2177,12 @@ Black=Unused, Red=Used'''
             conditions = [
                 # Signal used
                 {
-                    'cond': lambda status_flags, _: np.bitwise_and(status_flags, is_used_mask) != 0,
+                    'cond': lambda status_flags, _: np.bitwise_and(status_flags, _SIGNAL_USED_MASK) != 0,
                     'marker': {'color': colors['pr'], 'symbol': 'circle', 'size': 8}
                 },
                 # Signal not used
                 {
-                    'cond': lambda status_flags, _: np.bitwise_and(status_flags, is_used_mask) == 0,
+                    'cond': lambda status_flags, _: np.bitwise_and(status_flags, _SIGNAL_USED_MASK) == 0,
                     'marker': {'color': colors['unused'], 'symbol': 'x', 'size': 8}
                 },
             ]
@@ -2141,7 +2255,7 @@ Black=Unused, Red=Used'''
             'buttons': buttons,
             'x': 0.0,
             'xanchor': 'left',
-            'y': 1.1,
+            'y': _BUTTON_ROW_Y,
             'yanchor': 'top'
         }]
 
@@ -4099,58 +4213,78 @@ figure.on('plotly_unhover', function(data) {
 });
 """ + tick_reformat_js)
 
-    def _map_time_slider_js(self, t_min: float, t_max: float, profile_time_sec: Optional[np.ndarray],
-                            profile_speed_mps: Optional[np.ndarray],
-                            profile_gps_time_sec: Optional[np.ndarray]) -> str:
+    def _time_slider_js(self, t_min: float, t_max: float, point_fields: List[str],
+                        time_customdata_index: int, profile_time_sec: Optional[np.ndarray],
+                        profile_series: List[TimeSliderSeries], profile_gps_time_sec: Optional[np.ndarray],
+                        profile_units: str, note: str = '', has_draggable_view: bool = False) -> str:
         """!
-        @brief Build JS for a time-range control injected below @ref plot_map()'s figure.
+        @brief Build JS for a time-range control injected below a non-time-series figure.
 
-        The control itself (DOM/canvas setup, drag handling, axis formatting) lives in `plotly_map_time_slider.js`,
-        injected the same way as `plotly_data_support.js` (see @ref __write_html_and_inject_js()); this decimates
-        and JSON-encodes the per-log data that static file reads from a handful of `MAP_SLIDER_*` globals.
+        The control itself (DOM/canvas setup, drag handling, playback, axis formatting) lives in
+        `plotly_time_slider.js`, injected the same way as `plotly_data_support.js` (see @ref
+        __write_html_and_inject_js()). This decimates and JSON-encodes the per-log data that static file reads from
+        a handful of `TIME_SLIDER_*` globals.
 
-        @param t_min/t_max The full P1 time range (sec) spanned by the map's traces (matches `customdata[2]`, per
-               `P1_TIME_CUSTOMDATA_INDEX` in `plotly_map_time_slider.js` -- must stay in sync with the column order
-               built by @ref _build_position_customdata()).
-        @param profile_time_sec/profile_speed_mps Parallel arrays of P1 time (sec) and 3D speed (m/s) for the
-               background chart, from the default pose source (e.g., from @ref _estimate_speed_mps()). `None` (or
-               empty) if no speed data is available at all, in which case the chart is simply left blank.
+        The figure must carry a P1 timestamp for every plotted point in its `customdata`, which is what the control
+        filters on. Use @ref _TIME_SLIDER_HEAD_CSS as `inject_head` so the figure makes room for the control before
+        its first paint.
+
+        @param t_min/t_max The full P1 time range (sec) spanned by the figure's traces.
+        @param point_fields The trace attributes holding one entry per plotted point, which are sliced together
+               whenever the displayed time range changes (e.g. `['lat', 'lon', 'customdata']`). Nested attributes
+               are named with a dot, the way `Plotly.restyle()` addresses them (e.g. `marker.color`).
+        @param time_customdata_index The column within each point's `customdata` row holding its P1 time (sec).
+        @param profile_time_sec The P1 times (sec) of the control's background chart, which gives the log some
+               visual shape to pick a time range against. `None` (or empty) if no such data is available at all,
+               in which case the chart is simply left blank.
+        @param profile_series The quantities to draw against `profile_time_sec` (vehicle speed, satellite count,
+               etc.), each parallel to it. Multiple series share one scale, so they should be comparable.
         @param profile_gps_time_sec GPS time (sec), parallel to `profile_time_sec`, used to label the X axis in
                `gps`/`utc` mode (see `self.time_type`) -- P1 and GPS time aren't a fixed offset apart, so
                converting an arbitrary tick's P1 time requires interpolating within the actual per-point data.
+        @param profile_units The units shared by every series, used to label the chart's Y axis (e.g. `m/s`).
+        @param note An optional short line about the times the figure holds, displayed alongside the control (e.g.
+               to say that the plotted data is decimated, and how coarsely).
+        @param has_draggable_view `True` for a figure the pointer drags a view around in, like a map. Redrawing
+               one of those in the middle of a drag drops the drag, so the control holds its redraws -- and its
+               playback, visibly -- until the gesture is done. A figure that doesn't move under the pointer (a
+               polar sky plot, say) has nothing to hold for.
 
         @return The JS to pass as `inject_js` to @ref _add_figure().
         """
-        # Decimate the speed profile so a long log doesn't inflate the HTML with a huge embedded array -- it's
-        # just a visual aid for picking a time range, precision doesn't matter.
+        # Decimate the profile so a long log doesn't inflate the HTML with a huge embedded array -- it's just a
+        # visual aid for picking a time range, precision doesn't matter.
         _MAX_PROFILE_POINTS = 3000
         if profile_time_sec is not None and len(profile_time_sec) > 0:
             order = np.argsort(profile_time_sec)
-            sorted_time = profile_time_sec[order]
-            sorted_speed = profile_speed_mps[order]
-            sorted_gps_time = profile_gps_time_sec[order]
-            if len(sorted_time) > _MAX_PROFILE_POINTS:
-                stride = int(np.ceil(len(sorted_time) / _MAX_PROFILE_POINTS))
-                sorted_time = sorted_time[::stride]
-                sorted_speed = sorted_speed[::stride]
-                sorted_gps_time = sorted_gps_time[::stride]
-            profile_time_json = json.dumps(np.round(sorted_time, 3).tolist())
-            profile_speed_json = json.dumps(np.round(sorted_speed, 3).tolist())
-            profile_gps_time_json = json.dumps(np.round(sorted_gps_time, 3).tolist())
+            stride = max(1, int(np.ceil(len(order) / _MAX_PROFILE_POINTS)))
+
+            def _decimate(values):
+                return np.round(np.asarray(values)[order][::stride], 3).tolist()
+
+            profile_time_json = json.dumps(_decimate(profile_time_sec))
+            profile_gps_time_json = json.dumps(_decimate(profile_gps_time_sec))
+            profile_series_json = json.dumps([{'values': _decimate(s.values), 'color': s.color, 'label': s.label}
+                                              for s in profile_series])
         else:
             profile_time_json = '[]'
-            profile_speed_json = '[]'
             profile_gps_time_json = '[]'
+            profile_series_json = '[]'
 
         preamble = f"""\
-var MAP_SLIDER_T_MIN = {json.dumps(t_min)};
-var MAP_SLIDER_T_MAX = {json.dumps(t_max)};
-var MAP_SLIDER_PROFILE_TIME = {profile_time_json};
-var MAP_SLIDER_PROFILE_SPEED = {profile_speed_json};
-var MAP_SLIDER_PROFILE_GPS_TIME = {profile_gps_time_json};
+var TIME_SLIDER_T_MIN = {json.dumps(t_min)};
+var TIME_SLIDER_T_MAX = {json.dumps(t_max)};
+var TIME_SLIDER_POINT_FIELDS = {json.dumps(point_fields)};
+var TIME_SLIDER_TIME_CUSTOMDATA_INDEX = {json.dumps(time_customdata_index)};
+var TIME_SLIDER_PROFILE_TIME = {profile_time_json};
+var TIME_SLIDER_PROFILE_SERIES = {profile_series_json};
+var TIME_SLIDER_PROFILE_GPS_TIME = {profile_gps_time_json};
+var TIME_SLIDER_PROFILE_UNITS = {json.dumps(profile_units)};
+var TIME_SLIDER_NOTE = {json.dumps(note)};
+var TIME_SLIDER_HAS_DRAGGABLE_VIEW = {json.dumps(has_draggable_view)};
 """
         script_dir = os.path.join(os.path.dirname(__file__))
-        with open(os.path.join(script_dir, 'plotly_map_time_slider.js'), 'rt') as f:
+        with open(os.path.join(script_dir, 'plotly_time_slider.js'), 'rt') as f:
             return preamble + f.read()
 
     def _auto_detect_message_type(self, types: List[MessageType]):
@@ -4490,7 +4624,7 @@ Load and display information stored in a FusionEngine binary file.
         for func in functions:
             if func == 'plot_map':
                 analyzer.plot_map(mapbox_token=options.mapbox_token, reference=reference_data)
-            elif func == 'plot_skyplot':
+            elif func == 'plot_gnss_skyplot':
                 analyzer.plot_gnss_skyplot(decimate=False)
             elif func == 'plot_pose_error':
                 if reference_data is not None:
