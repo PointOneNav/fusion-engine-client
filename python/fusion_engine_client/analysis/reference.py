@@ -5,7 +5,7 @@ import re
 import numpy as np
 from pymap3d import ecef2geodetic, geodetic2ecef
 
-from .data_loader import DataLoader, TimeAlignmentMode
+from .data_loader import DataLoader
 from ..messages import PoseMessage, PoseAuxMessage, SolutionType
 from ..utils import trace as logging
 from ..utils.log import locate_log, DEFAULT_LOG_BASE_DIR
@@ -239,16 +239,7 @@ class ReferenceData:
         if statistic not in _OWN_LOG_STATISTICS:
             raise ValueError(f"Unrecognized own-log reference statistic '{statistic}'.")
 
-        params = dict(params or {})
-        params.setdefault('return_numpy', True)
-        params.setdefault('show_progress', True)
-        source_ids = None if source_id is None else [source_id]
-        result = loader.read(message_types=[PoseMessage, PoseAuxMessage], source_ids=source_ids,
-                             time_align=TimeAlignmentMode.INSERT, **params)
-        pose_data = result[PoseMessage.MESSAGE_TYPE]
-        aux_data = result[PoseAuxMessage.MESSAGE_TYPE]
-
-        valid_idx = np.logical_and(~np.isnan(pose_data.p1_time), pose_data.solution_type != SolutionType.Invalid)
+        pose_data, velocity_enu_mps, valid_idx = cls._read_pose_data(loader, source_id=source_id, params=params)
         if not np.any(valid_idx):
             _logger.warning('No valid position solutions available in log. Cannot generate own-log reference.')
             return None
@@ -282,7 +273,7 @@ class ReferenceData:
 
         lla_deg = pose_data.lla_deg[:, selected_idx]
         position_ecef_m = np.array(geodetic2ecef(lat=lla_deg[0, :], lon=lla_deg[1, :], alt=lla_deg[2, :], deg=True))
-        velocity_enu_mps = aux_data.velocity_enu_mps[:, selected_idx]
+        velocity_enu_mps = velocity_enu_mps[:, selected_idx]
         ypr_deg = pose_data.ypr_deg[:, selected_idx]
         position_std_enu_m = pose_data.position_std_enu_m[:, selected_idx]
 
@@ -337,16 +328,7 @@ class ReferenceData:
             loader = DataLoader(input_path)
             description = "Reference Log %s" % (log_id if log_id is not None else input_path)
 
-        params = dict(params or {})
-        params.setdefault('return_numpy', True)
-        params.setdefault('show_progress', True)
-        source_ids = None if source_id is None else [source_id]
-        result = loader.read(message_types=[PoseMessage, PoseAuxMessage], source_ids=source_ids,
-                             time_align=TimeAlignmentMode.INSERT, **params)
-        pose_data = result[PoseMessage.MESSAGE_TYPE]
-        aux_data = result[PoseAuxMessage.MESSAGE_TYPE]
-
-        valid_idx = np.logical_and(~np.isnan(pose_data.p1_time), pose_data.solution_type != SolutionType.Invalid)
+        pose_data, velocity_enu_mps, valid_idx = cls._read_pose_data(loader, source_id=source_id, params=params)
         if not np.any(valid_idx):
             _logger.warning("No valid position solutions available in reference log '%s'." % description)
             return None
@@ -360,13 +342,50 @@ class ReferenceData:
         solution_type = pose_data.solution_type[valid_idx][order]
         lla_deg = pose_data.lla_deg[:, valid_idx][:, order]
         position_ecef_m = np.array(geodetic2ecef(lat=lla_deg[0, :], lon=lla_deg[1, :], alt=lla_deg[2, :], deg=True))
-        velocity_enu_mps = aux_data.velocity_enu_mps[:, valid_idx][:, order]
+        velocity_enu_mps = velocity_enu_mps[:, valid_idx][:, order]
         ypr_deg = pose_data.ypr_deg[:, valid_idx][:, order]
         position_std_enu_m = pose_data.position_std_enu_m[:, valid_idx][:, order]
 
         return cls(description=description, is_truth=True, position_ecef_m=position_ecef_m,
                    position_std_enu_m=position_std_enu_m, gps_time_sec=gps_time_sec, solution_type=solution_type,
                    velocity_enu_mps=velocity_enu_mps, ypr_deg=ypr_deg)
+
+    @classmethod
+    def _read_pose_data(cls, loader: DataLoader, source_id: Optional[int] = None,
+                        params: Optional[dict] = None) -> tuple:
+        """!
+        @brief Read pose data and the corresponding ENU velocity from a log.
+
+        @param loader The @ref DataLoader for the log to be read.
+        @param source_id If specified, only consider data from this source ID.
+        @param params Additional keyword arguments to forward to `loader.read()` (e.g., `time_range`).
+
+        @return A tuple containing the pose data, a 3xN array of ENU velocities (in m/s) aligned to the pose epochs,
+                and a boolean array indicating which epochs have a valid position solution.
+        """
+        params = dict(params or {})
+        params.setdefault('return_numpy', True)
+        params.setdefault('show_progress', True)
+        source_ids = None if source_id is None else [source_id]
+        result = loader.read(message_types=[PoseMessage, PoseAuxMessage], source_ids=source_ids, **params)
+        pose_data = result[PoseMessage.MESSAGE_TYPE]
+        aux_data = result[PoseAuxMessage.MESSAGE_TYPE]
+
+        # If we have PoseAux messages available, read ENU velocity. PoseAux may be enabled at a different rate than
+        # Pose, or even if it's the same rate, we might have one extra PoseAux than Pose at the start of a log or one
+        # fewer at the end of the log if the recording happened to start in the middle of the data stream. We limit the
+        # PoseAux ENU velocity to just the timestamps in the Pose data, discarding PoseAux messages that don't match a
+        # Pose message, and insert nans for missing ones.
+        #
+        # If we do not have any PoseAuxMessages available, set ENU velocity to nan for all Pose epochs.
+        velocity_enu_mps = np.full((3, len(pose_data.p1_time)), np.nan)
+        if len(aux_data.p1_time) > 0:
+            _, aux_idx, pose_idx = np.intersect1d(aux_data.p1_time, pose_data.p1_time, return_indices=True)
+            velocity_enu_mps[:, pose_idx] = aux_data.velocity_enu_mps[:, aux_idx]
+
+        valid_idx = np.logical_and(~np.isnan(pose_data.p1_time), pose_data.solution_type != SolutionType.Invalid)
+
+        return pose_data, velocity_enu_mps, valid_idx
 
     # -------------------------------------------------------------------------------------------------------------
     # CLI argument parsing

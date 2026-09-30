@@ -359,6 +359,8 @@ class DataLoader(object):
         # Otherwise, we need to read from disk again.
         params = {
             'time_range': time_range,
+            'time_align': time_align,
+            'aligned_message_types': aligned_message_types,
             'max_messages': max_messages,
             'max_bytes': max_bytes,
             'require_p1_time': require_p1_time,

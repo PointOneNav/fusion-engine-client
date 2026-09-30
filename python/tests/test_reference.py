@@ -13,7 +13,7 @@ from fusion_engine_client.parsers import FusionEngineEncoder
 # A small, deterministic set of pose epochs used across several tests:
 #   index 0: Invalid solution -- must be excluded from every statistic.
 #   index 1: AutonomousGPS, has PoseAux data -- "first" valid epoch.
-#   index 2: RTKFloat, PoseAux missing (tests NaN gap handling via TimeAlignmentMode.INSERT).
+#   index 2: RTKFloat, PoseAux missing -- tests NaN gap handling for epochs with no velocity.
 #   index 3: RTKFixed.
 #   index 4: RTKFixed.
 _EPOCHS = [
@@ -51,10 +51,18 @@ def _build_messages(epochs):
     return messages
 
 
-def _write_log(path, epochs):
+def _write_log(path, epochs, orphan_aux_times=()):
+    messages = _build_messages(epochs)
+    for p1_time in orphan_aux_times:
+        aux = PoseAuxMessage()
+        aux.p1_time = Timestamp(p1_time)
+        aux.velocity_enu_mps = np.full(3, 99.0)
+        messages.append(aux)
+    messages.sort(key=lambda m: float(m.p1_time))
+
     encoder = FusionEngineEncoder()
     with open(path, 'wb') as f:
-        for message in _build_messages(epochs):
+        for message in messages:
             f.write(encoder.encode_message(message))
 
 
@@ -171,6 +179,41 @@ class TestFromOwnLog:
 
         assert ReferenceData.from_own_log(invalid_loader, statistic='median') is None
 
+    @pytest.mark.parametrize("statistic", ['first', 'median'])
+    def test_no_aux_data(self, tmp_path, statistic):
+        # A log with no PoseAuxMessages at all should produce a reference with no velocity, not an error.
+        epochs = [dict(e, velocity_enu_mps=None) for e in _EPOCHS]
+        path = tmp_path / 'no_aux.p1log'
+        _write_log(path, epochs)
+        no_aux_loader = DataLoader(path=str(path))
+
+        ref = ReferenceData.from_own_log(no_aux_loader, statistic=statistic)
+        assert not ref.has_velocity
+        assert ref.velocity_enu_mps is None
+        assert ref.position_ecef_m is not None
+
+    def test_first_epoch_missing_aux(self, tmp_path):
+        # PoseAux is present in the log, but not at the epoch the statistic selects.
+        epochs = [dict(e, velocity_enu_mps=None) if i == 1 else e for i, e in enumerate(_EPOCHS)]
+        path = tmp_path / 'first_no_aux.p1log'
+        _write_log(path, epochs)
+        partial_loader = DataLoader(path=str(path))
+
+        ref = ReferenceData.from_own_log(partial_loader, statistic='first')
+        assert not ref.has_velocity
+        assert ref.position_ecef_m == pytest.approx(_expected_ecef(1)[:, 0])
+
+    def test_aux_without_matching_pose(self, tmp_path):
+        # Velocity is aligned to the pose time vector, so PoseAux at an epoch with no pose contributes nothing.
+        path = tmp_path / 'orphan_aux.p1log'
+        _write_log(path, _EPOCHS, orphan_aux_times=(2.5, 4.5))
+        orphan_loader = DataLoader(path=str(path))
+
+        ref = ReferenceData.from_own_log(orphan_loader, statistic='median')
+        expected_velocity = np.nanmedian(
+            np.array([[1.0, 0.1, 0.0], [np.nan, np.nan, np.nan], [3.0, 0.3, 0.0], [4.0, 0.4, 0.0]]).T, axis=1)
+        assert ref.velocity_enu_mps == pytest.approx(expected_velocity)
+
     def test_invalid_statistic_raises(self, loader):
         with pytest.raises(ValueError):
             ReferenceData.from_own_log(loader, statistic='bogus')
@@ -203,6 +246,24 @@ class TestFromReferenceLog:
         invalid_loader = DataLoader(path=str(path))
 
         assert ReferenceData.from_reference_log(invalid_loader) is None
+
+    def test_fields_align_to_pose_epochs(self, tmp_path):
+        # Every field is indexed by the pose time vector: PoseAux at an epoch with no pose is dropped, and a pose
+        # epoch with no PoseAux gets NAN velocity.
+        path = tmp_path / 'orphan_aux.p1log'
+        _write_log(path, _EPOCHS, orphan_aux_times=(2.5, 4.5))
+        ref = ReferenceData.from_reference_log(DataLoader(path=str(path)))
+
+        # Epoch index 0 is Invalid, so the 4 remaining valid pose epochs set the length of every field.
+        assert len(ref.gps_time_sec) == 4
+        assert ref.position_ecef_m.shape == (3, 4)
+        assert ref.velocity_enu_mps.shape == (3, 4)
+        assert ref.ypr_deg.shape == (3, 4)
+
+        # Index 1 of the valid epochs (_EPOCHS index 2) has no PoseAux. The orphan velocities must not appear.
+        assert np.all(np.isnan(ref.velocity_enu_mps[:, 1]))
+        assert not np.any(np.isnan(ref.velocity_enu_mps[:, [0, 2, 3]]))
+        assert not np.any(ref.velocity_enu_mps == 99.0)
 
     def test_unresolvable_path_returns_none(self, tmp_path):
         empty_log_base = tmp_path / 'log_base'
