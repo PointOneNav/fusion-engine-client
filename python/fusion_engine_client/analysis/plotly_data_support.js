@@ -109,17 +109,20 @@ function BuildTimeHoverTextFromTimes(p1_time_sec, gps_time_sec) {
   return lines.join('<br>');
 }
 
-// Build hover text for a point on a device system-time axis (relative or absolute, per Analyzer.time_type).
+// Build hover text for a point on a device system-time axis (relative or absolute, per Analyzer.time_type), showing
+// both the relative and absolute times like BuildTimeHoverTextFromTimes() does for P1 time.
+//
 // Unlike BuildTimeHoverText(), there's no GPS-like alternate domain to convert to/from here -- system_t0_sec is a
-// constant offset for the whole log, so the absolute value is always recoverable from x_value alone, with no
-// per-point customdata needed.
+// constant offset for the whole log, so whichever of the two times is not plotted on the X axis is always
+// recoverable from x_value alone, with no per-point customdata needed.
 function BuildSystemTimeHoverText(x_value) {
   if (typeof system_t0_sec !== 'number') {
-    return `System Time: ${x_value.toFixed(3)} sec`;
+    return system_time_axis_rel ? `Rel: ${x_value.toFixed(3)} sec` : `System: ${x_value.toFixed(3)} sec`;
   }
-  else {
-    return `System Time: ${(x_value + system_t0_sec).toFixed(3)} sec`;
-  }
+
+  let rel_sec = system_time_axis_rel ? x_value : x_value - system_t0_sec;
+  let system_time_sec = system_time_axis_rel ? x_value + system_t0_sec : x_value;
+  return `Rel: ${rel_sec.toFixed(3)} sec (System: ${system_time_sec.toFixed(3)} sec)`;
 }
 
 function ChangeHoverText(point, new_text) {
