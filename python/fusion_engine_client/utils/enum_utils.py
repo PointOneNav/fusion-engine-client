@@ -13,7 +13,9 @@ class DynamicEnumMeta(EnumMeta):
     def __new__(cls, name, bases, dict):
         # Add is_recognized() to the definition for the class using this metaclass.
         def is_unrecognized(self):
-            return self.name.startswith(cls.UNRECOGNIZED_PREFIX)
+            # Read through _name_ rather than name, which is a descriptor and costs several times as much to
+            # evaluate. This runs for every value printed.
+            return self._name_.startswith(cls.UNRECOGNIZED_PREFIX)
         dict['is_unrecognized'] = is_unrecognized
         enum_class = super().__new__(cls, name, bases, dict)
 
