@@ -128,9 +128,23 @@ class FusionEngineDecoder:
         if len(data) == 0:
             return []
 
-        _logger.trace('Received %d bytes. [total_received=%d B, stream_offset=%d B (0x%x)]' %
-                      (len(data), self._bytes_processed + len(data), self._bytes_processed, self._bytes_processed))
-        self._trace_buffer(data, depth=2)
+        # Checked up front because the messages below are not free to build: some payloads parse their own contents
+        # to describe themselves, and the buffer dumps copy the data they print.
+        trace_enabled = _logger.isEnabledFor(logging.TRACE)
+        debug_enabled = _logger.isEnabledFor(logging.DEBUG)
+        if self._warn_on_error == self.WarnOnError.ALL:
+            warn_or_debug = _logger.warning
+        elif debug_enabled:
+            warn_or_debug = _logger.debug
+        else:
+            warn_or_debug = None
+
+        if trace_enabled:
+            _logger.trace('Received %d bytes. [total_received=%d B, stream_offset=%d B (0x%x)]' %
+                          (len(data), self._bytes_processed + len(data), self._bytes_processed,
+                           self._bytes_processed))
+            self._trace_buffer(data, depth=2)
+
         # Append the new data to the buffer.
         self._buffer += data
 
@@ -159,12 +173,13 @@ class FusionEngineDecoder:
 
                 self._msg_len = self._header.payload_size_bytes + MessageHeader.calcsize()
 
-                _logger.trace('Found candidate header. [type=%s, sequence=%d, payload_size=%d B (total_size=%d B), '
-                              'stream_offset=%d B (0x%x)]' %
-                              (self._header.get_type_string(), self._header.sequence_number,
-                               self._header.payload_size_bytes, self._msg_len,
-                               self._bytes_processed, self._bytes_processed))
-                self._trace_buffer(self._buffer[:MessageHeader.calcsize()])
+                if trace_enabled:
+                    _logger.trace('Found candidate header. [type=%s, sequence=%d, payload_size=%d B '
+                                  '(total_size=%d B), stream_offset=%d B (0x%x)]' %
+                                  (self._header.get_type_string(), self._header.sequence_number,
+                                   self._header.payload_size_bytes, self._msg_len,
+                                   self._bytes_processed, self._bytes_processed))
+                    self._trace_buffer(self._buffer[:MessageHeader.calcsize()])
 
                 # The reserved bytes in the header are currently always set to 0. If the incoming bytes are not zero,
                 # assume this an invalid sync.
@@ -174,11 +189,11 @@ class FusionEngineDecoder:
                 # that happens to still be smaller than the buffer size.
                 drop_candidate = False
                 if self._header.reserved != 0:
-                    print_func = _logger.warning if self._warn_on_error == self.WarnOnError.ALL else _logger.debug
-                    print_func('Reserved bytes nonzero. Dropping suspected invalid sync. [type=%s, payload_size=%d B, '
-                               'max=%d B]' %
-                               (self._header.get_type_string(), self._header.payload_size_bytes,
-                                self._max_payload_len_bytes))
+                    if warn_or_debug is not None:
+                        warn_or_debug('Reserved bytes nonzero. Dropping suspected invalid sync. [type=%s, '
+                                      'payload_size=%d B, max=%d B]' %
+                                      (self._header.get_type_string(), self._header.payload_size_bytes,
+                                       self._max_payload_len_bytes))
                     drop_candidate = True
                 # If the message is too large to fit in the buffer, we cannot parse it.
                 #
@@ -186,10 +201,10 @@ class FusionEngineDecoder:
                 # invalid header will be dropped. If it does not exceed the buffer size, it'll get caught later during
                 # the CRC check.
                 elif self._header.payload_size_bytes > self._max_payload_len_bytes:
-                    print_func = _logger.warning if self._warn_on_error == self.WarnOnError.ALL else _logger.debug
-                    print_func('Message payload too big. [type=%s, payload_size=%d B, max=%d B]' %
-                               (self._header.get_type_string(), self._header.payload_size_bytes,
-                                self._max_payload_len_bytes))
+                    if warn_or_debug is not None:
+                        warn_or_debug('Message payload too big. [type=%s, payload_size=%d B, max=%d B]' %
+                                      (self._header.get_type_string(), self._header.payload_size_bytes,
+                                       self._max_payload_len_bytes))
                     drop_candidate = True
 
                 if drop_candidate:
@@ -203,16 +218,17 @@ class FusionEngineDecoder:
                 break
 
             # Message complete.
-            _logger.trace('Collected complete message. [message_size=%d B, payload_size=%d B]' %
-                          (self._header.get_message_size(), self._header.payload_size_bytes))
-            self._trace_buffer(self._buffer[:self._msg_len])
+            if trace_enabled:
+                _logger.trace('Collected complete message. [message_size=%d B, payload_size=%d B]' %
+                              (self._header.get_message_size(), self._header.payload_size_bytes))
+                self._trace_buffer(self._buffer[:self._msg_len])
 
             # Validate the CRC. This will raise an exception on CRC failure.
             try:
                 self._header.validate_crc(self._buffer)
             # Invalid CRC detected.
             except Exception as e:
-                print_func = _logger.warning if self._warn_on_error == self.WarnOnError.ALL else _logger.debug
+                print_func = warn_or_debug
 
                 # Check if the expected payload size for this message type matches the received payload size. If so, it
                 # likely means the message got corrupted. For variable-length messages, this will not work since we
@@ -225,7 +241,8 @@ class FusionEngineDecoder:
                 except (AttributeError, TypeError):
                     pass
 
-                print_func(e)
+                if print_func is not None:
+                    print_func(e)
                 self._header = None
                 self._msg_len = 0
                 self._buffer.pop(0)
@@ -264,7 +281,8 @@ class FusionEngineDecoder:
                 try:
                     contents.unpack(buffer=payload, offset=0,
                                     message_version=self._header.message_version)
-                    _logger.debug('Decoded FusionEngine message %s.', repr(contents))
+                    if debug_enabled:
+                        _logger.debug('Decoded FusionEngine message %s.', repr(contents))
                 except NotImplementedError as e:
                     print_func = _logger.warning if self._warn_on_unrecognized else _logger.debug
                     print_func('Error deserializing message %s payload: %s', self._header.get_type_string(), e)
