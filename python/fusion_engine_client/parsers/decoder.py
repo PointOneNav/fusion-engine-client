@@ -149,29 +149,43 @@ class FusionEngineDecoder:
         self._buffer += data
 
         # Decode all messages found in the buffer.
+        #
+        # Bytes that have been consumed are tracked with a read cursor and discarded in a single pass once the buffer
+        # is exhausted. Removing them as we go would copy everything after them, once per message decoded and once per
+        # byte skipped while resynchronizing.
         decoded_messages = []
-        while self._buffer:
+        header_size = MessageHeader.calcsize()
+        buffer = self._buffer
+        buffer_len = len(buffer)
+        offset = 0
+        while True:
             # Message must be at least long enough for header.
-            if len(self._buffer) < MessageHeader.calcsize():
+            if buffer_len - offset < header_size:
                 break
             # Looking for a valid header.
             elif self._header is None:
-                # Explicitly check for the first two sync bytes to be a bit more efficient than doing it inside the @ref
-                # MessageHeader.unpack() with an exception.
-                if self._buffer[0] != MessageHeader.SYNC0:
-                    self._buffer.pop(0)
-                    self._bytes_processed += 1
-                    continue
-                elif self._buffer[1] != MessageHeader.SYNC1:
-                    self._buffer.pop(0)
-                    self._bytes_processed += 1
+                # Check if the current and next byte match the sync pattern. If not, search for the next occurrence.
+                sync0 = buffer[offset]
+                sync1 = buffer[offset + 1]
+                in_sync = sync0 == MessageHeader.SYNC0 and sync1 == MessageHeader.SYNC1
+
+                if not in_sync:
+                    sync_offset = buffer.find(MessageHeader.SYNC, offset + 1)
+
+                    # Nothing found. Everything but the last byte can be dropped, since only that byte can be the
+                    # start of a sequence split across two calls.
+                    if sync_offset < 0:
+                        sync_offset = buffer_len - 1
+
+                    self._bytes_processed += sync_offset - offset
+                    offset = sync_offset
                     continue
 
                 # Possible header found. Decode it and wait for the payload.
                 self._header = MessageHeader()
-                self._header.unpack(self._buffer, warn_on_unrecognized=False)
+                self._header.unpack(buffer, offset=offset, warn_on_unrecognized=False)
 
-                self._msg_len = self._header.payload_size_bytes + MessageHeader.calcsize()
+                self._msg_len = self._header.payload_size_bytes + header_size
 
                 if trace_enabled:
                     _logger.trace('Found candidate header. [type=%s, sequence=%d, payload_size=%d B '
@@ -179,7 +193,7 @@ class FusionEngineDecoder:
                                   (self._header.get_type_string(), self._header.sequence_number,
                                    self._header.payload_size_bytes, self._msg_len,
                                    self._bytes_processed, self._bytes_processed))
-                    self._trace_buffer(self._buffer[:MessageHeader.calcsize()])
+                    self._trace_buffer(buffer[offset:offset + header_size])
 
                 # The reserved bytes in the header are currently always set to 0. If the incoming bytes are not zero,
                 # assume this an invalid sync.
@@ -209,23 +223,22 @@ class FusionEngineDecoder:
 
                 if drop_candidate:
                     self._header = None
-                    self._buffer.pop(0)
+                    offset += 1
                     self._bytes_processed += 1
                     continue
 
             # If there's not enough data to complete the message, we're done looping.
-            if len(self._buffer) < self._msg_len:
+            if buffer_len - offset < self._msg_len:
                 break
 
             # Message complete.
             if trace_enabled:
                 _logger.trace('Collected complete message. [message_size=%d B, payload_size=%d B]' %
                               (self._header.get_message_size(), self._header.payload_size_bytes))
-                self._trace_buffer(self._buffer[:self._msg_len])
-
+                self._trace_buffer(buffer[offset:offset + self._msg_len])
             # Validate the CRC. This will raise an exception on CRC failure.
             try:
-                self._header.validate_crc(self._buffer)
+                self._header.validate_crc(buffer, offset=offset)
             # Invalid CRC detected.
             except Exception as e:
                 print_func = warn_or_debug
@@ -245,7 +258,7 @@ class FusionEngineDecoder:
                     print_func(e)
                 self._header = None
                 self._msg_len = 0
-                self._buffer.pop(0)
+                offset += 1
                 self._bytes_processed += 1
                 continue
 
@@ -274,7 +287,7 @@ class FusionEngineDecoder:
             # Get the class for the received message type and deserialize the message payload. If cls is not None, it is
             # a child of @ref MessagePayload that maps to the received @ref MessageType.
             cls = message_type_to_class.get(self._header.message_type, None)
-            payload = bytes(self._buffer[MessageHeader.calcsize():self._msg_len])
+            payload = bytes(buffer[offset + header_size:offset + self._msg_len])
             contents = None
             if cls is not None:
                 contents = cls()
@@ -302,7 +315,7 @@ class FusionEngineDecoder:
             # Store the result.
             result = [self._header, contents]
             if self._return_bytes:
-                result.append(self._buffer[:self._msg_len])
+                result.append(buffer[offset:offset + self._msg_len])
             if self._return_offset:
                 result.append(self._bytes_processed)
 
@@ -324,9 +337,13 @@ class FusionEngineDecoder:
 
             # Move decoder past the current message.
             self._bytes_processed += self._msg_len
-            self._buffer = self._buffer[self._msg_len:]
+            offset += self._msg_len
             self._header = None
             self._msg_len = 0
+
+        # Discard everything consumed above, leaving any partial message for the next call.
+        if offset > 0:
+            del buffer[:offset]
 
         # Return the list of decoded messages.
         return decoded_messages
