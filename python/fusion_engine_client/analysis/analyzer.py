@@ -313,6 +313,7 @@ body > div { display: contents; }
         if self.output_dir is not None:
             if not os.path.exists(self.output_dir):
                 os.makedirs(self.output_dir)
+            self._remove_stale_plotly_js()
 
         # Determine if this is a long log. In practice, some plots can be extremely slow to generate for long logs
         # because of plotly limitations when handling a lot of traces (signal status, sky plot), or some may generate
@@ -3908,6 +3909,32 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
             fd.write(table_html)
 
         self.plots[name] = {'title': title, 'path': path}
+
+    def _remove_stale_plotly_js(self):
+        """!
+        @brief Delete the shared Plotly library from the output directory if it is not the installed version.
+
+        The figures reference one `plotly.min.js` written alongside them (see @ref _add_figure()), and Plotly only
+        writes that file when it is not already there. Without this, a directory written by an earlier run would go
+        on serving its original library no matter which version is installed now.
+        """
+        path = os.path.join(self.output_dir, 'plotly.min.js')
+        if not os.path.exists(path):
+            return
+
+        try:
+            with open(path, 'rt', encoding='utf-8') as f:
+                is_current = f.read() == plotly.offline.get_plotlyjs()
+        except OSError as e:
+            self.logger.warning('Unable to read "%s": %s', path, e)
+            return
+
+        if not is_current:
+            self.logger.info('Replacing Plotly library in "%s" with the installed version.', self.output_dir)
+            try:
+                os.remove(path)
+            except OSError as e:
+                self.logger.warning('Unable to remove "%s": %s', path, e)
 
     def _add_figure(self, name, figure=None, title=None, config=None, inject_js: str = None,
                     inject_head: str = None, time_axis_type: Optional[str] = None, custom_hover: bool = True):
