@@ -1623,7 +1623,7 @@ figure.on('plotly_unhover', function(data) {
 
         # Read the GNSS signal data.
         data = self._get_gnss_signals_data(source_id)
-        if len(data.messages) == 0:
+        if len(data.p1_time) == 0:
             self.logger.info(f'No GNSS signal data available for source ID {source_id}. Skipping sky plot.')
             return
         have_gnss_signals_message = not data.using_legacy_satellite_message
@@ -1847,7 +1847,7 @@ figure.on('plotly_unhover', function(data) {
 
         # Read the GNSS signal data.
         data = self._get_gnss_signals_data(source_id)
-        if len(data.messages) == 0:
+        if len(data.p1_time) == 0:
             self.logger.info(f'No GNSS signal data available for source ID {source_id}. Skipping C/N0 plot.')
             return
         have_gnss_signals_message = not data.using_legacy_satellite_message
@@ -1923,7 +1923,7 @@ figure.on('plotly_unhover', function(data) {
 
         # Read the GNSS signal data.
         data = self._get_gnss_signals_data(source_id)
-        if len(data.messages) == 0:
+        if len(data.p1_time) == 0:
             self.logger.info(f'No GNSS signal data available for source ID {source_id}. Skipping azimuth/elevation '
                              'time series plot.')
             return
@@ -2017,7 +2017,7 @@ figure.on('plotly_unhover', function(data) {
 
         # Read the GNSS signal data.
         data = self._get_gnss_signals_data(source_id)
-        if len(data.messages) == 0:
+        if len(data.p1_time) == 0:
             self.logger.info(f'No GNSS signal data available for source ID {source_id}. Skipping signal status '
                              'plot.')
             return
@@ -2445,7 +2445,9 @@ figure.on('plotly_unhover', function(data) {{
                 self._gnss_signals_data[source_id] = data
                 data.using_legacy_satellite_message = True
 
-        self._gnss_signals_data[source_id].to_numpy()
+        # Release the decoded messages once they have been converted. A long log holds millions of per-signal
+        # objects here, and the plots below work entirely from the Numpy arrays.
+        self._gnss_signals_data[source_id].to_numpy(keep_messages=False)
 
         return self._gnss_signals_data[source_id]
 
