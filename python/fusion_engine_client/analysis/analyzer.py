@@ -3959,7 +3959,9 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
             os.makedirs(os.path.dirname(path), exist_ok=True)
 
             if inject_js is not None:
-                plotly.io.write_html = functools.partial(self.__write_html_and_inject_js, inject_js, time_axis_type)
+                shared_customdata_js = self.__hoist_shared_customdata(figure)
+                plotly.io.write_html = functools.partial(self.__write_html_and_inject_js, inject_js, time_axis_type,
+                                                         shared_customdata_js)
 
             plotly.offline.plot(
                 figure,
@@ -3980,8 +3982,55 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
 
         self.plots[name] = {'title': title, 'path': path if figure is not None else None}
 
+    @classmethod
+    def __hoist_shared_customdata(cls, figure) -> str:
+        """!
+        @brief Move customdata shared by multiple traces out of the traces, to be emitted once for the figure.
+
+        Time series plots typically attach the same time customdata to every trace in the figure (see @ref
+        _time_hover_customdata()), which Plotly serializes separately for each one. On a long log, those duplicate
+        copies can account for most of the generated HTML file.
+
+        The arrays are reattached to their traces by the returned Javascript once the plot is created, so the hover
+        code sees `customdata` exactly as it would have been without this.
+
+        @param figure The figure to hoist customdata out of. Traces sharing an array are modified in place.
+
+        @return Javascript that reattaches the hoisted arrays, to be injected after `figure` is defined.
+        """
+        # Group the traces by the contents of their customdata. Traces using Plotly's own `hovertemplate` are left
+        # alone, since Plotly resolves those itself while the plot is being created.
+        traces_by_data = defaultdict(list)
+        for i, trace in enumerate(figure.data):
+            customdata = getattr(trace, 'customdata', None)
+            if customdata is None or getattr(trace, 'hovertemplate', None) is not None:
+                continue
+            array = np.asarray(customdata)
+            traces_by_data[(array.shape, array.dtype.str, array.tobytes())].append(i)
+
+        shared_arrays = []
+        trace_to_array = {}
+        for trace_indices in traces_by_data.values():
+            if len(trace_indices) < 2:
+                continue
+            shared_arrays.append(np.asarray(figure.data[trace_indices[0]].customdata))
+            for i in trace_indices:
+                trace_to_array[i] = len(shared_arrays) - 1
+                figure.data[i].customdata = None
+
+        if len(shared_arrays) == 0:
+            return ''
+
+        return """\
+var shared_customdata = %s;
+var shared_customdata_by_trace = %s;
+for (const [trace_index, array_index] of Object.entries(shared_customdata_by_trace)) {
+  figure.data[trace_index].customdata = shared_customdata[array_index];
+}
+""" % (json.dumps([a.tolist() for a in shared_arrays]), json.dumps(trace_to_array))
+
     # Support for injecting custom javascript into the generated plotly HTML file.
-    def __write_html_and_inject_js(self, inject_js, time_axis_type, *args, **kwargs):
+    def __write_html_and_inject_js(self, inject_js, time_axis_type, shared_customdata_js, *args, **kwargs):
         post_script = kwargs.get("post_script", None)
         if post_script is None:
             post_script = ""
@@ -4008,6 +4057,10 @@ var time_axis_type = '{time_axis_type}';
         script_dir = os.path.join(os.path.dirname(__file__))
         with open(os.path.join(script_dir, 'plotly_data_support.js'), 'rt') as f:
             post_script += f.read()
+
+        # Reattach any customdata that was hoisted out of the traces. This must come after the file above, which
+        # defines `figure`.
+        post_script += shared_customdata_js
 
         # Now inject the custom javascript.
         post_script += inject_js
