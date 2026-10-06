@@ -32,6 +32,7 @@ tools_requirements = set([
 
 display_requirements = set([
     'colorama>=0.4.4',
+    'orjson>=3.9.0',
     'palettable>=3.3.0',
     'plotly>=6.9.0',
     'pymap3d>=2.4.3',
