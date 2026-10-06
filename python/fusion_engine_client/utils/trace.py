@@ -180,7 +180,8 @@ def getTraceLevel(depth=1):
 
 
 if not hasattr(logging.Logger, 'trace'):
-    def _trace_member(self, msg, depth=1, *args, **kwargs):
+    # Note that `depth` is keyword-only so that it does not capture the first of the `%`-style arguments to `msg`.
+    def _trace_member(self, msg, *args, depth=1, **kwargs):
         # The stacklevel value (1) tells findCaller() to get the line number one function call up from log() in
         # logging/__init__.py. Since we have an function call (this one) in between log() and the caller, we need to
         # pop up the stack one extra call.
@@ -193,7 +194,7 @@ if not hasattr(logging.Logger, 'trace'):
     logging.Logger.trace = _trace_member
 
 
-def trace(msg, depth=1, *args, **kwargs):
+def trace(msg, *args, depth=1, **kwargs):
     """
     Log a message with severity 'TRACE' on the root logger. If the logger has
     no handlers, call basicConfig() to add a console handler with a pre-defined
@@ -201,4 +202,4 @@ def trace(msg, depth=1, *args, **kwargs):
     """
     if len(logging.root.handlers) == 0:
         logging.basicConfig()
-    logging.root.trace(msg, depth=depth, *args, **kwargs)
+    logging.root.trace(msg, *args, depth=depth, **kwargs)
