@@ -1293,6 +1293,25 @@ figure.on('plotly_unhover', function(data) {
                                 solution_type=solution_type, displacement_enu_m=displacement_enu_m,
                                 std_enu_m=std_enu_m)
 
+    @classmethod
+    def _warn_if_map_cannot_load(cls):
+        """!
+        @brief Warn if the installed Plotly cannot display a map opened as a local file.
+
+        Plotly 7 bundles a MapLibre build that runs its worker as an ES module. Chrome does not allow a module
+        worker on a `file://` page, so the map comes up blank when the generated HTML is opened directly, which is
+        how these plots are normally viewed. Nothing can be done about that from inside the page, so say so rather
+        than leaving an empty map to puzzle over.
+        """
+        try:
+            major_version = int(plotly.__version__.split('.')[0])
+        except (AttributeError, IndexError, ValueError):
+            return
+
+        if major_version >= 7:
+            _logger.warning('Plotly %s generates a map that will not load when opened as a local file. Install '
+                            'plotly<7, or serve the output directory over HTTP.', plotly.__version__)
+
     def plot_map(self, mapbox_token, reference: Optional[ReferenceData] = None):
         """!
         @brief Plot a map of the position data.
@@ -1302,6 +1321,8 @@ figure.on('plotly_unhover', function(data) {
         """
         if self.output_dir is None:
             return
+
+        self._warn_if_map_cannot_load()
 
         # Get the list of available pose sources to be plotted.
         pose_source_ids = self._get_pose_source_ids()

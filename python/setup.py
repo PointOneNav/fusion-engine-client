@@ -34,7 +34,10 @@ display_requirements = set([
     'colorama>=0.4.4',
     'orjson>=3.9.0',
     'palettable>=3.3.0',
-    'plotly>=6.9.0',
+    # Note: Plotly 7 bundles a MapLibre build whose web worker is an ES module, which Chrome refuses
+    # to start from a `file://` page. That breaks the generated map, which is normally opened as a
+    # local file.
+    'plotly>=6.9.0,<7',
     'pymap3d>=2.4.3',
 ]) | tools_requirements
 
