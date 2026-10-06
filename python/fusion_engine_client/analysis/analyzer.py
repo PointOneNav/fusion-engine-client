@@ -2220,7 +2220,7 @@ Black=Unused, Red=Used'''
             for cond in conditions:
                 idx = cond['cond'](status_flags, signal_has_corrections)
                 if np.any(idx):
-                    figure.add_trace(go.Scattergl(x=time[idx], y=[y_offset] * np.sum(idx),
+                    figure.add_trace(go.Scattergl(x=time[idx], y=np.full(np.sum(idx), y_offset),
                                                   customdata=np.vstack((other_time[idx],
                                                                         status_flags[idx],
                                                                         cn0_dbhz[idx],
