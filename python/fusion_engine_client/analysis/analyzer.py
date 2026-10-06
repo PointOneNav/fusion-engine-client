@@ -4185,8 +4185,11 @@ var time_axis_type = '{time_axis_type}';
         if self.time_type == 'gps':
             return gps_time, axis_layout
         else:
+            # Plotly writes each of these out as a literal date string, so emit only the resolution a browser can
+            # represent: Javascript's Date is accurate to the millisecond, and the extra digits of a
+            # `datetime64[ns]` array account for a third of the X axis data in the generated file.
             utc = self.time_provider.gps_sec_to_datetime64_array(gps_time)
-            return utc, axis_layout
+            return utc.astype('datetime64[ms]'), axis_layout
 
     def _time_hover_customdata(self, p1_time: np.ndarray, gps_time: Optional[np.ndarray] = None,
                                x_domain: Optional[str] = None) -> np.ndarray:
