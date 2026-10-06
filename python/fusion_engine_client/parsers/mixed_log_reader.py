@@ -216,6 +216,10 @@ class MixedLogReader(object):
         return self._read_next(require_p1_time=require_p1_time, require_system_time=require_system_time)
 
     def _read_next(self, require_p1_time=False, require_system_time=False, force_eof=False):
+        debug_enabled = self.logger.isEnabledFor(logging.DEBUG)
+        trace1_enabled = self.logger.isEnabledFor(logging.getTraceLevel(depth=1))
+        trace2_enabled = self.logger.isEnabledFor(logging.getTraceLevel(depth=2))
+
         if force_eof:
             if not self.reached_eof():
                 self.logger.debug('Forcibly seeking to EOF.')
@@ -248,11 +252,11 @@ class MixedLogReader(object):
             self._print_progress()
 
             if start_offset_bytes + MessageHeader.calcsize() > self.max_bytes:
-                self.logger.debug('Max read length exceeded (%d B).' % self.max_bytes)
+                self.logger.debug('Max read length exceeded (%d B).', self.max_bytes)
                 break
 
-            if self.logger.isEnabledFor(logging.getTraceLevel(depth=2)):
-                self.logger.trace('Reading candidate message @ %d (0x%x).' % (start_offset_bytes, start_offset_bytes),
+            if trace2_enabled:
+                self.logger.trace('Reading candidate message @ %d (0x%x).', start_offset_bytes, start_offset_bytes,
                                   depth=2)
 
             # Read the next message header.
@@ -266,7 +270,9 @@ class MixedLogReader(object):
 
             try:
                 header = MessageHeader()
-                header.unpack(data, warn_on_unrecognized=False)
+                _, sync = header.unpack(data, warn_on_unrecognized=False, return_sync_bytes=True)
+                message_length_bytes = MessageHeader.calcsize() + header.payload_size_bytes
+                payload_size_bytes = header.payload_size_bytes
 
                 # Check if the payload is too big. If so, we most likely found an invalid header -- message sync bytes
                 # occurring randomly in non-FusionEngine binary data in the file.
@@ -302,15 +308,15 @@ class MixedLogReader(object):
                     header.source_identifier not in self.requested_source_ids):
                     continue
 
-                message_length_bytes = MessageHeader.calcsize() + header.payload_size_bytes
-                if self.logger.isEnabledFor(logging.getTraceLevel(depth=1)):
-                    self.logger.trace('Read %s message @ %d (0x%x). [length=%d B, sequence=%d, # messages=%d]' %
-                                      (header.get_type_string(), start_offset_bytes, start_offset_bytes,
-                                       message_length_bytes, header.sequence_number, self.valid_count + 1),
+
+                if trace1_enabled:
+                    self.logger.trace('Read %s message @ %d (0x%x). [length=%d B, sequence=%d, # messages=%d]',
+                                      header.get_type_string(), start_offset_bytes, start_offset_bytes,
+                                      message_length_bytes, header.sequence_number, self.valid_count + 1,
                                       depth=1)
 
                 if start_offset_bytes + message_length_bytes > self.max_bytes:
-                    self.logger.debug('Max read length exceeded (%d B).' % self.max_bytes)
+                    self.logger.debug('Max read length exceeded (%d B).', self.max_bytes)
                     break
 
                 current_message_index = self.current_message_index
@@ -326,10 +332,11 @@ class MixedLogReader(object):
                    self.prev_sequence_number is not None and \
                    (header.sequence_number - self.prev_sequence_number) != 1 and \
                    not (header.sequence_number == 0 and self.prev_sequence_number == 0xFFFFFFFF):
-                    func = self.logger.warning if self.warn_on_gaps else self.logger.debug
-                    func('Data gap detected @ %d (0x%x). [sequence=%d, gap_size=%d, total_messages=%d]' %
-                         (start_offset_bytes, start_offset_bytes, header.sequence_number,
-                          header.sequence_number - self.prev_sequence_number, self.valid_count + 1))
+                    if self.warn_on_gaps or debug_enabled:
+                        func = self.logger.warning if self.warn_on_gaps else self.logger.debug
+                        func('Data gap detected @ %d (0x%x). [sequence=%d, gap_size=%d, total_messages=%d]',
+                             start_offset_bytes, start_offset_bytes, header.sequence_number,
+                             header.sequence_number - self.prev_sequence_number, self.valid_count + 1)
                 self.prev_sequence_number = header.sequence_number
 
                 # Deserialize the payload if we need it.
@@ -344,19 +351,22 @@ class MixedLogReader(object):
                             payload = cls()
                             payload.unpack(buffer=payload_bytes, offset=0, message_version=header.message_version)
                         except NotImplementedError as e:
-                            self.logger.debug("Error %s message: %s" % (header.get_type_string(), str(e)))
+                            if debug_enabled:
+                                self.logger.debug("Error %s message: %s", header.get_type_string(), str(e))
                             payload = None
                         except Exception as e:
-                            self.logger.error("Error parsing %s message: %s" % (header.get_type_string(), str(e)))
+                            self.logger.error("Error parsing %s message: %s", header.get_type_string(), str(e))
                             payload = None
                     else:
                         payload = None
 
                     if require_p1_time and (payload is None or payload.get_p1_time() is None):
-                        self.logger.trace("Skipping %s message. P1 time requested." % header.get_type_string())
+                        if trace1_enabled:
+                            self.logger.trace("Skipping %s message. P1 time requested.", header.get_type_string())
                         continue
                     elif require_system_time and (payload is None or payload.get_system_time_ns() is None):
-                        self.logger.trace("Skipping %s message. System time requested." % header.get_type_string())
+                        if trace1_enabled:
+                            self.logger.trace("Skipping %s message. System time requested.", header.get_type_string())
                         continue
 
                 # Extract P1 time if available.
@@ -400,16 +410,16 @@ class MixedLogReader(object):
                 return result
             except ValueError as e:
                 start_offset_bytes += 1
-                if self.logger.isEnabledFor(logging.getTraceLevel(depth=2)):
-                    self.logger.trace('%s Rewinding to offset %d (0x%x).' %
-                                      (str(e), start_offset_bytes, start_offset_bytes),
+                if trace2_enabled:
+                    self.logger.trace('%s Rewinding to offset %d (0x%x).',
+                                      str(e), start_offset_bytes, start_offset_bytes,
                                       depth=2)
                 self.input_file.seek(start_offset_bytes, os.SEEK_SET)
                 self.total_bytes_read = start_offset_bytes
 
         # Out of the loop - EOF reached.
         self._print_progress(self.total_bytes_read)
-        self.logger.debug("Read %d bytes total." % self.total_bytes_read)
+        self.logger.debug("Read %d bytes total.", self.total_bytes_read)
 
         # Finished iterating.
         if force_eof:
@@ -444,11 +454,14 @@ class MixedLogReader(object):
            self.total_bytes_read - self.last_print_bytes > 10e6 or \
            self.total_bytes_read == file_size:
             elapsed_sec = (datetime.now() - self.start_time).total_seconds()
-            self.logger.log(logging.INFO if show_progress else logging.DEBUG,
-                            'Processed %d/%d bytes (%.1f%%). [elapsed=%.1f sec, rate=%.1f MB/s]' %
-                            (self.total_bytes_read, file_size,
-                             100.0 if file_size == 0 else 100.0 * float(self.total_bytes_read) / file_size,
-                             elapsed_sec, (self.total_bytes_read / elapsed_sec / 1e6) if elapsed_sec > 0 else np.nan))
+
+            level = logging.INFO if show_progress else logging.DEBUG
+            if self.logger.isEnabledFor(level):
+                self.logger.log(level,
+                                'Processed %d/%d bytes (%.1f%%). [elapsed=%.1f sec, rate=%.1f MB/s]',
+                                self.total_bytes_read, file_size,
+                                100.0 if file_size == 0 else 100.0 * float(self.total_bytes_read) / file_size,
+                                elapsed_sec, (self.total_bytes_read / elapsed_sec / 1e6) if elapsed_sec > 0 else np.nan)
             self.last_print_bytes = self.total_bytes_read
 
     def parse_entry_at_index(self, index: file_index.FileIndexEntry):
@@ -547,14 +560,14 @@ class MixedLogReader(object):
                 unavailable_source_ids = list(source_ids.difference(self.available_source_ids))
                 if len(unavailable_source_ids) > 0:
                     self.logger.debug('Not all source IDs requested are available. Cannot extract the following '
-                                      'source IDs: {}'.format(unavailable_source_ids))
+                                      'source IDs: %s', unavailable_source_ids)
                 source_ids = list(source_ids.intersection(self.available_source_ids))
                 if len(source_ids) == 0:
                     self.logger.debug('Requested source IDs unavailable. Cannot extract data.')
                     self.filter_in_place(None, clear_existing='source_id')
 
                 if len(unavailable_source_ids) > 0:
-                    self.logger.info('Extracting the following available requested source IDs: {}'.format(source_ids))
+                    self.logger.info('Extracting the following available requested source IDs: %s', source_ids)
             self.requested_source_ids = source_ids
 
         # No key specified (convenience case).
