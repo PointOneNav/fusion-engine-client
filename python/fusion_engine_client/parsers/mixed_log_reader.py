@@ -13,6 +13,9 @@ from ..messages import MessageType, MessageHeader, MessagePayload, Timestamp, me
 from ..utils import trace as logging
 from ..utils.time_range import TimeRange
 
+# The amount of data that must be read between progress prints.
+_PROGRESS_INTERVAL_BYTES = 10e6
+
 
 class MixedLogReader(object):
     """!
@@ -249,7 +252,11 @@ class MixedLogReader(object):
                 break
 
             start_offset_bytes = self.total_bytes_read
-            self._print_progress()
+            # Only call into the progress print when enough data has been read for it to have anything to say. The
+            # call itself is cheap, but not relative to the rest of the loop when it runs once per message.
+            if (self.total_bytes_read - self.last_print_bytes > _PROGRESS_INTERVAL_BYTES or
+                    self.total_bytes_read < self.last_print_bytes):
+                self._print_progress()
 
             if start_offset_bytes + MessageHeader.calcsize() > self.max_bytes:
                 self.logger.debug('Max read length exceeded (%d B).', self.max_bytes)
@@ -451,7 +458,7 @@ class MixedLogReader(object):
             file_size = min(self.file_size_bytes, self.max_bytes)
 
         if self.total_bytes_read < self.last_print_bytes or \
-           self.total_bytes_read - self.last_print_bytes > 10e6 or \
+           self.total_bytes_read - self.last_print_bytes > _PROGRESS_INTERVAL_BYTES or \
            self.total_bytes_read == file_size:
             elapsed_sec = (datetime.now() - self.start_time).total_seconds()
 
