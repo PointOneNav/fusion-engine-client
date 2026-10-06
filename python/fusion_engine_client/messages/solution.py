@@ -441,7 +441,7 @@ class SatelliteInfo:
         self.cn0_dbhz = np.nan
 
     def get_satellite_id(self) -> SatelliteID:
-        return SatelliteID(system=self.system, prn=self.prn)
+        return SatelliteID.intern(self.system, self.prn)
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
@@ -730,7 +730,7 @@ class GNSSSatelliteInfo(_GNSSSatelliteInfo):
     _STRUCT = struct.Struct('<BBBxhH')
 
     def get_satellite_id(self) -> SatelliteID:
-        return SatelliteID(system=self.system, prn=self.prn)
+        return SatelliteID.intern(self.system, self.prn)
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
@@ -804,10 +804,10 @@ class GNSSSignalInfo(_GNSSSignalInfo):
     _STRUCT = struct.Struct('<HBBH2x')
 
     def get_signal_id(self) -> SignalID:
-        return SignalID(signal_type=self.signal_type, prn=self.prn)
+        return SignalID.intern(self.signal_type, self.prn)
 
     def get_satellite_id(self) -> SatelliteID:
-        return SatelliteID(system=self.signal_type.get_satellite_type(), prn=self.prn)
+        return SatelliteID.intern(self.signal_type.get_satellite_type(), self.prn)
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
