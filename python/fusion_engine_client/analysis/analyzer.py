@@ -1300,9 +1300,18 @@ figure.on('plotly_unhover', function(data) {
         @param reference If specified, also plot this reference/truth position, restricted to the time range
                covered by the pose data.
         """
-        pose_source_ids = self._get_pose_source_ids()
-        if self.output_dir is None or len(pose_source_ids) == 0:
+        if self.output_dir is None:
             return
+
+        # Get the list of available pose sources to be plotted.
+        pose_source_ids = self._get_pose_source_ids()
+        if len(pose_source_ids) == 0:
+            # If none are found in the designated pose source range, this may be an auxiliary sensor log (e.g., a log
+            # from the secondary antenna process on a dual-antenna system). Try whatever sources are available.
+            pose_source_ids = self.source_ids
+            if len(pose_source_ids) == 0:
+                self.logger.info('No usable data source IDs found. Skipping map.')
+                return
 
         mapbox_token = self.get_mapbox_token(mapbox_token)
         if mapbox_token is None or mapbox_token == "":
@@ -1484,6 +1493,7 @@ figure.on('plotly_unhover', function(data) {
                            hovertemplate=hovertemplate)
 
         if not have_pose_data:
+            self.logger.info('No pose data found for any of the available source IDs. Skipping map.')
             return
 
         # Add reference/truth data to the map, if available, restricted to the time range covered by the pose data.
