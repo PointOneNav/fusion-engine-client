@@ -3967,7 +3967,10 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
                 figure,
                 output_type='file',
                 filename=path,
-                include_plotlyjs=True,
+                # Write one copy of the Plotly library alongside the figures and reference it from each of them,
+                # rather than embedding several MB of Javascript in every file. The figures are generated as a set
+                # and linked together by `index.html`, so they are already meant to be kept together.
+                include_plotlyjs='directory',
                 auto_open=False,
                 config=config)
 
