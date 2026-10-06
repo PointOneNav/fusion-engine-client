@@ -1,6 +1,6 @@
 import math
 import struct
-from typing import Sequence
+from typing import Dict, Sequence, Tuple
 
 from construct import Array, Struct, Padding, Float32l, Int16sl, Int32sl
 import numpy as np
@@ -1743,6 +1743,9 @@ class InputDataWrapperMessage(MessagePayload):
 
     _STRUCT = struct.Struct('<IB x H')
 
+    # The location of the data_type field within the message.
+    DATA_TYPE_OFFSET_BYTES = 6
+
     def __init__(self):
         self.system_time_ns = 0
         self.data_type = InputDataType.M_TYPE_UNKNOWN
@@ -1850,3 +1853,40 @@ class InputDataWrapperMessage(MessagePayload):
 Input Data Wrapper @ {system_time_to_str(self.system_time_ns)}
   Data type: {self.data_type.to_string(include_value=True)}
   Data: {len(self.data)} B payload{fe_content_str}"""
+
+    @classmethod
+    def count_wrapped_data(cls, input_path: str, message_offsets: Sequence[int]) \
+            -> Dict['InputDataType', Tuple[int, int]]:
+        """!
+        @brief Count the wrapped data packets of each type, without decoding the messages themselves.
+
+        A log may contain millions of @ref InputDataWrapperMessage%s, which is far too many to deserialize
+        individually just to total them up. This reads the handful of bytes needed for each message directly out of
+        the file instead.
+
+        @param input_path The path to the binary file containing the messages.
+        @param message_offsets The offset of each @ref InputDataWrapperMessage within the file (in bytes).
+
+        @return A `dict`, keyed by @ref InputDataType, containing the number of packets of that type and the total
+                size of their wrapped data (in bytes).
+        """
+        offsets = np.asarray(message_offsets, dtype=np.int64)
+        if len(offsets) == 0:
+            return {}
+
+        # Gather the message payload sizes and wrapped data types out of the file. Both fields are at a fixed offset
+        # within each message, so they can be sliced out of a memory map and reinterpreted in bulk.
+        raw = np.memmap(input_path, dtype=np.uint8, mode='r')
+        payload_size_offsets = offsets + MessageHeader.PAYLOAD_SIZE_OFFSET_BYTES
+        payload_size_bytes = raw[(payload_size_offsets[:, np.newaxis] + np.arange(4))].copy().view(np.uint32).ravel()
+        data_type_offsets = offsets + MessageHeader.calcsize() + cls.DATA_TYPE_OFFSET_BYTES
+        data_type_ints = raw[(data_type_offsets[:, np.newaxis] + np.arange(2))].copy().view(np.uint16).ravel()
+
+        # Total up the data sizes by type. The payload holds the wrapper's own fields followed by the wrapped data.
+        data_size_bytes = payload_size_bytes.astype(np.int64) - cls._STRUCT.size
+        result = {}
+        for data_type_int in np.unique(data_type_ints):
+            idx = data_type_ints == data_type_int
+            data_type = InputDataType(int(data_type_int), raise_on_unrecognized=False)
+            result[data_type] = (int(np.sum(idx)), int(np.sum(data_size_bytes[idx])))
+        return result

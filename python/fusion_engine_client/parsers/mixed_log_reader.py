@@ -129,8 +129,8 @@ class MixedLogReader(object):
         else:
             self.input_file = open(input_file, 'rb')
 
-        input_path = self.input_file.name
-        self.file_size_bytes = os.stat(input_path).st_size
+        self.input_path = self.input_file.name
+        self.file_size_bytes = os.stat(self.input_path).st_size
 
         if max_bytes is None:
             self.max_bytes = sys.maxsize
@@ -138,7 +138,7 @@ class MixedLogReader(object):
             self.max_bytes = max_bytes
 
         # Open the companion index file if one exists, otherwise index the file.
-        self._original_index = fast_indexer.fast_generate_index(input_path, force_reindex=ignore_index,
+        self._original_index = fast_indexer.fast_generate_index(self.input_path, force_reindex=ignore_index,
                                                                 save_index=save_index, max_bytes=max_bytes,
                                                                 num_threads=num_threads)
         self.next_index_elem = 0
