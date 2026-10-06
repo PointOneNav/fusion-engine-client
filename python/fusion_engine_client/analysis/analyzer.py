@@ -29,7 +29,7 @@ from ..messages.timestamp import SECONDS_PER_WEEK
 from .attitude import get_enu_rotation_matrix
 from .data_loader import DataLoader, MessageData, TimeRange
 from .reference import ReferenceData, _OWN_LOG_STATISTICS
-from ..parsers.file_index import HostTimeIndexMap
+from ..parsers.file_index import FileIndexEntry, HostTimeIndexMap
 from ..utils import trace as logging
 from ..utils.argument_parser import ArgumentParser, ExtendedBooleanAction, TriStateBooleanAction, CSVAction
 from ..utils.log import define_cli_arguments as define_log_search_arguments, locate_log
@@ -3612,28 +3612,36 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
         self._add_page(name='event_log', html_body=body_html, title="Event Log")
 
     def extract_times_before_reset(self):
-        # Iterate backwards over indices to extract resets and the P1 times before them.
-        curr_reset_time = None
-        get_time_before_reset = False
+        # Locate the event notifications up front rather than walking the whole index. A long log can contain
+        # millions of entries, almost none of which are event notifications.
+        file_index = self.reader.get_index()
+        offsets = file_index.offset
+        types = file_index.type
+        event_indices = np.where(types == MessageType.EVENT_NOTIFICATION)[0]
+
+        # For each reset, search backwards for the P1 time of the message preceding it.
+        def _parse(i):
+            entry = FileIndexEntry(time=None, type=types[i], offset=offsets[i], message_index=i)
+            return self.reader.reader.parse_entry_at_index(entry)[1]
 
         times_before_resets = {}
-        file_index = self.reader.get_index()
-        for entry in file_index[::-1]:
-            if entry.type == MessageType.EVENT_NOTIFICATION or get_time_before_reset:
-                # Parse entry at index for payload.
-                header, payload = self.reader.reader.parse_entry_at_index(entry)
-                # If entry at index is of a class that isn't recognized, then skip it.
-                try:
-                    if get_time_before_reset and payload.get_p1_time() is not None:
-                        times_before_resets[curr_reset_time] = float(payload.get_p1_time())
-                        get_time_before_reset = False
-
-                    # Check if event is a reset.
-                    if entry.type == MessageType.EVENT_NOTIFICATION and payload.event_type == EventType.RESET:
-                        curr_reset_time = payload.get_system_time_ns()
-                        get_time_before_reset = True
-                except Exception as e:
+        for event_idx in event_indices[::-1]:
+            try:
+                payload = _parse(event_idx)
+                if payload.event_type != EventType.RESET:
                     continue
+                reset_time = payload.get_system_time_ns()
+            except Exception:
+                continue
+
+            for i in range(event_idx - 1, -1, -1):
+                try:
+                    p1_time = _parse(i).get_p1_time()
+                except Exception:
+                    continue
+                if p1_time is not None:
+                    times_before_resets[reset_time] = float(p1_time)
+                    break
 
         return times_before_resets
 
