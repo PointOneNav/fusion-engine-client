@@ -277,9 +277,8 @@ class MixedLogReader(object):
 
             try:
                 header = MessageHeader()
-                _, sync = header.unpack(data, warn_on_unrecognized=False, return_sync_bytes=True)
+                header.unpack(data, warn_on_unrecognized=False, return_sync_bytes=True)
                 message_length_bytes = MessageHeader.calcsize() + header.payload_size_bytes
-                payload_size_bytes = header.payload_size_bytes
 
                 # Check if the payload is too big. If so, we most likely found an invalid header -- message sync bytes
                 # occurring randomly in non-FusionEngine binary data in the file.
