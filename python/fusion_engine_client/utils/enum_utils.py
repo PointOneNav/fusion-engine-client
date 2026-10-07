@@ -13,12 +13,34 @@ class DynamicEnumMeta(EnumMeta):
     def __new__(cls, name, bases, dict):
         # Add is_recognized() to the definition for the class using this metaclass.
         def is_unrecognized(self):
-            return self.name.startswith(cls.UNRECOGNIZED_PREFIX)
+            # Read through _name_ rather than name, which is a descriptor and costs several times as much to
+            # evaluate. This runs for every value printed.
+            return self._name_.startswith(cls.UNRECOGNIZED_PREFIX)
         dict['is_unrecognized'] = is_unrecognized
         enum_class = super().__new__(cls, name, bases, dict)
+
+        # Values already resolved once by __call__(), split by whether the enum defines them so that the common case
+        # of a known value is a single lookup with nothing left to check.
+        enum_class._recognized_value_map_ = {}
+        enum_class._unrecognized_value_map_ = {}
         return enum_class
 
     def __call__(cls, value, *args, **kwargs):
+        # Return a value resolved on an earlier call straight from its lookup table. The work below is only needed for
+        # names and for values the enum has not been asked for before, so skipping it for a repeat lookup matters when
+        # decoding a stream of messages.
+        if type(value) is int:
+            result = cls._recognized_value_map_.get(value)
+            if result is not None:
+                return result
+
+            result = cls._unrecognized_value_map_.get(value)
+            if result is not None:
+                if kwargs.get('raise_on_unrecognized', True):
+                    raise ValueError("Unrecognized enum value %d." % value)
+                else:
+                    return result
+
         raise_on_unrecognized = kwargs.pop('raise_on_unrecognized', True)
 
         # If the user passed in a string, redirect the request: (Foo('bar') -> Foo.BAR). Normally, enums use [] for
@@ -42,10 +64,13 @@ class DynamicEnumMeta(EnumMeta):
         else:
             try:
                 result = super().__call__(value, *args, **kwargs)
-                if raise_on_unrecognized and result.name.startswith(cls.UNRECOGNIZED_PREFIX):
-                    raise ValueError("Unrecognized enum value %d." % int(result))
+                if result.is_unrecognized():
+                    cls._unrecognized_value_map_[int(result)] = result
+                    if raise_on_unrecognized:
+                        raise ValueError("Unrecognized enum value %d." % int(result))
                 else:
-                    return result
+                    cls._recognized_value_map_[int(result)] = result
+                return result
             except ValueError as e:
                 # If the user specified an integer value that is not recognized, add a new hidden enum value:
                 #   6 --> MyEnum._UNRECOGNIZED_6 = 6

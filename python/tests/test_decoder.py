@@ -120,3 +120,34 @@ def test_seq_skip_warning(caplog):
     decoder = FusionEngineDecoder(warn_on_gap=True)
     decoder.on_data(test_bytes)
     assert "Gap detected in FusionEngine message sequence numbers. [expected=1, received=2]." in caplog.text
+
+
+# The offset reported for each message is its position in the stream, counting bytes skipped to resynchronize.
+def test_resync_offsets():
+    garbage = b'not a fusion engine message'
+    test_bytes = garbage + P1_POSE_MESSAGE1 + garbage + P1_POSE_MESSAGE2
+    decoder = FusionEngineDecoder(return_offset=True)
+    ret = decoder.on_data(test_bytes)
+    assert len(ret) == 2
+    assert ret[0][2] == len(garbage)
+    assert ret[1][2] == len(garbage) + len(P1_POSE_MESSAGE1) + len(garbage)
+
+
+# A sync sequence split across two calls is still found.
+def test_resync_sync_split_across_calls():
+    garbage = b'no sync sequence here'
+    decoder = FusionEngineDecoder(return_offset=True)
+    assert len(decoder.on_data(garbage + P1_POSE_MESSAGE1[:1])) == 0
+    ret = decoder.on_data(P1_POSE_MESSAGE1[1:])
+    assert len(ret) == 1
+    assert ret[0][2] == len(garbage)
+
+
+# Data with no sync sequence at all is not retained between calls.
+def test_resync_discards_garbage():
+    decoder = FusionEngineDecoder()
+    for _ in range(10):
+        assert len(decoder.on_data(b'\x00' * 1024)) == 0
+        assert len(decoder._buffer) <= 1
+    ret = decoder.on_data(P1_POSE_MESSAGE1)
+    assert len(ret) == 1
