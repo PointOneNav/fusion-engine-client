@@ -4048,18 +4048,19 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
     @classmethod
     def __hoist_shared_customdata(cls, figure) -> str:
         """!
-        @brief Move customdata shared by multiple traces out of the traces, to be emitted once for the figure.
+        @brief Remove duplicate copies of customdata shared by multiple traces, so it is emitted once for the figure.
 
         Time series plots typically attach the same time customdata to every trace in the figure (see @ref
         _time_hover_customdata()), which Plotly serializes separately for each one. On a long log, those duplicate
         copies can account for most of the generated HTML file.
 
-        The arrays are reattached to their traces by the returned Javascript once the plot is created, so the hover
-        code sees `customdata` exactly as it would have been without this.
+        The first trace using each array keeps it, so Plotly still serializes it in its own compact format. The
+        returned Javascript points the other traces at that trace's array once the plot is created, so the hover code
+        sees the same `customdata` it would have without this.
 
-        @param figure The figure to hoist customdata out of. Traces sharing an array are modified in place.
+        @param figure The figure to remove duplicate customdata from. Traces sharing an array are modified in place.
 
-        @return Javascript that reattaches the hoisted arrays, to be injected after `figure` is defined.
+        @return Javascript that reattaches the shared arrays, to be injected after `figure` is defined.
         """
         # Group the traces by the contents of their customdata. Traces using Plotly's own `hovertemplate` are left
         # alone, since Plotly resolves those itself while the plot is being created.
@@ -4071,26 +4072,22 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
             array = np.asarray(customdata)
             traces_by_data[(array.shape, array.dtype.str, array.tobytes())].append(i)
 
-        shared_arrays = []
-        trace_to_array = {}
+        # Keep the array on the first trace in each group and remove it from the rest.
+        source_by_trace = {}
         for trace_indices in traces_by_data.values():
-            if len(trace_indices) < 2:
-                continue
-            shared_arrays.append(np.asarray(figure.data[trace_indices[0]].customdata))
-            for i in trace_indices:
-                trace_to_array[i] = len(shared_arrays) - 1
+            for i in trace_indices[1:]:
+                source_by_trace[i] = trace_indices[0]
                 figure.data[i].customdata = None
 
-        if len(shared_arrays) == 0:
+        if len(source_by_trace) == 0:
             return ''
 
         return """\
-var shared_customdata = %s;
-var shared_customdata_by_trace = %s;
-for (const [trace_index, array_index] of Object.entries(shared_customdata_by_trace)) {
-  figure.data[trace_index].customdata = shared_customdata[array_index];
+var shared_customdata_source_by_trace = %s;
+for (const [trace_index, source_index] of Object.entries(shared_customdata_source_by_trace)) {
+  figure.data[trace_index].customdata = figure.data[source_index].customdata;
 }
-""" % (json.dumps([a.tolist() for a in shared_arrays]), json.dumps(trace_to_array))
+""" % json.dumps(source_by_trace)
 
     # Support for injecting custom javascript into the generated plotly HTML file.
     def __write_html_and_inject_js(self, inject_js, time_axis_type, shared_customdata_js, *args, **kwargs):
