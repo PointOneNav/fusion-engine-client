@@ -4018,6 +4018,8 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
 
             os.makedirs(os.path.dirname(path), exist_ok=True)
 
+            date_x_js = self.__encode_date_x(figure)
+
             if inject_js is not None:
                 shared_customdata_js = self.__hoist_shared_customdata(figure)
                 plotly.io.write_html = functools.partial(self.__write_html_and_inject_js, inject_js, time_axis_type,
@@ -4037,11 +4039,25 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
             if inject_js is not None:
                 plotly.io.write_html = Analyzer.__original_write_html
 
-            if inject_head is not None:
-                with open(path, 'rt') as f:
+            if inject_head is not None or date_x_js != '':
+                with open(path, 'rt', encoding='utf-8') as f:
                     html = f.read()
-                with open(path, 'wt') as f:
-                    f.write(html.replace('<head>', '<head>' + inject_head, 1))
+
+                if inject_head is not None:
+                    html = html.replace('<head>', '<head>' + inject_head, 1)
+
+                # The X axis conversion must run before Plotly.newPlot(), so insert it at the start of the script that
+                # creates the plot.
+                if date_x_js != '':
+                    # The first statement of the script Plotly writes to create the plot, which runs once Plotly itself
+                    # is loaded.
+                    PLOT_SCRIPT_START = 'window.PLOTLYENV=window.PLOTLYENV || {};'
+                    if PLOT_SCRIPT_START not in html:
+                        raise RuntimeError('Unable to locate the plot creation script in "%s".' % path)
+                    html = html.replace(PLOT_SCRIPT_START, PLOT_SCRIPT_START + date_x_js, 1)
+
+                with open(path, 'wt', encoding='utf-8') as f:
+                    f.write(html)
 
         self.plots[name] = {'title': title, 'path': path if figure is not None else None}
 
@@ -4088,6 +4104,110 @@ for (const [trace_index, source_index] of Object.entries(shared_customdata_sourc
   figure.data[trace_index].customdata = figure.data[source_index].customdata;
 }
 """ % json.dumps(source_by_trace)
+
+    @classmethod
+    def __encode_date_x(cls, figure) -> str:
+        """!
+        @brief Replace date X values with millisecond offsets, which Plotly can write in its compact binary format.
+
+        Plotly writes each date in a trace as a separate string (e.g., "2026-09-29T15:59:42.100"), which can account
+        for half of the generated HTML on a long log. Instead, this function writes dates as millisecond offsets, which
+        Plotly can encode much more efficiently in its binary format.
+
+        Many traces in a figure also typically share the same X values, which Plotly would otherwise write separately
+        for each one. This function writes those values to disk just once.
+
+        The returned Javascript restores the X values for every trace before the plot is created, so the figure
+        displays exactly as it would have without this. Common X arrays are shared in memory, rather than replicated, so
+        the loaded page uses less RAM. Converting the dates back adds a little time when the browser loads the figure,
+        but can reduce the size of the HTML file by hundreds of MB on a long log.
+
+        @param figure The figure to encode. Traces with date X values are modified in place.
+
+        @return Javascript to run before `Plotly.newPlot()`, or an empty string if no trace was modified.
+        """
+        # Group the traces by the contents of their X values. Dates are compared at the millisecond resolution used
+        # in the browser.
+        traces_by_data = defaultdict(list)
+        for i, trace in enumerate(figure.data):
+            x = getattr(trace, 'x', None)
+            if not isinstance(x, np.ndarray) or x.dtype.kind != 'M' or np.all(np.isnat(x)):
+                continue
+            x = x.astype('datetime64[ms]')
+            traces_by_data[x.tobytes()].append((i, x))
+
+        # Encode the X values for the first trace in each group as offsets from its earliest time, and remove them from
+        # the rest. Plotly writes the offsets as 32-bit integers when they fit. Otherwise, or if any times are invalid,
+        # they are written as floating point values, with invalid times set to NaN.
+        base_ms_by_trace = {}
+        source_by_trace = {}
+        for traces in traces_by_data.values():
+            i, x = traces[0]
+            valid = ~np.isnat(x)
+            ms = x.astype(np.int64)
+            base_ms = int(np.min(ms[valid]))
+            offsets_ms = ms - base_ms
+            if not np.all(valid) or np.max(offsets_ms[valid]) > np.iinfo(np.int32).max:
+                offsets_ms = offsets_ms.astype(float)
+                offsets_ms[~valid] = np.nan
+            figure.data[i].x = offsets_ms
+            base_ms_by_trace[i] = base_ms
+
+            for j, _ in traces[1:]:
+                figure.data[j].x = None
+                source_by_trace[j] = i
+
+        if len(base_ms_by_trace) == 0:
+            return ''
+
+        return """
+(function() {
+  const base_ms_by_trace = %s;
+  const source_by_trace = %s;
+  const array_types = {i1: Int8Array, u1: Uint8Array, i2: Int16Array, u2: Uint16Array, i4: Int32Array,
+                       u4: Uint32Array, f4: Float32Array, f8: Float64Array};
+
+  function DecodeArray(value) {
+    if (Array.isArray(value)) {
+      return value;
+    }
+    const binary = atob(value.bdata);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; ++i) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return new array_types[value.dtype](bytes.buffer);
+  }
+
+  // Many traces share the same times, so format each one only once.
+  const date_strings = new Map();
+  function ToDateString(time_ms) {
+    let result = date_strings.get(time_ms);
+    if (result === undefined) {
+      result = new Date(time_ms).toISOString().slice(0, 23);
+      date_strings.set(time_ms, result);
+    }
+    return result;
+  }
+
+  const original_new_plot = Plotly.newPlot;
+  Plotly.newPlot = function(div, data, ...args) {
+    Plotly.newPlot = original_new_plot;
+    for (const [trace_index, base_ms] of Object.entries(base_ms_by_trace)) {
+      const offsets_ms = DecodeArray(data[trace_index].x);
+      const x = new Array(offsets_ms.length);
+      for (let i = 0; i < offsets_ms.length; ++i) {
+        x[i] = Number.isNaN(offsets_ms[i]) ? null : ToDateString(base_ms + offsets_ms[i]);
+      }
+      data[trace_index].x = x;
+    }
+    for (const [trace_index, source_index] of Object.entries(source_by_trace)) {
+      data[trace_index].x = data[source_index].x;
+    }
+    return original_new_plot.call(this, div, data, ...args);
+  };
+})();
+""" % (json.dumps(base_ms_by_trace), json.dumps(source_by_trace))
 
     # Support for injecting custom javascript into the generated plotly HTML file.
     def __write_html_and_inject_js(self, inject_js, time_axis_type, shared_customdata_js, *args, **kwargs):
