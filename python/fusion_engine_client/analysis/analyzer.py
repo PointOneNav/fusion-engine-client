@@ -4018,7 +4018,7 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
 
             os.makedirs(os.path.dirname(path), exist_ok=True)
 
-            date_x_js = self.__encode_date_x(figure)
+            compact_x_js = self.__compact_x(figure)
 
             if inject_js is not None:
                 shared_customdata_js = self.__hoist_shared_customdata(figure)
@@ -4039,22 +4039,22 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
             if inject_js is not None:
                 plotly.io.write_html = Analyzer.__original_write_html
 
-            if inject_head is not None or date_x_js != '':
+            if inject_head is not None or compact_x_js != '':
                 with open(path, 'rt', encoding='utf-8') as f:
                     html = f.read()
 
                 if inject_head is not None:
                     html = html.replace('<head>', '<head>' + inject_head, 1)
 
-                # The X axis conversion must run before Plotly.newPlot(), so insert it at the start of the script that
+                # The X value restoration must run before Plotly.newPlot(), so insert it at the start of the script that
                 # creates the plot.
-                if date_x_js != '':
+                if compact_x_js != '':
                     # The first statement of the script Plotly writes to create the plot, which runs once Plotly itself
                     # is loaded.
                     PLOT_SCRIPT_START = 'window.PLOTLYENV=window.PLOTLYENV || {};'
                     if PLOT_SCRIPT_START not in html:
                         raise RuntimeError('Unable to locate the plot creation script in "%s".' % path)
-                    html = html.replace(PLOT_SCRIPT_START, PLOT_SCRIPT_START + date_x_js, 1)
+                    html = html.replace(PLOT_SCRIPT_START, PLOT_SCRIPT_START + compact_x_js, 1)
 
                 with open(path, 'wt', encoding='utf-8') as f:
                     f.write(html)
@@ -4106,9 +4106,9 @@ for (const [trace_index, source_index] of Object.entries(shared_customdata_sourc
 """ % json.dumps(source_by_trace)
 
     @classmethod
-    def __encode_date_x(cls, figure) -> str:
+    def __compact_x(cls, figure) -> str:
         """!
-        @brief Replace date X values with millisecond offsets, which Plotly can write in its compact binary format.
+        @brief Write X values shared by multiple traces only once, and write date X values in a compact format.
 
         Plotly writes each date in a trace as a separate string (e.g., "2026-09-29T15:59:42.100"), which can account
         for half of the generated HTML on a long log. Instead, this function writes dates as millisecond offsets, which
@@ -4122,7 +4122,7 @@ for (const [trace_index, source_index] of Object.entries(shared_customdata_sourc
         the loaded page uses less RAM. Converting the dates back adds a little time when the browser loads the figure,
         but can reduce the size of the HTML file by hundreds of MB on a long log.
 
-        @param figure The figure to encode. Traces with date X values are modified in place.
+        @param figure The figure to compact. Traces with numeric or date X values are modified in place.
 
         @return Javascript to run before `Plotly.newPlot()`, or an empty string if no trace was modified.
         """
@@ -4131,33 +4131,37 @@ for (const [trace_index, source_index] of Object.entries(shared_customdata_sourc
         traces_by_data = defaultdict(list)
         for i, trace in enumerate(figure.data):
             x = getattr(trace, 'x', None)
-            if not isinstance(x, np.ndarray) or x.dtype.kind != 'M' or np.all(np.isnat(x)):
+            if not isinstance(x, np.ndarray) or x.dtype.kind not in 'Mfiub' or x.size == 0:
                 continue
-            x = x.astype('datetime64[ms]')
-            traces_by_data[x.tobytes()].append((i, x))
+            if x.dtype.kind == 'M':
+                if np.all(np.isnat(x)):
+                    continue
+                x = x.astype('datetime64[ms]')
+            traces_by_data[(x.dtype.str, x.tobytes())].append((i, x))
 
-        # Encode the X values for the first trace in each group as offsets from its earliest time, and remove them from
-        # the rest. Plotly writes the offsets as 32-bit integers when they fit. Otherwise, or if any times are invalid,
-        # they are written as floating point values, with invalid times set to NaN.
+        # Keep the X values on the first trace in each group and remove them from the rest. Dates are encoded as
+        # offsets from the earliest time. Plotly writes the offsets as 32-bit integers when they fit. Otherwise, or if
+        # any times are invalid, they are written as floating point values, with invalid times set to NaN.
         base_ms_by_trace = {}
         source_by_trace = {}
         for traces in traces_by_data.values():
             i, x = traces[0]
-            valid = ~np.isnat(x)
-            ms = x.astype(np.int64)
-            base_ms = int(np.min(ms[valid]))
-            offsets_ms = ms - base_ms
-            if not np.all(valid) or np.max(offsets_ms[valid]) > np.iinfo(np.int32).max:
-                offsets_ms = offsets_ms.astype(float)
-                offsets_ms[~valid] = np.nan
-            figure.data[i].x = offsets_ms
-            base_ms_by_trace[i] = base_ms
+            if x.dtype.kind == 'M':
+                valid = ~np.isnat(x)
+                ms = x.astype(np.int64)
+                base_ms = int(np.min(ms[valid]))
+                offsets_ms = ms - base_ms
+                if not np.all(valid) or np.max(offsets_ms[valid]) > np.iinfo(np.int32).max:
+                    offsets_ms = offsets_ms.astype(float)
+                    offsets_ms[~valid] = np.nan
+                figure.data[i].x = offsets_ms
+                base_ms_by_trace[i] = base_ms
 
             for j, _ in traces[1:]:
                 figure.data[j].x = None
                 source_by_trace[j] = i
 
-        if len(base_ms_by_trace) == 0:
+        if len(base_ms_by_trace) == 0 and len(source_by_trace) == 0:
             return ''
 
         return """
