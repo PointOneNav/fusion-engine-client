@@ -525,6 +525,7 @@ class DataLoader(object):
                       str(time_range)))
 
         message_count = 0
+        log_each_message = logger.isEnabledFor(logging.DEBUG)
         while True:
             try:
                 header, payload, message_bytes, message_index = \
@@ -533,17 +534,17 @@ class DataLoader(object):
             except StopIteration:
                 break
 
-            message_size_bytes = header.get_message_size()
-            message_offset_bytes = self.reader.get_bytes_read() - message_size_bytes
+            # Describe the message if per-message debug prints are enabled. Building these strings for every message
+            # in the log is expensive enough to dominate the read when they are not going to be printed.
+            if log_each_message:
+                message_size_bytes = header.get_message_size()
+                logger.debug('  %s %s message @ %d. [length=%d B]' %
+                             ('Skipping unsupported' if payload is None else 'Parsed', header.get_type_string(),
+                              self.reader.get_bytes_read() - message_size_bytes, message_size_bytes))
 
             # Unsupported/unrecognized message type.
             if payload is None:
-                logger.debug('  Skipping unsupported %s message @ %d. [length=%d B]' %
-                             (header.get_type_string(), message_offset_bytes, message_size_bytes))
                 continue
-
-            logger.debug('  Parsed %s message @ %d. [length=%d B]' %
-                         (header.get_type_string(), message_offset_bytes, message_size_bytes))
 
             # Extract P1 and system times from this message, if applicable.
             p1_time = payload.get_p1_time()

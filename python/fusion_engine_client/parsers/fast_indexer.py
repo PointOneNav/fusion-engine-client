@@ -38,13 +38,15 @@ def _search_blocks_for_fe(input_path: str, thread_idx: int, block_starts: List[i
 
     @return The raw index data corresponding to this thread's data blocks.
     """
+    # Resolved once here rather than inside the search below, where it would run for every message found.
+    trace3_enabled = _logger.isEnabledFor(logging.getTraceLevel(depth=3))
+
     if len(block_starts) == 0:
-        _logger.trace(f'Skipping search thread {thread_idx}. [num_blocks={len(block_starts)}]', depth=2)
+        _logger.trace('Skipping search thread %d. [num_blocks=0]', thread_idx, depth=2)
         return np.array([], dtype=_RAW_DTYPE_WITH_SIZE)
     else:
-        _logger.trace(f'Starting search thread {thread_idx}. '
-                      f'[num_blocks={len(block_starts)}, first={block_starts[0]} B, last={block_starts[-1]} B]',
-                      depth=2)
+        _logger.trace('Starting search thread %d. [num_blocks=%d, first=%d B, last=%d B]',
+                      thread_idx, len(block_starts), block_starts[0], block_starts[-1], depth=2)
     header = MessageHeader()
     message_end = 0
     num_syncs = 0
@@ -83,7 +85,7 @@ def _search_blocks_for_fe(input_path: str, thread_idx: int, block_starts: List[i
             # This is lot faster then doing this check in raw Python due to numpy optimizations.
             sync_matches = np.where(np_data == _PREAMBLE)[0]
 
-            _logger.trace(f'Thread {thread_idx}, block {i}: {len(sync_matches)} matches', depth=2)
+            _logger.trace('Thread %d, block %d: %d matches', thread_idx, i, len(sync_matches), depth=2)
             num_syncs += len(sync_matches)
 
             # To do the CRC check and find a p1_time the full message needs to be parsed. This
@@ -118,14 +120,14 @@ def _search_blocks_for_fe(input_path: str, thread_idx: int, block_starts: List[i
                     # Convert the Timestamp to an integer.
                     p1_time_raw = Timestamp._INVALID if math.isnan(p1_time.seconds) else int(p1_time.seconds)
                     message_end = absolute_offset + header.get_message_size()
-                    if _logger.isEnabledFor(logging.getTraceLevel(depth=3)):
-                        _logger.trace(f'Thread {thread_idx}, block {i}: message={header.message_type.to_string()}, '
-                                      f'file_offset={absolute_offset} B, p1_time={p1_time}',
+                    if trace3_enabled:
+                        _logger.trace('Thread %d, block %d: message=%s, file_offset=%d B, p1_time=%s',
+                                      thread_idx, i, header.message_type.to_string(), absolute_offset, p1_time,
                                       depth=3)
                     raw_list.append((p1_time_raw, int(header.message_type), absolute_offset, header.get_message_size()))
                 except Exception:
                     pass
-    _logger.trace(f'Thread {thread_idx}: {num_syncs} sync with {len(raw_list)} valid FE.')
+    _logger.trace('Thread %d: %d sync with %d valid FE.', thread_idx, num_syncs, len(raw_list))
     # Return the index data for this section of the file.
     return np.array(raw_list, dtype=_RAW_DTYPE_WITH_SIZE)
 

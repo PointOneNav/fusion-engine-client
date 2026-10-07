@@ -313,7 +313,9 @@ class EventNotificationMessage(MessagePayload):
         result = {
             'system_time': np.array([m.system_time_ns * 1e-9 for m in messages]),
             'event_type': np.array([int(m.event_type) for m in messages], dtype=int),
-            'event_flags': np.array([int(m.event_flags) for m in messages], dtype=np.uint64),
+            # unpack() reinterprets the flags of a LOG event as a signed severity, so mask back to the unsigned
+            # value carried on the wire to keep one representation across the whole column.
+            'event_flags': np.array([int(m.event_flags) & 0xFFFFFFFFFFFFFFFF for m in messages], dtype=np.uint64),
         }
         return result
 

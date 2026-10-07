@@ -1,6 +1,7 @@
 from typing import Optional, Union
 
 import re
+import warnings
 
 import numpy as np
 from pymap3d import ecef2geodetic, geodetic2ecef
@@ -285,7 +286,10 @@ class ReferenceData:
                                   else position_std_enu_m[:, 0])
         else:
             position_ecef_m = np.median(position_ecef_m, axis=1)
-            with np.errstate(invalid='ignore'):
+            # A component that is entirely NaN (e.g., roll when only estimating yaw and pitch) yields a NaN median.
+            # That's ok, but nanmedian() will still warn about it. Suppress the warning.
+            with warnings.catch_warnings():
+                warnings.filterwarnings('ignore', message='All-NaN slice encountered', category=RuntimeWarning)
                 velocity_enu_mps = (None if np.all(np.isnan(velocity_enu_mps))
                                     else np.nanmedian(velocity_enu_mps, axis=1))
                 ypr_deg = None if np.all(np.isnan(ypr_deg)) else np.nanmedian(ypr_deg, axis=1)

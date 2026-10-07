@@ -7,6 +7,25 @@ from typing import List, Set, Union
 from aenum import extend_enum
 
 
+def lookup_value(enum_class, value: int):
+    """!
+    @brief Resolve an integer to its enum member, without raising for an unrecognized value.
+
+    Returns the same result as `enum_class(value, raise_on_unrecognized=False)`, but skips the enum's call
+    machinery for a value it has resolved before. This saves CPU usage and time in cases where a value is decoded very
+    frequently.
+
+    @param enum_class The enum to resolve `value` against.
+    @param value The integer value to resolve.
+
+    @return The corresponding enum member.
+    """
+    result = enum_class._recognized_value_map_.get(value)
+    if result is None:
+        result = enum_class(value, raise_on_unrecognized=False)
+    return result
+
+
 class DynamicEnumMeta(EnumMeta):
     UNRECOGNIZED_PREFIX = '_U'
 

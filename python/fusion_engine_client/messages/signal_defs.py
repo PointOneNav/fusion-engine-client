@@ -800,6 +800,32 @@ class SatelliteID:
     def get_prn(self) -> int:
         return self.prn
 
+    # Instances returned by @ref intern(), keyed by (system, PRN).
+    _interned = {}
+
+    @classmethod
+    def intern(cls, system: SatelliteType, prn: int) -> 'SatelliteID':
+        """!
+        @brief Get a shared instance for a satellite, creating it if it has not been seen before.
+
+        A log repeats the same handful of satellites for many epochs, so reusing one instance per satellite avoids
+        constructing millions of identical objects while decoding.
+
+        @warning
+        The returned instance is shared with every other caller asking for the same satellite, and must not be
+        modified.
+
+        @param system The GNSS constellation to which the satellite belongs.
+        @param prn The satellite's PRN.
+
+        @return The shared @ref SatelliteID.
+        """
+        key = (system, prn)
+        result = cls._interned.get(key)
+        if result is None:
+            result = cls._interned[key] = cls(system=system, prn=prn)
+        return result
+
     def decode_hash(self, sv_hash: int):
         self.system, self.prn, _ = decode_signal_hash(sv_hash)
         self._hash = int(sv_hash)
@@ -917,7 +943,7 @@ class SignalID:
 
         @return The @ref SatelliteID for the satellite transmitting this signal.
         """
-        return SatelliteID(system=self.signal_type.get_satellite_type(), prn=self.prn)
+        return SatelliteID.intern(self.signal_type.get_satellite_type(), self.prn)
 
     def get_satellite_type(self) -> SatelliteType:
         return self.signal_type.get_satellite_type()
@@ -936,6 +962,32 @@ class SignalID:
 
     def get_prn(self) -> int:
         return self.prn
+
+    # Instances returned by @ref intern(), keyed by (signal type, PRN).
+    _interned = {}
+
+    @classmethod
+    def intern(cls, signal_type: GNSSSignalType, prn: int) -> 'SignalID':
+        """!
+        @brief Get a shared instance for a signal, creating it if it has not been seen before.
+
+        A log repeats the same handful of signals for many epochs, so reusing one instance per signal avoids
+        constructing millions of identical objects while decoding.
+
+        @warning
+        The returned instance is shared with every other caller asking for the same signal, and must not be
+        modified.
+
+        @param signal_type The type of the signal.
+        @param prn The signal's PRN.
+
+        @return The shared @ref SignalID.
+        """
+        key = (signal_type, prn)
+        result = cls._interned.get(key)
+        if result is None:
+            result = cls._interned[key] = cls(signal_type=signal_type, prn=prn)
+        return result
 
     def decode_hash(self, signal_hash: int):
         _, self.prn, self.signal_type = decode_signal_hash(signal_hash)

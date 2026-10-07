@@ -250,6 +250,9 @@ class MessageHeader:
     _FORMAT = '<BBHIBBHIII'
     _SIZE: int = struct.calcsize(_FORMAT)
 
+    # The offset of the payload_size_bytes field within the header.
+    PAYLOAD_SIZE_OFFSET_BYTES = 16
+
     _MAX_EXPECTED_SIZE_BYTES = (1 << 24)
 
     def __init__(self, message_type: MessageType = MessageType.INVALID):

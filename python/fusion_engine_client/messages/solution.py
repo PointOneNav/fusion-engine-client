@@ -6,7 +6,7 @@ from construct import (Struct, Float64l, Float32l, Int32ul, Int8ul, Padding, Arr
 import numpy as np
 
 from ..utils.construct_utils import AutoEnum, construct_message_to_string
-from ..utils.enum_utils import IntEnum
+from ..utils.enum_utils import IntEnum, lookup_value
 from .defs import *
 
 
@@ -441,7 +441,7 @@ class SatelliteInfo:
         self.cn0_dbhz = np.nan
 
     def get_satellite_id(self) -> SatelliteID:
-        return SatelliteID(system=self.system, prn=self.prn)
+        return SatelliteID.intern(self.system, self.prn)
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
@@ -730,7 +730,7 @@ class GNSSSatelliteInfo(_GNSSSatelliteInfo):
     _STRUCT = struct.Struct('<BBBxhH')
 
     def get_satellite_id(self) -> SatelliteID:
-        return SatelliteID(system=self.system, prn=self.prn)
+        return SatelliteID.intern(self.system, self.prn)
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
@@ -764,7 +764,7 @@ class GNSSSatelliteInfo(_GNSSSatelliteInfo):
             self._STRUCT.unpack_from(buffer=buffer, offset=offset)
         offset += self._STRUCT.size
 
-        self.system = SatelliteType(system, raise_on_unrecognized=False)
+        self.system = lookup_value(SatelliteType, system)
         self.elevation_deg = np.nan if elev_int == self._INVALID_ELEVATION else (elev_int * 0.01)
         self.azimuth_deg = np.nan if azim_int == self._INVALID_AZIMUTH else (azim_int * 0.01)
 
@@ -804,10 +804,10 @@ class GNSSSignalInfo(_GNSSSignalInfo):
     _STRUCT = struct.Struct('<HBBH2x')
 
     def get_signal_id(self) -> SignalID:
-        return SignalID(signal_type=self.signal_type, prn=self.prn)
+        return SignalID.intern(self.signal_type, self.prn)
 
     def get_satellite_id(self) -> SatelliteID:
-        return SatelliteID(system=self.signal_type.get_satellite_type(), prn=self.prn)
+        return SatelliteID.intern(self.signal_type.get_satellite_type(), self.prn)
 
     def pack(self, buffer: bytes = None, offset: int = 0, return_buffer: bool = True) -> (bytes, int):
         if buffer is None:
@@ -839,7 +839,7 @@ class GNSSSignalInfo(_GNSSSignalInfo):
             self._STRUCT.unpack_from(buffer=buffer, offset=offset)
         offset += self._STRUCT.size
 
-        self.signal_type = GNSSSignalType(signal_type, raise_on_unrecognized=False)
+        self.signal_type = lookup_value(GNSSSignalType, signal_type)
         self.cn0_dbhz = np.nan if cn0_int == self._INVALID_CN0 else cn0_int * 0.25
 
         return offset - initial_offset

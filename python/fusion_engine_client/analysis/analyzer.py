@@ -29,7 +29,7 @@ from ..messages.timestamp import SECONDS_PER_WEEK
 from .attitude import get_enu_rotation_matrix
 from .data_loader import DataLoader, MessageData, TimeRange
 from .reference import ReferenceData, _OWN_LOG_STATISTICS
-from ..parsers.file_index import HostTimeIndexMap
+from ..parsers.file_index import FileIndexEntry, HostTimeIndexMap
 from ..utils import trace as logging
 from ..utils.argument_parser import ArgumentParser, ExtendedBooleanAction, TriStateBooleanAction, CSVAction
 from ..utils.log import define_cli_arguments as define_log_search_arguments, locate_log
@@ -313,6 +313,7 @@ body > div { display: contents; }
         if self.output_dir is not None:
             if not os.path.exists(self.output_dir):
                 os.makedirs(self.output_dir)
+            self._remove_stale_plotly_js()
 
         # Determine if this is a long log. In practice, some plots can be extremely slow to generate for long logs
         # because of plotly limitations when handling a lot of traces (signal status, sky plot), or some may generate
@@ -1292,6 +1293,25 @@ figure.on('plotly_unhover', function(data) {
                                 solution_type=solution_type, displacement_enu_m=displacement_enu_m,
                                 std_enu_m=std_enu_m)
 
+    @classmethod
+    def _warn_if_map_cannot_load(cls):
+        """!
+        @brief Warn if the installed Plotly cannot display a map opened as a local file.
+
+        Plotly 7 bundles a MapLibre build that runs its worker as an ES module. Chrome does not allow a module
+        worker on a `file://` page, so the map comes up blank when the generated HTML is opened directly, which is
+        how these plots are normally viewed. Nothing can be done about that from inside the page, so say so rather
+        than leaving an empty map to puzzle over.
+        """
+        try:
+            major_version = int(plotly.__version__.split('.')[0])
+        except (AttributeError, IndexError, ValueError):
+            return
+
+        if major_version >= 7:
+            _logger.warning('Plotly %s generates a map that will not load when opened as a local file. Install '
+                            'plotly<7, or serve the output directory over HTTP.', plotly.__version__)
+
     def plot_map(self, mapbox_token, reference: Optional[ReferenceData] = None):
         """!
         @brief Plot a map of the position data.
@@ -1299,9 +1319,20 @@ figure.on('plotly_unhover', function(data) {
         @param reference If specified, also plot this reference/truth position, restricted to the time range
                covered by the pose data.
         """
-        pose_source_ids = self._get_pose_source_ids()
-        if self.output_dir is None or len(pose_source_ids) == 0:
+        if self.output_dir is None:
             return
+
+        self._warn_if_map_cannot_load()
+
+        # Get the list of available pose sources to be plotted.
+        pose_source_ids = self._get_pose_source_ids()
+        if len(pose_source_ids) == 0:
+            # If none are found in the designated pose source range, this may be an auxiliary sensor log (e.g., a log
+            # from the secondary antenna process on a dual-antenna system). Try whatever sources are available.
+            pose_source_ids = self.source_ids
+            if len(pose_source_ids) == 0:
+                self.logger.info('No usable data source IDs found. Skipping map.')
+                return
 
         mapbox_token = self.get_mapbox_token(mapbox_token)
         if mapbox_token is None or mapbox_token == "":
@@ -1483,6 +1514,7 @@ figure.on('plotly_unhover', function(data) {
                            hovertemplate=hovertemplate)
 
         if not have_pose_data:
+            self.logger.info('No pose data found for any of the available source IDs. Skipping map.')
             return
 
         # Add reference/truth data to the map, if available, restricted to the time range covered by the pose data.
@@ -1622,7 +1654,7 @@ figure.on('plotly_unhover', function(data) {
 
         # Read the GNSS signal data.
         data = self._get_gnss_signals_data(source_id)
-        if len(data.messages) == 0:
+        if len(data.p1_time) == 0:
             self.logger.info(f'No GNSS signal data available for source ID {source_id}. Skipping sky plot.')
             return
         have_gnss_signals_message = not data.using_legacy_satellite_message
@@ -1846,7 +1878,7 @@ figure.on('plotly_unhover', function(data) {
 
         # Read the GNSS signal data.
         data = self._get_gnss_signals_data(source_id)
-        if len(data.messages) == 0:
+        if len(data.p1_time) == 0:
             self.logger.info(f'No GNSS signal data available for source ID {source_id}. Skipping C/N0 plot.')
             return
         have_gnss_signals_message = not data.using_legacy_satellite_message
@@ -1922,7 +1954,7 @@ figure.on('plotly_unhover', function(data) {
 
         # Read the GNSS signal data.
         data = self._get_gnss_signals_data(source_id)
-        if len(data.messages) == 0:
+        if len(data.p1_time) == 0:
             self.logger.info(f'No GNSS signal data available for source ID {source_id}. Skipping azimuth/elevation '
                              'time series plot.')
             return
@@ -2016,7 +2048,7 @@ figure.on('plotly_unhover', function(data) {
 
         # Read the GNSS signal data.
         data = self._get_gnss_signals_data(source_id)
-        if len(data.messages) == 0:
+        if len(data.p1_time) == 0:
             self.logger.info(f'No GNSS signal data available for source ID {source_id}. Skipping signal status '
                              'plot.')
             return
@@ -2219,7 +2251,7 @@ Black=Unused, Red=Used'''
             for cond in conditions:
                 idx = cond['cond'](status_flags, signal_has_corrections)
                 if np.any(idx):
-                    figure.add_trace(go.Scattergl(x=time[idx], y=[y_offset] * np.sum(idx),
+                    figure.add_trace(go.Scattergl(x=time[idx], y=np.full(np.sum(idx), y_offset),
                                                   customdata=np.vstack((other_time[idx],
                                                                         status_flags[idx],
                                                                         cn0_dbhz[idx],
@@ -2444,7 +2476,9 @@ figure.on('plotly_unhover', function(data) {{
                 self._gnss_signals_data[source_id] = data
                 data.using_legacy_satellite_message = True
 
-        self._gnss_signals_data[source_id].to_numpy()
+        # Release the decoded messages once they have been converted. A long log holds millions of per-signal
+        # objects here, and the plots below work entirely from the Numpy arrays.
+        self._gnss_signals_data[source_id].to_numpy(keep_messages=False)
 
         return self._gnss_signals_data[source_id]
 
@@ -3612,28 +3646,36 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
         self._add_page(name='event_log', html_body=body_html, title="Event Log")
 
     def extract_times_before_reset(self):
-        # Iterate backwards over indices to extract resets and the P1 times before them.
-        curr_reset_time = None
-        get_time_before_reset = False
+        # Locate the event notifications up front rather than walking the whole index. A long log can contain
+        # millions of entries, almost none of which are event notifications.
+        file_index = self.reader.get_index()
+        offsets = file_index.offset
+        types = file_index.type
+        event_indices = np.where(types == MessageType.EVENT_NOTIFICATION)[0]
+
+        # For each reset, search backwards for the P1 time of the message preceding it.
+        def _parse(i):
+            entry = FileIndexEntry(time=None, type=types[i], offset=offsets[i], message_index=i)
+            return self.reader.reader.parse_entry_at_index(entry)[1]
 
         times_before_resets = {}
-        file_index = self.reader.get_index()
-        for entry in file_index[::-1]:
-            if entry.type == MessageType.EVENT_NOTIFICATION or get_time_before_reset:
-                # Parse entry at index for payload.
-                header, payload = self.reader.reader.parse_entry_at_index(entry)
-                # If entry at index is of a class that isn't recognized, then skip it.
-                try:
-                    if get_time_before_reset and payload.get_p1_time() is not None:
-                        times_before_resets[curr_reset_time] = float(payload.get_p1_time())
-                        get_time_before_reset = False
-
-                    # Check if event is a reset.
-                    if entry.type == MessageType.EVENT_NOTIFICATION and payload.event_type == EventType.RESET:
-                        curr_reset_time = payload.get_system_time_ns()
-                        get_time_before_reset = True
-                except Exception as e:
+        for event_idx in event_indices[::-1]:
+            try:
+                payload = _parse(event_idx)
+                if payload.event_type != EventType.RESET:
                     continue
+                reset_time = payload.get_system_time_ns()
+            except Exception:
+                continue
+
+            for i in range(event_idx - 1, -1, -1):
+                try:
+                    p1_time = _parse(i).get_p1_time()
+                except Exception:
+                    continue
+                if p1_time is not None:
+                    times_before_resets[reset_time] = float(p1_time)
+                    break
 
         return times_before_resets
 
@@ -3901,6 +3943,32 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
 
         self.plots[name] = {'title': title, 'path': path}
 
+    def _remove_stale_plotly_js(self):
+        """!
+        @brief Delete the shared Plotly library from the output directory if it is not the installed version.
+
+        The figures reference one `plotly.min.js` written alongside them (see @ref _add_figure()), and Plotly only
+        writes that file when it is not already there. Without this, a directory written by an earlier run would go
+        on serving its original library no matter which version is installed now.
+        """
+        path = os.path.join(self.output_dir, 'plotly.min.js')
+        if not os.path.exists(path):
+            return
+
+        try:
+            with open(path, 'rt', encoding='utf-8') as f:
+                is_current = f.read() == plotly.offline.get_plotlyjs()
+        except OSError as e:
+            self.logger.warning('Unable to read "%s": %s', path, e)
+            return
+
+        if not is_current:
+            self.logger.info('Replacing Plotly library in "%s" with the installed version.', self.output_dir)
+            try:
+                os.remove(path)
+            except OSError as e:
+                self.logger.warning('Unable to remove "%s": %s', path, e)
+
     def _add_figure(self, name, figure=None, title=None, config=None, inject_js: str = None,
                     inject_head: str = None, time_axis_type: Optional[str] = None, custom_hover: bool = True):
         """!
@@ -3950,30 +4018,203 @@ document.body.querySelector(".table").appendChild(filtered_table.getElement());
 
             os.makedirs(os.path.dirname(path), exist_ok=True)
 
+            compact_x_js = self.__compact_x(figure)
+
             if inject_js is not None:
-                plotly.io.write_html = functools.partial(self.__write_html_and_inject_js, inject_js, time_axis_type)
+                shared_customdata_js = self.__hoist_shared_customdata(figure)
+                plotly.io.write_html = functools.partial(self.__write_html_and_inject_js, inject_js, time_axis_type,
+                                                         shared_customdata_js)
 
             plotly.offline.plot(
                 figure,
                 output_type='file',
                 filename=path,
-                include_plotlyjs=True,
+                # Write one copy of the Plotly library alongside the figures and reference it from each of them,
+                # rather than embedding several MB of Javascript in every file. The figures are generated as a set
+                # and linked together by `index.html`, so they are already meant to be kept together.
+                include_plotlyjs='directory',
                 auto_open=False,
                 config=config)
 
             if inject_js is not None:
                 plotly.io.write_html = Analyzer.__original_write_html
 
-            if inject_head is not None:
-                with open(path, 'rt') as f:
+            if inject_head is not None or compact_x_js != '':
+                with open(path, 'rt', encoding='utf-8') as f:
                     html = f.read()
-                with open(path, 'wt') as f:
-                    f.write(html.replace('<head>', '<head>' + inject_head, 1))
+
+                if inject_head is not None:
+                    html = html.replace('<head>', '<head>' + inject_head, 1)
+
+                # The X value restoration must run before Plotly.newPlot(), so insert it at the start of the script that
+                # creates the plot.
+                if compact_x_js != '':
+                    # The first statement of the script Plotly writes to create the plot, which runs once Plotly itself
+                    # is loaded.
+                    PLOT_SCRIPT_START = 'window.PLOTLYENV=window.PLOTLYENV || {};'
+                    if PLOT_SCRIPT_START not in html:
+                        raise RuntimeError('Unable to locate the plot creation script in "%s".' % path)
+                    html = html.replace(PLOT_SCRIPT_START, PLOT_SCRIPT_START + compact_x_js, 1)
+
+                with open(path, 'wt', encoding='utf-8') as f:
+                    f.write(html)
 
         self.plots[name] = {'title': title, 'path': path if figure is not None else None}
 
+    @classmethod
+    def __hoist_shared_customdata(cls, figure) -> str:
+        """!
+        @brief Remove duplicate copies of customdata shared by multiple traces, so it is emitted once for the figure.
+
+        Time series plots typically attach the same time customdata to every trace in the figure (see @ref
+        _time_hover_customdata()), which Plotly serializes separately for each one. On a long log, those duplicate
+        copies can account for most of the generated HTML file.
+
+        The first trace using each array keeps it, so Plotly still serializes it in its own compact format. The
+        returned Javascript points the other traces at that trace's array once the plot is created, so the hover code
+        sees the same `customdata` it would have without this.
+
+        @param figure The figure to remove duplicate customdata from. Traces sharing an array are modified in place.
+
+        @return Javascript that reattaches the shared arrays, to be injected after `figure` is defined.
+        """
+        # Group the traces by the contents of their customdata. Traces using Plotly's own `hovertemplate` are left
+        # alone, since Plotly resolves those itself while the plot is being created.
+        traces_by_data = defaultdict(list)
+        for i, trace in enumerate(figure.data):
+            customdata = getattr(trace, 'customdata', None)
+            if customdata is None or getattr(trace, 'hovertemplate', None) is not None:
+                continue
+            array = np.asarray(customdata)
+            traces_by_data[(array.shape, array.dtype.str, array.tobytes())].append(i)
+
+        # Keep the array on the first trace in each group and remove it from the rest.
+        source_by_trace = {}
+        for trace_indices in traces_by_data.values():
+            for i in trace_indices[1:]:
+                source_by_trace[i] = trace_indices[0]
+                figure.data[i].customdata = None
+
+        if len(source_by_trace) == 0:
+            return ''
+
+        return """\
+var shared_customdata_source_by_trace = %s;
+for (const [trace_index, source_index] of Object.entries(shared_customdata_source_by_trace)) {
+  figure.data[trace_index].customdata = figure.data[source_index].customdata;
+}
+""" % json.dumps(source_by_trace)
+
+    @classmethod
+    def __compact_x(cls, figure) -> str:
+        """!
+        @brief Write X values shared by multiple traces only once, and write date X values in a compact format.
+
+        Plotly writes each date in a trace as a separate string (e.g., "2026-09-29T15:59:42.100"), which can account
+        for half of the generated HTML on a long log. Instead, this function writes dates as millisecond offsets, which
+        Plotly can encode much more efficiently in its binary format.
+
+        Many traces in a figure also typically share the same X values, which Plotly would otherwise write separately
+        for each one. This function writes those values to disk just once.
+
+        The returned Javascript restores the X values for every trace before the plot is created, so the figure
+        displays exactly as it would have without this. Common X arrays are shared in memory, rather than replicated, so
+        the loaded page uses less RAM. Converting the dates back adds a little time when the browser loads the figure,
+        but can reduce the size of the HTML file by hundreds of MB on a long log.
+
+        @param figure The figure to compact. Traces with numeric or date X values are modified in place.
+
+        @return Javascript to run before `Plotly.newPlot()`, or an empty string if no trace was modified.
+        """
+        # Group the traces by the contents of their X values. Dates are compared at the millisecond resolution used
+        # in the browser.
+        traces_by_data = defaultdict(list)
+        for i, trace in enumerate(figure.data):
+            x = getattr(trace, 'x', None)
+            if not isinstance(x, np.ndarray) or x.dtype.kind not in 'Mfiub' or x.size == 0:
+                continue
+            if x.dtype.kind == 'M':
+                if np.all(np.isnat(x)):
+                    continue
+                x = x.astype('datetime64[ms]')
+            traces_by_data[(x.dtype.str, x.tobytes())].append((i, x))
+
+        # Keep the X values on the first trace in each group and remove them from the rest. Dates are encoded as
+        # offsets from the earliest time. Plotly writes the offsets as 32-bit integers when they fit. Otherwise, or if
+        # any times are invalid, they are written as floating point values, with invalid times set to NaN.
+        base_ms_by_trace = {}
+        source_by_trace = {}
+        for traces in traces_by_data.values():
+            i, x = traces[0]
+            if x.dtype.kind == 'M':
+                valid = ~np.isnat(x)
+                ms = x.astype(np.int64)
+                base_ms = int(np.min(ms[valid]))
+                offsets_ms = ms - base_ms
+                if not np.all(valid) or np.max(offsets_ms[valid]) > np.iinfo(np.int32).max:
+                    offsets_ms = offsets_ms.astype(float)
+                    offsets_ms[~valid] = np.nan
+                figure.data[i].x = offsets_ms
+                base_ms_by_trace[i] = base_ms
+
+            for j, _ in traces[1:]:
+                figure.data[j].x = None
+                source_by_trace[j] = i
+
+        if len(base_ms_by_trace) == 0 and len(source_by_trace) == 0:
+            return ''
+
+        return """
+(function() {
+  const base_ms_by_trace = %s;
+  const source_by_trace = %s;
+  const array_types = {i1: Int8Array, u1: Uint8Array, i2: Int16Array, u2: Uint16Array, i4: Int32Array,
+                       u4: Uint32Array, f4: Float32Array, f8: Float64Array};
+
+  function DecodeArray(value) {
+    if (Array.isArray(value)) {
+      return value;
+    }
+    const binary = atob(value.bdata);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; ++i) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return new array_types[value.dtype](bytes.buffer);
+  }
+
+  // Many traces share the same times, so format each one only once.
+  const date_strings = new Map();
+  function ToDateString(time_ms) {
+    let result = date_strings.get(time_ms);
+    if (result === undefined) {
+      result = new Date(time_ms).toISOString().slice(0, 23);
+      date_strings.set(time_ms, result);
+    }
+    return result;
+  }
+
+  const original_new_plot = Plotly.newPlot;
+  Plotly.newPlot = function(div, data, ...args) {
+    Plotly.newPlot = original_new_plot;
+    for (const [trace_index, base_ms] of Object.entries(base_ms_by_trace)) {
+      const offsets_ms = DecodeArray(data[trace_index].x);
+      const x = new Array(offsets_ms.length);
+      for (let i = 0; i < offsets_ms.length; ++i) {
+        x[i] = Number.isNaN(offsets_ms[i]) ? null : ToDateString(base_ms + offsets_ms[i]);
+      }
+      data[trace_index].x = x;
+    }
+    for (const [trace_index, source_index] of Object.entries(source_by_trace)) {
+      data[trace_index].x = data[source_index].x;
+    }
+    return original_new_plot.call(this, div, data, ...args);
+  };
+})();
+""" % (json.dumps(base_ms_by_trace), json.dumps(source_by_trace))
+
     # Support for injecting custom javascript into the generated plotly HTML file.
-    def __write_html_and_inject_js(self, inject_js, time_axis_type, *args, **kwargs):
+    def __write_html_and_inject_js(self, inject_js, time_axis_type, shared_customdata_js, *args, **kwargs):
         post_script = kwargs.get("post_script", None)
         if post_script is None:
             post_script = ""
@@ -4000,6 +4241,10 @@ var time_axis_type = '{time_axis_type}';
         script_dir = os.path.join(os.path.dirname(__file__))
         with open(os.path.join(script_dir, 'plotly_data_support.js'), 'rt') as f:
             post_script += f.read()
+
+        # Reattach any customdata that was hoisted out of the traces. This must come after the file above, which
+        # defines `figure`.
+        post_script += shared_customdata_js
 
         # Now inject the custom javascript.
         post_script += inject_js
@@ -4124,8 +4369,11 @@ var time_axis_type = '{time_axis_type}';
         if self.time_type == 'gps':
             return gps_time, axis_layout
         else:
+            # Plotly writes each of these out as a literal date string, so emit only the resolution a browser can
+            # represent: Javascript's Date is accurate to the millisecond, and the extra digits of a
+            # `datetime64[ns]` array account for a third of the X axis data in the generated file.
             utc = self.time_provider.gps_sec_to_datetime64_array(gps_time)
-            return utc, axis_layout
+            return utc.astype('datetime64[ms]'), axis_layout
 
     def _time_hover_customdata(self, p1_time: np.ndarray, gps_time: Optional[np.ndarray] = None,
                                x_domain: Optional[str] = None) -> np.ndarray:
