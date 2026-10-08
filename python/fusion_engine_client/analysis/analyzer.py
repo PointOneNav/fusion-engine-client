@@ -1357,16 +1357,16 @@ figure.on('plotly_unhover', function(data) {
         # `%{x}` tied to a real date-typed axis) -- but a customdata entry with no format spec at all is substituted
         # verbatim, so we precompute the UTC string in Python (cheap, vectorized) and reference it that way.
         _POSITION_HOVERTEMPLATE = (
-            "LLA: %{lat:.8f}, %{lon:.8f}, %{customdata[5]:.2f}<br>"
+            "LLA: %{lat:.8f}, %{lon:.8f}, %{customdata[6]:.2f}<br>"
             "Rel: %{customdata[1]:.3f} sec (P1: %{customdata[2]:.3f} sec)<br>"
             "UTC: %{customdata[0]}<br>"
-            "GPS: %{customdata[3]:.0f}:%{customdata[4]:.3f}<br>"
-            "Std Dev: %{customdata[6]:.2f} m (2D), %{customdata[7]:.2f} m (3D)"
+            "GPS: %{customdata[3]:.0f}:%{customdata[4]:.3f} (%{customdata[5]:.3f} sec)<br>"
+            "Std Dev: %{customdata[7]:.2f} m (2D), %{customdata[8]:.2f} m (3D)"
         )
         # Used instead of _POSITION_HOVERTEMPLATE when reference data is avaiable to compute position error.
         _POSITION_HOVERTEMPLATE_WITH_ERROR = (
             _POSITION_HOVERTEMPLATE +
-            "<br>Error: %{customdata[8]:.2f} m (2D), %{customdata[9]:.2f} m (3D)"
+            "<br>Error: %{customdata[9]:.2f} m (2D), %{customdata[10]:.2f} m (3D)"
         )
 
         def _build_position_customdata(p1_time: np.ndarray, gps_time: np.ndarray, lla_deg: np.ndarray,
@@ -1388,7 +1388,7 @@ figure.on('plotly_unhover', function(data) {
             # array (that would coerce every column to strings, breaking the numeric %{customdata[N]:.3f}-style
             # formatting for the rest); build it as a plain list of per-point rows instead. error_enu_m, when
             # present, is appended after the UTC string so its indices stay fixed regardless of whether it's used.
-            numeric = np.column_stack((rel_time, p1_time, gps_week, gps_tow_sec, lla_deg[2],
+            numeric = np.column_stack((rel_time, p1_time, gps_week, gps_tow_sec, gps_time, lla_deg[2],
                                        np.linalg.norm(std_enu_m[0:2, :], axis=0),
                                        np.linalg.norm(std_enu_m, axis=0)))
             if error_enu_m is None:
