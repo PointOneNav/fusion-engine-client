@@ -1771,8 +1771,8 @@ figure.on('plotly_unhover', function(data) {
             color_by_sv.append(color_by_prn[sv_id.get_prn()])
             color_by_cn0.append(max_cn0_dbhz)
 
-            text = ['P1: %.1f sec<br>(Az, El): (%.2f, %.2f) deg<br>C/N0: %.1f dB-Hz' %
-                    (t, a, e, c) for t, a, e, c in zip(p1_time, az_deg, el_deg, max_cn0_dbhz)]
+            text = ['(Az, El): (%.2f, %.2f) deg<br>C/N0: %.1f dB-Hz<br>%s' % (a, e, c, time_text)
+                    for a, e, c, time_text in zip(az_deg, el_deg, max_cn0_dbhz, self._time_hover_text(p1_time))]
 
             # The per-point P1 time is what the time slider below the plot filters on (see _time_slider_js()). It
             # is not referenced by the hover text, which uses `text` above.
@@ -4405,6 +4405,39 @@ var time_axis_type = '{time_axis_type}';
             return np.vstack((gps_time,))
         else:
             return np.vstack((p1_time,))
+
+    def _time_hover_text(self, p1_time: np.ndarray, gps_time: Optional[np.ndarray] = None) -> List[str]:
+        """!
+        @brief Build the same Rel/P1/UTC/GPS hover text as `BuildTimeHoverTextFromTimes()` in Python.
+
+        For plots whose hover text is generated ahead of time instead of by the injected hover JS (see
+        `plotly_data_support.js`).
+
+        @param p1_time The P1 time for each point.
+        @param gps_time The GPS time for each point, or `None` to compute it from `p1_time`.
+
+        @return A list of hover text strings, one per point, with lines separated by `<br>`.
+        """
+        # Look up the GPS and UTC times for each point.
+        if gps_time is None:
+            gps_time = self.time_provider.p1_to_gps(p1_time)
+        utc_time = self.time_provider.gps_sec_to_datetime64_array(gps_time)
+        p1_t0_sec = float(self.t0) if self.t0 is not None else np.nan
+
+        # Format the lines for each point, skipping any time that is not available.
+        result = []
+        for p1, gps, utc in zip(p1_time, gps_time, utc_time):
+            lines = []
+            if not np.isnan(p1):
+                lines.append(f'Rel: {p1 - p1_t0_sec:.3f} sec (P1: {p1:.3f} sec)')
+            if not np.isnan(gps):
+                if not np.isnat(utc):
+                    lines.append(f"UTC: {np.datetime_as_string(utc, unit='ms').replace('T', ' ')}")
+                week = int(gps // SECONDS_PER_WEEK)
+                tow_sec = gps - week * SECONDS_PER_WEEK
+                lines.append(f'GPS: {week}:{tow_sec:.3f} ({gps:.3f} sec)')
+            result.append('<br>'.join(lines))
+        return result
 
     def _custom_tooltip_js(self, time_source: str = 'p1', precision: Optional[int] = 3,
                            value_label: Optional[str] = None, show_name: bool = True, show_value: bool = True) -> str:
