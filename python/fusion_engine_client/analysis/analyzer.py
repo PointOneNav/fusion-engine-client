@@ -463,10 +463,12 @@ body > div { display: contents; }
                                           mode='markers', marker={'color': 'red'}),
                              1, 1)
             if dp1_stats is not None:
-                figure.add_trace(go.Scattergl(x=time, y=dp1_stats['max'], name='P1 Time Interval (Max)',
+                figure.add_trace(go.Scattergl(x=time, y=dp1_stats['max'], customdata=customdata,
+                                              name='P1 Time Interval (Max)',
                                               mode='markers', marker={'symbol': 'triangle-up-open'}),
                                  1, 1)
-                figure.add_trace(go.Scattergl(x=time, y=dp1_stats['min'], name='P1 Time Interval (Min)',
+                figure.add_trace(go.Scattergl(x=time, y=dp1_stats['min'], customdata=customdata,
+                                              name='P1 Time Interval (Min)',
                                               mode='markers', marker={'symbol': 'triangle-down-open'}),
                                  1, 1)
 
@@ -474,10 +476,12 @@ body > div { display: contents; }
                                           mode='markers', marker={'color': 'green'}),
                              1, 1)
             if dgps_stats is not None:
-                figure.add_trace(go.Scattergl(x=time, y=dgps_stats['max'], name='GPS Time Interval (Max)',
+                figure.add_trace(go.Scattergl(x=time, y=dgps_stats['max'], customdata=customdata,
+                                              name='GPS Time Interval (Max)',
                                               mode='markers', marker={'symbol': 'triangle-up-open'}),
                                  1, 1)
-                figure.add_trace(go.Scattergl(x=time, y=dgps_stats['min'], name='GPS Time Interval (Min)',
+                figure.add_trace(go.Scattergl(x=time, y=dgps_stats['min'], customdata=customdata,
+                                              name='GPS Time Interval (Min)',
                                               mode='markers', marker={'symbol': 'triangle-down-open'}),
                                  1, 1)
 
