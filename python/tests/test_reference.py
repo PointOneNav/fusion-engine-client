@@ -337,6 +337,44 @@ class TestInterpolation:
     def test_interpolate_ypr_none_when_unavailable(self, moving_ref):
         assert moving_ref.interpolate_ypr_deg(np.array([5.0])) is None
 
+    @staticmethod
+    def _ypr_ref(ypr_deg):
+        return ReferenceData(description='test', is_truth=True,
+                             position_ecef_m=np.zeros((3, ypr_deg.shape[1])),
+                             gps_time_sec=np.arange(ypr_deg.shape[1], dtype=float) * 10.0,
+                             ypr_deg=ypr_deg)
+
+    def test_interpolate_ypr_wraps_yaw_and_roll(self):
+        # Yaw and roll midway between 179 and -179 degrees are 180, not 0.
+        ref = self._ypr_ref(np.array([[179.0, -179.0], [10.0, 20.0], [-179.0, 179.0]]))
+        ypr = ref.interpolate_ypr_deg(np.array([2.5, 5.0, 7.5]))
+        assert ypr[0, :] == pytest.approx([179.5, -180.0, -179.5])
+        assert ypr[2, :] == pytest.approx([-179.5, -180.0, 179.5])
+        assert ypr[1, :] == pytest.approx([12.5, 15.0, 17.5])
+
+    def test_interpolate_ypr_without_wrap_is_linear(self):
+        ref = self._ypr_ref(np.array([[10.0, 50.0], [-80.0, 80.0], [-30.0, 30.0]]))
+        ypr = ref.interpolate_ypr_deg(np.array([0.0, 5.0, 10.0]))
+        assert ypr[0, :] == pytest.approx([10.0, 30.0, 50.0])
+        assert ypr[1, :] == pytest.approx([-80.0, 0.0, 80.0])
+        assert ypr[2, :] == pytest.approx([-30.0, 0.0, 30.0])
+
+    def test_interpolate_ypr_does_not_unwrap_pitch(self):
+        # Pitch values far apart are interpolated directly, not along the shorter arc through +/-180.
+        ref = self._ypr_ref(np.array([[0.0, 0.0], [89.0, -89.0], [0.0, 0.0]]))
+        ypr = ref.interpolate_ypr_deg(np.array([5.0]))
+        assert ypr[1, 0] == pytest.approx(0.0)
+
+    def test_interpolate_ypr_nan_handling(self):
+        # A NaN sample is skipped (the wrap is still followed across the gap), an all-NaN row stays NaN, and query
+        # times outside the reference are NaN.
+        ref = self._ypr_ref(np.array([[170.0, np.nan, -170.0], [np.nan, np.nan, np.nan], [0.0, 1.0, 2.0]]))
+        ypr = ref.interpolate_ypr_deg(np.array([-1.0, 10.0, 21.0]))
+        assert ypr[0, 1] == pytest.approx(-180.0)
+        assert np.all(np.isnan(ypr[1, :]))
+        assert ypr[2, 1] == pytest.approx(1.0)
+        assert np.all(np.isnan(ypr[:, [0, 2]]))
+
     def test_stationary_interpolation_tiles(self):
         ref = ReferenceData.from_stationary_ecef(np.array([1.0, 2.0, 3.0]))
         pos = ref.interpolate_position_ecef_m(np.array([0.0, 1.0, 2.0]))
