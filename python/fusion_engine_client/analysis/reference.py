@@ -16,24 +16,44 @@ _logger = logging.getLogger('point_one.fusion_engine.analysis.reference')
 _OWN_LOG_STATISTICS = ('first', 'first_fixed', 'median', 'median_fixed')
 
 
-def _interp_columns(x: np.ndarray, y: Optional[np.ndarray], x_new: np.ndarray) -> Optional[np.ndarray]:
+def _interp_columns(x: np.ndarray, y: Optional[np.ndarray], x_new: np.ndarray,
+                    angle_rows: tuple = ()) -> Optional[np.ndarray]:
     """!
-    @brief Linearly interpolate each row of `y` (sampled at `x`) onto `x_new`, returning NaN for any query point
-           outside the range of `x` or where too few valid (non-NaN) samples exist to interpolate.
+    @brief Linearly interpolate each row of `y` (sampled at `x`) onto `x_new`.
+
+    NaN samples in `y` are skipped, so a query point between two valid samples is interpolated across any NaN gap
+    between them. The result is NaN for any query point outside the range of `x`, and for every query point in a row
+    with fewer than 2 valid samples.
+
+    @param x The sample times, sorted in ascending order.
+    @param y An MxN array of values sampled at `x`, or `None`.
+    @param x_new The times to interpolate onto.
+    @param angle_rows Indices of rows in `y` containing angles (in degrees) that wrap at +/-180 degrees. These rows are
+           unwrapped before interpolating, so the result follows the shorter arc between samples, and the result is
+           wrapped back to [-180, 180).
+
+    @return An Mx`len(x_new)` array of interpolated values, or `None` if `y` is `None`.
     """
     if y is None:
         return None
 
+    # Values outside the range of the sample times are left as NaN.
     out = np.full((y.shape[0], len(x_new)), np.nan)
     in_range = np.logical_and(x_new >= x[0], x_new <= x[-1])
     if not np.any(in_range):
         return out
 
+    # Interpolate each row using only its valid samples.
     for row in range(y.shape[0]):
         valid = ~np.isnan(y[row, :])
         if np.count_nonzero(valid) < 2:
             continue
-        out[row, in_range] = np.interp(x_new[in_range], x[valid], y[row, valid])
+
+        if row in angle_rows:
+            y_valid = np.degrees(np.unwrap(np.radians(y[row, valid])))
+            out[row, in_range] = (np.interp(x_new[in_range], x[valid], y_valid) + 180.0) % 360.0 - 180.0
+        else:
+            out[row, in_range] = np.interp(x_new[in_range], x[valid], y[row, valid])
 
     return out
 
@@ -134,7 +154,8 @@ class ReferenceData:
                 "range will be omitted." % (self.description, coverage_percent))
         return in_range
 
-    def _interpolate_cached(self, key: str, y: np.ndarray, gps_time_sec: np.ndarray) -> np.ndarray:
+    def _interpolate_cached(self, key: str, y: np.ndarray, gps_time_sec: np.ndarray,
+                            angle_rows: tuple = ()) -> np.ndarray:
         """!
         @brief Interpolate `y` onto `gps_time_sec`, caching the result to avoid recomputing for repeated queries.
 
@@ -145,6 +166,7 @@ class ReferenceData:
         @param key A name identifying which field is being interpolated (e.g., 'position').
         @param y The data to be interpolated, sampled at `self.gps_time_sec`.
         @param gps_time_sec The GPS timestamps (sec) to interpolate onto.
+        @param angle_rows Indices of rows in `y` containing angles (in degrees) that wrap at +/-180 degrees.
 
         @return The interpolated data.
         """
@@ -156,7 +178,7 @@ class ReferenceData:
         else:
             signature = None
 
-        result = _interp_columns(self.gps_time_sec, y, gps_time_sec)
+        result = _interp_columns(self.gps_time_sec, y, gps_time_sec, angle_rows=angle_rows)
         if signature is not None:
             self._interp_cache[key] = (signature, result)
         return result
@@ -190,13 +212,16 @@ class ReferenceData:
         @brief Interpolate this reference's YPR orientation (deg) onto the specified GPS timestamps (sec).
 
         Returns `None` if orientation is not available. Entries outside the covered time range are set to NaN.
+
+        Yaw and roll are interpolated along the shorter arc between samples, so they wrap correctly at +/-180 degrees,
+        and are returned in the range [-180, 180). Pitch is bounded to +/-90 degrees and is interpolated directly.
         """
         if self.ypr_deg is None:
             return None
         elif self.is_stationary:
             return np.tile(self.ypr_deg.reshape(3, 1), (1, len(gps_time_sec)))
         else:
-            return self._interpolate_cached('ypr', self.ypr_deg, gps_time_sec)
+            return self._interpolate_cached('ypr', self.ypr_deg, gps_time_sec, angle_rows=(0, 2))
 
     # -------------------------------------------------------------------------------------------------------------
     # Constructors
