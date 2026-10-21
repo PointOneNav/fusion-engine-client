@@ -12,7 +12,7 @@ from .signal_defs import *
 from .timestamp import *
 from ..utils import trace as logging
 from ..utils.construct_utils import construct_message_to_string
-from ..utils.enum_utils import IntEnum
+from ..utils.enum_utils import IntEnum, lookup_value
 
 _logger = logging.getLogger('point_one.fusion_engine.messages.defs')
 
@@ -372,13 +372,10 @@ class MessageHeader:
         if validate_crc:
             self.validate_crc(buffer, offset)
 
-        try:
-            self.message_type = MessageType(message_type_int)
-        except (ValueError, KeyError):
-            if warn_on_unrecognized:
-                _logger.log(logging.WARNING if message_type_int < int(MessageType.RESERVED) else logging.DEBUG,
-                            'Unrecognized message type %d.' % message_type_int)
-            self.message_type = MessageType(message_type_int, raise_on_unrecognized=False)
+        self.message_type = lookup_value(MessageType, message_type_int)
+        if warn_on_unrecognized and self.message_type.is_unrecognized():
+            _logger.log(logging.WARNING if message_type_int < int(MessageType.RESERVED) else logging.DEBUG,
+                        'Unrecognized message type %d.' % message_type_int)
 
         if return_sync_bytes:
             return MessageHeader._SIZE, bytes((sync0, sync1))
