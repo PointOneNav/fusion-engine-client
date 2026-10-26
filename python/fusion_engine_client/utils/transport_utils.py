@@ -455,7 +455,10 @@ def create_transport(descriptor: str, timeout_sec: float = None, print_func: Cal
     if descriptor in ('', '-'):
         descriptor = 'file://-'
 
-    m = re.match(r'^(?:file://)?((?:~/)?[a-zA-Z0-9-_./]+)$', descriptor)
+    # A path may contain spaces and, on Windows, a drive letter and backslashes (e.g., C:\logs\fusion_engine.p1log).
+    # Otherwise, a colon indicates a URL scheme (tcp://, etc.) or a serial device with a baud rate (DEVICE:BAUD), so
+    # anything else containing one is not a file.
+    m = re.match(r'^(?:file://)?((?:[a-zA-Z]:(?=[\\/]))?[^:]+)$', descriptor)
     if m:
         path = os.path.expanduser(m.group(1))
         if mode == 'both':
