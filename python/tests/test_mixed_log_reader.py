@@ -98,7 +98,7 @@ class TestClass:
 
         expected_p1_time = expected_message.get_p1_time()
         if expected_p1_time is not None:
-            assert float(message.get_p1_time()) == pytest.approx(expected_p1_time, 1e-6), "P1 time mismatch."
+            assert float(message.get_p1_time()) == pytest.approx(float(expected_p1_time), 1e-6), "P1 time mismatch."
 
         expected_system_time_sec = expected_message.get_system_time_sec()
         if expected_system_time_sec is not None:
