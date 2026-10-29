@@ -36,6 +36,13 @@ FusionEngine message specification.
 - [p1_lband_extract](fusion_engine_client/applications/p1_lband_extract.py) - Extract L-band data bits contained from a
   log of FusionEngine `LBandFrameMessage` messages
 - [p1_print](fusion_engine_client/applications/p1_print.py) - Legacy alias for `p1_capture`.
+- [p1_proxy](fusion_engine_client/applications/p1_proxy.py) - Forward raw wheel speed, vehicle speed, IMU, and pose
+  output from a source device to one or more target devices as the corresponding input messages.
+  - Pose is forwarded as `ExternalPoseInput`, optionally transformed to account for lever arms and relative device
+    mounting.
+  - A target of the form `tcp://:<port>` listens for incoming connections instead of connecting out. Any number of
+    clients may connect and disconnect at any time, and all of them receive the forwarded messages.
+  - A target that is unreachable or disconnects does not stop the proxy; it is retried automatically.
 
 ### Directory Structure
   - `python/` - Python source files

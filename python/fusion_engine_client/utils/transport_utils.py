@@ -365,6 +365,117 @@ class TCPServerTransport(SocketTransport):
         return getattr(self._socket, name)
 
 
+class TCPBroadcastServerTransport:
+    """!
+    @brief Output-only TCP transport that sends to any number of simultaneously connected clients.
+
+    This class starts listening immediately and accepts connections on a background thread, so construction does not
+    block. Clients may connect and disconnect at any time. `send()` writes the data to every connected client; it does
+    not block waiting for a client, and the data is silently dropped if no client is connected. A client that
+    disconnects, errors, or cannot keep up (a send takes longer than `_SEND_TIMEOUT_SEC`) is dropped without
+    affecting the others.
+
+    Anything a client sends to this transport is ignored, and `recv()` is not supported.
+    """
+
+    # How often the background thread wakes up to check whether it should stop.
+    _POLL_INTERVAL_SEC = 0.2
+
+    # The longest a single client may stall `send()` before it is dropped.
+    _SEND_TIMEOUT_SEC = 0.5
+
+    _LISTEN_BACKLOG = 16
+
+    def __init__(self, port: int, print_func: Callable = None):
+        self._closed = False
+        self._print_func = print_func
+        self._lock = threading.Lock()
+        self._clients = {}
+
+        self._listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self._listener.settimeout(self._POLL_INTERVAL_SEC)
+        self._listener.bind(('', port))
+        self._listener.listen(self._LISTEN_BACKLOG)
+
+        self._accept_thread = threading.Thread(
+            target=self._accept_loop, name=f'tcp-broadcast-accept-{port}', daemon=True)
+        self._accept_thread.start()
+
+    @property
+    def num_clients(self) -> int:
+        with self._lock:
+            return len(self._clients)
+
+    def _accept_loop(self):
+        while True:
+            try:
+                client_socket, client_address = self._listener.accept()
+            except socket.timeout:
+                with self._lock:
+                    if self._closed:
+                        return
+                continue
+            except OSError:
+                return  # Listener was closed out from under us by close().
+
+            client_socket.settimeout(self._SEND_TIMEOUT_SEC)
+            with self._lock:
+                if self._closed:
+                    client_socket.close()
+                    return
+                self._clients[client_socket] = client_address
+
+            if self._print_func is not None:
+                self._print_func(f'Accepted connection from {client_address[0]}:{client_address[1]}.')
+
+    def _drop_client(self, client_socket: socket.socket):
+        with self._lock:
+            client_address = self._clients.pop(client_socket, None)
+        client_socket.close()
+        if client_address is not None and self._print_func is not None:
+            self._print_func(f'Client {client_address[0]}:{client_address[1]} disconnected.')
+
+    def send(self, data, *args, **kwargs) -> int:
+        """!
+        @brief Send data to all connected clients.
+
+        @param data The data to be sent.
+
+        @return The number of bytes sent to each client that received it, or 0 if no client is connected.
+        """
+        with self._lock:
+            clients = list(self._clients)
+
+        for client_socket in clients:
+            try:
+                client_socket.sendall(data, *args, **kwargs)
+            except OSError:
+                self._drop_client(client_socket)
+        return len(data) if len(clients) > 0 else 0
+
+    def recv(self, *args, **kwargs) -> bytes:
+        raise NotImplementedError('TCPBroadcastServerTransport is output-only.')
+
+    def close(self):
+        with self._lock:
+            if self._closed:
+                return
+            self._closed = True
+            clients = list(self._clients)
+            self._clients.clear()
+        self._listener.close()
+        self._accept_thread.join(timeout=self._POLL_INTERVAL_SEC * 2)
+        for client_socket in clients:
+            client_socket.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+
+
 class WebsocketTransport:
     """!
     @brief Websocket wrapper class, mimicking the Python socket API.
@@ -427,7 +538,8 @@ TRANSPORT_HELP_OPTIONS = """\
 - tcp://HOSTNAME[:PORT] - Connect to the specified hostname (or IP address) and
   port over TCP (e.g., tty://192.168.0.3:30202); defaults to port 30200.
 - tcp://:PORT - Listen for an incoming TCP connection on the specified port
-  (e.g., tcp://:30200).
+  (e.g., tcp://:30200). When used for output only, any number of clients may
+  connect and all of them receive the data.
 - udp://:PORT - Listen for incoming data on the specified UDP port (e.g.,
   udp://:12345).
   Note: When using UDP, you must configure the device to send data to your
@@ -446,7 +558,7 @@ The method used to communicate with the target device:
 {TRANSPORT_HELP_OPTIONS}
 """
 
-TransportClass = Union[SocketTransport, serial.Serial, WebsocketTransport, FileTransport]
+TransportClass = Union[SocketTransport, TCPBroadcastServerTransport, serial.Serial, WebsocketTransport, FileTransport]
 
 
 def create_transport(descriptor: str, timeout_sec: float = None, print_func: Callable = None, mode: str = 'both',
@@ -490,6 +602,13 @@ def create_transport(descriptor: str, timeout_sec: float = None, print_func: Cal
     m = re.match(r'^tcp://(?:0\.0\.0\.0)?:([0-9]+)$', descriptor)
     if m:
         port = int(m.group(1))
+
+        # An output-only transport can serve any number of simultaneous clients, so every client receives the data.
+        if mode == 'output':
+            if print_func is not None:
+                print_func(f'Listening for TCP connections on port {port} (output to all connected clients).')
+            return TCPBroadcastServerTransport(port, print_func=print_func)
+
         if print_func is not None:
             print_func(f'Listening for TCP connections on port {port}.')
 
