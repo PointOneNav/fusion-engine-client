@@ -92,6 +92,7 @@ for the latest FusionEngine message specification.
             'p1_filter = fusion_engine_client.applications.p1_filter:main',
             'p1_lband_extract = fusion_engine_client.applications.p1_lband_extract:main',
             'p1_print = fusion_engine_client.applications.p1_print:main',
+            'p1_proxy = fusion_engine_client.applications.p1_proxy:main',
         ]
     },
     python_requires='>=3.6',
