@@ -350,6 +350,7 @@ class MixedLogReader(object):
                                self.time_range is not None or \
                                require_p1_time or require_system_time
 
+                payload = None
                 if need_payload:
                     cls = message_type_to_class.get(header.message_type, None)
                     if cls is not None:
