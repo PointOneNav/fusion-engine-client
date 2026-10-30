@@ -250,6 +250,11 @@ class MessageHeader:
     _FORMAT = '<BBHIBBHIII'
     _SIZE: int = struct.calcsize(_FORMAT)
 
+    # The header layout as a numpy structured type, matching _FORMAT, for reading many headers at once.
+    _NUMPY_DTYPE = np.dtype([('sync0', 'u1'), ('sync1', 'u1'), ('reserved', '<u2'), ('crc', '<u4'),
+                             ('protocol_version', 'u1'), ('message_version', 'u1'), ('message_type', '<u2'),
+                             ('sequence_number', '<u4'), ('payload_size_bytes', '<u4'), ('source_identifier', '<u4')])
+
     # The offset of the payload_size_bytes field within the header.
     PAYLOAD_SIZE_OFFSET_BYTES = 16
 
@@ -595,6 +600,21 @@ class MessagePayload:
 
     def calcsize(self) -> int:
         raise NotImplementedError('calcsize() not implemented.')
+
+    @classmethod
+    def unpack_array(cls, batch: 'MessageBatch') -> Dict[str, np.ndarray]:
+        """!
+        @brief Deserialize the fields of every message in a batch at once.
+
+        This is a vectorized counterpart to @ref unpack(), for reading many messages quickly. The fields available
+        depend on the class. Classes that do not support it raise `NotImplementedError`. Call it through
+        @ref MessageBatch.unpack_array(), which checks the message types first.
+
+        @param batch A @ref MessageBatch containing only messages of this type.
+
+        @return A `dict` mapping field names to numpy arrays, one entry per message.
+        """
+        raise NotImplementedError('unpack_array() not implemented.')
 
     def get_p1_time(self) -> Timestamp:
         measurement_details = getattr(self, 'details', None)
