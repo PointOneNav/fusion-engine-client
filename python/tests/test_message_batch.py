@@ -101,6 +101,30 @@ def test_iterator_position_unchanged(data_path):
     assert first[0].sequence_number + 1 == second[0].sequence_number
 
 
+# Check that a vectorized wrapper unpack matches the per-message unpack.
+def test_unpack_array_input_data_wrapper(data_path):
+    batch = MixedLogReader(data_path, message_types=[InputDataWrapperMessage]).read_batch()
+    fields = batch.unpack_array(InputDataWrapperMessage)
+
+    for i in range(len(batch)):
+        message = InputDataWrapperMessage()
+        message.unpack(bytes(batch.get_payload(i)))
+        assert fields['system_time_ns'][i] == message.system_time_ns
+        assert fields['data_type'][i] == message.data_type
+        assert bytes(InputDataWrapperMessage.get_data(batch.get_payload(i))) == message.data
+
+
+# Check that selecting a subset with numpy indexing keeps the fields aligned.
+def test_select(data_path):
+    batch = MixedLogReader(data_path, message_types=[InputDataWrapperMessage]).read_batch()
+    fields = batch.unpack_array(InputDataWrapperMessage)
+    selected = batch[fields['data_type'] == InputDataType.M_TYPE_EXTERNAL_UNFRAMED_GNSS]
+
+    assert len(selected) == 3
+    data = [bytes(InputDataWrapperMessage.get_data(selected.get_payload(i))) for i in range(len(selected))]
+    assert data == [b'first', b'second record', b'third']
+
+
 # Check that unpacking a batch with other message types, or a class without unpack_array(), is an error.
 def test_unpack_array_errors(data_path):
     batch = MixedLogReader(data_path).read_batch()
