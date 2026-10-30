@@ -108,6 +108,19 @@ def test_callbacks():
     assert counters[3] == 5
 
 
+# Check that a message type filter returns only the requested types, and skips their callbacks.
+def test_message_types():
+    test_bytes = P1_POSE_MESSAGE1 + P1_POSE_AUX_MESSAGE3 + P1_POSE_MESSAGE2
+    decoder = FusionEngineDecoder(message_types=[PoseAuxMessage], return_offset=True)
+    callback_types = []
+    decoder.add_callback(None, lambda header, payload, offset: callback_types.append(header.message_type))
+    ret = decoder.on_data(test_bytes)
+    assert [r[0].message_type for r in ret] == [MessageType.POSE_AUX]
+    assert isinstance(ret[0][1], PoseAuxMessage)
+    assert ret[0][2] == len(P1_POSE_MESSAGE1)
+    assert callback_types == [MessageType.POSE_AUX]
+
+
 def test_seq_backwards_warning(caplog):
     test_bytes = P1_POSE_MESSAGE1 + P1_POSE_MESSAGE2 + P1_POSE_MESSAGE1
     decoder = FusionEngineDecoder(warn_on_error=True)

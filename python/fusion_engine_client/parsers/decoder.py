@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import List, Dict, Callable, Optional, Tuple, Union
+from typing import Iterable, List, Dict, Callable, Optional, Tuple, Union
 
 from ..messages import MessageHeader, MessageType, MessagePayload, message_type_to_class
 from ..utils import trace as logging
@@ -34,7 +34,8 @@ class FusionEngineDecoder:
     def __init__(self, max_payload_len_bytes: int = MessageHeader._MAX_EXPECTED_SIZE_BYTES,
                  warn_on_unrecognized: bool = False, warn_on_gap: bool = False,
                  warn_on_error: Union[bool, str, WarnOnError] = WarnOnError.LIKELY,
-                 return_bytes: bool = False, return_offset: bool = False):
+                 return_bytes: bool = False, return_offset: bool = False,
+                 message_types: Optional[Iterable[Union[MessageType, type]]] = None):
         """!
         @brief Construct a new decoder instance.
 
@@ -53,6 +54,9 @@ class FusionEngineDecoder:
         @param return_bytes If `True`, return a `bytes` object with the raw data (header + payload) in addition to the
                decoded message object.
         @param return_offset If `True`, the byte offset into the data stream at which the message was found.
+        @param message_types If set, only return the listed message types (@ref MessageType values or @ref
+               MessagePayload classes). Other messages are still validated, but are skipped without copying or
+               deserializing their payloads, and do not trigger callbacks.
         """
         self._warn_on_unrecognized = warn_on_unrecognized
         self._warn_on_seq_skip = warn_on_gap
@@ -71,6 +75,11 @@ class FusionEngineDecoder:
 
         self._return_bytes = return_bytes
         self._return_offset = return_offset
+
+        if message_types is None:
+            self._message_types = None
+        else:
+            self._message_types = set(t.get_type() if MessagePayload.is_subclass(t) else t for t in message_types)
 
         self._max_payload_len_bytes = max_payload_len_bytes
         self._buffer = bytearray()
@@ -283,6 +292,14 @@ class FusionEngineDecoder:
                                         "received=%d].",
                                         expected_sequence_number, self._header.sequence_number)
             self._last_sequence_number = self._header.sequence_number
+
+            # Skip messages the user did not request.
+            if self._message_types is not None and self._header.message_type not in self._message_types:
+                self._bytes_processed += self._msg_len
+                offset += self._msg_len
+                self._header = None
+                self._msg_len = 0
+                continue
 
             # Get the class for the received message type and deserialize the message payload. If cls is not None, it is
             # a child of @ref MessagePayload that maps to the received @ref MessageType.
