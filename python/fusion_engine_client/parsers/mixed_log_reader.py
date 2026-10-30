@@ -9,6 +9,7 @@ import sys
 import numpy as np
 
 from . import fast_indexer, file_index
+from .message_batch import MessageBatch
 from ..messages import MessageType, MessageHeader, MessagePayload, Timestamp, message_type_to_class
 from ..utils import trace as logging
 from ..utils.time_range import TimeRange
@@ -211,6 +212,35 @@ class MixedLogReader(object):
 
     def get_bytes_read(self):
         return self.total_bytes_read
+
+    def read_batch(self) -> MessageBatch:
+        """!
+        @brief Read every message that meets the current filter criteria at once.
+
+        This is much faster than iterating over the messages when reading many of them, since it reads all of their
+        headers in one vectorized operation instead of one Python call per message. It selects the same messages the
+        iterator would return from the start of the file, honoring the message type, time range, source identifier,
+        and `max_bytes` criteria, and it does not change the iterator's position.
+
+        Payloads are not deserialized up front. See @ref MessageBatch for reading them.
+
+        @return A @ref MessageBatch.
+        """
+        # Read the headers of every message in the filtered index.
+        offset = self.index.offset.astype(np.int64)
+        if len(offset) == 0:
+            buffer = np.zeros(0, dtype=np.uint8)
+        else:
+            buffer = np.memmap(self.input_path, dtype=np.uint8, mode='r')
+        headers = MessageBatch._read_headers(buffer, offset)
+
+        # Apply the filters the index does not cover.
+        keep = offset + MessageHeader.calcsize() + headers['payload_size_bytes'].astype(np.int64) <= self.max_bytes
+        if self.requested_source_ids is not None and len(self.requested_source_ids) > 0:
+            keep &= np.isin(headers['source_identifier'], list(self.requested_source_ids))
+
+        return MessageBatch(buffer=buffer, offset=offset[keep], headers=headers[keep], p1_time=self.index.time[keep],
+                            message_index=self.index.message_index[keep])
 
     def next(self):
         return self.read_next()

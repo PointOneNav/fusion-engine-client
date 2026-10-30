@@ -1,4 +1,5 @@
 from .encoder import FusionEngineEncoder
 from .decoder import FusionEngineDecoder
 from .file_index import FileIndex
+from .message_batch import MessageBatch
 from .mixed_log_reader import MixedLogReader
