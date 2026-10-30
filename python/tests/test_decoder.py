@@ -121,6 +121,19 @@ def test_message_types():
     assert callback_types == [MessageType.POSE_AUX]
 
 
+# Check that disabling payloads omits them from the results and the callback arguments.
+def test_no_payload():
+    test_bytes = P1_POSE_MESSAGE1 + P1_POSE_AUX_MESSAGE3
+    decoder = FusionEngineDecoder(return_payload=False, return_bytes=True)
+    callback_args = []
+    decoder.add_callback(None, lambda *args: callback_args.append(args))
+    ret = decoder.on_data(test_bytes)
+    assert [len(r) for r in ret] == [2, 2]
+    assert [r[0].message_type for r in ret] == [MessageType.POSE, MessageType.POSE_AUX]
+    assert [bytes(r[1]) for r in ret] == [P1_POSE_MESSAGE1, P1_POSE_AUX_MESSAGE3]
+    assert [len(args) for args in callback_args] == [2, 2]
+
+
 def test_seq_backwards_warning(caplog):
     test_bytes = P1_POSE_MESSAGE1 + P1_POSE_MESSAGE2 + P1_POSE_MESSAGE1
     decoder = FusionEngineDecoder(warn_on_error=True)

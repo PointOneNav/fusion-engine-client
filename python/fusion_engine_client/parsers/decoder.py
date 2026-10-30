@@ -35,7 +35,7 @@ class FusionEngineDecoder:
                  warn_on_unrecognized: bool = False, warn_on_gap: bool = False,
                  warn_on_error: Union[bool, str, WarnOnError] = WarnOnError.LIKELY,
                  return_bytes: bool = False, return_offset: bool = False,
-                 message_types: Optional[Iterable[Union[MessageType, type]]] = None):
+                 message_types: Optional[Iterable[Union[MessageType, type]]] = None, return_payload: bool = True):
         """!
         @brief Construct a new decoder instance.
 
@@ -57,6 +57,9 @@ class FusionEngineDecoder:
         @param message_types If set, only return the listed message types (@ref MessageType values or @ref
                MessagePayload classes). Other messages are still validated, but are skipped without copying or
                deserializing their payloads, and do not trigger callbacks.
+        @param return_payload If `False`, do not deserialize message payloads, and omit them from the returned
+               results and from the callback arguments. This is much faster when only the header, bytes, or offset are
+               needed.
         """
         self._warn_on_unrecognized = warn_on_unrecognized
         self._warn_on_seq_skip = warn_on_gap
@@ -75,6 +78,7 @@ class FusionEngineDecoder:
 
         self._return_bytes = return_bytes
         self._return_offset = return_offset
+        self._return_payload = return_payload
 
         if message_types is None:
             self._message_types = None
@@ -301,36 +305,39 @@ class FusionEngineDecoder:
                 self._msg_len = 0
                 continue
 
-            # Get the class for the received message type and deserialize the message payload. If cls is not None, it is
-            # a child of @ref MessagePayload that maps to the received @ref MessageType.
-            cls = message_type_to_class.get(self._header.message_type, None)
-            payload = bytes(buffer[offset + header_size:offset + self._msg_len])
+            # Get the class for the received message type and deserialize the message payload, if requested. If cls is
+            # not None, it is a child of @ref MessagePayload that maps to the received @ref MessageType.
             contents = None
-            if cls is not None:
-                contents = cls()
-                try:
-                    contents.unpack(buffer=payload, offset=0,
-                                    message_version=self._header.message_version)
-                    if debug_enabled:
-                        _logger.debug('Decoded FusionEngine message %s.', repr(contents))
-                except NotImplementedError as e:
+            if self._return_payload:
+                cls = message_type_to_class.get(self._header.message_type, None)
+                payload = bytes(buffer[offset + header_size:offset + self._msg_len])
+                if cls is not None:
+                    contents = cls()
+                    try:
+                        contents.unpack(buffer=payload, offset=0,
+                                        message_version=self._header.message_version)
+                        if debug_enabled:
+                            _logger.debug('Decoded FusionEngine message %s.', repr(contents))
+                    except NotImplementedError as e:
+                        print_func = _logger.warning if self._warn_on_unrecognized else _logger.debug
+                        print_func('Error deserializing message %s payload: %s', self._header.get_type_string(), e)
+                    except Exception as e:
+                        # unpack() may fail if the payload length in the header differs from the length expected by
+                        # the class, the payload contains an illegal value, etc.
+                        _logger.error('Error deserializing message %s payload: %s', self._header.get_type_string(), e)
+                # If cls is None, we don't have a class for the message type. Return a copy of the payload bytes.
+                else:
                     print_func = _logger.warning if self._warn_on_unrecognized else _logger.debug
-                    print_func('Error deserializing message %s payload: %s', self._header.get_type_string(), e)
-                except Exception as e:
-                    # unpack() may fail if the payload length in the header differs from the length expected by the
-                    # class, the payload contains an illegal value, etc.
-                    _logger.error('Error deserializing message %s payload: %s', self._header.get_type_string(), e)
-            # If cls is None, we don't have a class for the message type. Return a copy of the payload bytes.
-            else:
-                print_func = _logger.warning if self._warn_on_unrecognized else _logger.debug
-                print_func('Decoded unknown FusionEngine message. [type=%d, payload_size=%d B]',
-                           self._header.message_type, self._header.payload_size_bytes)
+                    print_func('Decoded unknown FusionEngine message. [type=%d, payload_size=%d B]',
+                               self._header.message_type, self._header.payload_size_bytes)
 
-            if contents is None:
-                contents = payload
+                if contents is None:
+                    contents = payload
 
             # Store the result.
-            result = [self._header, contents]
+            result = [self._header]
+            if self._return_payload:
+                result.append(contents)
             if self._return_bytes:
                 result.append(buffer[offset:offset + self._msg_len])
             if self._return_offset:
