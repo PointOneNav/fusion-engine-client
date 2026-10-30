@@ -297,8 +297,9 @@ class MixedLogReader(object):
                 # In either case, we will skip past this header and see if there any further candidate headers later in
                 # the file.
                 #
-                # If the CRC fails, either because we found an invalid header or because a valid message got corrupted,
-                # validate_crc() will raise a ValueError and we will skip forward in the same manner.
+                # Without an index, if the CRC fails, either because we found an invalid header or because a valid
+                # message got corrupted, validate_crc() will raise a ValueError and we will skip forward in the same
+                # manner.
                 payload_bytes = self.input_file.read(header.payload_size_bytes)
                 read_len += len(payload_bytes)
                 self.total_bytes_read += len(payload_bytes)
@@ -307,7 +308,11 @@ class MixedLogReader(object):
                                      header.get_type_string())
 
                 data += payload_bytes
-                header.validate_crc(data)
+
+                # The indexer validated the CRC of every message it indexed, and an index is regenerated if the data
+                # file has changed since, so only validate the CRC when reading without an index.
+                if self.index is None:
+                    header.validate_crc(data)
 
                 # Verify that source ID is correct.
                 if (self.requested_source_ids is not None and len(self.requested_source_ids) > 0 and
