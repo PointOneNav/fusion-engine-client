@@ -128,7 +128,7 @@ def test_select(data_path):
 def test_select_scalar(data_path):
     batch = MixedLogReader(data_path).read_batch()
     with pytest.raises(TypeError):
-        batch[0]
+        _ = batch[0]
     assert len(batch[0:1]) == 1
 
 
