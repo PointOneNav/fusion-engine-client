@@ -110,6 +110,11 @@ class FusionEngineDecoder:
                the uninterpreted payload contents. If `return_bytes == True`, the function will be called with a third
                argument containing the uninterpreted message contents (including the header).
         """
+        # Callbacks are only called for message types allowed by the message type filter.
+        if type is not None and self._message_types is not None and type not in self._message_types:
+            _logger.warning('Callback registered for %s, which is excluded by the message type filter. It will not '
+                            'be called.' % MessageType.get_type_string(type))
+
         # `self._callbacks` is a `defaultdict(list)` so no need to initialize list on first entry.
         self._callbacks[type].append(callback)
 

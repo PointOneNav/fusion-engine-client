@@ -121,6 +121,15 @@ def test_message_types():
     assert callback_types == [MessageType.POSE_AUX]
 
 
+# Check that registering a callback for a type excluded by the message type filter prints a warning.
+def test_message_types_callback_warning(caplog):
+    decoder = FusionEngineDecoder(message_types=[PoseAuxMessage])
+    decoder.add_callback(MessageType.POSE_AUX, lambda header, payload: None)
+    assert 'excluded by the message type filter' not in caplog.text
+    decoder.add_callback(MessageType.POSE, lambda header, payload: None)
+    assert 'Callback registered for POSE (10000), which is excluded by the message type filter.' in caplog.text
+
+
 # Check that disabling payloads omits them from the results and the callback arguments.
 def test_no_payload():
     test_bytes = P1_POSE_MESSAGE1 + P1_POSE_AUX_MESSAGE3
