@@ -140,6 +140,11 @@ class MessageBatch(object):
 
         @return A new @ref MessageBatch containing the selected messages.
         """
+        # A scalar index would select a single numpy element instead of an array.
+        if isinstance(key, (int, np.integer)):
+            raise TypeError('Batch index must select an array of messages. Use batch[i:i + 1] to select one '
+                            'message, or get_payload(i) to get its payload.')
+
         return MessageBatch(buffer=self._buffer, offset=self.offset[key], headers=self._headers[key],
                             p1_time=self.p1_time[key], message_index=self.message_index[key])
 

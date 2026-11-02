@@ -125,6 +125,14 @@ def test_select(data_path):
     assert data == [b'first', b'second record', b'third']
 
 
+# Check that a scalar index is rejected, since it would not select an array of messages.
+def test_select_scalar(data_path):
+    batch = MixedLogReader(data_path).read_batch()
+    with pytest.raises(TypeError):
+        batch[0]
+    assert len(batch[0:1]) == 1
+
+
 # Check that unpacking a batch with other message types, or a class without unpack_array(), is an error.
 def test_unpack_array_errors(data_path):
     batch = MixedLogReader(data_path).read_batch()
