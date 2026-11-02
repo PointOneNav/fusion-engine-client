@@ -1,4 +1,3 @@
-import numpy as np
 import pytest
 
 from fusion_engine_client.messages import *
