@@ -1,6 +1,6 @@
 import math
 import struct
-from typing import Dict, Sequence, Tuple
+from typing import Dict, Sequence, Tuple, Union
 
 from construct import Array, Struct, Padding, Float32l, Int16sl, Int32sl
 import numpy as np
@@ -1743,6 +1743,11 @@ class InputDataWrapperMessage(MessagePayload):
 
     _STRUCT = struct.Struct('<IB x H')
 
+    # The fixed fields at the start of the payload as a numpy structured type, matching _STRUCT, for reading many
+    # messages at once.
+    _NUMPY_DTYPE = np.dtype([('system_time_cs_low', '<u4'), ('system_time_cs_high', 'u1'), ('reserved', 'u1'),
+                             ('data_type', '<u2')])
+
     # The location of the data_type field within the message.
     DATA_TYPE_OFFSET_BYTES = 6
 
@@ -1796,6 +1801,35 @@ class InputDataWrapperMessage(MessagePayload):
 
     def calcsize(self) -> int:
         return self._STRUCT.size + len(self.data)
+
+    @classmethod
+    def unpack_array(cls, batch) -> Dict[str, np.ndarray]:
+        """!
+        @brief Deserialize the fixed fields of every message in a batch at once.
+
+        See @ref MessagePayload.unpack_array(). Use @ref get_data() to get the wrapped data of individual messages.
+
+        @param batch A @ref MessageBatch containing only messages of this type.
+
+        @return A `dict` containing `system_time_ns` (`int64`) and `data_type` (`uint16`) arrays.
+        """
+        fields = batch.get_payload_fields(cls._NUMPY_DTYPE)
+        system_time_cs = (fields['system_time_cs_high'].astype(np.int64) << 32) | fields['system_time_cs_low']
+        return {
+            'system_time_ns': system_time_cs * cls.CENTI_NANO_SCALE_FACTOR,
+            'data_type': fields['data_type'],
+        }
+
+    @classmethod
+    def get_data(cls, payload: Union[bytes, memoryview]) -> Union[bytes, memoryview]:
+        """!
+        @brief Get the wrapped data from a serialized payload without deserializing the rest of it.
+
+        @param payload The serialized message payload, e.g., from @ref MessageBatch.get_payload().
+
+        @return The wrapped data, of the same type as `payload`.
+        """
+        return payload[cls._STRUCT.size:]
 
     def get_fe_content_header(self) -> Optional[MessageHeader]:
         if self._fe_content_header is None and self.data_type == InputDataType.M_TYPE_FUSION_ENGINE_MESSAGE:

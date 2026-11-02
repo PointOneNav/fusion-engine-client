@@ -139,6 +139,15 @@ class TestClass:
         reader.rewind()
         self._check_results(reader, messages)
 
+    def test_read_headers_only(self, data_path):
+        messages = self._generate_mixed_data(data_path)
+
+        # Read the headers without deserializing the payloads.
+        reader = MixedLogReader(str(data_path), return_header=True, return_payload=False, return_bytes=True)
+        results = list(reader)
+        assert [header.message_type for header, _ in results] == [m.get_type() for m in messages]
+        assert all(len(data) == header.get_message_size() for header, data in results)
+
     def test_read_pose(self, data_path):
         messages = self._generate_mixed_data(data_path)
         expected_messages = [m for m in messages if isinstance(m, PoseMessage)]
