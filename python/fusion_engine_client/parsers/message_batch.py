@@ -84,8 +84,10 @@ class MessageBatch(object):
 
         @return A `memoryview` of the message.
         """
+        # Compute this message's size. Using self.size_bytes would compute the size of every message in the batch.
         start = int(self.offset[i])
-        return memoryview(self._buffer[start:start + int(self.size_bytes[i])])
+        size_bytes = MessageHeader.calcsize() + int(self.payload_size_bytes[i])
+        return memoryview(self._buffer[start:start + size_bytes])
 
     def get_payload(self, i: int) -> memoryview:
         """!
