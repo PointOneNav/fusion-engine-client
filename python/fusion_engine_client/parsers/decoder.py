@@ -318,10 +318,13 @@ class FusionEngineDecoder:
 
                 # Get the class for the received message type and deserialize the message payload, if requested. If
                 # cls is not None, it is a child of @ref MessagePayload that maps to the received @ref MessageType.
+                #
+                # The payload is copied out of the buffer rather than unpacked in place, since some payload classes
+                # read to the end of the buffer they are given.
                 contents = None
                 if self._return_payload:
                     cls = message_type_to_class.get(message_type_int, None)
-                    payload = bytes(buffer[offset + header_size:end_offset])
+                    payload = bytes(view[offset + header_size:end_offset])
                     if cls is not None:
                         contents = cls()
                         try:
