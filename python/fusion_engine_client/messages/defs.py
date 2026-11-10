@@ -259,6 +259,10 @@ class MessageHeader:
     # The offset of the payload_size_bytes field within the header.
     PAYLOAD_SIZE_OFFSET_BYTES = 16
 
+    # The offset within the header at which the CRC calculation starts: the protocol_version field, just after the CRC
+    # field. The CRC covers everything from there to the end of the payload.
+    CRC_START_OFFSET_BYTES = 8
+
     _MAX_EXPECTED_SIZE_BYTES = (1 << 24)
 
     def __init__(self, message_type: MessageType = MessageType.INVALID):
@@ -287,7 +291,7 @@ class MessageHeader:
         # protocol_version, then add the payload into the CRC.
         self.payload_size_bytes = len(payload)
         header_buffer = self.pack()
-        self.crc = crc32(header_buffer[8:])
+        self.crc = crc32(header_buffer[MessageHeader.CRC_START_OFFSET_BYTES:])
         self.crc = crc32(payload, self.crc)
         return self.crc
 
@@ -298,7 +302,8 @@ class MessageHeader:
                              (self.payload_size_bytes, MessageHeader._MAX_EXPECTED_SIZE_BYTES))
 
         message_size_bytes = MessageHeader._SIZE + self.payload_size_bytes
-        crc = crc32(buffer[(offset + 8):(offset + message_size_bytes)])
+        # The memoryview avoids copying the message out of the buffer just to compute its CRC.
+        crc = crc32(memoryview(buffer)[(offset + MessageHeader.CRC_START_OFFSET_BYTES):(offset + message_size_bytes)])
         if crc != self.crc:
             raise ValueError('CRC mismatch. [type=%s, payload_size=%d B, expected=0x%08x, computed=0x%08x]' %
                              (self.get_type_string(), self.payload_size_bytes, self.crc, crc))
