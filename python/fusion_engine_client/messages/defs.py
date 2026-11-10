@@ -248,7 +248,8 @@ class MessageHeader:
     SYNC = bytes((SYNC0, SYNC1))
 
     _FORMAT = '<BBHIBBHIII'
-    _SIZE: int = struct.calcsize(_FORMAT)
+    _STRUCT = struct.Struct(_FORMAT)
+    _SIZE: int = _STRUCT.size
 
     # The header layout as a numpy structured type, matching _FORMAT, for reading many headers at once.
     _NUMPY_DTYPE = np.dtype([('sync0', 'u1'), ('sync1', 'u1'), ('reserved', '<u2'), ('crc', '<u4'),
@@ -332,11 +333,11 @@ class MessageHeader:
                 self.message_version, int(self.message_type), self.sequence_number, self.payload_size_bytes,
                 int(self.source_identifier))
         if buffer is None:
-            buffer = struct.pack(MessageHeader._FORMAT, *args)
+            buffer = MessageHeader._STRUCT.pack(*args)
             if payload is not None:
                 buffer += payload
         else:
-            struct.pack_into(MessageHeader._FORMAT, buffer, offset, *args)
+            MessageHeader._STRUCT.pack_into(buffer, offset, *args)
             if payload is not None:
                 offset += MessageHeader._SIZE
                 buffer[offset:offset + len(payload)] = payload
@@ -368,7 +369,7 @@ class MessageHeader:
          self.crc, self.protocol_version,
          self.message_version, message_type_int,
          self.sequence_number, self.payload_size_bytes, self.source_identifier) = \
-            struct.unpack_from(MessageHeader._FORMAT, buffer, offset)
+            MessageHeader._STRUCT.unpack_from(buffer, offset)
 
         if validate_sync and (sync0 != MessageHeader.SYNC0 or sync1 != MessageHeader.SYNC1):
             raise ValueError('Received invalid sync bytes. [sync0=0x%02x, sync1=0x%02x]' % (sync0, sync1))
