@@ -91,6 +91,10 @@ class FusionEngineDecoder:
         self._last_sequence_number = None
         self._bytes_processed = 0
 
+        ## The number of valid messages whose sequence number did not follow the previous message's, e.g., because
+        #  messages were dropped or corrupted. This includes messages excluded by `message_types`.
+        self.num_sequence_gaps = 0
+
         self._callbacks: Dict[Optional[MessageType], List[Callable[[
             MessageHeader,
             Union[MessagePayload, bytes]], None]]] = defaultdict(list)
@@ -296,6 +300,8 @@ class FusionEngineDecoder:
                     # The sequence number is a uint32 and wraps back to 0.
                     expected_sequence_number = (last_sequence_number + 1) & 0xFFFFFFFF
                     if sequence_number != expected_sequence_number:
+                        self.num_sequence_gaps += 1
+
                         # If we got this far, the message is valid and the CRC passed, so we expect the sequence
                         # number to go forward. If it goes backward, treat this as unexpected and warn if errors
                         # for "likely" messages are enabled.

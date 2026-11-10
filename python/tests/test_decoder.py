@@ -190,6 +190,16 @@ def test_resync_discards_garbage():
     assert len(ret) == 1
 
 
+# Check that sequence number gaps are counted, including for messages excluded by the message type filter.
+def test_sequence_gap_count():
+    decoder = FusionEngineDecoder(message_types=[PoseAuxMessage])
+    decoder.on_data(P1_POSE_MESSAGE1 + P1_POSE_MESSAGE2)
+    assert decoder.num_sequence_gaps == 0
+    # Sequence 1 -> 0 (backwards) -> 2.
+    decoder.on_data(P1_POSE_MESSAGE1 + P1_POSE_AUX_MESSAGE3)
+    assert decoder.num_sequence_gaps == 2
+
+
 # Check that the decoded results do not depend on how the stream is split across calls, with garbage and corrupted
 # messages mixed in.
 def test_random_chunking():
