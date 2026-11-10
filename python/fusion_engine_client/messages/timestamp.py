@@ -50,7 +50,8 @@ class Timestamp:
     _INVALID = 0xFFFFFFFF
 
     _FORMAT = '<II'
-    _SIZE: int = struct.calcsize(_FORMAT)
+    _STRUCT = struct.Struct(_FORMAT)
+    _SIZE: int = _STRUCT.size
 
     def __init__(self, time_sec=math.nan):
         self.seconds = float(time_sec)
@@ -104,10 +105,10 @@ class Timestamp:
             frac_part_ns = int((self.seconds - int_part) * 1e9)
 
         if buffer is None:
-            buffer = struct.pack(Timestamp._FORMAT, int_part, frac_part_ns)
+            buffer = Timestamp._STRUCT.pack(int_part, frac_part_ns)
         else:
             args = (int_part, frac_part_ns)
-            struct.pack_into(Timestamp._FORMAT, buffer, offset, *args)
+            Timestamp._STRUCT.pack_into(buffer, offset, *args)
 
         if return_buffer:
             return buffer
@@ -115,7 +116,7 @@ class Timestamp:
             return self.calcsize()
 
     def unpack(self, buffer: bytes, offset: int = 0) -> int:
-        (int_part, frac_part_ns) = struct.unpack_from(Timestamp._FORMAT, buffer, offset)
+        (int_part, frac_part_ns) = Timestamp._STRUCT.unpack_from(buffer, offset)
         if int_part == Timestamp._INVALID or frac_part_ns == Timestamp._INVALID:
             self.seconds = math.nan
         else:
