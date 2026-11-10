@@ -277,9 +277,10 @@ class FusionEngineDecoder:
                 if computed_crc != crc:
                     print_func = warn_or_debug
 
-                    # Check if the expected payload size for this message type matches the received payload size. If
-                    # so, it likely means the message got corrupted. For variable-length messages, this will not work
-                    # since we don't know the expected size.
+                    # The CRC failed. If the payload size matches the expected size for this message type, this was
+                    # likely a real message that got corrupted (e.g., a dropped byte), so warn. Otherwise, it was
+                    # probably a false sync in random data, which is common. This can't tell for variable-length
+                    # messages, since their expected size isn't known.
                     cls = message_type_to_class.get(message_type_int, None)
                     try:
                         if (cls is not None and payload_size_bytes == cls.calcsize() and
