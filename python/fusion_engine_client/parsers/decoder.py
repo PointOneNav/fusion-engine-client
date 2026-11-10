@@ -172,13 +172,27 @@ class FusionEngineDecoder:
         # byte skipped while resynchronizing.
         #
         # This loop runs once per message, and on a high-rate data stream its per-message overhead dominates the
-        # decoder's CPU usage. To reduce unnecessary CPU usage, it checks the header and CRC without copying the data,
-        # and only builds a @ref MessageHeader for messages it returns.
+        # decoder's CPU usage. To reduce unnecessary CPU usage, it reads attributes into local variables up front,
+        # checks the header and CRC without copying the data, and only builds a @ref MessageHeader for messages it
+        # returns.
         decoded_messages = []
+        header_struct = MessageHeader._STRUCT
         header_size = MessageHeader.calcsize()
+        crc_start_offset = MessageHeader.CRC_START_OFFSET_BYTES
+        fe_sync0 = MessageHeader.SYNC0
+        fe_sync1 = MessageHeader.SYNC1
+        fe_sync = MessageHeader.SYNC
+
         buffer = self._buffer
         buffer_len = len(buffer)
         view = memoryview(buffer)
+        max_payload_len_bytes = self._max_payload_len_bytes
+        message_types = self._message_types
+        return_payload = self._return_payload
+        return_bytes = self._return_bytes
+        return_offset = self._return_offset
+        callbacks = self._callbacks
+        last_sequence_number = self._last_sequence_number
         offset = 0
         try:
             while True:
@@ -189,10 +203,10 @@ class FusionEngineDecoder:
                 # Check if the current and next byte match the sync pattern. If not, search for the next occurrence.
                 sync0 = buffer[offset]
                 sync1 = buffer[offset + 1]
-                sync_detected = sync0 == MessageHeader.SYNC0 and sync1 == MessageHeader.SYNC1
+                sync_detected = sync0 == fe_sync0 and sync1 == fe_sync1
 
                 if not sync_detected:
-                    sync_offset = buffer.find(MessageHeader.SYNC, offset + 1)
+                    sync_offset = buffer.find(fe_sync, offset + 1)
 
                     # Nothing found. Everything but the last byte can be dropped, since only that byte can be the
                     # start of a sequence split across two calls.
@@ -204,7 +218,7 @@ class FusionEngineDecoder:
 
                 # Possible header found. Decode it and wait for the payload.
                 (_, _, reserved, crc, protocol_version, message_version, message_type_int, sequence_number,
-                 payload_size_bytes, source_identifier) = MessageHeader._STRUCT.unpack_from(buffer, offset)
+                 payload_size_bytes, source_identifier) = header_struct.unpack_from(buffer, offset)
                 msg_len = payload_size_bytes + header_size
 
                 if trace_enabled:
@@ -226,7 +240,7 @@ class FusionEngineDecoder:
                         warn_or_debug('Reserved bytes nonzero. Dropping suspected invalid sync. [type=%s, '
                                       'payload_size=%d B, max=%d B]' %
                                       (MessageType.get_type_string(message_type_int), payload_size_bytes,
-                                       self._max_payload_len_bytes))
+                                       max_payload_len_bytes))
                     offset += 1
                     continue
                 # If the message is too large to fit in the buffer, we cannot parse it.
@@ -234,11 +248,11 @@ class FusionEngineDecoder:
                 # If this is an invalid sync, the parsed (invalid) payload length may  exceed the buffer size and the
                 # invalid header will be dropped. If it does not exceed the buffer size, it'll get caught later during
                 # the CRC check.
-                elif payload_size_bytes > self._max_payload_len_bytes:
+                elif payload_size_bytes > max_payload_len_bytes:
                     if warn_or_debug is not None:
                         warn_or_debug('Message payload too big. [type=%s, payload_size=%d B, max=%d B]' %
                                       (MessageType.get_type_string(message_type_int), payload_size_bytes,
-                                       self._max_payload_len_bytes))
+                                       max_payload_len_bytes))
                     offset += 1
                     continue
 
@@ -255,7 +269,7 @@ class FusionEngineDecoder:
                     self._trace_buffer(buffer[offset:end_offset])
 
                 # Validate the CRC. The memoryview avoids copying the message to compute it.
-                computed_crc = crc32(view[offset + MessageHeader.CRC_START_OFFSET_BYTES:end_offset])
+                computed_crc = crc32(view[offset + crc_start_offset:end_offset])
                 if computed_crc != crc:
                     print_func = warn_or_debug
 
@@ -278,14 +292,14 @@ class FusionEngineDecoder:
                     continue
 
                 # Check for sequence number gaps.
-                if self._last_sequence_number is not None:
+                if last_sequence_number is not None:
                     # The sequence number is a uint32 and wraps back to 0.
-                    expected_sequence_number = (self._last_sequence_number + 1) & 0xFFFFFFFF
+                    expected_sequence_number = (last_sequence_number + 1) & 0xFFFFFFFF
                     if sequence_number != expected_sequence_number:
                         # If we got this far, the message is valid and the CRC passed, so we expect the sequence
                         # number to go forward. If it goes backward, treat this as unexpected and warn if errors
                         # for "likely" messages are enabled.
-                        if (sequence_number < self._last_sequence_number and
+                        if (sequence_number < last_sequence_number and
                                 self._warn_on_error >= self.WarnOnError.LIKELY):
                             _logger.warning("Sequence number went backwards on %s message. [expected=%d, "
                                             "received=%d, payload_size=%d B, stream_offset=%d B (0x%x)].",
@@ -298,10 +312,10 @@ class FusionEngineDecoder:
                                             "[expected=%d, received=%d].",
                                             expected_sequence_number, sequence_number)
 
-                self._last_sequence_number = sequence_number
+                last_sequence_number = sequence_number
 
                 # Skip messages the user did not request.
-                if self._message_types is not None and message_type_int not in self._message_types:
+                if message_types is not None and message_type_int not in message_types:
                     offset = end_offset
                     continue
 
@@ -322,7 +336,7 @@ class FusionEngineDecoder:
                 # The payload is copied out of the buffer rather than unpacked in place, since some payload classes
                 # read to the end of the buffer they are given.
                 contents = None
-                if self._return_payload:
+                if return_payload:
                     cls = message_type_to_class.get(message_type_int, None)
                     payload = bytes(view[offset + header_size:end_offset])
                     if cls is not None:
@@ -349,27 +363,26 @@ class FusionEngineDecoder:
 
                 # Store the result.
                 result = [header]
-                if self._return_payload:
+                if return_payload:
                     result.append(contents)
-                if self._return_bytes:
+                if return_bytes:
                     result.append(buffer[offset:end_offset])
-                if self._return_offset:
+                if return_offset:
                     result.append(self._bytes_processed + offset)
 
                 decoded_messages.append(result)
 
-                # Call any callbacks registered for this message type.
+                # Call any callbacks registered for this message type, then any registered with type None, which
+                # receive all message types.
                 #
-                # self._callbacks is a `defaultdict(list)` and returns an empty list ([]) if the key is not found.
-                for callback in self._callbacks[header.message_type]:
-                    # Unpack results so that the callback is called as:
-                    #   callback(header, contents)
+                # Unpack results so that the callback is called as:
+                #   callback(header, contents)
+                #
+                # get() is used instead of indexing so the `defaultdict` doesn't add an empty entry for every message
+                # type seen.
+                for callback in callbacks.get(message_type_int, ()):
                     callback(*result)
-
-                # Callbacks registered with type None should receive all message types.
-                for callback in self._callbacks[None]:
-                    # Unpack results so that the callback is called as:
-                    #   callback(header, contents)
+                for callback in callbacks.get(None, ()):
                     callback(*result)
 
                 # Move decoder past the current message.
@@ -377,6 +390,7 @@ class FusionEngineDecoder:
         finally:
             # The buffer cannot be resized while the memoryview exists.
             view.release()
+            self._last_sequence_number = last_sequence_number
 
         # Discard everything consumed above, leaving any partial message for the next call.
         self._bytes_processed += offset
