@@ -287,6 +287,8 @@ class FusionEngineDecoder:
                                 self._warn_on_error >= self.WarnOnError.LIKELY):
                             print_func = _logger.warning
                     except (AttributeError, TypeError):
+                        # Variable-length messages define calcsize() on an instance, since their size depends on their
+                        # contents, so calling it on the class raises an exception. Keep the default log level for them.
                         pass
 
                     if print_func is not None:
