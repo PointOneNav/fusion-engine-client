@@ -54,15 +54,18 @@ jobs:
             bazel: 4.2.2
             cppstd: c++14
           # Run Bazel 6.5.0 on all compiler versions.
-          - os: ubuntu-latest
+          #
+          # Ubuntu 26.04 (ubuntu-latest) does not provide GCC 9, GCC 10, or Clang 14, so
+          # pin those builds to Ubuntu 24.04.
+          - os: ubuntu-24.04
             compiler: gcc
             version: 9
             bazel: 6.5.0
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             compiler: gcc
             version: 10
             bazel: 6.5.0
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             compiler: clang
             version: 14
             bazel: 6.5.0
@@ -102,7 +105,7 @@ jobs:
         version: ${{ matrix.bazel }}
 
     - name: Setup Environment (Linux)
-      if: matrix.os == 'ubuntu-latest'
+      if: startsWith(matrix.os, 'ubuntu')
       run: |
         # Just for Github action builds set USE_BAZEL_VERSION to override the
         # .bazelversion file so we can test different Bazel versions even though
@@ -188,13 +191,15 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          # Ubuntu 26.04 (ubuntu-latest) does not provide GCC 9, GCC 10, or Clang 14, so
+          # pin those builds to Ubuntu 24.04.
+          - os: ubuntu-24.04
             compiler: gcc
             version: 9
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             compiler: gcc
             version: 10
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             compiler: clang
             version: 14
           - os: windows-latest
@@ -221,7 +226,7 @@ jobs:
         echo "EXT=.exe" >> $GITHUB_ENV
 
     - name: Setup Environment (Linux)
-      if: matrix.os == 'ubuntu-latest'
+      if: startsWith(matrix.os, 'ubuntu')
       run: |
         if [[ "${{ matrix.compiler }}" == "gcc" ]]; then
           # Some time between 2/9/2026 and 2/16/2026, the apt packages for
@@ -266,14 +271,14 @@ jobs:
         cmake -DCMAKE_INSTALL_PREFIX=install ..
 
     - name: Build Library And Examples (Linux)
-      if: matrix.os == 'ubuntu-latest'
+      if: startsWith(matrix.os, 'ubuntu')
       run: |
         cd cmake_build
         make
         make install
 
     - name: Install Test Files (Linux)
-      if: matrix.os == 'ubuntu-latest'
+      if: startsWith(matrix.os, 'ubuntu')
       run: |
         mkdir test
         cp cmake_build/examples/message_decode/message_decode ./test/
@@ -297,7 +302,7 @@ jobs:
         cp examples/message_decode/example_data.p1log ./test/
 
     - name: Build External Project Example (CMake, Linux)
-      if: matrix.os == 'ubuntu-latest'
+      if: startsWith(matrix.os, 'ubuntu')
       run: |
         mkdir examples/external_cmake_project/build
         cd examples/external_cmake_project/build
@@ -366,7 +371,9 @@ jobs:
   # Run Python unit tests.
   test_python:
     name: Python Unit Tests
-    runs-on: ubuntu-latest
+    # Ubuntu 26.04 (ubuntu-latest) does not provide Python 3.8 or 3.9 for actions/setup-python, so pin these tests
+    # to Ubuntu 24.04.
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
