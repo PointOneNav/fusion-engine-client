@@ -1,10 +1,11 @@
 from collections import defaultdict
 from typing import Iterable, List, Dict, Callable, Optional, Tuple, Union
+from zlib import crc32
 
 from ..messages import MessageHeader, MessageType, MessagePayload, message_type_to_class
 from ..utils import trace as logging
 from ..utils.bin_utils import bytes_to_hex
-from ..utils.enum_utils import IntEnum
+from ..utils.enum_utils import IntEnum, lookup_value
 
 _logger = logging.getLogger('point_one.fusion_engine.parsers.decoder')
 
@@ -87,10 +88,12 @@ class FusionEngineDecoder:
 
         self._max_payload_len_bytes = max_payload_len_bytes
         self._buffer = bytearray()
-        self._header: Optional[MessageHeader] = None
-        self._msg_len = 0
         self._last_sequence_number = None
         self._bytes_processed = 0
+
+        ## The number of valid messages whose sequence number did not follow the previous message's, e.g., because
+        #  messages were dropped or corrupted. This includes messages excluded by `message_types`.
+        self.num_sequence_gaps = 0
 
         self._callbacks: Dict[Optional[MessageType], List[Callable[[
             MessageHeader,
@@ -171,46 +174,63 @@ class FusionEngineDecoder:
         # Bytes that have been consumed are tracked with a read cursor and discarded in a single pass once the buffer
         # is exhausted. Removing them as we go would copy everything after them, once per message decoded and once per
         # byte skipped while resynchronizing.
+        #
+        # This loop runs once per message, and on a high-rate data stream its per-message overhead dominates the
+        # decoder's CPU usage. To reduce unnecessary CPU usage, it reads attributes into local variables up front,
+        # checks the header and CRC without copying the data, and only builds a @ref MessageHeader for messages it
+        # returns.
         decoded_messages = []
+        header_struct = MessageHeader._STRUCT
         header_size = MessageHeader.calcsize()
+        crc_start_offset = MessageHeader.CRC_START_OFFSET_BYTES
+        fe_sync0 = MessageHeader.SYNC0
+        fe_sync1 = MessageHeader.SYNC1
+        fe_sync = MessageHeader.SYNC
+
         buffer = self._buffer
         buffer_len = len(buffer)
+        view = memoryview(buffer)
+        max_payload_len_bytes = self._max_payload_len_bytes
+        message_types = self._message_types
+        return_payload = self._return_payload
+        return_bytes = self._return_bytes
+        return_offset = self._return_offset
+        callbacks = self._callbacks
+        last_sequence_number = self._last_sequence_number
         offset = 0
-        while True:
-            # Message must be at least long enough for header.
-            if buffer_len - offset < header_size:
-                break
-            # Looking for a valid header.
-            elif self._header is None:
+        try:
+            while True:
+                # Message must be at least long enough for header.
+                if buffer_len - offset < header_size:
+                    break
+
                 # Check if the current and next byte match the sync pattern. If not, search for the next occurrence.
                 sync0 = buffer[offset]
                 sync1 = buffer[offset + 1]
-                in_sync = sync0 == MessageHeader.SYNC0 and sync1 == MessageHeader.SYNC1
+                sync_detected = sync0 == fe_sync0 and sync1 == fe_sync1
 
-                if not in_sync:
-                    sync_offset = buffer.find(MessageHeader.SYNC, offset + 1)
+                if not sync_detected:
+                    sync_offset = buffer.find(fe_sync, offset + 1)
 
                     # Nothing found. Everything but the last byte can be dropped, since only that byte can be the
                     # start of a sequence split across two calls.
                     if sync_offset < 0:
                         sync_offset = buffer_len - 1
 
-                    self._bytes_processed += sync_offset - offset
                     offset = sync_offset
                     continue
 
                 # Possible header found. Decode it and wait for the payload.
-                self._header = MessageHeader()
-                self._header.unpack(buffer, offset=offset, warn_on_unrecognized=False)
-
-                self._msg_len = self._header.payload_size_bytes + header_size
+                (_, _, reserved, crc, protocol_version, message_version, message_type_int, sequence_number,
+                 payload_size_bytes, source_identifier) = header_struct.unpack_from(buffer, offset)
+                msg_len = payload_size_bytes + header_size
 
                 if trace_enabled:
                     _logger.trace('Found candidate header. [type=%s, sequence=%d, payload_size=%d B '
                                   '(total_size=%d B), stream_offset=%d B (0x%x)]' %
-                                  (self._header.get_type_string(), self._header.sequence_number,
-                                   self._header.payload_size_bytes, self._msg_len,
-                                   self._bytes_processed, self._bytes_processed))
+                                  (MessageType.get_type_string(message_type_int), sequence_number,
+                                   payload_size_bytes, msg_len, self._bytes_processed + offset,
+                                   self._bytes_processed + offset))
                     self._trace_buffer(buffer[offset:offset + header_size])
 
                 # The reserved bytes in the header are currently always set to 0. If the incoming bytes are not zero,
@@ -219,158 +239,170 @@ class FusionEngineDecoder:
                 # This may change in the future, but for now it prevents us from needing to collect a ton of bytes
                 # before performing a CRC check if a bogus header from an invalid sync has a very large payload size
                 # that happens to still be smaller than the buffer size.
-                drop_candidate = False
-                if self._header.reserved != 0:
+                if reserved != 0:
                     if warn_or_debug is not None:
                         warn_or_debug('Reserved bytes nonzero. Dropping suspected invalid sync. [type=%s, '
                                       'payload_size=%d B, max=%d B]' %
-                                      (self._header.get_type_string(), self._header.payload_size_bytes,
-                                       self._max_payload_len_bytes))
-                    drop_candidate = True
+                                      (MessageType.get_type_string(message_type_int), payload_size_bytes,
+                                       max_payload_len_bytes))
+                    offset += 1
+                    continue
                 # If the message is too large to fit in the buffer, we cannot parse it.
                 #
                 # If this is an invalid sync, the parsed (invalid) payload length may  exceed the buffer size and the
                 # invalid header will be dropped. If it does not exceed the buffer size, it'll get caught later during
                 # the CRC check.
-                elif self._header.payload_size_bytes > self._max_payload_len_bytes:
+                elif payload_size_bytes > max_payload_len_bytes:
                     if warn_or_debug is not None:
                         warn_or_debug('Message payload too big. [type=%s, payload_size=%d B, max=%d B]' %
-                                      (self._header.get_type_string(), self._header.payload_size_bytes,
-                                       self._max_payload_len_bytes))
-                    drop_candidate = True
-
-                if drop_candidate:
-                    self._header = None
+                                      (MessageType.get_type_string(message_type_int), payload_size_bytes,
+                                       max_payload_len_bytes))
                     offset += 1
-                    self._bytes_processed += 1
                     continue
 
-            # If there's not enough data to complete the message, we're done looping.
-            if buffer_len - offset < self._msg_len:
-                break
+                # If there's not enough data to complete the message, we're done looping. The next call will decode
+                # the header again once more data arrives.
+                end_offset = offset + msg_len
+                if end_offset > buffer_len:
+                    break
 
-            # Message complete.
-            if trace_enabled:
-                _logger.trace('Collected complete message. [message_size=%d B, payload_size=%d B]' %
-                              (self._header.get_message_size(), self._header.payload_size_bytes))
-                self._trace_buffer(buffer[offset:offset + self._msg_len])
-            # Validate the CRC. This will raise an exception on CRC failure.
-            try:
-                self._header.validate_crc(buffer, offset=offset)
-            # Invalid CRC detected.
-            except Exception as e:
-                print_func = warn_or_debug
+                # Message complete.
+                if trace_enabled:
+                    _logger.trace('Collected complete message. [message_size=%d B, payload_size=%d B]' %
+                                  (msg_len, payload_size_bytes))
+                    self._trace_buffer(buffer[offset:end_offset])
 
-                # Check if the expected payload size for this message type matches the received payload size. If so, it
-                # likely means the message got corrupted. For variable-length messages, this will not work since we
-                # don't know the expected size.
-                cls = message_type_to_class.get(self._header.message_type, None)
-                try:
-                    if (cls is not None and self._header.payload_size_bytes == cls.calcsize() and
-                        self._warn_on_error >= self.WarnOnError.LIKELY):
-                        print_func = _logger.warning
-                except (AttributeError, TypeError):
-                    pass
+                # Validate the CRC. The memoryview avoids copying the message to compute it.
+                computed_crc = crc32(view[offset + crc_start_offset:end_offset])
+                if computed_crc != crc:
+                    print_func = warn_or_debug
 
-                if print_func is not None:
-                    print_func(e)
-                self._header = None
-                self._msg_len = 0
-                offset += 1
-                self._bytes_processed += 1
-                continue
-
-            # Check for sequence number gaps.
-            if self._last_sequence_number is not None:
-                # If we got this far, the message is valid and the CRC passed, so we expect the sequence number to go
-                # forward. If it goes backward, treat this as unexpected and warn if errors for "likely" messages are
-                # enabled.
-                expected_sequence_number = (self._last_sequence_number + 1) % 2**32
-                if (self._header.sequence_number < self._last_sequence_number and
-                    self._warn_on_error >= self.WarnOnError.LIKELY):
-                    _logger.warning("Sequence number went backwards on %s message. [expected=%d, "
-                                    "received=%d, payload_size=%d B, stream_offset=%d B (0x%x)].",
-                                    self._header.get_type_string(), expected_sequence_number,
-                                    self._header.sequence_number, self._header.payload_size_bytes,
-                                    self._bytes_processed, self._bytes_processed)
-                # Otherwise, if there is a gap in the sequence numbers in either direction, report it only if the user
-                # specifically requested gap reporting.
-                elif self._warn_on_seq_skip:
-                    if self._header.sequence_number != expected_sequence_number:
-                        _logger.warning("Gap detected in FusionEngine message sequence numbers. [expected=%d, "
-                                        "received=%d].",
-                                        expected_sequence_number, self._header.sequence_number)
-            self._last_sequence_number = self._header.sequence_number
-
-            # Skip messages the user did not request.
-            if self._message_types is not None and self._header.message_type not in self._message_types:
-                self._bytes_processed += self._msg_len
-                offset += self._msg_len
-                self._header = None
-                self._msg_len = 0
-                continue
-
-            # Get the class for the received message type and deserialize the message payload, if requested. If cls is
-            # not None, it is a child of @ref MessagePayload that maps to the received @ref MessageType.
-            contents = None
-            if self._return_payload:
-                cls = message_type_to_class.get(self._header.message_type, None)
-                payload = bytes(buffer[offset + header_size:offset + self._msg_len])
-                if cls is not None:
-                    contents = cls()
+                    # The CRC failed. If the payload size matches the expected size for this message type, this was
+                    # likely a real message that got corrupted (e.g., a dropped byte), so warn. Otherwise, it was
+                    # probably a false sync in random data, which is common. This can't tell for variable-length
+                    # messages, since their expected size isn't known.
+                    cls = message_type_to_class.get(message_type_int, None)
                     try:
-                        contents.unpack(buffer=payload, offset=0,
-                                        message_version=self._header.message_version)
-                        if debug_enabled:
-                            _logger.debug('Decoded FusionEngine message %s.', repr(contents))
-                    except NotImplementedError as e:
+                        if (cls is not None and payload_size_bytes == cls.calcsize() and
+                                self._warn_on_error >= self.WarnOnError.LIKELY):
+                            print_func = _logger.warning
+                    except (AttributeError, TypeError):
+                        # Variable-length messages define calcsize() on an instance, since their size depends on their
+                        # contents, so calling it on the class raises an exception. Keep the default log level for them.
+                        pass
+
+                    if print_func is not None:
+                        print_func('CRC mismatch. [type=%s, payload_size=%d B, expected=0x%08x, computed=0x%08x]' %
+                                   (MessageType.get_type_string(message_type_int), payload_size_bytes, crc,
+                                    computed_crc))
+                    offset += 1
+                    continue
+
+                # Check for sequence number gaps.
+                if last_sequence_number is not None:
+                    # The sequence number is a uint32 and wraps back to 0.
+                    expected_sequence_number = (last_sequence_number + 1) & 0xFFFFFFFF
+                    if sequence_number != expected_sequence_number:
+                        self.num_sequence_gaps += 1
+
+                        # If we got this far, the message is valid and the CRC passed, so we expect the sequence
+                        # number to go forward. If it goes backward, treat this as unexpected and warn if errors
+                        # for "likely" messages are enabled.
+                        if (sequence_number < last_sequence_number and
+                                self._warn_on_error >= self.WarnOnError.LIKELY):
+                            _logger.warning("Sequence number went backwards on %s message. [expected=%d, "
+                                            "received=%d, payload_size=%d B, stream_offset=%d B (0x%x)].",
+                                            MessageType.get_type_string(message_type_int),
+                                            expected_sequence_number, sequence_number, payload_size_bytes,
+                                            self._bytes_processed + offset, self._bytes_processed + offset)
+                        # Otherwise, report the gap only if the user specifically requested gap reporting.
+                        elif self._warn_on_seq_skip:
+                            _logger.warning("Gap detected in FusionEngine message sequence numbers. "
+                                            "[expected=%d, received=%d].",
+                                            expected_sequence_number, sequence_number)
+
+                last_sequence_number = sequence_number
+
+                # Skip messages the user did not request.
+                if message_types is not None and message_type_int not in message_types:
+                    offset = end_offset
+                    continue
+
+                # Build the header for the caller.
+                header = MessageHeader()
+                header.reserved = reserved
+                header.crc = crc
+                header.protocol_version = protocol_version
+                header.message_version = message_version
+                header.message_type = lookup_value(MessageType, message_type_int)
+                header.sequence_number = sequence_number
+                header.payload_size_bytes = payload_size_bytes
+                header.source_identifier = source_identifier
+
+                # Get the class for the received message type and deserialize the message payload, if requested. If
+                # cls is not None, it is a child of @ref MessagePayload that maps to the received @ref MessageType.
+                #
+                # The payload is copied out of the buffer rather than unpacked in place, since some payload classes
+                # read to the end of the buffer they are given.
+                contents = None
+                if return_payload:
+                    cls = message_type_to_class.get(message_type_int, None)
+                    payload = bytes(view[offset + header_size:end_offset])
+                    if cls is not None:
+                        contents = cls()
+                        try:
+                            contents.unpack(buffer=payload, offset=0, message_version=message_version)
+                            if debug_enabled:
+                                _logger.debug('Decoded FusionEngine message %s.', repr(contents))
+                        except NotImplementedError as e:
+                            print_func = _logger.warning if self._warn_on_unrecognized else _logger.debug
+                            print_func('Error deserializing message %s payload: %s', header.get_type_string(), e)
+                        except Exception as e:
+                            # unpack() may fail if the payload length in the header differs from the length expected
+                            # by the class, the payload contains an illegal value, etc.
+                            _logger.error('Error deserializing message %s payload: %s', header.get_type_string(), e)
+                    # If cls is None, we don't have a class for the message type. Return a copy of the payload bytes.
+                    else:
                         print_func = _logger.warning if self._warn_on_unrecognized else _logger.debug
-                        print_func('Error deserializing message %s payload: %s', self._header.get_type_string(), e)
-                    except Exception as e:
-                        # unpack() may fail if the payload length in the header differs from the length expected by
-                        # the class, the payload contains an illegal value, etc.
-                        _logger.error('Error deserializing message %s payload: %s', self._header.get_type_string(), e)
-                # If cls is None, we don't have a class for the message type. Return a copy of the payload bytes.
-                else:
-                    print_func = _logger.warning if self._warn_on_unrecognized else _logger.debug
-                    print_func('Decoded unknown FusionEngine message. [type=%d, payload_size=%d B]',
-                               self._header.message_type, self._header.payload_size_bytes)
+                        print_func('Decoded unknown FusionEngine message. [type=%d, payload_size=%d B]',
+                                   message_type_int, payload_size_bytes)
 
-                if contents is None:
-                    contents = payload
+                    if contents is None:
+                        contents = payload
 
-            # Store the result.
-            result = [self._header]
-            if self._return_payload:
-                result.append(contents)
-            if self._return_bytes:
-                result.append(buffer[offset:offset + self._msg_len])
-            if self._return_offset:
-                result.append(self._bytes_processed)
+                # Store the result.
+                result = [header]
+                if return_payload:
+                    result.append(contents)
+                if return_bytes:
+                    result.append(buffer[offset:end_offset])
+                if return_offset:
+                    result.append(self._bytes_processed + offset)
 
-            decoded_messages.append(result)
+                decoded_messages.append(result)
 
-            # Call any callbacks registered for this message type.
-            #
-            # self._callbacks is a `defaultdict(list)` and returns an empty list ([]) if the key is not found.
-            for callback in self._callbacks[self._header.message_type]:
+                # Call any callbacks registered for this message type, then any registered with type None, which
+                # receive all message types.
+                #
                 # Unpack results so that the callback is called as:
                 #   callback(header, contents)
-                callback(*result)
+                #
+                # get() is used instead of indexing so the `defaultdict` doesn't add an empty entry for every message
+                # type seen.
+                for callback in callbacks.get(message_type_int, ()):
+                    callback(*result)
+                for callback in callbacks.get(None, ()):
+                    callback(*result)
 
-            # Callbacks registered with type None should receive all message types.
-            for callback in self._callbacks[None]:
-                # Unpack results so that the callback is called as:
-                #   callback(header, contents)
-                callback(*result)
-
-            # Move decoder past the current message.
-            self._bytes_processed += self._msg_len
-            offset += self._msg_len
-            self._header = None
-            self._msg_len = 0
+                # Move decoder past the current message.
+                offset = end_offset
+        finally:
+            # The buffer cannot be resized while the memoryview exists.
+            view.release()
+            self._last_sequence_number = last_sequence_number
 
         # Discard everything consumed above, leaving any partial message for the next call.
+        self._bytes_processed += offset
         if offset > 0:
             del buffer[:offset]
 

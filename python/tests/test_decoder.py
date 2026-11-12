@@ -1,3 +1,5 @@
+import random
+
 from fusion_engine_client.messages import PoseMessage, PoseAuxMessage
 from fusion_engine_client.messages.defs import MessageHeader, MessageType
 from fusion_engine_client.parsers import FusionEngineDecoder
@@ -186,3 +188,37 @@ def test_resync_discards_garbage():
         assert len(decoder._buffer) <= 1
     ret = decoder.on_data(P1_POSE_MESSAGE1)
     assert len(ret) == 1
+
+
+# Check that sequence number gaps are counted, including for messages excluded by the message type filter.
+def test_sequence_gap_count():
+    decoder = FusionEngineDecoder(message_types=[PoseAuxMessage])
+    decoder.on_data(P1_POSE_MESSAGE1 + P1_POSE_MESSAGE2)
+    assert decoder.num_sequence_gaps == 0
+    # Sequence 1 -> 0 (backwards) -> 2.
+    decoder.on_data(P1_POSE_MESSAGE1 + P1_POSE_AUX_MESSAGE3)
+    assert decoder.num_sequence_gaps == 2
+
+
+# Check that the decoded results do not depend on how the stream is split across calls, with garbage and corrupted
+# messages mixed in.
+def test_random_chunking():
+    corrupted = bytearray(P1_POSE_MESSAGE2)
+    corrupted[-1] ^= 0xFF
+    stream = (b'.1garbage.' + P1_POSE_MESSAGE1 + bytes(corrupted) + b'.' + P1_POSE_AUX_MESSAGE3 + b'\x00' * 10 +
+              P1_POSE_MESSAGE1) * 5
+    # The corrupted copy of message 2 is dropped from each repetition.
+    expected_sequence_numbers = [0, 2, 0] * 5
+
+    rng = random.Random(0)
+    for _ in range(20):
+        decoder = FusionEngineDecoder()
+        ret = []
+        offset = 0
+        while offset < len(stream):
+            size = rng.randint(1, 64)
+            ret += decoder.on_data(stream[offset:offset + size])
+            offset += size
+        assert [r[0].sequence_number for r in ret] == expected_sequence_numbers
+        assert all(isinstance(r[1], (PoseMessage, PoseAuxMessage)) for r in ret)
+        assert len(decoder._buffer) <= 1

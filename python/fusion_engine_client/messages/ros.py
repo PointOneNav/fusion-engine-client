@@ -24,7 +24,8 @@ class ROSPoseMessage(MessagePayload):
     MESSAGE_VERSION = 0
 
     _FORMAT = '< 3d 4d'
-    _SIZE: int = struct.calcsize(_FORMAT)
+    _STRUCT = struct.Struct(_FORMAT)
+    _SIZE: int = _STRUCT.size
 
     def __init__(self):
         # The time of the message, in P1 time (beginning at power-on)
@@ -44,9 +45,10 @@ class ROSPoseMessage(MessagePayload):
 
         offset += self.p1_time.pack(buffer, offset, return_buffer=False)
 
-        struct.pack_into(ROSPoseMessage._FORMAT, buffer, offset,
-                         self.position_rel_m[0], self.position_rel_m[1], self.position_rel_m[2],
-                         self.orientation[0], self.orientation[1], self.orientation[2], self.orientation[3])
+        ROSPoseMessage._STRUCT.pack_into(
+            buffer, offset,
+            self.position_rel_m[0], self.position_rel_m[1], self.position_rel_m[2],
+            self.orientation[0], self.orientation[1], self.orientation[2], self.orientation[3])
 
         if return_buffer:
             return buffer
@@ -59,8 +61,7 @@ class ROSPoseMessage(MessagePayload):
         offset += self.p1_time.unpack(buffer, offset)
         (self.position_rel_m[0], self.position_rel_m[1], self.position_rel_m[2],
          self.orientation[0], self.orientation[1], self.orientation[2], self.orientation[3]) = \
-            struct.unpack_from(ROSPoseMessage._FORMAT,
-                               buffer=buffer, offset=offset)
+            ROSPoseMessage._STRUCT.unpack_from(buffer=buffer, offset=offset)
         offset += ROSPoseMessage._SIZE
         return offset - initial_offset
 
@@ -95,7 +96,8 @@ class ROSGPSFixMessage(MessagePayload):
     MESSAGE_VERSION = 0
 
     _FORMAT = '< ddd ddd ddd d ddddd dddddddddd 9d B 3B'
-    _SIZE: int = struct.calcsize(_FORMAT)
+    _STRUCT = struct.Struct(_FORMAT)
+    _SIZE: int = _STRUCT.size
 
     def __init__(self):
         self.p1_time = Timestamp()
@@ -167,37 +169,38 @@ class ROSGPSFixMessage(MessagePayload):
 
         offset += self.p1_time.pack(buffer, offset, return_buffer=False)
 
-        struct.pack_into(ROSGPSFixMessage._FORMAT, buffer, offset,
-                         self.latitude_deg,
-                         self.longitude_deg,
-                         self.altitude_m,
-                         self.track_deg,
-                         self.speed_mps,
-                         self.climb_mps,
-                         self.pitch_deg,
-                         self.roll_deg,
-                         self.dip_deg,
-                         self.gps_time,
-                         self.gdop,
-                         self.pdop,
-                         self.hdop,
-                         self.vdop,
-                         self.tdop,
-                         self.err_3d_m,
-                         self.err_horiz_m,
-                         self.err_vert_m,
-                         self.err_track_deg,
-                         self.err_speed_mps,
-                         self.err_climb_mps,
-                         self.err_time_sec,
-                         self.err_pitch_deg,
-                         self.err_roll_deg,
-                         self.err_dip_deg,
-                         self.position_covariance_m2[0], self.position_covariance_m2[1], self.position_covariance_m2[2],
-                         self.position_covariance_m2[3], self.position_covariance_m2[4], self.position_covariance_m2[5],
-                         self.position_covariance_m2[6], self.position_covariance_m2[7], self.position_covariance_m2[8],
-                         self.position_covariance_type,
-                         self.reserved[0], self.reserved[1], self.reserved[2])
+        ROSGPSFixMessage._STRUCT.pack_into(
+            buffer, offset,
+            self.latitude_deg,
+            self.longitude_deg,
+            self.altitude_m,
+            self.track_deg,
+            self.speed_mps,
+            self.climb_mps,
+            self.pitch_deg,
+            self.roll_deg,
+            self.dip_deg,
+            self.gps_time,
+            self.gdop,
+            self.pdop,
+            self.hdop,
+            self.vdop,
+            self.tdop,
+            self.err_3d_m,
+            self.err_horiz_m,
+            self.err_vert_m,
+            self.err_track_deg,
+            self.err_speed_mps,
+            self.err_climb_mps,
+            self.err_time_sec,
+            self.err_pitch_deg,
+            self.err_roll_deg,
+            self.err_dip_deg,
+            self.position_covariance_m2[0], self.position_covariance_m2[1], self.position_covariance_m2[2],
+            self.position_covariance_m2[3], self.position_covariance_m2[4], self.position_covariance_m2[5],
+            self.position_covariance_m2[6], self.position_covariance_m2[7], self.position_covariance_m2[8],
+            self.position_covariance_type,
+            self.reserved[0], self.reserved[1], self.reserved[2])
 
         if return_buffer:
             return buffer
@@ -238,8 +241,7 @@ class ROSGPSFixMessage(MessagePayload):
          self.position_covariance_m2[6], self.position_covariance_m2[7], self.position_covariance_m2[8],
          self.position_covariance_type,
          self.reserved[0], self.reserved[1], self.reserved[2]) = \
-            struct.unpack_from(ROSGPSFixMessage._FORMAT,
-                               buffer=buffer, offset=offset)
+            ROSGPSFixMessage._STRUCT.unpack_from(buffer=buffer, offset=offset)
         offset += ROSGPSFixMessage._SIZE
         return offset - initial_offset
 
@@ -267,7 +269,8 @@ class ROSIMUMessage(MessagePayload):
     MESSAGE_VERSION = 0
 
     _FORMAT = '< 4d 9d 3d 9d 3d 9d'
-    _SIZE: int = struct.calcsize(_FORMAT)
+    _STRUCT = struct.Struct(_FORMAT)
+    _SIZE: int = _STRUCT.size
 
     def __init__(self):
         self.p1_time = Timestamp()
@@ -296,8 +299,8 @@ class ROSIMUMessage(MessagePayload):
 
         offset += self.p1_time.pack(buffer, offset, return_buffer=False)
 
-        struct.pack_into(
-            ROSIMUMessage._FORMAT, buffer, offset,
+        ROSIMUMessage._STRUCT.pack_into(
+            buffer, offset,
             self.orientation[0], self.orientation[1], self.orientation[2], self.orientation[3],
             self.orientation_covariance[0], self.orientation_covariance[1], self.orientation_covariance[2],
             self.orientation_covariance[3], self.orientation_covariance[4], self.orientation_covariance[5],
@@ -334,8 +337,7 @@ class ROSIMUMessage(MessagePayload):
          self.acceleration_covariance[3], self.acceleration_covariance[4], self.acceleration_covariance[5],
          self.acceleration_covariance[6], self.acceleration_covariance[7], self.acceleration_covariance[8],
          ) = \
-            struct.unpack_from(ROSIMUMessage._FORMAT,
-                               buffer=buffer, offset=offset)
+            ROSIMUMessage._STRUCT.unpack_from(buffer=buffer, offset=offset)
         offset += ROSIMUMessage._SIZE
         return offset - initial_offset
 

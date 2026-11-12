@@ -248,7 +248,8 @@ class MessageHeader:
     SYNC = bytes((SYNC0, SYNC1))
 
     _FORMAT = '<BBHIBBHIII'
-    _SIZE: int = struct.calcsize(_FORMAT)
+    _STRUCT = struct.Struct(_FORMAT)
+    _SIZE: int = _STRUCT.size
 
     # The header layout as a numpy structured type, matching _FORMAT, for reading many headers at once.
     _NUMPY_DTYPE = np.dtype([('sync0', 'u1'), ('sync1', 'u1'), ('reserved', '<u2'), ('crc', '<u4'),
@@ -257,6 +258,10 @@ class MessageHeader:
 
     # The offset of the payload_size_bytes field within the header.
     PAYLOAD_SIZE_OFFSET_BYTES = 16
+
+    # The offset within the header at which the CRC calculation starts: the protocol_version field, just after the CRC
+    # field. The CRC covers everything from there to the end of the payload.
+    CRC_START_OFFSET_BYTES = 8
 
     _MAX_EXPECTED_SIZE_BYTES = (1 << 24)
 
@@ -286,7 +291,7 @@ class MessageHeader:
         # protocol_version, then add the payload into the CRC.
         self.payload_size_bytes = len(payload)
         header_buffer = self.pack()
-        self.crc = crc32(header_buffer[8:])
+        self.crc = crc32(header_buffer[MessageHeader.CRC_START_OFFSET_BYTES:])
         self.crc = crc32(payload, self.crc)
         return self.crc
 
@@ -297,7 +302,8 @@ class MessageHeader:
                              (self.payload_size_bytes, MessageHeader._MAX_EXPECTED_SIZE_BYTES))
 
         message_size_bytes = MessageHeader._SIZE + self.payload_size_bytes
-        crc = crc32(buffer[(offset + 8):(offset + message_size_bytes)])
+        # The memoryview avoids copying the message out of the buffer just to compute its CRC.
+        crc = crc32(memoryview(buffer)[(offset + MessageHeader.CRC_START_OFFSET_BYTES):(offset + message_size_bytes)])
         if crc != self.crc:
             raise ValueError('CRC mismatch. [type=%s, payload_size=%d B, expected=0x%08x, computed=0x%08x]' %
                              (self.get_type_string(), self.payload_size_bytes, self.crc, crc))
@@ -332,11 +338,11 @@ class MessageHeader:
                 self.message_version, int(self.message_type), self.sequence_number, self.payload_size_bytes,
                 int(self.source_identifier))
         if buffer is None:
-            buffer = struct.pack(MessageHeader._FORMAT, *args)
+            buffer = MessageHeader._STRUCT.pack(*args)
             if payload is not None:
                 buffer += payload
         else:
-            struct.pack_into(MessageHeader._FORMAT, buffer, offset, *args)
+            MessageHeader._STRUCT.pack_into(buffer, offset, *args)
             if payload is not None:
                 offset += MessageHeader._SIZE
                 buffer[offset:offset + len(payload)] = payload
@@ -368,7 +374,7 @@ class MessageHeader:
          self.crc, self.protocol_version,
          self.message_version, message_type_int,
          self.sequence_number, self.payload_size_bytes, self.source_identifier) = \
-            struct.unpack_from(MessageHeader._FORMAT, buffer, offset)
+            MessageHeader._STRUCT.unpack_from(buffer, offset)
 
         if validate_sync and (sync0 != MessageHeader.SYNC0 or sync1 != MessageHeader.SYNC1):
             raise ValueError('Received invalid sync bytes. [sync0=0x%02x, sync1=0x%02x]' % (sync0, sync1))
