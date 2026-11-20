@@ -1691,6 +1691,10 @@ figure.on('plotly_unhover', function(data) {
 
         # List the available signal types for each SV.
         signal_hashes = np.unique(data.signal_data['signal_hash'])
+        if len(signal_hashes) == 0:
+            figure['layout']['title']['text'] += f'<br>No signals reported in {len(data.p1_time)} messages'
+            # Without a polar trace, Plotly draws its default Cartesian axes instead of the polar ones.
+            figure.add_trace(go.Scatterpolargl(r=[], theta=[], showlegend=False, hoverinfo='skip'))
         signal_types_by_sv = defaultdict(list)
         for signal_hash in signal_hashes:
             signal_type = get_signal_type(signal_hash)
@@ -1922,6 +1926,9 @@ figure.on('plotly_unhover', function(data) {
                              1, 1)
             indices_by_signal_type[signal.signal_type].append(len(figure.data) - 1)
 
+        if len(signal_hashes) == 0:
+            self._note_no_gnss_signals(figure, data, num_x_axes=1)
+
         # Add signal type selection buttons.
         num_traces = len(figure.data)
         buttons = [dict(label=f'All ({len(signal_hashes)})', method='restyle', args=['visible', [True] * num_traces])]
@@ -2016,6 +2023,9 @@ figure.on('plotly_unhover', function(data) {
                                           legendgroup=name),
                                 2, 1)
             indices_by_system[system].append(len(figure.data) - 1)
+
+        if len(sv_hashes) == 0:
+            self._note_no_gnss_signals(figure, data, num_x_axes=2)
 
         # Add signal type selection buttons.
         num_traces = len(figure.data)
@@ -2419,6 +2429,23 @@ figure.on('plotly_unhover', function(data) {{
             return 'Secondary'
         else:
             return f'Source {source_id}'
+
+    def _note_no_gnss_signals(self, figure: go.Figure, data, num_x_axes: int):
+        """!
+        @brief Mark a GNSS time series figure whose messages contain no signals.
+
+        Without any traces, Plotly picks a default date range for the X axis. Span the received messages instead, so
+        an antenna reporting nothing reads differently from a missing message.
+
+        @param figure The figure to update.
+        @param data The GNSS signals data for the antenna.
+        @param num_x_axes The number of time axes (subplots) in the figure.
+        """
+        time, _ = self._resolve_x_axis(p1_time=data.p1_time, gps_time=data.gps_time)
+        x_range = [str(time[0]), str(time[-1])] if np.issubdtype(time.dtype, np.datetime64) else [time[0], time[-1]]
+        for i in range(num_x_axes):
+            figure['layout'][f'xaxis{i + 1}'].update(range=x_range)
+            figure['layout']['annotations'][i]['text'] += f'<br>No signals reported in {len(data.p1_time)} messages'
 
     def _gnss_plot_filename(self, base_name: str, source_id: int) -> str:
         # Keep the primary antenna's filename unsuffixed for backward compatibility with existing links/tooling.
