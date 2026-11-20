@@ -104,9 +104,35 @@ jobs:
       with:
         version: ${{ matrix.bazel }}
 
+    # The Ubuntu mirror is slow when many matrix jobs download at once, so we
+    # cache the downloaded .deb packages.
+    #
+    # actions/cache never overwrites an existing key, so we include the month in
+    # the key to pick up package updates. The OS image name (e.g., ubuntu24)
+    # keeps ubuntu-latest from restoring packages from an older release.
+    - name: Get apt Cache Key (Linux)
+      id: apt-cache-key
+      if: startsWith(matrix.os, 'ubuntu')
+      run: |
+        PREFIX="apt-${ImageOS}-${{ matrix.compiler }}-${{ matrix.version }}-"
+        echo "prefix=${PREFIX}" >> $GITHUB_OUTPUT
+        echo "key=${PREFIX}$(date +%Y-%m)" >> $GITHUB_OUTPUT
+
+    - name: Cache apt Packages (Linux)
+      if: startsWith(matrix.os, 'ubuntu')
+      uses: actions/cache@v4
+      with:
+        path: ~/apt-cache
+        key: ${{ steps.apt-cache-key.outputs.key }}
+        restore-keys: ${{ steps.apt-cache-key.outputs.prefix }}
+
     - name: Setup Environment (Linux)
       if: startsWith(matrix.os, 'ubuntu')
       run: |
+        # Use a cache directory that persists across runs (see above).
+        mkdir -p ~/apt-cache/partial
+        APT_CACHE_ARGS="-o Dir::Cache::Archives=$HOME/apt-cache -o APT::Keep-Downloaded-Packages=true"
+
         # Just for Github action builds set USE_BAZEL_VERSION to override the
         # .bazelversion file so we can test different Bazel versions even though
         # the recommended Bazel version will be in the .bazelversion file.
@@ -129,7 +155,7 @@ jobs:
             sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
           fi
 
-          sudo apt install gcc-${{ matrix.version }} g++-${{ matrix.version }}
+          sudo apt install --no-install-recommends ${APT_CACHE_ARGS} gcc-${{ matrix.version }} g++-${{ matrix.version }}
           sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-${{ matrix.version }} 100 \
             --slave /usr/bin/g++ g++ /usr/bin/g++-${{ matrix.version }} \
             --slave /usr/bin/gcov gcov /usr/bin/gcov-${{ matrix.version }}
@@ -137,12 +163,19 @@ jobs:
 
           echo "CC=/usr/bin/g++-${{ matrix.version }}" >> $GITHUB_ENV
         else
-          sudo apt install clang-${{ matrix.version }}
+          sudo apt install --no-install-recommends ${APT_CACHE_ARGS} clang-${{ matrix.version }}
           sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-${{ matrix.version }} 100
           sudo update-alternatives --set clang /usr/bin/clang-${{ matrix.version }}
 
           echo "CC=/usr/bin/clang++-${{ matrix.version }}" >> $GITHUB_ENV
         fi
+
+        # Remove outdated packages restored from a previous month's cache.
+        sudo apt-get autoclean ${APT_CACHE_ARGS}
+
+        # apt leaves root-owned files (e.g., its lock file) in the cache
+        # directory, which actions/cache can't read when saving.
+        sudo chown -R "$USER" ~/apt-cache
 
     - name: Set C++ Standard
       run: |
@@ -225,9 +258,35 @@ jobs:
       run: |
         echo "EXT=.exe" >> $GITHUB_ENV
 
+    # The Ubuntu mirror is slow when many matrix jobs download at once, so we
+    # cache the downloaded .deb packages.
+    #
+    # actions/cache never overwrites an existing key, so we include the month in
+    # the key to pick up package updates. The OS image name (e.g., ubuntu24)
+    # keeps ubuntu-latest from restoring packages from an older release.
+    - name: Get apt Cache Key (Linux)
+      id: apt-cache-key
+      if: startsWith(matrix.os, 'ubuntu')
+      run: |
+        PREFIX="apt-${ImageOS}-${{ matrix.compiler }}-${{ matrix.version }}-"
+        echo "prefix=${PREFIX}" >> $GITHUB_OUTPUT
+        echo "key=${PREFIX}$(date +%Y-%m)" >> $GITHUB_OUTPUT
+
+    - name: Cache apt Packages (Linux)
+      if: startsWith(matrix.os, 'ubuntu')
+      uses: actions/cache@v4
+      with:
+        path: ~/apt-cache
+        key: ${{ steps.apt-cache-key.outputs.key }}
+        restore-keys: ${{ steps.apt-cache-key.outputs.prefix }}
+
     - name: Setup Environment (Linux)
       if: startsWith(matrix.os, 'ubuntu')
       run: |
+        # Use a cache directory that persists across runs (see above).
+        mkdir -p ~/apt-cache/partial
+        APT_CACHE_ARGS="-o Dir::Cache::Archives=$HOME/apt-cache -o APT::Keep-Downloaded-Packages=true"
+
         if [[ "${{ matrix.compiler }}" == "gcc" ]]; then
           # Some time between 2/9/2026 and 2/16/2026, the apt packages for
           # backported versions of GCC earlier than the version included in
@@ -245,7 +304,7 @@ jobs:
             sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
           fi
 
-          sudo apt install gcc-${{ matrix.version }} g++-${{ matrix.version }}
+          sudo apt install --no-install-recommends ${APT_CACHE_ARGS} gcc-${{ matrix.version }} g++-${{ matrix.version }}
           sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-${{ matrix.version }} 100 \
             --slave /usr/bin/g++ g++ /usr/bin/g++-${{ matrix.version }} \
             --slave /usr/bin/gcov gcov /usr/bin/gcov-${{ matrix.version }}
@@ -254,13 +313,20 @@ jobs:
           echo "CC=/usr/bin/gcc-${{ matrix.version }}" >> $GITHUB_ENV
           echo "CXX=/usr/bin/g++-${{ matrix.version }}" >> $GITHUB_ENV
         else
-          sudo apt install clang-${{ matrix.version }}
+          sudo apt install --no-install-recommends ${APT_CACHE_ARGS} clang-${{ matrix.version }}
           sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-${{ matrix.version }} 100
           sudo update-alternatives --set clang /usr/bin/clang-${{ matrix.version }}
 
           echo "CC=/usr/bin/clang-${{ matrix.version }}" >> $GITHUB_ENV
           echo "CXX=/usr/bin/clang++-${{ matrix.version }}" >> $GITHUB_ENV
         fi
+
+        # Remove outdated packages restored from a previous month's cache.
+        sudo apt-get autoclean ${APT_CACHE_ARGS}
+
+        # apt leaves root-owned files (e.g., its lock file) in the cache
+        # directory, which actions/cache can't read when saving.
+        sudo chown -R "$USER" ~/apt-cache
 
         echo "EXT=" >> $GITHUB_ENV
 
