@@ -245,12 +245,14 @@ See [Point One FusionEngine Python Client](python) for complete details and usag
 #### Install From PyPI
 
 1. Install Python 3.8 (or later) and pip.
-2. Install the `fusione-engine-client` module, including all analysis and data processing tools:
+2. Install the `fusion-engine-client` module, including all analysis and data processing tools:
    ```bash
-   python3 -m pip install fusion-engine-client[all]
+   python3 -m pip install fusion-engine-client
    ```
-   - Note: If you wish to only install data parsing support, and do not want to install plotting and other requirements
-     used by the analysis tools in `bin/`, you may omit `[all]` and run `python3 -m pip install fusion-engine-client`
+   - Note: If you only need to encode and decode FusionEngine messages, and do not want to install plotting and other
+     requirements used by the analysis tools, you may install the `fusion-engine-client-core` package from source
+     instead. It contains the same Python code, but does not install the analysis requirements or the `p1_*`
+     command-line applications. See [Point One FusionEngine Python Client](python) for details.
 3. Run any of the applications in `bin/`. For example, to plot results from a `*.p1log` file from a Point One device:
    ```bash
    p1_display /path/to/log/file_or_directory
