@@ -8,3 +8,5 @@ numpy>=1.16.0
 construct>=2.10.0
 # Note: Not used by the `messages` package, but required by `utils.argument_parser`.
 argparse-formatter>=1.4
+# Note: Not used by the `messages` package, but required by `p1_capture` and the applications that use it.
+colorama>=0.4.4

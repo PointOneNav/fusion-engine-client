@@ -252,7 +252,8 @@ See [Point One FusionEngine Python Client](python) for complete details and usag
    - Note: If you only need to encode and decode FusionEngine messages, and do not want to install plotting and other
      requirements used by the analysis tools, you may install the `fusion-engine-client-core` package from source
      instead. It contains the same Python code, but does not install the analysis requirements or the `p1_*`
-     command-line applications. See [Point One FusionEngine Python Client](python) for details.
+     command-line applications other than `p1_capture`, `p1_filter`, and `p1_print`. See [Point One FusionEngine Python
+     Client](python) for details.
 3. Run any of the applications in `bin/`. For example, to plot results from a `*.p1log` file from a Point One device:
    ```bash
    p1_display /path/to/log/file_or_directory

@@ -149,9 +149,10 @@ FusionEngine message specification.
      the code (`git pull`), your Python installation will automatically use the new version.
    - If you only need to encode and decode FusionEngine messages (e.g., on an embedded system), you may install the
      `fusion-engine-client-core` package instead. It contains the same `fusion_engine_client` Python code, but only
-     installs the requirements needed by the `messages`, `parsers`, and `utils` packages. It does not install the
-     requirements for the analysis and display tools, or the `p1_*` command-line applications. Install one package or
-     the other, never both. Both packages contain `fusion_engine_client`, so uninstalling one would break the other.
+     installs the requirements needed by the `messages`, `parsers`, and `utils` packages, and the `p1_capture`,
+     `p1_filter`, and `p1_print` command-line applications. It does not install the requirements for the analysis and
+     display tools, or the other `p1_*` applications. Install one package or the other, never both. Both packages
+     contain `fusion_engine_client`, so uninstalling one would break the other.
 
      To install the `fusion-engine-client-core` package, set `FUSION_ENGINE_CLIENT_CORE=1`:
      ```bash

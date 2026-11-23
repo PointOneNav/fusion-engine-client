@@ -3,7 +3,6 @@
 -r requirements-core.txt
 
 # Required for analysis and example applications only. Not used by the `messages` package.
-colorama>=0.4.4
 # Note: orjson is optional for plotly, but it serializes the figure data several times faster than the
 # standard Python json library.
 orjson>=3.9.0

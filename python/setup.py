@@ -27,8 +27,8 @@ version = find_version('fusion_engine_client', '__init__.py')
 
 # By default, build the full `fusion-engine-client` package. If `FUSION_ENGINE_CLIENT_CORE=1` is set, build the
 # `fusion-engine-client-core` package instead. It contains the same code, but only requires the packages needed to
-# encode and decode messages, and does not install the command-line applications. Install one or the other, never both,
-# since they both contain `fusion_engine_client`.
+# encode and decode messages, and only installs the command-line applications that need nothing more (`p1_capture`,
+# `p1_filter`, and `p1_print`). Install one or the other, never both, since they both contain `fusion_engine_client`.
 core = build_core()
 
 message_requirements = set([
@@ -42,6 +42,9 @@ message_requirements = set([
     # Note: Messages do not need this, but `utils.argument_parser` does, and applications that only use messages still
     # use that parser. It is small and has no requirements of its own.
     'argparse-formatter>=1.4',
+    # Note: Messages do not need this either, but `p1_capture` (and the applications that use it) do. It is small and
+    # has no requirements of its own.
+    'colorama>=0.4.4',
 ])
 
 tools_requirements = set([
@@ -49,7 +52,6 @@ tools_requirements = set([
 ])
 
 display_requirements = set([
-    'colorama>=0.4.4',
     'orjson>=3.9.0',
     'palettable>=3.3.0',
     # Note: Plotly 7 bundles a MapLibre build whose web worker is an ES module, which Chrome refuses
@@ -65,25 +67,30 @@ dev_requirements = set([
 
 all_requirements = message_requirements | tools_requirements | display_requirements | dev_requirements
 
+# Applications that only need the core requirements. Both packages install these.
+core_console_scripts = [
+    'p1_capture = fusion_engine_client.applications.p1_capture:main',
+    'p1_filter = fusion_engine_client.applications.p1_filter:main',
+    'p1_print = fusion_engine_client.applications.p1_print:main',
+]
+
 if core:
     name = 'fusion-engine-client-core'
     install_requires = message_requirements
-    console_scripts = []
+    console_scripts = core_console_scripts
     extras_require = {}
     description_note = """
-This package contains only the requirements needed to encode and decode FusionEngine messages. To use the analysis and
-display tools and the `p1_*` applications, install `fusion-engine-client` instead. Do not install both packages.
+This package contains only the requirements needed to encode and decode FusionEngine messages, and the `p1_capture`,
+`p1_filter`, and `p1_print` applications. To use the analysis and display tools and the other `p1_*` applications,
+install `fusion-engine-client` instead. Do not install both packages.
 """
 else:
     name = 'fusion-engine-client'
     install_requires = all_requirements
-    console_scripts = [
-        'p1_capture = fusion_engine_client.applications.p1_capture:main',
+    console_scripts = core_console_scripts + [
         'p1_display = fusion_engine_client.applications.p1_display:main',
         'p1_extract = fusion_engine_client.applications.p1_extract:main',
-        'p1_filter = fusion_engine_client.applications.p1_filter:main',
         'p1_lband_extract = fusion_engine_client.applications.p1_lband_extract:main',
-        'p1_print = fusion_engine_client.applications.p1_print:main',
         'p1_proxy = fusion_engine_client.applications.p1_proxy:main',
     ]
     extras_require = {
