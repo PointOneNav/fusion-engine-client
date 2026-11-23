@@ -1,0 +1,12 @@
+# Requirements for the `fusion-engine-client-core` package: FusionEngine messages, parsers, and utilities only.
+aenum>=3.1.1
+# Note: Using the Point One fork of gpstime until the patch to download the leap
+# seconds file from alternate servers is merged:
+# https://gitlab.com/jrollins/gpstime/-/merge_requests/2
+p1-gpstime>=0.6.3.dev1
+numpy>=1.16.0
+construct>=2.10.0
+# Note: Not used by the `messages` package, but required by `utils.argument_parser`.
+argparse-formatter>=1.4
+# Note: Not used by the `messages` package, but required by `p1_capture` and the applications that use it.
+colorama>=0.4.4

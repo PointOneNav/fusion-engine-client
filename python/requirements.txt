@@ -1,14 +1,8 @@
-aenum>=3.1.1
-# Note: Using the Point One fork of gpstime until the patch to download the leap
-# seconds file from alternate servers is merged:
-# https://gitlab.com/jrollins/gpstime/-/merge_requests/2
-p1-gpstime>=0.6.3.dev1
-numpy>=1.16.0
-construct>=2.10.0
+# Requirements for the full `fusion-engine-client` package. To install only the requirements for the
+# `fusion-engine-client-core` package (messages, parsers, and utilities), use `requirements-core.txt` instead.
+-r requirements-core.txt
 
 # Required for analysis and example applications only. Not used by the `messages` package.
-argparse-formatter>=1.4
-colorama>=0.4.4
 # Note: orjson is optional for plotly, but it serializes the figure data several times faster than the
 # standard Python json library.
 orjson>=3.9.0

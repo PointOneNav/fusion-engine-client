@@ -116,6 +116,9 @@ FusionEngine message specification.
    - This will install the library code, and will also the applications in `fusion_engine_client/applications/`
      onto your system `PATH` so you can run them at the command line (e.g., `p1_display.py` will be available on
      the command line as `p1_display`).
+   - If you only need to encode and decode FusionEngine messages (e.g., on an embedded system), you may install the
+     `fusion-engine-client-core` package from source instead. See
+     [Install From Source](#install-from-source-use-in-another-python-project).
 3. Run any of the applications described in [Applications](#applications). For example, to plot results from a `*.p1log`
    file from a Point One device:
    ```bash
@@ -136,7 +139,7 @@ FusionEngine message specification.
    ```
 3. Install the `fusione-engine-client` module, including all analysis and data processing tools:
    ```bash
-   python3 -m pip install -e /path/to/fusion-engine-client
+   python3 -m pip install -e /path/to/fusion-engine-client/python
    ```
    - This will install the library code, and will also all of the applications in `fusion_engine_client/applications/`
      onto your system `PATH` so you can run them at the command line (e.g., `p1_display.py` will be available on
@@ -144,6 +147,23 @@ FusionEngine message specification.
    - Note the additional `-e` argument (optional), which tells `pip` to install `fusion-engine-client` as editable.
      This means that it will reference the local directory instead of copying the source code. That way, if you update
      the code (`git pull`), your Python installation will automatically use the new version.
+   - If you only need to encode and decode FusionEngine messages (e.g., on an embedded system), you may install the
+     `fusion-engine-client-core` package instead. It contains the same `fusion_engine_client` Python code, but only
+     installs the requirements needed by the `messages`, `parsers`, and `utils` packages, and the `p1_capture`,
+     `p1_filter`, and `p1_print` command-line applications. It does not install the requirements for the analysis and
+     display tools, or the other `p1_*` applications. Install one package or the other, never both. Both packages
+     contain `fusion_engine_client`, so uninstalling one would break the other.
+
+     To install the `fusion-engine-client-core` package, set `FUSION_ENGINE_CLIENT_CORE=1`:
+     ```bash
+     FUSION_ENGINE_CLIENT_CORE=1 python3 -m pip install -e /path/to/fusion-engine-client/python
+     ```
+     To build a core package from a git URL, use `pip wheel --no-cache-dir`, then install the resulting wheel. pip's
+     wheel cache does not account for the environment variable, so it may reuse a previously built full wheel:
+     ```bash
+     FUSION_ENGINE_CLIENT_CORE=1 python3 -m pip wheel --no-cache-dir --no-deps -w dist \
+         "git+https://github.com/PointOneNav/fusion-engine-client.git#subdirectory=python"
+     ```
 4. Run any of the applications described in [Applications](#applications). For example, to plot results from a `*.p1log`
    file from a Point One device:
    ```bash
@@ -166,6 +186,7 @@ FusionEngine message specification.
    ```bash
    python3 -m pip install -r requirements.txt
    ```
+   - If you only need to encode and decode FusionEngine messages, you may install `requirements-core.txt` instead.
 4. Run any of the applications described in [Applications](#applications). For example, to plot results from a `*.p1log`
    file from a Point One device:
    ```bash
